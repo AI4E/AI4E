@@ -2,6 +2,9 @@
 The 'Application Infrastructure for the Enterprise' library extends Asp.Net Core with functionality needed in medium to larger sized enterprise applications.<br>
 It provides a messaging mechanism to decouple MVC-controllers that manage the views responsibilities from reusable application services. The integrated storage engine is built on top of modern application architecture like command query responsibility segration (CQRS), No-Sql and event-sourcing. With this in place a high level of persistence ignorance is achieved with the projects goal to completely decouple the domain model design from architectural and storage purposes. The library includes a modularity model that enables the application to be split into multiple modules (or microservices) that all run in isolation and are connected via the messaging mechanism.
 
+## Project status
+The project is in active development currently, with the goal to release the first release candidate (RC1) in the first quarter of 2018.
+
 ## Messaging pattern
 
 ** TODO **
