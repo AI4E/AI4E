@@ -5,7 +5,6 @@
  * Version:         1.0
  * Author:          Andreas Trütschel
  * Last modified:   01.06.2017 
- * Status:          In development
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -30,17 +29,21 @@
  */
 
 using System;
+using System.Runtime.Serialization;
 
 namespace AI4E
 {
     /// <summary>
     /// Represents a type of exception that is thrown if access to an operation is unauthorized.
     /// </summary>
+    [Serializable]
     public class UnauthorizedAccessException : Exception
     {
         /// <summary>
         /// Creates a new instance of the <see cref="UnauthorizedAccessException"/> type.
         /// </summary>
         public UnauthorizedAccessException() : base() { }
+
+        protected UnauthorizedAccessException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
 }

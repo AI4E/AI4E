@@ -35,6 +35,9 @@ using System.Collections.Generic;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Represents the result of a message dispatch process.
+    /// </summary>
     public interface IDispatchResult
     {
         /// <summary>
@@ -48,13 +51,26 @@ namespace AI4E
         string Message { get; }
     }
 
+    /// <summary>
+    /// Aggregates multiple message dispatch results to a single result.
+    /// </summary>
     public interface IAggregateDispatchResult : IDispatchResult
     {
+        /// <summary>
+        /// Gets the collection of aggregated dispatch results.
+        /// </summary>
         IEnumerable<IDispatchResult> DispatchResults { get; }
     }
 
+    /// <summary>
+    /// Represents the result of a message dispatch process with a result value.
+    /// </summary>
+    /// <typeparam name="TResult">The type of result.</typeparam>
     public interface IDispatchResult<TResult> : IDispatchResult
     {
+        /// <summary>
+        /// Gets the result.
+        /// </summary>
         TResult Result { get; }
     }
 }

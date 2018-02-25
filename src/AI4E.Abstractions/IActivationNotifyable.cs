@@ -29,6 +29,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Threading.Tasks;
 
 namespace AI4E
@@ -36,6 +37,7 @@ namespace AI4E
     /// <summary>
     /// An object whose activation can be notified asynchronously.
     /// </summary>
+    [Obsolete("This type is obsolete and will be removed in a future release.")]
     public interface IActivationNotifyable
     {
         /// <summary>

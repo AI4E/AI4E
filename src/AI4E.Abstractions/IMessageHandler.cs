@@ -1,4 +1,14 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        IMessageHandler.cs
+ * Types:           AI4E.IMessageHandler'1
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   25.02.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -22,8 +32,18 @@ using System.Threading.Tasks;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Represents a message handler that can handle messages of the specified type.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of message.</typeparam>
     public interface IMessageHandler<TMessage>
     {
+        /// <summary>
+        /// Asynchronously handles the specified message.
+        /// </summary>
+        /// <param name="message">The message to be handled.</param>
+        /// <param name="context">The message context.</param>
+        /// <returns>A task representing the asynchronous operation. The task contains the dispatch result on evaluation.</returns>
         Task<IDispatchResult> HandleAsync(TMessage message, DispatchValueDictionary context);
     }
 }

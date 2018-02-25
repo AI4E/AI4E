@@ -25,7 +25,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 
-namespace AI4E
+namespace AI4E.Domain
 {
     /// <summary>
     /// Represents a globally unique identifier (GUID) with a

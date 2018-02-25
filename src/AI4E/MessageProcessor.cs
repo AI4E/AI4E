@@ -23,17 +23,17 @@ using System.Threading.Tasks;
 
 namespace AI4E
 {
-    public interface IMessageProcessor
+    public abstract class MessageProcessor : IMessageProcessor
     {
-        Task<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, Task<IDispatchResult>> next);
+        [MessageProcessorContext]
+        protected internal IMessageProcessorContext Context { get; internal set; }
+
+        public virtual Task<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, Task<IDispatchResult>> next)
+        {
+            return next(message);
+        }
     }
 
-    public interface IMessageProcessorContext
-    {
-        MessageHandlerActionDescriptor MessageHandlerAction { get; }
-        object MessageHandler { get; }
-        Type MessageType { get; }
-
-        DispatchValueDictionary DispatchValues { get; }
-    }
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+    public sealed class MessageProcessorContextAttribute : Attribute { }
 }

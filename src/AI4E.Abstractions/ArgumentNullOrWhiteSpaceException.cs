@@ -1,4 +1,14 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        ArgumentNullOrWhiteSpaceException.cs 
+ * Types:           AI4E.ArgumentNullOrWhiteSpaceException
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   25.02.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)

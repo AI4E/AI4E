@@ -5,8 +5,7 @@
  *                  (2) AI4E.ValidationResultsBuilder
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   29.04.2017 
- * Status:          Ready
+ * Last modified:   25.02.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -45,14 +44,35 @@ namespace AI4E
         /// </summary>
         /// <param name="member">The member whose validation failed.</param>
         /// <param name="message">A message describing the validation failure.</param>
+        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="member"/> or <paramref name="message"/> is null.</exception>
         public ValidationResult(string member, string message)
         {
+            if (member == null)
+                throw new ArgumentNullException(nameof(member));
+
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
+
             Member = member;
             Message = message;
         }
 
         /// <summary>
-        /// Gets the member whose validation failed.
+        /// Creates a new instance of the <see cref="ValidationResult"/> type.
+        /// </summary>
+        /// <param name="message">A message describing the validation failure.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is null.</exception>
+        public ValidationResult(string message)
+        {
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
+
+            Member = null;
+            Message = message;
+        }
+
+        /// <summary>
+        /// Gets the member whose validation failed or null if no member is specified.
         /// </summary>
         public string Member { get; }
 
@@ -88,6 +108,9 @@ namespace AI4E
         /// <returns>A hash code for the current validation result.</returns>
         public override int GetHashCode()
         {
+            if (Member == null)
+                return Message.GetHashCode();
+
             return Member.GetHashCode() ^ Message.GetHashCode();
         }
 
@@ -143,6 +166,11 @@ namespace AI4E
         public void AddValidationResult(string member, string message)
         {
             _validationResults.Add(new ValidationResult(member, message));
+        }
+
+        public void AddValidationResult(string message)
+        {
+            _validationResults.Add(new ValidationResult(message));
         }
 
         /// <summary>
