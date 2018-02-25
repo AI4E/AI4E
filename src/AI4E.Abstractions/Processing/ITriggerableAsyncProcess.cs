@@ -1,4 +1,15 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        ITriggerableAsyncProcess.cs 
+ * Types:           (1) AI4E.Processing.ITriggerableAsyncProcess
+ *                  (2) AI4E.Processing.TriggerableAsyncProcessState
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   25.02.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,17 +29,36 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace AI4E.Processing
 {
+    /// <summary>
+    /// Represents a triggerable async process.
+    /// </summary>
     public interface ITriggerableAsyncProcess : IAsyncProcess
     {
+        /// <summary>
+        /// Gets the process state.
+        /// </summary>
         new TriggerableAsyncProcessState State { get; }
+
+        /// <summary>
+        /// Registers a trigger.
+        /// </summary>
+        /// <param name="trigger">The trigger to register.</param>
+        /// /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="trigger"/> is null.</exception>
         void RegisterTrigger(ITrigger trigger);
-        Task TriggerExecutionAsync(CancellationToken cancellation = default);
+
+        /// <summary>
+        /// Unregisters a trigger.
+        /// </summary>
+        /// <param name="trigger">The trigger to unregister.</param>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="trigger"/> is null.</exception>
         void UnregisterTrigger(ITrigger trigger);
+
+        /// <summary>
+        /// Triggers the execution explicitely.
+        /// </summary>
+        void TriggerExecution();
     }
 
     /// <summary>

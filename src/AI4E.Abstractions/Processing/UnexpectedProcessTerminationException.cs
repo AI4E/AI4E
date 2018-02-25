@@ -1,7 +1,7 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        ITrigger.cs 
- * Types:           AI4E.Processing.ITrigger
+ * Filename:        UnexpectedProcessTerminationException.cs 
+ *                  AI4E.Processing.UnexpectedProcessTerminationException
  * Version:         1.0
  * Author:          Andreas Trütschel
  * Last modified:   25.02.2018 
@@ -28,21 +28,20 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Threading;
-using System.Threading.Tasks;
+using System;
+using System.Runtime.Serialization;
 
 namespace AI4E.Processing
 {
-    /// <summary>
-    /// Represents a trigger.
-    /// </summary>
-    public interface ITrigger
+    [Serializable]
+    public sealed class UnexpectedProcessTerminationException : Exception
     {
-        /// <summary>
-        /// Asynchronously awaits the next trigger.
-        /// </summary>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        Task NextTriggerAsync(CancellationToken cancellation);
+        public UnexpectedProcessTerminationException() : base("The process terminated unexpectedly.") { }
+
+        public UnexpectedProcessTerminationException(string message) : base(message) { }
+
+        public UnexpectedProcessTerminationException(string message, Exception innerException) : base(message, innerException) { }
+
+        private UnexpectedProcessTerminationException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
 }

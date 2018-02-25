@@ -2,8 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IAsyncProcess.cs 
  * Types:           (1) AI4E.Processing.IAsyncProcess
- *                  (1) AI4E.Processing.AsyncProcessState
- *                  (1) AI4E.Processing.UnexpectedProcessTerminationException
+ *                  (2) AI4E.Processing.AsyncProcessState
  * Version:         1.0
  * Author:          Andreas Trütschel
  * Last modified:   25.02.2018 
@@ -31,7 +30,6 @@
  */
 
 using System;
-using System.Runtime.Serialization;
 using System.Threading.Tasks;
 
 namespace AI4E.Processing
@@ -94,17 +92,5 @@ namespace AI4E.Processing
         /// Call <see cref=IAsyncProcess.TerminateAsync"/> to rethrow the exception.
         /// </summary>
         Failed = 2
-    }
-
-    [Serializable]
-    public sealed class UnexpectedProcessTerminationException : Exception
-    {
-        public UnexpectedProcessTerminationException() : base("The process terminated unexpectedly.") { }
-
-        public UnexpectedProcessTerminationException(string message) : base(message) { }
-
-        public UnexpectedProcessTerminationException(string message, Exception innerException) : base(message, innerException) { }
-
-        private UnexpectedProcessTerminationException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
 }

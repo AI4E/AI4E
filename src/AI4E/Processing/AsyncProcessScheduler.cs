@@ -24,6 +24,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
+using Nito.AsyncEx;
 
 namespace AI4E.Processing
 {
@@ -31,8 +32,14 @@ namespace AI4E.Processing
     {
         private volatile ImmutableHashSet<ITrigger> _triggers = ImmutableHashSet<ITrigger>.Empty;
         private CancellationTokenSource _cancelSource = null;
+        private AsyncManualResetEvent _event = new AsyncManualResetEvent();
 
         public AsyncProcessScheduler() { }
+
+        public void Trigger()
+        {
+            _event.Set();
+        }
 
         public Task NextTrigger()
         {
@@ -43,7 +50,6 @@ namespace AI4E.Processing
         {
             Task completedTask;
             Task cancellationTask;
-
             ImmutableHashSet<ITrigger> triggers;
 
             do
@@ -56,7 +62,7 @@ namespace AI4E.Processing
 
                 // Get a list of all trigger tasks plus a cancellation task
                 cancellationTask = _cancelSource.Token.AsTask();
-                var awaitedTasks = triggers.Select(p => p.NextTrigger(_cancelSource.Token)).Append(cancellationTask);
+                var awaitedTasks = triggers.Select(p => p.NextTriggerAsync(_cancelSource.Token)).Append(_event.WaitAsync(_cancelSource.Token)).Append(cancellationTask);
 
                 // Asynchronously wait for any tasks to complete.
                 completedTask = await Task.WhenAny(awaitedTasks);
@@ -67,7 +73,9 @@ namespace AI4E.Processing
                 // Trigger any thrown exceptions.
                 await completedTask;
             }
-            while (completedTask != cancellationTask);
+            while (completedTask == cancellationTask);
+
+            _event.Reset();
         }
 
         public void AddTrigger(ITrigger trigger)

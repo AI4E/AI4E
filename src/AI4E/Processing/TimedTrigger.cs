@@ -36,7 +36,7 @@ namespace AI4E.Processing
 
         public TimeSpan Interval { get; }
 
-        public Task NextTrigger(CancellationToken cancellation)
+        public Task NextTriggerAsync(CancellationToken cancellation)
         {
             return Task.Delay(Interval, cancellation);
         }
