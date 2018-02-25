@@ -451,7 +451,7 @@ namespace AI4E.Modularity
         private sealed class TypedRemoteMessageDispatcher<TMessage> : ITypedRemoteMessageDispatcher
         {
             private readonly IEndPointRouter _moduleCoordination;
-            private readonly AsyncHandlerRegistry<IMessageHandler<TMessage>> _registry = new AsyncHandlerRegistry<IMessageHandler<TMessage>>();
+            private readonly HandlerRegistry<IMessageHandler<TMessage>> _registry = new HandlerRegistry<IMessageHandler<TMessage>>();
             private readonly IServiceProvider _serviceProvider;
             private readonly IMessageTypeConversion _messageTypeConversion;
             private readonly AsyncLock _lock = new AsyncLock();
@@ -493,7 +493,7 @@ namespace AI4E.Modularity
 
                 if (publish)
                 {
-                    var dispatchResults = await Task.WhenAll(_registry.GetHandlers().Select(p => DispatchSingleHandlerAsync(p, message, context, cancellation)));
+                    var dispatchResults = await Task.WhenAll(_registry.Handlers.Select(p => DispatchSingleHandlerAsync(p, message, context, cancellation)));
 
                     return new AggregateDispatchResult(dispatchResults);
                 }
@@ -540,9 +540,9 @@ namespace AI4E.Modularity
             {
                 using (await _lock.LockAsync())
                 {
-                    var handlerCount = _registry.GetHandlers().Count();
+                    var handlerCount = _registry.Handlers.Count();
 
-                    await _registry.RegisterAsync(messageHandlerProvider);
+                    _registry.Register(messageHandlerProvider);
 
                     var registration = new HandlerRegistration(this, messageHandlerProvider);
 
@@ -554,7 +554,7 @@ namespace AI4E.Modularity
                         }
                         catch
                         {
-                            await _registry.DeregisterAsync(messageHandlerProvider);
+                            _registry.Unregister(messageHandlerProvider);
 
                             throw;
                         }
@@ -604,14 +604,14 @@ namespace AI4E.Modularity
                     {
                         using (await _dispatcher._lock.LockAsync())
                         {
-                            var handlers = _dispatcher._registry.GetHandlers();
+                            var handlers = _dispatcher._registry.Handlers;
 
                             if (handlers.Count() == 1 && handlers.First() == Handler)
                             {
                                 await _dispatcher._moduleCoordination.UnregisterRouteAsync(_dispatcher.SerializedMessageType, cancellation: default);
                             }
 
-                            await _dispatcher._registry.DeregisterAsync(Handler);
+                            _dispatcher._registry.Unregister(Handler);
                         }
                     }
                     catch (OperationCanceledException) { throw; }

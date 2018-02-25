@@ -159,12 +159,12 @@ namespace AI4E.Storage.Projection
 
     internal sealed class Projector<TSource, TProjection> : ITypedProjector<TSource>
     {
-        private readonly AsyncHandlerRegistry<IProjection<TSource, TProjection>> _projections;
+        private readonly HandlerRegistry<IProjection<TSource, TProjection>> _projections;
         private readonly IServiceProvider _serviceProvider;
 
         public Projector(IServiceProvider serviceProvider)
         {
-            _projections = new AsyncHandlerRegistry<IProjection<TSource, TProjection>>();
+            _projections = new HandlerRegistry<IProjection<TSource, TProjection>>();
             _serviceProvider = serviceProvider;
         }
 
@@ -190,7 +190,7 @@ namespace AI4E.Storage.Projection
         {
             var dataStore = _serviceProvider.GetRequiredService<IDataStore>();
 
-            return Task.WhenAll(_projections.GetHandlers().Select(p => ProjectSingleAsync(source, dataStore, p, cancellation)));
+            return Task.WhenAll(_projections.Handlers.Select(p => ProjectSingleAsync(source, dataStore, p, cancellation)));
         }
 
         private async Task ProjectSingleAsync(TSource source, IDataStore dataStore, IContextualProvider<IProjection<TSource, TProjection>> projectionProvider, CancellationToken cancellation)

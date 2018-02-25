@@ -59,11 +59,6 @@ namespace AI4E
             return GetTypedDispatcher<TMessage>().RegisterAsync(messageHandlerProvider, cancellation);
         }
 
-        public IEnumerable<IContextualProvider<IMessageHandler<TMessage>>> GetHandlers<TMessage>()
-        {
-            return GetTypedDispatcher<TMessage>().GetHandlers();
-        }
-
         public Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, CancellationToken cancellation)
         {
             if (message == null)
@@ -166,7 +161,7 @@ namespace AI4E
 
     internal sealed class MessageDispatcher<TMessage> : ITypedMessageDispatcher
     {
-        private readonly AsyncHandlerRegistry<IMessageHandler<TMessage>> _registry = new AsyncHandlerRegistry<IMessageHandler<TMessage>>();
+        private readonly HandlerRegistry<IMessageHandler<TMessage>> _registry = new HandlerRegistry<IMessageHandler<TMessage>>();
 
         public Task<IHandlerRegistration<IMessageHandler<TMessage>>> RegisterAsync(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider, CancellationToken cancellation)
         {
@@ -186,7 +181,7 @@ namespace AI4E
 
             if (publish)
             {
-                var dispatchResults = await Task.WhenAll(_registry.GetHandlers().Select(p => DispatchSingleHandlerAsync(p, message, context, serviceProvider, cancellation)));
+                var dispatchResults = await Task.WhenAll(_registry.Handlers.Select(p => DispatchSingleHandlerAsync(p, message, context, serviceProvider, cancellation)));
 
                 return new AggregateDispatchResult(dispatchResults);
             }
@@ -240,11 +235,6 @@ namespace AI4E
             }
 
             return DispatchAsync(typedMessage, context, publish, serviceProvider, cancellation);
-        }
-
-        public IEnumerable<IContextualProvider<IMessageHandler<TMessage>>> GetHandlers()
-        {
-            return _registry.GetHandlers();
         }
 
         public Type MessageType => typeof(TMessage);

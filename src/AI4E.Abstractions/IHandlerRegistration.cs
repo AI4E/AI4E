@@ -47,12 +47,12 @@ namespace AI4E
 
     internal sealed class HandlerRegistration<THandler> : IHandlerRegistration<THandler>
     {
-        private readonly IAsyncHandlerRegistry<THandler> _handlerRegistry;
+        private readonly IHandlerRegistry<THandler> _handlerRegistry;
         private readonly IContextualProvider<THandler> _handlerProvider;
         private readonly TaskCompletionSource<object> _completionSource = new TaskCompletionSource<object>();
         private int _isCompleting = 0;
 
-        public HandlerRegistration(IAsyncHandlerRegistry<THandler> handlerRegistry,
+        public HandlerRegistration(IHandlerRegistry<THandler> handlerRegistry,
                                    IContextualProvider<THandler> handlerProvider)
 
         {
@@ -64,8 +64,9 @@ namespace AI4E
 
             _handlerRegistry = handlerRegistry;
             _handlerProvider = handlerProvider;
+            _handlerRegistry.Register(_handlerProvider);
 
-            Initialization = _handlerRegistry.RegisterAsync(_handlerProvider);
+            Initialization = Task.CompletedTask;
         }
 
         public Task Initialization { get; }
@@ -81,7 +82,7 @@ namespace AI4E
 
             try
             {
-                await _handlerRegistry.DeregisterAsync(_handlerProvider);
+                _handlerRegistry.Unregister(_handlerProvider);
                 _completionSource.SetResult(null);
             }
             catch (TaskCanceledException)
@@ -97,7 +98,7 @@ namespace AI4E
 
     public static class HandlerRegistration
     {
-        public static async Task<IHandlerRegistration<THandler>> CreateRegistrationAsync<THandler>(IAsyncHandlerRegistry<THandler> handlerRegistry, IContextualProvider<THandler> handlerProvider)
+        public static async Task<IHandlerRegistration<THandler>> CreateRegistrationAsync<THandler>(IHandlerRegistry<THandler> handlerRegistry, IContextualProvider<THandler> handlerProvider)
         {
             var registration = new HandlerRegistration<THandler>(handlerRegistry, handlerProvider);
 
@@ -106,7 +107,7 @@ namespace AI4E
             return registration;
         }
 
-        public static async Task<IHandlerRegistration<THandler>> RegisterWithHandleAsync<THandler>(this IAsyncHandlerRegistry<THandler> handlerRegistry, 
+        public static async Task<IHandlerRegistration<THandler>> RegisterWithHandleAsync<THandler>(this IHandlerRegistry<THandler> handlerRegistry,
                                                                                                    IContextualProvider<THandler> handlerProvider)
         {
             if (handlerRegistry == null)
