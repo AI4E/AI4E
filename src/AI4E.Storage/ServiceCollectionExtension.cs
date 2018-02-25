@@ -21,8 +21,6 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using AI4E.Serialization;
 using AI4E.Storage.Projection;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
