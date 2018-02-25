@@ -40,7 +40,7 @@ namespace AI4E.Processing
         /// Creates a new instance of the <see cref="Process"/> type with the specified execution operation.
         /// </summary>
         /// <param name="operation">The asynchronous execution operation.</param>
-        public TriggerableAsyncProcess(Func<CancellationToken, Task> operation) // The operation is guaranteed to not run concurrently.
+        public TriggerableAsyncProcess(Func<CancellationToken, Task> operation) // The operation is guaranteed not to run concurrently.
         {
             if (operation == null)
                 throw new ArgumentNullException(nameof(operation));
@@ -54,10 +54,13 @@ namespace AI4E.Processing
         /// <summary>
         /// Gets a task representing the process execution operation.
         /// </summary>
+        [Obsolete]
         public Task Execution => _dynamicProcess.Execution;
 
+        [Obsolete]
         public Task Initialization => _dynamicProcess.Initialization;
 
+        [Obsolete]
         public Task Termination => _dynamicProcess.Termination;
 
         /// <summary>
@@ -67,43 +70,39 @@ namespace AI4E.Processing
 
         AsyncProcessState IAsyncProcess.State => _dynamicProcess.State;
 
-
         #endregion
 
         /// <summary>
         /// Starts the dynamic process operation.
         /// </summary>
-        public void StartExecution()
+        [Obsolete]
+        public void Start()
         {
-            _dynamicProcess.StartExecution();
+            _dynamicProcess.Start();
         }
 
-        public Task StartExecutionAndAwait()
+        public Task StartAsync()
         {
-            return _dynamicProcess.StartExecutionAndAwait();
+            return _dynamicProcess.StartAsync();
         }
 
         /// <summary>
         /// Terminates the dynamic process operation.
         /// </summary>
-        public void TerminateExecution()
+        [Obsolete]
+        public void Terminate()
         {
-            _dynamicProcess.TerminateExecution();
+            _dynamicProcess.Terminate();
         }
 
-        public Task TerminateExecutionAndAwait()
+        public Task TerminateAsync()
         {
-            return _dynamicProcess.TerminateExecutionAndAwait();
+            return _dynamicProcess.TerminateAsync();
         }
-
-        /// <summary>
-        /// Asynchronously triggers the static process execution.
-        /// </summary>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public Task TriggerExecutionAsync(CancellationToken cancellation = default)
+     
+        public void TriggerExecution()
         {
-            return StaticExecute(cancellation);
+            _scheduler.Trigger();
         }
 
         /// <summary>

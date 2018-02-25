@@ -1,7 +1,7 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IMessageHandler.cs
- * Types:           AI4E.IMessageHandler'1
+ * Filename:        UnexpectedProcessTerminationException.cs 
+ *                  AI4E.Processing.UnexpectedProcessTerminationException
  * Version:         1.0
  * Author:          Andreas Trütschel
  * Last modified:   25.02.2018 
@@ -28,22 +28,20 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Threading.Tasks;
+using System;
+using System.Runtime.Serialization;
 
-namespace AI4E
+namespace AI4E.Processing
 {
-    /// <summary>
-    /// Represents a message handler that can handle messages of the specified type.
-    /// </summary>
-    /// <typeparam name="TMessage">The type of message.</typeparam>
-    public interface IMessageHandler<TMessage>
+    [Serializable]
+    public sealed class UnexpectedProcessTerminationException : Exception
     {
-        /// <summary>
-        /// Asynchronously handles the specified message.
-        /// </summary>
-        /// <param name="message">The message to be handled.</param>
-        /// <param name="context">The message context.</param>
-        /// <returns>A task representing the asynchronous operation. The task contains the dispatch result on evaluation.</returns>
-        Task<IDispatchResult> HandleAsync(TMessage message, DispatchValueDictionary context);
+        public UnexpectedProcessTerminationException() : base("The process terminated unexpectedly.") { }
+
+        public UnexpectedProcessTerminationException(string message) : base(message) { }
+
+        public UnexpectedProcessTerminationException(string message, Exception innerException) : base(message, innerException) { }
+
+        private UnexpectedProcessTerminationException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
 }

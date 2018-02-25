@@ -58,7 +58,7 @@ namespace AI4E.Modularity.Debugging
             LocalAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;
             Assert(LocalAddress != null);
 
-            _connectionProcess.StartExecution();
+            _connectionProcess.Start();
             _endPointManager = endPointManager;
             _routeStore = routeStore;
             _messageDispatcher = messageDispatcher;
@@ -196,7 +196,7 @@ namespace AI4E.Modularity.Debugging
 
             public void Dispose()
             {
-                _leaseProcess.TerminateExecution();
+                _leaseProcess.Terminate();
                 _attachment.Dispose();
                 _writer.Dispose();
                 _reader.Dispose();
@@ -265,7 +265,7 @@ namespace AI4E.Modularity.Debugging
                     throw new InvalidOperationException();
 
                 RenewLease();
-                _leaseProcess.StartExecution();
+                _leaseProcess.Start();
                 _messageDispatcher.DispatchAsync(new EndPointConnected(endPointRoute)).GetAwaiter().GetResult(); // TODO
 
                 _endPointRouter = new EndPointRouter(_endPointManager, _routeStore, endPointRoute);

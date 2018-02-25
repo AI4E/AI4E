@@ -1,7 +1,7 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        ConcurrencyException.cs 
- * Types:           (1) AI4E.ConcurrencyException
+ * Types:           AI4E.ConcurrencyException
  * Version:         1.0
  * Author:          Andreas Trütschel
  * Last modified:   04.01.2018 

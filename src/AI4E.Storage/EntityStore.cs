@@ -251,7 +251,7 @@ namespace AI4E.Storage
         {
             private readonly StorageOptions _options;
             private readonly IProvider<EntityStore<TId, TEventBase, TEntityBase>> _entityStoreProvider;
-            private readonly AsyncProcess _snapshotProcess;
+            private readonly IAsyncProcess _snapshotProcess;
             private bool _isDisposed;
 
             public SnapshotProcessor(IProvider<EntityStore<TId, TEventBase, TEntityBase>> entityStoreProvider,
@@ -266,7 +266,7 @@ namespace AI4E.Storage
                 _options = optionsAccessor.Value ?? new StorageOptions();
                 _entityStoreProvider = entityStoreProvider;
                 _snapshotProcess = new AsyncProcess(SnapshotProcess);
-                _snapshotProcess.StartExecution();
+                _snapshotProcess.Start();
             }
 
             private async Task SnapshotProcess(CancellationToken cancellation)
@@ -335,7 +335,7 @@ namespace AI4E.Storage
                 }
 
                 _isDisposed = true;
-                _snapshotProcess.TerminateExecution();
+                _snapshotProcess.Terminate();
             }
         }
 
@@ -385,7 +385,7 @@ namespace AI4E.Storage
                 _dispatchQueue = new AsyncProducerConsumerQueue<(ICommit<string, TId> commit, TaskCompletionSource<object> tcs)>();
                 _cancellationSource = new CancellationTokenSource();
                 _dispatchProcess = new AsyncProcess(DispatchProcess);
-                _dispatchProcess.StartExecution();
+                _dispatchProcess.Start();
                 _intialization = InitializeAsync(_cancellationSource.Token);
             }
 
@@ -555,7 +555,7 @@ namespace AI4E.Storage
                 _isDisposed = true;
 
                 _cancellationSource.Cancel();
-                _dispatchProcess.TerminateExecution();
+                _dispatchProcess.Terminate();
             }
         }
     }

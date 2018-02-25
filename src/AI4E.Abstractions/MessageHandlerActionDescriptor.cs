@@ -1,4 +1,14 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        MessageHandlerActionDescriptor.cs 
+ * Types:           AI4E.MessageHandlerActionDescriptor
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   01.06.2017 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -23,15 +33,36 @@ using System.Reflection;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Describes a single message handler action (method).
+    /// </summary>
     public struct MessageHandlerActionDescriptor
     {
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessageHandlerActionDescriptor"/> type.
+        /// </summary>
+        /// <param name="messageType">A <see cref="Type"/> that specifies the type of message.</param>
+        /// <param name="member">A <see cref="MethodInfo"/> instance that specifies the member.</param>
         public MessageHandlerActionDescriptor(Type messageType, MethodInfo member)
         {
+            if (messageType == null)
+                throw new ArgumentNullException(nameof(messageType));
+
+            if (member == null)
+                throw new ArgumentNullException(nameof(member));
+
             MessageType = messageType;
             Member = member;
         }
 
+        /// <summary>
+        /// Gets the type of message that is handled.
+        /// </summary>
         public Type MessageType { get; }
+
+        /// <summary>
+        /// Gets a <see cref="MethodInfo"/> that specifies the message handler action (method).
+        /// </summary>
         public MethodInfo Member { get; }
     }
 }

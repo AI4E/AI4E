@@ -5,8 +5,7 @@
  *                  (2) AI4E.IContextualProvider'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   02.09.2017 
- * Status:          Ready
+ * Last modified:   25.02.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -35,7 +34,7 @@ using System;
 namespace AI4E
 {
     /// <summary>
-    /// Represents a generator for the specified type.
+    /// Represents a provider for the specified type.
     /// </summary>
     /// <typeparam name="T">The type that the provider can deliver an instance of.</typeparam>
     public interface IProvider<out T>

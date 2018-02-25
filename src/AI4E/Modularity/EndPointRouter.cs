@@ -36,7 +36,7 @@ namespace AI4E.Modularity
         private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
         private readonly IEndPointManager _endPointManager;
         private readonly IRouteStore _routeStore;
-        private readonly AsyncProcess _receiveProcess;
+        private readonly IAsyncProcess _receiveProcess;
 
         #endregion
 
@@ -60,7 +60,7 @@ namespace AI4E.Modularity
             LocalEndPoint = localEndPoint;
             _receiveProcess = new AsyncProcess(ReceiveProcedure);
             _endPointManager.AddEndPoint(LocalEndPoint);
-            _receiveProcess.StartExecution();
+            _receiveProcess.Start();
         }
 
         #endregion
@@ -129,7 +129,7 @@ namespace AI4E.Modularity
 
         public void Dispose()
         {
-            _receiveProcess.TerminateExecution();
+            _receiveProcess.Terminate();
             _endPointManager.RemoveEndPoint(LocalEndPoint);
         }
     }
