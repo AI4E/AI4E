@@ -48,7 +48,7 @@ namespace AI4E.Modularity
 
         public bool Equals(EndPointRoute other)
         {
-            if (ReferenceEquals(other, null))
+            if (other is null)
                 return false;
 
             if (ReferenceEquals(other, this))
@@ -74,20 +74,16 @@ namespace AI4E.Modularity
 
         public static bool operator ==(EndPointRoute left, EndPointRoute right)
         {
-            if (ReferenceEquals(left, null))
-            {
-                return ReferenceEquals(right, null);
-            }
+            if (left is null)
+                return right is null;
 
             return left.Equals(right);
         }
 
         public static bool operator !=(EndPointRoute left, EndPointRoute right)
         {
-            if (ReferenceEquals(left, null))
-            {
-                return !ReferenceEquals(right, null);
-            }
+            if (left is null)
+                return !(right is null);     
 
             return !left.Equals(right);
         }
