@@ -133,9 +133,7 @@ namespace AI4E
 
                     var registerMethod = registerMethodDefinition.MakeGenericMethod(messageType);
 
-                    var taskRegistration = (Task)registerMethod.Invoke(messageDispatcher, new object[] { provider, CancellationToken.None });
-
-                    taskRegistration.GetAwaiter().GetResult(); // TODO: The task is neither awaited nor stored.
+                    registerMethod.Invoke(messageDispatcher, new object[] { provider });
                 }
             }
 
