@@ -47,12 +47,12 @@ namespace AI4E.Storage.Projection
             return (Projector<TSource>)_typedProjectors.GetOrAdd(typeof(TSource), _ => new Projector<TSource>(_serviceProvider));
         }
 
-        public Task<IHandlerRegistration<IProjection<TSource, TProjection>>> RegisterProjectionAsync<TSource, TProjection>(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider, CancellationToken cancellation)
+        public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection<TSource, TProjection>(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
         {
             if (projectionProvider == null)
                 throw new ArgumentNullException(nameof(projectionProvider));
 
-            return GetTypedProjector<TSource>().RegisterProjectionAsync(projectionProvider, cancellation);
+            return GetTypedProjector<TSource>().RegisterProjection(projectionProvider);
         }
 
         public Task ProjectAsync(Type sourceType, object source, CancellationToken cancellation)
@@ -124,12 +124,12 @@ namespace AI4E.Storage.Projection
             return (Projector<TSource, TProjection>)_typedProjectors.GetOrAdd(typeof(TProjection), _ => new Projector<TSource, TProjection>(_serviceProvider));
         }
 
-        public Task<IHandlerRegistration<IProjection<TSource, TProjection>>> RegisterProjectionAsync<TProjection>(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider, CancellationToken cancellation)
+        public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection<TProjection>(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
         {
             if (projectionProvider == null)
                 throw new ArgumentNullException(nameof(projectionProvider));
 
-            return GetTypedProjector<TProjection>().RegisterProjectionAsync(projectionProvider, cancellation);
+            return GetTypedProjector<TProjection>().RegisterProjection(projectionProvider);
         }
 
         public Task ProjectAsync(object source, CancellationToken cancellation)
@@ -168,9 +168,7 @@ namespace AI4E.Storage.Projection
             _serviceProvider = serviceProvider;
         }
 
-        public async Task<IHandlerRegistration<IProjection<TSource, TProjection>>> RegisterProjectionAsync( // TODO: This does not need to be async
-            IContextualProvider<IProjection<TSource, TProjection>> projectionProvider, 
-            CancellationToken cancellation)
+        public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
         {
             return HandlerRegistration.CreateRegistration(_projections, projectionProvider);
         }

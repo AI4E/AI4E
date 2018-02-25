@@ -108,10 +108,9 @@ namespace AI4E.Storage
                                                             type,
                                                             descriptor);
 
-                    var registerMethodDefinition = typeof(IProjector).GetMethods().Single(p => p.Name == "RegisterProjectionAsync" && p.IsGenericMethodDefinition && p.GetGenericArguments().Length == 2);
+                    var registerMethodDefinition = typeof(IProjector).GetMethods().Single(p => p.Name == "RegisterProjection" && p.IsGenericMethodDefinition && p.GetGenericArguments().Length == 2);
                     var registerMethod = registerMethodDefinition.MakeGenericMethod(descriptor.SourceType, descriptor.ProjectionType);
-                    var taskRegistration = (Task)registerMethod.Invoke(projector, new object[] { provider, CancellationToken.None });
-                    taskRegistration.GetAwaiter().GetResult(); // TODO
+                    registerMethod.Invoke(projector, new object[] { provider });
                 }
             }
 
