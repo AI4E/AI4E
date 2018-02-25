@@ -121,7 +121,7 @@ namespace AI4E
         /// <param name="handlerProvider">A contextual provider that provides instances of the to be registered handler.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public static async Task<IHandlerRegistration<THandler>> CreateRegistrationAsync<THandler>(
-            this IAsyncHandlerRegistry<THandler> handlerRegistry, 
+            this IHandlerRegistry<THandler> handlerRegistry, 
             IContextualProvider<THandler> handlerProvider) // TODO: Receive a cancellation token.
         {
             var registration = new HandlerRegistration<THandler>(handlerRegistry, handlerProvider);
@@ -133,7 +133,7 @@ namespace AI4E
 
         [Obsolete("Use CreateRegistrationAsync() instead")]
         public static async Task<IHandlerRegistration<THandler>> RegisterWithHandleAsync<THandler>(
-            this IAsyncHandlerRegistry<THandler> handlerRegistry, 
+            this IHandlerRegistry<THandler> handlerRegistry, 
             IContextualProvider<THandler> handlerProvider)
         {
             if (handlerRegistry == null)
