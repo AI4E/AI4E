@@ -587,9 +587,9 @@ namespace AI4E.Modularity
 
                 public IContextualProvider<IMessageHandler<TMessage>> Handler { get; }
 
-                public Task Completion => _completionSource.Task;
+                public Task Cancellation => _completionSource.Task;
 
-                public void Complete()
+                public void Cancel()
                 {
                     lock (_lock)
                     {

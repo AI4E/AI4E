@@ -33,16 +33,23 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
 
 namespace AI4E
 {
     /// <summary>
     /// Represents a cancellable handler registration.
     /// </summary>
-    public interface IHandlerRegistration : IAsyncCompletion
+    public interface IHandlerRegistration
     {
-        // TODO: Remove IAsyncCompletion and provide a method: Task CancelRegistrationAsync(CancellationToken)
+        /// <summary>
+        /// Gets a task that represents the asynchronous cancellation of the registration.
+        /// </summary>
+        Task Cancellation { get; }
+
+        /// <summary>
+        /// Cancels the registration.
+        /// </summary>
+        void Cancel();
     }
 
     /// <summary>
@@ -61,8 +68,8 @@ namespace AI4E
     {
         private readonly IHandlerRegistry<THandler> _handlerRegistry;
         private readonly IContextualProvider<THandler> _handlerProvider;
-        private readonly TaskCompletionSource<object> _completionSource = new TaskCompletionSource<object>();
-        private int _isCompleting = 0;
+        private readonly TaskCompletionSource<object> _cancellationSource = new TaskCompletionSource<object>();
+        private int _isCancelling = 0;
 
         public HandlerRegistration(IHandlerRegistry<THandler> handlerRegistry,
                                    IContextualProvider<THandler> handlerProvider)
@@ -77,33 +84,29 @@ namespace AI4E
             _handlerRegistry = handlerRegistry;
             _handlerProvider = handlerProvider;
             _handlerRegistry.Register(_handlerProvider);
-
-            Initialization = Task.CompletedTask;
         }
 
-        public Task Initialization { get; }
-
-        public Task Completion => _completionSource.Task;
+        public Task Cancellation => _cancellationSource.Task;
 
         public IContextualProvider<THandler> Handler => _handlerProvider;
 
-        public async void Complete()
+        public void Cancel()
         {
-            if (Interlocked.Exchange(ref _isCompleting, 1) != 0)
+            if (Interlocked.Exchange(ref _isCancelling, 1) != 0)
                 return;
 
             try
             {
                 _handlerRegistry.Unregister(_handlerProvider);
-                _completionSource.SetResult(null);
+                _cancellationSource.SetResult(null);
             }
             catch (TaskCanceledException)
             {
-                _completionSource.SetCanceled();
+                _cancellationSource.SetCanceled();
             }
             catch (Exception exc)
             {
-                _completionSource.SetException(exc);
+                _cancellationSource.SetException(exc);
             }
         }
     }
@@ -120,33 +123,11 @@ namespace AI4E
         /// <param name="handlerRegistry">The handler registry that the handler shall be registered to.</param>
         /// <param name="handlerProvider">A contextual provider that provides instances of the to be registered handler.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public static async Task<IHandlerRegistration<THandler>> CreateRegistrationAsync<THandler>(
-            this IHandlerRegistry<THandler> handlerRegistry, 
-            IContextualProvider<THandler> handlerProvider) // TODO: Receive a cancellation token.
-        {
-            var registration = new HandlerRegistration<THandler>(handlerRegistry, handlerProvider);
-
-            await registration.Initialization;
-
-            return registration;
-        }
-
-        [Obsolete("Use CreateRegistrationAsync() instead")]
-        public static async Task<IHandlerRegistration<THandler>> RegisterWithHandleAsync<THandler>(
+        public static IHandlerRegistration<THandler> CreateRegistration<THandler>(
             this IHandlerRegistry<THandler> handlerRegistry, 
             IContextualProvider<THandler> handlerProvider)
         {
-            if (handlerRegistry == null)
-                throw new ArgumentNullException(nameof(handlerRegistry));
-
-            if (handlerProvider == null)
-                throw new ArgumentNullException(nameof(handlerProvider));
-
-            var registration = new HandlerRegistration<THandler>(handlerRegistry, handlerProvider);
-
-            await registration.Initialization;
-
-            return registration;
+            return new HandlerRegistration<THandler>(handlerRegistry, handlerProvider);
         }
     }
 }

@@ -69,8 +69,8 @@ namespace AI4E.Modularity
                 var handlerRegistration = _handlerRegistration;
                 Debug.Assert(handlerRegistration != null);
 
-                handlerRegistration.Complete();
-                await handlerRegistration.Completion;
+                handlerRegistration.Cancel();
+                await handlerRegistration.Cancellation;
 
                 throw;
             }
@@ -87,8 +87,8 @@ namespace AI4E.Modularity
                 var handlerRegistration = _handlerRegistration;
                 Debug.Assert(handlerRegistration != null);
 
-                handlerRegistration.Complete();
-                await handlerRegistration.Completion;
+                handlerRegistration.Cancel();
+                await handlerRegistration.Cancellation;
             }
         }
 

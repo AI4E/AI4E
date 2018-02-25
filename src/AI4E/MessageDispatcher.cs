@@ -163,12 +163,14 @@ namespace AI4E
     {
         private readonly HandlerRegistry<IMessageHandler<TMessage>> _registry = new HandlerRegistry<IMessageHandler<TMessage>>();
 
-        public Task<IHandlerRegistration<IMessageHandler<TMessage>>> RegisterAsync(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider, CancellationToken cancellation)
+        public async Task<IHandlerRegistration<IMessageHandler<TMessage>>> RegisterAsync( // TODO: This does not need to be async
+            IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider, 
+            CancellationToken cancellation)
         {
             if (messageHandlerProvider == null)
                 throw new ArgumentNullException(nameof(messageHandlerProvider));
 
-            return _registry.RegisterWithHandleAsync(messageHandlerProvider);
+            return _registry.CreateRegistration(messageHandlerProvider);
         }
 
         public async Task<IDispatchResult> DispatchAsync(TMessage message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProvider, CancellationToken cancellation)
