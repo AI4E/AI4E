@@ -69,16 +69,14 @@ namespace AI4E
         Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation = default);
 
         /// <summary>
-        /// Asynchronously registers a message handler.
+        /// Registers a message handler.
         /// </summary>
         /// <param name="messageHandlerProvider">The message handler provider to register.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <typeparam name="TMessage">The type of message.</typeparam>
         /// <returns>
-        /// A task representing the asynchronous operation.
-        /// The tasks result contains an <see cref="IHandlerRegistration"/> that represents the handlers registration.
+        /// A <see cref="IHandlerRegistration"/> that represents the handlers registration.
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="messageHandlerProvider"/> is null.</exception>
-        Task<IHandlerRegistration<IMessageHandler<TMessage>>> RegisterAsync<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider, CancellationToken cancellation = default);
+        IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider);
     }
 }

@@ -129,7 +129,7 @@ namespace AI4E
                                                             processors);
 
                     var registerMethodDefinition = typeof(IMessageDispatcher).GetMethods()
-                        .Single(p => p.Name == "RegisterAsync" && p.IsGenericMethodDefinition && p.GetGenericArguments().Length == 1);
+                        .Single(p => p.Name == "Register" && p.IsGenericMethodDefinition && p.GetGenericArguments().Length == 1);
 
                     var registerMethod = registerMethodDefinition.MakeGenericMethod(messageType);
 

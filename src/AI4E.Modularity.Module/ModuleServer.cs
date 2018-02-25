@@ -27,7 +27,6 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
-using AI4E.Internal;
 using AI4E.Modularity.HttpDispatch;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
@@ -58,7 +57,7 @@ namespace AI4E.Modularity
             if (application == null)
                 throw new ArgumentNullException(nameof(application));
 
-            _handlerRegistration = await _messageEndPoint.RegisterAsync(new ContextualProvider<IMessageHandler<ModuleHttpRequest>>(provider => new HttpRequestForwardingHandler<TContext>(application)));
+            _handlerRegistration = _messageEndPoint.Register(new ContextualProvider<IMessageHandler<ModuleHttpRequest>>(provider => new HttpRequestForwardingHandler<TContext>(application)));
 
             try
             {

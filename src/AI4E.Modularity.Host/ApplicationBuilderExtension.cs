@@ -53,7 +53,7 @@ namespace AI4E.Modularity
             var dispatcher = serviceProvider.GetRequiredService<IRemoteMessageDispatcher>();
             var dispatchTable = serviceProvider.GetRequiredService<HttpDispatchTable>();
 
-            dispatcher.RegisterAsync<EndPointDisconnected>(m =>
+            dispatcher.Register<EndPointDisconnected>(m =>
             {
                 dispatchTable.Unregister(m.EndPoint);
 

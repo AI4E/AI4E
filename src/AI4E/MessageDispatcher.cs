@@ -1,4 +1,16 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        MessageDispatcher.cs
+ * Types:           (1) AI4E.MessageDispatcher
+ *                  (2) AI4E.ITypedMessageDispatcher
+ *                  (3) AI4E.MessageDispatcher'1
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   25.02.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -51,12 +63,12 @@ namespace AI4E
             return (MessageDispatcher<TMessage>)_typedDispatchers.GetOrAdd(typeof(TMessage), _ => new MessageDispatcher<TMessage>());
         }
 
-        public Task<IHandlerRegistration<IMessageHandler<TMessage>>> RegisterAsync<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider, CancellationToken cancellation)
+        public IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
         {
             if (messageHandlerProvider == null)
                 throw new ArgumentNullException(nameof(messageHandlerProvider));
 
-            return GetTypedDispatcher<TMessage>().RegisterAsync(messageHandlerProvider, cancellation);
+            return GetTypedDispatcher<TMessage>().Register(messageHandlerProvider);
         }
 
         public Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, CancellationToken cancellation)
@@ -163,9 +175,7 @@ namespace AI4E
     {
         private readonly HandlerRegistry<IMessageHandler<TMessage>> _registry = new HandlerRegistry<IMessageHandler<TMessage>>();
 
-        public async Task<IHandlerRegistration<IMessageHandler<TMessage>>> RegisterAsync( // TODO: This does not need to be async
-            IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider, 
-            CancellationToken cancellation)
+        public IHandlerRegistration<IMessageHandler<TMessage>> Register(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
         {
             if (messageHandlerProvider == null)
                 throw new ArgumentNullException(nameof(messageHandlerProvider));

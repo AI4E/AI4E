@@ -402,6 +402,11 @@ namespace AI4E.Modularity
 
         #endregion
 
+        public IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
+        {
+            return RegisterAsync(messageHandlerProvider).GetAwaiter().GetResult(); // TODO: Enqueue the registration messages and await the result on the next dispatch
+        }
+
         public Task<IHandlerRegistration<IMessageHandler<TMessage>>> RegisterAsync<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider,
                                                                                              CancellationToken cancellation = default)
         {

@@ -47,28 +47,28 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(message, new DispatchValueDictionary(), publish: true, cancellation);
         }
 
-        public static Task<IHandlerRegistration<IMessageHandler<TMessage>>> RegisterAsync<TMessage>(this IMessageDispatcher messageDispatcher, IMessageHandler<TMessage> eventHandler)
+        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher, IMessageHandler<TMessage> eventHandler)
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
-            return messageDispatcher.RegisterAsync(ContextualProvider.Create(eventHandler));
+            return messageDispatcher.Register(ContextualProvider.Create(eventHandler));
         }
 
-        public static Task<IHandlerRegistration<IMessageHandler<TMessage>>> RegisterAsync<TMessage>(this IMessageDispatcher messageDispatcher, Func<TMessage, DispatchValueDictionary, Task<IDispatchResult>> eventHandler)
+        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher, Func<TMessage, DispatchValueDictionary, Task<IDispatchResult>> eventHandler)
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
-            return messageDispatcher.RegisterAsync(new AnonymousMessageHandler<TMessage>(eventHandler));
+            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>(eventHandler));
         }
 
-        public static Task<IHandlerRegistration<IMessageHandler<TMessage>>> RegisterAsync<TMessage>(this IMessageDispatcher messageDispatcher, Func<TMessage, Task<IDispatchResult>> eventHandler)
+        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher, Func<TMessage, Task<IDispatchResult>> eventHandler)
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
-            return messageDispatcher.RegisterAsync(new AnonymousMessageHandler<TMessage>((message, values) => eventHandler(message)));
+            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((message, values) => eventHandler(message)));
         }
 
         private sealed class AnonymousMessageHandler<TMessage> : IMessageHandler<TMessage>
