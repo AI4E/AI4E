@@ -73,27 +73,27 @@ namespace AI4E.Processing
         /// <summary>
         /// Starts the dynamic process operation.
         /// </summary>
-        public void StartExecution()
+        public void Start()
         {
-            _dynamicProcess.StartExecution();
+            _dynamicProcess.Start();
         }
 
-        public Task StartExecutionAndAwait()
+        public Task StartAsync()
         {
-            return _dynamicProcess.StartExecutionAndAwait();
+            return _dynamicProcess.StartAsync();
         }
 
         /// <summary>
         /// Terminates the dynamic process operation.
         /// </summary>
-        public void TerminateExecution()
+        public void Terminate()
         {
-            _dynamicProcess.TerminateExecution();
+            _dynamicProcess.Terminate();
         }
 
-        public Task TerminateExecutionAndAwait()
+        public Task TerminateAsync()
         {
-            return _dynamicProcess.TerminateExecutionAndAwait();
+            return _dynamicProcess.TerminateAsync();
         }
 
         /// <summary>

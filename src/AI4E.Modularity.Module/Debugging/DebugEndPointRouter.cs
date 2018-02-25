@@ -54,7 +54,7 @@ namespace AI4E.Modularity.Debugging
             _leaseProcess = new AsyncProcess(LeaseProcess);
             _initialization = _stub.Init(localEndPoint.ToString());
 
-            _leaseProcess.StartExecution();
+            _leaseProcess.Start();
         }
 
         private async Task LeaseProcess(CancellationToken cancellation)
@@ -190,7 +190,7 @@ namespace AI4E.Modularity.Debugging
 
         public void Dispose()
         {
-            _leaseProcess.TerminateExecution();
+            _leaseProcess.Terminate();
         }
     }
 }

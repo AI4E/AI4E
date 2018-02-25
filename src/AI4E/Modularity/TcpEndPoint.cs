@@ -68,7 +68,7 @@ namespace AI4E.Modularity
             LocalAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;
             Assert(LocalAddress != null);
 
-            _connectionProcess.StartExecution();
+            _connectionProcess.Start();
         }
 
         public IPEndPoint LocalAddress { get; }
@@ -166,7 +166,7 @@ namespace AI4E.Modularity
                 RemoteAddress = address;
                 _stream = stream;
                 _receiveProcess = new AsyncProcess(ReceiveProcedure);
-                _receiveProcess.StartExecution();
+                _receiveProcess.Start();
             }
 
             public IPEndPoint LocalAddress => _endPoint.LocalAddress;
@@ -228,7 +228,7 @@ namespace AI4E.Modularity
 
             private void Close()
             {
-                _receiveProcess.TerminateExecution();
+                _receiveProcess.Terminate();
                 _stream.Close();
 
                 while (_endPoint._physicalConnections.TryGetValue(RemoteAddress, out var list))

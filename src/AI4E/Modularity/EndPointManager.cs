@@ -69,7 +69,7 @@ namespace AI4E.Modularity
             _addressSerializer = addressSerializer;
             _logger = logger;
             _receiveProcess = new AsyncProcess(ReceiveProcedure);
-            _receiveProcess.StartExecution();
+            _receiveProcess.Start();
         }
 
         public TAddress LocalAddress => PhysicalEndPoint.LocalAddress;
@@ -325,7 +325,7 @@ namespace AI4E.Modularity
 
         public void Dispose()
         {
-            _receiveProcess.TerminateExecution();
+            _receiveProcess.Terminate();
         }
 
         private sealed class LocalEndPoint : IDisposable, IAsyncDisposable
@@ -345,7 +345,7 @@ namespace AI4E.Modularity
                 _manager = manager;
                 Route = route;
                 _mapProcess = new AsyncProcess(MapProcess);
-                _mapProcess.StartExecution();
+                _mapProcess.Start();
             }
 
             private EndPointRoute Route { get; }
@@ -406,7 +406,7 @@ namespace AI4E.Modularity
 
             public async Task DisposeAsync()
             {
-                _mapProcess.TerminateExecution();
+                _mapProcess.Terminate();
 
                 await RouteMap.UnmapRouteAsync(Route, _manager.LocalAddress, cancellation: default);
             }
@@ -430,7 +430,7 @@ namespace AI4E.Modularity
                 Route = route;
                 _manager = manager;
                 _mapUpdateProcess = new AsyncProcess(MapUpdateProcess);
-                _mapUpdateProcess.StartExecution();
+                _mapUpdateProcess.Start();
             }
 
             public TAddress LocalAddress => _manager.LocalAddress;

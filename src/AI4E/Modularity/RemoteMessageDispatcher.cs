@@ -56,7 +56,7 @@ namespace AI4E.Modularity
         #region Fields
 
         private readonly IEndPointRouter _moduleCoordination;
-        private readonly AsyncProcess _receiveProcess;
+        private readonly IAsyncProcess _receiveProcess;
         private readonly ConcurrentDictionary<Type, ITypedRemoteMessageDispatcher> _typedDispatchers = new ConcurrentDictionary<Type, ITypedRemoteMessageDispatcher>();
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<RemoteMessageDispatcher> _logger;
@@ -88,7 +88,7 @@ namespace AI4E.Modularity
             _logger = logger;
             _messageTypeConversion = messageTypeConversion;
             _receiveProcess = new AsyncProcess(ReceiveProcedure);
-            _receiveProcess.StartExecution();
+            _receiveProcess.Start();
         }
 
         public RemoteMessageDispatcher(IEndPointRouter moduleCoordination,

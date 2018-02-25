@@ -19,7 +19,6 @@
  */
 
 using System;
-using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
@@ -45,10 +44,13 @@ namespace AI4E.Processing
             _operation = operation;
         }
 
+        [Obsolete]
         public Task Execution => _execution;
 
+        [Obsolete]
         public Task Initialization => _startNotificationSource.Task;
 
+        [Obsolete]
         public Task Termination => _terminationNotificationSource.Task;
 
         public Func<CancellationToken, Task> Operation => _operation;
@@ -67,7 +69,7 @@ namespace AI4E.Processing
             }
         }
 
-        public void StartExecution()
+        private void Start()
         {
             lock (_lock)
             {
@@ -81,14 +83,20 @@ namespace AI4E.Processing
             }
         }
 
-        public Task StartExecutionAndAwait()
+        [Obsolete("Use StartAsync()")]
+        void IAsyncProcess.Start()
         {
-            StartExecution();
+            Start();
+        }
+
+        public Task StartAsync()
+        {
+            Start();
 
             return _startNotificationSource.Task;
         }
 
-        public void TerminateExecution()
+        private void Terminate()
         {
             lock (_lock)
             {
@@ -99,9 +107,15 @@ namespace AI4E.Processing
             }
         }
 
-        public Task TerminateExecutionAndAwait()
+        [Obsolete("Use TerminateAsync()")]
+        void IAsyncProcess.Terminate()
         {
-            TerminateExecution();
+            Terminate();
+        }
+
+        public Task TerminateAsync()
+        {
+            Terminate();
 
             return _terminationNotificationSource.Task;
         }
@@ -138,17 +152,5 @@ namespace AI4E.Processing
                 _terminationNotificationSource.TrySetResult(null);
             }
         }
-    }
-
-    [Serializable]
-    public sealed class UnexpectedProcessTerminationException : Exception
-    {
-        public UnexpectedProcessTerminationException() : base("The process terminated unexpectedly.") { }
-
-        public UnexpectedProcessTerminationException(string message) : base(message) { }
-
-        public UnexpectedProcessTerminationException(string message, Exception innerException) : base(message, innerException) { }
-
-        private UnexpectedProcessTerminationException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
 }
