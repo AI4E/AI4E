@@ -22,21 +22,20 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
-using TEndPoint = AI4E.Modularity.EndPointRoute;
 
 namespace AI4E.Modularity.HttpDispatch
 {
     public sealed class HttpDispatchTable
     {
-        private volatile ImmutableDictionary<string, TEndPoint> _entries = ImmutableDictionary<string, TEndPoint>.Empty;
+        private volatile ImmutableDictionary<string, EndPointRoute> _entries = ImmutableDictionary<string, EndPointRoute>.Empty;
 
         public HttpDispatchTable() { }
 
-        public bool Register(string prefix, TEndPoint endPoint)
+        public bool Register(string prefix, EndPointRoute endPoint)
         {
-            ImmutableDictionary<string, TEndPoint> current = _entries,
-                                                   start,
-                                                   desired;
+            ImmutableDictionary<string, EndPointRoute> current = _entries,
+                                                       start,
+                                                       desired;
 
             do
             {
@@ -54,11 +53,11 @@ namespace AI4E.Modularity.HttpDispatch
             return true;
         }
 
-        public void Unregister(TEndPoint endPoint)
+        public void Unregister(EndPointRoute endPoint)
         {
-            ImmutableDictionary<string, TEndPoint> current = _entries,
-                                                   start,
-                                                   desired;
+            ImmutableDictionary<string, EndPointRoute> current = _entries,
+                                                       start,
+                                                       desired;
 
             do
             {
@@ -76,9 +75,9 @@ namespace AI4E.Modularity.HttpDispatch
 
         public bool Unregister(string prefix)
         {
-            ImmutableDictionary<string, TEndPoint> current = _entries,
-                                                   start,
-                                                   desired;
+            ImmutableDictionary<string, EndPointRoute> current = _entries,
+                                                       start,
+                                                       desired;
 
             do
             {
@@ -96,10 +95,10 @@ namespace AI4E.Modularity.HttpDispatch
             return true;
         }
 
-        public bool TryGetEndPoint(string path, out TEndPoint endPoint)
+        public bool TryGetEndPoint(string path, out EndPointRoute endPoint)
         {
             var pathSegments = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-            var bestMatching = default(TEndPoint);
+            var bestMatching = default(EndPointRoute);
             var matchingLength = 0;
 
             foreach (var (key, value) in _entries.Select(p => (p.Key, p.Value)))
