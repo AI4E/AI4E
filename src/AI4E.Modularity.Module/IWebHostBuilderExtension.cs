@@ -24,6 +24,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using AI4E.Modularity.Debugging;
+using AI4E.Modularity.RPC;
 using JsonRpc.DynamicProxy.Client;
 using JsonRpc.Standard.Client;
 using JsonRpc.Standard.Contracts;
@@ -96,36 +97,38 @@ namespace AI4E.Modularity
 
                 AI4E.ServiceCollectionExtension.ConfigureApplicationParts(services);
 
-                services.AddSingleton<IRemoteMessageDispatcher, RemoteMessageDispatcher>(provider => AI4E.ServiceCollectionExtension.BuildMessageDispatcher(provider, new RemoteMessageDispatcher(provider.GetRequiredService<IEndPointRouter>(), provider.GetRequiredService<IMessageTypeConversion>(), provider)) as RemoteMessageDispatcher); // TODO: Bug
-                services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<IRemoteMessageDispatcher>());
-                services.AddSingleton<IEndPointRouter, DebugEndPointRouter>(provider =>
-                {
-                    var stub = default(IEndPointRouterStub);
 
+                services.AddSingleton(provider =>
+                {
                     var tcpClient = new TcpClient();
                     tcpClient.Connect(IPAddress.Loopback, 8080); // TODO
                     var stream = tcpClient.GetStream();
 
-                    var clientHandler = new StreamRpcClientHandler();
-                    var reader = new ByLineTextMessageReader(stream);
-                    var writer = new ByLineTextMessageWriter(stream);
-                    clientHandler.Attach(reader, writer);
-
-                    var client = new JsonRpcClient(clientHandler);
-                    var builder = new JsonRpcProxyBuilder
-                    {
-                        ContractResolver = myContractResolver
-                    };
-                    stub = builder.CreateProxy<IEndPointRouterStub>(client);
-
-                    return new DebugEndPointRouter(provider.GetRequiredService<EndPointRoute>(), stub);
+                    return new RPCHost(stream, provider);
                 });
-                //services.AddMessaging();
 
+                services.AddSingleton<IRouteStore>(provider =>
+                {
+                    var rpcHost = provider.GetRequiredService<RPCHost>();
+                    var proxy = rpcHost.ActivateAsync<IRouteStore>(ActivationMode.LoadFromServices, cancellation: default).GetAwaiter().GetResult();
+
+                    return new DebugRouteStore(proxy);
+                });
+
+                services.AddSingleton<IEndPointManager>(provider =>
+                {
+                    var rpcHost = provider.GetRequiredService<RPCHost>();
+                    var proxy = rpcHost.ActivateAsync<IEndPointManager>(ActivationMode.LoadFromServices, cancellation: default).GetAwaiter().GetResult();
+
+                    return new DebugEndPointManager(proxy);
+                });
+
+                services.AddSingleton<IRemoteMessageDispatcher, RemoteMessageDispatcher>(provider => AI4E.ServiceCollectionExtension.BuildMessageDispatcher(provider, new RemoteMessageDispatcher(provider.GetRequiredService<IEndPointRouter>(), provider.GetRequiredService<IMessageTypeConversion>(), provider)) as RemoteMessageDispatcher); // TODO: Bug
+                services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<IRemoteMessageDispatcher>());
+                services.AddSingleton<IEndPointRouter, EndPointRouter>();  
                 services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
                 services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
                 services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
-
                 services.AddSingleton(EndPointRoute.CreateRoute($"module-{moduleName}")); // TODO: Get the actual module name
             });
 

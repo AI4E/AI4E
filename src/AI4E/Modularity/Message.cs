@@ -29,6 +29,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity
 {
+    [Serializable]
     public sealed class Message : IMessage
     {
         private static long _headerLength = 12;
@@ -135,6 +136,7 @@ namespace AI4E.Modularity
         }
     }
 
+    [Serializable]
     public sealed class MessageFrame : IMessageFrame
     {
         internal static readonly long _headerLength = 8;

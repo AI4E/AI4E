@@ -46,7 +46,7 @@ namespace AI4E.Modularity.RPC
             _receiveProcess.Start();
         }
 
-        public async Task<Proxy<TRemote>> ActivateAsync<TRemote>(CancellationToken cancellation)
+        public async Task<Proxy<TRemote>> ActivateAsync<TRemote>(ActivationMode mode, CancellationToken cancellation)
             where TRemote : class
         {
             int seqNum;
@@ -63,6 +63,7 @@ namespace AI4E.Modularity.RPC
                 {
                     writer.Write((byte)MessageType.Activation);
                     writer.Write(seqNum);
+                    writer.Write((byte)mode);
                     Serialize(writer, typeof(TRemote));
                 }
             }
@@ -81,7 +82,7 @@ namespace AI4E.Modularity.RPC
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: false))
             {
-                writer.Write((byte)MessageType.Activation);
+                writer.Write((byte)MessageType.Deactivation);
                 writer.Write(seqNum);
                 Serialize(writer, proxyId);
             }
@@ -163,8 +164,19 @@ namespace AI4E.Modularity.RPC
 
             try
             {
+                var mode = (ActivationMode)reader.ReadByte();
                 var type = (Type)Deserialize(reader, expectedType: default);
-                var instance = ActivatorUtilities.CreateInstance(_serviceProvider, type);
+
+                var instance = default(object);
+                if (mode == ActivationMode.Create)
+                {
+                    instance = ActivatorUtilities.CreateInstance(_serviceProvider, type);
+                }
+                else if (mode == ActivationMode.LoadFromServices)
+                {
+                    instance = _serviceProvider.GetRequiredService(type);
+                }
+
                 var proxy = (IProxy)Activator.CreateInstance(typeof(Proxy<>).MakeGenericType(type), BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public, null, new[] { instance }, null);
                 result = RegisterLocalProxy(proxy);
             }
@@ -231,11 +243,13 @@ namespace AI4E.Modularity.RPC
             var exception = default(Exception);
             var waitTask = false;
 
+            MethodInfo method;
+
             try
             {
                 var proxyId = reader.ReadInt32();
                 waitTask = reader.ReadBoolean();
-                var method = DeserializeMethod(reader);
+                method = DeserializeMethod(reader);
                 var arguments = Deserialize(reader, method.GetParameters()).ToArray();
 
                 if (!TryGetProxyById(proxyId, out var proxy))
@@ -477,7 +491,7 @@ namespace AI4E.Modularity.RPC
                 arguments[i] = LoadTypeIgnoringVersion(reader.ReadString());
             }
 
-            var candidates = declaringType.GetMethods().Where(p => p.Name == methodName).Where(p => p.GetParameters().Select(q => q.ParameterType).SequenceEqual(arguments));
+            var candidates = declaringType.GetMethods().Where(p => p.Name == methodName);
 
             if (isGenericMethod)
             {
@@ -489,20 +503,11 @@ namespace AI4E.Modularity.RPC
                     genericArguments[i] = LoadTypeIgnoringVersion(reader.ReadString());
                 }
 
-                candidates = candidates.Where(p => p.IsGenericMethodDefinition && p.GetGenericArguments().Length == genericArgumentsLength);
-
-                if (candidates.Count() != 1)
-                {
-                    if (candidates.Count() > 1)
-                    {
-                        throw new Exception("Possible method missmatch.");
-                    }
-
-                    throw new Exception("Method not found");
-                }
-
-                return candidates.First().MakeGenericMethod(genericArguments);
+                candidates = candidates.Where(p => p.IsGenericMethodDefinition && p.GetGenericArguments().Length == genericArgumentsLength)
+                                       .Select(p => p.MakeGenericMethod(genericArguments));
             }
+
+            candidates = candidates.Where(p => p.GetParameters().Select(q => q.ParameterType).SequenceEqual(arguments));
 
             if (candidates.Count() != 1)
             {
@@ -655,6 +660,10 @@ namespace AI4E.Modularity.RPC
                     writer.Write(proxy.Id);
                     break;
 
+                case CancellationToken cancellationToken:
+                    writer.Write((byte)TypeCode.CancellationToken);
+                    break;
+
                 default:
                     writer.Write((byte)TypeCode.Other);
                     writer.Flush();
@@ -752,6 +761,9 @@ namespace AI4E.Modularity.RPC
 
                     return proxy;
 
+                case TypeCode.CancellationToken:
+                    return CancellationToken.None; // TODO: Cancellation token support
+
                 case TypeCode.Other:
                     return new BinaryFormatter().Deserialize(reader.BaseStream);
 
@@ -786,6 +798,7 @@ namespace AI4E.Modularity.RPC
             String,
             Type,
             ByteArray,
+            CancellationToken,
             Proxy
         }
 
@@ -796,5 +809,11 @@ namespace AI4E.Modularity.RPC
         }
 
         #endregion
+    }
+
+    public enum ActivationMode : byte
+    {
+        Create,
+        LoadFromServices
     }
 }

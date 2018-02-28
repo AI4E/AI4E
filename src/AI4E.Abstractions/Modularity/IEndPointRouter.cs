@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,7 +26,7 @@ using System.Threading.Tasks;
 
 namespace AI4E.Modularity
 {
-    public interface IEndPointRouter
+    public interface IEndPointRouter : IDisposable
     {
         Task RegisterRouteAsync(string messageType, CancellationToken cancellation);
         Task UnregisterRouteAsync(string messageType, CancellationToken cancellation);

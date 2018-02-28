@@ -102,7 +102,7 @@ namespace AI4E.Async
         {
             t.Wait();
 
-            if (t.IsFaulted || t.IsCanceled || !t.GetType().IsGenericType)
+            if (t.IsFaulted || t.IsCanceled || !t.GetType().IsGenericType || t.GetType().GetGenericArguments()[0] == Type.GetType("System.Threading.Tasks.VoidTaskResult"))
             {
                 return null;
             }

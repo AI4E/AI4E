@@ -104,5 +104,23 @@ namespace AI4E.Modularity.RPC
 
             return new Proxy<TRemote>(instance);
         }
+
+        public Proxy<T> Cast<T>()
+            where T : class
+        {
+            if (!typeof(T).IsAssignableFrom(ObjectType))
+            {
+                throw new InvalidCastException();
+            }
+
+            if (LocalInstance != null)
+            {
+                return new Proxy<T>((T)(object)LocalInstance);
+            }
+            else
+            {
+                return new Proxy<T>(_host, Id, ObjectType);
+            }
+        }
     }
 }

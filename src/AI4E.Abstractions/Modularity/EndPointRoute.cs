@@ -36,6 +36,7 @@ namespace AI4E.Modularity
     /// <summary>
     /// Represents the route to a virtual end point. (I.e. its name)
     /// </summary>
+    [Serializable]
     public sealed class EndPointRoute : IEquatable<EndPointRoute>
     {
         private static readonly ConcurrentDictionary<string, EndPointRoute> _routes = new ConcurrentDictionary<string, EndPointRoute>();
@@ -136,7 +137,7 @@ namespace AI4E.Modularity
         public static bool operator !=(EndPointRoute left, EndPointRoute right)
         {
             if (left is null)
-                return !(right is null);     
+                return !(right is null);
 
             return !left.Equals(right);
         }
