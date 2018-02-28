@@ -404,12 +404,6 @@ namespace AI4E.Modularity
 
         public IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
         {
-            return RegisterAsync(messageHandlerProvider).GetAwaiter().GetResult(); // TODO: Enqueue the registration messages and await the result on the next dispatch
-        }
-
-        public Task<IHandlerRegistration<IMessageHandler<TMessage>>> RegisterAsync<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider,
-                                                                                             CancellationToken cancellation = default)
-        {
             if (messageHandlerProvider == null)
                 throw new ArgumentNullException(nameof(messageHandlerProvider));
 
@@ -417,7 +411,7 @@ namespace AI4E.Modularity
 
             Debug.Assert(typedDispatcher != null);
 
-            return typedDispatcher.RegisterAsync(messageHandlerProvider, cancellation);
+            return typedDispatcher.Register(messageHandlerProvider);
         }
 
         private int GetNextSeqNum()
@@ -468,8 +462,10 @@ namespace AI4E.Modularity
 
                 if (serviceProvider == null)
                     throw new ArgumentNullException(nameof(serviceProvider));
+
                 if (messageTypeConversion == null)
                     throw new ArgumentNullException(nameof(messageTypeConversion));
+
                 _moduleCoordination = moduleCoordination;
                 _serviceProvider = serviceProvider;
                 _messageTypeConversion = messageTypeConversion;
@@ -498,13 +494,27 @@ namespace AI4E.Modularity
 
                 if (publish)
                 {
-                    var dispatchResults = await Task.WhenAll(_registry.Handlers.Select(p => DispatchSingleHandlerAsync(p, message, context, cancellation)));
+                    IEnumerable<IContextualProvider<IMessageHandler<TMessage>>> handlers;
+                    using (await _lock.LockAsync())
+                    {
+                        handlers = _registry.Handlers;
+                    }
+
+                    var dispatchResults = await Task.WhenAll(handlers.Select(p => DispatchSingleHandlerAsync(p, message, context, cancellation)));
 
                     return new AggregateDispatchResult(dispatchResults);
                 }
                 else
                 {
-                    if (_registry.TryGetHandler(out var handler))
+                    bool result;
+                    IContextualProvider<IMessageHandler<TMessage>> handler;
+
+                    using (await _lock.LockAsync())
+                    {
+                        result = _registry.TryGetHandler(out handler);
+                    }
+
+                    if (result)
                     {
                         return await DispatchSingleHandlerAsync(handler, message, context, cancellation);
                     }
@@ -540,33 +550,9 @@ namespace AI4E.Modularity
                 }
             }
 
-            public async Task<IHandlerRegistration<IMessageHandler<TMessage>>> RegisterAsync(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider,
-                                                                                            CancellationToken cancellation)
+            public IHandlerRegistration<IMessageHandler<TMessage>> Register(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
             {
-                using (await _lock.LockAsync())
-                {
-                    var handlerCount = _registry.Handlers.Count();
-
-                    _registry.Register(messageHandlerProvider);
-
-                    var registration = new HandlerRegistration(this, messageHandlerProvider);
-
-                    if (handlerCount == 0)
-                    {
-                        try
-                        {
-                            await _moduleCoordination.RegisterRouteAsync(SerializedMessageType, cancellation);
-                        }
-                        catch
-                        {
-                            _registry.Unregister(messageHandlerProvider);
-
-                            throw;
-                        }
-                    }
-
-                    return registration;
-                }
+                return new HandlerRegistration(this, messageHandlerProvider);
             }
 
             public Type MessageType => typeof(TMessage);
@@ -588,7 +574,34 @@ namespace AI4E.Modularity
 
                     _dispatcher = dispatcher;
                     Handler = handler;
+
+                    Initialization = InitializeAsync();
                 }
+
+                private async Task InitializeAsync()
+                {
+                    using (await _dispatcher._lock.LockAsync())
+                    {
+                        var handlerCount = _dispatcher._registry.Handlers.Count();
+                        _dispatcher._registry.Register(Handler);
+
+                        if (handlerCount == 0)
+                        {
+                            try
+                            {
+                                await _dispatcher._moduleCoordination.RegisterRouteAsync(_dispatcher.SerializedMessageType, cancellation: default);
+                            }
+                            catch
+                            {
+                                _dispatcher._registry.Unregister(Handler);
+
+                                throw;
+                            }
+                        }
+                    }
+                }
+
+                public Task Initialization { get; }
 
                 public IContextualProvider<IMessageHandler<TMessage>> Handler { get; }
 
