@@ -22,12 +22,14 @@ namespace AI4E.Modularity.RPC.Sample
                 {
                     var client = new RPCHost(mux2);
 
+                    var valueProxy = (Proxy<Value>)new Value(12);
                     var barProxy = await client.ActivateAsync<Bar>(cancellation: default);
                     var fooProxy = await barProxy.ExecuteAsync(bar => bar.GetFoo());
 
-                    Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.Add(1, 2)));
-                    Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.AddAsync(1, 2)));
-                    Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.Get<decimal>()));
+                    //Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.Add(1, 2)));
+                    //Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.AddAsync(1, 2)));
+                    //Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.Get<decimal>()));
+                    Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.ReadValueAsync(valueProxy)));
                 });
 
                 Console.ReadLine();
@@ -51,6 +53,11 @@ namespace AI4E.Modularity.RPC.Sample
         {
             return default;
         }
+
+        public Task<int> ReadValueAsync(Proxy<Value> proxy)
+        {
+            return proxy.ExecuteAsync(value => value.GetValue());
+        }
     }
 
     public sealed class Bar
@@ -58,6 +65,21 @@ namespace AI4E.Modularity.RPC.Sample
         public Proxy<Foo> GetFoo()
         {
             return new Foo();
+        }
+    }
+
+    public sealed class Value
+    {
+        private readonly int _value;
+
+        public Value(int value)
+        {
+            _value = value;
+        }
+
+        public int GetValue()
+        {
+            return _value;
         }
     }
 

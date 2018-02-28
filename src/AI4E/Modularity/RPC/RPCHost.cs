@@ -431,7 +431,7 @@ namespace AI4E.Modularity.RPC
 
         private void SerializeMethod(BinaryWriter writer, MethodInfo method)
         {
-            writer.Write(method.IsGenericMethod ? (byte)MethodCodes.Generic : (byte)MethodCodes.None);
+            writer.Write(method.IsGenericMethod);
             writer.Write(method.DeclaringType.AssemblyQualifiedName);
             writer.Write(method.Name);
 
@@ -459,7 +459,7 @@ namespace AI4E.Modularity.RPC
 
         private MethodInfo DeserializeMethod(BinaryReader reader)
         {
-            var methodCode = (MethodCodes)reader.ReadByte();
+            var isGenericMethod = reader.ReadBoolean();
 
             var declaringType = LoadTypeIgnoringVersion(reader.ReadString());
             var methodName = reader.ReadString();
@@ -474,7 +474,7 @@ namespace AI4E.Modularity.RPC
 
             var candidates = declaringType.GetMethods().Where(p => p.Name == methodName).Where(p => p.GetParameters().Select(q => q.ParameterType).SequenceEqual(arguments));
 
-            if ((methodCode & MethodCodes.Generic) == MethodCodes.Generic)
+            if (isGenericMethod)
             {
                 var genericArgumentsLength = reader.ReadInt32();
                 var genericArguments = new Type[genericArgumentsLength];
@@ -636,6 +636,12 @@ namespace AI4E.Modularity.RPC
                     if (proxy.LocalInstance != null)
                     {
                         proxy = RegisterLocalProxy(proxy);
+
+                        writer.Write((byte)ProxyOwner.Remote); // We own the proxy, but for the remote end, this is a remote proxy.
+                    }
+                    else
+                    {
+                        writer.Write((byte)ProxyOwner.Local);
                     }
 
                     var proxyType = proxy.GetType().GetGenericArguments()[0];
@@ -715,12 +721,12 @@ namespace AI4E.Modularity.RPC
                     return reader.ReadBytes(length);
 
                 case TypeCode.Proxy:
+                    var proxyOwner = (ProxyOwner)reader.ReadByte();
                     var proxyType = LoadTypeIgnoringVersion(reader.ReadString());
                     var actualType = LoadTypeIgnoringVersion(reader.ReadString());
                     var proxyId = reader.ReadInt32();
 
-
-                    if (!TryGetProxyById(proxyId, out var proxy))
+                    if (proxyOwner == ProxyOwner.Remote)
                     {
                         var type = typeof(Proxy<>).MakeGenericType(proxyType);
                         return Activator.CreateInstance(type, BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public, null, new object[]
@@ -729,6 +735,11 @@ namespace AI4E.Modularity.RPC
                             proxyId,
                             actualType
                         }, null);
+                    }
+
+                    if (!TryGetProxyById(proxyId, out var proxy))
+                    {
+                        throw new Exception("Proxy not found.");
                     }
 
                     if (expectedType != null && expectedType.IsInstanceOfType(proxy.LocalInstance))
@@ -773,11 +784,10 @@ namespace AI4E.Modularity.RPC
             Proxy
         }
 
-        [Flags]
-        private enum MethodCodes : byte
+        private enum ProxyOwner : byte
         {
-            None,
-            Generic
+            Local,
+            Remote
         }
 
         #endregion

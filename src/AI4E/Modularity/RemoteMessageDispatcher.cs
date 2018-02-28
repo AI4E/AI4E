@@ -251,7 +251,7 @@ namespace AI4E.Modularity
                     {
                         var route = routes.Last();
 
-                        if (route.Equals(_moduleCoordination.LocalEndPoint))
+                        if (route.Equals(LocalEndPoint))
                         {
                             return await DispatchLocalAsync(messageType, message, context, publish, cancellation);
                         }
@@ -261,7 +261,7 @@ namespace AI4E.Modularity
 
                     foreach (var route in routes)
                     {
-                        if (route.Equals(_moduleCoordination.LocalEndPoint))
+                        if (route.Equals(LocalEndPoint))
                         {
                             tasks.Add(DispatchLocalAsync(messageType, message, context, publish, cancellation));
                         }
