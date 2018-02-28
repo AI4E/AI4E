@@ -97,5 +97,17 @@ namespace AI4E.Async
 
             return await task;
         }
+
+        public static object GetResult(this Task t)
+        {
+            t.Wait();
+
+            if (t.IsFaulted || t.IsCanceled || !t.GetType().IsGenericType)
+            {
+                return null;
+            }
+
+            return t.GetType().GetProperty("Result").GetValue(t);
+        }
     }
 }
