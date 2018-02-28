@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Processing;
+using Microsoft.Extensions.DependencyInjection;
 using Nito.AsyncEx;
 
 namespace AI4E.Modularity.RPC
@@ -18,6 +19,7 @@ namespace AI4E.Modularity.RPC
     public sealed class RPCHost : IDisposable
     {
         private readonly Stream _stream;
+        private readonly IServiceProvider _serviceProvider;
         private readonly AsyncLock _sendLock = new AsyncLock();
         private readonly IAsyncProcess _receiveProcess;
         private readonly ConcurrentDictionary<int, Action<MessageType, object>> _responseTable = new ConcurrentDictionary<int, Action<MessageType, object>>();
@@ -30,12 +32,16 @@ namespace AI4E.Modularity.RPC
 
         private bool IsDisposed => _isDisposed != 0; // Volatile read op.
 
-        public RPCHost(Stream stream)
+        public RPCHost(Stream stream, IServiceProvider serviceProvider)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
 
+            if (serviceProvider == null)
+                throw new ArgumentNullException(nameof(serviceProvider));
+
             _stream = stream;
+            _serviceProvider = serviceProvider;
             _receiveProcess = new AsyncProcess(ReceiveProcess);
             _receiveProcess.Start();
         }
@@ -158,7 +164,7 @@ namespace AI4E.Modularity.RPC
             try
             {
                 var type = (Type)Deserialize(reader, expectedType: default);
-                var instance = Activator.CreateInstance(type, true);
+                var instance = ActivatorUtilities.CreateInstance(_serviceProvider, type);
                 var proxy = (IProxy)Activator.CreateInstance(typeof(Proxy<>).MakeGenericType(type), BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public, null, new[] { instance }, null);
                 result = RegisterLocalProxy(proxy);
             }

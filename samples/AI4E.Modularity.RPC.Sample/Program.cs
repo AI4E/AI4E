@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Nito.AsyncEx;
 
 namespace AI4E.Modularity.RPC.Sample
@@ -16,19 +17,19 @@ namespace AI4E.Modularity.RPC.Sample
             using (var mux1 = new MultiplexStream(fs1, fs2))
             using (var mux2 = new MultiplexStream(fs2, fs1))
             {
-                var server = new RPCHost(mux1);
+                var server = new RPCHost(mux1, new ServiceCollection().BuildServiceProvider());
 
                 Task.Run(async () =>
                 {
-                    var client = new RPCHost(mux2);
+                    var client = new RPCHost(mux2, new ServiceCollection().BuildServiceProvider());
 
                     var valueProxy = (Proxy<Value>)new Value(12);
                     var barProxy = await client.ActivateAsync<Bar>(cancellation: default);
                     var fooProxy = await barProxy.ExecuteAsync(bar => bar.GetFoo());
 
-                    //Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.Add(1, 2)));
-                    //Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.AddAsync(1, 2)));
-                    //Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.Get<decimal>()));
+                    Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.Add(1, 2)));
+                    Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.AddAsync(1, 2)));
+                    Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.Get<decimal>()));
                     Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.ReadValueAsync(valueProxy)));
                 });
 

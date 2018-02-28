@@ -21,7 +21,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using TEndPoint = AI4E.Modularity.EndPointRoute;
 
 namespace AI4E.Modularity
 {
@@ -40,7 +39,7 @@ namespace AI4E.Modularity
         /// The tasks result contains an <see cref="IDispatchResult"/> indicating the message handling state.
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is null.</exception>
-        Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, TEndPoint endPoint, CancellationToken cancellation = default);
+        Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, EndPointRoute endPoint, CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously dispatches a message of the specified message type.
@@ -56,12 +55,12 @@ namespace AI4E.Modularity
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if either <paramref name="messageType"/> or <paramref name="message"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown if <paramref name="message"/> is not of type <paramref name="messageType"/> or a derived type.</exception>
-        Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, TEndPoint endPoint, CancellationToken cancellation = default);
+        Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, EndPointRoute endPoint, CancellationToken cancellation = default);
 
         Task<IDispatchResult> DispatchLocalAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, CancellationToken cancellation = default);
 
         Task<IDispatchResult> DispatchLocalAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation = default);
 
-        TEndPoint LocalEndPoint { get; }
+        EndPointRoute LocalEndPoint { get; }
     }
 }
