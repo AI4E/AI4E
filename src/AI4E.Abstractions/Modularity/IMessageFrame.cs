@@ -26,6 +26,6 @@ namespace AI4E.Modularity
     {
         long Length { get; }
 
-        Stream OpenStream();
+        Stream OpenStream(bool overrideContent = false);
     }
 }

@@ -263,7 +263,7 @@ namespace AI4E.Modularity
             }
         }
 
-        private Task SendAsync(IMessage message,
+        private async Task SendAsync(IMessage message,
                                TAddress address,
                                EndPointRoute remoteEndPoint,
                                EndPointRoute localEndPoint,
@@ -275,7 +275,7 @@ namespace AI4E.Modularity
             var remoteAddress = _addressSerializer.SerializeAddress(address);
             var remoteRoute = _routeSerializer.SerializeRoute(remoteEndPoint);
 
-            using (var frameStream = message.PushFrame().OpenStream())
+            using (var frameStream = message.PushFrame().OpenStream(overrideContent: true))
             using (var writer = new BinaryWriter(frameStream))
             {
                 Console.WriteLine("z");
@@ -294,7 +294,16 @@ namespace AI4E.Modularity
                 writer.Write(remoteAddress);           // Remote address          -- (Remote address length Byte)   
             }
 
-            return PhysicalEndPoint.SendAsync(message, address, cancellation);
+            try
+            {
+                await PhysicalEndPoint.SendAsync(message, address, cancellation);
+            }
+            catch
+            {
+                // We must pop the frame from the message or we send it twice, the next time we send the message.
+                message.PopFrame();
+            }
+
         }
 
         private Task SendAsync(TAddress address,

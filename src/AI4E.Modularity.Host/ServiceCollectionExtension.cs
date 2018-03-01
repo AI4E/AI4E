@@ -59,9 +59,15 @@ namespace AI4E.Modularity
             // These services are the public api for the modular host.
             services.TryAddScoped<IModuleManager, ModuleManager>();
 
-            services.AddSingleton<IRemoteMessageDispatcher, RemoteMessageDispatcher>(provider => AI4E.ServiceCollectionExtension.BuildMessageDispatcher(provider, new RemoteMessageDispatcher(provider.GetRequiredService<IEndPointRouter>(), provider.GetRequiredService<IMessageTypeConversion>(), provider)) as RemoteMessageDispatcher); // TODO: Bug
+            services.AddSingleton<IRemoteMessageDispatcher>(provider =>
+            {
+                var dispatcher = ActivatorUtilities.CreateInstance<RemoteMessageDispatcher>(provider);
+
+                AI4E.ServiceCollectionExtension.BuildMessageDispatcher(provider, dispatcher);
+
+                return dispatcher;
+            });
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<IRemoteMessageDispatcher>());
-            services.AddSingleton<IEndPointRouter, EndPointRouter>();
             services.AddSingleton<IPhysicalEndPoint<IPEndPoint>, TcpEndPoint>();
             services.AddSingleton<IEndPointManager, EndPointManager<IPEndPoint>>();
             services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
@@ -70,7 +76,6 @@ namespace AI4E.Modularity
             services.AddSingleton<HttpDispatchTable>();
             services.AddSingleton<DebugPort>();
             services.AddSingleton(EndPointRoute.CreateRoute("host"));
-            //services.AddMessaging();
             return new ModularityBuilder(services);
         }
 

@@ -34,6 +34,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Internal;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace AI4E.Modularity
 {
@@ -57,18 +58,19 @@ namespace AI4E.Modularity
                 services.AddOptions();
                 services.AddSingleton<IServer>(provider => new ModuleServer(provider.GetRequiredService<IRemoteMessageDispatcher>(), "prefix"));
 
-                //var partManager = services.GetApplicationPartManager();
+                ServiceCollectionExtension.ConfigureApplicationParts(services);
 
-                // Add the current assembly as application part. The message brokers have to be found.
-                //partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
-                //services.TryAddSingleton(partManager);
+                services.AddSingleton<IRemoteMessageDispatcher>(provider =>
+                {
+                    var dispatcher = ActivatorUtilities.CreateInstance<RemoteMessageDispatcher>(provider);
 
-                services.AddSingleton<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
-                services.AddSingleton<IEndPointRouter, EndPointRouter>();
+                    ServiceCollectionExtension.BuildMessageDispatcher(provider, dispatcher);
+
+                    return dispatcher;
+                });
+
                 services.AddSingleton<IPhysicalEndPoint<IPEndPoint>, TcpEndPoint>();
                 services.AddSingleton<IEndPointManager, EndPointManager<IPEndPoint>>();
-                services.AddMessaging();
-
                 services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
                 services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
                 services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
@@ -89,14 +91,7 @@ namespace AI4E.Modularity
                 services.AddOptions();
                 services.AddSingleton<IServer>(provider => new ModuleServer(provider.GetRequiredService<IRemoteMessageDispatcher>(), prefix));
 
-                //var partManager = services.GetApplicationPartManager();
-
-                // Add the current assembly as application part. The message brokers have to be found.
-                //partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
-                //services.TryAddSingleton(partManager);
-
-                AI4E.ServiceCollectionExtension.ConfigureApplicationParts(services);
-
+                ServiceCollectionExtension.ConfigureApplicationParts(services);
 
                 services.AddSingleton(provider =>
                 {
@@ -107,25 +102,21 @@ namespace AI4E.Modularity
                     return new RPCHost(stream, provider);
                 });
 
-                services.AddSingleton<IRouteStore>(provider =>
+                services.AddSingleton<IRemoteMessageDispatcher>(provider =>
                 {
-                    var rpcHost = provider.GetRequiredService<RPCHost>();
-                    var proxy = rpcHost.ActivateAsync<IRouteStore>(ActivationMode.LoadFromServices, cancellation: default).GetAwaiter().GetResult();
+                    var endPointManager = ActivatorUtilities.CreateInstance<DebugEndPointManager>(provider);
+                    var routeStore = ActivatorUtilities.CreateInstance<DebugRouteStore>(provider);
+                    var localEndPoint = provider.GetRequiredService<EndPointRoute>();
+                    var messageTypeConversion = provider.GetRequiredService<IMessageTypeConversion>();
+                    var logger = provider.GetService<ILogger<RemoteMessageDispatcher>>();
 
-                    return new DebugRouteStore(proxy);
+                    var dispatcher = new RemoteMessageDispatcher(endPointManager, routeStore, localEndPoint, messageTypeConversion, provider, logger);
+                    ServiceCollectionExtension.BuildMessageDispatcher(provider, dispatcher);
+
+                    return dispatcher;
                 });
 
-                services.AddSingleton<IEndPointManager>(provider =>
-                {
-                    var rpcHost = provider.GetRequiredService<RPCHost>();
-                    var proxy = rpcHost.ActivateAsync<IEndPointManager>(ActivationMode.LoadFromServices, cancellation: default).GetAwaiter().GetResult();
-
-                    return new DebugEndPointManager(proxy);
-                });
-
-                services.AddSingleton<IRemoteMessageDispatcher, RemoteMessageDispatcher>(provider => AI4E.ServiceCollectionExtension.BuildMessageDispatcher(provider, new RemoteMessageDispatcher(provider.GetRequiredService<IEndPointRouter>(), provider.GetRequiredService<IMessageTypeConversion>(), provider)) as RemoteMessageDispatcher); // TODO: Bug
                 services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<IRemoteMessageDispatcher>());
-                services.AddSingleton<IEndPointRouter, EndPointRouter>();  
                 services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
                 services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
                 services.AddSingleton<IMessageTypeConversion, TypeSerializer>();

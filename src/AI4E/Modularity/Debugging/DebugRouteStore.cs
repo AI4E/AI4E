@@ -8,38 +8,56 @@ namespace AI4E.Modularity.Debugging
 {
     public sealed class DebugRouteStore : IRouteStore
     {
-        private readonly IProxy<IRouteStore> _proxy;
+        private IProxy<RouteStoreSkeleton> _proxy;
+        private readonly RPCHost _rpcHost;
+        private readonly Task _initialization;
 
-        public DebugRouteStore(IProxy<IRouteStore> proxy)
+        public DebugRouteStore(RPCHost rpcHost)
         {
-            if (proxy == null)
-                throw new ArgumentNullException(nameof(proxy));
+            if (rpcHost == null)
+                throw new ArgumentNullException(nameof(rpcHost));
 
-            _proxy = proxy;
+            _rpcHost = rpcHost;
+            _initialization = InitializeAsync();
         }
 
-        public Task<bool> AddRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
+        private async Task InitializeAsync()
         {
-            return _proxy.ExecuteAsync(p => p.AddRouteAsync(localEndPoint, messageType, CancellationToken.None));
+            _proxy = await _rpcHost.ActivateAsync<RouteStoreSkeleton>(ActivationMode.Create, cancellation: default);
         }
 
-        public Task<bool> RemoveRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
+        public async Task<bool> AddRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
         {
-            return _proxy.ExecuteAsync(p => p.RemoveRouteAsync(localEndPoint, messageType, CancellationToken.None));
+            await _initialization;
+
+            return await _proxy.ExecuteAsync(p => p.AddRouteAsync(localEndPoint, messageType, CancellationToken.None));
         }
 
-        public Task RemoveRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
+        public async Task<bool> RemoveRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
         {
-            return _proxy.ExecuteAsync(p => p.RemoveRouteAsync(localEndPoint, CancellationToken.None));
+            await _initialization;
+
+            return await _proxy.ExecuteAsync(p => p.RemoveRouteAsync(localEndPoint, messageType, CancellationToken.None));
+        }
+
+        public async Task RemoveRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
+        {
+            await _initialization;
+
+            await _proxy.ExecuteAsync(p => p.RemoveRouteAsync(localEndPoint, CancellationToken.None));
         }
 
         public async Task<IEnumerable<EndPointRoute>> GetRoutesAsync(string messageType, CancellationToken cancellation)
         {
+            await _initialization;
+
             return await _proxy.ExecuteAsync(p => p.GetRoutesAsync(messageType, CancellationToken.None));
         }
 
         public async Task<IEnumerable<EndPointRoute>> GetRoutesAsync(CancellationToken cancellation)
         {
+            await _initialization;
+
             return await _proxy.ExecuteAsync(p => p.GetRoutesAsync(CancellationToken.None));
         }
     }

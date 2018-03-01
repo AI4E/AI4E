@@ -7,39 +7,57 @@ namespace AI4E.Modularity.Debugging
 {
     public sealed class DebugEndPointManager : IEndPointManager
     {
-        private readonly IProxy<IEndPointManager> _proxy;
+        private IProxy<EndPointManagerSkeleton> _proxy;
+        private readonly RPCHost _rpcHost;
+        private readonly Task _initialization;
 
-        public DebugEndPointManager(IProxy<IEndPointManager> proxy)
+        public DebugEndPointManager(RPCHost rpcHost)
         {
-            if (proxy == null)
-                throw new ArgumentNullException(nameof(proxy));
+            if (rpcHost == null)
+                throw new ArgumentNullException(nameof(rpcHost));
 
-            _proxy = proxy;
+            _rpcHost = rpcHost;
+            _initialization = InitializeAsync();
+        }
+
+        private async Task InitializeAsync()
+        {
+            _proxy = await _rpcHost.ActivateAsync<EndPointManagerSkeleton>(ActivationMode.Create, cancellation: default);
         }
 
         public void AddEndPoint(EndPointRoute route)
         {
-            _proxy.ExecuteAsync(p => p.AddEndPoint(route)).GetAwaiter().GetResult(); // TODO
-        }
+            _initialization.GetAwaiter().GetResult();
 
-        public Task<IMessage> ReceiveAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
-        {
-            return _proxy.ExecuteAsync(p => p.ReceiveAsync(localEndPoint, CancellationToken.None));
+            _proxy.ExecuteAsync(p => p.AddEndPoint(route)).GetAwaiter().GetResult(); // TODO
         }
 
         public void RemoveEndPoint(EndPointRoute route)
         {
+            _initialization.GetAwaiter().GetResult();
+
             _proxy.ExecuteAsync(p => p.RemoveEndPoint(route)).GetAwaiter().GetResult(); // TODO
         }
 
-        public Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation)
+        public async Task<IMessage> ReceiveAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
         {
-            return _proxy.ExecuteAsync(p => p.SendAsync(message, remoteEndPoint, localEndPoint, CancellationToken.None));
+            await _initialization;
+
+            return await _proxy.ExecuteAsync(p => p.ReceiveAsync(localEndPoint, CancellationToken.None));
         }
 
-        public Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation)
+        public async Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation)
         {
-            return _proxy.ExecuteAsync(p => p.SendAsync(response, request, CancellationToken.None));
+            await _initialization;
+
+            await _proxy.ExecuteAsync(p => p.SendAsync(message, remoteEndPoint, localEndPoint, CancellationToken.None));
+        }
+
+        public async Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation)
+        {
+            await _initialization;
+
+            await _proxy.ExecuteAsync(p => p.SendAsync(response, request, CancellationToken.None));
         }
 
         public void Dispose() { }

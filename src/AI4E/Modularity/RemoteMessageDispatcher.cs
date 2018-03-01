@@ -9,7 +9,7 @@
  *                  (6) AI4E.Modularity.RemoteMessageDispatcher.TypedRemoteMessageDispatcher'1.HandlerRegistration
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   12.02.2018 
+ * Last modified:   01.03.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -51,15 +51,17 @@ using Nito.AsyncEx;
 
 namespace AI4E.Modularity
 {
-    public sealed class RemoteMessageDispatcher : IRemoteMessageDispatcher
+    // TODO: Route caching and cache coherency
+    public sealed class RemoteMessageDispatcher : IRemoteMessageDispatcher, IDisposable
     {
         #region Fields
 
-        private readonly IEndPointRouter _moduleCoordination;
         private readonly IAsyncProcess _receiveProcess;
         private readonly ConcurrentDictionary<Type, ITypedRemoteMessageDispatcher> _typedDispatchers = new ConcurrentDictionary<Type, ITypedRemoteMessageDispatcher>();
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<RemoteMessageDispatcher> _logger;
+        private readonly IEndPointManager _endPointManager;
+        private readonly IRouteStore _routeStore;
         private readonly IMessageTypeConversion _messageTypeConversion;
         private readonly ConcurrentDictionary<int, TaskCompletionSource<IDispatchResult>> _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<IDispatchResult>>();
         private readonly JsonSerializer _serializer = new JsonSerializer() { TypeNameHandling = TypeNameHandling.Auto };
@@ -69,36 +71,61 @@ namespace AI4E.Modularity
 
         #region C'tor
 
-        public RemoteMessageDispatcher(IEndPointRouter moduleCoordination,
+        public RemoteMessageDispatcher(IEndPointManager endPointManager,
+                                       IRouteStore routeStore,
+                                       EndPointRoute localEndPoint,
                                        IMessageTypeConversion messageTypeConversion,
                                        IServiceProvider serviceProvider,
                                        ILogger<RemoteMessageDispatcher> logger)
         {
-            if (moduleCoordination == null)
-                throw new ArgumentNullException(nameof(moduleCoordination));
+            if (endPointManager == null)
+                throw new ArgumentNullException(nameof(endPointManager));
 
-            if (serviceProvider == null)
-                throw new ArgumentNullException(nameof(serviceProvider));
+            if (routeStore == null)
+                throw new ArgumentNullException(nameof(routeStore));
+
+            if (localEndPoint == null)
+                throw new ArgumentNullException(nameof(localEndPoint));
 
             if (messageTypeConversion == null)
                 throw new ArgumentNullException(nameof(messageTypeConversion));
 
-            _moduleCoordination = moduleCoordination;
+            if (serviceProvider == null)
+                throw new ArgumentNullException(nameof(serviceProvider));
+
+            _endPointManager = endPointManager;
+            _routeStore = routeStore;
+            LocalEndPoint = localEndPoint;
+            _messageTypeConversion = messageTypeConversion;
             _serviceProvider = serviceProvider;
             _logger = logger;
-            _messageTypeConversion = messageTypeConversion;
+
+            _endPointManager.AddEndPoint(LocalEndPoint);
+
             _receiveProcess = new AsyncProcess(ReceiveProcedure);
             _receiveProcess.Start();
         }
 
-        public RemoteMessageDispatcher(IEndPointRouter moduleCoordination,
+        public RemoteMessageDispatcher(IEndPointManager endPointManager,
+                                       IRouteStore routeStore,
+                                       EndPointRoute localEndPoint,
                                        IMessageTypeConversion messageTypeConversion,
                                        IServiceProvider serviceProvider)
-            : this(moduleCoordination, messageTypeConversion, serviceProvider, null) { }
+            : this(endPointManager, routeStore, localEndPoint, messageTypeConversion, serviceProvider, null) { }
 
         #endregion
 
-        public EndPointRoute LocalEndPoint => _moduleCoordination.LocalEndPoint;
+        public EndPointRoute LocalEndPoint { get; }
+
+        public void Dispose()
+        {
+            try
+            {
+                _receiveProcess.Terminate();
+                _endPointManager.RemoveEndPoint(LocalEndPoint);
+            }
+            catch (ObjectDisposedException) { }
+        }
 
         #region Receive Process
 
@@ -110,7 +137,7 @@ namespace AI4E.Modularity
             {
                 try
                 {
-                    var incoming = await _moduleCoordination.ReceiveAsync(cancellation);
+                    var incoming = await _endPointManager.ReceiveAsync(LocalEndPoint, cancellation);
 
                     _logger?.LogDebug($"End-point '{LocalEndPoint}': Received message.");
 
@@ -119,7 +146,7 @@ namespace AI4E.Modularity
                     using (var stream = incoming.PopFrame().OpenStream())
                     using (var reader = new StreamReader(stream))
                     {
-                        message = _serializer.Deserialize(reader, typeof(object));
+                            message = _serializer.Deserialize(reader, typeof(object));
                     }
 
                     switch (message)
@@ -147,7 +174,7 @@ namespace AI4E.Modularity
 
         private async Task ProcessRequestAsync(RequestMessage request, IMessage requestMessage)
         {
-            _logger?.LogDebug($"End-point '{LocalEndPoint}': Processing request of message with seq-num '{request.SeqNum}'.");
+            _logger?.LogDebug($"End-point '{LocalEndPoint}': Processing request message with seq-num '{request.SeqNum}'.");
 
             var dispatchResult = default(IDispatchResult);
 
@@ -177,12 +204,12 @@ namespace AI4E.Modularity
 
             requestMessage.PushFrame();
 
-            await _moduleCoordination.SendAsync(message, requestMessage, cancellation: default);
+            await _endPointManager.SendAsync(message, requestMessage, cancellation: default);
         }
 
         private Task ProcessResponseAsync(ResponseMessage response)
         {
-            _logger?.LogDebug($"End-point '{LocalEndPoint}': Processing response for message with seq-num '{response.CorrNum}'.");
+            _logger?.LogDebug($"End-point '{LocalEndPoint}': Processing response message for seq-num '{response.CorrNum}'.");
 
             if (_responseTable.TryRemove(response.CorrNum, out var tcs))
             {
@@ -190,6 +217,25 @@ namespace AI4E.Modularity
             }
 
             return Task.CompletedTask;
+        }
+
+        #endregion
+
+        #region Routing
+
+        private async Task RegisterRouteAsync(string messageType, CancellationToken cancellation)
+        {
+            await _routeStore.AddRouteAsync(LocalEndPoint, messageType, cancellation);
+        }
+
+        private async Task UnregisterRouteAsync(string messageType, CancellationToken cancellation)
+        {
+            await _routeStore.RemoveRouteAsync(LocalEndPoint, messageType, cancellation);
+        }
+
+        private Task<IEnumerable<EndPointRoute>> GetRoutesAsync(string messageType, CancellationToken cancellation)
+        {
+            return _routeStore.GetRoutesAsync(messageType, cancellation);
         }
 
         #endregion
@@ -241,7 +287,7 @@ namespace AI4E.Modularity
             {
                 Debug.Assert(currType != null);
 
-                var routes = new HashSet<EndPointRoute>((await _moduleCoordination.GetRoutesAsync(_messageTypeConversion.SerializeMessageType(messageType), cancellation)));
+                var routes = new HashSet<EndPointRoute>((await GetRoutesAsync(_messageTypeConversion.SerializeMessageType(messageType), cancellation)));
                 routes.ExceptWith(handledRoutes);
                 handledRoutes.UnionWith(routes);
 
@@ -394,7 +440,7 @@ namespace AI4E.Modularity
                     _serializer.Serialize(writer, request, typeof(object));
                 }
 
-                await _moduleCoordination.SendAsync(msg, remoteEndPoint, cancellation);
+                await _endPointManager.SendAsync(msg, remoteEndPoint, LocalEndPoint, cancellation);
             }
 
             return await tcs.Task;
@@ -437,7 +483,7 @@ namespace AI4E.Modularity
             return (TypedRemoteMessageDispatcher<TMessage>)
                    _typedDispatchers.GetOrAdd(
                        typeof(TMessage),
-                       _ => new TypedRemoteMessageDispatcher<TMessage>(_moduleCoordination, _serviceProvider, _messageTypeConversion));
+                       _ => new TypedRemoteMessageDispatcher<TMessage>(this, _serviceProvider, _messageTypeConversion));
         }
 
         private interface ITypedRemoteMessageDispatcher
@@ -449,16 +495,16 @@ namespace AI4E.Modularity
 
         private sealed class TypedRemoteMessageDispatcher<TMessage> : ITypedRemoteMessageDispatcher
         {
-            private readonly IEndPointRouter _moduleCoordination;
             private readonly HandlerRegistry<IMessageHandler<TMessage>> _registry = new HandlerRegistry<IMessageHandler<TMessage>>();
+            private readonly RemoteMessageDispatcher _dispatcher;
             private readonly IServiceProvider _serviceProvider;
             private readonly IMessageTypeConversion _messageTypeConversion;
             private readonly AsyncLock _lock = new AsyncLock();
 
-            public TypedRemoteMessageDispatcher(IEndPointRouter moduleCoordination, IServiceProvider serviceProvider, IMessageTypeConversion messageTypeConversion)
+            public TypedRemoteMessageDispatcher(RemoteMessageDispatcher dispatcher, IServiceProvider serviceProvider, IMessageTypeConversion messageTypeConversion)
             {
-                if (moduleCoordination == null)
-                    throw new ArgumentNullException(nameof(moduleCoordination));
+                if (dispatcher == null)
+                    throw new ArgumentNullException(nameof(dispatcher));
 
                 if (serviceProvider == null)
                     throw new ArgumentNullException(nameof(serviceProvider));
@@ -466,10 +512,24 @@ namespace AI4E.Modularity
                 if (messageTypeConversion == null)
                     throw new ArgumentNullException(nameof(messageTypeConversion));
 
-                _moduleCoordination = moduleCoordination;
+                _dispatcher = dispatcher;
                 _serviceProvider = serviceProvider;
                 _messageTypeConversion = messageTypeConversion;
             }
+
+            #region Routing
+
+            private Task RegisterRouteAsync(string messageType, CancellationToken cancellation)
+            {
+                return _dispatcher.RegisterRouteAsync(messageType, cancellation);
+            }
+
+            private Task UnregisterRouteAsync(string messageType, CancellationToken cancellation)
+            {
+                return _dispatcher.UnregisterRouteAsync(messageType, cancellation);
+            }
+
+            #endregion
 
             public Task<IDispatchResult> DispatchAsync(object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation)
             {
@@ -589,7 +649,7 @@ namespace AI4E.Modularity
                         {
                             try
                             {
-                                await _dispatcher._moduleCoordination.RegisterRouteAsync(_dispatcher.SerializedMessageType, cancellation: default);
+                                await _dispatcher.RegisterRouteAsync(_dispatcher.SerializedMessageType, cancellation: default);
                             }
                             catch
                             {
@@ -626,7 +686,7 @@ namespace AI4E.Modularity
 
                             if (handlers.Count() == 1 && handlers.First() == Handler)
                             {
-                                await _dispatcher._moduleCoordination.UnregisterRouteAsync(_dispatcher.SerializedMessageType, cancellation: default);
+                                await _dispatcher.UnregisterRouteAsync(_dispatcher.SerializedMessageType, cancellation: default);
                             }
 
                             _dispatcher._registry.Unregister(Handler);

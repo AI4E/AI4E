@@ -42,6 +42,11 @@ namespace AI4E.Modularity
 
         public MessageFrame CurrentFrame => _currentIndex == -1 ? null : _frames[_currentIndex];
 
+#if DEBUG
+        public int FrameCount => _frames.Count;
+        public int FrameIndex => _currentIndex;
+#endif
+
         public MessageFrame PushFrame()
         {
             if (_currentIndex == _frames.Count - 1)
@@ -150,9 +155,9 @@ namespace AI4E.Modularity
 
         internal long PaddedLength => Length + (4 * ((Length + 3) / 4) - Length);
 
-        public Stream OpenStream()
+        public Stream OpenStream(bool overrideContent = false)
         {
-            return new MessageFrameStream(this);
+            return new MessageFrameStream(this, overrideContent);
         }
 
         internal async Task WriteAsync(Stream stream, CancellationToken cancellation)
@@ -240,10 +245,19 @@ namespace AI4E.Modularity
             private bool _touched = false;
             private long _readPosition = 0;
 
-            public MessageFrameStream(MessageFrame frame)
+            public MessageFrameStream(MessageFrame frame, bool overrideContent)
             {
-                _stream = new MemoryStream(frame._payload, frame._offset, frame._length);
                 _frame = frame;
+
+                if (overrideContent)
+                {
+                    _stream = new MemoryStream();
+                    _touched = true;
+                }
+                else
+                {
+                    _stream = new MemoryStream(frame._payload, frame._offset, frame._length);
+                }
             }
 
             public override void Flush() { }
