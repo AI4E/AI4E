@@ -13,7 +13,7 @@ namespace AI4E.Modularity.RPC
 
         void Dispose();
 
-        void Register(RPCHost host, int proxyId);
+        void Register(RPCHost host, int proxyId, Action unregisterAction);
     }
 
     public interface IProxy<TRemote>

@@ -1,4 +1,38 @@
-﻿using System;
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        RPCHost.cs
+ * Types:           (1) AI4E.Modularity.RPC.RPCHost
+ *                  (2) AI4E.Modularity.RPC.ActivationMode
+ *                  (3) AI4E.Modularity.RPC.RPCHost.MessageType
+ *                  (4) AI4E.Modularity.RPC.RPCHost.ProxyOwner
+ *                  (5) AI4E.Modularity.RPC.RPCHost.TypeCode
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   01.03.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -98,6 +132,49 @@ namespace AI4E.Modularity.RPC
             _receiveProcess.Terminate();
         }
 
+        #region Proxies
+
+        private IProxy RegisterLocalProxy(IProxy proxy)
+        {
+            lock (_proxyLock)
+            {
+                if (_proxyLookup.TryGetValue(proxy.LocalInstance, out var existing))
+                {
+                    return existing;
+                }
+
+                var id = Interlocked.Increment(ref _nextProxyId);
+
+                proxy.Register(this, id, () => UnregisterLocalProxy(proxy));
+
+                _proxyLookup.Add(proxy.LocalInstance, proxy);
+                _proxies.Add(id, proxy);
+            }
+
+            return proxy;
+        }
+
+        private void UnregisterLocalProxy(IProxy proxy)
+        {
+            lock (_proxyLock)
+            {
+                _proxyLookup.Remove(proxy.LocalInstance);
+                _proxies.Remove(proxy.Id);
+            }
+        }
+
+        private bool TryGetProxyById(int proxyId, out IProxy proxy)
+        {
+            lock (_proxyLock)
+            {
+                return _proxies.TryGetValue(proxyId, out proxy);
+            }
+        }
+
+        #endregion
+
+        #region  Receive
+
         private async Task ReceiveProcess(CancellationToken cancellation)
         {
             while (cancellation.ThrowOrContinue())
@@ -168,16 +245,19 @@ namespace AI4E.Modularity.RPC
                 var type = (Type)Deserialize(reader, expectedType: default);
 
                 var instance = default(object);
+                var ownsInstance = false;
+
                 if (mode == ActivationMode.Create)
                 {
                     instance = ActivatorUtilities.CreateInstance(_serviceProvider, type);
+                    ownsInstance = true;
                 }
                 else if (mode == ActivationMode.LoadFromServices)
                 {
                     instance = _serviceProvider.GetRequiredService(type);
                 }
 
-                var proxy = (IProxy)Activator.CreateInstance(typeof(Proxy<>).MakeGenericType(type), BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public, null, new[] { instance }, null);
+                var proxy = (IProxy)Activator.CreateInstance(typeof(Proxy<>).MakeGenericType(type), BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public, null, new[] { instance, ownsInstance }, null);
                 result = RegisterLocalProxy(proxy);
             }
             catch (TargetInvocationException exc)
@@ -190,51 +270,6 @@ namespace AI4E.Modularity.RPC
             }
 
             await SendResult(seqNum, result, exception, waitTask: false, cancellation);
-        }
-
-        private IProxy RegisterLocalProxy(IProxy proxy)
-        {
-            lock (_proxyLock)
-            {
-                if (_proxyLookup.TryGetValue(proxy.LocalInstance, out var existing))
-                {
-                    return existing;
-                }
-
-                var id = Interlocked.Increment(ref _nextProxyId);
-
-                proxy.Register(this, id);
-
-                _proxyLookup.Add(proxy.LocalInstance, proxy);
-                _proxies.Add(id, proxy);
-            }
-
-            return proxy;
-        }
-
-        private void UnregisterLocalProxy(IProxy proxy)
-        {
-            lock (_proxyLock)
-            {
-                var id = proxy.Id;
-
-                if (id == 0)
-                {
-                    _proxyLookup.TryGetValue(proxy.LocalInstance, out proxy);
-                    id = proxy.Id;
-                }
-
-                _proxyLookup.Remove(proxy.LocalInstance);
-                _proxies.Remove(id);
-            }
-        }
-
-        private bool TryGetProxyById(int proxyId, out IProxy proxy)
-        {
-            lock (_proxyLock)
-            {
-                return _proxies.TryGetValue(proxyId, out proxy);
-            }
         }
 
         private async Task ReceiveMethodCallAsync(BinaryReader reader, int seqNum, CancellationToken cancellation)
@@ -278,6 +313,29 @@ namespace AI4E.Modularity.RPC
             await SendResult(seqNum, result, exception, waitTask, cancellation);
         }
 
+        private void ReceiveResult(MessageType messageType, BinaryReader reader)
+        {
+            var corr = reader.ReadInt32();
+            var value = Deserialize(reader, expectedType: default);
+
+            if (_responseTable.TryRemove(corr, out var callback))
+            {
+                callback(messageType, value);
+            }
+        }
+
+        #endregion
+
+        #region Send
+
+        private async Task SendAsync(Message message, CancellationToken cancellation)
+        {
+            using (await _sendLock.LockAsync())
+            {
+                await message.WriteAsync(_stream, cancellation);
+            }
+        }
+
         private async Task SendResult(int corrNum, object result, Exception exception, bool waitTask, CancellationToken cancellation)
         {
             if (exception == null && waitTask)
@@ -307,17 +365,6 @@ namespace AI4E.Modularity.RPC
             }
 
             await SendAsync(message, cancellation);
-        }
-
-        private void ReceiveResult(MessageType messageType, BinaryReader reader)
-        {
-            var corr = reader.ReadInt32();
-            var value = Deserialize(reader, expectedType: default);
-
-            if (_responseTable.TryRemove(corr, out var callback))
-            {
-                callback(messageType, value);
-            }
         }
 
         internal async Task<TResult> SendMethodCallAsync<TResult>(Expression expression, int proxyId, bool waitTask)
@@ -368,28 +415,6 @@ namespace AI4E.Modularity.RPC
             return await task;
         }
 
-        private static object GetExpressionValue(Expression expression)
-        {
-            if (expression is ConstantExpression constant)
-            {
-                return constant.Value;
-            }
-
-            if (expression is MemberExpression memberExpression)
-            {
-                if (memberExpression.Member is FieldInfo field && memberExpression.Expression is ConstantExpression fieldOwner)
-                {
-                    return field.GetValue(fieldOwner.Value);
-                }
-
-                // TODO
-            }
-
-            var valueFactory = Expression.Lambda<Func<object>>(Expression.Convert(expression, typeof(object))).Compile();
-
-            return valueFactory();
-        }
-
         private bool TryGetResultTask<TResult>(int seqNum, out Task<TResult> task)
         {
             var taskCompletionSource = new TaskCompletionSource<TResult>();
@@ -429,22 +454,7 @@ namespace AI4E.Modularity.RPC
             return true;
         }
 
-        private async Task SendAsync(Message message, CancellationToken cancellation)
-        {
-            using (await _sendLock.LockAsync())
-            {
-                await message.WriteAsync(_stream, cancellation);
-            }
-        }
-
-        private enum MessageType : byte
-        {
-            MethodCall,
-            ReturnValue,
-            ReturnException,
-            Activation,
-            Deactivation
-        }
+        #endregion
 
         #region Serialization
 
@@ -750,16 +760,18 @@ namespace AI4E.Modularity.RPC
                             actualType
                         }, null);
                     }
-
-                    if (!TryGetProxyById(proxyId, out var proxy))
+                    else
                     {
-                        throw new Exception("Proxy not found.");
+                        if (!TryGetProxyById(proxyId, out var proxy))
+                        {
+                            throw new Exception("Proxy not found.");
+                        }
+
+                        if (expectedType != null && expectedType.IsInstanceOfType(proxy.LocalInstance))
+                            return proxy.LocalInstance;
+
+                        return proxy;
                     }
-
-                    if (expectedType != null && expectedType.IsInstanceOfType(proxy.LocalInstance))
-                        return proxy.LocalInstance;
-
-                    return proxy;
 
                 case TypeCode.CancellationToken:
                     return CancellationToken.None; // TODO: Cancellation token support
@@ -809,6 +821,37 @@ namespace AI4E.Modularity.RPC
         }
 
         #endregion
+
+        private static object GetExpressionValue(Expression expression)
+        {
+            if (expression is ConstantExpression constant)
+            {
+                return constant.Value;
+            }
+
+            if (expression is MemberExpression memberExpression)
+            {
+                if (memberExpression.Member is FieldInfo field && memberExpression.Expression is ConstantExpression fieldOwner)
+                {
+                    return field.GetValue(fieldOwner.Value);
+                }
+
+                // TODO
+            }
+
+            var valueFactory = Expression.Lambda<Func<object>>(Expression.Convert(expression, typeof(object))).Compile();
+
+            return valueFactory();
+        }
+
+        private enum MessageType : byte
+        {
+            MethodCall,
+            ReturnValue,
+            ReturnException,
+            Activation,
+            Deactivation
+        }
     }
 
     public enum ActivationMode : byte

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 
@@ -9,7 +10,9 @@ namespace AI4E.Modularity.RPC
     {
         private RPCHost _host;
         private int _id;
+        private Action _unregisterAction;
         private readonly Type _remoteType;
+        private readonly bool _ownsInstance;
 
         public Proxy(TRemote instance)
         {
@@ -17,6 +20,11 @@ namespace AI4E.Modularity.RPC
                 throw new ArgumentNullException(nameof(instance));
 
             LocalInstance = instance;
+        }
+
+        public Proxy(TRemote instance, bool ownsInstance) : this(instance)
+        {
+            _ownsInstance = ownsInstance;
         }
 
         internal Proxy(RPCHost host, int id, Type remoteType)
@@ -31,25 +39,34 @@ namespace AI4E.Modularity.RPC
 
         public TRemote LocalInstance { get; }
 
-        public Type ObjectType => LocalInstance?.GetType() ?? _remoteType;
+        public Type ObjectType => IsRemoteProxy ? _remoteType : LocalInstance.GetType();
 
         public int Id => _id;
 
         object IProxy.LocalInstance => LocalInstance;
 
+        private bool IsRemoteProxy => LocalInstance == null;
+
         public void Dispose()
         {
-            if (_host == null || LocalInstance != null)
+            if (IsRemoteProxy)
             {
-                return;
-            }
+                Debug.Assert(_host != null);
 
-            _host.Deactivate(_id, cancellation: default).GetAwaiter().GetResult(); // TODO
+                _host.Deactivate(_id, cancellation: default).GetAwaiter().GetResult(); // TODO
+            }
+            else
+            {
+                _unregisterAction();
+
+                if (_ownsInstance && LocalInstance is IDisposable disposable)
+                    disposable.Dispose();
+            }
         }
 
         public Task ExecuteAsync(Expression<Action<TRemote>> expression)
         {
-            if (LocalInstance != null)
+            if (!IsRemoteProxy)
             {
                 // TODO
                 throw new NotSupportedException();
@@ -60,7 +77,7 @@ namespace AI4E.Modularity.RPC
 
         public Task ExecuteAsync(Expression<Func<TRemote, Task>> expression)
         {
-            if (LocalInstance != null)
+            if (!IsRemoteProxy)
             {
                 // TODO
                 throw new NotSupportedException();
@@ -71,7 +88,7 @@ namespace AI4E.Modularity.RPC
 
         public Task<TResult> ExecuteAsync<TResult>(Expression<Func<TRemote, TResult>> expression)
         {
-            if (LocalInstance != null)
+            if (!IsRemoteProxy)
             {
                 // TODO
                 throw new NotSupportedException();
@@ -82,7 +99,7 @@ namespace AI4E.Modularity.RPC
 
         public Task<TResult> ExecuteAsync<TResult>(Expression<Func<TRemote, Task<TResult>>> expression)
         {
-            if (LocalInstance != null)
+            if (!IsRemoteProxy)
             {
                 // TODO
                 throw new NotSupportedException();
@@ -91,10 +108,14 @@ namespace AI4E.Modularity.RPC
             return _host.SendMethodCallAsync<TResult>(expression.Body, Id, true);
         }
 
-        public void Register(RPCHost host, int proxyId)
+        public void Register(RPCHost host, int proxyId, Action unregisterAction)
         {
+            if (unregisterAction == null)
+                throw new ArgumentNullException(nameof(unregisterAction));
+
             _host = host;
             _id = proxyId;
+            _unregisterAction = unregisterAction;
         }
 
         public static implicit operator Proxy<TRemote>(TRemote instance)
@@ -113,13 +134,13 @@ namespace AI4E.Modularity.RPC
                 throw new InvalidCastException();
             }
 
-            if (LocalInstance != null)
+            if (IsRemoteProxy)
             {
-                return new Proxy<T>((T)(object)LocalInstance);
+                return new Proxy<T>(_host, Id, ObjectType);
             }
             else
             {
-                return new Proxy<T>(_host, Id, ObjectType);
+                return new Proxy<T>((T)(object)LocalInstance, _ownsInstance) { _host = _host, _id = _id, _unregisterAction = _unregisterAction };
             }
         }
     }
