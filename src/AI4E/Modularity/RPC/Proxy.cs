@@ -57,11 +57,20 @@ namespace AI4E.Modularity.RPC
             }
             else
             {
-                _unregisterAction();
+                _unregisterAction?.Invoke();
 
                 if (_ownsInstance && LocalInstance is IDisposable disposable)
                     disposable.Dispose();
             }
+        }
+
+        ~Proxy()
+        {
+            try
+            {
+                Dispose();
+            }
+            catch(ObjectDisposedException) { }
         }
 
         public Task ExecuteAsync(Expression<Action<TRemote>> expression)

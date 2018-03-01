@@ -23,7 +23,7 @@ namespace AI4E.Modularity.RPC.Sample
                 {
                     var client = new RPCHost(mux2, new ServiceCollection().BuildServiceProvider());
 
-                    var valueProxy = (Proxy<Value>)new Value(12);
+                    var valueProxy = new Proxy<Value>(new Value(12), ownsInstance: true);
                     var barProxy = await client.ActivateAsync<Bar>(ActivationMode.Create, cancellation: default);
                     var fooProxy = await barProxy.ExecuteAsync(bar => bar.GetFoo());
 
@@ -34,11 +34,15 @@ namespace AI4E.Modularity.RPC.Sample
                 });
 
                 Console.ReadLine();
+                //GC.Collect();
+                //GC.WaitForPendingFinalizers();
             }
+
+            Console.ReadLine();
         }
     }
 
-    public sealed class Foo
+    public sealed class Foo : IDisposable
     {
         public int Add(int a, int b)
         {
@@ -59,17 +63,27 @@ namespace AI4E.Modularity.RPC.Sample
         {
             return proxy.ExecuteAsync(value => value.GetValue());
         }
-    }
 
-    public sealed class Bar
-    {
-        public Proxy<Foo> GetFoo()
+        public void Dispose()
         {
-            return new Foo();
+            Console.WriteLine("Destroying foo");
         }
     }
 
-    public sealed class Value
+    public sealed class Bar : IDisposable
+    {
+        public Proxy<Foo> GetFoo()
+        {
+            return new Proxy<Foo>(new Foo(), ownsInstance: true);
+        }
+
+        public void Dispose()
+        {
+            Console.WriteLine("Destroying bar");
+        }
+    }
+
+    public sealed class Value : IDisposable
     {
         private readonly int _value;
 
@@ -81,6 +95,11 @@ namespace AI4E.Modularity.RPC.Sample
         public int GetValue()
         {
             return _value;
+        }
+
+        public void Dispose()
+        {
+            Console.WriteLine("Destroying value");
         }
     }
 
@@ -150,6 +169,7 @@ namespace AI4E.Modularity.RPC.Sample
     public sealed class FloatingStream : Stream
     {
         private readonly AsyncProducerConsumerQueue<ArraySegment<byte>> _queue = new AsyncProducerConsumerQueue<ArraySegment<byte>>();
+        private readonly CancellationTokenSource _disposedCancellationSource = new CancellationTokenSource();
         private ArraySegment<byte> _current = new ArraySegment<byte>();
 
         public FloatingStream() { }
@@ -195,6 +215,9 @@ namespace AI4E.Modularity.RPC.Sample
             if (buffer.Length - offset < count)
                 throw new ArgumentException(); // TODO
 
+            if (_disposedCancellationSource.IsCancellationRequested)
+                throw new ObjectDisposedException(GetType().FullName);
+
             _queue.Enqueue(new ArraySegment<byte>(buffer, offset, count));
         }
 
@@ -211,7 +234,20 @@ namespace AI4E.Modularity.RPC.Sample
 
             if (_current.Array == null || _current.Count == 0)
             {
-                _current = await _queue.DequeueAsync(cancellationToken);
+                var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposedCancellationSource.Token);
+
+                try
+                {
+                    _current = await _queue.DequeueAsync(cts.Token);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
             }
 
             Debug.Assert(_current.Array != null);
@@ -231,6 +267,11 @@ namespace AI4E.Modularity.RPC.Sample
             }
 
             return bytesToCopy;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            _disposedCancellationSource.Cancel();
         }
     }
 }

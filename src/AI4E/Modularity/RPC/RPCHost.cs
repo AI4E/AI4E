@@ -118,7 +118,7 @@ namespace AI4E.Modularity.RPC
             {
                 writer.Write((byte)MessageType.Deactivation);
                 writer.Write(seqNum);
-                Serialize(writer, proxyId);
+                writer.Write(proxyId);
             }
 
             return SendAsync(message, cancellation);
@@ -130,6 +130,14 @@ namespace AI4E.Modularity.RPC
                 return;
 
             _receiveProcess.Terminate();
+
+            lock (_proxyLock)
+            {
+                foreach (var proxy in _proxies.Values.ToList())
+                {
+                    proxy.Dispose();
+                }
+            }
         }
 
         #region Proxies
@@ -182,7 +190,20 @@ namespace AI4E.Modularity.RPC
                 try
                 {
                     var message = new Message();
-                    await message.ReadAsync(_stream, cancellation);
+                    try
+                    {
+                        await message.ReadAsync(_stream, cancellation);
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        Dispose();
+                        return;
+                    }
+                    catch (IOException)
+                    {
+                        Dispose();
+                        return;
+                    }
 
                     HandleMessageAsync(message, cancellation).HandleExceptions();
                 }
