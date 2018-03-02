@@ -89,7 +89,7 @@ namespace AI4E.Storage.MongoDB
 
         public Task RemoveRouteAsync(EndPointRoute localRoute, CancellationToken cancellation)
         {
-            return MongoWriteHelper.TryWriteOperation(() => _collection.DeleteOneAsync(p => p.Route == _routeSerializer.SerializeRoute(localRoute), cancellation));
+            return MongoWriteHelper.TryWriteOperation(() => _collection.DeleteManyAsync(p => p.Route == _routeSerializer.SerializeRoute(localRoute), cancellation));
         }
 
         public async Task<IEnumerable<EndPointRoute>> GetRoutesAsync(string messageType, CancellationToken cancellation)
