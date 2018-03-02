@@ -302,8 +302,8 @@ namespace AI4E.Modularity
             {
                 // We must pop the frame from the message or we send it twice, the next time we send the message.
                 message.PopFrame();
+                throw;
             }
-
         }
 
         private Task SendAsync(TAddress address,
