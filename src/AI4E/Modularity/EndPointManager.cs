@@ -458,24 +458,7 @@ namespace AI4E.Modularity
                 {
                     try
                     {
-                        var addresses = new List<TAddress>(await RouteMap.GetMapsAsync(Route, cancellation));
-                        addresses.Shuffle();
-                        _addresses = addresses.ToImmutableList();
-
-                        Logger?.LogDebug($"Physical-end-point '{_manager.LocalAddress}': Updated maps for remote end-point '{Route}'.");
-
-                        var queue = new ConcurrentQueue<(IMessage message, EndPointRoute localEndPoint)>();
-
-                        while (_txQueue.TryDequeue(out var queueEntry))
-                        {
-                            await SendInternalAsync(queueEntry.message, queueEntry.localEndPoint, queue, cancellation);
-                        }
-
-                        while (queue.TryDequeue(out var queueEntry))
-                        {
-                            _txQueue.Enqueue(queueEntry);
-                        }
-
+                        await UpdateAddressList(cancellation);
                         await Task.Delay(TimeSpan.FromMinutes(5), cancellation);
                     }
                     catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
@@ -483,6 +466,27 @@ namespace AI4E.Modularity
                     {
                         Logger?.LogWarning(exc, $"Physical-end-point '{_manager.LocalAddress}': Failure while updating maps for remote end-point '{Route}'.");
                     }
+                }
+            }
+
+            private async Task UpdateAddressList(CancellationToken cancellation)
+            {
+                var addresses = new List<TAddress>(await RouteMap.GetMapsAsync(Route, cancellation));
+                addresses.Shuffle();
+                _addresses = addresses.ToImmutableList();
+
+                Logger?.LogDebug($"Physical-end-point '{_manager.LocalAddress}': Updated maps for remote end-point '{Route}'.");
+
+                var queue = new ConcurrentQueue<(IMessage message, EndPointRoute localEndPoint)>();
+
+                while (_txQueue.TryDequeue(out var queueEntry))
+                {
+                    await SendInternalAsync(queueEntry.message, queueEntry.localEndPoint, queue, updateAddressesOnFailure: false, cancellation);
+                }
+
+                while (queue.TryDequeue(out var queueEntry))
+                {
+                    _txQueue.Enqueue(queueEntry);
                 }
             }
 
@@ -526,10 +530,14 @@ namespace AI4E.Modularity
                     }
                 }
 
-                return SendInternalAsync(message, localEndPoint, _txQueue, cancellation);
+                return SendInternalAsync(message, localEndPoint, _txQueue, updateAddressesOnFailure: true, cancellation);
             }
 
-            private async Task SendInternalAsync(IMessage message, EndPointRoute localEndPoint, ConcurrentQueue<(IMessage message, EndPointRoute localEndPoint)> queue, CancellationToken cancellation)
+            private async Task SendInternalAsync(IMessage message,
+                                                 EndPointRoute localEndPoint,
+                                                 ConcurrentQueue<(IMessage message, EndPointRoute localEndPoint)> queue,
+                                                 bool updateAddressesOnFailure,
+                                                 CancellationToken cancellation)
             {
                 var blacklist = _manager._blacklist;
                 foreach (var address in _addresses.Where(p => !blacklist.ContainsKey(p)))
@@ -550,7 +558,13 @@ namespace AI4E.Modularity
                     }
                 }
 
+                Logger?.LogWarning($"Physical-end-point '{_manager.LocalAddress}': Failed sending message to remote end-point '{Route}'. No address available.");
                 queue.Enqueue((message, localEndPoint));
+
+                if (updateAddressesOnFailure)
+                {
+                    await UpdateAddressList(cancellation);
+                }
             }
 
             public async Task SendAsync(IMessage message, EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation)
