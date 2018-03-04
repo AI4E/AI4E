@@ -337,7 +337,7 @@ namespace AI4E.Modularity
             _receiveProcess.Terminate();
         }
 
-        private sealed class LocalEndPoint : IDisposable, IAsyncDisposable
+        private sealed class LocalEndPoint : IAsyncDisposable
         {
             private readonly EndPointManager<TAddress> _manager;
             private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
@@ -408,17 +408,48 @@ namespace AI4E.Modularity
                 return _rxQueue.DequeueAsync(cancellation);
             }
 
+            #region Disposal
+
+            private Task _disposal;
+            private readonly TaskCompletionSource<byte> _disposalSource = new TaskCompletionSource<byte>();
+            private readonly object _lock = new object();
+
+            public Task Disposal => _disposalSource.Task;
+
+            private async Task DisposeInternalAsync()
+            {
+                try
+                {
+                    _mapProcess.Terminate();
+
+                    await RouteMap.UnmapRouteAsync(Route, _manager.LocalAddress, cancellation: default);
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception exc)
+                {
+                    _disposalSource.SetException(exc);
+                    return;
+                }
+
+                _disposalSource.SetResult(0);
+            }
+
             public void Dispose()
             {
-                DisposeAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                lock (_lock)
+                {
+                    if (_disposal == null)
+                        _disposal = DisposeInternalAsync();
+                }
             }
 
-            public async Task DisposeAsync()
+            public Task DisposeAsync()
             {
-                _mapProcess.Terminate();
-
-                await RouteMap.UnmapRouteAsync(Route, _manager.LocalAddress, cancellation: default);
+                Dispose();
+                return Disposal;
             }
+
+            #endregion
         }
 
         private sealed class RemoteEndPoint

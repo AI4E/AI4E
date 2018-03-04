@@ -18,12 +18,15 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Threading.Tasks;
 
 namespace AI4E.Async
 {
-    public interface IAsyncDisposable
+    public interface IAsyncDisposable : IDisposable
     {
         Task DisposeAsync();
+
+        Task Disposal { get; }
     }
 }
