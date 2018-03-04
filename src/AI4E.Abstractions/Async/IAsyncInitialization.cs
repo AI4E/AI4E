@@ -5,7 +5,6 @@
  * Version:         1.0
  * Author:          Andreas Trütschel
  * Last modified:   16.06.2017 
- * Status:          Ready
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -34,7 +33,7 @@ using System.Threading.Tasks;
 namespace AI4E.Async
 {
     /// <summary>
-    /// Marks a type as requiring asynchronous initialization.
+    /// Represents a type that requires asynchronous initialization.
     /// </summary>
     public interface IAsyncInitialization
     {
