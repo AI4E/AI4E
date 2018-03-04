@@ -70,15 +70,24 @@ namespace AI4E.Modularity.RPC
             {
                 Dispose();
             }
-            catch(ObjectDisposedException) { }
+            catch (ObjectDisposedException) { }
         }
 
         public Task ExecuteAsync(Expression<Action<TRemote>> expression)
         {
             if (!IsRemoteProxy)
             {
-                // TODO
-                throw new NotSupportedException();
+                Action<TRemote> compiled = expression.Compile();
+
+                try
+                {
+                    compiled.Invoke(LocalInstance);
+                    return Task.CompletedTask;
+                }
+                catch (Exception exc)
+                {
+                    return Task.FromException(exc);
+                }
             }
 
             return _host.SendMethodCallAsync<object>(expression.Body, Id, false);
@@ -88,8 +97,14 @@ namespace AI4E.Modularity.RPC
         {
             if (!IsRemoteProxy)
             {
-                // TODO
-                throw new NotSupportedException();
+                async Task ExecuteInternalAsync()
+                {
+                    Func<TRemote, Task> compiled = expression.Compile();
+
+                    await compiled.Invoke(LocalInstance);
+                }
+
+                return ExecuteInternalAsync();
             }
 
             return _host.SendMethodCallAsync<object>(expression.Body, Id, true);
@@ -99,8 +114,17 @@ namespace AI4E.Modularity.RPC
         {
             if (!IsRemoteProxy)
             {
-                // TODO
-                throw new NotSupportedException();
+                Func<TRemote, TResult> compiled = expression.Compile();
+
+                try
+                {
+                    var result = compiled.Invoke(LocalInstance);
+                    return Task.FromResult(result);
+                }
+                catch (Exception exc)
+                {
+                    return Task.FromException<TResult>(exc);
+                }
             }
 
             return _host.SendMethodCallAsync<TResult>(expression.Body, Id, false);
@@ -110,8 +134,14 @@ namespace AI4E.Modularity.RPC
         {
             if (!IsRemoteProxy)
             {
-                // TODO
-                throw new NotSupportedException();
+                async Task<TResult> ExecuteInternalAsync()
+                {
+                    Func<TRemote, Task<TResult>> compiled = expression.Compile();
+
+                    return await compiled.Invoke(LocalInstance);
+                }
+
+                return ExecuteInternalAsync();
             }
 
             return _host.SendMethodCallAsync<TResult>(expression.Body, Id, true);

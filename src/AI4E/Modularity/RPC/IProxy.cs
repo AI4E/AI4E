@@ -21,6 +21,9 @@ namespace AI4E.Modularity.RPC
     {
         TRemote LocalInstance { get; }
 
+        Type ObjectType { get; }
+        int Id { get; }
+
         Task ExecuteAsync(Expression<Action<TRemote>> expression);
         Task ExecuteAsync(Expression<Func<TRemote, Task>> expression);
 

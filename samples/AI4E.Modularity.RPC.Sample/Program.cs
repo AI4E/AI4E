@@ -31,6 +31,7 @@ namespace AI4E.Modularity.RPC.Sample
                     Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.AddAsync(1, 2)));
                     Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.Get<decimal>()));
                     Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.ReadValueAsync(valueProxy)));
+                    Console.WriteLine(await valueProxy.ExecuteAsync(v => v.GetValue()));
                 });
 
                 Console.ReadLine();
