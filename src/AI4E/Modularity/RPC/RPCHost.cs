@@ -205,7 +205,8 @@ namespace AI4E.Modularity.RPC
                         return;
                     }
 
-                    HandleMessageAsync(message, cancellation).HandleExceptions();
+                    // We do not want the process to be disturbed/blocked/deadlocked
+                    Task.Run(() => HandleMessageAsync(message, cancellation)).HandleExceptions();
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
