@@ -29,8 +29,10 @@ namespace AI4E.Storage.Projection
         {
             if (sourceType == null)
                 throw new ArgumentNullException(nameof(sourceType));
+
             if (projectionType == null)
                 throw new ArgumentNullException(nameof(projectionType));
+
             if (member == null)
                 throw new ArgumentNullException(nameof(member));
 
