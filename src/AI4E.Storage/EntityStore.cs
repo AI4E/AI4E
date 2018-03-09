@@ -40,7 +40,6 @@ using AI4E.Async;
 using AI4E.Processing;
 using AI4E.Storage.Projection;
 using JsonDiffPatchDotNet;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -58,7 +57,7 @@ namespace AI4E.Storage
         private readonly IEntityAccessor<TId, TEventBase, TEntityBase> _entityAccessor;
         private readonly JsonDiffPatch _differ;
         private readonly JsonSerializer _jsonSerializer;
-        private readonly Dictionary<TId, TEntityBase> _lookup = new Dictionary<TId, TEntityBase>();
+        private readonly Dictionary<(TId id, long revision), TEntityBase> _lookup = new Dictionary<(TId id, long revision), TEntityBase>();
         private bool _isDisposed;
 
         public EntityStore(IEventStore<string, TId> streamStore,
@@ -80,7 +79,12 @@ namespace AI4E.Storage
             _jsonSerializer = JsonSerializer.Create(serializerSettingsResolver.ResolveSettings(this));
         }
 
-        public async Task<TEntityBase> GetByIdAsync(TId id, Type entityType, CancellationToken cancellation)
+        public Task<TEntityBase> GetByIdAsync(TId id, Type entityType, CancellationToken cancellation)
+        {
+            return GetByIdAsync(id, entityType, revision: default, cancellation);
+        }
+
+        public async Task<TEntityBase> GetByIdAsync(TId id, Type entityType, long revision, CancellationToken cancellation)
         {
             if (entityType == null)
                 throw new ArgumentNullException(nameof(entityType));
@@ -88,14 +92,15 @@ namespace AI4E.Storage
             if (!typeof(TEntityBase).IsAssignableFrom(entityType))
                 throw new ArgumentException($"The argument must specify a subtype of '{typeof(TEntityBase).FullName}'.", nameof(entityType));
 
-            if (_lookup.TryGetValue(id, out var cachedResult))
+            if (_lookup.TryGetValue((id, revision), out var cachedResult))
                 return cachedResult;
 
             var bucketId = GetBucketId(entityType);
             var streamId = GetStreamId(id);
-            var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, cancellation);
+            var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, revision, cancellation);
 
-            if (stream.Snapshot == null && !stream.Commits.Any())
+            // This is an empty stream.
+            if (stream.StreamRevision == default)
                 return null;
 
             var serializedEntity = default(JToken);
@@ -117,9 +122,10 @@ namespace AI4E.Storage
             var result = (TEntityBase)serializedEntity.ToObject(entityType, _jsonSerializer);
 
             _entityAccessor.SetConcurrencyToken(result, stream.ConcurrencyToken);
+            _entityAccessor.SetRevision(result, stream.StreamRevision);
             _entityAccessor.CommitEvents(result);
 
-            _lookup[id] = result;
+            _lookup[(id, revision)] = result;
 
             return result;
         }
@@ -164,16 +170,17 @@ namespace AI4E.Storage
 
             var events = _entityAccessor.GetUncommittedEvents(entity).Select(p => new EventMessage { Body = p });
 
-            concurrencyToken = await stream.CommitAsync(concurrencyToken,
-                                                        events,
-                                                        CompressionHelper.Zip(diff.ToString()),
-                                                        headers => { },
-                                                        cancellation);
+            await stream.CommitAsync(concurrencyToken,
+                                     events,
+                                     CompressionHelper.Zip(diff.ToString()),
+                                     headers => { },
+                                     cancellation);
 
-            _entityAccessor.SetConcurrencyToken(entity, concurrencyToken);
+            _entityAccessor.SetConcurrencyToken(entity, stream.ConcurrencyToken);
+            _entityAccessor.SetRevision(entity, stream.StreamRevision);
             _entityAccessor.CommitEvents(entity);
 
-            _lookup[_entityAccessor.GetId(entity)] = entity;
+            _lookup[(_entityAccessor.GetId(entity), revision: default)] = entity;
         }
 
         public Task<IEnumerable<TEntityBase>> GetAllAsync(Type entityType, CancellationToken cancellation)
@@ -210,6 +217,12 @@ namespace AI4E.Storage
             where TEntity : class, TEntityBase
         {
             return (TEntity)await GetByIdAsync(id, typeof(TEntity), cancellation);
+        }
+
+        public async Task<TEntity> GetByIdAsync<TEntity>(TId id, long revision, CancellationToken cancellation)
+            where TEntity : class, TEntityBase
+        {
+            return (TEntity)await GetByIdAsync(id, typeof(TEntity), revision, cancellation);
         }
 
         public Task StoreAsync<TEntity>(TEntity entity, CancellationToken cancellation)
@@ -473,12 +486,12 @@ namespace AI4E.Storage
                     await Task.WhenAll(tasks);
 
                     var oldDependencies = (await _projectionDependencyStore.GetDependenciesAsync(GetBucketId(type), id, cancellation)).Select(p => (bucket: p.BucketId, id: p.Id));
-                    var dependencies = entityStore._lookup.Where(p => !(p.Key.Equals(id) && p.Value.GetType() == type)).Select(p => (bucket: GetBucketId(p.Value.GetType()), id: p.Key));
+                    var dependencies = entityStore._lookup.Where(p => !(p.Key.id.Equals(id) && p.Key.revision == default && p.Value.GetType() == type)).Select(p => (bucket: GetBucketId(p.Value.GetType()), p.Key.id));
 
                     var added = dependencies.Except(oldDependencies);
                     var removed = oldDependencies.Except(dependencies);
 
-                    foreach(var a in added)
+                    foreach (var a in added)
                     {
                         await _projectionDependencyStore.AddDependencyAsync(GetBucketId(type), id, a.bucket, a.id, cancellation);
                     }

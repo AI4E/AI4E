@@ -21,6 +21,7 @@
 using System;
 using System.Reflection;
 using Newtonsoft.Json;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Domain.Services
 {
@@ -48,9 +49,26 @@ namespace AI4E.Domain.Services
                 return;
             }
 
-            var id = (Guid)value.GetType().GetProperty("Id").GetValue(value);
+            var isSnapshot = value.GetType().GetGenericTypeDefinition() == typeof(Snapshot<>);
 
+            if (isSnapshot)
+            {
+                writer.WriteStartObject();
+                writer.WritePropertyName("id");
+            }
+
+            var id = (Guid)value.GetType().GetProperty("Id").GetValue(value);
             writer.WriteValue(id.ToString()); // TODO: Use SGuid
+
+            if (isSnapshot)
+            {
+                writer.WritePropertyName("revision");
+
+                var revision = (long)value.GetType().GetProperty("Revision").GetValue(value);
+                writer.WriteValue(revision);
+
+                writer.WriteEndObject();
+            }
         }
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
@@ -58,27 +76,71 @@ namespace AI4E.Domain.Services
             if (!CanConvert(objectType))
                 return serializer.Deserialize(reader, objectType);
 
-            var id = new Guid(reader.Value as string); // TODO: Use SGuid
-
+            var isSnapshot = objectType.GetGenericTypeDefinition() == typeof(Snapshot<>);
             var referencedType = objectType.GetGenericArguments()[0];
 
-            var ci = typeof(Reference<>).MakeGenericType(referencedType)
-                                        ?.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, 
-                                                         binder: null, 
-                                                         types: new[] { typeof(Guid), typeof(IReferenceResolver) },
+            var id = default(Guid);
+            
+            if (isSnapshot)
+            {
+                var revision = default(long);
+                Assert(reader.TokenType == JsonToken.StartObject);
+                reader.Read(); // Read start object.
+
+                while (reader.TokenType == JsonToken.EndObject)
+                {
+                    Assert(reader.TokenType == JsonToken.PropertyName);
+
+                    switch (reader.Value as string)
+                    {
+                        case "id":
+                            reader.Read();
+                            id = new Guid(reader.Value as string); // TODO: Use SGuid
+                            break;
+
+                        case "revision":
+                            reader.Read();
+                            revision = (long)reader.Value;
+                            break;
+
+                        default:
+                            throw new Exception("Unknown format");
+                    }
+                }
+
+                var snapshotCtor = typeof(Snapshot<>).MakeGenericType(referencedType)
+                                           ?.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,
+                                                         binder: null,
+                                                         types: new[] { typeof(Guid), typeof(long), typeof(IReferenceResolver) },
                                                          modifiers: null);
 
-            if(ci == null)
+                if (snapshotCtor == null)
+                {
+                    throw new Exception(); // TODO
+                }
+
+                return snapshotCtor.Invoke(new object[] { id, revision, _referenceResolver });
+            }
+
+            id = new Guid(reader.Value as string); // TODO: Use SGuid
+
+            var revisionCtor = typeof(Reference<>).MakeGenericType(referencedType)
+                                    ?.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,
+                                                     binder: null,
+                                                     types: new[] { typeof(Guid), typeof(IReferenceResolver) },
+                                                     modifiers: null);
+
+            if (revisionCtor == null)
             {
                 throw new Exception(); // TODO
             }
 
-            return ci.Invoke(new object[] { id, _referenceResolver });
+            return revisionCtor.Invoke(new object[] { id, _referenceResolver });
         }
 
         public override bool CanConvert(Type objectType)
         {
-            return objectType.IsGenericType && objectType.GetGenericTypeDefinition() == typeof(Reference<>);
+            return objectType.IsGenericType && (objectType.GetGenericTypeDefinition() == typeof(Reference<>) || objectType.GetGenericTypeDefinition() == typeof(Snapshot<>));
         }
     }
 }

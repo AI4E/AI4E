@@ -19,6 +19,7 @@
  */
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Storage;
 
@@ -36,13 +37,13 @@ namespace AI4E.Domain.Services
             _entityStore = entityStore;
         }
 
-        public Task<TEntity> ResolveAsync<TEntity>(Guid id)
+        public Task<TEntity> ResolveAsync<TEntity>(Guid id, long revision, CancellationToken cancellation)
             where TEntity : AggregateRoot
         {
             if (id.Equals(default))
                 return Task.FromResult(default(TEntity));
 
-            return _entityStore.GetByIdAsync<TEntity>(id);
+            return _entityStore.GetByIdAsync<TEntity>(id, revision, cancellation);
         }
     }
 }

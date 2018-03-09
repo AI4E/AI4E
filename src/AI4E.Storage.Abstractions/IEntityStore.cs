@@ -25,7 +25,7 @@ using System.Threading.Tasks;
 
 namespace AI4E.Storage
 {
-    public interface IEntityStore<TId, TEventBase, TEntityBase>: IDisposable
+    public interface IEntityStore<TId, TEventBase, TEntityBase> : IDisposable
         where TId : struct, IEquatable<TId>
         where TEventBase : class
         where TEntityBase : class
@@ -33,7 +33,12 @@ namespace AI4E.Storage
         Task<TEntity> GetByIdAsync<TEntity>(TId id, CancellationToken cancellation = default)
             where TEntity : class, TEntityBase;
 
+        Task<TEntity> GetByIdAsync<TEntity>(TId id, long revision, CancellationToken cancellation = default)
+            where TEntity : class, TEntityBase;
+
         Task<TEntityBase> GetByIdAsync(TId id, Type entityType, CancellationToken cancellation = default);
+
+        Task<TEntityBase> GetByIdAsync(TId id, Type entityType, long revision, CancellationToken cancellation = default);
 
         Task<IEnumerable<TEntity>> GetAllAsync<TEntity>(CancellationToken cancellation = default)
             where TEntity : class, TEntityBase;

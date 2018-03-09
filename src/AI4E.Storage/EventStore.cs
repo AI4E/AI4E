@@ -78,7 +78,7 @@ namespace AI4E.Storage
         private readonly IStreamPersistence<TBucket, TStreamId> _persistence;
         private readonly ICommitDispatcher<TBucket, TStreamId> _commitDispatcher;
         private readonly IEnumerable<IStorageExtension<TBucket, TStreamId>> _extensions;
-        private readonly Dictionary<(TBucket bucketId, TStreamId streamId), EventStream> _streams;
+        private readonly Dictionary<(TBucket bucketId, TStreamId streamId, long revision), EventStream> _streams;
         private bool _isDisposed;
 
         #endregion
@@ -101,7 +101,7 @@ namespace AI4E.Storage
             _persistence = persistence;
             _commitDispatcher = commitDispatcher;
             _extensions = extensions;
-            _streams = new Dictionary<(TBucket bucketId, TStreamId streamId), EventStream>();
+            _streams = new Dictionary<(TBucket bucketId, TStreamId streamId, long revision), EventStream>();
         }
 
         public EventStore(IStreamPersistence<TBucket, TStreamId> persistence,
@@ -117,13 +117,18 @@ namespace AI4E.Storage
 
         #region IEventStore
 
-        public async Task<IEventStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, CancellationToken cancellation)
+        public Task<IEventStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, CancellationToken cancellation)
         {
-            if (!_streams.TryGetValue((bucketId, streamId), out var stream))
-            {
-                stream = await EventStream.OpenAsync(this, bucketId, streamId, _logger, cancellation);
+            return OpenStreamAsync(bucketId, streamId, revision: default, cancellation);
+        }
 
-                _streams.Add((bucketId, streamId), stream);
+        public async Task<IEventStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, long revision, CancellationToken cancellation)
+        {
+            if (!_streams.TryGetValue((bucketId, streamId, revision), out var stream))
+            {
+                stream = await EventStream.OpenAsync(this, bucketId, streamId, revision, _logger, cancellation);
+
+                _streams.Add((bucketId, streamId, revision), stream);
             }
 
             return stream;
@@ -145,11 +150,6 @@ namespace AI4E.Storage
 
             return await Task.WhenAll(heads.Select(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)));
         }
-
-        //public Task AddSnapshotAsync(ISnapshot<TBucket, TStreamId> snapshot, CancellationToken cancellation)
-        //{
-        //    return _persistence.AddSnapshotAsync(snapshot, cancellation);
-        //}
 
         #endregion
 
@@ -184,6 +184,7 @@ namespace AI4E.Storage
             private readonly List<ICommit<TBucket, TStreamId>> _commits = new List<ICommit<TBucket, TStreamId>>();
             private readonly EventStore<TBucket, TStreamId> _eventStore;
             private readonly ILogger _logger;
+            private readonly bool _isFixedRevision = false;
 
             #endregion
 
@@ -194,6 +195,7 @@ namespace AI4E.Storage
                                TStreamId streamId,
                                ISnapshot<TBucket, TStreamId> snapshot,
                                IEnumerable<ICommit<TBucket, TStreamId>> commits,
+                               bool isFixedRevision,
                                ILogger logger)
             {
                 if (eventStore == null)
@@ -208,24 +210,37 @@ namespace AI4E.Storage
                 _snapshot = snapshot;
                 _logger = logger;
                 _commits.AddRange(commits);
+                _isFixedRevision = isFixedRevision;
             }
 
             #endregion
 
             public static async Task<EventStream> OpenAsync(EventStore<TBucket, TStreamId> eventStore,
-                                                                  TBucket bucketId,
-                                                                  TStreamId streamId,
-                                                                  ILogger logger,
-                                                                  CancellationToken cancellation)
+                                                            TBucket bucketId,
+                                                            TStreamId streamId,
+                                                            long revision,
+                                                            ILogger logger,
+                                                            CancellationToken cancellation)
             {
                 if (eventStore == null)
                     throw new ArgumentNullException(nameof(eventStore));
 
-                var snapshot = await eventStore._persistence.GetSnapshotAsync(bucketId, streamId, cancellation);
-                var commits = await eventStore._persistence.GetCommitsAsync(bucketId, streamId, (snapshot?.StreamRevision + 1) ?? 0, cancellation)
-                    ?? Enumerable.Empty<ICommit<TBucket, TStreamId>>();
+                if (revision < 0)
+                    throw new ArgumentOutOfRangeException(nameof(revision));
 
-                return new EventStream(eventStore, bucketId, streamId, snapshot, commits, logger);
+                var snapshot = await eventStore._persistence.GetSnapshotAsync(bucketId, streamId, revision, cancellation);
+                var commits = await eventStore._persistence.GetCommitsAsync(bucketId, streamId, (snapshot?.StreamRevision + 1) ?? default, revision, cancellation)
+                    ?? Enumerable.Empty<ICommit<TBucket, TStreamId>>();
+                var isFixedRevision = revision != default;
+
+                var result = new EventStream(eventStore, bucketId, streamId, snapshot, commits, isFixedRevision, logger);
+
+                if (isFixedRevision && result.StreamRevision != revision)
+                {
+                    throw new StorageException($"Unable to load stream in revision {revision}.");
+                }
+
+                return result;
             }
 
             public TBucket BucketId { get; }
@@ -238,6 +253,8 @@ namespace AI4E.Storage
             public Guid ConcurrencyToken => Commits.LastOrDefault()?.ConcurrencyToken ?? Snapshot?.ConcurrencyToken ?? Guid.Empty;
             public IReadOnlyDictionary<string, object> Headers => GetHeaders().ToImmutableDictionary();
             public IReadOnlyList<EventMessage> Events => Commits.SelectMany(commit => commit.Events ?? Enumerable.Empty<EventMessage>()).ToImmutableArray();
+
+            public bool IsFixedRevision => _isFixedRevision;
 
             public IDictionary<string, object> GetHeaders()
             {
@@ -267,6 +284,9 @@ namespace AI4E.Storage
 
             public async Task AddSnapshotAsync(object body, CancellationToken cancellation = default)
             {
+                if (_isFixedRevision)
+                    throw new InvalidOperationException("Cannot modify a stream with fixed revision.");
+
                 var snapshot = new Snapshot(BucketId, StreamId, StreamRevision, body, Headers, ConcurrencyToken);
 
                 await _eventStore._persistence.AddSnapshotAsync(snapshot, cancellation);
@@ -277,6 +297,9 @@ namespace AI4E.Storage
 
             public async Task<Guid> CommitAsync(Guid concurrencyToken, IEnumerable<EventMessage> events, object body, Action<IDictionary<string, object>> headerGenerator, CancellationToken cancellation)
             {
+                if (_isFixedRevision)
+                    throw new InvalidOperationException("Cannot modify a stream with fixed revision.");
+
                 _logger?.LogDebug(Resources.AttemptingToCommitChanges, StreamId);
                 await CheckConcurrencyAsync(concurrencyToken, cancellation);
 

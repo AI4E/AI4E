@@ -86,6 +86,8 @@ namespace AI4E.Storage
         /// <exception cref="StreamNotFoundException" />
         Task<IEventStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, CancellationToken cancellation = default);
 
+        Task<IEventStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, long revision, CancellationToken cancellation = default);
+
         Task<IEnumerable<IEventStream<TBucket, TStreamId>>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation);
 
         Task<IEnumerable<IEventStream<TBucket, TStreamId>>> OpenAllAsync(CancellationToken cancellation);

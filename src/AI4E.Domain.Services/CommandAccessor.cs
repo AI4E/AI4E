@@ -26,22 +26,22 @@ namespace AI4E.Domain.Services
     {
         public Guid GetEntityId<TCommand>(TCommand command)
         {
-            if (!typeof(Command).IsAssignableFrom(typeof(TCommand)))
+            if (command is Command knownCommand)
             {
-                throw new NotSupportedException();
+                return knownCommand.Id;
             }
 
-            return ((Command)(object)command).Id;
+            return ((dynamic)command).Id;
         }
 
         public Guid GetConcurrencyToken<TCommand>(TCommand command)
         {
-            if (!typeof(Command).IsAssignableFrom(typeof(TCommand)))
+            if (command is Command knownCommand)
             {
-                throw new NotSupportedException();
+                return knownCommand.ConcurrencyToken;
             }
 
-            return ((Command)(object)command).ConcurrencyToken;
+            return ((dynamic)command).ConcurrencyToken;
         }
     }
 }

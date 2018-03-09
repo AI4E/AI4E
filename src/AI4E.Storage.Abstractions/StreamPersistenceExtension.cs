@@ -50,7 +50,7 @@ namespace AI4E.Storage
         public static Task<IEnumerable<ICommit<TBucket, TStreamId>>> GetCommitsAsync<TBucket, TStreamId>(this IStreamPersistence<TBucket, TStreamId> persistence,
                                                                                                          TBucket bucketId,
                                                                                                          TStreamId streamId,
-                                                                                                         long minRevision = 0,
+                                                                                                         long minRevision,
                                                                                                          CancellationToken cancellation = default)
             where TBucket : IEquatable<TBucket>
             where TStreamId : IEquatable<TStreamId>
@@ -58,7 +58,7 @@ namespace AI4E.Storage
             if (persistence == null)
                 throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetCommitsAsync(bucketId, streamId, minRevision, -1, cancellation);
+            return persistence.GetCommitsAsync(bucketId, streamId, minRevision, maxRevision: default, cancellation);
         }
 
         public static Task<IEnumerable<ICommit<TBucket, TStreamId>>> GetCommitsAsync<TBucket, TStreamId>(this IStreamPersistence<TBucket, TStreamId> persistence,
@@ -71,20 +71,20 @@ namespace AI4E.Storage
             if (persistence == null)
                 throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetCommitsAsync(bucketId, streamId, 0, -1, cancellation);
+            return persistence.GetCommitsAsync(bucketId, streamId, minRevision: default, maxRevision: default, cancellation);
         }
 
         public static Task<IEnumerable<ICommit<TBucket, TStreamId>>> GetCommitsAsync<TBucket, TStreamId>(this IStreamPersistence<TBucket, TStreamId> persistence,
                                                                                                          TBucket bucketId,
                                                                                                          TStreamId streamId,
-                                                                                                         long minRevision = 0)
+                                                                                                         long minRevision)
             where TBucket : IEquatable<TBucket>
             where TStreamId : IEquatable<TStreamId>
         {
             if (persistence == null)
                 throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetCommitsAsync(bucketId, streamId, minRevision, -1, default);
+            return persistence.GetCommitsAsync(bucketId, streamId, minRevision, maxRevision: default, default);
         }
 
         public static Task<IEnumerable<ICommit<TBucket, TStreamId>>> GetCommitsAsync<TBucket, TStreamId>(this IStreamPersistence<TBucket, TStreamId> persistence,
@@ -96,7 +96,7 @@ namespace AI4E.Storage
             if (persistence == null)
                 throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetCommitsAsync(bucketId, streamId, 0, -1, default);
+            return persistence.GetCommitsAsync(bucketId, streamId, minRevision: default, maxRevision: default, default);
         }
 
         public static Task<ISnapshot<TBucket, TStreamId>> GetSnapshotAsync<TBucket, TStreamId>(this IStreamPersistence<TBucket, TStreamId> persistence,
@@ -109,7 +109,7 @@ namespace AI4E.Storage
             if (persistence == null)
                 throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetSnapshotAsync(bucketId, streamId, -1, cancellation);
+            return persistence.GetSnapshotAsync(bucketId, streamId, maxRevision: default, cancellation);
         }
 
         public static Task<ISnapshot<TBucket, TStreamId>> GetSnapshotAsync<TBucket, TStreamId>(this IStreamPersistence<TBucket, TStreamId> persistence,
@@ -121,7 +121,7 @@ namespace AI4E.Storage
             if (persistence == null)
                 throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetSnapshotAsync(bucketId, streamId, -1, default);
+            return persistence.GetSnapshotAsync(bucketId, streamId, maxRevision: default, default);
         }
 
         public static Task<IEnumerable<ISnapshot<TBucket, TStreamId>>> GetSnapshotsAsync<TBucket, TStreamId>(this IStreamPersistence<TBucket, TStreamId> persistence,

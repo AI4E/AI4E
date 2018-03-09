@@ -29,13 +29,26 @@
  */
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AI4E.Domain
 {
     public interface IReferenceResolver
     {
-        Task<TEntity> ResolveAsync<TEntity>(Guid id)
+        Task<TEntity> ResolveAsync<TEntity>(Guid id, long revision, CancellationToken cancellation)
                    where TEntity : AggregateRoot;
+    }
+
+    public static class ReferenceResolverExtension
+    {
+        public static Task<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, Guid id, CancellationToken cancellation)
+            where TEntity : AggregateRoot
+        {
+            if (referenceResolver == null)
+                throw new ArgumentNullException(nameof(referenceResolver));
+
+            return referenceResolver.ResolveAsync<TEntity>(id, revision: default, cancellation);
+        }
     }
 }

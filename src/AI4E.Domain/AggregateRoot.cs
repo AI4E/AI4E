@@ -53,6 +53,8 @@ namespace AI4E.Domain
 
         public Guid ConcurrencyToken { get; internal set; }
 
+        public long Revision { get; internal set; }
+
         protected virtual void DoDispose() { }
 
         private protected sealed override AggregateRoot GetAggregateRoot()

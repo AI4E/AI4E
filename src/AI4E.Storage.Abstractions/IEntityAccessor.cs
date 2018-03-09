@@ -38,6 +38,9 @@ namespace AI4E.Storage
         Guid GetConcurrencyToken(TEntityBase entity);
         void SetConcurrencyToken(TEntityBase entity, Guid concurrencyToken);
 
+        long GetRevision(TEntityBase entity);
+        void SetRevision(TEntityBase entity, long revision);
+
         void CommitEvents(TEntityBase entity);
 
         IEnumerable<TEventBase> GetUncommittedEvents(TEntityBase entity);

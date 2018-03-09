@@ -89,9 +89,12 @@ namespace AI4E.Storage.MongoDB
             return true;
         }
 
-        public async Task<ISnapshot<TBucket, TStreamId>> GetSnapshotAsync(TBucket bucketId, TStreamId streamId, long maxRevision = -1, CancellationToken cancellation = default)
+        public async Task<ISnapshot<TBucket, TStreamId>> GetSnapshotAsync(TBucket bucketId, TStreamId streamId, long maxRevision, CancellationToken cancellation = default)
         {
             if (maxRevision < 0)
+                throw new ArgumentOutOfRangeException(nameof(maxRevision));
+
+            if (maxRevision == default)
             {
                 return (await _snapshots.AsQueryable()
                                         .Where(s => s.BucketId.Equals(bucketId) && s.StreamId.Equals(streamId))
@@ -194,7 +197,7 @@ namespace AI4E.Storage.MongoDB
             return commit;
         }
 
-        public async Task<IEnumerable<ICommit<TBucket, TStreamId>>> GetCommitsAsync(TBucket bucketId, TStreamId streamId, long minRevision = 0, long maxRevision = -1, CancellationToken cancellation = default)
+        public async Task<IEnumerable<ICommit<TBucket, TStreamId>>> GetCommitsAsync(TBucket bucketId, TStreamId streamId, long minRevision = 0, long maxRevision = 0, CancellationToken cancellation = default)
         {
             if (bucketId == null)
                 throw new ArgumentNullException(nameof(bucketId));
@@ -218,12 +221,15 @@ namespace AI4E.Storage.MongoDB
             return (await _commits.AsQueryable().ToListAsync(cancellation));
         }
 
-        private async Task<IEnumerable<MongoCommit<TBucket, TStreamId>>> GetCommitsInternalAsync(TBucket bucketId, TStreamId streamId, long minRevision = 0, long maxRevision = -1, CancellationToken cancellation = default)
+        private async Task<IEnumerable<MongoCommit<TBucket, TStreamId>>> GetCommitsInternalAsync(TBucket bucketId, TStreamId streamId, long minRevision = 0, long maxRevision = 0, CancellationToken cancellation = default)
         {
             if (minRevision < 0)
                 throw new ArgumentOutOfRangeException(nameof(minRevision));
 
             if (maxRevision < 0)
+                throw new ArgumentOutOfRangeException(nameof(maxRevision));
+
+            if (maxRevision == default)
             {
                 return (await _commits.AsQueryable()
                                      .Where(commit => commit.BucketId.Equals(bucketId) &&
@@ -290,7 +296,7 @@ namespace AI4E.Storage.MongoDB
                 return null;
             }
 
-            var snapshot = await GetSnapshotAsync(bucketId, streamId);
+            var snapshot = await GetSnapshotAsync(bucketId, streamId, maxRevision: default);
             var dispachedRevision = await LatestDispatchedCommitAsync(commits);
 
             return await AddStreamHeadAsync(bucketId, streamId, (await commits).Last().StreamRevision, snapshot?.StreamRevision ?? 0, dispachedRevision?.StreamRevision ?? 0);

@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using AI4E.Storage;
 
@@ -29,12 +30,12 @@ namespace AI4E.Domain.Services
     {
         public EntityAccessor() { }
 
-        public void CommitEvents(AggregateRoot entity)
+        public Guid GetId(AggregateRoot entity)
         {
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
 
-            entity.CommitEvents();
+            return entity.Id;
         }
 
         public Guid GetConcurrencyToken(AggregateRoot entity)
@@ -45,12 +46,30 @@ namespace AI4E.Domain.Services
             return entity.ConcurrencyToken;
         }
 
-        public Guid GetId(AggregateRoot entity)
+        public void SetConcurrencyToken(AggregateRoot entity, Guid concurrencyToken)
         {
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
 
-            return entity.Id;
+            entity.ConcurrencyToken = concurrencyToken;
+        }
+
+        public long GetRevision(AggregateRoot entity)
+        {
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            return entity.Revision;
+        }
+
+        public void SetRevision(AggregateRoot entity, long revision)
+        {
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            Debug.Assert(revision > 0);
+
+            entity.Revision = revision;
         }
 
         public IEnumerable<DomainEvent> GetUncommittedEvents(AggregateRoot entity)
@@ -61,12 +80,12 @@ namespace AI4E.Domain.Services
             return entity.UncommittedEvents ?? Enumerable.Empty<DomainEvent>();
         }
 
-        public void SetConcurrencyToken(AggregateRoot entity, Guid concurrencyToken)
+        public void CommitEvents(AggregateRoot entity)
         {
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
 
-            entity.ConcurrencyToken = concurrencyToken;
+            entity.CommitEvents();
         }
     }
 }
