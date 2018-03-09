@@ -6,7 +6,7 @@
  *                  (3) AI4E.Storage.EntityStore'3.CommitDispatcher
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   16.01.2018 
+ * Last modified:   09.03.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -37,6 +37,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
+using AI4E.DispatchResults;
 using AI4E.Processing;
 using AI4E.Storage.Projection;
 using JsonDiffPatchDotNet;
@@ -362,7 +363,7 @@ namespace AI4E.Storage
             private readonly CancellationTokenSource _cancellationSource;
             private readonly Task _intialization;
             private readonly IAsyncProcess _dispatchProcess;
-            private readonly AsyncProducerConsumerQueue<(ICommit<string, TId> commit, TaskCompletionSource<object> tcs)> _dispatchQueue;
+            private readonly AsyncProducerConsumerQueue<(ICommit<string, TId> commit, int attempt, TaskCompletionSource<object> tcs)> _dispatchQueue;
             private readonly IServiceProvider _serviceProvider;
             private readonly IStreamPersistence<string, TId> _persistence;
             private bool _isDisposed;
@@ -395,11 +396,10 @@ namespace AI4E.Storage
                 _projectionDependencyStore = projectionDependencyStore;
                 _projector = projector;
                 _logger = logger;
-                _dispatchQueue = new AsyncProducerConsumerQueue<(ICommit<string, TId> commit, TaskCompletionSource<object> tcs)>();
+                _dispatchQueue = new AsyncProducerConsumerQueue<(ICommit<string, TId> commit, int attempt, TaskCompletionSource<object> tcs)>();
                 _cancellationSource = new CancellationTokenSource();
                 _dispatchProcess = new AsyncProcess(DispatchProcess);
-                _dispatchProcess.Start();
-                _intialization = InitializeAsync(_cancellationSource.Token);
+                _intialization = InitializeInternalAsync(_cancellationSource.Token);
             }
 
             public CommitDispatcher(IProvider<EntityStore<TId, TEventBase, TEntityBase>> entityStoreProvider,
@@ -409,74 +409,180 @@ namespace AI4E.Storage
                                     IProjector projector)
                 : this(entityStoreProvider, persistence, eventDispatcher, projectionDependencyStore, projector, null) { }
 
-            private async Task InitializeAsync(CancellationToken cancellation)
+            #region Initialization
+
+            private async Task InitializeInternalAsync(CancellationToken cancellation)
             {
+                await _dispatchProcess.StartAsync();
+
                 _logger?.LogDebug(Resources.GettingUndispatchedCommits);
                 foreach (var commit in await _persistence.GetUndispatchedCommitsAsync(cancellation))
                 {
-                    await _dispatchQueue.EnqueueAsync((commit, null));
+                    await _dispatchQueue.EnqueueAsync((commit, attempt: 1, tcs: null));
                 }
             }
+
+            #endregion
+
+            #region Disposal
+
+            private Task _disposal;
+            private readonly TaskCompletionSource<byte> _disposalSource = new TaskCompletionSource<byte>();
+            private readonly object _lock = new object();
+
+            public Task Disposal => _disposalSource.Task;
+
+            private async Task DisposeInternalAsync()
+            {
+                try
+                {
+                    // Cancel the initialization
+                    _cancellationSource.Cancel();
+                    try
+                    {
+                        await _intialization;
+                    }
+                    catch (OperationCanceledException) { }
+
+                    await _dispatchProcess.TerminateAsync();
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception exc)
+                {
+                    _disposalSource.SetException(exc);
+                    return;
+                }
+
+                _disposalSource.SetResult(0);
+            }
+
+            public void Dispose()
+            {
+                lock (_lock)
+                {
+                    if (_disposal == null)
+                        _disposal = DisposeInternalAsync();
+                }
+            }
+
+            public Task DisposeAsync()
+            {
+                Dispose();
+                return Disposal;
+            }
+
+            #endregion
 
             private async Task DispatchProcess(CancellationToken cancellation)
             {
                 while (cancellation.ThrowOrContinue())
                 {
-                    var (commit, tcs) = await _dispatchQueue.DequeueAsync(cancellation);
+                    var (commit, attempt, tcs) = await _dispatchQueue.DequeueAsync(cancellation);
 
                     try
                     {
-                        await DispatchInternalAsync(commit);
-                        await _persistence.MarkCommitAsDispatchedAsync(commit, cancellation);
-                        tcs?.TrySetResult(null);
+                        var projection = ProjectAsync(commit.BucketId, commit.StreamId, tcs, cancellation);
+                        var dispatch = DispatchAsync(commit, cancellation);
+
+                        await Task.WhenAll(projection, dispatch);
+
+                        var success = await dispatch;
+
+                        if (success)
+                        {
+                            await _persistence.MarkCommitAsDispatchedAsync(commit, cancellation);
+                        }
+                        else
+                        {
+                            Reschedule(commit, attempt, cancellation).HandleExceptions();
+                        }
                     }
                     catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                     catch (Exception exc)
                     {
-                        await _dispatchQueue.EnqueueAsync((commit, tcs));
-
                         // TODO: Log exception
-                    }
 
+                        Task.Run(() => tcs?.TrySetException(exc)).HandleExceptions();
+
+                        Reschedule(commit, attempt, cancellation).HandleExceptions();
+                    }
                 }
             }
 
-            private async Task DispatchInternalAsync(ICommit<string, TId> commit)
+            private async Task Reschedule(ICommit<string, TId> commit, int attempt, CancellationToken cancellation)
             {
-                try
-                {
-                    //_logger?.LogInformation(Resources.SchedulingDispatch, commit.ConcurrencyToken);
+                // Calculate wait time in seconds
+                var timeToWait = TimeSpan.FromSeconds(Pow(2, attempt - 1));
 
-                    (await Task.WhenAll(commit.Events
-                                              .Select(p => p.Body)
-                                              .Select(async evt => (await _eventDispatcher.DispatchAsync(evt, publish: true))))).All(p => p.IsSuccess);
+                await Task.Delay(timeToWait);
 
-                    var entityType = GetTypeFromBucket(commit.BucketId);
-
-                    if (entityType == null)
-                    {
-                        // TODO: Log failure
-
-                        return;
-                    }
-
-                    await ProjectAsync(entityType, commit.StreamId, default);
-                }
-                catch (Exception exc)
-                {
-                    // TODO: Log failure
-                    //_logger?.LogError(Resources.UnableToDispatch, _eventDispatcher.GetType(), commit.ConcurrencyToken);
-                    throw;
-                }
+                await _dispatchQueue.EnqueueAsync((commit, attempt + 1, tcs: null), cancellation);
             }
 
-            private async Task ProjectAsync(Type type, TId id, CancellationToken cancellation)
+            // Adapted from: https://stackoverflow.com/questions/383587/how-do-you-do-integer-exponentiation-in-c
+            private static int Pow(int x, int pow)
             {
+                if (pow < 0)
+                    throw new ArgumentOutOfRangeException(nameof(pow));
+
+                var result = 1;
+                while (pow != 0)
+                {
+                    if ((pow & 1) == 1)
+                        result *= x;
+                    x *= x;
+                    pow >>= 1;
+                }
+
+                if (result < 0)
+                    return int.MaxValue;
+
+                return result;
+            }
+
+            private async Task<bool> DispatchAsync(ICommit<string, TId> commit, CancellationToken cancellation)
+            {
+                var events = commit.Events.Select(p => p.Body);
+
+                var dispatchResults = await Task.WhenAll(events.Select(p => DispatchSingleAsync(p, cancellation)));
+                var dispatchResult = new AggregateDispatchResult(dispatchResults);
+
+                // TODO: Log errors
+                return dispatchResult.IsSuccess; // TODO: Throw an exception instead?
+            }
+
+            private Task<IDispatchResult> DispatchSingleAsync(object evt, CancellationToken cancellation)
+            {
+                return _eventDispatcher.DispatchAsync(evt, publish: true);
+            }
+
+            private async Task ProjectAsync(string bucketId, TId id, TaskCompletionSource<object> tcs, CancellationToken cancellation)
+            {
+                var type = GetTypeFromBucket(bucketId);
+                if (type == null)
+                {
+                    throw new InvalidOperationException($"Unable to load type for bucket '{bucketId}'");
+                }
+
                 using (var entityStore = _entityStoreProvider.ProvideInstance())
                 {
+                    async Task ProjectLocalAsync()
+                    {
+                        try
+                        {
+                            await ProjectSingleAsync(type, id, entityStore, cancellation);
+                            Task.Run(() => tcs?.TrySetResult(null)).HandleExceptions();
+                        }
+                        catch (Exception exc)
+                        {
+                            Task.Run(() => tcs?.TrySetException(exc)).HandleExceptions();
+                            throw;
+                        }
+                    }
+
                     var tasks = new List<Task>
                     {
-                        ProjectSingleAsync(type, id, entityStore, cancellation)
+                        ProjectLocalAsync()
                     };
 
                     var dependents = await _projectionDependencyStore.GetDependentsAsync(GetBucketId(type), id, cancellation);
@@ -526,7 +632,7 @@ namespace AI4E.Storage
             {
                 var tcs = new TaskCompletionSource<object>();
 
-                return Task.WhenAll(_dispatchQueue.EnqueueAsync((commit, tcs)), tcs.Task);
+                return Task.WhenAll(_dispatchQueue.EnqueueAsync((commit, attempt: 1, tcs)), tcs.Task);
             }
 
             //public async Task RebuildQueryCacheAsync()
@@ -557,18 +663,6 @@ namespace AI4E.Storage
                         return t;
                 }
                 throw new ArgumentException("Type '" + bucketId + "' doesn't exist.");
-            }
-
-            public void Dispose()
-            {
-                if (_isDisposed)
-                {
-                    return;
-                }
-                _isDisposed = true;
-
-                _cancellationSource.Cancel();
-                _dispatchProcess.Terminate();
             }
         }
     }
