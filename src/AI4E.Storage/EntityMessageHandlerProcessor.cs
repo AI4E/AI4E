@@ -19,6 +19,7 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -37,6 +38,8 @@ namespace AI4E
         private readonly IServiceProvider _serviceProvider;
         private readonly IEntityStore<TId, TEventBase, TEntityBase> _entityStore;
         private readonly IEntityAccessor<TId, TEventBase, TEntityBase> _entityAccessor;
+
+        private static readonly ConcurrentDictionary<Type, HandlerCacheEntry> _handlerTypeCache = new ConcurrentDictionary<Type, HandlerCacheEntry>();
 
         public EntityMessageHandlerProcessor(IServiceProvider serviceProvider, IEntityStore<TId, TEventBase, TEntityBase> entityStore, IEntityAccessor<TId, TEventBase, TEntityBase> entityAccessor)
         {
@@ -57,122 +60,161 @@ namespace AI4E
         public async override Task<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, Task<IDispatchResult>> next)
         {
             var handler = Context.MessageHandler;
-            var entityProperty = handler.GetType().GetProperties().SingleOrDefault(p => p.IsDefined<MessageHandlerEntityAttribute>());
+            var cacheEntry = _handlerTypeCache.GetOrAdd(handler.GetType(), handlerType => new HandlerCacheEntry(handlerType));
 
-            if (entityProperty == null ||
-                !entityProperty.CanWrite ||
-                !entityProperty.CanRead ||
-                entityProperty.GetIndexParameters().Length > 0)
+            if (!cacheEntry.IsEntityMessageHandler)
             {
-                entityProperty = null;
                 return await next(message);
             }
 
-            var entityType = entityProperty.PropertyType;
-            var customType = entityProperty.GetCustomAttribute<MessageHandlerEntityAttribute>().EntityType;
+            var messageAccessor = _serviceProvider.GetRequiredService<IMessageAccessor<TId>>() ?? new DefaultMessageAccessor<TId>();
 
-            if (customType != null)
+            if (!messageAccessor.TryGetEntityId(message, out var id))
             {
-                if (!entityType.IsAssignableFrom(customType))
+                return await next(message);
+            }
+
+            var checkConcurrencyToken = messageAccessor.TryGetConcurrencyToken(message, out var concurrencyToken);
+
+            do
+            {
+                var entity = await _entityStore.GetByIdAsync(id, cacheEntry.EntityType);
+                var createsEntityAttribute = Context.MessageHandlerAction.Member.GetCustomAttribute<CreatesEntityAttribute>();
+
+                if (entity == null)
                 {
-                    return await next(message); // TODO: Logging
-                }
-                entityType = customType;
-            }
-
-            //var entityStoreProperty = handler.GetType().GetProperties().SingleOrDefault(p => p.IsDefined<MessageHandlerEntityStoreAttribute>());
-
-            //if (entityStoreProperty != null &&
-            //    entityStoreProperty.CanRead &&
-            //    entityStoreProperty.CanWrite &&
-            //    entityStoreProperty.GetIndexParameters().Length == 0 &&
-            //    entityStoreProperty.PropertyType.IsAssignableFrom(_entityStore.GetType()))
-            //{
-            //    entityStoreProperty.SetValue(handler, _entityStore);
-            //}
-
-            var commandAccessor = _serviceProvider.GetRequiredService<ICommandAccessor<TId>>();
-            var id = commandAccessor.GetEntityId(message);
-            var entity = await LoadEntity(id, entityType);
-            var createsEntityAttribute = Context.MessageHandlerAction.Member.GetCustomAttribute<CreatesEntityAttribute>();
-
-            if (entity == null)
-            {
-                if (createsEntityAttribute == null || !createsEntityAttribute.CreatesEntity)
-                    return new EntityNotFoundDispatchResult(entityType, id.ToString());
-            }
-            else
-            {
-                if (createsEntityAttribute != null && createsEntityAttribute.CreatesEntity && !createsEntityAttribute.AllowExisingEntity)
-                    return new EntityAlreadyPresentDispatchResult(entityType, id.ToString());
-
-                if (_entityAccessor.GetConcurrencyToken(entity) != commandAccessor.GetConcurrencyToken(message))
-                    return new ConcurrencyIssueDispatchResult();
-
-                entityProperty.SetValue(handler, entity);
-            }
-
-            var dispatchResult = await next(message);
-
-            if (!dispatchResult.IsSuccess)
-            {
-                return dispatchResult;
-            }
-
-            var deleteFlagProperty = handler.GetType().GetProperties().SingleOrDefault(p => p.IsDefined<MessageHandlerEntityDeleteFlagAttribute>());
-
-            var markedAsDeleted = false;
-
-            if (deleteFlagProperty != null &&
-                deleteFlagProperty.CanRead &&
-                deleteFlagProperty.PropertyType == typeof(bool) &&
-                deleteFlagProperty.GetIndexParameters().Length == 0)
-            {
-                markedAsDeleted = (bool)deleteFlagProperty.GetValue(handler);
-            }
-
-            entity = (TEntityBase)entityProperty.GetValue(handler);
-
-            try
-            {
-                if (markedAsDeleted)
-                {
-                    await DeleteAsync(entity, entityType);
+                    if (createsEntityAttribute == null || !createsEntityAttribute.CreatesEntity)
+                        return new EntityNotFoundDispatchResult(cacheEntry.EntityType, id.ToString());
                 }
                 else
                 {
-                    await StoreAsync(entity, entityType);
+                    if (createsEntityAttribute != null && createsEntityAttribute.CreatesEntity && !createsEntityAttribute.AllowExisingEntity)
+                        return new EntityAlreadyPresentDispatchResult(cacheEntry.EntityType, id.ToString());
+
+                    if (checkConcurrencyToken && concurrencyToken != _entityAccessor.GetConcurrencyToken(entity))
+                        return new ConcurrencyIssueDispatchResult();
+
+                    cacheEntry.SetHandlerEntity(handler, entity);
+                }
+
+                var dispatchResult = await next(message);
+
+                if (!dispatchResult.IsSuccess)
+                {
+                    return dispatchResult;
+                }
+
+                var markedAsDeleted = cacheEntry.IsMarkedAsDeleted(handler);
+                entity = cacheEntry.GetHandlerEntity(handler);
+
+                try
+                {
+                    if (markedAsDeleted)
+                    {
+                        await _entityStore.DeleteAsync(entity, cacheEntry.EntityType);
+                    }
+                    else
+                    {
+                        await _entityStore.StoreAsync(entity, cacheEntry.EntityType);
+                    }
+                }
+                catch (ConcurrencyException)
+                {
+                    if (!checkConcurrencyToken)
+                        continue;
+
+                    return new ConcurrencyIssueDispatchResult();
+                }
+                catch (StorageException exc)
+                {
+                    return new StorageIssueDispatchResult(exc);
+                }
+                catch (Exception exc)
+                {
+                    return new FailureDispatchResult(exc);
+                }
+
+                return dispatchResult;
+
+            } while (true);
+        }
+
+        private readonly struct HandlerCacheEntry
+        {
+            private readonly PropertyInfo _entityProperty;
+            private readonly Type _entityType;
+
+            private readonly PropertyInfo _deleteFlagProperty;
+
+            public HandlerCacheEntry(Type handlerType)
+            {
+                _entityProperty = handlerType.GetProperties().SingleOrDefault(p => p.IsDefined<MessageHandlerEntityAttribute>());
+
+                if (_entityProperty == null ||
+                    !_entityProperty.CanWrite ||
+                    !_entityProperty.CanRead ||
+                    !typeof(TEntityBase).IsAssignableFrom(_entityProperty.PropertyType) ||
+                    _entityProperty.GetIndexParameters().Length > 0)
+                {
+                    _entityProperty = null;
+                }
+
+                _entityType = _entityProperty.PropertyType;
+                var customType = _entityProperty.GetCustomAttribute<MessageHandlerEntityAttribute>().EntityType;
+
+                if (customType != null &&
+                    _entityType.IsAssignableFrom(customType)) // If the types do not match, we just ignore the custom type.
+                {
+                    _entityType = customType;
+                }
+
+                _deleteFlagProperty = handlerType.GetProperties().SingleOrDefault(p => p.IsDefined<MessageHandlerEntityDeleteFlagAttribute>());
+
+                if (_deleteFlagProperty == null ||
+                    !_deleteFlagProperty.CanRead ||
+                    _deleteFlagProperty.PropertyType != typeof(bool) ||
+                    _deleteFlagProperty.GetIndexParameters().Length > 0)
+                {
+                    _deleteFlagProperty = null;
                 }
             }
-            catch (ConcurrencyException)
+
+            public bool IsEntityMessageHandler => _entityProperty != null;
+            public Type EntityType => _entityType;
+            public PropertyInfo EntityProperty => _entityProperty;
+
+            public void SetHandlerEntity(object handler, TEntityBase entity)
             {
-                return new ConcurrencyIssueDispatchResult();
+                if (handler == null)
+                    throw new ArgumentNullException(nameof(handler));
+
+                if (_entityProperty == null)
+                    throw new InvalidOperationException();
+
+                _entityProperty.SetValue(handler, entity);
             }
-            catch (StorageException exc)
+
+            public TEntityBase GetHandlerEntity(object handler)
             {
-                return new StorageIssueDispatchResult(exc);
+                if (handler == null)
+                    throw new ArgumentNullException(nameof(handler));
+
+                if (_entityProperty == null)
+                    throw new InvalidOperationException();
+
+                return (TEntityBase)_entityProperty.GetValue(handler);
             }
-            catch (Exception exc)
+
+            public bool IsMarkedAsDeleted(object handler)
             {
-                return new FailureDispatchResult(exc);
+                if (handler == null)
+                    throw new ArgumentNullException(nameof(handler));
+
+                if (_deleteFlagProperty == null)
+                    return false;
+
+                return (bool)_deleteFlagProperty.GetValue(handler);
             }
-
-            return dispatchResult;
-        }
-
-        private Task StoreAsync(TEntityBase entity, Type entityType)
-        {
-            return _entityStore.StoreAsync(entity, entityType);
-        }
-
-        private Task DeleteAsync(TEntityBase entity, Type entityType)
-        {
-            return _entityStore.DeleteAsync(entity, entityType);
-        }
-
-        private Task<TEntityBase> LoadEntity(TId id, Type entityType)
-        {
-            return _entityStore.GetByIdAsync(id, entityType);
         }
     }
 }

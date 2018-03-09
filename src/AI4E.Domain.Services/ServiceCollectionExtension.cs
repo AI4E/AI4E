@@ -35,7 +35,6 @@ namespace AI4E.Domain.Services
             services.AddSingleton<IEntityAccessor<Guid, DomainEvent, AggregateRoot>, EntityAccessor>();
             services.AddTransient<IReferenceResolver, ReferenceResolver>();
             services.AddTransient<ISerializerSettingsResolver<Guid, DomainEvent, AggregateRoot>, SerializerSettingsResolver>();
-            services.AddSingleton<ICommandAccessor<Guid>, CommandAccessor>();
         }
 
         public static IStorageBuilder AddStorage(this IServiceCollection services)

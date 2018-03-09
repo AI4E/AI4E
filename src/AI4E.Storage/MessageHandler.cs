@@ -24,7 +24,8 @@ namespace AI4E
 {
     [Obsolete("Use MessageHandler<TEntity>")]
     public abstract class CommandHandler<TEntity> : MessageHandler<TEntity>
-        where TEntity : class { }
+        where TEntity : class
+    { }
 
     public abstract class MessageHandler<TEntity> : MessageHandler
         where TEntity : class
@@ -34,9 +35,6 @@ namespace AI4E
 
         [MessageHandlerEntity]
         public TEntity Entity { get; set; }
-
-        //[MessageHandlerEntityStore]
-        //public IEntityStore<TId, TEventBase, TEntityBase> EntityStore { get; internal set; }
 
         [NoAction]
         protected void MarkAsDeleted()
@@ -50,9 +48,6 @@ namespace AI4E
     {
         public Type EntityType { get; set; }
     }
-
-    //[AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-    //public class MessageHandlerEntityStoreAttribute : Attribute { }
 
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
     public class MessageHandlerEntityDeleteFlagAttribute : Attribute { }

@@ -22,11 +22,11 @@ using System;
 
 namespace AI4E
 {
-    public interface ICommandAccessor<TId>
+    public interface IMessageAccessor<TId>
         where TId : struct, IEquatable<TId>
     {
-        TId GetEntityId<TCommand>(TCommand command);
+        bool TryGetEntityId<TMessage>(TMessage message, out TId id);
 
-        Guid GetConcurrencyToken<TCommand>(TCommand command);
+        bool TryGetConcurrencyToken<TMessage>(TMessage message, out Guid concurrencyToken);
     }
 }

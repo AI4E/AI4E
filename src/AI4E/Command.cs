@@ -20,28 +20,22 @@
 
 using System;
 
-namespace AI4E.Domain.Services
+namespace AI4E
 {
-    public sealed class CommandAccessor : ICommandAccessor<Guid>
+    public abstract class Command<TId>
     {
-        public Guid GetEntityId<TCommand>(TCommand command)
+        protected Command(TId id, Guid concurrencyToken)
         {
-            if (command is Command knownCommand)
-            {
-                return knownCommand.Id;
-            }
-
-            return ((dynamic)command).Id;
+            Id = id;
+            ConcurrencyToken = concurrencyToken;
         }
 
-        public Guid GetConcurrencyToken<TCommand>(TCommand command)
-        {
-            if (command is Command knownCommand)
-            {
-                return knownCommand.ConcurrencyToken;
-            }
+        public TId Id { get; }
+        public Guid ConcurrencyToken { get; }
+    }
 
-            return ((dynamic)command).ConcurrencyToken;
-        }
+    public abstract class Command : Command<Guid>
+    {
+        protected Command(Guid id, Guid concurrencyToken) : base(id, concurrencyToken) { }
     }
 }
