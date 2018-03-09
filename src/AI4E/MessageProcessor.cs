@@ -26,7 +26,7 @@ namespace AI4E
     public abstract class MessageProcessor : IMessageProcessor
     {
         [MessageProcessorContext]
-        protected internal IMessageProcessorContext Context { get; internal set; }
+        public IMessageProcessorContext Context { get; internal set; }
 
         public virtual Task<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, Task<IDispatchResult>> next)
         {

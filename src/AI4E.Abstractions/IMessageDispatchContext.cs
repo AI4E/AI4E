@@ -28,6 +28,7 @@ namespace AI4E
         IServiceProvider DispatchServices { get; }
         DispatchValueDictionary DispatchValues { get; }
     }
+
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
     public sealed class MessageDispatchContextAttribute : Attribute { }
 }
