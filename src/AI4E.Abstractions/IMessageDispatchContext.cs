@@ -18,19 +18,16 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+
 using System;
 
 namespace AI4E
 {
-    public sealed class MessageDispatchContext
+    public interface IMessageDispatchContext
     {
-        public MessageDispatchContext() { }
-
-        public IServiceProvider DispatchServices { get; internal set; }
-
-        public DispatchValueDictionary DispatchValues { get; internal set; }
+        IServiceProvider DispatchServices { get; }
+        DispatchValueDictionary DispatchValues { get; }
     }
-
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
     public sealed class MessageDispatchContextAttribute : Attribute { }
 }

@@ -19,9 +19,11 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
@@ -33,6 +35,9 @@ namespace AI4E.Internal
 {
     internal sealed class MessageHandlerInvoker<TMessage> : IMessageHandler<TMessage>
     {
+        private static readonly ConcurrentDictionary<Type, HandlerCacheEntry> _handlerTypeCache = new ConcurrentDictionary<Type, HandlerCacheEntry>();
+        private static readonly ConcurrentDictionary<Type, ProcessorCacheEntry> _processorTypeCache = new ConcurrentDictionary<Type, ProcessorCacheEntry>();
+
         private readonly object _handler;
         private readonly MessageHandlerActionDescriptor _memberDescriptor;
         private readonly ImmutableArray<IContextualProvider<IMessageProcessor>> _processors;
@@ -58,9 +63,9 @@ namespace AI4E.Internal
         public Task<IDispatchResult> HandleAsync(TMessage message, DispatchValueDictionary values)
         {
             return _processors.Reverse()
-                                     .Aggregate(seed: (Func<TMessage, Task<IDispatchResult>>)(m => InternalHandleAsync(m, values)),
-                                                func: (c, n) => WithNextProvider(n, c, values))
-                                     .Invoke(message);
+                              .Aggregate(seed: (Func<TMessage, Task<IDispatchResult>>)(m => InternalHandleAsync(m, values)),
+                                         func: (c, n) => WithNextProvider(n, c, values))
+                              .Invoke(message);
         }
 
         private Func<TMessage, Task<IDispatchResult>> WithNextProvider(IContextualProvider<IMessageProcessor> provider, Func<TMessage, Task<IDispatchResult>> next, DispatchValueDictionary values)
@@ -69,48 +74,35 @@ namespace AI4E.Internal
             {
                 var messageProcessor = provider.ProvideInstance(_serviceProvider);
                 Debug.Assert(messageProcessor != null);
+                var cacheEntry = _processorTypeCache.GetOrAdd(messageProcessor.GetType(), processorType => new ProcessorCacheEntry(processorType));
 
-                var props = messageProcessor.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                var prop = props.FirstOrDefault(p => p.IsDefined<MessageProcessorContextAttribute>() &&
-                                                     p.PropertyType == typeof(object) || p.PropertyType == typeof(IMessageProcessorContext) &&
-                                                     p.GetIndexParameters().Length == 0 &&
-                                                     p.CanWrite);
-
-                if (prop != null)
+                if (cacheEntry.CanSetContext)
                 {
                     IMessageProcessorContext messageProcessorContext = new MessageProcessorContext(typeof(TMessage), _handler, _memberDescriptor, values);
 
-                    prop.SetValue(messageProcessor, messageProcessorContext);
+                    cacheEntry.SetContext(messageProcessor, messageProcessorContext);
                 }
-
+                
                 return (await messageProcessor.ProcessAsync(message, next)) ?? new SuccessDispatchResult();
             };
         }
 
         private async Task<IDispatchResult> InternalHandleAsync(TMessage message, DispatchValueDictionary values)
         {
-            var contextProperty = _handler.GetType().GetProperties().FirstOrDefault(p => p.PropertyType == typeof(MessageDispatchContext) &&
-                                                                                         p.CanWrite &&
-                                                                                         p.CanRead &&
-                                                                                         p.GetIndexParameters().Length == 0 &&
-                                                                                         p.IsDefined<MessageDispatchContextAttribute>());
+            var cacheEntry = _handlerTypeCache.GetOrAdd(typeof(TMessage), messageType => new HandlerCacheEntry(messageType));
 
-            if (contextProperty != null)
+            if (cacheEntry.CanSetContext)
             {
-                var context = new MessageDispatchContext { DispatchServices = _serviceProvider, DispatchValues = values };
+                var context = new MessageDispatchContext(_serviceProvider, values);
 
-                contextProperty.SetValue(_handler, context);
+                cacheEntry.SetContext(_handler, context);
             }
 
-            var dispatcherProperty = _handler.GetType().GetProperties().FirstOrDefault(p => p.PropertyType == typeof(IMessageDispatcher) &&
-                                                                                            p.CanWrite &&
-                                                                                            p.CanRead &&
-                                                                                            p.GetIndexParameters().Length == 0 &&
-                                                                                            p.IsDefined<MessageDispatcherAttribute>());
-
-            if (dispatcherProperty != null)
+            if (cacheEntry.CanSetDispatcher)
             {
-                dispatcherProperty.SetValue(_handler, _serviceProvider.GetRequiredService<IMessageDispatcher>());
+                var dispatcher = _serviceProvider.GetRequiredService<IMessageDispatcher>();
+
+                cacheEntry.SetDispatcher(_handler, dispatcher);
             }
 
             var member = _memberDescriptor.Member;
@@ -202,24 +194,154 @@ namespace AI4E.Internal
             return (IDispatchResult)Activator.CreateInstance(typeof(SuccessDispatchResult<>).MakeGenericType(returnType), result);
         }
 
+        private readonly struct HandlerCacheEntry
+        {
+            private readonly Action<object, IMessageDispatchContext> _contextSetter;
+            private readonly Action<object, IMessageDispatcher> _dispatcherSetter;
+
+            public HandlerCacheEntry(Type handlerType) : this()
+            {
+                if (handlerType == null)
+                    throw new ArgumentNullException(nameof(handlerType));
+
+                var handlerParam = Expression.Parameter(typeof(object), "handler");
+                var handlerConvert = Expression.Convert(handlerParam, handlerType);
+                var contextProperty = handlerType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                                                 .FirstOrDefault(p => p.PropertyType.IsAssignableFrom(typeof(IMessageDispatchContext)) &&
+                                                                      p.CanWrite &&
+                                                                      p.GetIndexParameters().Length == 0 &&
+                                                                      p.IsDefined<MessageDispatchContextAttribute>());
+                var dispatcherProperty = handlerType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                                                    .FirstOrDefault(p => p.PropertyType.IsAssignableFrom(typeof(IMessageDispatcher)) &&
+                                                                         p.CanWrite &&
+                                                                         p.GetIndexParameters().Length == 0 &&
+                                                                         p.IsDefined<MessageDispatcherAttribute>());
+                if (contextProperty != null)
+                {
+                    var contextParam = Expression.Parameter(typeof(IMessageDispatchContext), "dispatchContext");
+                    var propertyAccess = Expression.Property(handlerConvert, contextProperty);
+                    var propertyAssign = Expression.Assign(propertyAccess, contextParam);
+                    var lambda = Expression.Lambda<Action<object, IMessageDispatchContext>>(propertyAssign, handlerParam, contextParam);
+                    _contextSetter = lambda.Compile();
+                }
+
+                if (dispatcherProperty != null)
+                {
+                    var dispatcherParam = Expression.Parameter(typeof(IMessageDispatcher), "messageDispatcher");
+                    var propertyAccess = Expression.Property(handlerConvert, dispatcherProperty);
+                    var propertyAssign = Expression.Assign(propertyAccess, dispatcherParam);
+                    var lambda = Expression.Lambda<Action<object, IMessageDispatcher>>(propertyAssign, handlerParam, dispatcherParam);
+                    _dispatcherSetter = lambda.Compile();
+                }
+            }
+
+            public bool CanSetContext => _contextSetter != null;
+            public bool CanSetDispatcher => _dispatcherSetter != null;
+
+            public void SetContext(object handler, IMessageDispatchContext dispatchContext)
+            {
+                if (handler == null)
+                    throw new ArgumentNullException(nameof(handler));
+
+                if (_contextSetter == null)
+                    throw new InvalidOperationException();
+
+                _contextSetter(handler, dispatchContext);
+            }
+
+            public void SetDispatcher(object handler, IMessageDispatcher messageDispatcher)
+            {
+                if (handler == null)
+                    throw new ArgumentNullException(nameof(handler));
+
+                if (_contextSetter == null)
+                    throw new InvalidOperationException();
+
+                _dispatcherSetter(handler, messageDispatcher);
+            }
+        }
+
+        private sealed class MessageDispatchContext : IMessageDispatchContext
+        {
+            public MessageDispatchContext(IServiceProvider dispatchServices, DispatchValueDictionary dispatchValues)
+            {
+                if (dispatchServices == null)
+                    throw new ArgumentNullException(nameof(dispatchServices));
+
+                if (dispatchValues == null)
+                    throw new ArgumentNullException(nameof(dispatchValues));
+
+                DispatchServices = dispatchServices;
+                DispatchValues = dispatchValues;
+            }
+
+            public IServiceProvider DispatchServices { get; }
+
+            public DispatchValueDictionary DispatchValues { get; }
+        }
+
+        private readonly struct ProcessorCacheEntry
+        {
+            private readonly Action<object, IMessageProcessorContext> _contextSetter;
+
+            public ProcessorCacheEntry(Type processorType) : this()
+            {
+                if (processorType == null)
+                    throw new ArgumentNullException(nameof(processorType));
+
+                var contextProperty = processorType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                                                   .FirstOrDefault(p => p.PropertyType.IsAssignableFrom(typeof(IMessageProcessorContext)) &&
+                                                                        p.CanWrite &&
+                                                                        p.GetIndexParameters().Length == 0 &&
+                                                                        p.IsDefined<MessageProcessorContextAttribute>());
+                if (contextProperty != null)
+                {
+                    var processorParam = Expression.Parameter(typeof(object), "processor");
+                    var processorConvert = Expression.Convert(processorParam, processorType);
+                    var contextParam = Expression.Parameter(typeof(IMessageProcessorContext), "processorContext");
+                    var propertyAccess = Expression.Property(processorConvert, contextProperty);
+                    var propertyAssign = Expression.Assign(propertyAccess, contextParam);
+                    var lambda = Expression.Lambda<Action<object, IMessageProcessorContext>>(propertyAssign, processorParam, contextParam);
+                    _contextSetter = lambda.Compile();
+                }
+            }
+
+            public bool CanSetContext => _contextSetter != null;
+
+            public void SetContext(object processor, IMessageProcessorContext processorContext)
+            {
+                if (processor == null)
+                    throw new ArgumentNullException(nameof(processor));
+
+                if (_contextSetter == null)
+                    throw new InvalidOperationException();
+
+                _contextSetter(processor, processorContext);
+            }
+        }
+
         private sealed class MessageProcessorContext : IMessageProcessorContext
         {
             public MessageProcessorContext(Type messageType, object messageHandler, MessageHandlerActionDescriptor messageHandlerAction, DispatchValueDictionary dispatchValues)
             {
-                Debug.Assert(dispatchValues != null);
-                Debug.Assert(messageHandler != null);
-                Debug.Assert(messageType != null);
+                if (messageHandler == null)
+                    throw new ArgumentNullException(nameof(messageHandler));
 
-                MessageType = messageType;
+                if (messageType == null)
+                    throw new ArgumentNullException(nameof(messageType));
+
+                if (dispatchValues == null)
+                    throw new ArgumentNullException(nameof(dispatchValues));
+
                 MessageHandler = messageHandler;
                 MessageHandlerAction = messageHandlerAction;
+                MessageType = messageType;
                 DispatchValues = dispatchValues;
             }
 
             public object MessageHandler { get; }
             public MessageHandlerActionDescriptor MessageHandlerAction { get; }
             public Type MessageType { get; }
-
             public DispatchValueDictionary DispatchValues { get; }
         }
     }

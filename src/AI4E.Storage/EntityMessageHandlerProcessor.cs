@@ -21,6 +21,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
@@ -141,26 +142,39 @@ namespace AI4E
 
         private readonly struct HandlerCacheEntry
         {
-            private readonly PropertyInfo _entityProperty;
+            private readonly Action<object, TEntityBase> _entitySetter;
+            private readonly Func<object, TEntityBase> _entityGetter;
+            private readonly Func<object, bool> _deleteFlagAccessor;
             private readonly Type _entityType;
 
-            private readonly PropertyInfo _deleteFlagProperty;
-
-            public HandlerCacheEntry(Type handlerType)
+            public HandlerCacheEntry(Type handlerType) : this()
             {
-                _entityProperty = handlerType.GetProperties().SingleOrDefault(p => p.IsDefined<MessageHandlerEntityAttribute>());
+                var entityProperty = handlerType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                                                .FirstOrDefault(p => typeof(TEntityBase).IsAssignableFrom(p.PropertyType) &&
+                                                                     p.CanRead &&
+                                                                     p.CanWrite &&
+                                                                     p.GetIndexParameters().Length == 0 &&
+                                                                     p.IsDefined<MessageHandlerEntityAttribute>());
 
-                if (_entityProperty == null ||
-                    !_entityProperty.CanWrite ||
-                    !_entityProperty.CanRead ||
-                    !typeof(TEntityBase).IsAssignableFrom(_entityProperty.PropertyType) ||
-                    _entityProperty.GetIndexParameters().Length > 0)
+                if (entityProperty == null)
                 {
-                    _entityProperty = null;
+                    return;
                 }
 
-                _entityType = _entityProperty.PropertyType;
-                var customType = _entityProperty.GetCustomAttribute<MessageHandlerEntityAttribute>().EntityType;
+                var handlerParam = Expression.Parameter(typeof(object), "handler");
+                var entityParam = Expression.Parameter(typeof(TEntityBase), "entity");
+                var handlerConvert = Expression.Convert(handlerParam, handlerType);
+                var entityConvert = Expression.Convert(entityParam, entityProperty.DeclaringType);
+                var propertyAccess = Expression.Property(handlerConvert, entityProperty);
+                var propertyAssign = Expression.Assign(propertyAccess, entityConvert);
+                var getterLambda = Expression.Lambda<Func<object, TEntityBase>>(propertyAccess, handlerParam);
+                var setterLambda = Expression.Lambda<Action<object, TEntityBase>>(propertyAssign, handlerParam, entityParam);
+
+                _entityGetter = getterLambda.Compile();
+                _entitySetter = setterLambda.Compile();
+
+                _entityType = entityProperty.PropertyType;
+                var customType = entityProperty.GetCustomAttribute<MessageHandlerEntityAttribute>().EntityType;
 
                 if (customType != null &&
                     _entityType.IsAssignableFrom(customType)) // If the types do not match, we just ignore the custom type.
@@ -168,30 +182,33 @@ namespace AI4E
                     _entityType = customType;
                 }
 
-                _deleteFlagProperty = handlerType.GetProperties().SingleOrDefault(p => p.IsDefined<MessageHandlerEntityDeleteFlagAttribute>());
+                var deleteFlagProperty = handlerType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                                                    .SingleOrDefault(p => p.PropertyType == typeof(bool) &&
+                                                                          p.CanRead &&
+                                                                          p.GetIndexParameters().Length == 0 &&
+                                                                          p.IsDefined<MessageHandlerEntityDeleteFlagAttribute>());
 
-                if (_deleteFlagProperty == null ||
-                    !_deleteFlagProperty.CanRead ||
-                    _deleteFlagProperty.PropertyType != typeof(bool) ||
-                    _deleteFlagProperty.GetIndexParameters().Length > 0)
+                if (deleteFlagProperty != null)
                 {
-                    _deleteFlagProperty = null;
+                    var deleteFlagPropertyAccess = Expression.Property(handlerConvert, deleteFlagProperty);
+                    var deleteFlagLambda = Expression.Lambda<Func<object, bool>>(deleteFlagPropertyAccess, handlerParam);
+
+                    _deleteFlagAccessor = deleteFlagLambda.Compile();
                 }
             }
 
-            public bool IsEntityMessageHandler => _entityProperty != null;
+            public bool IsEntityMessageHandler => _entityGetter != null && _entitySetter != null;
             public Type EntityType => _entityType;
-            public PropertyInfo EntityProperty => _entityProperty;
 
             public void SetHandlerEntity(object handler, TEntityBase entity)
             {
                 if (handler == null)
                     throw new ArgumentNullException(nameof(handler));
 
-                if (_entityProperty == null)
+                if (_entitySetter == null)
                     throw new InvalidOperationException();
 
-                _entityProperty.SetValue(handler, entity);
+                _entitySetter(handler, entity);
             }
 
             public TEntityBase GetHandlerEntity(object handler)
@@ -199,10 +216,10 @@ namespace AI4E
                 if (handler == null)
                     throw new ArgumentNullException(nameof(handler));
 
-                if (_entityProperty == null)
+                if (_entityGetter == null)
                     throw new InvalidOperationException();
 
-                return (TEntityBase)_entityProperty.GetValue(handler);
+                return _entityGetter(handler);
             }
 
             public bool IsMarkedAsDeleted(object handler)
@@ -210,10 +227,10 @@ namespace AI4E
                 if (handler == null)
                     throw new ArgumentNullException(nameof(handler));
 
-                if (_deleteFlagProperty == null)
+                if (_deleteFlagAccessor == null)
                     return false;
 
-                return (bool)_deleteFlagProperty.GetValue(handler);
+                return _deleteFlagAccessor(handler);
             }
         }
     }

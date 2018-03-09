@@ -28,7 +28,7 @@ namespace AI4E
     public abstract class MessageHandler
     {
         [MessageDispatchContext]
-        public MessageDispatchContext Context { get; internal set; }
+        public IMessageDispatchContext Context { get; internal set; }
 
         [MessageDispatcher]
         public IMessageDispatcher MessageDispatcher { get; internal set; }
