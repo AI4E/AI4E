@@ -56,7 +56,7 @@ namespace AI4E.Storage
     {
         #region Fields
 
-        private readonly IEventStore<string, TId> _streamStore;
+        private readonly IStreamStore<string, TId> _streamStore;
         private readonly IEntityAccessor<TId, TEventBase, TEntityBase> _entityAccessor;
         private readonly JsonDiffPatch _differ;
         private readonly JsonSerializer _jsonSerializer;
@@ -67,7 +67,7 @@ namespace AI4E.Storage
 
         #region C'tor
 
-        public EntityStore(IEventStore<string, TId> streamStore,
+        public EntityStore(IStreamStore<string, TId> streamStore,
                            IEntityAccessor<TId, TEventBase, TEntityBase> entityAccessor,
                            ISerializerSettingsResolver<TId, TEventBase, TEntityBase> serializerSettingsResolver)
         {

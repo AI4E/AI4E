@@ -1,10 +1,10 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IEventStore.cs 
- * Types:           (1) AI4E.Storage.IEventStore
+ * Filename:        IStreamStore.cs 
+ * Types:           AI4E.Storage.IStreamStore
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   08.01.2018 
+ * Last modified:   09.03.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -68,7 +68,7 @@ namespace AI4E.Storage
     /// <remarks>
     /// Instances of this class must be designed to be multi-thread safe such that they can be shared between threads.
     /// </remarks>
-    public interface IEventStore<TBucket, TStreamId> : IDisposable
+    public interface IStreamStore<TBucket, TStreamId> : IDisposable
         where TBucket : IEquatable<TBucket>
         where TStreamId : IEquatable<TStreamId>
     {
@@ -84,14 +84,14 @@ namespace AI4E.Storage
         /// <exception cref="StorageException" />
         /// <exception cref="StorageUnavailableException" />
         /// <exception cref="StreamNotFoundException" />
-        Task<IEventStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, CancellationToken cancellation = default);
+        Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, CancellationToken cancellation = default);
 
-        Task<IEventStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, long revision, CancellationToken cancellation = default);
+        Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, long revision, CancellationToken cancellation = default);
 
-        Task<IEnumerable<IEventStream<TBucket, TStreamId>>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation);
+        Task<IEnumerable<IStream<TBucket, TStreamId>>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation);
 
-        Task<IEnumerable<IEventStream<TBucket, TStreamId>>> OpenAllAsync(CancellationToken cancellation);
+        Task<IEnumerable<IStream<TBucket, TStreamId>>> OpenAllAsync(CancellationToken cancellation);
 
-        Task<IEnumerable<IEventStream<TBucket, TStreamId>>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation);
+        Task<IEnumerable<IStream<TBucket, TStreamId>>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation);
     }
 }

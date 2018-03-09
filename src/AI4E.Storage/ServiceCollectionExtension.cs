@@ -46,7 +46,7 @@ namespace AI4E.Storage
 
             services.AddOptions();
             services.AddSingleton<ISerializer>(new Serialization.JsonSerializer());
-            services.AddTransient<IEventStore<string, TId>, EventStore<string, TId>>();
+            services.AddTransient<IStreamStore<string, TId>, StreamStore<string, TId>>();
             services.AddSingleton(new JsonSerializerSettings
             {
                 TypeNameHandling = TypeNameHandling.Auto,

@@ -1,10 +1,10 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IEventStream.cs 
- * Types:           (1) AI4E.Storage.IEventStream
+ * Filename:        IStream.cs 
+ * Types:           AI4E.Storage.IStream
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   08.01.2018 
+ * Last modified:   09.03.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -68,7 +68,7 @@ namespace AI4E.Storage
     /// <remarks>
     /// Instances of this class are single threaded and should not be shared between threads.
     /// </remarks>
-    public interface IEventStream<TBucket, TStreamId>
+    public interface IStream<TBucket, TStreamId>
         where TBucket : IEquatable<TBucket>
         where TStreamId : IEquatable<TStreamId>
     {

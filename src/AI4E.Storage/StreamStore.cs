@@ -1,9 +1,9 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        EventStore.cs 
- * Types:           (1) AI4E.Storage.EventStore'2
- *                  (2) AI4E.Storage.EventStore'2.EventStream
- *                  (3) AI4E.Storage.EventStore'2.Snapshot
+ * Filename:        StreamStore.cs 
+ * Types:           (1) AI4E.Storage.StreamStore'2
+ *                  (2) AI4E.Storage.StreamStore'2.Stream
+ *                  (3) AI4E.Storage.StreamStore'2.Snapshot
  * Version:         1.0
  * Author:          Andreas Trütschel
  * Last modified:   16.01.2018 
@@ -68,7 +68,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AI4E.Storage
 {
-    public sealed partial class EventStore<TBucket, TStreamId> : IEventStore<TBucket, TStreamId> // TODO: Rename to StreamStore
+    public sealed partial class StreamStore<TBucket, TStreamId> : IStreamStore<TBucket, TStreamId>
         where TBucket : IEquatable<TBucket>
         where TStreamId : IEquatable<TStreamId>
     {
@@ -78,14 +78,14 @@ namespace AI4E.Storage
         private readonly IStreamPersistence<TBucket, TStreamId> _persistence;
         private readonly ICommitDispatcher<TBucket, TStreamId> _commitDispatcher;
         private readonly IEnumerable<IStorageExtension<TBucket, TStreamId>> _extensions;
-        private readonly Dictionary<(TBucket bucketId, TStreamId streamId, long revision), EventStream> _streams;
+        private readonly Dictionary<(TBucket bucketId, TStreamId streamId, long revision), Stream> _streams;
         private bool _isDisposed;
 
         #endregion
 
         #region C'tor
 
-        public EventStore(IStreamPersistence<TBucket, TStreamId> persistence,
+        public StreamStore(IStreamPersistence<TBucket, TStreamId> persistence,
                           ICommitDispatcher<TBucket, TStreamId> commitDispatcher,
                           IEnumerable<IStorageExtension<TBucket, TStreamId>> extensions)
         {
@@ -101,13 +101,13 @@ namespace AI4E.Storage
             _persistence = persistence;
             _commitDispatcher = commitDispatcher;
             _extensions = extensions;
-            _streams = new Dictionary<(TBucket bucketId, TStreamId streamId, long revision), EventStream>();
+            _streams = new Dictionary<(TBucket bucketId, TStreamId streamId, long revision), Stream>();
         }
 
-        public EventStore(IStreamPersistence<TBucket, TStreamId> persistence,
+        public StreamStore(IStreamPersistence<TBucket, TStreamId> persistence,
                           ICommitDispatcher<TBucket, TStreamId> commitDispatcher,
                           IEnumerable<IStorageExtension<TBucket, TStreamId>> extensions,
-                          ILogger<EventStore<TBucket, TStreamId>> logger)
+                          ILogger<StreamStore<TBucket, TStreamId>> logger)
             : this(persistence, commitDispatcher, extensions)
         {
             _logger = logger;
@@ -115,18 +115,18 @@ namespace AI4E.Storage
 
         #endregion
 
-        #region IEventStore
+        #region IStreamStore
 
-        public Task<IEventStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, CancellationToken cancellation)
+        public Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, CancellationToken cancellation)
         {
             return OpenStreamAsync(bucketId, streamId, revision: default, cancellation);
         }
 
-        public async Task<IEventStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, long revision, CancellationToken cancellation)
+        public async Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, long revision, CancellationToken cancellation)
         {
             if (!_streams.TryGetValue((bucketId, streamId, revision), out var stream))
             {
-                stream = await EventStream.OpenAsync(this, bucketId, streamId, revision, _logger, cancellation);
+                stream = await Stream.OpenAsync(this, bucketId, streamId, revision, _logger, cancellation);
 
                 _streams.Add((bucketId, streamId, revision), stream);
             }
@@ -134,17 +134,17 @@ namespace AI4E.Storage
             return stream;
         }
 
-        public async Task<IEnumerable<IEventStream<TBucket, TStreamId>>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation)
+        public async Task<IEnumerable<IStream<TBucket, TStreamId>>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation)
         {
             return await Task.WhenAll((await _persistence.GetStreamHeadsAsync(bucketId, cancellation)).Select(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)));
         }
 
-        public async Task<IEnumerable<IEventStream<TBucket, TStreamId>>> OpenAllAsync(CancellationToken cancellation)
+        public async Task<IEnumerable<IStream<TBucket, TStreamId>>> OpenAllAsync(CancellationToken cancellation)
         {
             return await Task.WhenAll((await _persistence.GetStreamHeadsAsync(cancellation)).Select(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)));
         }
 
-        public async Task<IEnumerable<IEventStream<TBucket, TStreamId>>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation)
+        public async Task<IEnumerable<IStream<TBucket, TStreamId>>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation)
         {
             var heads = await _persistence.GetStreamsToSnapshotAsync(maxThreshold, cancellation);
 
@@ -176,13 +176,13 @@ namespace AI4E.Storage
 
         #endregion
 
-        private sealed class EventStream : IEventStream<TBucket, TStreamId>
+        private sealed class Stream : IStream<TBucket, TStreamId>
         {
             #region Fields
 
             private ISnapshot<TBucket, TStreamId> _snapshot;
             private readonly List<ICommit<TBucket, TStreamId>> _commits = new List<ICommit<TBucket, TStreamId>>();
-            private readonly EventStore<TBucket, TStreamId> _eventStore;
+            private readonly StreamStore<TBucket, TStreamId> _streamStore;
             private readonly ILogger _logger;
             private readonly bool _isFixedRevision = false;
 
@@ -190,7 +190,7 @@ namespace AI4E.Storage
 
             #region C'tor
 
-            private EventStream(EventStore<TBucket, TStreamId> eventStore,
+            private Stream(StreamStore<TBucket, TStreamId> streamStore,
                                TBucket bucketId,
                                TStreamId streamId,
                                ISnapshot<TBucket, TStreamId> snapshot,
@@ -198,13 +198,13 @@ namespace AI4E.Storage
                                bool isFixedRevision,
                                ILogger logger)
             {
-                if (eventStore == null)
-                    throw new ArgumentNullException(nameof(eventStore));
+                if (streamStore == null)
+                    throw new ArgumentNullException(nameof(streamStore));
 
                 if (commits == null)
                     throw new ArgumentNullException(nameof(commits));
 
-                _eventStore = eventStore;
+                _streamStore = streamStore;
                 BucketId = bucketId;
                 StreamId = streamId;
                 _snapshot = snapshot;
@@ -215,25 +215,25 @@ namespace AI4E.Storage
 
             #endregion
 
-            public static async Task<EventStream> OpenAsync(EventStore<TBucket, TStreamId> eventStore,
+            public static async Task<Stream> OpenAsync(StreamStore<TBucket, TStreamId> streamStore,
                                                             TBucket bucketId,
                                                             TStreamId streamId,
                                                             long revision,
                                                             ILogger logger,
                                                             CancellationToken cancellation)
             {
-                if (eventStore == null)
-                    throw new ArgumentNullException(nameof(eventStore));
+                if (streamStore == null)
+                    throw new ArgumentNullException(nameof(streamStore));
 
                 if (revision < 0)
                     throw new ArgumentOutOfRangeException(nameof(revision));
 
-                var snapshot = await eventStore._persistence.GetSnapshotAsync(bucketId, streamId, revision, cancellation);
-                var commits = await eventStore._persistence.GetCommitsAsync(bucketId, streamId, (snapshot?.StreamRevision + 1) ?? default, revision, cancellation)
+                var snapshot = await streamStore._persistence.GetSnapshotAsync(bucketId, streamId, revision, cancellation);
+                var commits = await streamStore._persistence.GetCommitsAsync(bucketId, streamId, (snapshot?.StreamRevision + 1) ?? default, revision, cancellation)
                     ?? Enumerable.Empty<ICommit<TBucket, TStreamId>>();
                 var isFixedRevision = revision != default;
 
-                var result = new EventStream(eventStore, bucketId, streamId, snapshot, commits, isFixedRevision, logger);
+                var result = new Stream(streamStore, bucketId, streamId, snapshot, commits, isFixedRevision, logger);
 
                 if (isFixedRevision && result.StreamRevision != revision)
                 {
@@ -289,7 +289,7 @@ namespace AI4E.Storage
 
                 var snapshot = new Snapshot(BucketId, StreamId, StreamRevision, body, Headers, ConcurrencyToken);
 
-                await _eventStore._persistence.AddSnapshotAsync(snapshot, cancellation);
+                await _streamStore._persistence.AddSnapshotAsync(snapshot, cancellation);
 
                 _snapshot = snapshot;
                 _commits.Clear();
@@ -331,7 +331,7 @@ namespace AI4E.Storage
                             return Guid.Empty;
                         }
 
-                        await _eventStore._commitDispatcher.DispatchAsync(commit);
+                        await _streamStore._commitDispatcher.DispatchAsync(commit);
 
                         return newToken;
                     }
@@ -351,7 +351,7 @@ namespace AI4E.Storage
 
             public async Task<bool> UpdateAsync(CancellationToken cancellation)
             {
-                var commits = await _eventStore._persistence.GetCommitsAsync(BucketId, StreamId, StreamRevision + 1, cancellation);
+                var commits = await _streamStore._persistence.GetCommitsAsync(BucketId, StreamId, StreamRevision + 1, cancellation);
 
                 if (commits.Any())
                 {
@@ -387,7 +387,7 @@ namespace AI4E.Storage
                 foreach (var commit in commits)
                 {
                     var filtered = commit;
-                    foreach (var extension in _eventStore._extensions.Where(x => (filtered = x.Select(filtered)) == null))
+                    foreach (var extension in _streamStore._extensions.Where(x => (filtered = x.Select(filtered)) == null))
                     {
                         _logger?.LogInformation(Resources.PipelineHookSkippedCommit, extension.GetType(), commit.ConcurrencyToken);
                         break;
@@ -412,7 +412,7 @@ namespace AI4E.Storage
             {
                 var attempt = BuildCommitAttempt(newConcurrencyToken, events, body, headers);
 
-                foreach (var extension in _eventStore._extensions)
+                foreach (var extension in _streamStore._extensions)
                 {
                     _logger?.LogDebug(Resources.InvokingPreCommitHooks, attempt.ConcurrencyToken, extension.GetType());
                     if (extension.PreCommit(attempt))
@@ -425,11 +425,11 @@ namespace AI4E.Storage
                 }
 
                 _logger?.LogDebug(Resources.PersistingCommit, newConcurrencyToken, StreamId);
-                var commit = await _eventStore._persistence.CommitAsync(attempt, cancellation);
+                var commit = await _streamStore._persistence.CommitAsync(attempt, cancellation);
 
                 try
                 {
-                    foreach (var extension in _eventStore._extensions)
+                    foreach (var extension in _streamStore._extensions)
                     {
                         _logger?.LogDebug(Resources.InvokingPostCommitPipelineHooks, attempt.ConcurrencyToken, extension.GetType());
                         extension.PostCommit(commit);
