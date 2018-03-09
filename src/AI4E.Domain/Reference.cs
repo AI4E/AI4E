@@ -256,7 +256,7 @@ namespace AI4E.Domain
 
         public override int GetHashCode()
         {
-            return _typeHashCode ^ Id.GetHashCode();
+            return _typeHashCode ^ Id.GetHashCode() ^ Revision.GetHashCode();
         }
 
         public override string ToString()
