@@ -29,7 +29,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E
 {
-    public sealed class EntityCommandProcessor<TId, TEventBase, TEntityBase> : MessageProcessor
+    public sealed class EntityMessageHandlerProcessor<TId, TEventBase, TEntityBase> : MessageProcessor
         where TId : struct, IEquatable<TId>
         where TEventBase : class
         where TEntityBase : class
@@ -38,7 +38,7 @@ namespace AI4E
         private readonly IEntityStore<TId, TEventBase, TEntityBase> _entityStore;
         private readonly IEntityAccessor<TId, TEventBase, TEntityBase> _entityAccessor;
 
-        public EntityCommandProcessor(IServiceProvider serviceProvider, IEntityStore<TId, TEventBase, TEntityBase> entityStore, IEntityAccessor<TId, TEventBase, TEntityBase> entityAccessor)
+        public EntityMessageHandlerProcessor(IServiceProvider serviceProvider, IEntityStore<TId, TEventBase, TEntityBase> entityStore, IEntityAccessor<TId, TEventBase, TEntityBase> entityAccessor)
         {
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
@@ -57,7 +57,7 @@ namespace AI4E
         public async override Task<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, Task<IDispatchResult>> next)
         {
             var handler = Context.MessageHandler;
-            var entityProperty = handler.GetType().GetProperties().SingleOrDefault(p => p.IsDefined<CommandHandlerEntityAttribute>());
+            var entityProperty = handler.GetType().GetProperties().SingleOrDefault(p => p.IsDefined<MessageHandlerEntityAttribute>());
 
             if (entityProperty == null ||
                 !entityProperty.CanWrite ||
@@ -69,7 +69,7 @@ namespace AI4E
             }
 
             var entityType = entityProperty.PropertyType;
-            var customType = entityProperty.GetCustomAttribute<CommandHandlerEntityAttribute>().EntityType;
+            var customType = entityProperty.GetCustomAttribute<MessageHandlerEntityAttribute>().EntityType;
 
             if (customType != null)
             {
@@ -80,16 +80,16 @@ namespace AI4E
                 entityType = customType;
             }
 
-            var entityStoreProperty = handler.GetType().GetProperties().SingleOrDefault(p => p.IsDefined<CommandHandlerEntityStoreAttribute>());
+            //var entityStoreProperty = handler.GetType().GetProperties().SingleOrDefault(p => p.IsDefined<MessageHandlerEntityStoreAttribute>());
 
-            if (entityStoreProperty != null &&
-                entityStoreProperty.CanRead &&
-                entityStoreProperty.CanWrite &&
-                entityStoreProperty.GetIndexParameters().Length == 0 &&
-                entityStoreProperty.PropertyType.IsAssignableFrom(_entityStore.GetType()))
-            {
-                entityStoreProperty.SetValue(handler, _entityStore);
-            }
+            //if (entityStoreProperty != null &&
+            //    entityStoreProperty.CanRead &&
+            //    entityStoreProperty.CanWrite &&
+            //    entityStoreProperty.GetIndexParameters().Length == 0 &&
+            //    entityStoreProperty.PropertyType.IsAssignableFrom(_entityStore.GetType()))
+            //{
+            //    entityStoreProperty.SetValue(handler, _entityStore);
+            //}
 
             var commandAccessor = _serviceProvider.GetRequiredService<ICommandAccessor<TId>>();
             var id = commandAccessor.GetEntityId(message);
@@ -119,7 +119,7 @@ namespace AI4E
                 return dispatchResult;
             }
 
-            var deleteFlagProperty = handler.GetType().GetProperties().SingleOrDefault(p => p.IsDefined<CommandHandlerEntityDeleteFlagAttribute>());
+            var deleteFlagProperty = handler.GetType().GetProperties().SingleOrDefault(p => p.IsDefined<MessageHandlerEntityDeleteFlagAttribute>());
 
             var markedAsDeleted = false;
 

@@ -19,24 +19,24 @@
  */
 
 using System;
-using AI4E.Storage;
 
 namespace AI4E
 {
-    public abstract class CommandHandler<TId, TEventBase, TEntityBase, TEntity> : MessageHandler
-        where TId : struct, IEquatable<TId>
-        where TEventBase : class
-        where TEntityBase : class
-        where TEntity : class, TEntityBase
+    [Obsolete("Use MessageHandler<TEntity>")]
+    public abstract class CommandHandler<TEntity> : MessageHandler<TEntity>
+        where TEntity : class { }
+
+    public abstract class MessageHandler<TEntity> : MessageHandler
+        where TEntity : class
     {
-        [CommandHandlerEntityDeleteFlag]
+        [MessageHandlerEntityDeleteFlag]
         public bool IsMarkedAsDeleted { get; internal set; }
 
-        [CommandHandlerEntity]
+        [MessageHandlerEntity]
         public TEntity Entity { get; set; }
 
-        [CommandHandlerEntityStore]
-        public IEntityStore<TId, TEventBase, TEntityBase> EntityStore { get; internal set; }
+        //[MessageHandlerEntityStore]
+        //public IEntityStore<TId, TEventBase, TEntityBase> EntityStore { get; internal set; }
 
         [NoAction]
         protected void MarkAsDeleted()
@@ -46,16 +46,16 @@ namespace AI4E
     }
 
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-    public class CommandHandlerEntityAttribute : Attribute
+    public class MessageHandlerEntityAttribute : Attribute
     {
         public Type EntityType { get; set; }
     }
 
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-    public class CommandHandlerEntityStoreAttribute : Attribute { }
+    //[AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+    //public class MessageHandlerEntityStoreAttribute : Attribute { }
 
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-    public class CommandHandlerEntityDeleteFlagAttribute : Attribute { }
+    public class MessageHandlerEntityDeleteFlagAttribute : Attribute { }
 
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public class CreatesEntityAttribute : Attribute
