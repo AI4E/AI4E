@@ -79,7 +79,7 @@ namespace AI4E
 
             do
             {
-                var entity = await _entityStore.GetByIdAsync(id, cacheEntry.EntityType);
+                var entity = await _entityStore.GetByIdAsync(cacheEntry.EntityType, id);
                 var createsEntityAttribute = Context.MessageHandlerAction.Member.GetCustomAttribute<CreatesEntityAttribute>();
 
                 if (entity == null)
@@ -112,11 +112,11 @@ namespace AI4E
                 {
                     if (markedAsDeleted)
                     {
-                        await _entityStore.DeleteAsync(entity, cacheEntry.EntityType);
+                        await _entityStore.DeleteAsync(cacheEntry.EntityType, entity);
                     }
                     else
                     {
-                        await _entityStore.StoreAsync(entity, cacheEntry.EntityType);
+                        await _entityStore.StoreAsync(cacheEntry.EntityType, entity);
                     }
                 }
                 catch (ConcurrencyException)

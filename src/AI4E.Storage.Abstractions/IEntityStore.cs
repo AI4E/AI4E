@@ -36,9 +36,9 @@ namespace AI4E.Storage
         Task<TEntity> GetByIdAsync<TEntity>(TId id, long revision, CancellationToken cancellation = default)
             where TEntity : class, TEntityBase;
 
-        Task<TEntityBase> GetByIdAsync(TId id, Type entityType, CancellationToken cancellation = default);
+        Task<TEntityBase> GetByIdAsync(Type entityType, TId id, CancellationToken cancellation = default);
 
-        Task<TEntityBase> GetByIdAsync(TId id, Type entityType, long revision, CancellationToken cancellation = default);
+        Task<TEntityBase> GetByIdAsync(Type entityType, TId id, long revision, CancellationToken cancellation = default);
 
         Task<IEnumerable<TEntity>> GetAllAsync<TEntity>(CancellationToken cancellation = default)
             where TEntity : class, TEntityBase;
@@ -50,11 +50,11 @@ namespace AI4E.Storage
         Task StoreAsync<TEntity>(TEntity entity, CancellationToken cancellation = default)
             where TEntity : class, TEntityBase;
 
-        Task StoreAsync(TEntityBase entity, Type entityType, CancellationToken cancellation = default);
+        Task StoreAsync(Type entityType, TEntityBase entity, CancellationToken cancellation = default);
 
         Task DeleteAsync<TEntity>(TEntity entity, CancellationToken cancellation = default)
             where TEntity : class, TEntityBase;
 
-        Task DeleteAsync(TEntityBase entity, Type entityType, CancellationToken cancellation = default);
+        Task DeleteAsync(Type entityType, TEntityBase entity, CancellationToken cancellation = default);
     }
 }

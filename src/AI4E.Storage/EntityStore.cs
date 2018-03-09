@@ -54,12 +54,18 @@ namespace AI4E.Storage
         where TEventBase : class
         where TEntityBase : class
     {
+        #region Fields
+
         private readonly IEventStore<string, TId> _streamStore;
         private readonly IEntityAccessor<TId, TEventBase, TEntityBase> _entityAccessor;
         private readonly JsonDiffPatch _differ;
         private readonly JsonSerializer _jsonSerializer;
         private readonly Dictionary<(TId id, long revision), TEntityBase> _lookup = new Dictionary<(TId id, long revision), TEntityBase>();
         private bool _isDisposed;
+
+        #endregion
+
+        #region C'tor
 
         public EntityStore(IEventStore<string, TId> streamStore,
                            IEntityAccessor<TId, TEventBase, TEntityBase> entityAccessor,
@@ -80,12 +86,14 @@ namespace AI4E.Storage
             _jsonSerializer = JsonSerializer.Create(serializerSettingsResolver.ResolveSettings(this));
         }
 
-        public Task<TEntityBase> GetByIdAsync(TId id, Type entityType, CancellationToken cancellation)
+        #endregion
+
+        public Task<TEntityBase> GetByIdAsync(Type entityType, TId id, CancellationToken cancellation)
         {
-            return GetByIdAsync(id, entityType, revision: default, cancellation);
+            return GetByIdAsync(entityType, id, revision: default, cancellation: cancellation);
         }
 
-        public async Task<TEntityBase> GetByIdAsync(TId id, Type entityType, long revision, CancellationToken cancellation)
+        public async Task<TEntityBase> GetByIdAsync(Type entityType, TId id, long revision, CancellationToken cancellation)
         {
             if (entityType == null)
                 throw new ArgumentNullException(nameof(entityType));
@@ -131,7 +139,7 @@ namespace AI4E.Storage
             return result;
         }
 
-        public async Task StoreAsync(TEntityBase entity, Type entityType, CancellationToken cancellation)
+        public async Task StoreAsync(Type entityType, TEntityBase entity, CancellationToken cancellation)
         {
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
@@ -194,7 +202,7 @@ namespace AI4E.Storage
             throw new NotSupportedException(); // TODO
         }
 
-        public Task DeleteAsync(TEntityBase entity, Type entityType, CancellationToken cancellation)
+        public Task DeleteAsync(Type entityType, TEntityBase entity, CancellationToken cancellation)
         {
             throw new NotSupportedException(); // TODO
         }
@@ -217,19 +225,19 @@ namespace AI4E.Storage
         public async Task<TEntity> GetByIdAsync<TEntity>(TId id, CancellationToken cancellation)
             where TEntity : class, TEntityBase
         {
-            return (TEntity)await GetByIdAsync(id, typeof(TEntity), cancellation);
+            return (TEntity)await GetByIdAsync(typeof(TEntity), id, cancellation);
         }
 
         public async Task<TEntity> GetByIdAsync<TEntity>(TId id, long revision, CancellationToken cancellation)
             where TEntity : class, TEntityBase
         {
-            return (TEntity)await GetByIdAsync(id, typeof(TEntity), revision, cancellation);
+            return (TEntity)await GetByIdAsync(typeof(TEntity), id, revision, cancellation);
         }
 
         public Task StoreAsync<TEntity>(TEntity entity, CancellationToken cancellation)
                     where TEntity : class, TEntityBase
         {
-            return StoreAsync(entity, typeof(TEntity), cancellation);
+            return StoreAsync(typeof(TEntity), entity, cancellation);
         }
 
         public async Task<IEnumerable<TEntity>> GetAllAsync<TEntity>(CancellationToken cancellation)
@@ -241,14 +249,32 @@ namespace AI4E.Storage
         public Task DeleteAsync<TEntity>(TEntity entity, CancellationToken cancellation)
             where TEntity : class, TEntityBase
         {
-            return DeleteAsync(entity, typeof(TEntity), cancellation);
+            return DeleteAsync(typeof(TEntity), entity, cancellation);
         }
 
         #endregion
 
+        #region Helpers
+
         private static string GetBucketId(Type entityType)
         {
             return entityType.FullName;
+        }
+
+        private static Type GetTypeFromBucket(string bucketId)
+        {
+            Debug.Assert(bucketId != null);
+
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+            foreach (var assembly in assemblies)
+            {
+                var t = assembly.GetType(bucketId, false);
+
+                if (t != null)
+                    return t;
+            }
+            throw new ArgumentException("Type '" + bucketId + "' doesn't exist.");
         }
 
         private TId GetStreamId(TEntityBase entity)
@@ -261,12 +287,19 @@ namespace AI4E.Storage
             return id;
         }
 
-        internal sealed class SnapshotProcessor : ISnapshotProcessor<string, TId>, IDisposable
+        #endregion
+
+        internal sealed class SnapshotProcessor : ISnapshotProcessor<string, TId>, IAsyncDisposable
         {
+            #region Fields
+
             private readonly StorageOptions _options;
             private readonly IProvider<EntityStore<TId, TEventBase, TEntityBase>> _entityStoreProvider;
             private readonly IAsyncProcess _snapshotProcess;
-            private bool _isDisposed;
+
+            #endregion
+
+            #region C'tor
 
             public SnapshotProcessor(IProvider<EntityStore<TId, TEventBase, TEntityBase>> entityStoreProvider,
                                      IOptions<StorageOptions> optionsAccessor)
@@ -280,8 +313,71 @@ namespace AI4E.Storage
                 _options = optionsAccessor.Value ?? new StorageOptions();
                 _entityStoreProvider = entityStoreProvider;
                 _snapshotProcess = new AsyncProcess(SnapshotProcess);
-                _snapshotProcess.Start();
+                _initialization = InitializeInternalAsync(_cancellationSource.Token);
             }
+
+            #endregion
+
+            #region Initialization
+
+            private readonly CancellationTokenSource _cancellationSource = new CancellationTokenSource();
+            private readonly Task _initialization;
+
+            private async Task InitializeInternalAsync(CancellationToken cancellation)
+            {
+                await _snapshotProcess.StartAsync();
+            }
+
+            #endregion
+
+            #region Disposal
+
+            private Task _disposal;
+            private readonly TaskCompletionSource<byte> _disposalSource = new TaskCompletionSource<byte>();
+            private readonly object _lock = new object();
+
+            public Task Disposal => _disposalSource.Task;
+
+            private async Task DisposeInternalAsync()
+            {
+                try
+                {
+                    // Cancel the initialization
+                    _cancellationSource.Cancel();
+                    try
+                    {
+                        await _initialization;
+                    }
+                    catch (OperationCanceledException) { }
+
+                    await _snapshotProcess.TerminateAsync();
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception exc)
+                {
+                    _disposalSource.SetException(exc);
+                    return;
+                }
+
+                _disposalSource.SetResult(0);
+            }
+
+            public void Dispose()
+            {
+                lock (_lock)
+                {
+                    if (_disposal == null)
+                        _disposal = DisposeInternalAsync();
+                }
+            }
+
+            public Task DisposeAsync()
+            {
+                Dispose();
+                return Disposal;
+            }
+
+            #endregion
 
             private async Task SnapshotProcess(CancellationToken cancellation)
             {
@@ -302,7 +398,7 @@ namespace AI4E.Storage
                         // TODO: Logging
                     }
 
-                    await Task.Delay(_options.SnapshotInterval);
+                    await Task.Delay(_options.SnapshotInterval, cancellation);
                 }
             }
 
@@ -340,33 +436,26 @@ namespace AI4E.Storage
                     }
                 }
             }
-
-            public void Dispose()
-            {
-                if (_isDisposed)
-                {
-                    return;
-                }
-
-                _isDisposed = true;
-                _snapshotProcess.Terminate();
-            }
         }
 
-        internal sealed class CommitDispatcher : ICommitDispatcher<string, TId>, IDisposable
+        internal sealed class CommitDispatcher : ICommitDispatcher<string, TId>, IAsyncDisposable
         {
+            #region Fields
+
             private readonly IProvider<EntityStore<TId, TEventBase, TEntityBase>> _entityStoreProvider;
             private readonly IMessageDispatcher _eventDispatcher;
             private readonly IProjectionDependencyStore<string, TId> _projectionDependencyStore;
             private readonly IProjector _projector;
             private readonly ILogger<CommitDispatcher> _logger;
             private readonly CancellationTokenSource _cancellationSource;
-            private readonly Task _intialization;
+            private readonly Task _initialization;
             private readonly IAsyncProcess _dispatchProcess;
             private readonly AsyncProducerConsumerQueue<(ICommit<string, TId> commit, int attempt, TaskCompletionSource<object> tcs)> _dispatchQueue;
-            private readonly IServiceProvider _serviceProvider;
             private readonly IStreamPersistence<string, TId> _persistence;
-            private bool _isDisposed;
+
+            #endregion
+
+            #region C'tor
 
             public CommitDispatcher(IProvider<EntityStore<TId, TEventBase, TEntityBase>> entityStoreProvider,
                                           IStreamPersistence<string, TId> persistence,
@@ -399,7 +488,7 @@ namespace AI4E.Storage
                 _dispatchQueue = new AsyncProducerConsumerQueue<(ICommit<string, TId> commit, int attempt, TaskCompletionSource<object> tcs)>();
                 _cancellationSource = new CancellationTokenSource();
                 _dispatchProcess = new AsyncProcess(DispatchProcess);
-                _intialization = InitializeInternalAsync(_cancellationSource.Token);
+                _initialization = InitializeInternalAsync(_cancellationSource.Token);
             }
 
             public CommitDispatcher(IProvider<EntityStore<TId, TEventBase, TEntityBase>> entityStoreProvider,
@@ -408,6 +497,8 @@ namespace AI4E.Storage
                                     IProjectionDependencyStore<string, TId> projectionDependencyStore,
                                     IProjector projector)
                 : this(entityStoreProvider, persistence, eventDispatcher, projectionDependencyStore, projector, null) { }
+
+            #endregion
 
             #region Initialization
 
@@ -440,7 +531,7 @@ namespace AI4E.Storage
                     _cancellationSource.Cancel();
                     try
                     {
-                        await _intialization;
+                        await _initialization;
                     }
                     catch (OperationCanceledException) { }
 
@@ -617,12 +708,12 @@ namespace AI4E.Storage
                 {
                     using (entityStore = _entityStoreProvider.ProvideInstance())
                     {
-                        entity = await entityStore.GetByIdAsync(id, type, cancellation: default);
+                        entity = await entityStore.GetByIdAsync(type, id, cancellation: default);
                     }
                 }
                 else
                 {
-                    entity = await entityStore.GetByIdAsync(id, type, cancellation: default);
+                    entity = await entityStore.GetByIdAsync(type, id, cancellation: default);
                 }
 
                 await _projector.ProjectAsync(entity.GetType(), entity, cancellation);
@@ -633,36 +724,6 @@ namespace AI4E.Storage
                 var tcs = new TaskCompletionSource<object>();
 
                 return Task.WhenAll(_dispatchQueue.EnqueueAsync((commit, attempt: 1, tcs)), tcs.Task);
-            }
-
-            //public async Task RebuildQueryCacheAsync()
-            //{
-            //    var entities = default(IEnumerable<TEntityBase>);
-
-            //    using (var entityStore = _entityStoreProvider.ProvideInstance())
-            //    {
-            //        entities = await entityStore.GetAllAsync(cancellation: default);
-            //    }
-
-            //    await _dataStore.Clear();
-
-            //    await Task.WhenAll(entities.SelectMany(p => _projector.Project(p)).Select(p => _dataStore.StoreAsync(p)));
-            //}
-
-            private Type GetTypeFromBucket(string bucketId)
-            {
-                Debug.Assert(bucketId != null);
-
-                var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-
-                foreach (var assembly in assemblies)
-                {
-                    var t = assembly.GetType(bucketId, false);
-
-                    if (t != null)
-                        return t;
-                }
-                throw new ArgumentException("Type '" + bucketId + "' doesn't exist.");
             }
         }
     }
