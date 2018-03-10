@@ -36,6 +36,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -146,7 +147,7 @@ namespace AI4E.Modularity
                     using (var stream = incoming.PopFrame().OpenStream())
                     using (var reader = new StreamReader(stream))
                     {
-                            message = _serializer.Deserialize(reader, typeof(object));
+                        message = _serializer.Deserialize(reader, typeof(object));
                     }
 
                     switch (message)
@@ -500,6 +501,7 @@ namespace AI4E.Modularity
             private readonly IServiceProvider _serviceProvider;
             private readonly IMessageTypeConversion _messageTypeConversion;
             private readonly AsyncLock _lock = new AsyncLock();
+            private volatile ImmutableList<Task> _registrationTasks = ImmutableList<Task>.Empty;
 
             public TypedRemoteMessageDispatcher(RemoteMessageDispatcher dispatcher, IServiceProvider serviceProvider, IMessageTypeConversion messageTypeConversion)
             {
@@ -551,6 +553,9 @@ namespace AI4E.Modularity
 
                 if (context == null)
                     throw new ArgumentNullException(nameof(context));
+
+                var tasksToWait = _registrationTasks; // Volatile read op
+                await Task.WhenAll(tasksToWait);
 
                 if (publish)
                 {
@@ -612,48 +617,27 @@ namespace AI4E.Modularity
 
             public IHandlerRegistration<IMessageHandler<TMessage>> Register(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
             {
-                return new HandlerRegistration(this, messageHandlerProvider);
+                return new HandlerRegistration(messageHandlerProvider, RegisterInternalAsync, UnregisterInternalAsync);
             }
 
-            public Type MessageType => typeof(TMessage);
-
-            public string SerializedMessageType => _messageTypeConversion.SerializeMessageType(MessageType);
-
-            private sealed class HandlerRegistration : IHandlerRegistration<IMessageHandler<TMessage>>
+            private Task RegisterInternalAsync(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
             {
-                private readonly TaskCompletionSource<object> _completionSource = new TaskCompletionSource<object>();
-                private readonly object _lock = new object();
-                private readonly TypedRemoteMessageDispatcher<TMessage> _dispatcher;
-                private Task _completion;
-
-                public HandlerRegistration(TypedRemoteMessageDispatcher<TMessage> dispatcher,
-                                           IContextualProvider<IMessageHandler<TMessage>> handler)
+                async Task DoRegistrationAsync()
                 {
-                    Debug.Assert(dispatcher != null);
-                    Debug.Assert(handler != null);
-
-                    _dispatcher = dispatcher;
-                    Handler = handler;
-
-                    Initialization = InitializeAsync();
-                }
-
-                private async Task InitializeAsync()
-                {
-                    using (await _dispatcher._lock.LockAsync())
+                    using (await _lock.LockAsync())
                     {
-                        var handlerCount = _dispatcher._registry.Handlers.Count();
-                        _dispatcher._registry.Register(Handler);
+                        var handlerCount = _registry.Handlers.Count();
+                        _registry.Register(messageHandlerProvider);
 
                         if (handlerCount == 0)
                         {
                             try
                             {
-                                await _dispatcher.RegisterRouteAsync(_dispatcher.SerializedMessageType, cancellation: default);
+                                await RegisterRouteAsync(SerializedMessageType, cancellation: default);
                             }
                             catch
                             {
-                                _dispatcher._registry.Unregister(Handler);
+                                _registry.Unregister(messageHandlerProvider);
 
                                 throw;
                             }
@@ -661,44 +645,149 @@ namespace AI4E.Modularity
                     }
                 }
 
+                var registration = DoRegistrationAsync();
+                AddRegistration(registration);
+                var registrationAndCleanup = AwaitAndCleanupAsync(registration);
+                return registrationAndCleanup;
+            }
+
+            private Task UnregisterInternalAsync(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
+            {
+                async Task DoUnregistrationAsync()
+                {
+                    using (await _lock.LockAsync())
+                    {
+                        var handlers = _registry.Handlers;
+
+                        if (handlers.Count() == 1 && handlers.First() == messageHandlerProvider)
+                        {
+                            await UnregisterRouteAsync(SerializedMessageType, cancellation: default);
+                        }
+
+                        _registry.Unregister(messageHandlerProvider);
+                    }
+                }
+
+                var unregistration = DoUnregistrationAsync();
+                AddRegistration(unregistration);
+                var unregistrationAndCleanup = AwaitAndCleanupAsync(unregistration);
+                return unregistrationAndCleanup;
+            }
+
+            private void AddRegistration(Task registration)
+            {
+                ImmutableList<Task> current = _registrationTasks, // Volatile read op
+                                    start,
+                                    desired;
+
+                do
+                {
+                    start = current;
+                    desired = start.Add(registration);
+                    current = Interlocked.CompareExchange(ref _registrationTasks, desired, start);
+                }
+                while (start != current);
+            }
+
+            private void CleanupRegistrations()
+            {
+                ImmutableList<Task> current = _registrationTasks, // Volatile read op
+                                    start,
+                                    desired;
+
+                do
+                {
+                    start = current;
+                    desired = start.RemoveAll(p => !p.IsRunning());
+                    current = Interlocked.CompareExchange(ref _registrationTasks, desired, start);
+                }
+                while (start != current);
+            }
+
+            private async Task AwaitAndCleanupAsync(Task registration)
+            {
+                try
+                {
+                    await registration;
+                }
+                finally
+                {
+                    CleanupRegistrations();
+                }
+            }
+
+            public Type MessageType => typeof(TMessage);
+
+            public string SerializedMessageType => _messageTypeConversion.SerializeMessageType(MessageType);
+
+            private sealed class HandlerRegistration : IHandlerRegistration<IMessageHandler<TMessage>>, IAsyncDisposable
+            {
+                private readonly Func<IContextualProvider<IMessageHandler<TMessage>>, Task> _unregistration;
+
+                public HandlerRegistration(IContextualProvider<IMessageHandler<TMessage>> handler,
+                                           Func<IContextualProvider<IMessageHandler<TMessage>>, Task> registration,
+                                           Func<IContextualProvider<IMessageHandler<TMessage>>, Task> unregistration)
+                {
+                    Debug.Assert(handler != null);
+                    Debug.Assert(registration != null);
+                    Debug.Assert(unregistration != null);
+
+                    Handler = handler;
+                    _unregistration = unregistration;
+                    Initialization = registration(handler);
+                }
+
                 public Task Initialization { get; }
 
                 public IContextualProvider<IMessageHandler<TMessage>> Handler { get; }
 
-                public Task Cancellation => _completionSource.Task;
+                #region Disposal
 
-                public void Cancel()
-                {
-                    lock (_lock)
-                    {
-                        if (_completion == null)
-                            _completion = CompleteAsync();
-                    }
-                }
+                private Task _disposal;
+                private readonly TaskCompletionSource<byte> _disposalSource = new TaskCompletionSource<byte>();
+                private readonly object _lock = new object();
 
-                private async Task CompleteAsync()
+                public Task Disposal => _disposalSource.Task;
+
+                private async Task DisposeInternalAsync()
                 {
                     try
                     {
-                        using (await _dispatcher._lock.LockAsync())
-                        {
-                            var handlers = _dispatcher._registry.Handlers;
-
-                            if (handlers.Count() == 1 && handlers.First() == Handler)
-                            {
-                                await _dispatcher.UnregisterRouteAsync(_dispatcher.SerializedMessageType, cancellation: default);
-                            }
-
-                            _dispatcher._registry.Unregister(Handler);
-                        }
+                        await _unregistration(Handler);
                     }
-                    catch (OperationCanceledException) { throw; }
+                    catch (OperationCanceledException) { }
                     catch (Exception exc)
                     {
-                        _completionSource.TrySetException(exc);
+                        _disposalSource.SetException(exc);
+                        return;
                     }
 
-                    _completionSource.TrySetResult(null);
+                    _disposalSource.SetResult(0);
+                }
+
+                public void Dispose()
+                {
+                    lock (_lock)
+                    {
+                        if (_disposal == null)
+                            _disposal = DisposeInternalAsync();
+                    }
+                }
+
+                public Task DisposeAsync()
+                {
+                    Dispose();
+                    return Disposal;
+                }
+
+                #endregion
+
+
+                public Task Cancellation => Disposal;
+
+                public void Cancel()
+                {
+                    Dispose();
                 }
             }
         }
