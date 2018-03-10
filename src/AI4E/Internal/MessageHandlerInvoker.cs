@@ -20,16 +20,17 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Internal
 {
@@ -37,6 +38,7 @@ namespace AI4E.Internal
     {
         private static readonly ConcurrentDictionary<Type, HandlerCacheEntry> _handlerTypeCache = new ConcurrentDictionary<Type, HandlerCacheEntry>();
         private static readonly ConcurrentDictionary<Type, ProcessorCacheEntry> _processorTypeCache = new ConcurrentDictionary<Type, ProcessorCacheEntry>();
+        private static readonly ConcurrentDictionary<MemberInfo, HandlerMemberCacheEntry> _handlerMemberCache = new ConcurrentDictionary<MemberInfo, HandlerMemberCacheEntry>();
 
         private readonly object _handler;
         private readonly MessageHandlerActionDescriptor _memberDescriptor;
@@ -82,12 +84,12 @@ namespace AI4E.Internal
 
                     cacheEntry.SetContext(messageProcessor, messageProcessorContext);
                 }
-                
+
                 return (await messageProcessor.ProcessAsync(message, next)) ?? new SuccessDispatchResult();
             };
         }
 
-        private async Task<IDispatchResult> InternalHandleAsync(TMessage message, DispatchValueDictionary values)
+        private Task<IDispatchResult> InternalHandleAsync(TMessage message, DispatchValueDictionary values)
         {
             var cacheEntry = _handlerTypeCache.GetOrAdd(typeof(TMessage), messageType => new HandlerCacheEntry(messageType));
 
@@ -107,91 +109,274 @@ namespace AI4E.Internal
 
             var member = _memberDescriptor.Member;
 
-            Debug.Assert(member != null);
+            Assert(member != null);
 
-            var parameters = member.GetParameters();
+            var memberCacheEntry = _handlerMemberCache.GetOrAdd(member, _ => new HandlerMemberCacheEntry(member));
 
-            var callingArgs = new object[parameters.Length];
+            return memberCacheEntry.Invoke(_handler, message, _serviceProvider);
+        }
 
-            callingArgs[0] = message;
+        private readonly struct HandlerMemberCacheEntry
+        {
+            private static readonly MethodInfo _getServiceMethod = typeof(ServiceProviderServiceExtensions).GetMethod(nameof(ServiceProviderServiceExtensions.GetRequiredService), BindingFlags.Instance | BindingFlags.Public);
+            private readonly ConstructorInfo _createTypedSuccessDispatchResult;
+            private readonly Func<object, object, IServiceProvider, Task<IDispatchResult>> _invoker;
+            private readonly MethodInfo _methodInfo;
+            private readonly Type _returnType;
 
-            for (var i = 1; i < callingArgs.Length; i++)
+            public HandlerMemberCacheEntry(MethodInfo methodInfo) : this()
             {
-                var parameterType = parameters[i].ParameterType;
+                if (methodInfo == null)
+                    throw new ArgumentNullException(nameof(methodInfo));
 
-                object arg;
+                if (methodInfo.IsGenericMethodDefinition)
+                    throw new ArgumentException();
 
-                if (parameterType.IsDefined<FromServicesAttribute>())
+                _methodInfo = methodInfo;
+                var returnType = methodInfo.ReturnType;
+
+                if (typeof(Task).IsAssignableFrom(returnType))
                 {
-                    arg = _serviceProvider.GetRequiredService(parameterType);
-                }
-                else
-                {
-                    arg = _serviceProvider.GetService(parameterType);
-
-                    if (arg == null && parameterType.IsValueType)
+                    if (returnType.IsConstructedGenericType)
                     {
-                        arg = FormatterServices.GetUninitializedObject(parameterType);
+                        returnType = returnType.GetGenericArguments().First();
+                    }
+                    else
+                    {
+                        returnType = typeof(void);
                     }
                 }
 
-                callingArgs[i] = arg;
-            }
+                _returnType = returnType;
 
-            object result;
-            Type returnType;
-
-            try
-            {
-                result = member.Invoke(_handler, callingArgs);
-            }
-            catch (Exception exc)
-            {
-                return new FailureDispatchResult(exc);
-            }
-
-            if (member.ReturnType == typeof(void))
-            {
-                return new SuccessDispatchResult();
-            }
-
-            if (typeof(Task).IsAssignableFrom(member.ReturnType))
-            {
-                try
+                if (returnType != typeof(void))
                 {
-                    await (Task)result;
-                }
-                catch (Exception exc)
-                {
-                    return new FailureDispatchResult(exc);
+                    _createTypedSuccessDispatchResult = typeof(SuccessDispatchResult<>).MakeGenericType(_returnType).GetConstructor(new[] { _returnType });
                 }
 
-                if (member.ReturnType == typeof(Task))
-                {
-                    return new SuccessDispatchResult();
-                }
 
-                // This only happens if the BCL changed.
-                if (!member.ReturnType.IsGenericType)
-                {
-                    return new SuccessDispatchResult();
-                }
 
-                returnType = member.ReturnType.GetGenericArguments().First();
-                result = (object)((dynamic)result).Result;
+                if (methodInfo.ReturnType == typeof(Task))
+                {
+                    var invoke = GetInvoker();
+
+                    _invoker = async (handler, message, serviceProvider) =>
+                    {
+                        try
+                        {
+                            await (Task)invoke(handler, message, serviceProvider);
+                        }
+                        catch (Exception exc)
+                        {
+                            return new FailureDispatchResult(exc);
+                        }
+
+                        return new SuccessDispatchResult();
+                    };
+                }
+                else if (typeof(Task).IsAssignableFrom(methodInfo.ReturnType))
+                {
+                    var invoke = GetInvoker();
+                    var evaluator = GetAsyncEvaluation();
+
+                    _invoker = async (handler, message, serviceProvider) =>
+                    {
+                        var task = (Task)invoke(handler, message, serviceProvider);
+
+                        try
+                        {
+                            await task;
+                        }
+                        catch (Exception exc)
+                        {
+                            return new FailureDispatchResult(exc);
+                        }
+
+                        return evaluator(task);
+                    };
+                }
+                else if (methodInfo.ReturnType == typeof(void))
+                {
+                    var invoke = GetVoidInvoker();
+
+                    _invoker = (handler, message, serviceProvider) =>
+                    {
+                        try
+                        {
+                            invoke(handler, message, serviceProvider);
+                        }
+                        catch (Exception exc)
+                        {
+                            return Task.FromResult<IDispatchResult>(new FailureDispatchResult(exc));
+                        }
+
+                        return Task.FromResult<IDispatchResult>(new SuccessDispatchResult());
+                    };
+                }
+                else
+                {
+                    var invoke = GetInvoker();
+                    var evaluator = GetSyncEvaluation();
+
+                    _invoker = (handler, message, serviceProvider) =>
+                    {
+                        object result;
+                        try
+                        {
+                            result = invoke(handler, message, serviceProvider);
+                        }
+                        catch (Exception exc)
+                        {
+                            return Task.FromResult<IDispatchResult>(new FailureDispatchResult(exc));
+                        }
+
+                        if (result == null)
+                        {
+                            return Task.FromResult<IDispatchResult>(new FailureDispatchResult());
+                        }
+
+                        if (result is IDispatchResult dispatchResult)
+                        {
+                            return Task.FromResult(dispatchResult);
+                        }
+
+                        return Task.FromResult(evaluator(result));
+                    };
+                }
             }
-            else
+
+            private Func<object, object, IServiceProvider, object> GetInvoker()
             {
-                returnType = member.ReturnType;
+                var messageType = _methodInfo.GetParameters().First().ParameterType;
+                var handlerParameter = Expression.Parameter(typeof(object), "handler");
+                var messageParameter = Expression.Parameter(typeof(object), "message");
+                var serviceProviderParameter = Expression.Parameter(typeof(IServiceProvider), "serviceProvider");
+                var invocation = BuildInvocation(Expression.Convert(handlerParameter, _methodInfo.DeclaringType),
+                                                 Expression.Convert(messageParameter, messageType),
+                                                 serviceProviderParameter);
+
+                var invoke = Expression.Lambda<Func<object, object, IServiceProvider, object>>(invocation,
+                                                                                               handlerParameter,
+                                                                                               messageParameter,
+                                                                                               serviceProviderParameter)
+                                       .Compile();
+                return invoke;
             }
 
-            if (result is IDispatchResult dispatchResult)
-                return dispatchResult;
+            private Action<object, object, IServiceProvider> GetVoidInvoker()
+            {
+                var messageType = _methodInfo.GetParameters().First().ParameterType;
+                var handlerParameter = Expression.Parameter(typeof(object), "handler");
+                var messageParameter = Expression.Parameter(typeof(object), "message");
+                var serviceProviderParameter = Expression.Parameter(typeof(IServiceProvider), "serviceProvider");
+                var invocation = BuildInvocation(Expression.Convert(handlerParameter, _methodInfo.DeclaringType),
+                                                 Expression.Convert(messageParameter, messageType),
+                                                 serviceProviderParameter);
 
-            if (result == null)
-                return new FailureDispatchResult();
+                var invoke = Expression.Lambda<Action<object, object, IServiceProvider>>(invocation,
+                                                                                         handlerParameter,
+                                                                                         messageParameter,
+                                                                                         serviceProviderParameter)
+                                       .Compile();
+                return invoke;
+            }
 
-            return (IDispatchResult)Activator.CreateInstance(typeof(SuccessDispatchResult<>).MakeGenericType(returnType), result);
+            private Expression BuildInvocation(Expression handlerParameter,
+                                                           Expression messageParameter,
+                                                           Expression serviceProviderParameter)
+            {
+                var parameters = _methodInfo.GetParameters();
+                var arguments = new Expression[parameters.Length];
+
+                arguments[0] = messageParameter;
+
+                for (var i = 1; i < arguments.Length; i++)
+                {
+                    var parameter = parameters[i];
+                    var parameterType = parameter.ParameterType;
+
+                    if (parameter.IsDefined<FromServicesAttribute>())
+                    {
+                        Assert(_getServiceMethod != null);
+
+                        var serviceTypeConstant = Expression.Constant(parameterType);
+                        var getServiceCall = Expression.Call(_getServiceMethod, serviceProviderParameter, serviceTypeConstant);
+                        var convertedService = Expression.Convert(getServiceCall, parameterType);
+
+                        arguments[i] = convertedService;
+                    }
+                    else
+                    {
+                        arguments[i] = Expression.Default(parameterType);
+                    }
+                }
+
+                return Expression.Call(handlerParameter, _methodInfo, arguments);
+            }
+
+            private Func<Task, IDispatchResult> GetAsyncEvaluation()
+            {
+                Func<Task, IDispatchResult> compiledLambda;
+
+
+                var taskParameter = Expression.Parameter(typeof(Task), "task");
+                var taskParameterConversion = Expression.Convert(taskParameter, typeof(Task<>).MakeGenericType(_returnType));
+                var resultAccess = Expression.Property(taskParameterConversion, typeof(Task<>).MakeGenericType(_returnType).GetProperty("Result"));
+                var lambda = Expression.Lambda<Func<Task, IDispatchResult>>(Evaluate(resultAccess), taskParameter);
+                compiledLambda = lambda.Compile();
+                return compiledLambda;
+            }
+
+            private Func<object, IDispatchResult> GetSyncEvaluation()
+            {
+                var resultParameter = Expression.Parameter(typeof(object), "result");
+                var convertedResult = Expression.Convert(resultParameter, _returnType);
+
+                var successResult = Expression.New(_createTypedSuccessDispatchResult, convertedResult);
+
+                return Expression.Lambda<Func<object, IDispatchResult>>(successResult, resultParameter).Compile();
+            }
+
+            private Expression Evaluate(Expression invocation)
+            {
+                var returnTarget = Expression.Label(typeof(IDispatchResult));
+                var result = new List<Expression>();
+
+                Expression Return(Expression ret)
+                {
+                    return Expression.Return(returnTarget, ret, typeof(IDispatchResult));
+                }
+
+                var variable = Expression.Variable(typeof(IDispatchResult), "result");
+                result.Add(Expression.Assign(variable, invocation));
+                result.Add(Expression.IfThen(Expression.TypeIs(variable, typeof(IDispatchResult)), Return(variable)));
+
+                var nullCondition = Expression.Equal(variable, Expression.Constant(null));
+                var failureResult = Expression.New(typeof(FailureDispatchResult));
+                result.Add(Expression.IfThen(nullCondition, Return(failureResult)));
+
+                var successResult = Expression.New(_createTypedSuccessDispatchResult, variable);
+                result.Add(Return(successResult));
+
+
+                var returnLabel = Expression.Label(returnTarget, Expression.Constant(null, typeof(IDispatchResult)));
+                result.Add(returnLabel);
+                return Expression.Block(new[] { variable }, result);
+            }
+
+            public Task<IDispatchResult> Invoke(object handler, object message, IServiceProvider serviceProvider)
+            {
+                if (handler == null)
+                    throw new ArgumentNullException(nameof(handler));
+
+                if (message == null)
+                    throw new ArgumentNullException(nameof(message));
+
+                if (serviceProvider == null)
+                    throw new ArgumentNullException(nameof(serviceProvider));
+
+                return _invoker(handler, message, serviceProvider);
+            }
         }
 
         private readonly struct HandlerCacheEntry
