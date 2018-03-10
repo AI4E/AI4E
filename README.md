@@ -5,25 +5,15 @@ It provides a messaging mechanism to decouple MVC-controllers that manage the vi
 ## Project status
 The project is in active development currently, with the goal to release the first release candidate (RC1) in the first quarter of 2018.
 
-## Messaging pattern
-
-** TODO **
-
-## Storage
-
-** TODO **
-
-## Modularity
-
-** TODO **
+## Project goals
+The project main goal is to deliver a high-level framework to easely build and maintain complex business applications in a modern, domain-driven and modular way. There is also the second goal to give advice and support in common situations learned from real-worl projects.
 
 # Getting started
-
-** TODO **
+Currently there is no release on nuget or another packet manager. So feel free to clone the project locally. If the project is more stable, this is subject to change.
 
 # Roadmap
 
-** TODO **
+Currently there is no release, so the goal is to build a stable, manufacturing ready release with the core features only.
 
 # Schedule
 
