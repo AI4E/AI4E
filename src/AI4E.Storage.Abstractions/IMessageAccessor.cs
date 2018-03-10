@@ -20,7 +20,7 @@
 
 using System;
 
-namespace AI4E
+namespace AI4E.Storage
 {
     public interface IMessageAccessor<TId>
         where TId : struct, IEquatable<TId>

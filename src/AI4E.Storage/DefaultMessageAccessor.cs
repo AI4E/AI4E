@@ -21,8 +21,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
+using System.Reflection;
 
-namespace AI4E
+namespace AI4E.Storage
 {
     public sealed class DefaultMessageAccessor<TId> : IMessageAccessor<TId>
         where TId : struct, IEquatable<TId>
@@ -83,8 +84,8 @@ namespace AI4E
 
                 var messageParam = Expression.Parameter(typeof(object), "message");
                 var messageConvert = Expression.Convert(messageParam, messageType);
-                var idProperty = messageType.GetProperty(nameof(Command<TId>.Id));
-                var concurrencyTokenProperty = messageType.GetProperty(nameof(Command<TId>.ConcurrencyToken));
+                var idProperty = messageType.GetProperty(nameof(Command<TId>.Id), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var concurrencyTokenProperty = messageType.GetProperty(nameof(Command<TId>.ConcurrencyToken), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
                 if (idProperty != null &&
                     idProperty.CanRead &&

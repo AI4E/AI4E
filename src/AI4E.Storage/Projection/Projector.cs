@@ -136,7 +136,7 @@ namespace AI4E.Storage.Projection
         {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
-            
+
             return Task.WhenAll(GetTypedProjectors().Select(p => p.ProjectAsync(source, cancellation)));
         }
 
@@ -201,7 +201,14 @@ namespace AI4E.Storage.Projection
 
             var res = await projection.ProjectAsync(source);
 
-            await dataStore.StoreAsync(res, cancellation);
+            if (res != null)
+            {
+                await dataStore.StoreAsync(res, cancellation);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
 
         public Type ProjectionType => typeof(TProjection);
