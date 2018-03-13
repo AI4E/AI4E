@@ -68,7 +68,7 @@ namespace AI4E
                 return await next(message);
             }
 
-            var messageAccessor = _serviceProvider.GetRequiredService<IMessageAccessor<TId>>() ?? new DefaultMessageAccessor<TId>();
+            var messageAccessor = _serviceProvider.GetService<IMessageAccessor<TId>>() ?? new DefaultMessageAccessor<TId>();
 
             if (!messageAccessor.TryGetEntityId(message, out var id))
             {
@@ -164,7 +164,7 @@ namespace AI4E
                 var handlerParam = Expression.Parameter(typeof(object), "handler");
                 var entityParam = Expression.Parameter(typeof(TEntityBase), "entity");
                 var handlerConvert = Expression.Convert(handlerParam, handlerType);
-                var entityConvert = Expression.Convert(entityParam, entityProperty.DeclaringType);
+                var entityConvert = Expression.Convert(entityParam, entityProperty.PropertyType);
                 var propertyAccess = Expression.Property(handlerConvert, entityProperty);
                 var propertyAssign = Expression.Assign(propertyAccess, entityConvert);
                 var getterLambda = Expression.Lambda<Func<object, TEntityBase>>(propertyAccess, handlerParam);

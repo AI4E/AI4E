@@ -91,7 +91,7 @@ namespace AI4E.Internal
 
         private Task<IDispatchResult> InternalHandleAsync(TMessage message, DispatchValueDictionary values)
         {
-            var cacheEntry = _handlerTypeCache.GetOrAdd(typeof(TMessage), messageType => new HandlerCacheEntry(messageType));
+            var cacheEntry = _handlerTypeCache.GetOrAdd(_handler.GetType(), messageType => new HandlerCacheEntry(messageType));
 
             if (cacheEntry.CanSetContext)
             {
@@ -153,8 +153,6 @@ namespace AI4E.Internal
                 {
                     _createTypedSuccessDispatchResult = typeof(SuccessDispatchResult<>).MakeGenericType(_returnType).GetConstructor(new[] { _returnType });
                 }
-
-
 
                 if (methodInfo.ReturnType == typeof(Task))
                 {
@@ -347,9 +345,9 @@ namespace AI4E.Internal
                     return Expression.Return(returnTarget, ret, typeof(IDispatchResult));
                 }
 
-                var variable = Expression.Variable(typeof(IDispatchResult), "result");
+                var variable = Expression.Variable(_returnType, "result");
                 result.Add(Expression.Assign(variable, invocation));
-                result.Add(Expression.IfThen(Expression.TypeIs(variable, typeof(IDispatchResult)), Return(variable)));
+                result.Add(Expression.IfThen(Expression.TypeIs(variable, typeof(IDispatchResult)), Return(Expression.Convert(variable, typeof(IDispatchResult)))));
 
                 var nullCondition = Expression.Equal(variable, Expression.Constant(null));
                 var failureResult = Expression.New(typeof(FailureDispatchResult));
