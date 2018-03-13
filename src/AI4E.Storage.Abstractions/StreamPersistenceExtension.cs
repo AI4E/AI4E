@@ -144,45 +144,5 @@ namespace AI4E.Storage
 
             return persistence.GetSnapshotsAsync(default);
         }
-
-        public static Task<IEnumerable<IStreamHead<TBucket, TStreamId>>> GetStreamsToSnapshotAsync<TBucket, TStreamId>(this IStreamPersistence<TBucket, TStreamId> persistence, TBucket bucketId, long maxThreshold)
-            where TBucket : IEquatable<TBucket>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
-
-            return persistence.GetStreamsToSnapshotAsync(bucketId, maxThreshold, default);
-        }
-
-        public static Task<IEnumerable<IStreamHead<TBucket, TStreamId>>> GetStreamsToSnapshotAsync<TBucket, TStreamId>(this IStreamPersistence<TBucket, TStreamId> persistence, long maxThreshold)
-            where TBucket : IEquatable<TBucket>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
-
-            return persistence.GetStreamsToSnapshotAsync(maxThreshold, default);
-        }
-
-        public static Task<IEnumerable<IStreamHead<TBucket, TStreamId>>> GetStreamsToSnapshotAsync<TBucket, TStreamId>(this IStreamPersistence<TBucket, TStreamId> persistence, TBucket bucketId)
-           where TBucket : IEquatable<TBucket>
-           where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
-
-            return persistence.GetStreamsToSnapshotAsync(bucketId, 0, default);
-        }
-
-        public static Task<IEnumerable<IStreamHead<TBucket, TStreamId>>> GetStreamsToSnapshotAsync<TBucket, TStreamId>(this IStreamPersistence<TBucket, TStreamId> persistence)
-            where TBucket : IEquatable<TBucket>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
-
-            return persistence.GetStreamsToSnapshotAsync(0, default);
-        }
     }
 }

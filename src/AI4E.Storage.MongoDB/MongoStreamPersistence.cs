@@ -133,32 +133,32 @@ namespace AI4E.Storage.MongoDB
                                           .FirstOrDefault());
         }
 
-        public async Task<IEnumerable<IStreamHead<TBucket, TStreamId>>> GetStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation = default)
+        public IAsyncEnumerable<IStreamHead<TBucket, TStreamId>> GetStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation = default)
         {
-            return await _streamHeads.AsQueryable()
-                                         .Where(head => head.HeadRevisionAdvance >= maxThreshold)
-                                         .ToListAsync(cancellation);
+            return new MongoQueryEvaluator<MongoStreamHead<TBucket, TStreamId>>(_streamHeads,
+                                                                                head => head.HeadRevisionAdvance >= maxThreshold,
+                                                                                cancellation);
         }
 
-        public async Task<IEnumerable<IStreamHead<TBucket, TStreamId>>> GetStreamsToSnapshotAsync(TBucket bucketId, long maxThreshold, CancellationToken cancellation)
+        public IAsyncEnumerable<IStreamHead<TBucket, TStreamId>> GetStreamsToSnapshotAsync(TBucket bucketId, long maxThreshold, CancellationToken cancellation)
         {
-            return await _streamHeads.AsQueryable()
-                                     .Where(head => head.BucketId.Equals(bucketId) && head.HeadRevisionAdvance >= maxThreshold && head.HeadRevision > 0)
-                                     .ToListAsync(cancellation);
+            return new MongoQueryEvaluator<MongoStreamHead<TBucket, TStreamId>>(_streamHeads,
+                                                                                head => head.BucketId.Equals(bucketId) && head.HeadRevisionAdvance >= maxThreshold && head.HeadRevision > 0,
+                                                                                cancellation);
         }
 
-        public async Task<IEnumerable<IStreamHead<TBucket, TStreamId>>> GetStreamHeadsAsync(TBucket bucketId, CancellationToken cancellation)
+        public IAsyncEnumerable<IStreamHead<TBucket, TStreamId>> GetStreamHeadsAsync(TBucket bucketId, CancellationToken cancellation)
         {
-            return await _streamHeads.AsQueryable()
-                                     .Where(head => head.BucketId.Equals(bucketId) && head.HeadRevision > 0)
-                                     .ToListAsync();
+            return new MongoQueryEvaluator<MongoStreamHead<TBucket, TStreamId>>(_streamHeads, 
+                                                                                head => head.BucketId.Equals(bucketId) && head.HeadRevision > 0, 
+                                                                                cancellation);
         }
 
-        public async Task<IEnumerable<IStreamHead<TBucket, TStreamId>>> GetStreamHeadsAsync(CancellationToken cancellation)
+        public IAsyncEnumerable<IStreamHead<TBucket, TStreamId>> GetStreamHeadsAsync(CancellationToken cancellation)
         {
-            return await _streamHeads.AsQueryable()
-                                     .Where(head => head.HeadRevision > 0)
-                                     .ToListAsync();
+            return new MongoQueryEvaluator<MongoStreamHead<TBucket, TStreamId>>(_streamHeads,
+                                                                                head => head.HeadRevision > 0,
+                                                                                cancellation);
         }
 
         public async Task<ICommit<TBucket, TStreamId>> CommitAsync(CommitAttempt<TBucket, TStreamId> attempt, CancellationToken cancellation)

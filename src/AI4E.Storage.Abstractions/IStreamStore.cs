@@ -88,10 +88,10 @@ namespace AI4E.Storage
 
         Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, long revision, CancellationToken cancellation = default);
 
-        Task<IEnumerable<IStream<TBucket, TStreamId>>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation);
+        IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation);
 
-        Task<IEnumerable<IStream<TBucket, TStreamId>>> OpenAllAsync(CancellationToken cancellation);
+        IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(CancellationToken cancellation);
 
-        Task<IEnumerable<IStream<TBucket, TStreamId>>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation);
+        IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation);
     }
 }

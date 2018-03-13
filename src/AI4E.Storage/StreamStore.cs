@@ -64,6 +64,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using AI4E.Storage.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace AI4E.Storage
@@ -134,21 +135,22 @@ namespace AI4E.Storage
             return stream;
         }
 
-        public async Task<IEnumerable<IStream<TBucket, TStreamId>>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation)
+        public IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation)
         {
-            return await Task.WhenAll((await _persistence.GetStreamHeadsAsync(bucketId, cancellation)).Select(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)));
+            return _persistence.GetStreamHeadsAsync(bucketId, cancellation)
+                               .Select(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)); // TODO: If the stream is deleted in the meanwhile, this will throw.
         }
 
-        public async Task<IEnumerable<IStream<TBucket, TStreamId>>> OpenAllAsync(CancellationToken cancellation)
+        public IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(CancellationToken cancellation)
         {
-            return await Task.WhenAll((await _persistence.GetStreamHeadsAsync(cancellation)).Select(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)));
+            return _persistence.GetStreamHeadsAsync(cancellation)
+                               .Select(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)); // TODO: If the stream is deleted in the meanwhile, this will throw.
         }
 
-        public async Task<IEnumerable<IStream<TBucket, TStreamId>>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation)
+        public IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation)
         {
-            var heads = await _persistence.GetStreamsToSnapshotAsync(maxThreshold, cancellation);
-
-            return await Task.WhenAll(heads.Select(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)));
+            return _persistence.GetStreamsToSnapshotAsync(maxThreshold, cancellation)
+                               .Select(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)); // TODO: If the stream is deleted in the meanwhile, this will throw.
         }
 
         #endregion

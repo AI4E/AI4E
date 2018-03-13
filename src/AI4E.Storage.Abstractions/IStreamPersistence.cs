@@ -109,9 +109,9 @@ namespace AI4E.Storage
         /// <returns>The streams for which the head and snapshot revisions differ by at least the threshold specified.</returns>
         /// <exception cref="StorageException" />
         /// <exception cref="StorageUnavailableException" />
-        Task<IEnumerable<IStreamHead<TBucket, TStreamId>>> GetStreamsToSnapshotAsync(TBucket bucketId, long maxThreshold, CancellationToken cancellation);
-
-        Task<IEnumerable<IStreamHead<TBucket, TStreamId>>> GetStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation);
+        IAsyncEnumerable<IStreamHead<TBucket, TStreamId>> GetStreamsToSnapshotAsync(TBucket bucketId, long maxThreshold, CancellationToken cancellation);
+    
+        IAsyncEnumerable<IStreamHead<TBucket, TStreamId>> GetStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation);
 
         /// <summary>
         /// Gets the corresponding commits from the stream indicated starting at the revision specified until the
@@ -162,7 +162,7 @@ namespace AI4E.Storage
         /// <param name="streamId">The stream Id of the stream that is to be deleted.</param>
         Task DeleteStreamAsync(TBucket bucketId, TStreamId streamId, CancellationToken cancellation = default);
 
-        Task<IEnumerable<IStreamHead<TBucket, TStreamId>>> GetStreamHeadsAsync(TBucket bucketId, CancellationToken cancellation);
-        Task<IEnumerable<IStreamHead<TBucket, TStreamId>>> GetStreamHeadsAsync(CancellationToken cancellation);
+        IAsyncEnumerable<IStreamHead<TBucket, TStreamId>> GetStreamHeadsAsync(TBucket bucketId, CancellationToken cancellation);
+        IAsyncEnumerable<IStreamHead<TBucket, TStreamId>> GetStreamHeadsAsync(CancellationToken cancellation);
     }
 }

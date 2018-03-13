@@ -88,6 +88,8 @@ namespace AI4E.Storage
 
         #endregion
 
+        private static JToken StreamRoot => JToken.Parse("{}");
+
         public Task<TEntityBase> GetByIdAsync(Type entityType, TId id, CancellationToken cancellation)
         {
             return GetByIdAsync(entityType, id, revision: default, cancellation: cancellation);
@@ -108,6 +110,15 @@ namespace AI4E.Storage
             var streamId = GetStreamId(id);
             var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, revision, cancellation);
 
+            var result = Deserialize(entityType, stream);
+
+            _lookup[(id, revision)] = result;
+
+            return result;
+        }
+
+        private TEntityBase Deserialize(Type entityType, IStream<string, TId> stream)
+        {
             // This is an empty stream.
             if (stream.StreamRevision == default)
                 return null;
@@ -116,7 +127,7 @@ namespace AI4E.Storage
 
             if (stream.Snapshot == null)
             {
-                serializedEntity = JToken.Parse("{}");
+                serializedEntity = StreamRoot;
             }
             else
             {
@@ -134,7 +145,19 @@ namespace AI4E.Storage
             _entityAccessor.SetRevision(result, stream.StreamRevision);
             _entityAccessor.CommitEvents(result);
 
-            _lookup[(id, revision)] = result;
+            return result;
+        }
+
+        private TEntityBase CachedDeserialize(Type entityType, long revision, IStream<string, TId> stream)
+        {
+            if (_lookup.TryGetValue((stream.StreamId, revision), out var cachedResult))
+            {
+                return cachedResult;
+            }
+
+            var result = Deserialize(entityType, stream);
+
+            _lookup[(stream.StreamId, revision)] = result;
 
             return result;
         }
@@ -162,7 +185,7 @@ namespace AI4E.Storage
 
             if (stream.Snapshot == null)
             {
-                baseToken = JToken.Parse("{}");
+                baseToken = StreamRoot;
             }
             else
             {
@@ -192,14 +215,22 @@ namespace AI4E.Storage
             _lookup[(_entityAccessor.GetId(entity), revision: default)] = entity;
         }
 
-        public Task<IEnumerable<TEntityBase>> GetAllAsync(Type entityType, CancellationToken cancellation)
+        public IAsyncEnumerable<TEntityBase> GetAllAsync(Type entityType, CancellationToken cancellation)
         {
-            throw new NotSupportedException(); // TODO
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            if (!typeof(TEntityBase).IsAssignableFrom(entityType))
+                throw new ArgumentException($"The argument must specify a subtype of '{typeof(TEntityBase).FullName}'.", nameof(entityType));
+
+            var bucketId = GetBucketId(entityType);
+
+            return _streamStore.OpenAllAsync(bucketId, cancellation).Select(stream => CachedDeserialize(entityType, revision: default, stream));
         }
 
-        public Task<IEnumerable<TEntityBase>> GetAllAsync(CancellationToken cancellation)
+        public IAsyncEnumerable<TEntityBase> GetAllAsync(CancellationToken cancellation)
         {
-            throw new NotSupportedException(); // TODO
+            return _streamStore.OpenAllAsync(cancellation).Select(stream => CachedDeserialize(GetTypeFromBucket(stream.BucketId), revision: default, stream));
         }
 
         public Task DeleteAsync(Type entityType, TEntityBase entity, CancellationToken cancellation)
@@ -411,28 +442,40 @@ namespace AI4E.Storage
 
                 using (var entityStore = _entityStoreProvider.ProvideInstance())
                 {
-                    foreach (var stream in await entityStore._streamStore.OpenStreamsToSnapshotAsync(snapshotRevisionThreshold, cancellation))
+                    var enumerator = default(IAsyncEnumerator<IStream<string, TId>>);
+                    try
                     {
-                        if (stream.Snapshot == null && !stream.Commits.Any())
-                            continue;
+                        enumerator = entityStore._streamStore.OpenStreamsToSnapshotAsync(snapshotRevisionThreshold, cancellation).GetEnumerator();
 
-                        var serializedEntity = default(JToken);
-
-                        if (stream.Snapshot == null)
+                        while (await enumerator.MoveNext(cancellation))
                         {
-                            serializedEntity = JToken.Parse("{}");
-                        }
-                        else
-                        {
-                            serializedEntity = JToken.Parse(CompressionHelper.Unzip(stream.Snapshot.Payload as byte[]));
-                        }
+                            var stream = enumerator.Current;
 
-                        foreach (var commit in stream.Commits)
-                        {
-                            serializedEntity = entityStore._differ.Patch(serializedEntity, JToken.Parse(CompressionHelper.Unzip(commit.Body as byte[])));
-                        }
+                            if (stream.Snapshot == null && !stream.Commits.Any())
+                                continue;
 
-                        await stream.AddSnapshotAsync(CompressionHelper.Zip(serializedEntity.ToString()), cancellation);
+                            var serializedEntity = default(JToken);
+
+                            if (stream.Snapshot == null)
+                            {
+                                serializedEntity = StreamRoot;
+                            }
+                            else
+                            {
+                                serializedEntity = JToken.Parse(CompressionHelper.Unzip(stream.Snapshot.Payload as byte[]));
+                            }
+
+                            foreach (var commit in stream.Commits)
+                            {
+                                serializedEntity = entityStore._differ.Patch(serializedEntity, JToken.Parse(CompressionHelper.Unzip(commit.Body as byte[])));
+                            }
+
+                            await stream.AddSnapshotAsync(CompressionHelper.Zip(serializedEntity.ToString()), cancellation);
+                        }
+                    }
+                    finally
+                    {
+                        enumerator?.Dispose();
                     }
                 }
             }

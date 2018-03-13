@@ -43,9 +43,9 @@ namespace AI4E.Storage
         Task<IEnumerable<TEntity>> GetAllAsync<TEntity>(CancellationToken cancellation = default)
             where TEntity : class, TEntityBase;
 
-        Task<IEnumerable<TEntityBase>> GetAllAsync(Type entityType, CancellationToken cancellation = default);
+        IAsyncEnumerable<TEntityBase> GetAllAsync(Type entityType, CancellationToken cancellation = default);
 
-        Task<IEnumerable<TEntityBase>> GetAllAsync(CancellationToken cancellation = default);
+        IAsyncEnumerable<TEntityBase> GetAllAsync(CancellationToken cancellation = default);
 
         Task StoreAsync<TEntity>(TEntity entity, CancellationToken cancellation = default)
             where TEntity : class, TEntityBase;
