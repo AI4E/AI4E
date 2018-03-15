@@ -25,7 +25,7 @@ using AI4E.DispatchResults;
 
 namespace AI4E
 {
-    public static class DispatchResultExtension
+    public static partial class DispatchResultExtension
     {
         public static bool IsNotAuthorized(this IDispatchResult DispatchResult)
         {
@@ -196,6 +196,35 @@ namespace AI4E
 
             result = default;
             return false;
+        }
+
+        public static IEnumerable<TResult> GetResults<TResult>(this IDispatchResult dispatchResult, bool throwOnFailure)
+            where TResult : class
+        {
+            if (dispatchResult.IsAggregateResult(out var aggregateDispatchResult))
+            {
+                aggregateDispatchResult = aggregateDispatchResult.Flatten();
+
+                foreach (var singleDispatchResult in aggregateDispatchResult.DispatchResults)
+                {
+                    if (singleDispatchResult.IsSuccessWithResult<TResult>(out var singleResult))
+                    {
+                        yield return singleResult;
+                    }
+                    else if (throwOnFailure)
+                    {
+                        throw new FailureOrTypeMismatchException();
+                    }
+                }
+            }
+            else if (dispatchResult.IsSuccessWithResult<TResult>(out var result))
+            {
+                yield return result;
+            }
+            else if (throwOnFailure)
+            {
+                throw new FailureOrTypeMismatchException();
+            }
         }
     }
 }
