@@ -79,16 +79,16 @@ namespace AI4E
             return DispatchAsync(typeof(TMessage), message, context, publish, cancellation);
         }
 
-        public Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProvider, CancellationToken cancellation)
-        {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
+        //public Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProvider, CancellationToken cancellation)
+        //{
+        //    if (message == null)
+        //        throw new ArgumentNullException(nameof(message));
 
-            if (serviceProvider == null)
-                throw new ArgumentNullException(nameof(serviceProvider));
+        //    if (serviceProvider == null)
+        //        throw new ArgumentNullException(nameof(serviceProvider));
 
-            return DispatchAsync(typeof(TMessage), message, context, publish, serviceProvider, cancellation);
-        }
+        //    return DispatchAsync(typeof(TMessage), message, context, publish, serviceProvider, cancellation);
+        //}
 
         private ITypedMessageDispatcher GetTypedDispatcher(Type messageType)
         {
@@ -114,7 +114,7 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(message));
 
             var currType = messageType;
-            var tasks = new List<Task<IDispatchResult>>();
+            var tasks = new List<Task<(IDispatchResult result, bool handlersFound)>>();
 
             do
             {
@@ -122,34 +122,47 @@ namespace AI4E
 
                 if (TryGetTypedDispatcher(currType, out var dispatcher))
                 {
-                    tasks.Add(dispatcher.DispatchAsync(message, context, publish, serviceProvider, cancellation));
-
-                    if (!publish)
+                    if (publish)
                     {
-                        break;
+                        tasks.Add(dispatcher.DispatchAsync(message, context, publish, serviceProvider, cancellation));
+                    }
+                    else
+                    {
+                        var (result, handlersFound) = await dispatcher.DispatchAsync(message, context, publish, serviceProvider, cancellation);
+
+                        if (handlersFound)
+                        {
+                            return result;
+                        }
+                        else
+                        {
+                            continue;
+                        }
                     }
                 }
             }
             while (!currType.IsInterface && (currType = currType.BaseType) != null);
 
-            if (tasks.Count == 0)
+            // When dispatching a message and no handlers are available, this is a failure.
+            if (!publish)
             {
-                // When publishing a message and no handlers are available, this is a success.
-                if (publish)
-                {
-                    return new SuccessDispatchResult();
-                }
-
-                // When dispatching a message and no handlers are available, this is a failure.
                 return new DispatchFailureDispatchResult(messageType);
             }
 
-            if (tasks.Count == 1)
+            var filteredResult = (await Task.WhenAll(tasks)).Where(p => p.handlersFound).ToList();
+
+            // When publishing a message and no handlers are available, this is a success.
+            if (filteredResult.Count == 0)
             {
-                return await tasks[0];
+                return new SuccessDispatchResult();
             }
 
-            return new AggregateDispatchResult(await Task.WhenAll(tasks));
+            if (filteredResult.Count == 1)
+            {
+                return (await tasks[0]).result;
+            }
+
+            return new AggregateDispatchResult(filteredResult.Select(p => p.result));
         }
 
         private bool TryGetTypedDispatcher(Type type, out ITypedMessageDispatcher typedDispatcher)
@@ -166,7 +179,7 @@ namespace AI4E
 
     internal interface ITypedMessageDispatcher
     {
-        Task<IDispatchResult> DispatchAsync(object message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProviders, CancellationToken cancellation);
+        Task<(IDispatchResult result, bool handlersFound)> DispatchAsync(object message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProviders, CancellationToken cancellation);
 
         Type MessageType { get; }
     }
@@ -183,7 +196,7 @@ namespace AI4E
             return _registry.CreateRegistration(messageHandlerProvider);
         }
 
-        public async Task<IDispatchResult> DispatchAsync(TMessage message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProvider, CancellationToken cancellation)
+        public async Task<(IDispatchResult result, bool handlersFound)> DispatchAsync(TMessage message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProvider, CancellationToken cancellation)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
@@ -193,18 +206,25 @@ namespace AI4E
 
             if (publish)
             {
-                var dispatchResults = await Task.WhenAll(_registry.Handlers.Select(p => DispatchSingleHandlerAsync(p, message, context, serviceProvider, cancellation)));
+                var handlers = _registry.Handlers;
 
-                return new AggregateDispatchResult(dispatchResults);
+                if (handlers.Any())
+                {
+                    var dispatchResults = await Task.WhenAll(handlers.Select(p => DispatchSingleHandlerAsync(p, message, context, serviceProvider, cancellation)));
+
+                    return (result: new AggregateDispatchResult(dispatchResults), handlersFound: true);
+                }
+
+                return (result: default, handlersFound: false);
             }
             else
             {
                 if (_registry.TryGetHandler(out var handler))
                 {
-                    return await DispatchSingleHandlerAsync(handler, message, context, serviceProvider, cancellation);
+                    return (result: await DispatchSingleHandlerAsync(handler, message, context, serviceProvider, cancellation), handlersFound: true);
                 }
 
-                return new DispatchFailureDispatchResult(typeof(TMessage));
+                return (result: default, handlersFound: false);
             }
         }
 
@@ -233,7 +253,7 @@ namespace AI4E
             }
         }
 
-        public Task<IDispatchResult> DispatchAsync(object message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProvider, CancellationToken cancellation)
+        public Task<(IDispatchResult result, bool handlersFound)> DispatchAsync(object message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProvider, CancellationToken cancellation)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
