@@ -2,10 +2,10 @@
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        DomainEvent.cs 
  * Types:           (1) AI4E.Domain.DomainEvent
- *                  (2) AI4E.Domain.DomainEventConflictAttribute
+ *                  (2) AI4E.Domain.DomainEvent'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   18.10.2017 
+ * Last modified:   15.03.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -35,14 +35,14 @@ namespace AI4E.Domain
 {
     public abstract class DomainEvent
     {
-        protected DomainEvent(Guid stream)
+        protected DomainEvent(Guid id)
         {
-            if (stream == default)
-                throw new ArgumentException("The stream must not be an empty guid.", nameof(stream));
+            if (id == default)
+                throw new ArgumentException("The id must not be an empty guid.", nameof(id));
 
-            Stream = stream;
+            Id = id;
         }
 
-        public Guid Stream { get; }
+        public Guid Id { get; }
     }
 }

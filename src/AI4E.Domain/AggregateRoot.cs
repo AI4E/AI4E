@@ -70,7 +70,7 @@ namespace AI4E.Domain
             if (evt == null)
                 throw new ArgumentNullException(nameof(evt));
 
-            if (evt.Stream != Id)
+            if (evt.Id != Id)
                 throw new ArgumentException("The event does not belong to the stream of the aggregate.", nameof(evt));
 
             _uncommittedEvents.Add(evt);
