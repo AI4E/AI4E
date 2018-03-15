@@ -4,7 +4,7 @@
  * Types:           AI4E.Storage.IStreamStore
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   09.03.2018 
+ * Last modified:   15.03.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -63,35 +63,79 @@ using System.Threading.Tasks;
 namespace AI4E.Storage
 {
     /// <summary>
-    /// Indicates the ability to store and retreive a stream of events.
+    /// Represents a store of streams.
     /// </summary>
-    /// <remarks>
-    /// Instances of this class must be designed to be multi-thread safe such that they can be shared between threads.
-    /// </remarks>
+    /// <remarks> This type is not thread-safe. </remarks>
     public interface IStreamStore<TBucket, TStreamId> : IDisposable
         where TBucket : IEquatable<TBucket>
         where TStreamId : IEquatable<TStreamId>
     {
         /// <summary>
-        /// Reads the stream indicated from the minimum revision specified up to the maximum revision specified or creates
-        /// an empty stream if no commits are found and a minimum revision of zero is provided.
+        /// Asynchronously opens a stream.
         /// </summary>
-        /// <param name="bucketId">The value which uniquely identifies bucket the stream belongs to.</param>
-        /// <param name="streamId">The value which uniquely identifies the stream in the bucket from which the events will be read.</param>
-        /// <param name="minRevision">The minimum revision of the stream to be read.</param>
-        /// <param name="maxRevision">The maximum revision of the stream to be read.</param>
-        /// <returns>A series of committed events represented as a stream.</returns>
-        /// <exception cref="StorageException" />
-        /// <exception cref="StorageUnavailableException" />
-        /// <exception cref="StreamNotFoundException" />
-        Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, CancellationToken cancellation = default);
+        /// <param name="bucketId">The id of the bucket, the stream belongs to.</param>
+        /// <param name="streamId">The id of the stream.</param>
+        /// <param name="throwIfNotFound">A boolean value indicating whether an exception shall be throw if the stream does not exist.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the stream.
+        /// </returns>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
+        /// <exception cref="StreamNotFoundException">Thrown if the stream cannot be found and <paramref name="throwIfNotFound"/> is true.</exception>
+        Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, bool throwIfNotFound = false, CancellationToken cancellation = default);
 
+        /// <summary>
+        /// Asynchronously opens a stream within the specified revision and returns a read-only view.
+        /// </summary>
+        /// <param name="bucketId">The id of the bucket, the stream belongs to.</param>
+        /// <param name="streamId">The id of the stream.</param>
+        /// <param name="revision">The revision of the to be openend stream.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the read-only view of the stream.
+        /// </returns>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
+        /// <exception cref="StreamNotFoundException">Thrown if the stream either cannot be found or cannot be opened within the specified revision.</exception>
         Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, long revision, CancellationToken cancellation = default);
 
+        /// <summary>
+        /// Asynchronously enumerates over all streams from the specified bucket.
+        /// </summary>
+        /// <param name="bucketId">The id of the bucket, the streams belong to.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// An asynchronous enumerable that enumerates over all streams of the specified bucket.
+        /// </returns>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation);
 
+        /// <summary>
+        /// Asynchronously enumerates over all streams.
+        /// </summary>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// An asynchronous enumerable that enumerates over all streams.
+        /// </returns>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(CancellationToken cancellation);
 
+        /// <summary>
+        /// Asynchronously enumerates over all streams that needs a snapshot to be taken of.
+        /// </summary>
+        /// <param name="maxThreshold">The number of commits that a stream must contain since the latest snapshot.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// An asynchronous enumerable that enumerates over all streams a snapshot to be taken of.
+        /// </returns>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="maxThreshold"/> is less than or equal zero.</exception>
         IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation);
     }
 }

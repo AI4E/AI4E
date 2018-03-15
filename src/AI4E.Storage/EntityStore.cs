@@ -180,7 +180,7 @@ namespace AI4E.Storage
             var streamId = GetStreamId(entity);
             var concurrencyToken = _entityAccessor.GetConcurrencyToken(entity);
 
-            var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, cancellation);
+            var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, throwIfNotFound: false, cancellation);
             var baseToken = default(JToken);
 
             if (stream.Snapshot == null)

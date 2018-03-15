@@ -118,9 +118,28 @@ namespace AI4E.Storage
 
         #region IStreamStore
 
-        public Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, CancellationToken cancellation)
+        public Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, bool throwIfNotFound, CancellationToken cancellation)
         {
-            return OpenStreamAsync(bucketId, streamId, revision: default, cancellation);
+            var result = OpenStreamAsync(bucketId, streamId, revision: default, cancellation);
+
+            if (throwIfNotFound)
+            {
+                return ValidateStreamExistsAsync(result);
+            }
+
+            return result;
+        }
+
+        private async Task<IStream<TBucket, TStreamId>> ValidateStreamExistsAsync(Task<IStream<TBucket, TStreamId>> result)
+        {
+            var stream = await result;
+
+            if (stream.StreamRevision == 0)
+            {
+                throw new StreamNotFoundException();
+            }
+
+            return stream;
         }
 
         public async Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, long revision, CancellationToken cancellation)
@@ -138,19 +157,19 @@ namespace AI4E.Storage
         public IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation)
         {
             return _persistence.GetStreamHeadsAsync(bucketId, cancellation)
-                               .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)); 
+                               .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, throwIfNotFound: false, cancellation));
         }
 
         public IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(CancellationToken cancellation)
         {
             return _persistence.GetStreamHeadsAsync(cancellation)
-                               .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation));
+                               .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, throwIfNotFound: false, cancellation));
         }
 
         public IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation)
         {
             return _persistence.GetStreamsToSnapshotAsync(maxThreshold, cancellation)
-                               .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation));
+                               .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, throwIfNotFound: false, cancellation));
         }
 
         #endregion
@@ -256,7 +275,7 @@ namespace AI4E.Storage
             public IReadOnlyDictionary<string, object> Headers => GetHeaders().ToImmutableDictionary();
             public IReadOnlyList<EventMessage> Events => Commits.SelectMany(commit => commit.Events ?? Enumerable.Empty<EventMessage>()).ToImmutableArray();
 
-            public bool IsFixedRevision => _isFixedRevision;
+            public bool IsReadOnly => _isFixedRevision;
 
             public IDictionary<string, object> GetHeaders()
             {
@@ -287,7 +306,7 @@ namespace AI4E.Storage
             public async Task AddSnapshotAsync(object body, CancellationToken cancellation = default)
             {
                 if (_isFixedRevision)
-                    throw new InvalidOperationException("Cannot modify a stream with fixed revision.");
+                    throw new InvalidOperationException("Cannot modify a read-only stream view.");
 
                 var snapshot = new Snapshot(BucketId, StreamId, StreamRevision, body, Headers, ConcurrencyToken);
 
@@ -300,7 +319,7 @@ namespace AI4E.Storage
             public async Task<Guid> CommitAsync(Guid concurrencyToken, IEnumerable<EventMessage> events, object body, Action<IDictionary<string, object>> headerGenerator, CancellationToken cancellation)
             {
                 if (_isFixedRevision)
-                    throw new InvalidOperationException("Cannot modify a stream with fixed revision.");
+                    throw new InvalidOperationException("Cannot modify a read-only stream view.");
 
                 _logger?.LogDebug(Resources.AttemptingToCommitChanges, StreamId);
                 await CheckConcurrencyAsync(concurrencyToken, cancellation);
@@ -353,6 +372,9 @@ namespace AI4E.Storage
 
             public async Task<bool> UpdateAsync(CancellationToken cancellation)
             {
+                if (_isFixedRevision)
+                    throw new InvalidOperationException("Cannot modify a read-only stream view.");
+
                 var commits = await _streamStore._persistence.GetCommitsAsync(BucketId, StreamId, StreamRevision + 1, cancellation);
 
                 if (commits.Any())
