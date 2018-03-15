@@ -149,8 +149,8 @@ namespace AI4E.Storage.MongoDB
 
         public IAsyncEnumerable<IStreamHead<TBucket, TStreamId>> GetStreamHeadsAsync(TBucket bucketId, CancellationToken cancellation)
         {
-            return new MongoQueryEvaluator<MongoStreamHead<TBucket, TStreamId>>(_streamHeads, 
-                                                                                head => head.BucketId.Equals(bucketId) && head.HeadRevision > 0, 
+            return new MongoQueryEvaluator<MongoStreamHead<TBucket, TStreamId>>(_streamHeads,
+                                                                                head => head.BucketId.Equals(bucketId) && head.HeadRevision > 0,
                                                                                 cancellation);
         }
 
@@ -183,12 +183,10 @@ namespace AI4E.Storage.MongoDB
             {
                 await TryWriteOperation(() => _commits.InsertOneAsync(commit, options: null, cancellationToken: default));
             }
-            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested && attempt.StreamRevision == 1)
             {
-                if (attempt.StreamRevision == 1)
-                {
-                    await TryWriteOperation(() => _streamHeads.DeleteOneAsync(head => head.BucketId.Equals(attempt.BucketId) && head.StreamId.Equals(attempt.StreamId)));
-                }
+                await TryWriteOperation(() => _streamHeads.DeleteOneAsync(head => head.BucketId.Equals(attempt.BucketId) && head.StreamId.Equals(attempt.StreamId)));
+
                 throw;
             }
 
@@ -205,7 +203,7 @@ namespace AI4E.Storage.MongoDB
             if (streamId == null)
                 throw new ArgumentNullException(nameof(streamId));
 
-            return await GetCommitsInternalAsync(bucketId, streamId, minRevision, maxRevision, cancellation);
+            return (await GetCommitsInternalAsync(bucketId, streamId, minRevision, maxRevision, cancellation)).Where(commit => !commit.IsDeleted);
         }
 
         public async Task<IEnumerable<ICommit<TBucket, TStreamId>>> GetCommitsAsync(TBucket bucketId, CancellationToken cancellation = default)
@@ -213,12 +211,12 @@ namespace AI4E.Storage.MongoDB
             if (bucketId == null)
                 throw new ArgumentNullException(nameof(bucketId));
 
-            return (await _commits.AsQueryable().Where(commit => commit.BucketId.Equals(bucketId)).ToListAsync(cancellation));
+            return (await _commits.AsQueryable().Where(commit => commit.BucketId.Equals(bucketId) && !commit.IsDeleted).ToListAsync(cancellation));
         }
 
         public async Task<IEnumerable<ICommit<TBucket, TStreamId>>> GetCommitsAsync(CancellationToken cancellation = default)
         {
-            return (await _commits.AsQueryable().ToListAsync(cancellation));
+            return (await _commits.AsQueryable().Where(commit => !commit.IsDeleted).ToListAsync(cancellation));
         }
 
         private async Task<IEnumerable<MongoCommit<TBucket, TStreamId>>> GetCommitsInternalAsync(TBucket bucketId, TStreamId streamId, long minRevision = 0, long maxRevision = 0, CancellationToken cancellation = default)
@@ -255,7 +253,7 @@ namespace AI4E.Storage.MongoDB
 
             foreach (var head in heads)
             {
-                var commits = await GetCommitsInternalAsync(head.BucketId, head.StreamId, head.DispatchedRevision);
+                var commits = (await GetCommitsInternalAsync(head.BucketId, head.StreamId, head.DispatchedRevision, cancellation: cancellation)).Where(commit => !commit.IsDeleted);
 
                 foreach (var commit in commits)
                 {
@@ -280,26 +278,31 @@ namespace AI4E.Storage.MongoDB
             await UpdateStreamHeadDispatchedRevisionAsync(commit.BucketId, commit.StreamId, commit.StreamRevision);
         }
 
-        public Task DeleteStreamAsync(TBucket bucketId, TStreamId streamId, CancellationToken cancellation)
+        public async Task DeleteStreamAsync(TBucket bucketId, TStreamId streamId, CancellationToken cancellation)
         {
-            throw new NotImplementedException();
+            await TryWriteOperation(() => _snapshots.DeleteManyAsync(p => p.BucketId.Equals(bucketId) && p.StreamId.Equals(streamId), cancellation)); 
+            
+            // TODO: What to do if the op fails in between?
+            await TryWriteOperation(() => _commits.DeleteManyAsync(p => p.BucketId.Equals(bucketId) && p.StreamId.Equals(streamId), cancellation));
+
+            // TODO: How do we get rid of the stream heads?
         }
 
         #region StreamHead
 
         private async Task<MongoStreamHead<TBucket, TStreamId>> AddStreamHeadAsync(TBucket bucketId, TStreamId streamId)
         {
-            var commits = GetCommitsInternalAsync(bucketId, streamId);
+            var commits = (await GetCommitsInternalAsync(bucketId, streamId)).Where(commit => !commit.IsDeleted);
 
-            if (!(await commits).Any())
+            if (!commits.Any())
             {
                 return null;
             }
 
             var snapshot = await GetSnapshotAsync(bucketId, streamId, maxRevision: default);
-            var dispachedRevision = await LatestDispatchedCommitAsync(commits);
+            var dispachedRevision = LatestDispatchedCommitAsync(commits);
 
-            return await AddStreamHeadAsync(bucketId, streamId, (await commits).Last().StreamRevision, snapshot?.StreamRevision ?? 0, dispachedRevision?.StreamRevision ?? 0);
+            return await AddStreamHeadAsync(bucketId, streamId, commits.Last().StreamRevision, snapshot?.StreamRevision ?? 0, dispachedRevision?.StreamRevision ?? 0);
         }
 
         private async Task<MongoStreamHead<TBucket, TStreamId>> AddStreamHeadAsync(TBucket bucketId, TStreamId streamId, long headRevision, long snapshotRevision, long dispatchedRevision)
@@ -318,18 +321,21 @@ namespace AI4E.Storage.MongoDB
             do
             {
                 var streamHead = _streamHeads.AsQueryable()
-                                              .Where(head => head.BucketId.Equals(bucketId) && head.StreamId.Equals(streamId))
-                                              .FirstOrDefault();
+                                             .Where(head => head.BucketId.Equals(bucketId) && head.StreamId.Equals(streamId))
+                                             .FirstOrDefault();
 
                 if (streamHead == null)
                 {
-                    // TODO: Log. This may never happen.
+                    if (headRevision > 0)
+                        streamHead = await AddStreamHeadAsync(bucketId, streamId);
 
-                    streamHead = await AddStreamHeadAsync(bucketId, streamId);
+                    return;
                 }
 
-                if (streamHead.HeadRevision >= headRevision)
+                if (headRevision > 0 && streamHead.HeadRevision >= headRevision)
+                {
                     return;
+                }
 
                 var oldHeadRevision = streamHead.HeadRevision;
 
@@ -391,8 +397,6 @@ namespace AI4E.Storage.MongoDB
                 }
             }
             while (result.ModifiedCount == 0);
-
-
         }
 
         private async Task UpdateStreamHeadDispatchedRevisionAsync(TBucket bucketId, TStreamId streamId, long dispatchedRevision)
@@ -412,7 +416,6 @@ namespace AI4E.Storage.MongoDB
             {
                 var streamHead = await _streamHeads.AsQueryable().Where(head => head.BucketId.Equals(bucketId) && head.StreamId.Equals(streamId)).FirstOrDefaultAsync();
 
-
                 if (streamHead == null)
                 {
                     // TODO: Log. This may never happen.
@@ -421,8 +424,8 @@ namespace AI4E.Storage.MongoDB
                 }
                 else
                 {
-                    var commits = GetCommitsInternalAsync(bucketId, streamId, streamHead.DispatchedRevision + 1, dispatchedRevision);
-                    var latestDispatchedCommit = await LatestDispatchedCommitAsync(commits);
+                    var commits = (await GetCommitsInternalAsync(bucketId, streamId, streamHead.DispatchedRevision + 1, dispatchedRevision)).Where(commit => !commit.IsDeleted);
+                    var latestDispatchedCommit = LatestDispatchedCommitAsync(commits);
 
                     if (latestDispatchedCommit != null)
                     {
@@ -438,11 +441,11 @@ namespace AI4E.Storage.MongoDB
             }
         }
 
-        private static async Task<MongoCommit<TBucket, TStreamId>> LatestDispatchedCommitAsync(Task<IEnumerable<MongoCommit<TBucket, TStreamId>>> commits)
+        private static MongoCommit<TBucket, TStreamId> LatestDispatchedCommitAsync(IEnumerable<MongoCommit<TBucket, TStreamId>> commits)
         {
             var result = default(MongoCommit<TBucket, TStreamId>);
 
-            foreach (var commit in await commits)
+            foreach (var commit in commits)
             {
                 if (!commit.IsDispatched)
                 {

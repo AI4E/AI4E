@@ -103,7 +103,5 @@ namespace AI4E.Storage
         /// Gets the collection of event messages to be committed as a single unit.
         /// </summary>
         IReadOnlyCollection<EventMessage> Events { get; }
-
-        bool IsDeleted { get; }
     }
 }

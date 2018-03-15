@@ -58,7 +58,7 @@ namespace AI4E.Storage
 
             services.AddSingleton<ICommitDispatcher<string, TId>, EntityStore<TId, TEventBase, TEntityBase>.CommitDispatcher>();
             services.AddSingleton<ISnapshotProcessor<string, TId>, EntityStore<TId, TEventBase, TEntityBase>.SnapshotProcessor>();
-
+            services.AddSingleton<IEntityAccessor<TId, TEventBase, TEntityBase>, DefaultEntityAccessor<TId, TEventBase, TEntityBase>>();
             services.AddTransient(provider => Provider.Create<EntityStore<TId, TEventBase, TEntityBase>>(provider));
             services.AddScoped<IEntityStore<TId, TEventBase, TEntityBase>>(
                 provider => provider.GetRequiredService<IProvider<EntityStore<TId, TEventBase, TEntityBase>>>()
@@ -99,8 +99,8 @@ namespace AI4E.Storage
             {
                 var inspector = new ProjectionInspector(type);
                 var descriptors = inspector.GetDescriptors();
-                
-                foreach(var descriptor in descriptors)
+
+                foreach (var descriptor in descriptors)
                 {
                     var provider = Activator.CreateInstance(typeof(ProjectionInvoker<,>.Provider).MakeGenericType(descriptor.SourceType, descriptor.ProjectionType),
                                                             type,

@@ -7,7 +7,8 @@ namespace AI4E.Storage.Internal
 {
     internal static class AsyncEnumerableExtensions
     {
-        public static IAsyncEnumerable<TResult> Select<TSource, TResult>(this IAsyncEnumerable<TSource> source, Func<TSource, Task<TResult>> asyncSelector)
+        // Performs an ordinary select except when an exception occurs in the selector, than it ignores the exception and continues.
+        public static IAsyncEnumerable<TResult> SelectOrContinue<TSource, TResult>(this IAsyncEnumerable<TSource> source, Func<TSource, Task<TResult>> asyncSelector)
         {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
@@ -50,16 +51,31 @@ namespace AI4E.Storage.Internal
 
                 public async Task<bool> MoveNext(CancellationToken cancellationToken)
                 {
-                    var result = await _enumerator.MoveNext(cancellationToken);
+                    bool result;
 
-                    if (result)
+                    do
                     {
-                        Current = await _asyncSelector(_enumerator.Current);
+                        result = await _enumerator.MoveNext(cancellationToken);
+
+                        if (result)
+                        {
+                            try
+                            {
+                                Current = await _asyncSelector(_enumerator.Current);
+                            }
+                            catch
+                            {
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            Current = default;
+                        }
+
+                        break;
                     }
-                    else
-                    {
-                        Current = default;
-                    }
+                    while (result);
 
                     return result;
                 }

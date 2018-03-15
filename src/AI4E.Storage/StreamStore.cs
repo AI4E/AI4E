@@ -138,19 +138,19 @@ namespace AI4E.Storage
         public IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation)
         {
             return _persistence.GetStreamHeadsAsync(bucketId, cancellation)
-                               .Select(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)); // TODO: If the stream is deleted in the meanwhile, this will throw.
+                               .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)); 
         }
 
         public IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(CancellationToken cancellation)
         {
             return _persistence.GetStreamHeadsAsync(cancellation)
-                               .Select(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)); // TODO: If the stream is deleted in the meanwhile, this will throw.
+                               .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation));
         }
 
         public IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation)
         {
             return _persistence.GetStreamsToSnapshotAsync(maxThreshold, cancellation)
-                               .Select(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation)); // TODO: If the stream is deleted in the meanwhile, this will throw.
+                               .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, cancellation));
         }
 
         #endregion
