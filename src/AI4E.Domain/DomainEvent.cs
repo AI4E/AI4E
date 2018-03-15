@@ -45,4 +45,15 @@ namespace AI4E.Domain
 
         public Guid Id { get; }
     }
+
+    public abstract class DomainEvent<TAggregate> : DomainEvent
+        where TAggregate : AggregateRoot
+    {
+        protected DomainEvent(Reference<TAggregate> aggregate) : base(aggregate.Id)
+        {
+            Aggregate = aggregate;
+        }
+
+        public Reference<TAggregate> Aggregate { get; }
+    }
 }
