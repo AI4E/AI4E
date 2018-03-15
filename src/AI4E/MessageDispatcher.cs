@@ -79,17 +79,6 @@ namespace AI4E
             return DispatchAsync(typeof(TMessage), message, context, publish, cancellation);
         }
 
-        //public Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProvider, CancellationToken cancellation)
-        //{
-        //    if (message == null)
-        //        throw new ArgumentNullException(nameof(message));
-
-        //    if (serviceProvider == null)
-        //        throw new ArgumentNullException(nameof(serviceProvider));
-
-        //    return DispatchAsync(typeof(TMessage), message, context, publish, serviceProvider, cancellation);
-        //}
-
         private ITypedMessageDispatcher GetTypedDispatcher(Type messageType)
         {
             if (messageType == null)
@@ -100,12 +89,7 @@ namespace AI4E
                 valueFactory: _ => (ITypedMessageDispatcher)Activator.CreateInstance(_typedDispatcherType.MakeGenericType(messageType)));
         }
 
-        public Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation)
-        {
-            return DispatchAsync(messageType, message, context, publish, _serviceProvider, cancellation);
-        }
-
-        public async Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProvider, CancellationToken cancellation)
+        public async Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation)
         {
             if (messageType == null)
                 throw new ArgumentNullException(nameof(messageType));
@@ -122,13 +106,15 @@ namespace AI4E
 
                 if (TryGetTypedDispatcher(currType, out var dispatcher))
                 {
+                    var dispatchOperation = dispatcher.DispatchAsync(message, context, publish, _serviceProvider, cancellation);
+
                     if (publish)
-                    {
-                        tasks.Add(dispatcher.DispatchAsync(message, context, publish, serviceProvider, cancellation));
+                    {                 
+                        tasks.Add(dispatchOperation);
                     }
                     else
                     {
-                        var (result, handlersFound) = await dispatcher.DispatchAsync(message, context, publish, serviceProvider, cancellation);
+                        var (result, handlersFound) = await dispatchOperation;
 
                         if (handlersFound)
                         {
