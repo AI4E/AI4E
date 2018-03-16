@@ -57,18 +57,7 @@ namespace AI4E.Modularity
             {
                 services.AddOptions();
                 services.AddSingleton<IServer>(provider => new ModuleServer(provider.GetRequiredService<IRemoteMessageDispatcher>(), "prefix"));
-
-                ServiceCollectionExtension.ConfigureApplicationParts(services);
-
-                services.AddSingleton<IRemoteMessageDispatcher>(provider =>
-                {
-                    var dispatcher = ActivatorUtilities.CreateInstance<RemoteMessageDispatcher>(provider);
-
-                    ServiceCollectionExtension.BuildMessageDispatcher(provider, dispatcher);
-
-                    return dispatcher;
-                });
-
+                services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
                 services.AddSingleton<IPhysicalEndPoint<IPEndPoint>, TcpEndPoint>();
                 services.AddSingleton<IEndPointManager, EndPointManager<IPEndPoint>>();
                 services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
@@ -91,8 +80,6 @@ namespace AI4E.Modularity
                 services.AddOptions();
                 services.AddSingleton<IServer>(provider => new ModuleServer(provider.GetRequiredService<IRemoteMessageDispatcher>(), prefix));
 
-                ServiceCollectionExtension.ConfigureApplicationParts(services);
-
                 services.AddSingleton(provider =>
                 {
                     var tcpClient = new TcpClient();
@@ -102,7 +89,7 @@ namespace AI4E.Modularity
                     return new RPCHost(stream, provider);
                 });
 
-                services.AddSingleton<IRemoteMessageDispatcher>(provider =>
+                services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>(provider =>
                 {
                     var endPointManager = ActivatorUtilities.CreateInstance<DebugEndPointManager>(provider);
                     var routeStore = ActivatorUtilities.CreateInstance<DebugRouteStore>(provider);
@@ -110,10 +97,7 @@ namespace AI4E.Modularity
                     var messageTypeConversion = provider.GetRequiredService<IMessageTypeConversion>();
                     var logger = provider.GetService<ILogger<RemoteMessageDispatcher>>();
 
-                    var dispatcher = new RemoteMessageDispatcher(endPointManager, routeStore, localEndPoint, messageTypeConversion, provider, logger);
-                    ServiceCollectionExtension.BuildMessageDispatcher(provider, dispatcher);
-
-                    return dispatcher;
+                    return new RemoteMessageDispatcher(endPointManager, routeStore, localEndPoint, messageTypeConversion, provider, logger);
                 });
 
                 services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<IRemoteMessageDispatcher>());

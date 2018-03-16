@@ -47,6 +47,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
@@ -62,30 +63,17 @@ namespace AI4E
 {
     public static class ServiceCollectionExtension
     {
-        public static IMessagingBuilder AddMessaging(this IServiceCollection services)
+        public static IMessagingBuilder AddInMemoryMessaging(this IServiceCollection services)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            // Configure necessary application parts
-            ConfigureApplicationParts(services);
-
-            var mesageDispatcherRegistry = services.GetService<IMessageDispatcher>();
-
-            // Configure services
-            services.AddSingleton(provider => BuildMessageDispatcher(provider, mesageDispatcherRegistry));
+            services.AddMessageDispatcher<MessageDispatcher>();
 
             return new MessagingBuilder(services);
         }
 
-        public static void ConfigureApplicationParts(IServiceCollection services)
-        {
-            var partManager = services.GetApplicationPartManager();
-            partManager.ConfigureMessagingFeatureProviders();
-            services.TryAddSingleton(partManager);
-        }
-
-        public static IMessagingBuilder AddMessaging(this IServiceCollection services, Action<MessagingOptions> configuration)
+        public static IMessagingBuilder AddInMemoryMessaging(this IServiceCollection services, Action<MessagingOptions> configuration)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
@@ -93,49 +81,151 @@ namespace AI4E
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
-            var builder = services.AddMessaging();
+            var builder = services.AddInMemoryMessaging();
             builder.Services.Configure(configuration);
             return builder;
         }
 
-        public static IMessageDispatcher BuildMessageDispatcher(IServiceProvider serviceProvider, IMessageDispatcher messageDispatcher)
+        public static void AddMessageDispatcher<TMessageDispatcher>(this IServiceCollection services)
+            where TMessageDispatcher : class, IMessageDispatcher
         {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            ConfigureApplicationParts(services);
+
+            services.AddSingleton<IMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, ActivatorUtilities.CreateInstance<TMessageDispatcher>(serviceProvider)));
+        }
+
+        public static void AddMessageDispatcher<TMessageDispatcher>(this IServiceCollection services, TMessageDispatcher instance)
+            where TMessageDispatcher : class, IMessageDispatcher
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            if (instance == null)
+                throw new ArgumentNullException(nameof(instance));
+
+            ConfigureApplicationParts(services);
+
+            services.AddSingleton<IMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, instance));
+        }
+
+        public static void AddMessageDispatcher<TMessageDispatcher>(this IServiceCollection services, Func<IServiceProvider, TMessageDispatcher> factory)
+            where TMessageDispatcher : class, IMessageDispatcher
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            if (factory == null)
+                throw new ArgumentNullException(nameof(factory));
+
+            ConfigureApplicationParts(services);
+
+            services.AddSingleton<IMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, factory(serviceProvider)));
+        }
+
+        public static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(this IServiceCollection services)
+            where TMessageDispatcher : class, IMessageDispatcher
+            where TMessageDispatcherImpl : class, TMessageDispatcher
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            ConfigureApplicationParts(services);
+
+            services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, ActivatorUtilities.CreateInstance<TMessageDispatcherImpl>(serviceProvider)));
+        }
+
+        public static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(this IServiceCollection services, TMessageDispatcherImpl instance)
+            where TMessageDispatcher : class, IMessageDispatcher
+             where TMessageDispatcherImpl : class, TMessageDispatcher
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            if (instance == null)
+                throw new ArgumentNullException(nameof(instance));
+
+            ConfigureApplicationParts(services);
+
+            services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, instance));
+        }
+
+        public static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(this IServiceCollection services, Func<IServiceProvider, TMessageDispatcherImpl> factory)
+            where TMessageDispatcher : class, IMessageDispatcher
+             where TMessageDispatcherImpl : class, TMessageDispatcher
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            if (factory == null)
+                throw new ArgumentNullException(nameof(factory));
+
+            ConfigureApplicationParts(services);
+
+            services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, factory(serviceProvider)));
+        }
+
+        private static void ConfigureApplicationParts(IServiceCollection services)
+        {
+            var partManager = services.GetApplicationPartManager();
+            partManager.ConfigureMessagingFeatureProviders();
+            services.TryAddSingleton(partManager);
+        }
+
+        private static TMessageDispatcher BuildMessageDispatcher<TMessageDispatcher>(IServiceProvider serviceProvider, TMessageDispatcher messageDispatcher)
+            where TMessageDispatcher : class, IMessageDispatcher
+        {
+            if (serviceProvider == null)
+                throw new ArgumentNullException(nameof(serviceProvider));
+
             if (messageDispatcher == null)
-            {
-                messageDispatcher = new MessageDispatcher(serviceProvider);
-            }
+                throw new ArgumentNullException(nameof(messageDispatcher));
 
-            var options = serviceProvider.GetService<IOptions<MessagingOptions>>()?.Value;
-            var processors = (options?.MessageProcessors ?? Enumerable.Empty<IContextualProvider<IMessageProcessor>>()).ToImmutableArray();
-
+            var options = serviceProvider.GetService<IOptions<MessagingOptions>>()?.Value ?? new MessagingOptions();
+            var processors = options.MessageProcessors.ToImmutableArray();
             var partManager = serviceProvider.GetRequiredService<ApplicationPartManager>();
             var messageHandlerFeature = new MessageHandlerFeature();
 
             partManager.PopulateFeature(messageHandlerFeature);
-
-            foreach (var type in messageHandlerFeature.MessageHandlers)
-            {
-                var inspector = new MessageHandlerInspector(type);
-                var descriptors = inspector.GetHandlerDescriptors();
-
-                foreach (var descriptor in descriptors)
-                {
-                    var messageType = descriptor.MessageType;
-                    var provider = Activator.CreateInstance(typeof(MessageHandlerProvider<>).MakeGenericType(messageType),
-                                                            type,
-                                                            descriptor,
-                                                            processors);
-
-                    var registerMethodDefinition = typeof(IMessageDispatcher).GetMethods()
-                        .Single(p => p.Name == "Register" && p.IsGenericMethodDefinition && p.GetGenericArguments().Length == 1);
-
-                    var registerMethod = registerMethodDefinition.MakeGenericMethod(messageType);
-
-                    registerMethod.Invoke(messageDispatcher, new object[] { provider });
-                }
-            }
+            RegisterMessageHandlerTypes(messageDispatcher, processors, messageHandlerFeature.MessageHandlers);
 
             return messageDispatcher;
+        }
+
+        private static void RegisterMessageHandlerTypes(IMessageDispatcher messageDispatcher,
+                                                        ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+                                                        IEnumerable<Type> types)
+        {
+            foreach (var type in types)
+            {
+                RegisterMessageHandlerType(messageDispatcher, processors, type);
+            }
+        }
+
+        private static void RegisterMessageHandlerType(IMessageDispatcher messageDispatcher,
+                                                       ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+                                                       Type type)
+        {
+            var inspector = new MessageHandlerInspector(type);
+            var descriptors = inspector.GetHandlerDescriptors();
+
+            foreach (var descriptor in descriptors)
+            {
+                var messageType = descriptor.MessageType;
+                var provider = Activator.CreateInstance(typeof(MessageHandlerProvider<>).MakeGenericType(messageType),
+                                                        type,
+                                                        descriptor,
+                                                        processors);
+
+                var registerMethodDefinition = typeof(IMessageDispatcher).GetMethods()
+                    .Single(p => p.Name == "Register" && p.IsGenericMethodDefinition && p.GetGenericArguments().Length == 1);
+
+                var registerMethod = registerMethodDefinition.MakeGenericMethod(messageType);
+
+                registerMethod.Invoke(messageDispatcher, new object[] { provider });
+            }
         }
 
         private static void ConfigureMessagingFeatureProviders(this ApplicationPartManager partManager)

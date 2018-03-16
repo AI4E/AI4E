@@ -41,8 +41,6 @@ namespace AI4E.Modularity
 
             services.AddOptions();
 
-            AI4E.ServiceCollectionExtension.ConfigureApplicationParts(services);
-
             // Configure necessary application parts
             var partManager = services.GetApplicationPartManager();
             services.TryAddSingleton(partManager);
@@ -58,15 +56,7 @@ namespace AI4E.Modularity
 
             // These services are the public api for the modular host.
             services.TryAddScoped<IModuleManager, ModuleManager>();
-
-            services.AddSingleton<IRemoteMessageDispatcher>(provider =>
-            {
-                var dispatcher = ActivatorUtilities.CreateInstance<RemoteMessageDispatcher>(provider);
-
-                AI4E.ServiceCollectionExtension.BuildMessageDispatcher(provider, dispatcher);
-
-                return dispatcher;
-            });
+            services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<IRemoteMessageDispatcher>());
             services.AddSingleton<IPhysicalEndPoint<IPEndPoint>, TcpEndPoint>();
             services.AddSingleton<IEndPointManager, EndPointManager<IPEndPoint>>();
