@@ -4,13 +4,8 @@
  * Types:           AI4E.Query'1
  *                  AI4E.ByIdQuery'2
  *                  AI4E.ByIdQuery'1
- *                  AI4E.ByParentQuery'3
  *                  AI4E.ByParentQuery'2
- *                  AI4E.IQueryHandler'1
- *                  AI4E.IByIdQueryHandler'2
- *                  AI4E.IByIdQueryHandler'1
- *                  AI4E.IByParentQueryHandler'3
- *                  AI4E.IByParentQueryHandler'2
+ *                  AI4E.ByParentQuery'1
  * Version:         1.0
  * Author:          Andreas Trütschel
  * Last modified:   17.07.2017 
@@ -96,13 +91,12 @@ namespace AI4E
     /// Represents a query of the specified result that is identified by its parent.
     /// </summary>
     /// <typeparam name="TId">The type of id.</typeparam>
-    /// <typeparam name="TParent">The type of parent.</typeparam>
     /// <typeparam name="TResult">The type of parent.</typeparam>
-    public class ByParentQuery<TId, TParent, TResult> : Query<TResult>
+    public class ByParentQuery<TId, TResult> : Query<TResult>
         where TId : struct, IEquatable<TId>
     {
         /// <summary>
-        /// Creates a new instance of the <see cref="ByParentQuery{TId, TParent, TResult}"/> with the specified parent-id.
+        /// Creates a new instance of the <see cref="ByParentQuery{TId, TResult}"/> with the specified parent-id.
         /// </summary>
         /// <param name="parentId">The id that identifies the results parent.</param>
         public ByParentQuery(TId parentId)
@@ -119,9 +113,8 @@ namespace AI4E
     /// <summary>
     /// Represents a query of the specified result that is identified by its parent.
     /// </summary>
-    /// <typeparam name="TParent">The type of parent.</typeparam>
     /// <typeparam name="TResult">The type of parent.</typeparam>
-    public class ByParentQuery<TParent, TResult> : Query<TResult>
+    public class ByParentQuery<TResult> : Query<TResult>
     {
         /// <summary>
         /// Creates a new instance of the <see cref="ByParentQuery{TParent, TResult}"/>.

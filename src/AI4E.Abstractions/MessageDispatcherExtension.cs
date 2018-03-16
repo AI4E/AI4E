@@ -20,6 +20,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AI4E
@@ -29,6 +30,31 @@ namespace AI4E
     /// </summary>
     public static class MessageDispatcherExtension
     {
+        public static Task<IDispatchResult> PublishAsync<TMessage>(this IMessageDispatcher messageDispatcher,
+                                                                   TMessage message,
+                                                                   DispatchValueDictionary context,
+                                                                   CancellationToken cancellation = default)
+        {
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
+
+            return messageDispatcher.DispatchAsync(message, context, publish: true, cancellation);
+        }
+
+        public static Task<IDispatchResult> PublishAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, CancellationToken cancellation = default)
+        {
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
+
+            return messageDispatcher.DispatchAsync(message, new DispatchValueDictionary(), publish: true, cancellation);
+        }
+
         public static async Task<TResult> DispatchAsync<TMessage, TResult>(this IMessageDispatcher messageDispatcher, TMessage message)
         {
             if (messageDispatcher == null)

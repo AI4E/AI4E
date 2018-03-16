@@ -42,9 +42,15 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(new ByIdQuery<TResult>(id), new DispatchValueDictionary(), publish: false, cancellation);
         }
 
-        public static Task<IDispatchResult> PublishAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, CancellationToken cancellation = default)
+        public static Task<IDispatchResult> QueryByParentAsync<TId, TResult>(this IMessageDispatcher messageDispatcher, TId parentId, CancellationToken cancellation = default)
+            where TId : struct, IEquatable<TId>
         {
-            return messageDispatcher.DispatchAsync(message, new DispatchValueDictionary(), publish: true, cancellation);
+            return messageDispatcher.DispatchAsync(new ByParentQuery<TId, TResult>(parentId), new DispatchValueDictionary(), publish: false, cancellation);
+        }
+
+        public static Task<IDispatchResult> QueryByParentAsync<TResult>(this IMessageDispatcher messageDispatcher, Guid parentId, CancellationToken cancellation = default)
+        {
+            return messageDispatcher.DispatchAsync(new ByParentQuery<TResult>(parentId), new DispatchValueDictionary(), publish: false, cancellation);
         }
 
         public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher, IMessageHandler<TMessage> eventHandler)
