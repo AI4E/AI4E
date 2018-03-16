@@ -25,7 +25,6 @@ using System.Net.Sockets;
 using System.Reflection;
 using AI4E.Modularity.Debugging;
 using AI4E.Modularity.RPC;
-using JsonRpc.Standard.Contracts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -37,14 +36,6 @@ namespace AI4E.Modularity
 {
     public static class IWebHostBuilderExtension
     {
-        private static readonly IJsonRpcContractResolver myContractResolver = new JsonRpcContractResolver
-        {
-            // Use camelcase for RPC method names.
-            NamingStrategy = new CamelCaseJsonRpcNamingStrategy(),
-            // Use camelcase for the property names in parameter value objects
-            ParameterValueConverter = new CamelCaseJsonValueConverter()
-        };
-
         public static IWebHostBuilder UseModuleServer(this IWebHostBuilder webHostBuilder)
         {
             if (webHostBuilder == null)
