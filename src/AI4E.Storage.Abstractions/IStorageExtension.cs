@@ -65,8 +65,8 @@ namespace AI4E.Storage
     /// <remarks>
     /// Instances of this class must be designed to be multi-thread safe such that they can be shared between threads.
     /// </remarks>
-    public interface IStorageExtension<TBucket, TStreamId> : IDisposable
-        where TBucket : IEquatable<TBucket>
+    public interface IStorageExtension<TBucketId, TStreamId> : IDisposable
+        where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>
     {
         /// <summary>
@@ -74,26 +74,26 @@ namespace AI4E.Storage
         /// </summary>
         /// <param name="commit">The commit to be filtered.</param>
         /// <returns>If successful, returns a populated commit; otherwise returns null.</returns>
-        ICommit<TBucket, TStreamId> Select(ICommit<TBucket, TStreamId> commit);
+        ICommit<TBucketId, TStreamId> Select(ICommit<TBucketId, TStreamId> commit);
 
         /// <summary>
         /// Hooks into the commit pipeline prior to persisting the commit to durable storage.
         /// </summary>
         /// <param name="attempt">The attempt to be committed.</param>
         /// <returns>If processing should continue, returns true; otherwise returns false.</returns>
-        bool PreCommit(CommitAttempt<TBucket, TStreamId> attempt);
+        bool PreCommit(CommitAttempt<TBucketId, TStreamId> attempt);
 
         /// <summary>
         /// Hooks into the commit pipeline just after the commit has been *successfully* committed to durable storage.
         /// </summary>
         /// <param name="commit">The commit which has been persisted.</param>
-        void PostCommit(ICommit<TBucket, TStreamId> commit);
+        void PostCommit(ICommit<TBucketId, TStreamId> commit);
 
         /// <summary>
         /// Invoked when a stream has been deleted.
         /// </summary>
         /// <param name="bucketId">The bucket Id from which the stream whch has been deleted.</param>
         /// <param name="streamId">The stream Id of the stream which has been deleted.</param>
-        void OnDeleteStream(TBucket bucketId, TStreamId streamId);
+        void OnDeleteStream(TBucketId bucketId, TStreamId streamId);
     }
 }

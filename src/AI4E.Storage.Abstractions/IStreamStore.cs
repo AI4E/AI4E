@@ -66,8 +66,8 @@ namespace AI4E.Storage
     /// Represents a store of streams.
     /// </summary>
     /// <remarks> This type is not thread-safe. </remarks>
-    public interface IStreamStore<TBucket, TStreamId> : IDisposable
-        where TBucket : IEquatable<TBucket>
+    public interface IStreamStore<TBucketId, TStreamId> : IDisposable
+        where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>
     {
         /// <summary>
@@ -84,7 +84,7 @@ namespace AI4E.Storage
         /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         /// <exception cref="StreamNotFoundException">Thrown if the stream cannot be found and <paramref name="throwIfNotFound"/> is true.</exception>
-        Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, bool throwIfNotFound = false, CancellationToken cancellation = default);
+        Task<IStream<TBucketId, TStreamId>> OpenStreamAsync(TBucketId bucketId, TStreamId streamId, bool throwIfNotFound = false, CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously opens a stream within the specified revision and returns a read-only view.
@@ -100,7 +100,7 @@ namespace AI4E.Storage
         /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         /// <exception cref="StreamNotFoundException">Thrown if the stream either cannot be found or cannot be opened within the specified revision.</exception>
-        Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, long revision, CancellationToken cancellation = default);
+        Task<IStream<TBucketId, TStreamId>> OpenStreamAsync(TBucketId bucketId, TStreamId streamId, long revision, CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously enumerates over all streams from the specified bucket.
@@ -112,7 +112,7 @@ namespace AI4E.Storage
         /// </returns>
         /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
-        IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation);
+        IAsyncEnumerable<IStream<TBucketId, TStreamId>> OpenAllAsync(TBucketId bucketId, CancellationToken cancellation);
 
         /// <summary>
         /// Asynchronously enumerates over all streams.
@@ -123,7 +123,7 @@ namespace AI4E.Storage
         /// </returns>
         /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
-        IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(CancellationToken cancellation);
+        IAsyncEnumerable<IStream<TBucketId, TStreamId>> OpenAllAsync(CancellationToken cancellation);
 
         /// <summary>
         /// Asynchronously enumerates over all streams that needs a snapshot to be taken of.
@@ -136,6 +136,6 @@ namespace AI4E.Storage
         /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="maxThreshold"/> is less than or equal zero.</exception>
-        IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation);
+        IAsyncEnumerable<IStream<TBucketId, TStreamId>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation);
     }
 }

@@ -63,14 +63,14 @@ namespace AI4E.Storage
     /// <summary>
     /// Represents a series of events which have been fully committed as a single unit and which apply to the stream indicated.
     /// </summary>
-    public interface ICommit<TBucket, TStreamId>
-        where TBucket : IEquatable<TBucket>
+    public interface ICommit<TBucketId, TStreamId>
+        where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>
     {
         /// <summary>
         /// Gets the value which identifies bucket to which the the stream and the the commit belongs.
         /// </summary>
-        TBucket BucketId { get; }
+        TBucketId BucketId { get; }
 
         /// <summary>
         /// Gets the value which uniquely identifies the stream to which the commit belongs.

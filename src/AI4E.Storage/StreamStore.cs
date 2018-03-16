@@ -69,26 +69,26 @@ using Microsoft.Extensions.Logging;
 
 namespace AI4E.Storage
 {
-    public sealed partial class StreamStore<TBucket, TStreamId> : IStreamStore<TBucket, TStreamId>
-        where TBucket : IEquatable<TBucket>
+    public sealed partial class StreamStore<TBucketId, TStreamId> : IStreamStore<TBucketId, TStreamId>
+        where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>
     {
         #region Fields
 
         private readonly ILogger _logger;
-        private readonly IStreamPersistence<TBucket, TStreamId> _persistence;
-        private readonly ICommitDispatcher<TBucket, TStreamId> _commitDispatcher;
-        private readonly IEnumerable<IStorageExtension<TBucket, TStreamId>> _extensions;
-        private readonly Dictionary<(TBucket bucketId, TStreamId streamId, long revision), Stream> _streams;
+        private readonly IStreamPersistence<TBucketId, TStreamId> _persistence;
+        private readonly ICommitDispatcher<TBucketId, TStreamId> _commitDispatcher;
+        private readonly IEnumerable<IStorageExtension<TBucketId, TStreamId>> _extensions;
+        private readonly Dictionary<(TBucketId bucketId, TStreamId streamId, long revision), Stream> _streams;
         private bool _isDisposed;
 
         #endregion
 
         #region C'tor
 
-        public StreamStore(IStreamPersistence<TBucket, TStreamId> persistence,
-                          ICommitDispatcher<TBucket, TStreamId> commitDispatcher,
-                          IEnumerable<IStorageExtension<TBucket, TStreamId>> extensions)
+        public StreamStore(IStreamPersistence<TBucketId, TStreamId> persistence,
+                          ICommitDispatcher<TBucketId, TStreamId> commitDispatcher,
+                          IEnumerable<IStorageExtension<TBucketId, TStreamId>> extensions)
         {
             if (persistence == null)
                 throw new ArgumentNullException(nameof(persistence));
@@ -102,13 +102,13 @@ namespace AI4E.Storage
             _persistence = persistence;
             _commitDispatcher = commitDispatcher;
             _extensions = extensions;
-            _streams = new Dictionary<(TBucket bucketId, TStreamId streamId, long revision), Stream>();
+            _streams = new Dictionary<(TBucketId bucketId, TStreamId streamId, long revision), Stream>();
         }
 
-        public StreamStore(IStreamPersistence<TBucket, TStreamId> persistence,
-                          ICommitDispatcher<TBucket, TStreamId> commitDispatcher,
-                          IEnumerable<IStorageExtension<TBucket, TStreamId>> extensions,
-                          ILogger<StreamStore<TBucket, TStreamId>> logger)
+        public StreamStore(IStreamPersistence<TBucketId, TStreamId> persistence,
+                          ICommitDispatcher<TBucketId, TStreamId> commitDispatcher,
+                          IEnumerable<IStorageExtension<TBucketId, TStreamId>> extensions,
+                          ILogger<StreamStore<TBucketId, TStreamId>> logger)
             : this(persistence, commitDispatcher, extensions)
         {
             _logger = logger;
@@ -118,7 +118,7 @@ namespace AI4E.Storage
 
         #region IStreamStore
 
-        public Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, bool throwIfNotFound, CancellationToken cancellation)
+        public Task<IStream<TBucketId, TStreamId>> OpenStreamAsync(TBucketId bucketId, TStreamId streamId, bool throwIfNotFound, CancellationToken cancellation)
         {
             var result = OpenStreamAsync(bucketId, streamId, revision: default, cancellation);
 
@@ -130,7 +130,7 @@ namespace AI4E.Storage
             return result;
         }
 
-        private async Task<IStream<TBucket, TStreamId>> ValidateStreamExistsAsync(Task<IStream<TBucket, TStreamId>> result)
+        private async Task<IStream<TBucketId, TStreamId>> ValidateStreamExistsAsync(Task<IStream<TBucketId, TStreamId>> result)
         {
             var stream = await result;
 
@@ -142,7 +142,7 @@ namespace AI4E.Storage
             return stream;
         }
 
-        public async Task<IStream<TBucket, TStreamId>> OpenStreamAsync(TBucket bucketId, TStreamId streamId, long revision, CancellationToken cancellation)
+        public async Task<IStream<TBucketId, TStreamId>> OpenStreamAsync(TBucketId bucketId, TStreamId streamId, long revision, CancellationToken cancellation)
         {
             if (!_streams.TryGetValue((bucketId, streamId, revision), out var stream))
             {
@@ -154,19 +154,19 @@ namespace AI4E.Storage
             return stream;
         }
 
-        public IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(TBucket bucketId, CancellationToken cancellation)
+        public IAsyncEnumerable<IStream<TBucketId, TStreamId>> OpenAllAsync(TBucketId bucketId, CancellationToken cancellation)
         {
             return _persistence.GetStreamHeadsAsync(bucketId, cancellation)
                                .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, throwIfNotFound: false, cancellation));
         }
 
-        public IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenAllAsync(CancellationToken cancellation)
+        public IAsyncEnumerable<IStream<TBucketId, TStreamId>> OpenAllAsync(CancellationToken cancellation)
         {
             return _persistence.GetStreamHeadsAsync(cancellation)
                                .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, throwIfNotFound: false, cancellation));
         }
 
-        public IAsyncEnumerable<IStream<TBucket, TStreamId>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation)
+        public IAsyncEnumerable<IStream<TBucketId, TStreamId>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation)
         {
             return _persistence.GetStreamsToSnapshotAsync(maxThreshold, cancellation)
                                .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, throwIfNotFound: false, cancellation));
@@ -197,13 +197,13 @@ namespace AI4E.Storage
 
         #endregion
 
-        private sealed class Stream : IStream<TBucket, TStreamId>
+        private sealed class Stream : IStream<TBucketId, TStreamId>
         {
             #region Fields
 
-            private ISnapshot<TBucket, TStreamId> _snapshot;
-            private readonly List<ICommit<TBucket, TStreamId>> _commits = new List<ICommit<TBucket, TStreamId>>();
-            private readonly StreamStore<TBucket, TStreamId> _streamStore;
+            private ISnapshot<TBucketId, TStreamId> _snapshot;
+            private readonly List<ICommit<TBucketId, TStreamId>> _commits = new List<ICommit<TBucketId, TStreamId>>();
+            private readonly StreamStore<TBucketId, TStreamId> _streamStore;
             private readonly ILogger _logger;
             private readonly bool _isFixedRevision = false;
 
@@ -211,11 +211,11 @@ namespace AI4E.Storage
 
             #region C'tor
 
-            private Stream(StreamStore<TBucket, TStreamId> streamStore,
-                               TBucket bucketId,
+            private Stream(StreamStore<TBucketId, TStreamId> streamStore,
+                               TBucketId bucketId,
                                TStreamId streamId,
-                               ISnapshot<TBucket, TStreamId> snapshot,
-                               IEnumerable<ICommit<TBucket, TStreamId>> commits,
+                               ISnapshot<TBucketId, TStreamId> snapshot,
+                               IEnumerable<ICommit<TBucketId, TStreamId>> commits,
                                bool isFixedRevision,
                                ILogger logger)
             {
@@ -236,8 +236,8 @@ namespace AI4E.Storage
 
             #endregion
 
-            public static async Task<Stream> OpenAsync(StreamStore<TBucket, TStreamId> streamStore,
-                                                            TBucket bucketId,
+            public static async Task<Stream> OpenAsync(StreamStore<TBucketId, TStreamId> streamStore,
+                                                            TBucketId bucketId,
                                                             TStreamId streamId,
                                                             long revision,
                                                             ILogger logger,
@@ -251,7 +251,7 @@ namespace AI4E.Storage
 
                 var snapshot = await streamStore._persistence.GetSnapshotAsync(bucketId, streamId, revision, cancellation);
                 var commits = await streamStore._persistence.GetCommitsAsync(bucketId, streamId, (snapshot?.StreamRevision + 1) ?? default, revision, cancellation)
-                    ?? Enumerable.Empty<ICommit<TBucket, TStreamId>>();
+                    ?? Enumerable.Empty<ICommit<TBucketId, TStreamId>>();
                 var isFixedRevision = revision != default;
 
                 var result = new Stream(streamStore, bucketId, streamId, snapshot, commits, isFixedRevision, logger);
@@ -264,11 +264,11 @@ namespace AI4E.Storage
                 return result;
             }
 
-            public TBucket BucketId { get; }
+            public TBucketId BucketId { get; }
             public TStreamId StreamId { get; }
 
-            public ISnapshot<TBucket, TStreamId> Snapshot => _snapshot;
-            public IEnumerable<ICommit<TBucket, TStreamId>> Commits => _commits.AsReadOnly();
+            public ISnapshot<TBucketId, TStreamId> Snapshot => _snapshot;
+            public IEnumerable<ICommit<TBucketId, TStreamId>> Commits => _commits.AsReadOnly();
 
             public long StreamRevision => Commits.LastOrDefault()?.StreamRevision ?? Snapshot?.StreamRevision ?? 0;
             public Guid ConcurrencyToken => Commits.LastOrDefault()?.ConcurrencyToken ?? Snapshot?.ConcurrencyToken ?? Guid.Empty;
@@ -406,7 +406,7 @@ namespace AI4E.Storage
                 throw new ConcurrencyException();
             }
 
-            private IEnumerable<ICommit<TBucket, TStreamId>> ExecuteExtensions(IEnumerable<ICommit<TBucket, TStreamId>> commits)
+            private IEnumerable<ICommit<TBucketId, TStreamId>> ExecuteExtensions(IEnumerable<ICommit<TBucketId, TStreamId>> commits)
             {
                 foreach (var commit in commits)
                 {
@@ -428,7 +428,7 @@ namespace AI4E.Storage
                 }
             }
 
-            private async Task<ICommit<TBucket, TStreamId>> PersistChangesAsync(Guid newConcurrencyToken,
+            private async Task<ICommit<TBucketId, TStreamId>> PersistChangesAsync(Guid newConcurrencyToken,
                                                                                 IEnumerable<EventMessage> events,
                                                                                 object body,
                                                                                 IReadOnlyDictionary<string, object> headers,
@@ -467,13 +467,13 @@ namespace AI4E.Storage
                 return commit;
             }
 
-            private CommitAttempt<TBucket, TStreamId> BuildCommitAttempt(Guid newConcurrencyToken,
+            private CommitAttempt<TBucketId, TStreamId> BuildCommitAttempt(Guid newConcurrencyToken,
                                                                          IEnumerable<EventMessage> events,
                                                                          object body,
                                                                          IReadOnlyDictionary<string, object> headers)
             {
                 _logger?.LogDebug(Resources.BuildingCommitAttempt, newConcurrencyToken, StreamId);
-                return new CommitAttempt<TBucket, TStreamId>(
+                return new CommitAttempt<TBucketId, TStreamId>(
                     BucketId,
                     StreamId,
                     newConcurrencyToken,
@@ -485,9 +485,9 @@ namespace AI4E.Storage
             }
         }
 
-        private sealed class Snapshot : ISnapshot<TBucket, TStreamId>
+        private sealed class Snapshot : ISnapshot<TBucketId, TStreamId>
         {
-            public Snapshot(TBucket bucketId, TStreamId streamId, long streamRevision, object payload, IReadOnlyDictionary<string, object> headers, Guid concurrencyToken)
+            public Snapshot(TBucketId bucketId, TStreamId streamId, long streamRevision, object payload, IReadOnlyDictionary<string, object> headers, Guid concurrencyToken)
             {
                 BucketId = bucketId;
                 StreamId = streamId;
@@ -497,8 +497,7 @@ namespace AI4E.Storage
                 ConcurrencyToken = concurrencyToken;
             }
 
-            public TBucket BucketId { get; }
-
+            public TBucketId BucketId { get; }
 
             public TStreamId StreamId { get; }
 

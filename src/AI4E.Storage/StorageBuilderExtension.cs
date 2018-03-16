@@ -42,8 +42,8 @@ namespace AI4E.Storage
             return builder;
         }
 
-        public static IStorageBuilder ExtendStorage<TBucket, TStreamId>(this IStorageBuilder builder, IEnumerable<IStorageExtension<TBucket, TStreamId>> hooks)
-            where TBucket : IEquatable<TBucket>
+        public static IStorageBuilder ExtendStorage<TBucketId, TStreamId>(this IStorageBuilder builder, IEnumerable<IStorageExtension<TBucketId, TStreamId>> hooks)
+            where TBucketId : IEquatable<TBucketId>
             where TStreamId : IEquatable<TStreamId>
         {
             if (builder == null)
@@ -57,8 +57,8 @@ namespace AI4E.Storage
             return builder; // .Configure(options => options.Extensions.AddRange(hooks));
         }
 
-        public static IStorageBuilder ExtendStorage<TBucket, TStreamId>(this IStorageBuilder builder, params IStorageExtension<TBucket, TStreamId>[] hooks)
-            where TBucket : IEquatable<TBucket>
+        public static IStorageBuilder ExtendStorage<TBucketId, TStreamId>(this IStorageBuilder builder, params IStorageExtension<TBucketId, TStreamId>[] hooks)
+            where TBucketId : IEquatable<TBucketId>
             where TStreamId : IEquatable<TStreamId>
         {
             if (builder == null)
@@ -70,8 +70,8 @@ namespace AI4E.Storage
             return ExtendStorage(builder, hooks);
         }
 
-        public static IStorageBuilder WithPersistence<TBucket, TStreamId>(this IStorageBuilder builder, IStreamPersistence<TBucket, TStreamId> persistence)
-            where TBucket : IEquatable<TBucket>
+        public static IStorageBuilder WithPersistence<TBucketId, TStreamId>(this IStorageBuilder builder, IStreamPersistence<TBucketId, TStreamId> persistence)
+            where TBucketId : IEquatable<TBucketId>
             where TStreamId : IEquatable<TStreamId>
         {
             if (builder == null)

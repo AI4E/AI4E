@@ -61,8 +61,8 @@ using System.Collections.Immutable;
 
 namespace AI4E.Storage
 {
-    public class CommitAttempt<TBucket, TStreamId>
-        where TBucket : IEquatable<TBucket>
+    public class CommitAttempt<TBucketId, TStreamId>
+        where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>
     {
         /// <summary>
@@ -77,7 +77,7 @@ namespace AI4E.Storage
         /// <param name="headers">The metadata which provides additional, unstructured information about this commit.</param>
         /// <param name="events">The collection of event messages to be committed as a single unit.</param>
         public CommitAttempt(
-            TBucket bucketId,
+            TBucketId bucketId,
             TStreamId streamId,
             Guid concurrencyToken,
             long streamRevision,
@@ -105,7 +105,7 @@ namespace AI4E.Storage
         /// <summary>
         /// Gets the value which identifies bucket to which the the stream and the the commit belongs.
         /// </summary>
-        public TBucket BucketId { get; }
+        public TBucketId BucketId { get; }
 
         /// <summary>
         /// Gets the value which uniquely identifies the stream to which the commit belongs.

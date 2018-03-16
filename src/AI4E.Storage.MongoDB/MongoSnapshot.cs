@@ -25,14 +25,14 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace AI4E.Storage.MongoDB
 {
-    internal sealed class MongoSnapshot<TBucket, TStreamId> : ISnapshot<TBucket, TStreamId>
-        where TBucket : IEquatable<TBucket>
+    internal sealed class MongoSnapshot<TBucketId, TStreamId> : ISnapshot<TBucketId, TStreamId>
+        where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>  
     {
         private string _id;
 
         public MongoSnapshot(
-            TBucket bucketId,
+            TBucketId bucketId,
             TStreamId streamId,
             long streamRevision,
             object payload,
@@ -51,7 +51,7 @@ namespace AI4E.Storage.MongoDB
             }
         }
 
-        public MongoSnapshot(ISnapshot<TBucket, TStreamId> snapshot)
+        public MongoSnapshot(ISnapshot<TBucketId, TStreamId> snapshot)
         {
             if (snapshot == null)
                 throw new ArgumentNullException(nameof(snapshot));
@@ -85,7 +85,7 @@ namespace AI4E.Storage.MongoDB
             private set => _id = value;
         }
 
-        public TBucket BucketId { get; private set; }
+        public TBucketId BucketId { get; private set; }
 
         public TStreamId StreamId { get; private set; }
 
@@ -95,7 +95,7 @@ namespace AI4E.Storage.MongoDB
 
         public Guid ConcurrencyToken { get; private set; }
 
-        IReadOnlyDictionary<string, object> ISnapshot<TBucket, TStreamId>.Headers => Headers ?? (IReadOnlyDictionary<string, object>)ImmutableDictionary<string, object>.Empty;
+        IReadOnlyDictionary<string, object> ISnapshot<TBucketId, TStreamId>.Headers => Headers ?? (IReadOnlyDictionary<string, object>)ImmutableDictionary<string, object>.Empty;
 
         Dictionary<string, object> Headers { get; } = new Dictionary<string, object>();
     }

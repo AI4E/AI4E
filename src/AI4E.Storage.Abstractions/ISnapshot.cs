@@ -63,14 +63,14 @@ namespace AI4E.Storage
     /// <summary>
     /// Represents a materialized view of a stream at specific revision.
     /// </summary>
-    public interface ISnapshot<TBucket, TStreamId>
-        where TBucket : IEquatable<TBucket>
+    public interface ISnapshot<TBucketId, TStreamId>
+        where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>
     {
         /// <summary>
         /// Gets the value which uniquely identifies the bucket to which the snapshot applies.
         /// </summary>
-        TBucket BucketId { get;  }
+        TBucketId BucketId { get;  }
 
         /// <summary>
         /// Gets the value which uniquely identifies the stream to which the snapshot applies.

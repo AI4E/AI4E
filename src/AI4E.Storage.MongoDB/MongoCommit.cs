@@ -25,14 +25,14 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace AI4E.Storage.MongoDB
 {
-    internal class MongoCommit<TBucket, TStreamId> : ICommit<TBucket, TStreamId>
-        where TBucket : IEquatable<TBucket>
+    internal class MongoCommit<TBucketId, TStreamId> : ICommit<TBucketId, TStreamId>
+        where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>
     {
         private string _id;
 
         public MongoCommit(
-            TBucket bucketId,
+            TBucketId bucketId,
             TStreamId streamId,
             Guid concurrencyToken,
             long streamRevision,
@@ -75,7 +75,7 @@ namespace AI4E.Storage.MongoDB
             private set => _id = value;
         }
 
-        public TBucket BucketId { get; private set; }
+        public TBucketId BucketId { get; private set; }
 
         public TStreamId StreamId { get; private set; }
 
@@ -85,13 +85,13 @@ namespace AI4E.Storage.MongoDB
 
         public DateTime CommitStamp { get; private set; }
 
-        IReadOnlyDictionary<string, object> ICommit<TBucket, TStreamId>.Headers => Headers ?? (IReadOnlyDictionary<string, object>)ImmutableDictionary<string, object>.Empty;
+        IReadOnlyDictionary<string, object> ICommit<TBucketId, TStreamId>.Headers => Headers ?? (IReadOnlyDictionary<string, object>)ImmutableDictionary<string, object>.Empty;
 
         public Dictionary<string, object> Headers { get; } = new Dictionary<string, object>();
 
         public object Body { get; private set; }
 
-        IReadOnlyCollection<EventMessage> ICommit<TBucket, TStreamId>.Events => Events ?? (IReadOnlyCollection<EventMessage>)ImmutableList<EventMessage>.Empty;
+        IReadOnlyCollection<EventMessage> ICommit<TBucketId, TStreamId>.Events => Events ?? (IReadOnlyCollection<EventMessage>)ImmutableList<EventMessage>.Empty;
 
         public List<EventMessage> Events { get; } = new List<EventMessage>();
 

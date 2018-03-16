@@ -62,14 +62,14 @@ namespace AI4E.Storage
     /// <summary>
     /// Indicates the most recent information representing the head of a given stream.
     /// </summary>
-    public interface IStreamHead<TBucket, TStreamId>
-        where TBucket : IEquatable<TBucket>
+    public interface IStreamHead<TBucketId, TStreamId>
+        where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>
     {
         /// <summary>
         /// Gets the value which uniquely identifies the stream where the last snapshot exceeds the allowed threshold.
         /// </summary>
-        TBucket BucketId { get; }
+        TBucketId BucketId { get; }
 
         /// <summary>
         /// Gets the value which uniquely identifies the stream where the last snapshot exceeds the allowed threshold.

@@ -66,14 +66,14 @@ namespace AI4E.Storage
     /// Represents a sequence (or stream) of commits.
     /// </summary>
     /// <remarks> This type is not thread-safe. </remarks>
-    public interface IStream<TBucket, TStreamId>
-        where TBucket : IEquatable<TBucket>
+    public interface IStream<TBucketId, TStreamId>
+        where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>
     {
         /// <summary>
         /// Gets the value which identifies the bucket to which the stream belongs.
         /// </summary>
-        TBucket BucketId { get; }
+        TBucketId BucketId { get; }
 
         /// <summary>
         /// Gets the value which uniquely identifies the stream.
@@ -98,7 +98,7 @@ namespace AI4E.Storage
         /// <summary>
         /// Gets the collection of commits, the stream consists of, started by the underlying snapshot.
         /// </summary>
-        IEnumerable<ICommit<TBucket, TStreamId>> Commits { get; }
+        IEnumerable<ICommit<TBucketId, TStreamId>> Commits { get; }
 
         /// <summary>
         /// Gets the collection of events, the commits contains.
@@ -113,7 +113,7 @@ namespace AI4E.Storage
         /// <summary>
         /// Gets the underlying snapshot of the view of the stream.
         /// </summary>
-        ISnapshot<TBucket, TStreamId> Snapshot { get; }
+        ISnapshot<TBucketId, TStreamId> Snapshot { get; }
 
         /// <summary>
         /// Asynchronouly adds a commit to the sequence.

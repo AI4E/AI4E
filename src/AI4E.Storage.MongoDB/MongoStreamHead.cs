@@ -23,13 +23,13 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace AI4E.Storage.MongoDB
 {
-    internal sealed class MongoStreamHead<TBucket, TStreamId> : IStreamHead<TBucket, TStreamId>
-        where TBucket : IEquatable<TBucket>
+    internal sealed class MongoStreamHead<TBucketId, TStreamId> : IStreamHead<TBucketId, TStreamId>
+        where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>
     {
         private string _id;
 
-        public MongoStreamHead(TBucket bucketId, TStreamId streamId, long headRevision, long snapshotRevision, long dispatchedRevision)
+        public MongoStreamHead(TBucketId bucketId, TStreamId streamId, long headRevision, long snapshotRevision, long dispatchedRevision)
         {
             BucketId = bucketId;
             StreamId = streamId;
@@ -57,7 +57,7 @@ namespace AI4E.Storage.MongoDB
             private set => _id = value;
         }
 
-        public TBucket BucketId { get; private set; }
+        public TBucketId BucketId { get; private set; }
 
         public TStreamId StreamId { get; private set; }
 
