@@ -54,8 +54,8 @@ namespace AI4E
         /// Registers a handler.
         /// </summary>
         /// <param name="provider">The handler to register.</param>
-        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="provider"/> is null.</exception>
-        public void Register(IContextualProvider<THandler> handler)
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="provider"/> is null.</exception>
+        public bool Register(IContextualProvider<THandler> handler)
         {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
@@ -63,26 +63,31 @@ namespace AI4E
             Debug.Assert(_handlers != null);
 
             ImmutableList<IContextualProvider<THandler>> current = _handlers, // Volatile read op.
-                                                              start,
-                                                              desired;
+                                                         start;
             do
             {
-                desired = start = current;
+                start = current;
 
-                if (!start.IsEmpty)
+                // We can assume that the to be registered handler (provider) is a single time in the collection at most.
+                // We check if the handler (provider) is the top of stack. If this is true, nothing has to be done.
+
+                // handler is never null
+                if (start.LastOrDefault() == handler)
                 {
-                    var tos = start.Last();
-
-                    Debug.Assert(tos != null);
-
-                    desired = start.Remove(handler);
+                    return false;
                 }
 
-                desired = desired.Add(handler);
+                // If the collection does already contain the handler (provider), we do nothing.
+                if (start.Contains(handler))
+                {
+                    return false;
+                }
 
-                current = Interlocked.CompareExchange(ref _handlers, desired, start);
+                current = Interlocked.CompareExchange(ref _handlers, start.Add(handler), start);
             }
             while (start != current);
+
+            return true;
         }
 
         /// <summary>
@@ -92,7 +97,7 @@ namespace AI4E
         /// <returns>
         /// A boolean value indicating whether the handler was actually found and unregistered.
         /// </returns>
-        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="provider"/> is null.</exception>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="provider"/> is null.</exception>
         public bool Unregister(IContextualProvider<THandler> handler)
         {
             if (handler == null)
@@ -121,7 +126,7 @@ namespace AI4E
                 Debug.Assert(tos != null);
 
                 // If the handler to remove is on top of stack, remove the top of stack.
-                if (handler.Equals(tos))
+                if (handler == tos)
                 {
                     desired = start.RemoveAt(start.Count - 1);
                 }
@@ -130,7 +135,9 @@ namespace AI4E
                     desired = start.Remove(handler);
 
                     if (desired == start)
+                    {
                         return false;
+                    }
                 }
 
                 current = Interlocked.CompareExchange(ref _handlers, desired, start);

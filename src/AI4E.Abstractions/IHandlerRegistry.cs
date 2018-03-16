@@ -43,7 +43,7 @@ namespace AI4E
         /// </summary>
         /// <param name="provider">The handler to register.</param>
         /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="provider"/> is null.</exception>
-        void Register(IContextualProvider<THandler> provider);
+        bool Register(IContextualProvider<THandler> provider);
 
         /// <summary>
         /// Unregisters a handler.
