@@ -34,11 +34,6 @@ namespace AI4E
 {
     public class MessagingOptions
     {
-        public MessagingOptions()
-        {
-
-        }
-
         public IList<IContextualProvider<IMessageProcessor>> MessageProcessors { get; } = new List<IContextualProvider<IMessageProcessor>>();
     }
 }

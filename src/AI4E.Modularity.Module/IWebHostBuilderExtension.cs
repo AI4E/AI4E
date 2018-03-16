@@ -19,18 +19,14 @@
  */
 
 using System;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Reflection;
 using AI4E.Modularity.Debugging;
 using AI4E.Modularity.RPC;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
-using Microsoft.AspNetCore.Mvc.Internal;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AI4E.Modularity
 {
@@ -44,55 +40,15 @@ namespace AI4E.Modularity
             webHostBuilder.ConfigureServices(services =>
             {
                 services.AddOptions();
-                services.AddSingleton<IServer>(provider => new ModuleServer(provider.GetRequiredService<IRemoteMessageDispatcher>(), "prefix"));
+                services.AddSingleton<IServer, ModuleServer>();
                 services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
-                services.AddSingleton<IPhysicalEndPoint<IPEndPoint>, TcpEndPoint>();
-                services.AddSingleton<IEndPointManager, EndPointManager<IPEndPoint>>();
                 services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
                 services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
                 services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
-
-                services.AddSingleton(EndPointRoute.CreateRoute("module-TestModule")); // TODO: Get the actual module name
-            });
-
-            return webHostBuilder;
-        }
-
-        public static IWebHostBuilder UseDebugModuleServer(this IWebHostBuilder webHostBuilder, string moduleName, string prefix)
-        {
-            if (webHostBuilder == null)
-                throw new ArgumentNullException(nameof(webHostBuilder));
-
-            webHostBuilder.ConfigureServices(services =>
-            {
-                services.AddOptions();
-                services.AddSingleton<IServer>(provider => new ModuleServer(provider.GetRequiredService<IRemoteMessageDispatcher>(), prefix));
-
-                services.AddSingleton(provider =>
-                {
-                    var tcpClient = new TcpClient();
-                    tcpClient.Connect(IPAddress.Loopback, 8080); // TODO
-                    var stream = tcpClient.GetStream();
-
-                    return new RPCHost(stream, provider);
-                });
-
-                services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>(provider =>
-                {
-                    var endPointManager = ActivatorUtilities.CreateInstance<DebugEndPointManager>(provider);
-                    var routeStore = ActivatorUtilities.CreateInstance<DebugRouteStore>(provider);
-                    var localEndPoint = provider.GetRequiredService<EndPointRoute>();
-                    var messageTypeConversion = provider.GetRequiredService<IMessageTypeConversion>();
-                    var logger = provider.GetService<ILogger<RemoteMessageDispatcher>>();
-
-                    return new RemoteMessageDispatcher(endPointManager, routeStore, localEndPoint, messageTypeConversion, provider, logger);
-                });
-
-                services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<IRemoteMessageDispatcher>());
-                services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
-                services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
-                services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
-                services.AddSingleton(EndPointRoute.CreateRoute($"module-{moduleName}")); // TODO: Get the actual module name
+                services.AddSingleton(ConfigureRPCHost);
+                services.AddSingleton(ConfigureEndPointManager);
+                services.AddSingleton(ConfigureRouteStore);
+                services.AddSingleton(ConfigurePhysicalEndPoint);
             });
 
             return webHostBuilder;
@@ -103,42 +59,74 @@ namespace AI4E.Modularity
             if (webHostBuilder == null)
                 throw new ArgumentNullException(nameof(webHostBuilder));
 
-            webHostBuilder.UseModuleServer();
+            if (configuration == null)
+                throw new ArgumentNullException(nameof(configuration));
 
-            webHostBuilder.ConfigureServices(services =>
-            {
-                services.Configure(configuration);
-            });
+            var result = webHostBuilder.UseModuleServer();
 
-            return webHostBuilder;
+            webHostBuilder.ConfigureServices(services => services.Configure(configuration));
+
+            return result;
         }
 
-        private static ApplicationPartManager GetApplicationPartManager(this IServiceCollection services)
+        private static IPhysicalEndPoint<IPEndPoint> ConfigurePhysicalEndPoint(IServiceProvider provider)
         {
-            var manager = services.GetService<ApplicationPartManager>();
-            if (manager == null)
+            var optionsAccessor = provider.GetRequiredService<IOptions<ModuleServerOptions>>();
+            var options = optionsAccessor.Value ?? new ModuleServerOptions();
+
+            if (options.UseDebugConnection)
             {
-                manager = new ApplicationPartManager();
-                var parts = DefaultAssemblyPartDiscoveryProvider.DiscoverAssemblyParts(Assembly.GetEntryAssembly().FullName);
-                foreach (var part in parts)
-                {
-                    manager.ApplicationParts.Add(part);
-                }
+                return null;
             }
 
-            return manager;
+            return ActivatorUtilities.CreateInstance<TcpEndPoint>(provider);
         }
 
-        private static T GetService<T>(this IServiceCollection services)
+        private static IRouteStore ConfigureRouteStore(IServiceProvider provider)
         {
-            return (T)services
-                .LastOrDefault(d => d.ServiceType == typeof(T))
-                ?.ImplementationInstance;
+            var optionsAccessor = provider.GetRequiredService<IOptions<ModuleServerOptions>>();
+            var options = optionsAccessor.Value ?? new ModuleServerOptions();
+
+            if (!options.UseDebugConnection)
+            {
+                return null;
+            }
+
+            return ActivatorUtilities.CreateInstance<DebugRouteStore>(provider);
+
         }
-    }
 
-    public class ModuleServerOptions
-    {
+        private static IEndPointManager ConfigureEndPointManager(IServiceProvider provider)
+        {
+            var optionsAccessor = provider.GetRequiredService<IOptions<ModuleServerOptions>>();
+            var options = optionsAccessor.Value ?? new ModuleServerOptions();
 
+            if (options.UseDebugConnection)
+            {
+                return ActivatorUtilities.CreateInstance<DebugEndPointManager>(provider);
+            }
+            else
+            {
+                return ActivatorUtilities.CreateInstance<EndPointManager<IPEndPoint>>(provider);
+            }
+        }
+
+        private static RPCHost ConfigureRPCHost(IServiceProvider provider)
+        {
+            var optionsAccessor = provider.GetRequiredService<IOptions<ModuleServerOptions>>();
+            var options = optionsAccessor.Value ?? new ModuleServerOptions();
+
+            if (!options.UseDebugConnection)
+            {
+                return null;
+            }
+
+            var addressSerializer = provider.GetRequiredService<IAddressConversion<IPEndPoint>>();
+            var endPoint = addressSerializer.Parse(options.DebugConnection);
+            var tcpClient = new TcpClient();
+            tcpClient.Connect(endPoint.Address, endPoint.Port);
+            var stream = tcpClient.GetStream();
+            return new RPCHost(stream, provider);
+        }
     }
 }

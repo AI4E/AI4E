@@ -22,8 +22,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
@@ -31,6 +29,7 @@ using AI4E.Modularity.HttpDispatch;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
 namespace AI4E.Modularity
@@ -39,15 +38,26 @@ namespace AI4E.Modularity
     {
         private readonly IRemoteMessageDispatcher _messageEndPoint;
         private readonly string _prefix;
+        private readonly EndPointRoute _localEndPoint;
         private IHandlerRegistration _handlerRegistration;
 
-        public ModuleServer(IRemoteMessageDispatcher messageEndPoint, string prefix)
+        public ModuleServer(IRemoteMessageDispatcher messageEndPoint, IOptions<ModuleServerOptions> optionsAccessor)
         {
             if (messageEndPoint == null)
                 throw new ArgumentNullException(nameof(messageEndPoint));
 
+            if (optionsAccessor == null)
+                throw new ArgumentNullException(nameof(optionsAccessor));
+
+            var options = optionsAccessor.Value ?? new ModuleServerOptions();
+
+            if (string.IsNullOrWhiteSpace(options.Prefix))
+            {
+                throw new ArgumentException("A url prefix must be specified.");
+            }
+
             _messageEndPoint = messageEndPoint;
-            _prefix = prefix;
+            _prefix = options.Prefix;
             Features.Set<IHttpRequestFeature>(new HttpRequestFeature());
             Features.Set<IHttpResponseFeature>(new HttpResponseFeature());
         }
@@ -57,31 +67,32 @@ namespace AI4E.Modularity
             if (application == null)
                 throw new ArgumentNullException(nameof(application));
 
-            _handlerRegistration = _messageEndPoint.Register(new ContextualProvider<IMessageHandler<ModuleHttpRequest>>(provider => new HttpRequestForwardingHandler<TContext>(application)));
+            var handler = Provider.Create(() => new HttpRequestForwardingHandler<TContext>(application));
 
-            try
+            _handlerRegistration = _messageEndPoint.Register(handler);
+
+            if (!await RegisterHttpPrefixAsync())
             {
-                await _messageEndPoint.RegisterHttpPrefixAsync(_prefix);
-            }
-            catch
-            {
-                var handlerRegistration = _handlerRegistration;
-                Debug.Assert(handlerRegistration != null);
+                try
+                {
+                    var handlerRegistration = _handlerRegistration;
+                    Debug.Assert(handlerRegistration != null);
 
-                handlerRegistration.Cancel();
-                await handlerRegistration.Cancellation;
-
-                throw;
+                    handlerRegistration.Cancel();
+                    await handlerRegistration.Cancellation;
+                }
+                finally
+                {
+                    throw new ModuleServerException("Failed to start server.");
+                }
             }
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
+            var result = await UnregisterHttpPrefixAsync();
+
             try
-            {
-                await _messageEndPoint.UnregisterHttpPrefixAsync(_prefix);
-            }
-            finally
             {
                 var handlerRegistration = _handlerRegistration;
                 Debug.Assert(handlerRegistration != null);
@@ -89,6 +100,36 @@ namespace AI4E.Modularity
                 handlerRegistration.Cancel();
                 await handlerRegistration.Cancellation;
             }
+            finally
+            {
+                throw new ModuleServerException("Failed to stop server.");
+            }
+        }
+
+        private async Task<bool> RegisterHttpPrefixAsync()
+        {
+            var message = new RegisterHttpPrefix(_messageEndPoint.LocalEndPoint, _prefix);
+            var result = await _messageEndPoint.DispatchAsync(message);
+
+            if (!result.IsSuccess)
+            {
+                // TODO: Log result message
+            }
+
+            return result.IsSuccess;
+        }
+
+        private async Task<bool> UnregisterHttpPrefixAsync()
+        {
+            var message = new UnregisterHttpPrefix(_prefix);
+            var result = await _messageEndPoint.DispatchAsync(message);
+
+            if (!result.IsSuccess)
+            {
+                // TODO: Log result message
+            }
+
+            return result.IsSuccess;
         }
 
         public IFeatureCollection Features { get; } = new FeatureCollection();
@@ -98,12 +139,6 @@ namespace AI4E.Modularity
         private class HttpRequestForwardingHandler<TContext> : IMessageHandler<ModuleHttpRequest>
         {
             private readonly IHttpApplication<TContext> _application;
-
-            // TODO: What is this for?
-            private static readonly MethodInfo _setMethodDefintion
-                = typeof(IFeatureCollection).GetMethods().SingleOrDefault(p => p.Name == "Set" &&
-                                                                               p.IsGenericMethodDefinition &&
-                                                                               p.GetGenericArguments().Length == 1);
 
             public HttpRequestForwardingHandler(IHttpApplication<TContext> application)
             {
@@ -116,8 +151,65 @@ namespace AI4E.Modularity
                 if (message == null)
                     throw new ArgumentNullException(nameof(message));
 
-                var features = new FeatureCollection();
+                var responseStream = new MemoryStream();
+                var requestFeature = BuildRequestFeature(message);
+                var responseFeature = BuildResponseFeature(responseStream);
+                var features = BuildFeatureCollection(requestFeature, responseFeature);
+                var context = _application.CreateContext(features);
 
+                try
+                {
+                    await _application.ProcessRequestAsync(context);
+                    var response = BuildResponse(responseStream, responseFeature);
+
+                    try
+                    {
+                        _application.DisposeContext(context, null);
+                    }
+                    catch { /* TODO: Logging*/ }
+
+                    return new SuccessDispatchResult<ModuleHttpResponse>(response);
+                }
+                catch (Exception exc)
+                {
+                    _application.DisposeContext(context, exc);
+                    throw;
+                }
+            }
+
+            private static ModuleHttpResponse BuildResponse(MemoryStream responseStream, HttpResponseFeature responseFeature)
+            {
+                var response = new ModuleHttpResponse
+                {
+                    StatusCode = responseFeature.StatusCode,
+                    ReasonPhrase = responseFeature.ReasonPhrase,
+                    Body = responseStream.ToArray(),
+                    Headers = new Dictionary<string, string[]>()
+                };
+
+                foreach (var entry in responseFeature.Headers)
+                {
+                    response.Headers.Add(entry.Key, entry.Value.ToArray());
+                }
+
+                return response;
+            }
+
+            private static FeatureCollection BuildFeatureCollection(HttpRequestFeature requestFeature, HttpResponseFeature responseFeature)
+            {
+                var features = new FeatureCollection();
+                features.Set<IHttpRequestFeature>(requestFeature);
+                features.Set<IHttpResponseFeature>(responseFeature);
+                return features;
+            }
+
+            private HttpResponseFeature BuildResponseFeature(MemoryStream responseStream)
+            {
+                return new HttpResponseFeature() { Body = responseStream, Headers = new HeaderDictionary() };
+            }
+
+            private static HttpRequestFeature BuildRequestFeature(ModuleHttpRequest message)
+            {
                 var requestFeature = new HttpRequestFeature
                 {
                     Method = message.Method,
@@ -136,47 +228,7 @@ namespace AI4E.Modularity
                     requestFeature.Headers.Add(header.Key, new StringValues(header.Value));
                 }
 
-                var responseStream = new MemoryStream();
-
-                var responseFeature = new HttpResponseFeature()
-                {
-                    Body = responseStream,
-                    Headers = new HeaderDictionary()
-                };
-
-                features.Set<IHttpRequestFeature>(requestFeature);
-                features.Set<IHttpResponseFeature>(responseFeature);
-
-                var context = _application.CreateContext(features);
-
-                try
-                {
-                    await _application.ProcessRequestAsync(context);
-
-                    var httpReponse = new ModuleHttpResponse
-                    {
-                        StatusCode = responseFeature.StatusCode,
-                        ReasonPhrase = responseFeature.ReasonPhrase,
-                        Body = responseStream.ToArray(),
-                        Headers = new Dictionary<string, string[]>()
-                    };
-
-                    foreach (var entry in responseFeature.Headers)
-                    {
-                        httpReponse.Headers.Add(entry.Key, entry.Value.ToArray());
-                    }
-
-                    var result = httpReponse;
-
-                    _application.DisposeContext(context, null);
-
-                    return new SuccessDispatchResult<ModuleHttpResponse>(result);
-                }
-                catch (Exception exc)
-                {
-                    _application.DisposeContext(context, exc);
-                    throw;
-                }
+                return requestFeature;
             }
         }
     }

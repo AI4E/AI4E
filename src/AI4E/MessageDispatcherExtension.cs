@@ -77,6 +77,19 @@ namespace AI4E
             return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((message, values) => eventHandler(message)));
         }
 
+        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(
+            this IMessageDispatcher messageDispatcher,
+            IProvider<IMessageHandler<TMessage>> messageHandlerProvider)
+        {
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+
+            if (messageHandlerProvider == null)
+                throw new ArgumentNullException(nameof(messageHandlerProvider));
+
+            return messageDispatcher.Register(ContextualProvider.Create(messageHandlerProvider.ProvideInstance));
+        }
+
         private sealed class AnonymousMessageHandler<TMessage> : IMessageHandler<TMessage>
         {
             private readonly Func<TMessage, DispatchValueDictionary, Task<IDispatchResult>> _eventHandler;

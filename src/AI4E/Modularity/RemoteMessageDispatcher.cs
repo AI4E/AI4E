@@ -9,7 +9,7 @@
  *                  (6) AI4E.Modularity.RemoteMessageDispatcher.TypedRemoteMessageDispatcher'1.HandlerRegistration
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   01.03.2018 
+ * Last modified:   16.03.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -47,13 +47,14 @@ using AI4E.DispatchResults;
 using AI4E.Processing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Nito.AsyncEx;
 
 namespace AI4E.Modularity
 {
     // TODO: Route caching and cache coherency
-    public sealed class RemoteMessageDispatcher : IRemoteMessageDispatcher, IDisposable
+    public sealed class RemoteMessageDispatcher : IRemoteMessageDispatcher, IAsyncDisposable
     {
         #region Fields
 
@@ -74,8 +75,8 @@ namespace AI4E.Modularity
 
         public RemoteMessageDispatcher(IEndPointManager endPointManager,
                                        IRouteStore routeStore,
-                                       EndPointRoute localEndPoint,
                                        IMessageTypeConversion messageTypeConversion,
+                                       IOptions<RemoteMessagingOptions> optionsAccessor,
                                        IServiceProvider serviceProvider,
                                        ILogger<RemoteMessageDispatcher> logger)
         {
@@ -85,48 +86,111 @@ namespace AI4E.Modularity
             if (routeStore == null)
                 throw new ArgumentNullException(nameof(routeStore));
 
-            if (localEndPoint == null)
-                throw new ArgumentNullException(nameof(localEndPoint));
-
             if (messageTypeConversion == null)
                 throw new ArgumentNullException(nameof(messageTypeConversion));
+
+            if (optionsAccessor == null)
+                throw new ArgumentNullException(nameof(optionsAccessor));
 
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
+            var options = optionsAccessor.Value ?? new RemoteMessagingOptions();
+
+            if (options.LocalEndPoint == default)
+            {
+                throw new ArgumentException("A local end point must be specified to create a remote message dispatcher.");
+            }
+
             _endPointManager = endPointManager;
             _routeStore = routeStore;
-            LocalEndPoint = localEndPoint;
+            LocalEndPoint = options.LocalEndPoint;
             _messageTypeConversion = messageTypeConversion;
             _serviceProvider = serviceProvider;
             _logger = logger;
-
             _endPointManager.AddEndPoint(LocalEndPoint);
-
             _receiveProcess = new AsyncProcess(ReceiveProcedure);
-            _receiveProcess.Start();
+            _initialization = InitializeInternalAsync(_cancellationSource.Token);
         }
 
         public RemoteMessageDispatcher(IEndPointManager endPointManager,
                                        IRouteStore routeStore,
-                                       EndPointRoute localEndPoint,
                                        IMessageTypeConversion messageTypeConversion,
+                                       IOptions<RemoteMessagingOptions> optionsAccessor,
                                        IServiceProvider serviceProvider)
-            : this(endPointManager, routeStore, localEndPoint, messageTypeConversion, serviceProvider, null) { }
+            : this(endPointManager, routeStore, messageTypeConversion, optionsAccessor, serviceProvider, null) { }
 
         #endregion
 
         public EndPointRoute LocalEndPoint { get; }
 
-        public void Dispose()
+        #region Initialization
+
+        private readonly CancellationTokenSource _cancellationSource = new CancellationTokenSource();
+        private readonly Task _initialization;
+
+        private async Task InitializeInternalAsync(CancellationToken cancellation)
+        {
+            await _receiveProcess.StartAsync();
+        }
+
+        #endregion
+
+        #region Disposal
+
+        private Task _disposal;
+        private readonly TaskCompletionSource<byte> _disposalSource = new TaskCompletionSource<byte>();
+        private readonly object _lock = new object();
+
+        public Task Disposal => _disposalSource.Task;
+
+        private async Task DisposeInternalAsync()
         {
             try
             {
-                _receiveProcess.Terminate();
-                _endPointManager.RemoveEndPoint(LocalEndPoint);
+                // Cancel the initialization
+                _cancellationSource.Cancel();
+                try
+                {
+                    await _initialization;
+                }
+                catch (OperationCanceledException) { }
+
+                try
+                {
+                    await _receiveProcess.TerminateAsync();
+                }
+                finally
+                {
+                    _endPointManager.RemoveEndPoint(LocalEndPoint);
+                }
             }
-            catch (ObjectDisposedException) { }
+            catch (OperationCanceledException) { }
+            catch (Exception exc)
+            {
+                _disposalSource.SetException(exc);
+                return;
+            }
+
+            _disposalSource.SetResult(0);
         }
+
+        public void Dispose()
+        {
+            lock (_lock)
+            {
+                if (_disposal == null)
+                    _disposal = DisposeInternalAsync();
+            }
+        }
+
+        public Task DisposeAsync()
+        {
+            Dispose();
+            return Disposal;
+        }
+
+        #endregion
 
         #region Receive Process
 

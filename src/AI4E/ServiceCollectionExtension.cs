@@ -135,11 +135,12 @@ namespace AI4E
             ConfigureApplicationParts(services);
 
             services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, ActivatorUtilities.CreateInstance<TMessageDispatcherImpl>(serviceProvider)));
+            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
         }
 
         public static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(this IServiceCollection services, TMessageDispatcherImpl instance)
             where TMessageDispatcher : class, IMessageDispatcher
-             where TMessageDispatcherImpl : class, TMessageDispatcher
+            where TMessageDispatcherImpl : class, TMessageDispatcher
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
@@ -150,11 +151,12 @@ namespace AI4E
             ConfigureApplicationParts(services);
 
             services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, instance));
+            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
         }
 
         public static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(this IServiceCollection services, Func<IServiceProvider, TMessageDispatcherImpl> factory)
             where TMessageDispatcher : class, IMessageDispatcher
-             where TMessageDispatcherImpl : class, TMessageDispatcher
+            where TMessageDispatcherImpl : class, TMessageDispatcher
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
@@ -165,6 +167,7 @@ namespace AI4E
             ConfigureApplicationParts(services);
 
             services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, factory(serviceProvider)));
+            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
         }
 
         private static void ConfigureApplicationParts(IServiceCollection services)
