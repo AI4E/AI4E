@@ -81,6 +81,7 @@ namespace AI4E.Storage
         }
 
         public static Task<IEnumerable<TData>> QueryAsync<TData>(this IDataStore dataStore, Func<IQueryable<TData>, IQueryable<TData>> queryShaper, CancellationToken cancellation = default)
+            where TData : class
         {
             if (dataStore == null)
                 throw new ArgumentNullException(nameof(dataStore));
@@ -92,6 +93,7 @@ namespace AI4E.Storage
         }
 
         public static Task<IEnumerable<TData>> FindAsync<TData>(this IDataStore dataStore, Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
+             where TData : class
         {
             if (dataStore == null)
                 throw new ArgumentNullException(nameof(dataStore));
@@ -103,6 +105,7 @@ namespace AI4E.Storage
         }
 
         public static async Task<TData> FindOneAsync<TData>(this IDataStore dataStore, Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
+             where TData : class
         {
             if (dataStore == null)
                 throw new ArgumentNullException(nameof(dataStore));
@@ -114,6 +117,7 @@ namespace AI4E.Storage
         }
 
         public static Task<IEnumerable<TData>> FindAsync<TData>(this IDataStore dataStore, CancellationToken cancellation = default)
+             where TData : class
         {
             if (dataStore == null)
                 throw new ArgumentNullException(nameof(dataStore));
@@ -122,6 +126,7 @@ namespace AI4E.Storage
         }
 
         public static async Task<TData> FindOneAsync<TData>(this IDataStore dataStore, CancellationToken cancellation = default)
+ where TData : class
         {
             if (dataStore == null)
                 throw new ArgumentNullException(nameof(dataStore));

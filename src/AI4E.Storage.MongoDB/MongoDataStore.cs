@@ -52,6 +52,7 @@ namespace AI4E.Storage.MongoDB
         }
 
         public async Task StoreAsync<TData>(TData data, CancellationToken cancellation = default)
+            where TData : class
         {
             var collection = GetCollection<TData>();
 
@@ -67,6 +68,7 @@ namespace AI4E.Storage.MongoDB
         }
 
         public async Task RemoveAsync<TData>(TData data, CancellationToken cancellation = default)
+            where TData : class
         {
             var collection = GetCollection<TData>();
 
@@ -79,6 +81,7 @@ namespace AI4E.Storage.MongoDB
         }
 
         public async Task<IEnumerable<TResult>> QueryAsync<TData, TResult>(Func<IQueryable<TData>, IQueryable<TResult>> queryShaper, CancellationToken cancellation = default)
+            where TData : class
         {
             return await ((IMongoQueryable<TResult>)queryShaper(GetCollection<TData>().AsQueryable())).ToListAsync(cancellation);
         }

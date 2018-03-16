@@ -43,11 +43,15 @@ namespace AI4E.Storage.Projection
         }
 
         private Projector<TSource> GetTypedProjector<TSource>()
+            where TSource : class
+     
         {
             return (Projector<TSource>)_typedProjectors.GetOrAdd(typeof(TSource), _ => new Projector<TSource>(_serviceProvider));
         }
 
         public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection<TSource, TProjection>(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
+            where TSource : class
+            where TProjection : class
         {
             if (projectionProvider == null)
                 throw new ArgumentNullException(nameof(projectionProvider));
@@ -85,6 +89,7 @@ namespace AI4E.Storage.Projection
         }
 
         public Task ProjectAsync<TSource>(TSource source, CancellationToken cancellation)
+            where TSource : class
         {
             return ProjectAsync(typeof(TSource), source, cancellation);
         }
@@ -108,6 +113,7 @@ namespace AI4E.Storage.Projection
     }
 
     internal sealed class Projector<TSource> : ITypedProjector
+         where TSource : class
     {
         private readonly ConcurrentDictionary<Type, ITypedProjector<TSource>> _typedProjectors = new ConcurrentDictionary<Type, ITypedProjector<TSource>>();
         private readonly IServiceProvider _serviceProvider;
@@ -120,11 +126,13 @@ namespace AI4E.Storage.Projection
         }
 
         private Projector<TSource, TProjection> GetTypedProjector<TProjection>()
+            where TProjection : class
         {
             return (Projector<TSource, TProjection>)_typedProjectors.GetOrAdd(typeof(TProjection), _ => new Projector<TSource, TProjection>(_serviceProvider));
         }
 
         public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection<TProjection>(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
+            where TProjection : class
         {
             if (projectionProvider == null)
                 throw new ArgumentNullException(nameof(projectionProvider));
@@ -152,12 +160,15 @@ namespace AI4E.Storage.Projection
     }
 
     internal interface ITypedProjector<TSource>
+        where TSource : class
     {
         Task ProjectAsync(object source, CancellationToken cancellation);
         Type ProjectionType { get; }
     }
 
     internal sealed class Projector<TSource, TProjection> : ITypedProjector<TSource>
+        where TSource : class
+        where TProjection : class
     {
         private readonly HandlerRegistry<IProjection<TSource, TProjection>> _projections;
         private readonly IServiceProvider _serviceProvider;

@@ -38,7 +38,7 @@ namespace AI4E.Storage
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="data"/> is null.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if the object is disposed.</exception>
-        Task StoreAsync<TData>(TData data, CancellationToken cancellation = default);
+        Task StoreAsync<TData>(TData data, CancellationToken cancellation = default) where TData : class;
 
         /// <summary>
         /// Removes an object from the store.
@@ -48,7 +48,7 @@ namespace AI4E.Storage
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="data"/> is null.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if the object is disposed.</exception>
-        Task RemoveAsync<TData>(TData data, CancellationToken cancellation = default);
+        Task RemoveAsync<TData>(TData data, CancellationToken cancellation = default) where TData : class;
 
         /// <summary>
         /// Asynchronously performs a query.
@@ -62,6 +62,8 @@ namespace AI4E.Storage
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="queryShaper"/> is null.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if the object is disposed.</exception>
-        Task<IEnumerable<TResult>> QueryAsync<TData, TResult>(Func<IQueryable<TData>, IQueryable<TResult>> queryShaper, CancellationToken cancellation = default);
+        Task<IEnumerable<TResult>> QueryAsync<TData, TResult>(Func<IQueryable<TData>, IQueryable<TResult>> queryShaper, 
+                                                              CancellationToken cancellation = default) 
+            where TData : class;
     }
 }
