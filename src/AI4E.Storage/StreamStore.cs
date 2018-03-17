@@ -225,6 +225,8 @@ namespace AI4E.Storage
                 if (commits == null)
                     throw new ArgumentNullException(nameof(commits));
 
+                ExecuteExtensions(commits);
+
                 _streamStore = streamStore;
                 BucketId = bucketId;
                 StreamId = streamId;
@@ -252,6 +254,7 @@ namespace AI4E.Storage
                 var snapshot = await streamStore._persistence.GetSnapshotAsync(bucketId, streamId, revision, cancellation);
                 var commits = await streamStore._persistence.GetCommitsAsync(bucketId, streamId, (snapshot?.StreamRevision + 1) ?? default, revision, cancellation)
                     ?? Enumerable.Empty<ICommit<TBucketId, TStreamId>>();
+
                 var isFixedRevision = revision != default;
 
                 var result = new Stream(streamStore, bucketId, streamId, snapshot, commits, isFixedRevision, logger);
@@ -377,6 +380,8 @@ namespace AI4E.Storage
 
                 var commits = await _streamStore._persistence.GetCommitsAsync(BucketId, StreamId, StreamRevision + 1, cancellation);
 
+                ExecuteExtensions(commits);
+
                 if (commits.Any())
                 {
                     _logger?.LogInformation(Resources.UnderlyingStreamHasChanged, StreamId);
@@ -406,24 +411,13 @@ namespace AI4E.Storage
                 throw new ConcurrencyException();
             }
 
-            private IEnumerable<ICommit<TBucketId, TStreamId>> ExecuteExtensions(IEnumerable<ICommit<TBucketId, TStreamId>> commits)
+            private void ExecuteExtensions(IEnumerable<ICommit<TBucketId, TStreamId>> commits)
             {
                 foreach (var commit in commits)
                 {
-                    var filtered = commit;
-                    foreach (var extension in _streamStore._extensions.Where(x => (filtered = x.Select(filtered)) == null))
+                    foreach (var extension in _streamStore._extensions)
                     {
-                        _logger?.LogInformation(Resources.PipelineHookSkippedCommit, extension.GetType(), commit.ConcurrencyToken);
-                        break;
-                    }
-
-                    if (filtered == null)
-                    {
-                        _logger?.LogInformation(Resources.PipelineHookFilteredCommit);
-                    }
-                    else
-                    {
-                        yield return filtered;
+                        extension.OnLoad(commit);
                     }
                 }
             }
@@ -439,13 +433,11 @@ namespace AI4E.Storage
                 foreach (var extension in _streamStore._extensions)
                 {
                     _logger?.LogDebug(Resources.InvokingPreCommitHooks, attempt.ConcurrencyToken, extension.GetType());
-                    if (extension.PreCommit(attempt))
+                    if (!extension.OnCommit(attempt))
                     {
-                        continue;
+                        _logger?.LogInformation(Resources.CommitRejectedByPipelineHook, extension.GetType(), attempt.ConcurrencyToken);
+                        return null;
                     }
-
-                    _logger?.LogInformation(Resources.CommitRejectedByPipelineHook, extension.GetType(), attempt.ConcurrencyToken);
-                    return null;
                 }
 
                 _logger?.LogDebug(Resources.PersistingCommit, newConcurrencyToken, StreamId);
@@ -456,7 +448,7 @@ namespace AI4E.Storage
                     foreach (var extension in _streamStore._extensions)
                     {
                         _logger?.LogDebug(Resources.InvokingPostCommitPipelineHooks, attempt.ConcurrencyToken, extension.GetType());
-                        extension.PostCommit(commit);
+                        extension.OnCommited(commit);
                     }
                 }
                 finally
