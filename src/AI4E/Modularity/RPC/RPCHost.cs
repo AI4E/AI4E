@@ -93,8 +93,6 @@ namespace AI4E.Modularity.RPC
         public async Task<Proxy<TRemote>> ActivateAsync<TRemote>(ActivationMode mode, CancellationToken cancellation)
             where TRemote : class
         {
-            await Initialization;
-
             int seqNum;
             Task<Proxy<TRemote>> result;
             Message message;
@@ -433,8 +431,6 @@ namespace AI4E.Modularity.RPC
 
         internal async Task<TResult> SendMethodCallAsync<TResult>(Expression expression, int proxyId, bool waitTask)
         {
-            await Initialization;
-
             if (expression == null)
                 throw new ArgumentNullException(nameof(expression));
 

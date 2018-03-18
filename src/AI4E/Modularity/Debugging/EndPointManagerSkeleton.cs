@@ -2,16 +2,18 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Async;
+using Nito.AsyncEx;
 
 namespace AI4E.Modularity.Debugging
 {
-    public sealed class EndPointManagerSkeleton : IDisposable
+    public sealed class EndPointManagerSkeleton : IAsyncDisposable
     {
         private readonly IEndPointManager _endPointManager;
         private readonly IMessageDispatcher _messageDispatcher;
         private readonly HashSet<EndPointRoute> _addedEndPoints = new HashSet<EndPointRoute>();
-        private readonly object _lock = new object();
-        private volatile bool _isDisposed;
+        private readonly AsyncLock _lock = new AsyncLock();
+        private readonly AsyncDisposeHelper _disposeHelper;
 
         public EndPointManagerSkeleton(IEndPointManager endPointManager, IMessageDispatcher messageDispatcher)
         {
@@ -23,79 +25,110 @@ namespace AI4E.Modularity.Debugging
 
             _endPointManager = endPointManager;
             _messageDispatcher = messageDispatcher;
+
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
-        public void AddEndPoint(EndPointRoute route)
+        #region Disposal
+
+        private async Task DisposeInternalAsync()
         {
-            lock (_lock)
+            Console.WriteLine("Disposing EndPointManagerSkeleton");
+
+            using (await _lock.LockAsync())
             {
-                if (_isDisposed)
-                    throw new ObjectDisposedException(GetType().FullName);
+                foreach (var endPoint in _addedEndPoints)
+                {
+                    await _endPointManager.RemoveEndPointAsync(endPoint);
 
-                if (_addedEndPoints.Contains(route))
-                    return;
-
-                _endPointManager.AddEndPoint(route);
-                _addedEndPoints.Add(route);
-
-                _messageDispatcher.DispatchAsync(new EndPointConnected(route), publish: true).GetAwaiter().GetResult();
+                    await _messageDispatcher.DispatchAsync(new EndPointDisconnected(endPoint), publish: true);
+                }
             }
-        }
-
-        public void RemoveEndPoint(EndPointRoute route)
-        {
-            lock (_lock)
-            {
-                if (_isDisposed)
-                    throw new ObjectDisposedException(GetType().FullName);
-
-                if (!_addedEndPoints.Contains(route))
-                    return;
-
-                _endPointManager.AddEndPoint(route);
-                _addedEndPoints.Remove(route);
-
-                _messageDispatcher.DispatchAsync(new EndPointDisconnected(route), publish: true).GetAwaiter().GetResult();
-            }
-        }
-
-        public Task<IMessage> ReceiveAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
-        {
-            if (_isDisposed)
-                throw new ObjectDisposedException(GetType().FullName);
-
-            return _endPointManager.ReceiveAsync(localEndPoint, cancellation);
-        }
-
-        public Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation)
-        {
-            if (_isDisposed)
-                throw new ObjectDisposedException(GetType().FullName);
-
-            return _endPointManager.SendAsync(message, remoteEndPoint, localEndPoint, cancellation);
-        }
-
-        public Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation)
-        {
-            if (_isDisposed)
-                throw new ObjectDisposedException(GetType().FullName);
-
-            return _endPointManager.SendAsync(response, request, cancellation);
         }
 
         public void Dispose()
         {
-            Console.WriteLine("Disposing EndPointManagerSkeleton");
+            _disposeHelper.Dispose();
+        }
 
-            lock (_lock)
+        public Task DisposeAsync()
+        {
+            return _disposeHelper.DisposeAsync();
+        }
+
+        public Task Disposal => _disposeHelper.Disposal;
+
+        #endregion
+
+        public async Task AddEndPointAsync(EndPointRoute route)
+        {
+            using (await _disposeHelper.ProhibitDisposalAsync())
             {
-                _isDisposed = true;
-                foreach (var endPoint in _addedEndPoints)
-                {
-                    _endPointManager.RemoveEndPoint(endPoint);
+                if (_disposeHelper.IsDisposed)
+                    throw new ObjectDisposedException(GetType().FullName);
 
-                    _messageDispatcher.DispatchAsync(new EndPointDisconnected(endPoint), publish: true).GetAwaiter().GetResult();
+                using (await _lock.LockAsync())
+                {
+                    if (_addedEndPoints.Contains(route))
+                        return;
+
+                    await _endPointManager.AddEndPointAsync(route);
+                    _addedEndPoints.Add(route);
+
+                    await _messageDispatcher.DispatchAsync(new EndPointConnected(route), publish: true);
                 }
+            }
+        }
+
+        public async Task RemoveEndPointAsync(EndPointRoute route)
+        {
+            using (await _disposeHelper.ProhibitDisposalAsync())
+            {
+                if (_disposeHelper.IsDisposed)
+                    throw new ObjectDisposedException(GetType().FullName);
+
+                using (await _lock.LockAsync())
+                {
+                    if (!_addedEndPoints.Contains(route))
+                        return;
+
+                    await _endPointManager.RemoveEndPointAsync(route);
+                    _addedEndPoints.Remove(route);
+
+                    await _messageDispatcher.DispatchAsync(new EndPointDisconnected(route), publish: true);
+                }
+            }
+        }
+
+        public async Task<IMessage> ReceiveAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
+        {
+            using (await _disposeHelper.ProhibitDisposalAsync())
+            {
+                if (_disposeHelper.IsDisposed)
+                    throw new ObjectDisposedException(GetType().FullName);
+
+                return await _endPointManager.ReceiveAsync(localEndPoint, cancellation);
+            }
+        }
+        public async Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation)
+        {
+            using (await _disposeHelper.ProhibitDisposalAsync())
+            {
+                if (_disposeHelper.IsDisposed)
+                    throw new ObjectDisposedException(GetType().FullName);
+
+                await _endPointManager.SendAsync(message, remoteEndPoint, localEndPoint, cancellation);
+            }
+        }
+
+        public async Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation)
+        {
+            using (await _disposeHelper.ProhibitDisposalAsync())
+            {
+                if (_disposeHelper.IsDisposed)
+                    throw new ObjectDisposedException(GetType().FullName);
+
+                await _endPointManager.SendAsync(response, request, cancellation);
             }
         }
     }

@@ -49,27 +49,65 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity
 {
-    public sealed class TcpEndPoint : IPhysicalEndPoint<IPEndPoint>
+    public sealed class TcpEndPoint : IPhysicalEndPoint<IPEndPoint>, IAsyncDisposable
     {
         private readonly IAsyncProcess _connectionProcess;
         private readonly TcpListener _tcpHost;
         private readonly ConcurrentDictionary<IPEndPoint, ImmutableList<Connection>> _physicalConnections;
         private readonly ILogger<TcpEndPoint> _logger;
         private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
+        private readonly AsyncInitializationHelper _initializationHelper;
+        private readonly AsyncDisposeHelper _disposeHelper;
 
         public TcpEndPoint(ILogger<TcpEndPoint> logger)
         {
             _physicalConnections = new ConcurrentDictionary<IPEndPoint, ImmutableList<Connection>>();
             _logger = logger;
 
-            _connectionProcess = new AsyncProcess(ConnectProcedure);
+
             _tcpHost = new TcpListener(new IPEndPoint(IPAddress.Loopback, 0));
             _tcpHost.Start();
             LocalAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;
             Assert(LocalAddress != null);
 
-            _connectionProcess.Start();
+            _connectionProcess = new AsyncProcess(ConnectProcedure);
+            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
+
+        #region Initialization
+
+        public Task Initialization => _initializationHelper.Initialization;
+
+        private async Task InitializeInternalAsync(CancellationToken cancellation)
+        {
+            await _connectionProcess.StartAsync(); // TODO: Pass cancellation
+        }
+
+        #endregion
+
+        #region Disposal
+
+        public Task Disposal => _disposeHelper.Disposal;
+
+        public void Dispose()
+        {
+            _disposeHelper.Dispose();
+        }
+
+        public Task DisposeAsync()
+        {
+            return _disposeHelper.DisposeAsync();
+        }
+
+        private async Task DisposeInternalAsync()
+        {
+            await _initializationHelper.CancelAsync();
+
+            await _connectionProcess.TerminateAsync();
+        }
+
+        #endregion
 
         public IPEndPoint LocalAddress { get; }
 
@@ -108,18 +146,24 @@ namespace AI4E.Modularity
             _physicalConnections.AddOrUpdate(remoteAddress, ImmutableList<Connection>.Empty, (_, current) => current.Add(connection));
         }
 
-        public Task<IMessage> ReceiveAsync(CancellationToken cancellation)
+        public async Task<IMessage> ReceiveAsync(CancellationToken cancellation)
         {
-            return _rxQueue.DequeueAsync(cancellation);
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            {
+                return await _rxQueue.DequeueAsync(cancellation);
+            }
         }
 
         public async Task SendAsync(IMessage message, IPEndPoint address, CancellationToken cancellation)
         {
-            var connection = await GetConnectionAsync(address, cancellation);
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            {
+                var connection = await GetConnectionAsync(address, cancellation);
 
-            Assert(connection != null);
+                Assert(connection != null);
 
-            await connection.SendAsync(message, cancellation);
+                await connection.SendAsync(message, cancellation);
+            }
         }
 
         private Task<Connection> GetConnectionAsync(IPEndPoint address, CancellationToken cancellation)
@@ -143,12 +187,13 @@ namespace AI4E.Modularity
             return ConnectAsync().WithCancellation(cancellation);
         }
 
-        private sealed class Connection
+        private sealed class Connection : IAsyncDisposable
         {
             private readonly TcpEndPoint _endPoint;
             private readonly Stream _stream;
             private readonly IAsyncProcess _receiveProcess;
-
+            private readonly AsyncInitializationHelper _initializationHelper;
+            private readonly AsyncDisposeHelper _disposeHelper;
             private readonly AsyncLock _sendLock = new AsyncLock();
 
             public Connection(TcpEndPoint endPoint, IPEndPoint address, Stream stream)
@@ -166,12 +211,59 @@ namespace AI4E.Modularity
                 RemoteAddress = address;
                 _stream = stream;
                 _receiveProcess = new AsyncProcess(ReceiveProcedure);
-                _receiveProcess.Start();
+                _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
+                _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
             }
 
             public IPEndPoint LocalAddress => _endPoint.LocalAddress;
             public IPEndPoint RemoteAddress { get; }
             private ILogger Logger => _endPoint._logger;
+
+            #region Initialization
+
+            public Task Initialization => _initializationHelper.Initialization;
+
+            private async Task InitializeInternalAsync(CancellationToken cancellation)
+            {
+                await _receiveProcess.StartAsync(); // TODO: Pass cancellation
+            }
+
+            #endregion
+
+            #region Disposal
+
+            public Task Disposal => _disposeHelper.Disposal;
+
+            public void Dispose()
+            {
+                _disposeHelper.Dispose();
+            }
+
+            public Task DisposeAsync()
+            {
+                return _disposeHelper.DisposeAsync();
+            }
+
+            private async Task DisposeInternalAsync()
+            {
+                await _initializationHelper.CancelAsync();
+
+                await _receiveProcess.TerminateAsync();
+                _stream.Close();
+
+                while (_endPoint._physicalConnections.TryGetValue(RemoteAddress, out var list))
+                {
+                    var newList = list.Remove(this);
+
+                    if (newList == list)
+                        break;
+
+                    if (_endPoint._physicalConnections.TryUpdate(RemoteAddress, newList, list))
+                        break;
+                }
+            }
+
+            #endregion
 
             private async Task ReceiveProcedure(CancellationToken cancellation)
             {
@@ -195,21 +287,27 @@ namespace AI4E.Modularity
 
             public async Task SendAsync(IMessage message, CancellationToken cancellation)
             {
-                try
+                using (await _disposeHelper.ProhibitDisposalAsync())
                 {
-                    using (await _sendLock.LockAsync())
+                    if (_disposeHelper.IsDisposed)
+                        throw new ObjectDisposedException(GetType().FullName);
+
+                    try
                     {
-                        await message.WriteAsync(_stream, cancellation);
+                        using (await _sendLock.LockAsync())
+                        {
+                            await message.WriteAsync(_stream, cancellation);
+                        }
                     }
-                }
-                catch (IOException)
-                {
-                    Close();
-                    throw;
+                    catch (IOException)
+                    {
+                        Dispose();
+                        throw;
+                    }
                 }
             }
 
-            public async Task<IMessage> ReceiveAsync(CancellationToken cancellation)
+            private async Task<IMessage> ReceiveAsync(CancellationToken cancellation)
             {
                 var message = new Message();
 
@@ -224,23 +322,6 @@ namespace AI4E.Modularity
                 }
 
                 return message;
-            }
-
-            private void Close()
-            {
-                _receiveProcess.Terminate();
-                _stream.Close();
-
-                while (_endPoint._physicalConnections.TryGetValue(RemoteAddress, out var list))
-                {
-                    var newList = list.Remove(this);
-
-                    if (newList == list)
-                        break;
-
-                    if (_endPoint._physicalConnections.TryUpdate(RemoteAddress, newList, list))
-                        break;
-                }
             }
         }
     }

@@ -26,9 +26,10 @@ namespace AI4E.Modularity
 {
     public interface IEndPointManager : IDisposable
     {
-        void AddEndPoint(EndPointRoute route);
+        Task AddEndPointAsync(EndPointRoute route);
+        Task RemoveEndPointAsync(EndPointRoute route);
+
         Task<IMessage> ReceiveAsync(EndPointRoute localEndPoint, CancellationToken cancellation);
-        void RemoveEndPoint(EndPointRoute route);
         Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation);
         Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation);
     }

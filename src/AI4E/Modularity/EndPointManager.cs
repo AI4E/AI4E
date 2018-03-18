@@ -34,13 +34,15 @@ using Nito.AsyncEx;
 
 namespace AI4E.Modularity
 {
-    public sealed class EndPointManager<TAddress> : IEndPointManager, IDisposable
+    public sealed class EndPointManager<TAddress> : IEndPointManager, IAsyncDisposable
     {
         private readonly IRouteMap<TAddress> _routeMap;
         private readonly IRouteSerializer _routeSerializer;
         private readonly IAddressConversion<TAddress> _addressSerializer;
         private readonly ILogger<EndPointManager<TAddress>> _logger;
         private readonly IAsyncProcess _receiveProcess;
+        private readonly AsyncInitializationHelper _initializationHelper;
+        private readonly AsyncDisposeHelper _disposeHelper;
         private readonly ConcurrentDictionary<EndPointRoute, RemoteEndPoint> _remoteEndPoints = new ConcurrentDictionary<EndPointRoute, RemoteEndPoint>();
         private readonly ConcurrentDictionary<TAddress, byte> _blacklist = new ConcurrentDictionary<TAddress, byte>();
         private readonly ConcurrentDictionary<EndPointRoute, LocalEndPoint> _localEndPoints = new ConcurrentDictionary<EndPointRoute, LocalEndPoint>();
@@ -69,30 +71,65 @@ namespace AI4E.Modularity
             _addressSerializer = addressSerializer;
             _logger = logger;
             _receiveProcess = new AsyncProcess(ReceiveProcedure);
-            _receiveProcess.Start();
+            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
+
         }
 
         public TAddress LocalAddress => PhysicalEndPoint.LocalAddress;
         private IPhysicalEndPoint<TAddress> PhysicalEndPoint { get; }
+
+        #region Initialization
+
+        private async Task InitializeInternalAsync(CancellationToken cancellation)
+        {
+            await _receiveProcess.StartAsync(); // TODO: Pass in cancellation
+        }
+
+        #endregion
+
+        #region Disposal
+
+        public Task Disposal => _disposeHelper.Disposal;
+
+        public void Dispose()
+        {
+            _disposeHelper.Dispose();
+        }
+
+        public Task DisposeAsync()
+        {
+            return _disposeHelper.DisposeAsync();
+        }
+
+        private async Task DisposeInternalAsync()
+        {
+            await _initializationHelper.CancelAsync();
+            await _receiveProcess.TerminateAsync();
+        }
+
+        #endregion
 
         private RemoteEndPoint GetRemoteEndPoint(EndPointRoute route)
         {
             return _remoteEndPoints.GetOrAdd(route, _ => new RemoteEndPoint(this, route));
         }
 
-        public void AddEndPoint(EndPointRoute route)
+        public Task AddEndPointAsync(EndPointRoute route)
         {
             _logger?.LogInformation($"Physical-end-point '{LocalAddress}': Registering end-point '{route}'.");
             _localEndPoints.AddOrUpdate(route, _ => new LocalEndPoint(this, route), (_, current) => current);
+            return Task.CompletedTask;
         }
 
-        public void RemoveEndPoint(EndPointRoute route)
+        public Task RemoveEndPointAsync(EndPointRoute route)
         {
             if (_localEndPoints.TryRemove(route, out var localEndPoint))
             {
-                _logger?.LogInformation($"Physical-end-point '{LocalAddress}': Unrgistering end-point '{route}'.");
+                _logger?.LogInformation($"Physical-end-point '{LocalAddress}': Unregistering end-point '{route}'.");
                 localEndPoint.Dispose();
             }
+
+            return Task.CompletedTask;
         }
 
         public Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation)
@@ -332,16 +369,13 @@ namespace AI4E.Modularity
 
         #endregion
 
-        public void Dispose()
-        {
-            _receiveProcess.Terminate();
-        }
-
         private sealed class LocalEndPoint : IAsyncDisposable
         {
             private readonly EndPointManager<TAddress> _manager;
             private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
             private readonly IAsyncProcess _mapProcess;
+            private readonly AsyncDisposeHelper _disposeHelper;
+            private readonly AsyncInitializationHelper _initializationHelper;
 
             public LocalEndPoint(EndPointManager<TAddress> manager, EndPointRoute route)
             {
@@ -354,12 +388,46 @@ namespace AI4E.Modularity
                 _manager = manager;
                 Route = route;
                 _mapProcess = new AsyncProcess(MapProcess);
-                _mapProcess.Start();
+                _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+                _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
             }
 
             private EndPointRoute Route { get; }
             private ILogger Logger => _manager._logger;
             private IRouteMap<TAddress> RouteMap => _manager._routeMap;
+
+            #region Initialization
+
+            private async Task InitializeInternalAsync(CancellationToken cancellation)
+            {
+                await _mapProcess.StartAsync(); // TODO: Cancellation
+            }
+
+            #endregion
+
+            #region Disposal
+
+            public Task Disposal => _disposeHelper.Disposal;
+
+            private async Task DisposeInternalAsync()
+            {
+                await _initializationHelper.CancelAsync();
+                await _mapProcess.TerminateAsync();
+
+                await RouteMap.UnmapRouteAsync(Route, _manager.LocalAddress, cancellation: default);
+            }
+
+            public void Dispose()
+            {
+                _disposeHelper.Dispose();
+            }
+
+            public Task DisposeAsync()
+            {
+                return _disposeHelper.DisposeAsync();
+            }
+
+            #endregion
 
             private async Task MapProcess(CancellationToken cancellation)
             {
@@ -407,56 +475,15 @@ namespace AI4E.Modularity
             {
                 return _rxQueue.DequeueAsync(cancellation);
             }
-
-            #region Disposal
-
-            private Task _disposal;
-            private readonly TaskCompletionSource<byte> _disposalSource = new TaskCompletionSource<byte>();
-            private readonly object _lock = new object();
-
-            public Task Disposal => _disposalSource.Task;
-
-            private async Task DisposeInternalAsync()
-            {
-                try
-                {
-                    _mapProcess.Terminate();
-
-                    await RouteMap.UnmapRouteAsync(Route, _manager.LocalAddress, cancellation: default);
-                }
-                catch (OperationCanceledException) { }
-                catch (Exception exc)
-                {
-                    _disposalSource.SetException(exc);
-                    return;
-                }
-
-                _disposalSource.SetResult(0);
-            }
-
-            public void Dispose()
-            {
-                lock (_lock)
-                {
-                    if (_disposal == null)
-                        _disposal = DisposeInternalAsync();
-                }
-            }
-
-            public Task DisposeAsync()
-            {
-                Dispose();
-                return Disposal;
-            }
-
-            #endregion
         }
 
-        private sealed class RemoteEndPoint
+        private sealed class RemoteEndPoint : IAsyncDisposable
         {
             private readonly EndPointManager<TAddress> _manager;
             private readonly IAsyncProcess _mapUpdateProcess;
-            private readonly ConcurrentQueue<(IMessage message, EndPointRoute localEndPoint)> _txQueue = new ConcurrentQueue<(IMessage message, EndPointRoute localEndPoint)>();
+            private readonly ConcurrentQueue<(IMessage message, EndPointRoute localEndPoint)> _txQueue;
+            private readonly AsyncDisposeHelper _disposeHelper;
+            private readonly AsyncInitializationHelper _initializationHelper;
             private volatile ImmutableList<TAddress> _addresses = ImmutableList<TAddress>.Empty;
 
             public RemoteEndPoint(EndPointManager<TAddress> manager, EndPointRoute route)
@@ -467,10 +494,13 @@ namespace AI4E.Modularity
                 if (manager == null)
                     throw new ArgumentNullException(nameof(manager));
 
+                _txQueue = new ConcurrentQueue<(IMessage message, EndPointRoute localEndPoint)>();
+
                 Route = route;
                 _manager = manager;
                 _mapUpdateProcess = new AsyncProcess(MapUpdateProcess);
-                _mapUpdateProcess.Start();
+                _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+                _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
             }
 
             public TAddress LocalAddress => _manager.LocalAddress;
@@ -480,6 +510,37 @@ namespace AI4E.Modularity
             private IRouteSerializer RouteSerializer => _manager._routeSerializer;
 
             public EndPointRoute Route { get; }
+
+            #region Initialization
+
+            private async Task InitializeInternalAsync(CancellationToken cancellation)
+            {
+                await _mapUpdateProcess.StartAsync(); // TODO: Cancellation
+            }
+
+            #endregion
+
+            #region Disposal
+
+            public Task Disposal => _disposeHelper.Disposal;
+
+            private async Task DisposeInternalAsync()
+            {
+                await _initializationHelper.CancelAsync();
+                await _mapUpdateProcess.TerminateAsync();
+            }
+
+            public void Dispose()
+            {
+                _disposeHelper.Dispose();
+            }
+
+            public Task DisposeAsync()
+            {
+                return _disposeHelper.DisposeAsync();
+            }
+
+            #endregion
 
             private async Task MapUpdateProcess(CancellationToken cancellation)
             {

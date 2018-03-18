@@ -108,9 +108,10 @@ namespace AI4E.Modularity
             _messageTypeConversion = messageTypeConversion;
             _serviceProvider = serviceProvider;
             _logger = logger;
-            _endPointManager.AddEndPoint(LocalEndPoint);
+
             _receiveProcess = new AsyncProcess(ReceiveProcedure);
-            _initialization = InitializeInternalAsync(_cancellationSource.Token);
+            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
         public RemoteMessageDispatcher(IEndPointManager endPointManager,
@@ -126,11 +127,11 @@ namespace AI4E.Modularity
 
         #region Initialization
 
-        private readonly CancellationTokenSource _cancellationSource = new CancellationTokenSource();
-        private readonly Task _initialization;
+        private readonly AsyncInitializationHelper _initializationHelper;
 
         private async Task InitializeInternalAsync(CancellationToken cancellation)
         {
+            await _endPointManager.AddEndPointAsync(LocalEndPoint);
             await _receiveProcess.StartAsync();
         }
 
@@ -138,56 +139,33 @@ namespace AI4E.Modularity
 
         #region Disposal
 
-        private Task _disposal;
-        private readonly TaskCompletionSource<byte> _disposalSource = new TaskCompletionSource<byte>();
-        private readonly object _lock = new object();
+        private readonly AsyncDisposeHelper _disposeHelper;
 
-        public Task Disposal => _disposalSource.Task;
+        public Task Disposal => _disposeHelper.Disposal;
 
         private async Task DisposeInternalAsync()
         {
+            // Cancel the initialization
+            await _initializationHelper.CancelAsync();
+
             try
             {
-                // Cancel the initialization
-                _cancellationSource.Cancel();
-                try
-                {
-                    await _initialization;
-                }
-                catch (OperationCanceledException) { }
-
-                try
-                {
-                    await _receiveProcess.TerminateAsync();
-                }
-                finally
-                {
-                    _endPointManager.RemoveEndPoint(LocalEndPoint);
-                }
+                await _receiveProcess.TerminateAsync();
             }
-            catch (OperationCanceledException) { }
-            catch (Exception exc)
+            finally
             {
-                _disposalSource.SetException(exc);
-                return;
+                await _endPointManager.RemoveEndPointAsync(LocalEndPoint);
             }
-
-            _disposalSource.SetResult(0);
         }
 
         public void Dispose()
         {
-            lock (_lock)
-            {
-                if (_disposal == null)
-                    _disposal = DisposeInternalAsync();
-            }
+            _disposeHelper.Dispose();
         }
 
         public Task DisposeAsync()
         {
-            Dispose();
-            return Disposal;
+            return _disposeHelper.DisposeAsync();
         }
 
         #endregion

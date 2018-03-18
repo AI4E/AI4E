@@ -25,18 +25,18 @@ namespace AI4E.Modularity.Debugging
             _proxy = await _rpcHost.ActivateAsync<EndPointManagerSkeleton>(ActivationMode.Create, cancellation: default);
         }
 
-        public void AddEndPoint(EndPointRoute route)
+        public async Task AddEndPointAsync(EndPointRoute route)
         {
-            _initialization.GetAwaiter().GetResult();
+            await _initialization;
 
-            _proxy.ExecuteAsync(p => p.AddEndPoint(route)).GetAwaiter().GetResult(); // TODO
+            await _proxy.ExecuteAsync(p => p.AddEndPointAsync(route));
         }
 
-        public void RemoveEndPoint(EndPointRoute route)
+        public async Task RemoveEndPointAsync(EndPointRoute route)
         {
-            _initialization.GetAwaiter().GetResult();
+            await _initialization;
 
-            _proxy.ExecuteAsync(p => p.RemoveEndPoint(route)).GetAwaiter().GetResult(); // TODO
+            await _proxy.ExecuteAsync(p => p.RemoveEndPointAsync(route));
         }
 
         public async Task<IMessage> ReceiveAsync(EndPointRoute localEndPoint, CancellationToken cancellation)

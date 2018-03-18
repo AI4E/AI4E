@@ -123,11 +123,14 @@ namespace AI4E.Test.Internal
         {
             Assert.IsNotNull(message);
 
+            await Task.Yield();
+
             return new SuccessDispatchResult<int>(42);
         }
 
         public async Task HandleAsync(MessageY message)
         {
+            await Task.Yield();
             Assert.IsNotNull(message);
             Assert.AreEqual(34, message.I);
         }
