@@ -54,7 +54,7 @@ namespace AI4E.Storage
 
         public bool TryGetConcurrencyToken<TMessage>(TMessage message, out Guid concurrencyToken)
         {
-            if (message is Command<TId> command)
+            if (message is ConcurrencySafeCommand<TId> command)
             {
                 concurrencyToken = command.ConcurrencyToken;
                 return true;
@@ -85,7 +85,7 @@ namespace AI4E.Storage
                 var messageParam = Expression.Parameter(typeof(object), "message");
                 var messageConvert = Expression.Convert(messageParam, messageType);
                 var idProperty = messageType.GetProperty(nameof(Command<TId>.Id), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                var concurrencyTokenProperty = messageType.GetProperty(nameof(Command<TId>.ConcurrencyToken), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var concurrencyTokenProperty = messageType.GetProperty(nameof(ConcurrencySafeCommand<TId>.ConcurrencyToken), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
                 if (idProperty != null &&
                     idProperty.CanRead &&

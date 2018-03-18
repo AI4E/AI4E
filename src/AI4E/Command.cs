@@ -24,18 +24,31 @@ namespace AI4E
 {
     public abstract class Command<TId>
     {
-        protected Command(TId id, Guid concurrencyToken)
+        protected Command(TId id)
         {
             Id = id;
-            ConcurrencyToken = concurrencyToken;
         }
 
         public TId Id { get; }
-        public Guid ConcurrencyToken { get; }
     }
 
     public abstract class Command : Command<Guid>
     {
-        protected Command(Guid id, Guid concurrencyToken) : base(id, concurrencyToken) { }
+        protected Command(Guid id) : base(id) { }
+    }
+
+    public abstract class ConcurrencySafeCommand<TId> : Command<TId>
+    {
+        protected ConcurrencySafeCommand(TId id, Guid concurrencyToken) : base(id)
+        {
+            ConcurrencyToken = concurrencyToken;
+        }
+
+        public Guid ConcurrencyToken { get; }
+    }
+
+    public abstract class ConcurrencySafeCommand : ConcurrencySafeCommand<Guid>
+    {
+        protected ConcurrencySafeCommand(Guid id, Guid concurrencyToken) : base(id, concurrencyToken) { }
     }
 }

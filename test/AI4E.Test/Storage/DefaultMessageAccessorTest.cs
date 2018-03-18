@@ -133,7 +133,7 @@ namespace AI4E.Test.Storage
             internal Guid ConcurrencyToken { get; }
         }
 
-        public class TestCommand : Command
+        public class TestCommand : ConcurrencySafeCommand
         {
             public TestCommand(Guid id, Guid concurrencyToken) : base(id, concurrencyToken) {}
         }
