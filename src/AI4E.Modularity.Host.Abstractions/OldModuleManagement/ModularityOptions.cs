@@ -6,6 +6,6 @@
 
         public bool EnableDebugging { get; set; }
 
-        public int DebugPort { get; set; }
+        public string DebugConnection { get; set; }
     }
 }

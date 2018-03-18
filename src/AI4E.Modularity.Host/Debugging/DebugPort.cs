@@ -28,6 +28,7 @@ using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Modularity.RPC;
 using AI4E.Processing;
+using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Debugging
@@ -39,14 +40,25 @@ namespace AI4E.Modularity.Debugging
         private readonly ConcurrentDictionary<DebugSession, byte> _debugSessions = new ConcurrentDictionary<DebugSession, byte>();
         private readonly IServiceProvider _serviceProvider;
 
-        public DebugPort(IServiceProvider serviceProvider)
+        public DebugPort(IServiceProvider serviceProvider, IAddressConversion<IPEndPoint> addressConversion, IOptions<ModularityOptions> optionsAccessor)
         {
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
+            if (addressConversion == null)
+                throw new ArgumentNullException(nameof(addressConversion));
+
+            if (optionsAccessor == null)
+                throw new ArgumentNullException(nameof(optionsAccessor));
+
+            var options = optionsAccessor.Value ?? new ModularityOptions();
+
             _serviceProvider = serviceProvider;
             _connectionProcess = new AsyncProcess(ConnectProcedure);
-            _tcpHost = new TcpListener(new IPEndPoint(IPAddress.Loopback, 8080));
+            var endPoint = addressConversion.Parse(options.DebugConnection);
+
+
+            _tcpHost = new TcpListener(endPoint);
             _tcpHost.Start();
             LocalAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;
             Assert(LocalAddress != null);

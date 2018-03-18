@@ -123,7 +123,7 @@ namespace AI4E.Modularity
 
             var addressSerializer = provider.GetRequiredService<IAddressConversion<IPEndPoint>>();
             var endPoint = addressSerializer.Parse(options.DebugConnection);
-            var tcpClient = new TcpClient();
+            var tcpClient = new TcpClient(endPoint.AddressFamily);
             tcpClient.Connect(endPoint.Address, endPoint.Port);
             var stream = tcpClient.GetStream();
             return new RPCHost(stream, provider);

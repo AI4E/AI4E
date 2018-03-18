@@ -38,7 +38,6 @@ namespace AI4E.Modularity
     {
         private readonly IRemoteMessageDispatcher _messageEndPoint;
         private readonly string _prefix;
-        private readonly EndPointRoute _localEndPoint;
         private IHandlerRegistration _handlerRegistration;
 
         public ModuleServer(IRemoteMessageDispatcher messageEndPoint, IOptions<ModuleServerOptions> optionsAccessor)
