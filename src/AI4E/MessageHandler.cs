@@ -52,6 +52,12 @@ namespace AI4E
         }
 
         [NoAction]
+        public virtual FailureDispatchResult Failure(Exception exc)
+        {
+            return new FailureDispatchResult(exc);
+        }
+
+        [NoAction]
         public virtual SuccessDispatchResult Success()
         {
             return new SuccessDispatchResult();
