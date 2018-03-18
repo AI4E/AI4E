@@ -18,11 +18,12 @@ namespace AI4E.Async
             _initialization = initialization(_cancellation.Token);
         }
 
-        public AsyncInitializationHelper(Func<Task> initialization) : this()
+        public AsyncInitializationHelper(Func<Task> initialization)
         {
             if (initialization == null)
                 throw new ArgumentNullException(nameof(initialization));
 
+            _cancellation = null;
             _initialization = initialization();
         }
 
@@ -30,7 +31,7 @@ namespace AI4E.Async
 
         public void Cancel()
         {
-            _cancellation.Cancel();
+            _cancellation?.Cancel();
         }
 
         public async Task CancelAsync()
@@ -59,11 +60,12 @@ namespace AI4E.Async
             _initialization = initialization(_cancellation.Token);
         }
 
-        public AsyncInitializationHelper(Func<Task<T>> initialization) : this()
+        public AsyncInitializationHelper(Func<Task<T>> initialization)
         {
             if (initialization == null)
                 throw new ArgumentNullException(nameof(initialization));
 
+            _cancellation = null;
             _initialization = initialization();
         }
 
@@ -73,7 +75,7 @@ namespace AI4E.Async
 
         public void Cancel()
         {
-            _cancellation.Cancel();
+            _cancellation?.Cancel();
         }
 
         public async Task CancelAsync()
