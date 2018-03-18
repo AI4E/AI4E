@@ -29,6 +29,8 @@
  */
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
@@ -140,6 +142,27 @@ namespace AI4E.Domain
         public static implicit operator Snapshot<T>(T aggregate)
         {
             return new Snapshot<T>(aggregate);
+        }
+    }
+
+    public static class SnapshotExtension
+    {
+        public static TaskAwaiter<T> GetAwaiter<T>(in this Snapshot<T> snapshot)
+            where T : AggregateRoot
+        {
+            return snapshot.ResolveAsync().GetAwaiter();
+        }
+
+        public static async Task<IEnumerable<T>> ResolveAsync<T>(this IEnumerable<Snapshot<T>> snapshots)
+             where T : AggregateRoot
+        {
+            return await Task.WhenAll(snapshots.Select(p => p.ResolveAsync()));
+        }
+
+        public static TaskAwaiter<IEnumerable<T>> GetAwaiter<T>(this IEnumerable<Snapshot<T>> snapshots)
+            where T : AggregateRoot
+        {
+            return snapshots.ResolveAsync().GetAwaiter();
         }
     }
 }
