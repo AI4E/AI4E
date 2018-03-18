@@ -144,7 +144,7 @@ namespace AI4E.Test.Storage
             property.SetValue(this, revision);
         }
 
-        public void Publish<T>(T domainEvent)
+        public new void Publish<T>(T domainEvent)
             where T : DomainEvent
         {
             base.Publish(domainEvent);

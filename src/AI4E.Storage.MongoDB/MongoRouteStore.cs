@@ -33,7 +33,6 @@ namespace AI4E.Storage.MongoDB
     {
         private readonly IMongoDatabase _database;
         private readonly IRouteSerializer _routeSerializer;
-        private readonly IMessageTypeConversion _messageTypeSerializer;
         private readonly IMongoCollection<MongoRouteStoreEntry> _collection;
         private readonly IMongoCollection<MongoSequenceEntry> _sequence;
 

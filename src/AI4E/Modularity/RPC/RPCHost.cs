@@ -8,7 +8,7 @@
  *                  (5) AI4E.Modularity.RPC.RPCHost.TypeCode
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   01.03.2018 
+ * Last modified:   18.03.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -50,21 +50,26 @@ using Nito.AsyncEx;
 
 namespace AI4E.Modularity.RPC
 {
-    public sealed class RPCHost : IDisposable
+    public sealed class RPCHost : IAsyncInitialization, IAsyncDisposable
     {
+        #region Fields
+
         private readonly Stream _stream;
         private readonly IServiceProvider _serviceProvider;
         private readonly AsyncLock _sendLock = new AsyncLock();
         private readonly IAsyncProcess _receiveProcess;
         private readonly ConcurrentDictionary<int, Action<MessageType, object>> _responseTable = new ConcurrentDictionary<int, Action<MessageType, object>>();
-        private readonly object _proxyLock = new object();
         private readonly Dictionary<object, IProxy> _proxyLookup = new Dictionary<object, IProxy>();
         private readonly Dictionary<int, IProxy> _proxies = new Dictionary<int, IProxy>();
-        private volatile int _isDisposed = 0;
+        private readonly object _proxyLock = new object();
+        private readonly AsyncDisposeHelper _disposeHelper;
+        private readonly AsyncInitializationHelper _initializationHelper;
         private int _nextSeqNum = 0;
         private int _nextProxyId = 0;
 
-        private bool IsDisposed => _isDisposed != 0; // Volatile read op.
+        #endregion
+
+        #region Ctor
 
         public RPCHost(Stream stream, IServiceProvider serviceProvider)
         {
@@ -77,12 +82,19 @@ namespace AI4E.Modularity.RPC
             _stream = stream;
             _serviceProvider = serviceProvider;
             _receiveProcess = new AsyncProcess(ReceiveProcess);
-            _receiveProcess.Start();
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
         }
+
+        #endregion
+
+        #region Activation
 
         public async Task<Proxy<TRemote>> ActivateAsync<TRemote>(ActivationMode mode, CancellationToken cancellation)
             where TRemote : class
         {
+            await Initialization;
+
             int seqNum;
             Task<Proxy<TRemote>> result;
             Message message;
@@ -124,12 +136,38 @@ namespace AI4E.Modularity.RPC
             return SendAsync(message, cancellation);
         }
 
+        #endregion
+
+        #region Initialization
+
+        public Task Initialization => _initializationHelper.Initialization;
+
+        private async Task InitializeInternalAsync(CancellationToken cancellation)
+        {
+            await _receiveProcess.StartAsync(); // TODO: Pass cancellation
+        }
+
+        #endregion
+
+        #region Disposal
+
+        public Task Disposal => _disposeHelper.Disposal;
+
         public void Dispose()
         {
-            if (Interlocked.Exchange(ref _isDisposed, 1) != 0)
-                return;
+            _disposeHelper.Dispose();
+        }
 
-            _receiveProcess.Terminate();
+        public Task DisposeAsync()
+        {
+            return _disposeHelper.DisposeAsync();
+        }
+
+        private async Task DisposeInternalAsync()
+        {
+            await _initializationHelper.CancelAsync();
+
+            await _receiveProcess.TerminateAsync();
 
             lock (_proxyLock)
             {
@@ -139,6 +177,8 @@ namespace AI4E.Modularity.RPC
                 }
             }
         }
+
+        #endregion
 
         #region Proxies
 
@@ -181,7 +221,7 @@ namespace AI4E.Modularity.RPC
 
         #endregion
 
-        #region  Receive
+        #region Receive
 
         private async Task ReceiveProcess(CancellationToken cancellation)
         {
@@ -196,11 +236,13 @@ namespace AI4E.Modularity.RPC
                     }
                     catch (ObjectDisposedException)
                     {
+                        // Do not call DisposeAsync. This will result in a deadlock.
                         Dispose();
                         return;
                     }
                     catch (IOException)
                     {
+                        // Do not call DisposeAsync. This will result in a deadlock.
                         Dispose();
                         return;
                     }
@@ -209,7 +251,7 @@ namespace AI4E.Modularity.RPC
                     Task.Run(() => HandleMessageAsync(message, cancellation)).HandleExceptions();
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception exc)
+                catch (Exception)
                 {
                     // TODO: Log exception
                 }
@@ -391,6 +433,8 @@ namespace AI4E.Modularity.RPC
 
         internal async Task<TResult> SendMethodCallAsync<TResult>(Expression expression, int proxyId, bool waitTask)
         {
+            await Initialization;
+
             if (expression == null)
                 throw new ArgumentNullException(nameof(expression));
 
@@ -853,7 +897,8 @@ namespace AI4E.Modularity.RPC
 
             if (expression is MemberExpression memberExpression)
             {
-                if (memberExpression.Member is FieldInfo field && memberExpression.Expression is ConstantExpression fieldOwner)
+                if (memberExpression.Member is FieldInfo field && 
+                    memberExpression.Expression is ConstantExpression fieldOwner)
                 {
                     return field.GetValue(fieldOwner.Value);
                 }
