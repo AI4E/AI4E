@@ -76,53 +76,5 @@ namespace AI4E.Modularity
 
             return builder;
         }
-
-        public static IWebHostBuilder CreateDebugModuleBuilder(string[] args, string moduleName, string prefix)
-        {
-            var builder = new WebHostBuilder()
-                .UseDebugModuleServer(moduleName, prefix)
-                .UseContentRoot(Directory.GetCurrentDirectory())
-                .ConfigureAppConfiguration((hostingContext, config) =>
-                {
-                    var env = hostingContext.HostingEnvironment;
-
-                    config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                          .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true);
-
-                    if (env.IsDevelopment())
-                    {
-                        var appAssembly = Assembly.Load(new AssemblyName(env.ApplicationName));
-                        if (appAssembly != null)
-                        {
-                            config.AddUserSecrets(appAssembly, optional: true);
-                        }
-                    }
-
-                    config.AddEnvironmentVariables();
-
-                    if (args != null)
-                    {
-                        config.AddCommandLine(args);
-                    }
-                })
-                .ConfigureLogging((hostingContext, logging) =>
-                {
-                    logging.SetMinimumLevel(LogLevel.Trace);
-                    logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
-                    logging.AddConsole();
-                    logging.AddDebug();
-                })
-                .UseDefaultServiceProvider((context, options) =>
-                {
-                    options.ValidateScopes = context.HostingEnvironment.IsDevelopment();
-                });
-
-            if (args != null)
-            {
-                builder.UseConfiguration(new ConfigurationBuilder().AddCommandLine(args).Build());
-            }
-
-            return builder;
-        }
     }
 }
