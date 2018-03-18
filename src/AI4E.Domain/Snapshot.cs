@@ -143,6 +143,11 @@ namespace AI4E.Domain
         {
             return new Snapshot<T>(aggregate);
         }
+
+        public static Snapshot<T> UnsafeCreate(Guid id, long revision, IReferenceResolver referenceResolver)
+        {
+            return new Snapshot<T>(id, revision, referenceResolver);
+        }
     }
 
     public static class SnapshotExtension

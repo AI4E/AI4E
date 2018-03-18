@@ -139,6 +139,11 @@ namespace AI4E.Domain
         {
             return new Reference<T>(aggregate);
         }
+
+        public static Reference<T> UnsafeCreate(Guid id, IReferenceResolver referenceResolver)
+        {
+            return new Reference<T>(id, referenceResolver);
+        }
     }
 
     public static class ReferenceExtension
