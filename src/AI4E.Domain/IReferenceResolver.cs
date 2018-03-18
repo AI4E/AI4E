@@ -2,9 +2,10 @@
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IReferenceResolver.cs 
  * Types:           (1) AI4E.Domain.IReferenceResolver
+ *                  (2) AI4E.Domain.ReferenceResolverExtension
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   18.10.2017 
+ * Last modified:   18.03.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -34,14 +35,45 @@ using System.Threading.Tasks;
 
 namespace AI4E.Domain
 {
+    /// <summary>
+    /// Represents a reference resolver that can resolve references asynchronously.
+    /// </summary>
     public interface IReferenceResolver
     {
+        /// <summary>
+        /// Asynchronously resolves the reference specified by its type, id and revision.
+        /// </summary>
+        /// <typeparam name="TEntity">The type of entity the reference refers to.</typeparam>
+        /// <param name="id">The id of the referenced entity.</param>
+        /// <param name="revision">The revision of the entity to load or <see cref="default(long)"/> to load the entity in the latest version.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the loaded entity or null if the reference could not be resolved.
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="revision"/> is a negative value.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
         Task<TEntity> ResolveAsync<TEntity>(Guid id, long revision, CancellationToken cancellation)
                    where TEntity : AggregateRoot;
     }
 
+    /// <summary>
+    /// Provides common extension method for a reference resolver.
+    /// </summary>
     public static class ReferenceResolverExtension
     {
+        /// <summary>
+        /// Asynchronously resolves the reference specified by its type and id within the latest revision.
+        /// </summary>
+        /// <typeparam name="TEntity">The type of entity the reference refers to.</typeparam>
+        /// <param name="id">The id of the referenced entity.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the loaded entity or null if the reference could not be resolved.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="referenceResolver"/> is null.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
         public static Task<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, Guid id, CancellationToken cancellation)
             where TEntity : AggregateRoot
         {
@@ -49,6 +81,49 @@ namespace AI4E.Domain
                 throw new ArgumentNullException(nameof(referenceResolver));
 
             return referenceResolver.ResolveAsync<TEntity>(id, revision: default, cancellation);
+        }
+
+        /// <summary>
+        /// Asynchronously resolves the reference specified by its type, id and revision.
+        /// </summary>
+        /// <typeparam name="TEntity">The type of entity the reference refers to.</typeparam>
+        /// <param name="id">The id of the referenced entity.</param>
+        /// <param name="revision">The revision of the entity to load or <see cref="default(long)"/> to load the entity in the latest version.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the loaded entity or null if the reference could not be resolved.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="referenceResolver"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="revision"/> is a negative value.</exception>
+        public static Task<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, Guid id, long revision)
+            where TEntity : AggregateRoot
+        {
+            if (referenceResolver == null)
+                throw new ArgumentNullException(nameof(referenceResolver));
+
+            if (revision < 0)
+                throw new ArgumentOutOfRangeException(nameof(revision));
+
+            return referenceResolver.ResolveAsync<TEntity>(id, revision: default, cancellation: default);
+        }
+
+        /// <summary>
+        /// Asynchronously resolves the reference specified by its type and id within the latest revision.
+        /// </summary>
+        /// <typeparam name="TEntity">The type of entity the reference refers to.</typeparam>
+        /// <param name="id">The id of the referenced entity.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the loaded entity or null if the reference could not be resolved.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="referenceResolver"/> is null.</exception>
+        public static Task<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, Guid id)
+            where TEntity : AggregateRoot
+        {
+            if (referenceResolver == null)
+                throw new ArgumentNullException(nameof(referenceResolver));
+
+            return referenceResolver.ResolveAsync<TEntity>(id, revision: default, cancellation: default);
         }
     }
 }
