@@ -225,9 +225,9 @@ namespace AI4E.Storage
                 if (commits == null)
                     throw new ArgumentNullException(nameof(commits));
 
+                _streamStore = streamStore;
                 ExecuteExtensions(commits);
 
-                _streamStore = streamStore;
                 BucketId = bucketId;
                 StreamId = streamId;
                 _snapshot = snapshot;
