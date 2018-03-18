@@ -29,8 +29,6 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
@@ -38,51 +36,54 @@ using Nito.AsyncEx;
 namespace AI4E.Domain
 {
     /// <summary>
-    /// Repesents a reference to an aggregate that can be resolved.
+    /// References a snapshot of an aggregate. 
     /// </summary>
     /// <typeparam name="T">The type of aggregate root.</typeparam>
-    public readonly struct Reference<T> : IEquatable<Reference<T>>
+    public readonly struct Snapshot<T> : IEquatable<Snapshot<T>>
         where T : AggregateRoot
     {
         private static readonly int _typeHashCode = typeof(T).GetHashCode();
 
         private readonly AsyncLazy<T> _aggregate;
         private readonly Guid _id;
+        private readonly long _revision;
 
-        /// <summary>
-        /// Creates a reference to the specified aggregate.
-        /// </summary>
-        /// <param name="aggregate">The aggregate to reference.</param>
-        public Reference(T aggregate)
+        public Snapshot(T aggregate)
         {
-            if (aggregate == null)
+            if (aggregate == default)
             {
-                _id = Guid.Empty;
+                _id = default;
+                _revision = default;
             }
             else
             {
-                if (aggregate.Id == Guid.Empty)
+                if (aggregate.Id == default)
                 {
                     throw new ArgumentException("Cannot get a reference to an aggregate without an id specified.");
                 }
 
                 _id = aggregate.Id;
+                _revision = aggregate.Revision;
             }
 
             _aggregate = new AsyncLazy<T>(() => Task.FromResult(aggregate));
         }
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        private Reference(Guid id, IReferenceResolver referenceResolver)
+        private Snapshot(Guid id, long revision, IReferenceResolver referenceResolver)
         {
             if (referenceResolver == null)
                 throw new ArgumentNullException(nameof(referenceResolver));
 
-            _id = id;
+            if (revision < 0)
+                throw new ArgumentOutOfRangeException(nameof(revision));
 
-            if (id != Guid.Empty)
+            _id = id;
+            _revision = revision;
+
+            if (id != default)
             {
-                _aggregate = new AsyncLazy<T>(async () => await referenceResolver.ResolveAsync<T>(id, cancellation: default));
+                _aggregate = new AsyncLazy<T>(async () => await referenceResolver.ResolveAsync<T>(id, revision, cancellation: default));
             }
             else
             {
@@ -91,34 +92,35 @@ namespace AI4E.Domain
         }
 
         public Guid Id => _id;
+        public long Revision => _revision;
 
         /// <summary>
         /// Asynchronously resolves the reference and provides an instance of the referenced aggregate.
         /// </summary>
         /// <returns>A task representing the asnychronous operation.</returns>
-        public Task<T> ResolveAsync() // TODO: Cancellation support?
+        public Task<T> ResolveAsync()
         {
             return _aggregate.Task;
         }
 
         #region Equality
 
-        public bool Equals(Reference<T> other)
+        public bool Equals(Snapshot<T> other)
         {
-            return other.Id == Id;
+            return other.Id == Id && other.Revision == Revision;
         }
 
         public override bool Equals(object obj)
         {
-            return obj is Reference<T> reference && Equals(reference);
+            return obj is Snapshot<T> snapshot && Equals(snapshot);
         }
 
-        public static bool operator ==(Reference<T> left, Reference<T> right)
+        public static bool operator ==(Snapshot<T> left, Snapshot<T> right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(Reference<T> left, Reference<T> right)
+        public static bool operator !=(Snapshot<T> left, Snapshot<T> right)
         {
             return !left.Equals(right);
         }
@@ -127,38 +129,17 @@ namespace AI4E.Domain
 
         public override int GetHashCode()
         {
-            return _typeHashCode ^ Id.GetHashCode();
+            return _typeHashCode ^ Id.GetHashCode() ^ Revision.GetHashCode();
         }
 
         public override string ToString()
         {
-            return $"{typeof(T).FullName} #{Id}";
+            return $"{typeof(T).FullName} #{Id} {Revision}";
         }
 
-        public static implicit operator Reference<T>(T aggregate)
+        public static implicit operator Snapshot<T>(T aggregate)
         {
-            return new Reference<T>(aggregate);
-        }
-    }
-
-    public static class ReferenceExtension
-    {
-        public static TaskAwaiter<T> GetAwaiter<T>(in this Reference<T> reference)
-            where T : AggregateRoot
-        {
-            return reference.ResolveAsync().GetAwaiter();
-        }
-
-        public static async Task<IEnumerable<T>> ResolveAsync<T>(this IEnumerable<Reference<T>> references)
-             where T : AggregateRoot
-        {
-            return await Task.WhenAll(references.Select(p => p.ResolveAsync()));
-        }
-
-        public static TaskAwaiter<IEnumerable<T>> GetAwaiter<T>(this IEnumerable<Reference<T>> references)
-            where T : AggregateRoot
-        {
-            return references.ResolveAsync().GetAwaiter();
+            return new Snapshot<T>(aggregate);
         }
     }
 }
