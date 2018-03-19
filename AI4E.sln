@@ -30,6 +30,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{143B5D2D-F49E-47EC-808A-08B4E595035E}"
 	ProjectSection(SolutionItems) = preProject
 		Directory.Build.props = Directory.Build.props
+		global.json = global.json
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{8682A1B5-6D4B-4176-8BC8-9F93018B12CE}"
@@ -42,7 +43,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Test", "test\AI4E.Test
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.RPC.Sample", "samples\AI4E.Modularity.RPC.Sample\AI4E.Modularity.RPC.Sample.csproj", "{E2E0B8E8-6063-4BFC-A36F-D6E9DE846A2D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Storage.InMemory", "src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj", "{F3D1468C-1005-43FC-A786-4E0094DACED7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.InMemory", "src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj", "{F3D1468C-1005-43FC-A786-4E0094DACED7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -59,12 +60,15 @@ Global
 		{FB360F6D-F333-4C6F-9412-8E4041D43E47}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FB360F6D-F333-4C6F-9412-8E4041D43E47}.Release|Any CPU.Build.0 = Release|Any CPU
 		{47A824BA-8E70-45FB-8AFC-ED48BEBFD14E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{47A824BA-8E70-45FB-8AFC-ED48BEBFD14E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{47A824BA-8E70-45FB-8AFC-ED48BEBFD14E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{47A824BA-8E70-45FB-8AFC-ED48BEBFD14E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{46ECB554-F69A-44E2-B510-C906834BC721}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{46ECB554-F69A-44E2-B510-C906834BC721}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{46ECB554-F69A-44E2-B510-C906834BC721}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{46ECB554-F69A-44E2-B510-C906834BC721}.Release|Any CPU.Build.0 = Release|Any CPU
 		{48D91561-1804-43FB-B3A1-FAD5BCE3E8FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{48D91561-1804-43FB-B3A1-FAD5BCE3E8FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{48D91561-1804-43FB-B3A1-FAD5BCE3E8FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{48D91561-1804-43FB-B3A1-FAD5BCE3E8FD}.Release|Any CPU.Build.0 = Release|Any CPU
 		{DDA57632-8AC6-4881-9B4C-6B7CC797E79D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
