@@ -33,14 +33,24 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Debugging
 {
-    public sealed class DebugPort
+    public sealed class DebugPort : IAsyncDisposable
     {
+        #region Fields
+
         private readonly TcpListener _tcpHost;
         private readonly IAsyncProcess _connectionProcess;
-        private readonly ConcurrentDictionary<DebugSession, byte> _debugSessions = new ConcurrentDictionary<DebugSession, byte>();
         private readonly IServiceProvider _serviceProvider;
+        private readonly AsyncDisposeHelper _disposeHelper;
+        private readonly AsyncInitializationHelper _initializationHelper;
+        private readonly ConcurrentDictionary<DebugSession, byte> _debugSessions = new ConcurrentDictionary<DebugSession, byte>();
 
-        public DebugPort(IServiceProvider serviceProvider, IAddressConversion<IPEndPoint> addressConversion, IOptions<ModularityOptions> optionsAccessor)
+        #endregion
+
+        #region C'tor
+
+        public DebugPort(IServiceProvider serviceProvider,
+                         IAddressConversion<IPEndPoint> addressConversion,
+                         IOptions<ModularityOptions> optionsAccessor)
         {
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
@@ -54,20 +64,54 @@ namespace AI4E.Modularity.Debugging
             var options = optionsAccessor.Value ?? new ModularityOptions();
 
             _serviceProvider = serviceProvider;
-            _connectionProcess = new AsyncProcess(ConnectProcedure);
-            var endPoint = addressConversion.Parse(options.DebugConnection);
 
+            var endPoint = addressConversion.Parse(options.DebugConnection);
 
             _tcpHost = new TcpListener(endPoint);
             _tcpHost.Start();
             LocalAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;
             Assert(LocalAddress != null);
 
-            _connectionProcess.Start();
-
+            _connectionProcess = new AsyncProcess(ConnectProcedure);
+            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
+        #endregion
+
         public IPEndPoint LocalAddress { get; }
+
+        #region Initialization
+
+        private async Task InitializeInternalAsync(CancellationToken cancellation)
+        {
+            await _connectionProcess.StartAsync(cancellation);
+        }
+
+        #endregion
+
+        #region Disposal
+
+        public Task Disposal => _disposeHelper.Disposal;
+
+        public void Dispose()
+        {
+            _disposeHelper.Dispose();
+        }
+
+        public Task DisposeAsync()
+        {
+            return _disposeHelper.DisposeAsync();
+        }
+
+        private async Task DisposeInternalAsync()
+        {
+            await _initializationHelper.CancelAsync();
+
+            await _connectionProcess.TerminateAsync();
+        }
+
+        #endregion
 
         private async Task ConnectProcedure(CancellationToken cancellation)
         {
@@ -81,7 +125,7 @@ namespace AI4E.Modularity.Debugging
                     _debugSessions.TryAdd(new DebugSession(this, stream, _serviceProvider), 0);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
-                catch (Exception exc)
+                catch (Exception)
                 {
                     // TODO: Log exception
                 }

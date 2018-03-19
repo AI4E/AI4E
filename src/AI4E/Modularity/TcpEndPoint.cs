@@ -81,7 +81,7 @@ namespace AI4E.Modularity
 
         private async Task InitializeInternalAsync(CancellationToken cancellation)
         {
-            await _connectionProcess.StartAsync(); // TODO: Pass cancellation
+            await _connectionProcess.StartAsync(cancellation);
         }
 
         #endregion
@@ -225,7 +225,7 @@ namespace AI4E.Modularity
 
             private async Task InitializeInternalAsync(CancellationToken cancellation)
             {
-                await _receiveProcess.StartAsync(); // TODO: Pass cancellation
+                await _receiveProcess.StartAsync(cancellation);
             }
 
             #endregion

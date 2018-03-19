@@ -142,7 +142,7 @@ namespace AI4E.Modularity.RPC
 
         private async Task InitializeInternalAsync(CancellationToken cancellation)
         {
-            await _receiveProcess.StartAsync(); // TODO: Pass cancellation
+            await _receiveProcess.StartAsync(cancellation);
         }
 
         #endregion
