@@ -45,6 +45,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.RPC.Sample"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.InMemory", "src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj", "{F3D1468C-1005-43FC-A786-4E0094DACED7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Messaging.InMemory.Sample", "samples\AI4E.Messaging.InMemory.Sample\AI4E.Messaging.InMemory.Sample.csproj", "{DA158552-2650-49C3-B08E-3DB7A8F11054}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -103,6 +105,10 @@ Global
 		{F3D1468C-1005-43FC-A786-4E0094DACED7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F3D1468C-1005-43FC-A786-4E0094DACED7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F3D1468C-1005-43FC-A786-4E0094DACED7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA158552-2650-49C3-B08E-3DB7A8F11054}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA158552-2650-49C3-B08E-3DB7A8F11054}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA158552-2650-49C3-B08E-3DB7A8F11054}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA158552-2650-49C3-B08E-3DB7A8F11054}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -121,6 +127,7 @@ Global
 		{5C334379-E664-43B6-BA71-22F3C688543C} = {51EBAD3B-B475-4587-A6DE-2CCDDC1952F7}
 		{E2E0B8E8-6063-4BFC-A36F-D6E9DE846A2D} = {8682A1B5-6D4B-4176-8BC8-9F93018B12CE}
 		{F3D1468C-1005-43FC-A786-4E0094DACED7} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
+		{DA158552-2650-49C3-B08E-3DB7A8F11054} = {8682A1B5-6D4B-4176-8BC8-9F93018B12CE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}
