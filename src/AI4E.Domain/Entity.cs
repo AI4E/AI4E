@@ -29,7 +29,6 @@
  */
 
 using System;
-using System.Diagnostics;
 
 namespace AI4E.Domain
 {
@@ -44,6 +43,12 @@ namespace AI4E.Domain
                 throw new ArgumentException("The id must not be an empty guid.", nameof(id));
 
             _id = id;
+            _entityType = new Lazy<Type>(() => GetType());
+        }
+
+        protected Entity()
+        {
+            _id = Guid.NewGuid();
             _entityType = new Lazy<Type>(() => GetType());
         }
 
