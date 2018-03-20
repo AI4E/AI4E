@@ -57,13 +57,8 @@ namespace AI4E.Domain
 
         protected virtual void DoDispose() { }
 
-        private protected sealed override AggregateRoot GetAggregateRoot()
-        {
-            return this;
-        }
-
-        protected override void Publish<TEvent>(TEvent evt)
-
+        public void Publish<TEvent>(TEvent evt)
+            where TEvent : DomainEvent
         {
             ThrowIfDisposed();
 

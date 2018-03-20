@@ -36,18 +36,9 @@ namespace AI4E.Domain
     public abstract class Entity : IEquatable<Entity>
     {
         private Guid _id;
-        private readonly AggregateRoot _aggregateRoot;
         private readonly Lazy<Type> _entityType;
 
-        protected Entity(Guid id, AggregateRoot aggregateRoot) : this(id)
-        {
-            if (aggregateRoot == null)
-                throw new ArgumentNullException(nameof(aggregateRoot));
-
-            _aggregateRoot = aggregateRoot;
-        }
-
-        private protected Entity(Guid id)
+        protected Entity(Guid id)
         {
             if (id == default)
                 throw new ArgumentException("The id must not be an empty guid.", nameof(id));
@@ -56,30 +47,13 @@ namespace AI4E.Domain
             _entityType = new Lazy<Type>(() => GetType());
         }
 
-        public Guid Id
+        public virtual Guid Id
         {
             get => _id;
             internal set => _id = value;
         }
 
         private protected Type EntityType => _entityType.Value;
-
-        public AggregateRoot AggregateRoot => GetAggregateRoot();
-
-        private protected virtual AggregateRoot GetAggregateRoot()
-        {
-            return _aggregateRoot;
-        }
-
-        protected virtual void Publish<TEvent>(TEvent evt)
-            where TEvent : DomainEvent
-        {
-            var aggregateRoot = GetAggregateRoot();
-
-            Debug.Assert(aggregateRoot != null);
-
-            aggregateRoot.Publish(evt);
-        }
 
         public bool Equals(Entity other)
         {
