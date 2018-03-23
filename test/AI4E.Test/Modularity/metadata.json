@@ -1,0 +1,14 @@
+﻿{
+  "id": "Test.Module",
+  "version": "1.0.1-pre",
+  "name": "User descriptive name",
+  "author" :  "Author of the module",
+  "description": "User description",
+  "release-date": "2012-04-23T18:25:43.511Z",
+  "entry-command": "dotnet MyApp.dll",
+  "entry-arguments": "%insert-argument%",
+  "dependencies": {
+    "Test.Base.Module": "1.0.0",
+    "Test.Base.Module2" :  "*"
+  }
+}

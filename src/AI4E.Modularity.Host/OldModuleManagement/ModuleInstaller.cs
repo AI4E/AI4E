@@ -55,6 +55,7 @@ namespace AI4E.Modularity
         private static readonly IReadOnlyCollection<IModuleSource> _emptyModuleSourceList = new IModuleSource[0];
 
         private readonly IModuleSupervision _moduleSupervision;
+        private readonly IMetadataReader _metadataReader;
         private readonly Dictionary<ModuleIdentifier, ModuleInstallation> _installations = new Dictionary<ModuleIdentifier, ModuleInstallation>();
         private readonly Dictionary<string, ModuleSource> _sources = new Dictionary<string, ModuleSource>();
         private readonly AsyncLock _lock = new AsyncLock();
@@ -76,10 +77,13 @@ namespace AI4E.Modularity
         /// <param name="moduleSupervision">The module supervisition that controls module runtime.</param>
         /// <param name="sourceManager">The module source manager.</param>
         /// <exception cref="ArgumentNullException">Thrown if either <paramref name="moduleSupervision"/> or <paramref name="sourceManager"/> is null.</exception>
-        public ModuleInstaller(IModuleSupervision moduleSupervision)
+        public ModuleInstaller(IModuleSupervision moduleSupervision, IMetadataReader metadataReader)
         {
             if (moduleSupervision == null)
                 throw new ArgumentNullException(nameof(moduleSupervision));
+
+            if (metadataReader == null)
+                throw new ArgumentNullException(nameof(metadataReader));
 
             if (!Directory.Exists(_workingDirectory))
             {
@@ -87,6 +91,7 @@ namespace AI4E.Modularity
             }
 
             _moduleSupervision = moduleSupervision;
+            _metadataReader = metadataReader;
             _configFileStream = new FileStream(_configFile, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096, useAsync: true);
             _initialization = InitializeAsync();
         }
@@ -113,7 +118,7 @@ namespace AI4E.Modularity
             {
                 using (var stream = new FileStream(Path.Combine(installation.InstallationDirectory, "module.json"), FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true))
                 {
-                    var metadata = await ModuleMetadataReader.ReadAsync(stream);
+                    var metadata = await _metadataReader.ReadMetadataAsync(stream, cancellation: default);
 
                     installation.ModuleMetadata = metadata;
 
@@ -308,7 +313,7 @@ namespace AI4E.Modularity
             {
                 var location = uri.LocalPath;
 
-                return new FileSystemModuleLoader(location);
+                return new FileSystemModuleLoader(location, _metadataReader);
             }
 
             throw new NotSupportedException();

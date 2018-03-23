@@ -11,13 +11,18 @@ namespace AI4E.Modularity
     public sealed partial class FileSystemModuleLoader : IModuleLoader
     {
         private readonly DirectoryInfo _directory;
+        private readonly IMetadataReader _metadataReader;
 
-        public FileSystemModuleLoader(string path)
+        public FileSystemModuleLoader(string path, IMetadataReader metadataReader)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
 
+            if (metadataReader == null)
+                throw new ArgumentNullException(nameof(metadataReader));
+
             _directory = new DirectoryInfo(path);
+            _metadataReader = metadataReader;
         }
 
         public async Task<IEnumerable<ModuleReleaseIdentifier>> ListModulesAsync()
@@ -89,7 +94,7 @@ namespace AI4E.Modularity
                     return null;
                 }
 
-                return await ModuleMetadataReader.ReadAsync(manifest.Open());
+                return await _metadataReader.ReadMetadataAsync(manifest.Open(), cancellation: default);
             }
         }
 

@@ -22,7 +22,7 @@ namespace AI4E.Modularity
                 _metadata = metadata;
             }
 
-            public ModuleReleaseIdentifier Identifier => new ModuleReleaseIdentifier(new ModuleIdentifier(_metadata.Name), Version);
+            public ModuleReleaseIdentifier Identifier => new ModuleReleaseIdentifier(_metadata.Id, Version);
 
             public bool IsPreRelease => Version.IsPreRelease;
 
@@ -30,15 +30,15 @@ namespace AI4E.Modularity
 
             public DateTime ReleaseDate => _metadata.ReleaseDate;
 
-            public string DescriptiveName => _metadata.DescriptiveName;
+            public string DescriptiveName => _metadata.Name;
 
             public string Description => _metadata.Description;
 
-            public ModuleIcon Icon => _metadata.Icon;
+            public ModuleIcon Icon => default;
 
             public string Author => _metadata.Author;
 
-            public string ReferencePageUri => _metadata.ReferencePageUri;
+            public string ReferencePageUri => default;
 
             public bool IsInstalled => _moduleInstaller.IsInstalled(Identifier);
 
