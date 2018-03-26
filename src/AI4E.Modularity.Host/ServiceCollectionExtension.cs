@@ -41,6 +41,8 @@ namespace AI4E.Modularity
 
             services.AddOptions();
 
+            services.AddSingleton<IMetadataReader, MetadataReader>();
+
             // Configure necessary application parts
             var partManager = services.GetApplicationPartManager();
             services.TryAddSingleton(partManager);
