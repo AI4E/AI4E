@@ -21,6 +21,7 @@
 using System;
 using System.Threading.Tasks;
 using System.Threading;
+using Microsoft.Extensions.Logging;
 
 #if DEBUG
 using System.Diagnostics;
@@ -38,7 +39,7 @@ namespace AI4E.Async
             return !(task.IsCanceled || task.IsCompleted || task.IsFaulted);
         }
 
-        public static void HandleExceptions(this Task task) // TODO: Receive an instance of ILogger type
+        public static void HandleExceptions(this Task task, ILogger logger)
         {
             if (task == null)
                 throw new ArgumentNullException(nameof(task));
@@ -47,14 +48,22 @@ namespace AI4E.Async
             {
                 if (t.Exception != null)
                 {
-#if DEBUG
-                    Debugger.Break();
-#endif
-
-                    Console.WriteLine(t.Exception.ToString());
-                    Console.WriteLine();
+                    if (logger != null)
+                    {
+                        logger.LogError(t.Exception.InnerException, "An exception occured in the task.");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("An exception occured in the task.");
+                        Debug.WriteLine(t.Exception.InnerException.ToString());
+                    }
                 }
             });
+        }
+
+        public static void HandleExceptions(this Task task)
+        {
+            HandleExceptions(task, logger: null);
         }
 
         public static async Task WithCancellation(this Task task, CancellationToken cancellation)

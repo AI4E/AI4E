@@ -107,7 +107,8 @@ namespace AI4E.Modularity
             }
             else
             {
-                return ActivatorUtilities.CreateInstance<EndPointManager<IPEndPoint>>(provider);
+                return null; /* TODO */
+                //return ActivatorUtilities.CreateInstance<EndPointManager<IPEndPoint>>(provider);
             }
         }
 

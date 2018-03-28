@@ -131,7 +131,7 @@ namespace AI4E.Modularity
 
         private async Task InitializeInternalAsync(CancellationToken cancellation)
         {
-            await _endPointManager.AddEndPointAsync(LocalEndPoint);
+            await _endPointManager.AddEndPointAsync(LocalEndPoint, cancellation);
             await _receiveProcess.StartAsync();
         }
 
@@ -154,7 +154,7 @@ namespace AI4E.Modularity
             }
             finally
             {
-                await _endPointManager.RemoveEndPointAsync(LocalEndPoint);
+                await _endPointManager.RemoveEndPointAsync(LocalEndPoint, cancellation: default);
             }
         }
 

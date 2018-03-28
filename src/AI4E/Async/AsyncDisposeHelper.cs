@@ -12,6 +12,7 @@ namespace AI4E.Async
         private readonly TaskCompletionSource<byte> _disposalSource;
         private readonly Func<Task> _asyncDisposal;
         private readonly AsyncReaderWriterLock _lock;
+        private readonly CancellationTokenSource _cts;
 
         public AsyncDisposeHelper(Func<Task> asyncDisposal)
         {
@@ -23,6 +24,7 @@ namespace AI4E.Async
             _disposalSource = new TaskCompletionSource<byte>();
             _lock = new AsyncReaderWriterLock();
             _disposal = null;
+            _cts = new CancellationTokenSource();
         }
 
         public void Dispose()
@@ -41,6 +43,10 @@ namespace AI4E.Async
 
         private async Task DisposeInternalAsync()
         {
+            // The cancellation has to be done before locking, because this cancellation signals
+            // holders of the prohibit disposal locks to cancel and allow disposal.
+            _cts.Cancel();
+
             using (await _lock.WriterLockAsync())
             {
                 try
@@ -79,6 +85,11 @@ namespace AI4E.Async
                 }
             }
         }
+
+        /// <summary>
+        /// Gets a cancellation token that is cancelled when disposal is requested.
+        /// </summary>
+        public CancellationToken DisposalRequested => _cts?.Token ?? default;
 
         public AwaitableDisposable<IDisposable> ProhibitDisposalAsync(CancellationToken cancellation)
         {

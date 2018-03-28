@@ -81,9 +81,10 @@ namespace AI4E.Modularity.RPC
 
             _stream = stream;
             _serviceProvider = serviceProvider;
+
             _receiveProcess = new AsyncProcess(ReceiveProcess);
-            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
             _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
         #endregion
@@ -893,7 +894,7 @@ namespace AI4E.Modularity.RPC
 
             if (expression is MemberExpression memberExpression)
             {
-                if (memberExpression.Member is FieldInfo field && 
+                if (memberExpression.Member is FieldInfo field &&
                     memberExpression.Expression is ConstantExpression fieldOwner)
                 {
                     return field.GetValue(fieldOwner.Value);

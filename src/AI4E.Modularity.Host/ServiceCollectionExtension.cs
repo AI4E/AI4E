@@ -61,7 +61,7 @@ namespace AI4E.Modularity
             services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<IRemoteMessageDispatcher>());
             services.AddSingleton<IPhysicalEndPoint<IPEndPoint>, TcpEndPoint>();
-            services.AddSingleton<IEndPointManager, EndPointManager<IPEndPoint>>();
+            //services.AddSingleton<IEndPointManager, EndPointManager<IPEndPoint>>(); /* TODO */
             services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
             services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
             services.AddSingleton<IMessageTypeConversion, TypeSerializer>();

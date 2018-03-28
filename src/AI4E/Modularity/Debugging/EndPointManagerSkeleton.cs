@@ -39,7 +39,7 @@ namespace AI4E.Modularity.Debugging
             {
                 foreach (var endPoint in _addedEndPoints)
                 {
-                    await _endPointManager.RemoveEndPointAsync(endPoint);
+                    await _endPointManager.RemoveEndPointAsync(endPoint, cancellation: default);
 
                     await _messageDispatcher.DispatchAsync(new EndPointDisconnected(endPoint), publish: true);
                 }
@@ -60,7 +60,7 @@ namespace AI4E.Modularity.Debugging
 
         #endregion
 
-        public async Task AddEndPointAsync(EndPointRoute route)
+        public async Task AddEndPointAsync(EndPointRoute route, CancellationToken cancellation)
         {
             using (await _disposeHelper.ProhibitDisposalAsync())
             {
@@ -72,7 +72,7 @@ namespace AI4E.Modularity.Debugging
                     if (_addedEndPoints.Contains(route))
                         return;
 
-                    await _endPointManager.AddEndPointAsync(route);
+                    await _endPointManager.AddEndPointAsync(route, cancellation);
                     _addedEndPoints.Add(route);
 
                     await _messageDispatcher.DispatchAsync(new EndPointConnected(route), publish: true);
@@ -80,7 +80,7 @@ namespace AI4E.Modularity.Debugging
             }
         }
 
-        public async Task RemoveEndPointAsync(EndPointRoute route)
+        public async Task RemoveEndPointAsync(EndPointRoute route, CancellationToken cancellation)
         {
             using (await _disposeHelper.ProhibitDisposalAsync())
             {
@@ -92,7 +92,7 @@ namespace AI4E.Modularity.Debugging
                     if (!_addedEndPoints.Contains(route))
                         return;
 
-                    await _endPointManager.RemoveEndPointAsync(route);
+                    await _endPointManager.RemoveEndPointAsync(route, cancellation);
                     _addedEndPoints.Remove(route);
 
                     await _messageDispatcher.DispatchAsync(new EndPointDisconnected(route), publish: true);
