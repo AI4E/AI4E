@@ -27,6 +27,12 @@ namespace AI4E.Async
             _initialization = initialization();
         }
 
+        internal AsyncInitializationHelper(Task initialization, CancellationTokenSource cancellation)
+        {
+            _initialization = initialization;
+            _cancellation = cancellation;
+        }
+
         public Task Initialization => _initialization ?? Task.CompletedTask;
 
         public void Cancel()
@@ -34,15 +40,18 @@ namespace AI4E.Async
             _cancellation?.Cancel();
         }
 
-        public async Task CancelAsync()
+        public async Task<bool> CancelAsync()
         {
             Cancel();
 
             try
             {
                 await Initialization;
+                return true;
             }
-            catch (OperationCanceledException) { }
+            catch { }
+
+            return false;
         }
     }
 
@@ -78,15 +87,23 @@ namespace AI4E.Async
             _cancellation?.Cancel();
         }
 
-        public async Task CancelAsync()
+        public async Task<(bool success, T result)> CancelAsync()
         {
             Cancel();
 
             try
             {
-                await Initialization;
+                var result = await Initialization;
+                return (true, result);
             }
             catch { }
+
+            return (false, default);
+        }
+
+        public static implicit operator AsyncInitializationHelper(AsyncInitializationHelper<T> source)
+        {
+            return new AsyncInitializationHelper(source._initialization, source._cancellation);
         }
     }
 }
