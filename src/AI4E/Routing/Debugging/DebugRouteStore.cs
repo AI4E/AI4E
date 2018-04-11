@@ -39,10 +39,10 @@ namespace AI4E.Routing.Debugging
     public sealed class DebugRouteStore : IRouteStore
     {
         private IProxy<RouteStoreSkeleton> _proxy;
-        private readonly RPCHost _rpcHost;
+        private readonly ProxyHost _rpcHost;
         private readonly Task _initialization;
 
-        public DebugRouteStore(RPCHost rpcHost)
+        public DebugRouteStore(ProxyHost rpcHost)
         {
             if (rpcHost == null)
                 throw new ArgumentNullException(nameof(rpcHost));

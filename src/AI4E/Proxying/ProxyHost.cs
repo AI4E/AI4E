@@ -1,11 +1,11 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        RPCHost.cs
- * Types:           (1) AI4E.Proxying.RPCHost
+ * Filename:        ProxyHost.cs
+ * Types:           (1) AI4E.Proxying.ProxyHost
  *                  (2) AI4E.Proxying.ActivationMode
- *                  (3) AI4E.Proxying.RPCHost.MessageType
- *                  (4) AI4E.Proxying.RPCHost.ProxyOwner
- *                  (5) AI4E.Proxying.RPCHost.TypeCode
+ *                  (3) AI4E.Proxying.ProxyHost.MessageType
+ *                  (4) AI4E.Proxying.ProxyHost.ProxyOwner
+ *                  (5) AI4E.Proxying.ProxyHost.TypeCode
  * Version:         1.0
  * Author:          Andreas Trütschel
  * Last modified:   11.04.2018 
@@ -51,7 +51,7 @@ using Nito.AsyncEx;
 
 namespace AI4E.Proxying
 {
-    public sealed class RPCHost : IAsyncInitialization, IAsyncDisposable
+    public sealed class ProxyHost : IAsyncInitialization, IAsyncDisposable
     {
         #region Fields
 
@@ -72,7 +72,7 @@ namespace AI4E.Proxying
 
         #region Ctor
 
-        public RPCHost(Stream stream, IServiceProvider serviceProvider)
+        public ProxyHost(Stream stream, IServiceProvider serviceProvider)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));

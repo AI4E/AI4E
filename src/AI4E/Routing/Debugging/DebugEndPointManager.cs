@@ -39,10 +39,10 @@ namespace AI4E.Routing.Debugging
     public sealed class DebugEndPointManager : IEndPointManager
     {
         private IProxy<EndPointManagerSkeleton> _proxy;
-        private readonly RPCHost _rpcHost;
+        private readonly ProxyHost _rpcHost;
         private readonly Task _initialization;
 
-        public DebugEndPointManager(RPCHost rpcHost)
+        public DebugEndPointManager(ProxyHost rpcHost)
         {
             if (rpcHost == null)
                 throw new ArgumentNullException(nameof(rpcHost));

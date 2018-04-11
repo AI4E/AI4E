@@ -44,7 +44,7 @@ namespace AI4E.Proxying
 
         void Dispose();
 
-        void Register(RPCHost host, int proxyId, Action unregisterAction);
+        void Register(ProxyHost host, int proxyId, Action unregisterAction);
     }
 
     public interface IProxy<TRemote>

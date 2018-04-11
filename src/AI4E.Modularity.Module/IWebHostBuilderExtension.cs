@@ -113,7 +113,7 @@ namespace AI4E.Modularity
             }
         }
 
-        private static RPCHost ConfigureRPCHost(IServiceProvider provider)
+        private static ProxyHost ConfigureRPCHost(IServiceProvider provider)
         {
             var optionsAccessor = provider.GetRequiredService<IOptions<ModuleServerOptions>>();
             var options = optionsAccessor.Value ?? new ModuleServerOptions();
@@ -128,7 +128,7 @@ namespace AI4E.Modularity
             var tcpClient = new TcpClient(endPoint.AddressFamily);
             tcpClient.Connect(endPoint.Address, endPoint.Port);
             var stream = tcpClient.GetStream();
-            return new RPCHost(stream, provider);
+            return new ProxyHost(stream, provider);
         }
     }
 }

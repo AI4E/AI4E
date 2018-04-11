@@ -137,7 +137,7 @@ namespace AI4E.Modularity.Debugging
             private readonly DebugPort _debugPort;
             private readonly Stream _stream;
             private readonly IServiceProvider _serviceProvider;
-            private readonly RPCHost _rpcHost;
+            private readonly ProxyHost _rpcHost;
 
             public DebugSession(DebugPort debugPort,
                                 Stream stream,
@@ -155,7 +155,7 @@ namespace AI4E.Modularity.Debugging
                 _debugPort = debugPort;
                 _stream = stream;
                 _serviceProvider = serviceProvider;
-                _rpcHost = new RPCHost(stream, serviceProvider);
+                _rpcHost = new ProxyHost(stream, serviceProvider);
             }
 
             public void Dispose()

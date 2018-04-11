@@ -38,7 +38,7 @@ namespace AI4E.Proxying
     public sealed class Proxy<TRemote> : IProxy<TRemote>, IProxy
         where TRemote : class
     {
-        private RPCHost _host;
+        private ProxyHost _host;
         private int _id;
         private Action _unregisterAction;
         private readonly Type _remoteType;
@@ -57,7 +57,7 @@ namespace AI4E.Proxying
             _ownsInstance = ownsInstance;
         }
 
-        internal Proxy(RPCHost host, int id, Type remoteType)
+        internal Proxy(ProxyHost host, int id, Type remoteType)
         {
             if (host == null)
                 throw new ArgumentNullException(nameof(host));
@@ -177,7 +177,7 @@ namespace AI4E.Proxying
             return _host.SendMethodCallAsync<TResult>(expression.Body, Id, true);
         }
 
-        public void Register(RPCHost host, int proxyId, Action unregisterAction)
+        public void Register(ProxyHost host, int proxyId, Action unregisterAction)
         {
             if (unregisterAction == null)
                 throw new ArgumentNullException(nameof(unregisterAction));
