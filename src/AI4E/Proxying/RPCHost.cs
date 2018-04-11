@@ -1,14 +1,14 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        RPCHost.cs
- * Types:           (1) AI4E.Modularity.RPC.RPCHost
- *                  (2) AI4E.Modularity.RPC.ActivationMode
- *                  (3) AI4E.Modularity.RPC.RPCHost.MessageType
- *                  (4) AI4E.Modularity.RPC.RPCHost.ProxyOwner
- *                  (5) AI4E.Modularity.RPC.RPCHost.TypeCode
+ * Types:           (1) AI4E.Proxying.RPCHost
+ *                  (2) AI4E.Proxying.ActivationMode
+ *                  (3) AI4E.Proxying.RPCHost.MessageType
+ *                  (4) AI4E.Proxying.RPCHost.ProxyOwner
+ *                  (5) AI4E.Proxying.RPCHost.TypeCode
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   18.03.2018 
+ * Last modified:   11.04.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -44,11 +44,12 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
+using AI4E.Modularity;
 using AI4E.Processing;
 using Microsoft.Extensions.DependencyInjection;
 using Nito.AsyncEx;
 
-namespace AI4E.Modularity.RPC
+namespace AI4E.Proxying
 {
     public sealed class RPCHost : IAsyncInitialization, IAsyncDisposable
     {

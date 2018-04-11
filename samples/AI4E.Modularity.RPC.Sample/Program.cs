@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Proxying;
 using Microsoft.Extensions.DependencyInjection;
 using Nito.AsyncEx;
 

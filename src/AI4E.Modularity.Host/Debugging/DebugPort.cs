@@ -26,8 +26,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
-using AI4E.Modularity.RPC;
 using AI4E.Processing;
+using AI4E.Proxying;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 

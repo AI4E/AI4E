@@ -32,7 +32,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Modularity;
-using AI4E.Modularity.RPC;
+using AI4E.Proxying;
 
 namespace AI4E.Routing.Debugging
 {

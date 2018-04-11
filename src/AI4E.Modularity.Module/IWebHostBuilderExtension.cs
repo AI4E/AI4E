@@ -21,7 +21,7 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
-using AI4E.Modularity.RPC;
+using AI4E.Proxying;
 using AI4E.Routing;
 using AI4E.Routing.Debugging;
 using Microsoft.AspNetCore.Hosting;
