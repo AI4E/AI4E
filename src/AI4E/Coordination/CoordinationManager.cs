@@ -100,9 +100,9 @@ namespace AI4E.Coordination
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
-        public async Task<string> GetSessionAsync(CancellationToken cancellation = default)
+        public Task<string> GetSessionAsync(CancellationToken cancellation = default)
         {
-            return await _initializationHelper.Initialization.WithCancellation(cancellation);
+            return _initializationHelper.Initialization.WithCancellation(cancellation);
         }
 
         #region SessionManagement
