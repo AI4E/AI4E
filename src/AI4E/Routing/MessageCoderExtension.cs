@@ -30,6 +30,7 @@
 
 using System;
 using AI4E.Modularity;
+using AI4E.Remoting;
 
 namespace AI4E.Routing
 {

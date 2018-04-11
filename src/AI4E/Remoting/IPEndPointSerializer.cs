@@ -1,4 +1,14 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        IPEndPointSerializer.cs 
+ * Types:           AI4E.Remoting.IPEndPointSerializer
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   11.04.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -23,7 +33,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 
-namespace AI4E.Modularity
+namespace AI4E.Remoting
 {
     public sealed class IPEndPointSerializer : IAddressConversion<IPEndPoint>
     {

@@ -1,4 +1,14 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        IMessage.cs 
+ * Types:           AI4E.Remoting.IMessage
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   11.04.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,14 +28,26 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-namespace AI4E.Modularity
-{
-    public interface IAddressConversion<TAddress>
-    {
-        byte[] SerializeAddress(TAddress route);
-        TAddress DeserializeAddress(byte[] buffer);
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
-        string ToString(TAddress route);
-        TAddress Parse(string str);
+namespace AI4E.Remoting
+{
+    public interface IMessage
+    {
+        IMessageFrame CurrentFrame { get; }
+        long Length { get; }
+
+        IMessageFrame PopFrame();
+        IMessageFrame PushFrame();
+
+        Task WriteAsync(Stream stream, CancellationToken cancellation);
+        Task ReadAsync(Stream stream, CancellationToken cancellation);
+
+#if DEBUG
+        int FrameCount { get; }
+        int FrameIndex { get; }
+#endif
     }
 }

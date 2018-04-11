@@ -1,4 +1,14 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        IPhysicalEndPoint.cs 
+ * Types:           AI4E.Remoting.IPhysicalEndPoint'1
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   11.04.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,12 +28,16 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using TMessageType = System.Type;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace AI4E.Modularity
+namespace AI4E.Remoting
 {
-    public interface IMessageTypeConversion
+    public interface IPhysicalEndPoint<TAddress>
     {
-        string SerializeMessageType(TMessageType route);
+        Task SendAsync(IMessage message, TAddress address, CancellationToken cancellation);
+        Task<IMessage> ReceiveAsync(CancellationToken cancellation);
+
+        TAddress LocalAddress { get; }
     }
 }

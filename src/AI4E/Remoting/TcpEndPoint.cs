@@ -1,14 +1,12 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        TcpEndPoint.cs 
- * Types:           (1) AI4E.Modularity.TcpEndPoint
-                    (2) AI4E.Modularity.TcpEndPoint.LocalEndPoint
-                    (3) AI4E.Modularity.TcpEndPoint.RemoteEndPoint
-                    (4) AI4E.Modularity.TcpEndPoint.RemoteConnection
-                    (5) AI4E.Modularity.TcpEndPoint.MessageType
+ * Types:           (1) AI4E.Remoting.TcpEndPoint
+                    (2) AI4E.Remoting.TcpEndPoint.LocalEndPoint
+                    (3) AI4E.Remoting.TcpEndPoint.Connection
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   12.02.2018 
+ * Last modified:   11.04.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -47,7 +45,7 @@ using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Modularity
+namespace AI4E.Remoting
 {
     public sealed class TcpEndPoint : IPhysicalEndPoint<IPEndPoint>, IAsyncDisposable
     {

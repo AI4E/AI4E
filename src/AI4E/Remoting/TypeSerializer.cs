@@ -1,4 +1,14 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        TypeSerializer.cs 
+ * Types:           AI4E.Remoting.TypeSerializer
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   11.04.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,14 +28,15 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.IO;
+using System;
 
-namespace AI4E.Modularity
+namespace AI4E.Remoting
 {
-    public interface IMessageFrame
+    public class TypeSerializer : IMessageTypeConversion
     {
-        long Length { get; }
-
-        Stream OpenStream(bool overrideContent = false);
+        public string SerializeMessageType(Type route)
+        {
+            return route.FullName;
+        }
     }
 }

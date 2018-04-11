@@ -1,4 +1,16 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        Message.cs 
+ * Types:           (1) AI4E.Remoting.Message
+ *                  (2) AI4E.Remoting.MessageFrame
+ *                  (3) AI4E.Remoting.MessageFrame.MessageFrameStream
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   11.04.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -27,7 +39,7 @@ using System.Threading.Tasks;
 using AI4E.Internal;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Modularity
+namespace AI4E.Remoting
 {
     [Serializable]
     public sealed class Message : IMessage

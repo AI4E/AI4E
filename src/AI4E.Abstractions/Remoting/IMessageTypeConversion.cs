@@ -1,4 +1,14 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        IMessageTypeConversion.cs 
+ * Types:           AI4E.Remoting.IMessageTypeConversion
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   11.04.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,16 +28,12 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Threading;
-using System.Threading.Tasks;
+using System;
 
-namespace AI4E.Modularity
+namespace AI4E.Remoting
 {
-    public interface IPhysicalEndPoint<TAddress>
+    public interface IMessageTypeConversion
     {
-        Task SendAsync(IMessage message, TAddress address, CancellationToken cancellation);
-        Task<IMessage> ReceiveAsync(CancellationToken cancellation);
-
-        TAddress LocalAddress { get; }
+        string SerializeMessageType(Type route);
     }
 }

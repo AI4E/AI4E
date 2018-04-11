@@ -36,8 +36,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
-using AI4E.Modularity;
 using AI4E.Processing;
+using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 

@@ -23,7 +23,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Modularity;
+using AI4E.Remoting;
 using AI4E.Routing;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;

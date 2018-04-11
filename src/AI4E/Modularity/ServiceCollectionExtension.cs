@@ -1,4 +1,5 @@
 ﻿using System;
+using AI4E.Remoting;
 using AI4E.Routing;
 using Microsoft.Extensions.DependencyInjection;
 

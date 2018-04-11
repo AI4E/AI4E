@@ -46,6 +46,7 @@ using AI4E.Async;
 using AI4E.DispatchResults;
 using AI4E.Modularity;
 using AI4E.Processing;
+using AI4E.Remoting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

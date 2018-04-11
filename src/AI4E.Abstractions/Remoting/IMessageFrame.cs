@@ -1,4 +1,14 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        IMessageFrame.cs 
+ * Types:           AI4E.Remoting.IMessageFrame
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   11.04.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,15 +28,14 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
+using System.IO;
 
-namespace AI4E.Modularity
+namespace AI4E.Remoting
 {
-    public class TypeSerializer : IMessageTypeConversion
+    public interface IMessageFrame
     {
-        public string SerializeMessageType(Type route)
-        {
-            return route.FullName;
-        }
+        long Length { get; }
+
+        Stream OpenStream(bool overrideContent = false);
     }
 }
