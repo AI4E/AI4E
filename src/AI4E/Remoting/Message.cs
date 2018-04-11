@@ -54,10 +54,8 @@ namespace AI4E.Remoting
 
         public MessageFrame CurrentFrame => _currentIndex == -1 ? null : _frames[_currentIndex];
 
-#if DEBUG
         public int FrameCount => _frames.Count;
         public int FrameIndex => _currentIndex;
-#endif
 
         public MessageFrame PushFrame()
         {

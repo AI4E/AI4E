@@ -45,9 +45,7 @@ namespace AI4E.Remoting
         Task WriteAsync(Stream stream, CancellationToken cancellation);
         Task ReadAsync(Stream stream, CancellationToken cancellation);
 
-#if DEBUG
         int FrameCount { get; }
         int FrameIndex { get; }
-#endif
     }
 }
