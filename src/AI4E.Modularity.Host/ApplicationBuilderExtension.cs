@@ -25,6 +25,7 @@ using System.Threading.Tasks;
 using AI4E.DispatchResults;
 using AI4E.Internal;
 using AI4E.Modularity.HttpDispatch;
+using AI4E.Routing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;

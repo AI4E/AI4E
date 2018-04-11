@@ -1,4 +1,14 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        EndPointNotFoundException.cs 
+ * Types:           AI4E.Routing.EndPointNotFoundException
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   11.04.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,19 +28,20 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using AI4E.Routing;
+using System;
+using System.Runtime.Serialization;
 
-namespace AI4E.Modularity.HttpDispatch
+namespace AI4E.Routing
 {
-    public sealed class RegisterHttpPrefix
+    [Serializable]
+    public class EndPointNotFoundException : Exception
     {
-        public RegisterHttpPrefix(EndPointRoute endPoint, string prefix)
-        {
-            EndPoint = endPoint;
-            Prefix = prefix;
-        }
+        public EndPointNotFoundException() { }
 
-        public EndPointRoute EndPoint { get; }
-        public string Prefix { get; }
+        public EndPointNotFoundException(string message) : base(message) { }
+
+        public EndPointNotFoundException(string message, Exception innerException) : base(message, innerException) { }
+
+        protected EndPointNotFoundException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
 }

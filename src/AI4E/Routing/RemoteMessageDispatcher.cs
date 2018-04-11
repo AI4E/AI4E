@@ -1,15 +1,15 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        RemoteMessageDispatcher.cs 
- * Types:           (1) AI4E.Modularity.RemoteMessageDispatcher
- *                  (2) AI4E.Modularity.RemoteMessageDispatcher.ITypedRemoteMessageDispatcher
- *                  (3) AI4E.Modularity.RemoteMessageDispatcher.RequestMessage
- *                  (4) AI4E.Modularity.RemoteMessageDispatcher.ResponseMessage
- *                  (5) AI4E.Modularity.RemoteMessageDispatcher.TypedRemoteMessageDispatcher'1
- *                  (6) AI4E.Modularity.RemoteMessageDispatcher.TypedRemoteMessageDispatcher'1.HandlerRegistration
+ * Types:           (1) AI4E.Routing.RemoteMessageDispatcher
+ *                  (2) AI4E.Routing.RemoteMessageDispatcher.ITypedRemoteMessageDispatcher
+ *                  (3) AI4E.Routing.RemoteMessageDispatcher.RequestMessage
+ *                  (4) AI4E.Routing.RemoteMessageDispatcher.ResponseMessage
+ *                  (5) AI4E.Routing.RemoteMessageDispatcher.TypedRemoteMessageDispatcher'1
+ *                  (6) AI4E.Routing.RemoteMessageDispatcher.TypedRemoteMessageDispatcher'1.HandlerRegistration
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   16.03.2018 
+ * Last modified:   11.04.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -44,6 +44,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.DispatchResults;
+using AI4E.Modularity;
 using AI4E.Processing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -51,7 +52,7 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Nito.AsyncEx;
 
-namespace AI4E.Modularity
+namespace AI4E.Routing
 {
     // TODO: Route caching and cache coherency
     public sealed class RemoteMessageDispatcher : IRemoteMessageDispatcher, IAsyncDisposable

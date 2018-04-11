@@ -1,4 +1,14 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        ILocalEndPointFactory.cs 
+ * Types:           AI4E.Routing.ILocalEndPointFactory'1
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   11.04.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,20 +28,10 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Text;
-
-namespace AI4E.Modularity
+namespace AI4E.Routing
 {
-    public class EndPointRouteSerializer : IRouteSerializer
+    public interface ILocalEndPointFactory<TAddress>
     {
-        public byte[] SerializeRoute(EndPointRoute route)
-        {
-            return Encoding.UTF8.GetBytes(route.ToString());
-        }
-
-        public EndPointRoute DeserializeRoute(byte[] buffer)
-        {
-            return EndPointRoute.CreateRoute(Encoding.UTF8.GetString(buffer));
-        }
+        ILocalEndPoint<TAddress> CreateLocalEndPoint(IEndPointManager<TAddress> endPointManager, IRemoteEndPointManager<TAddress> remoteEndPointManager, EndPointRoute route);
     }
 }

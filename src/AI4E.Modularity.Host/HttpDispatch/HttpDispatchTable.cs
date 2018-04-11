@@ -22,6 +22,7 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
+using AI4E.Routing;
 
 namespace AI4E.Modularity.HttpDispatch
 {

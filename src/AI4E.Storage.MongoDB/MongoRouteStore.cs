@@ -24,6 +24,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Modularity;
+using AI4E.Routing;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 

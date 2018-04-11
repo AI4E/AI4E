@@ -1,4 +1,14 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        IRouteSerializer.cs 
+ * Types:           AI4E.Routing.IRouteSerializer
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   11.04.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,19 +28,11 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace AI4E.Modularity
+namespace AI4E.Routing
 {
-    public interface IRouteStore
+    public interface IRouteSerializer
     {
-        Task<bool> AddRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation);
-        Task<bool> RemoveRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation);
-        Task RemoveRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation);
-
-        Task<IEnumerable<EndPointRoute>> GetRoutesAsync(string messageType, CancellationToken cancellation);
-        Task<IEnumerable<EndPointRoute>> GetRoutesAsync(CancellationToken cancellation);
+        byte[] SerializeRoute(EndPointRoute route);
+        EndPointRoute DeserializeRoute(byte[] buffer);
     }
 }

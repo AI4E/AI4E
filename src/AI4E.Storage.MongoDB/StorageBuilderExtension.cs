@@ -20,6 +20,7 @@
 
 using System;
 using AI4E.Modularity;
+using AI4E.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;

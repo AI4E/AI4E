@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.Modularity.EndPointManagement
+namespace AI4E.Routing
 {
     public static class EndPointManagerServiceCollectionExtension
     {

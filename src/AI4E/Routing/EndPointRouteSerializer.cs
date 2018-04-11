@@ -1,4 +1,14 @@
-﻿/* License
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        EndPointRouteSerializer.cs 
+ * Types:           AI4E.Routing.EndPointRouteSerializer
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   11.04.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,19 +28,20 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text;
 
-namespace AI4E.Modularity
+namespace AI4E.Routing
 {
-    public interface IEndPointManager : IDisposable
+    public class EndPointRouteSerializer : IRouteSerializer
     {
-        Task AddEndPointAsync(EndPointRoute route, CancellationToken cancellation);
-        Task RemoveEndPointAsync(EndPointRoute route, CancellationToken cancellation);
+        public byte[] SerializeRoute(EndPointRoute route)
+        {
+            return Encoding.UTF8.GetBytes(route.ToString());
+        }
 
-        Task<IMessage> ReceiveAsync(EndPointRoute localEndPoint, CancellationToken cancellation);
-        Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation);
-        Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation);
+        public EndPointRoute DeserializeRoute(byte[] buffer)
+        {
+            return EndPointRoute.CreateRoute(Encoding.UTF8.GetString(buffer));
+        }
     }
 }

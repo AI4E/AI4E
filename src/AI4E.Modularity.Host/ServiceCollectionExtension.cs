@@ -25,6 +25,7 @@ using System.Net;
 using System.Reflection;
 using AI4E.Modularity.Debugging;
 using AI4E.Modularity.HttpDispatch;
+using AI4E.Routing;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Internal;
 using Microsoft.Extensions.DependencyInjection;

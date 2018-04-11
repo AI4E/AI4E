@@ -1,10 +1,10 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        EndPointRoute.cs 
- * Types:           AI4E.Modularity.EndPointRoute
+ * Types:           AI4E.Routing.EndPointRoute
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   25.02.2018 
+ * Last modified:   11.04.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -31,7 +31,7 @@
 using System;
 using System.Collections.Concurrent;
 
-namespace AI4E.Modularity
+namespace AI4E.Routing
 {
     /// <summary>
     /// Represents the route to a virtual end point. (I.e. its name)
