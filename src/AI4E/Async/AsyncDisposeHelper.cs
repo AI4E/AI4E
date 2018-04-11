@@ -37,16 +37,18 @@ namespace AI4E.Async
             lock (_disposalSource)
             {
                 if (_disposal == null)
+                {
+                    // The cancellation has to be done before locking, because this cancellation signals
+                    // holders of the prohibit disposal locks to cancel and allow disposal.
+                    _cts.Cancel();
+
                     _disposal = DisposeInternalAsync();
+                }
             }
         }
 
         private async Task DisposeInternalAsync()
         {
-            // The cancellation has to be done before locking, because this cancellation signals
-            // holders of the prohibit disposal locks to cancel and allow disposal.
-            _cts.Cancel();
-
             using (await _lock.WriterLockAsync())
             {
                 try
