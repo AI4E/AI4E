@@ -50,6 +50,8 @@ namespace AI4E.Coordination
         /// </summary>
         int Version { get; }
 
+        int StorageVersion { get; }
+
         /// <summary>
         /// Gets the date and time the entry was created.
         /// </summary>
