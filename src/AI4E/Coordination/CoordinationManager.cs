@@ -65,7 +65,7 @@ namespace AI4E.Coordination
         private readonly ICoordinationServiceCallback _callback;
         private readonly ISessionProvider _sessionProvider;
         private readonly ILogger<CoordinationManager> _logger;
-        private readonly ConcurrentDictionary<string, ICoordinationEntry> _entries;
+        private readonly ConcurrentDictionary<string, IStoredEntry> _entries;
         private readonly AsyncProcess _updateSessionProcess;
         private readonly AsyncInitializationHelper<string> _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
@@ -93,7 +93,7 @@ namespace AI4E.Coordination
             _callback = callback;
             _sessionProvider = sessionProvider;
             _logger = logger;
-            _entries = new ConcurrentDictionary<string, ICoordinationEntry>();
+            _entries = new ConcurrentDictionary<string, IStoredEntry>();
 
             _updateSessionProcess = new AsyncProcess(UpdateSessionProcess);
             _initializationHelper = new AsyncInitializationHelper<string>(InitializeInternalAsync);
@@ -225,7 +225,7 @@ namespace AI4E.Coordination
             return new Entry(entry);
         }
 
-        private async Task<ICoordinationEntry> GetEntryAsync(string path, CancellationToken cancellation = default)
+        private async Task<IStoredEntry> GetEntryAsync(string path, CancellationToken cancellation = default)
         {
             Assert(path != null);
 
@@ -254,7 +254,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task<ICoordinationEntry> LoadEntryAsync(string path, CancellationToken cancellation)
+        private async Task<IStoredEntry> LoadEntryAsync(string path, CancellationToken cancellation)
         {
             var entry = await _storage.GetEntryAsync(path, cancellation);
 
@@ -399,7 +399,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task<ICoordinationEntry> CreateCoreAsync(ICoordinationEntry entry, CancellationTokenSource cancellation)
+        private async Task<IStoredEntry> CreateCoreAsync(IStoredEntry entry, CancellationTokenSource cancellation)
         {
             Assert(entry != null);
 
@@ -424,7 +424,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task<ICoordinationEntry> RemoveChildEntryAsync(ICoordinationEntry entry, string child, CancellationToken cancellation)
+        private async Task<IStoredEntry> RemoveChildEntryAsync(IStoredEntry entry, string child, CancellationToken cancellation)
         {
             Assert(child != null);
 
@@ -643,9 +643,9 @@ namespace AI4E.Coordination
 
         #region Locking
 
-        private async Task<ICoordinationEntry> AcquireReadLockAsync(ICoordinationEntry entry, CancellationToken cancellation)
+        private async Task<IStoredEntry> AcquireReadLockAsync(IStoredEntry entry, CancellationToken cancellation)
         {
-            ICoordinationEntry start, desired;
+            IStoredEntry start, desired;
 
             var session = await GetSessionAsync(cancellation);
 
@@ -670,9 +670,9 @@ namespace AI4E.Coordination
             return desired;
         }
 
-        private async Task<ICoordinationEntry> ReleaseReadLockAsync(ICoordinationEntry entry)
+        private async Task<IStoredEntry> ReleaseReadLockAsync(IStoredEntry entry)
         {
-            ICoordinationEntry start, desired;
+            IStoredEntry start, desired;
 
             var session = await GetSessionAsync();
 
@@ -697,9 +697,9 @@ namespace AI4E.Coordination
             return desired;
         }
 
-        private async Task<ICoordinationEntry> AcquireWriteLockAsync(ICoordinationEntry entry, CancellationToken cancellation)
+        private async Task<IStoredEntry> AcquireWriteLockAsync(IStoredEntry entry, CancellationToken cancellation)
         {
-            ICoordinationEntry start, desired;
+            IStoredEntry start, desired;
 
             var session = await GetSessionAsync(cancellation);
 
@@ -734,9 +734,9 @@ namespace AI4E.Coordination
 
         }
 
-        private async Task<ICoordinationEntry> ReleaseWriteLockAsync(ICoordinationEntry entry)
+        private async Task<IStoredEntry> ReleaseWriteLockAsync(IStoredEntry entry)
         {
-            ICoordinationEntry start, desired;
+            IStoredEntry start, desired;
 
             var session = await GetSessionAsync();
 
@@ -759,7 +759,7 @@ namespace AI4E.Coordination
             return desired;
         }
 
-        private async Task<ICoordinationEntry> WaitForWriteLockReleaseAsync(ICoordinationEntry entry, CancellationToken cancellation)
+        private async Task<IStoredEntry> WaitForWriteLockReleaseAsync(IStoredEntry entry, CancellationToken cancellation)
         {
             // The entry was deleted (concurrently).
             while (entry != null)
@@ -802,7 +802,7 @@ namespace AI4E.Coordination
             return null;
         }
 
-        private async Task<ICoordinationEntry> WaitForReadLocksReleaseAsync(ICoordinationEntry entry, CancellationToken cancellation)
+        private async Task<IStoredEntry> WaitForReadLocksReleaseAsync(IStoredEntry entry, CancellationToken cancellation)
         {
             Assert(entry != null);
 
@@ -846,7 +846,7 @@ namespace AI4E.Coordination
 
             await CleanupSessionAsync(session, cancellation);
 
-            ICoordinationEntry entry = await _storage.GetEntryAsync(key, cancellation),
+            IStoredEntry entry = await _storage.GetEntryAsync(key, cancellation),
                                start,
                                desired;
 
@@ -1022,7 +1022,7 @@ namespace AI4E.Coordination
 
         private sealed class Entry : IEntry
         {
-            public Entry(ICoordinationEntry entry)
+            public Entry(IStoredEntry entry)
             {
                 Path = entry.Path;
                 Version = entry.Version;

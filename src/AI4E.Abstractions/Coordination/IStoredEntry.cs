@@ -23,7 +23,7 @@ using System.Collections.Immutable;
 
 namespace AI4E.Coordination
 {
-    public interface ICoordinationEntry
+    public interface IStoredEntry
     {
         /// <summary>
         /// Gets the path of the entry.
@@ -74,14 +74,14 @@ namespace AI4E.Coordination
         /// <returns>An entry with the lock aquired.</returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="session"/> is null.</exception>
         /// <exception cref="InvalidOperationException">Thrown if a write lock is present for another session.</exception>
-        ICoordinationEntry AcquireWriteLock(string session);
+        IStoredEntry AcquireWriteLock(string session);
 
         /// <summary>
         /// Releases a write lock and returns an entry with the lock released.
         /// </summary>
         /// <returns>An entry with the lock released.</returns>
         /// <exception cref="InvalidOperationException">Thrown if a read lock is present for an arbitrary session.</exception>
-        ICoordinationEntry ReleaseWriteLock();
+        IStoredEntry ReleaseWriteLock();
 
         /// <summary>
         /// Acquires a read lock for the specified session and returns an entry with the lock aquired.
@@ -94,7 +94,7 @@ namespace AI4E.Coordination
         /// If the read lock is already taken by the specified session, the lock is not taken twice but only once.
         /// Even if taken multiple times, the lock is released with a single call.
         /// </remarks>
-        ICoordinationEntry AcquireReadLock(string session);
+        IStoredEntry AcquireReadLock(string session);
 
         /// <summary>
         /// Releases a read lock and returns an entry with the lock released.
@@ -102,7 +102,7 @@ namespace AI4E.Coordination
         /// <param name="session">The session that the read lock is held for.</param>
         /// <returns>An entry with the lock released.</returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="session"/> is null.</exception>
-        ICoordinationEntry ReleaseReadLock(string session);
+        IStoredEntry ReleaseReadLock(string session);
 
         /// <summary>
         /// Removes the entry and returns an entry that represents the removal of the entry.
@@ -116,7 +116,7 @@ namespace AI4E.Coordination
         /// <remarks>
         /// The return value may be null. This is implementation dependent.
         /// </remarks>
-        ICoordinationEntry Remove();
+        IStoredEntry Remove();
 
         /// <summary>
         /// Sets the value of the entry and increment its version counter.
@@ -124,7 +124,7 @@ namespace AI4E.Coordination
         /// <param name="value">The value to set.</param>
         /// <returns>An entry with the specified value set.</returns>
         /// <exception cref="InvalidOperationException">Thrown if a read lock is held by an arbitrary session or no write lock is held.</exception>
-        ICoordinationEntry SetValue(ImmutableArray<byte> value);
+        IStoredEntry SetValue(ImmutableArray<byte> value);
 
         /// <summary>
         /// Adds a child to the entry and returns an entry with the child added.
@@ -132,7 +132,7 @@ namespace AI4E.Coordination
         /// <param name="name">The name of the child entry.</param>
         /// <returns>An entry with the child added.</returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="name"/> is null.</exception>
-        ICoordinationEntry AddChild(string name);
+        IStoredEntry AddChild(string name);
 
         /// <summary>
         /// Removes a child from the entry and returns an entry with the child removed.
@@ -140,6 +140,6 @@ namespace AI4E.Coordination
         /// <param name="name">The name of the child entry.</param>
         /// <returns>An entry with the child removed.</returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="name"/> is null.</exception>
-        ICoordinationEntry RemoveChild(string name);
+        IStoredEntry RemoveChild(string name);
     }
 }

@@ -25,8 +25,8 @@ namespace AI4E.Coordination
 {
     public interface ISessionStorage
     {
-        ISession CreateSession(string key);
-        Task<ISession> GetSessionAsync(string key, CancellationToken cancellation);
-        Task<ISession> UpdateSessionAsync(ISession comparand, ISession value, CancellationToken cancellation);
+        IStoredSession CreateSession(string key);
+        Task<IStoredSession> GetSessionAsync(string key, CancellationToken cancellation);
+        Task<IStoredSession> UpdateSessionAsync(IStoredSession comparand, IStoredSession value, CancellationToken cancellation);
     }
 }

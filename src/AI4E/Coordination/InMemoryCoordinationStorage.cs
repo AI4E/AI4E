@@ -17,7 +17,7 @@ namespace AI4E.Coordination
 
         #region Entry
 
-        public ICoordinationEntry CreateEntry(string path, string session, bool isEphemeral, byte[] value)
+        public IStoredEntry CreateEntry(string path, string session, bool isEphemeral, byte[] value)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -31,7 +31,7 @@ namespace AI4E.Coordination
             return new Entry(path, session, isEphemeral, value.ToImmutableArray());
         }
 
-        public Task<ICoordinationEntry> UpdateEntryAsync(ICoordinationEntry comparand, ICoordinationEntry value, CancellationToken cancellation)
+        public Task<IStoredEntry> UpdateEntryAsync(IStoredEntry comparand, IStoredEntry value, CancellationToken cancellation)
         {
             Entry desired = null;
 
@@ -73,23 +73,23 @@ namespace AI4E.Coordination
                 }
             }
 
-            return Task.FromResult<ICoordinationEntry>(null);
+            return Task.FromResult<IStoredEntry>(null);
         }
 
-        public Task<ICoordinationEntry> GetEntryAsync(string path, CancellationToken cancellation)
+        public Task<IStoredEntry> GetEntryAsync(string path, CancellationToken cancellation)
         {
             if (_entries.TryGetValue(path, out var entry))
             {
                 Assert(entry != null);
                 Assert(entry.Path == path);
 
-                return Task.FromResult<ICoordinationEntry>(entry);
+                return Task.FromResult<IStoredEntry>(entry);
             }
 
-            return Task.FromResult<ICoordinationEntry>(null);
+            return Task.FromResult<IStoredEntry>(null);
         }
 
-        private bool TryGetEntry(string path, out ICoordinationEntry entry)
+        private bool TryGetEntry(string path, out IStoredEntry entry)
         {
             if (_entries.TryGetValue(path, out var e))
             {
@@ -104,7 +104,7 @@ namespace AI4E.Coordination
             return false;
         }
 
-        private sealed class Entry : ICoordinationEntry
+        private sealed class Entry : IStoredEntry
         {
             private static readonly ImmutableArray<string> _noReadLocks = ImmutableArray<string>.Empty;
 
@@ -126,7 +126,7 @@ namespace AI4E.Coordination
                 }
             }
 
-            public Entry(ICoordinationEntry entry)
+            public Entry(IStoredEntry entry)
             {
                 Path = entry.Path;
                 Value = entry.Value;
@@ -204,7 +204,7 @@ namespace AI4E.Coordination
 
             #endregion
 
-            public ICoordinationEntry AcquireWriteLock(string session)
+            public IStoredEntry AcquireWriteLock(string session)
             {
                 if (session == null)
                     throw new ArgumentNullException(nameof(session));
@@ -218,7 +218,7 @@ namespace AI4E.Coordination
                 return new Entry(Path, Value, ReadLocks, writeLock: session, Childs, Version, EphemeralOwner, CreationTime, LastWriteTime);
             }
 
-            public ICoordinationEntry ReleaseWriteLock()
+            public IStoredEntry ReleaseWriteLock()
             {
                 if (WriteLock == null)
                     return null;
@@ -229,7 +229,7 @@ namespace AI4E.Coordination
                 return new Entry(Path, Value, _noReadLocks, writeLock: null, Childs, Version, EphemeralOwner, CreationTime, LastWriteTime);
             }
 
-            public ICoordinationEntry AcquireReadLock(string session)
+            public IStoredEntry AcquireReadLock(string session)
             {
                 if (session == null)
                     throw new ArgumentNullException(nameof(session));
@@ -243,7 +243,7 @@ namespace AI4E.Coordination
                 return new Entry(Path, Value, ReadLocks.Add(session), writeLock: null, Childs, Version, EphemeralOwner, CreationTime, LastWriteTime);
             }
 
-            public ICoordinationEntry ReleaseReadLock(string session)
+            public IStoredEntry ReleaseReadLock(string session)
             {
                 if (session == null)
                     throw new ArgumentNullException(nameof(session));
@@ -254,7 +254,7 @@ namespace AI4E.Coordination
                 return new Entry(Path, Value, ReadLocks.Remove(session), WriteLock, Childs, Version, EphemeralOwner, CreationTime, LastWriteTime);
             }
 
-            public ICoordinationEntry Remove()
+            public IStoredEntry Remove()
             {
                 if (ReadLocks.Length > 0)
                     throw new InvalidOperationException();
@@ -268,7 +268,7 @@ namespace AI4E.Coordination
                 return null;
             }
 
-            public ICoordinationEntry SetValue(ImmutableArray<byte> value)
+            public IStoredEntry SetValue(ImmutableArray<byte> value)
             {
                 if (ReadLocks.Length > 0)
                     throw new InvalidOperationException();
@@ -279,7 +279,7 @@ namespace AI4E.Coordination
                 return new Entry(Path, value, _noReadLocks, WriteLock, Childs, Version + 1, EphemeralOwner, CreationTime);
             }
 
-            public ICoordinationEntry AddChild(string name)
+            public IStoredEntry AddChild(string name)
             {
                 if (name == null)
                     throw new ArgumentNullException(nameof(name));
@@ -296,7 +296,7 @@ namespace AI4E.Coordination
                 return new Entry(Path, Value, ReadLocks, WriteLock, Childs.Add(name), Version, EphemeralOwner, CreationTime, LastWriteTime);
             }
 
-            public ICoordinationEntry RemoveChild(string name)
+            public IStoredEntry RemoveChild(string name)
             {
                 if (name == null)
                     throw new ArgumentNullException(nameof(name));
@@ -318,7 +318,7 @@ namespace AI4E.Coordination
 
         #region Session
 
-        public ISession CreateSession(string key)
+        public IStoredSession CreateSession(string key)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -326,7 +326,7 @@ namespace AI4E.Coordination
             return new Session(key);
         }
 
-        public Task<ISession> UpdateSessionAsync(ISession comparand, ISession value, CancellationToken cancellation)
+        public Task<IStoredSession> UpdateSessionAsync(IStoredSession comparand, IStoredSession value, CancellationToken cancellation)
         {
             Session desired = null;
 
@@ -368,23 +368,23 @@ namespace AI4E.Coordination
                 }
             }
 
-            return Task.FromResult<ISession>(null);
+            return Task.FromResult<IStoredSession>(null);
         }
 
-        public Task<ISession> GetSessionAsync(string key, CancellationToken cancellation)
+        public Task<IStoredSession> GetSessionAsync(string key, CancellationToken cancellation)
         {
             if (_sessions.TryGetValue(key, out var session))
             {
                 Assert(session != null);
                 Assert(session.Key == key);
 
-                return Task.FromResult<ISession>(session);
+                return Task.FromResult<IStoredSession>(session);
             }
 
-            return Task.FromResult<ISession>(null);
+            return Task.FromResult<IStoredSession>(null);
         }
 
-        private bool TryGetSession(string key, out ISession session)
+        private bool TryGetSession(string key, out IStoredSession session)
         {
             if (_sessions.TryGetValue(key, out var e))
             {
@@ -399,7 +399,7 @@ namespace AI4E.Coordination
             return false;
         }
 
-        private sealed class Session : ISession
+        private sealed class Session : IStoredSession
         {
             private readonly bool _isEnded;
 
@@ -414,7 +414,7 @@ namespace AI4E.Coordination
                 Entries = ImmutableArray<string>.Empty;
             }
 
-            public Session(ISession session)
+            public Session(IStoredSession session)
             {
                 Key = session.Key;
                 _isEnded = session.IsEnded;
@@ -438,7 +438,7 @@ namespace AI4E.Coordination
 
             public ImmutableArray<string> Entries { get; }
 
-            public ISession End()
+            public IStoredSession End()
             {
                 if (IsEnded)
                     return this;
@@ -446,7 +446,7 @@ namespace AI4E.Coordination
                 return new Session(Key, isEnded: true, LeaseEnd, Entries);
             }
 
-            public ISession UpdateLease(DateTime leaseEnd)
+            public IStoredSession UpdateLease(DateTime leaseEnd)
             {
                 if (_isEnded)
                     return this;
@@ -460,7 +460,7 @@ namespace AI4E.Coordination
                 return new Session(Key, isEnded: false, leaseEnd, Entries);
             }
 
-            public ISession AddEntry(string entry)
+            public IStoredSession AddEntry(string entry)
             {
                 if (entry == null)
                     throw new ArgumentNullException(nameof(entry));
@@ -474,7 +474,7 @@ namespace AI4E.Coordination
                 return new Session(Key, IsEnded, LeaseEnd, Entries.Add(entry));
             }
 
-            public ISession RemoveEntry(string entry)
+            public IStoredSession RemoveEntry(string entry)
             {
                 if (entry == null)
                     throw new ArgumentNullException(nameof(entry));

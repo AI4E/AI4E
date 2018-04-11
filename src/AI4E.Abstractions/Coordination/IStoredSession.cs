@@ -23,7 +23,7 @@ using System.Collections.Immutable;
 
 namespace AI4E.Coordination
 {
-    public interface ISession
+    public interface IStoredSession
     {
         string Key { get; }
         bool IsEnded { get; }
@@ -31,10 +31,10 @@ namespace AI4E.Coordination
 
         ImmutableArray<string> Entries { get; }
 
-        ISession End();
-        ISession UpdateLease(DateTime leaseEnd);
+        IStoredSession End();
+        IStoredSession UpdateLease(DateTime leaseEnd);
 
-        ISession AddEntry(string entry);
-        ISession RemoveEntry(string entry);
+        IStoredSession AddEntry(string entry);
+        IStoredSession RemoveEntry(string entry);
     }
 }

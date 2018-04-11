@@ -25,8 +25,8 @@ namespace AI4E.Coordination
 {
     public interface ICoordinationStorage
     {
-        ICoordinationEntry CreateEntry(string path, string session, bool isEphemeral, byte[] value);
-        Task<ICoordinationEntry> GetEntryAsync(string path, CancellationToken cancellation);
-        Task<ICoordinationEntry> UpdateEntryAsync(ICoordinationEntry comparand, ICoordinationEntry value, CancellationToken cancellation);
+        IStoredEntry CreateEntry(string path, string session, bool isEphemeral, byte[] value);
+        Task<IStoredEntry> GetEntryAsync(string path, CancellationToken cancellation);
+        Task<IStoredEntry> UpdateEntryAsync(IStoredEntry comparand, IStoredEntry value, CancellationToken cancellation);
     }
 }

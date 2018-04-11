@@ -36,7 +36,7 @@ namespace AI4E.Coordination
             if (session == null)
                 throw new ArgumentNullException(nameof(session));
 
-            ISession current = await _storage.GetSessionAsync(session, cancellation),
+            IStoredSession current = await _storage.GetSessionAsync(session, cancellation),
                      start,
                      desired;
 
@@ -61,7 +61,7 @@ namespace AI4E.Coordination
             if (session == null)
                 throw new ArgumentNullException(nameof(session));
 
-            ISession current = await _storage.GetSessionAsync(session, cancellation),
+            IStoredSession current = await _storage.GetSessionAsync(session, cancellation),
                      start,
                      desired;
 
@@ -125,7 +125,7 @@ namespace AI4E.Coordination
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
 
-            ISession current = await _storage.GetSessionAsync(session, cancellation),
+            IStoredSession current = await _storage.GetSessionAsync(session, cancellation),
                      start,
                      desired;
 
@@ -153,7 +153,7 @@ namespace AI4E.Coordination
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
 
-            ISession current = await _storage.GetSessionAsync(session, cancellation),
+            IStoredSession current = await _storage.GetSessionAsync(session, cancellation),
                      start,
                      desired;
 
