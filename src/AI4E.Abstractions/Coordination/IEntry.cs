@@ -19,17 +19,18 @@
  */
 
 using System;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace AI4E.Coordination
 {
-    public interface ICoordinationService : IDisposable
+    public interface IEntry
     {
-        Task<byte[]> GetAsync(string key, CancellationToken cancellation = default);
+        string Path { get; }
+        int Version { get; }
+        DateTime CreationTime { get; }
+        DateTime LastWriteTime { get; }
 
-        Task RemoveAsync(string key, CancellationToken cancellation = default);
-
-        Task SetAsync(string key, byte[] value, CancellationToken cancellation = default); // TODO: Expiration
+        IReadOnlyList<byte> Value { get; }
+        IReadOnlyCollection<string> Children { get; }
     }
 }

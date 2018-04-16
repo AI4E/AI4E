@@ -23,8 +23,8 @@ using System.Threading.Tasks;
 
 namespace AI4E.Coordination
 {
-    public interface ICoordinationServiceCallback
+    public interface ICoordinationCallback
     {
-        Task ReleaseReadLockAsync(string key, string session, CancellationToken cancellation);
+        Task InvalidateCacheEntryAsync(string path, string session, CancellationToken cancellation);
     }
 }

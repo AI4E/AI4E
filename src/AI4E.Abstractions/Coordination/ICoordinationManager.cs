@@ -19,7 +19,6 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -60,6 +59,15 @@ namespace AI4E.Coordination
         Task<int> DeleteAsync(string path, int version = default, bool recursive = false, CancellationToken cancellation = default);
 
         Task<string> GetSessionAsync(CancellationToken cancellation = default);
+
+        /// <summary>
+        /// Asynchronously invalidates all cache entries with the specified path.
+        /// </summary>
+        /// <param name="path">The entries path.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <exception cref="OperationCanceledException">Throw if the operation was canceled.</exception>
+        Task InvalidateCacheEntryAsync(string path, CancellationToken cancellation);
     }
 
     [Flags]
@@ -67,16 +75,5 @@ namespace AI4E.Coordination
     {
         Default = 0,
         Ephemeral = 1
-    }
-
-    public interface IEntry
-    {
-        string Path { get; }
-        int Version { get; }
-        DateTime CreationTime { get; }
-        DateTime LastWriteTime { get; }
-
-        IReadOnlyList<byte> Value { get; }
-        IReadOnlyCollection<string> Children { get; }
     }
 }

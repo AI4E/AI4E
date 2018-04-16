@@ -43,12 +43,6 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
 {
-    // TODO: Race condition: 
-    // A concurrent read and write request. 
-    // 1. The read request reads the entry.
-    // 2. The write request locks the entry and sends an unlock message.
-    // 3. The unlock message is received and the cache entry is cleared.
-    // 4. The read request succeeds and places the entry into the cache.
     public sealed class CoordinationManager : ICoordinationManager, IAsyncDisposable
     {
         private static readonly TimeSpan _leaseLength = TimeSpan.FromSeconds(30);
@@ -56,7 +50,7 @@ namespace AI4E.Coordination
 
         private readonly ICoordinationStorage _storage;
         private readonly ISessionManager _sessionManager;
-        private readonly ICoordinationServiceCallback _callback;
+        private readonly ICoordinationCallback _callback;
         private readonly ISessionProvider _sessionProvider;
         private readonly ILogger<CoordinationManager> _logger;
         private readonly ConcurrentDictionary<string, IStoredEntry> _entries;
@@ -67,7 +61,7 @@ namespace AI4E.Coordination
 
         public CoordinationManager(ICoordinationStorage storage,
                                    ISessionManager sessionManager,
-                                   ICoordinationServiceCallback callback,
+                                   ICoordinationCallback callback,
                                    ISessionProvider sessionProvider,
                                    ILogger<CoordinationManager> logger)
         {
@@ -103,6 +97,35 @@ namespace AI4E.Coordination
 
         #region SessionManagement
 
+        private async Task SessionCleanupProcess(CancellationToken cancellation)
+        {
+            var session = await GetSessionAsync(cancellation);
+
+            while (cancellation.ThrowOrContinue())
+            {
+                try
+                {
+                    var terminated = await _sessionManager.WaitForTerminationAsync(cancellation);
+
+                    // Our session is terminated or
+                    // There are no session in the session manager. => Our session must be terminated.
+                    if (terminated == null || terminated == session)
+                    {
+                        Dispose();
+                    }
+                    else if (terminated != null)
+                    {
+                        await CleanupSessionAsync(terminated, cancellation);
+                    }
+                }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
+                catch (Exception exc)
+                {
+                    _logger?.LogWarning(exc, $"Failure while cleaning up terminated sessions.");
+                }
+            }
+        }
+
         private async Task UpdateSessionProcess(CancellationToken cancellation)
         {
             var session = await GetSessionAsync(cancellation);
@@ -116,30 +139,7 @@ namespace AI4E.Coordination
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
                 {
-                    _logger.LogWarning(exc, $"Failure while updating session {session}.");
-                }
-            }
-        }
-
-        private async Task SessionCleanupProcess(CancellationToken cancellation)
-        {
-            await _initializationHelper.Initialization;
-
-            while (!cancellation.ThrowOrContinue())
-            {
-                try
-                {
-                    var terminated = await _sessionManager.WaitForTerminationAsync(cancellation);
-
-                    if (terminated != null)
-                    {
-                        await CleanupSessionAsync(terminated, cancellation);
-                    }
-                }
-                catch (OperationCanceledException) { throw; }
-                catch (Exception exc)
-                {
-                    //TODO:Log exception
+                    _logger?.LogWarning(exc, $"Failure while updating session {session}.");
                 }
             }
         }
@@ -675,6 +675,19 @@ namespace AI4E.Coordination
 
         #endregion
 
+        // TODO: Race condition: 
+        // A concurrent read and write request. 
+        // 1. The read request reads the entry.
+        // 2. The write request locks the entry and sends an unlock message.
+        // 3. The unlock message is received and the cache entry is cleared.
+        // 4. The read request succeeds and places the entry into the cache.
+        public Task InvalidateCacheEntryAsync(string path, CancellationToken cancellation)
+        {
+            _entries.TryRemove(path, out _);
+
+            return Task.CompletedTask;
+        }
+
         #region Locking
 
         private async Task<IStoredEntry> AcquireReadLockAsync(IStoredEntry entry, CancellationToken cancellation)
@@ -941,7 +954,7 @@ namespace AI4E.Coordination
                 return;
             }
 
-            await _callback.ReleaseReadLockAsync(path, session, cancellation);
+            await _callback.InvalidateCacheEntryAsync(path, session, cancellation);
 
             var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
 
