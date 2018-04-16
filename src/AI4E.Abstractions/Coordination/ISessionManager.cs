@@ -39,6 +39,17 @@ namespace AI4E.Coordination
 
         Task WaitForTerminationAsync(string session, CancellationToken cancellation = default);
 
+        /// <summary>
+        /// Asynchronously await a session to terminate and provides the terminated sessions identifier.
+        /// </summary>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the identifier of the the terminated session.
+        /// </returns>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
+        Task<string> WaitForTerminationAsync(CancellationToken cancellation = default);
+
         Task<bool> IsAliveAsync(string session, CancellationToken cancellation = default);
     }
 }

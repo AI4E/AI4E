@@ -34,7 +34,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
@@ -44,8 +43,6 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
 {
-    // TODO: we need some kind of garbage collector that looks for dead session and clean them up.
-    // TODO: Ephemeral nodes are not deleted on session termination currently.
     // TODO: Race condition: 
     // A concurrent read and write request. 
     // 1. The read request reads the entry.
@@ -54,9 +51,6 @@ namespace AI4E.Coordination
     // 4. The read request succeeds and places the entry into the cache.
     public sealed class CoordinationManager : ICoordinationManager, IAsyncDisposable
     {
-        private const char _seperatorChar = '/';
-        private const string _seperatorString = "/";
-        private static readonly char[] _pathSeperators = { _seperatorChar, '\\' };
         private static readonly TimeSpan _leaseLength = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan _leaseLengthHalf = new TimeSpan(_leaseLength.Ticks / 2);
 
@@ -67,6 +61,7 @@ namespace AI4E.Coordination
         private readonly ILogger<CoordinationManager> _logger;
         private readonly ConcurrentDictionary<string, IStoredEntry> _entries;
         private readonly AsyncProcess _updateSessionProcess;
+        private readonly AsyncProcess _sessionCleanupProcess;
         private readonly AsyncInitializationHelper<string> _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
@@ -96,6 +91,7 @@ namespace AI4E.Coordination
             _entries = new ConcurrentDictionary<string, IStoredEntry>();
 
             _updateSessionProcess = new AsyncProcess(UpdateSessionProcess);
+            _sessionCleanupProcess = new AsyncProcess(SessionCleanupProcess);
             _initializationHelper = new AsyncInitializationHelper<string>(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
@@ -121,6 +117,29 @@ namespace AI4E.Coordination
                 catch (Exception exc)
                 {
                     _logger.LogWarning(exc, $"Failure while updating session {session}.");
+                }
+            }
+        }
+
+        private async Task SessionCleanupProcess(CancellationToken cancellation)
+        {
+            await _initializationHelper.Initialization;
+
+            while (!cancellation.ThrowOrContinue())
+            {
+                try
+                {
+                    var terminated = await _sessionManager.WaitForTerminationAsync(cancellation);
+
+                    if (terminated != null)
+                    {
+                        await CleanupSessionAsync(terminated, cancellation);
+                    }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception exc)
+                {
+                    //TODO:Log exception
                 }
             }
         }
@@ -160,6 +179,7 @@ namespace AI4E.Coordination
             while (!await _sessionManager.TryBeginSessionAsync(session, cancellation));
 
             await _updateSessionProcess.StartAsync(cancellation);
+            await _sessionCleanupProcess.StartAsync(cancellation);
 
             return session;
         }
@@ -187,20 +207,34 @@ namespace AI4E.Coordination
 
             try
             {
-                try
-                {
-                    (success, session) = await _initializationHelper.CancelAsync();
-                }
-                finally
-                {
-                    await _updateSessionProcess.TerminateAsync();
-                }
+                await _sessionCleanupProcess.TerminateAsync();
             }
             finally
             {
-                if (success)
+                try
                 {
-                    await _sessionManager.EndSessionAsync(session);
+                    try
+                    {
+                        (success, session) = await _initializationHelper.CancelAsync();
+                    }
+                    finally
+                    {
+                        await _updateSessionProcess.TerminateAsync();
+                    }
+                }
+                finally
+                {
+                    if (success)
+                    {
+                        try
+                        {
+                            await _sessionManager.EndSessionAsync(session);
+                        }
+                        finally
+                        {
+                            await CleanupSessionAsync(session, cancellation: default);
+                        }
+                    }
                 }
             }
         }
@@ -214,7 +248,7 @@ namespace AI4E.Coordination
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
 
-            var normalizedPath = NormalizePath(path);
+            var normalizedPath = EntryPathHelper.NormalizePath(path);
             var entry = await GetEntryAsync(normalizedPath, cancellation);
 
             if (entry == null)
@@ -264,7 +298,7 @@ namespace AI4E.Coordination
 
                 if (entry == null)
                 {
-                    var parentPath = GetParentPath(path, out var name, normalize: false);
+                    var parentPath = EntryPathHelper.GetParentPath(path, out var name, normalize: false);
 
                     var parent = await _storage.GetEntryAsync(parentPath, cancellation);
 
@@ -304,8 +338,8 @@ namespace AI4E.Coordination
             if (!await _sessionManager.IsAliveAsync(session))
                 throw new SessionTerminatedException();
 
-            var normalizedPath = NormalizePath(path);
-            var parentPath = GetParentPath(normalizedPath, out var name, normalize: false);
+            var normalizedPath = EntryPathHelper.NormalizePath(path);
+            var parentPath = EntryPathHelper.GetParentPath(normalizedPath, out var name, normalize: false);
             var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
@@ -437,7 +471,7 @@ namespace AI4E.Coordination
                     return null;
                 }
 
-                var childEntry = await _storage.GetEntryAsync(GetChildPath(entry.Path, child, normalize: false), cancellation);
+                var childEntry = await _storage.GetEntryAsync(EntryPathHelper.GetChildPath(entry.Path, child, normalize: true), cancellation);
 
                 if (childEntry == null)
                 {
@@ -477,8 +511,8 @@ namespace AI4E.Coordination
             if (!await _sessionManager.IsAliveAsync(session, cancellation))
                 throw new SessionTerminatedException();
 
-            var normalizedPath = NormalizePath(path);
-            var parentPath = GetParentPath(normalizedPath, out var name, normalize: false);
+            var normalizedPath = EntryPathHelper.NormalizePath(path);
+            var parentPath = EntryPathHelper.GetParentPath(normalizedPath, out var name, normalize: false);
             var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
@@ -594,7 +628,7 @@ namespace AI4E.Coordination
             if (!await _sessionManager.IsAliveAsync(session, cancellation))
                 throw new SessionTerminatedException();
 
-            var normalizedPath = NormalizePath(path);
+            var normalizedPath = EntryPathHelper.NormalizePath(path);
             var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
@@ -951,74 +985,6 @@ namespace AI4E.Coordination
         }
 
         #endregion
-
-        private string NormalizePath(string path)
-        {
-            Assert(path != null);
-
-            var segments = path.Split(_pathSeperators, StringSplitOptions.None);
-
-            var normalizedPathBuilder = new StringBuilder();
-
-            foreach (var segment in segments)
-            {
-                int segmentStart, segmentEnd;
-
-                for (segmentStart = 0; segmentStart < segment.Length && char.IsWhiteSpace(segment[segmentStart]); segmentStart++) ;
-
-                if (segmentStart == segment.Length - 1)
-                    continue;
-
-                for (segmentEnd = segment.Length - 1; segmentEnd > segmentStart && char.IsWhiteSpace(segment[segmentEnd]); segmentEnd--) ;
-
-                var length = segmentEnd - segmentStart + 1;
-
-                normalizedPathBuilder.Append(_seperatorChar);
-                normalizedPathBuilder.Append(segment);
-            }
-
-            if (normalizedPathBuilder.Length == 0)
-                return null;
-
-            return normalizedPathBuilder.ToString();
-        }
-
-        private string GetParentPath(string path, out string name, bool normalize = true)
-        {
-            Assert(path != null);
-
-            var normalizedPath = path;
-
-            if (normalize)
-            {
-                normalizedPath = NormalizePath(path);
-            }
-
-            var lastIndexOfSeparator = normalizedPath.LastIndexOf(_seperatorChar);
-
-            // This is the root node.
-            if (lastIndexOfSeparator == 0)
-            {
-                name = string.Empty;
-                return normalizedPath;
-            }
-
-            // Separator is not last char
-            Assert(lastIndexOfSeparator < normalizedPath.Length - 1);
-
-            name = normalizedPath.Substring(lastIndexOfSeparator + 1);
-            return normalizedPath.Substring(0, lastIndexOfSeparator);
-        }
-
-        private string GetChildPath(string path, string childName, bool normalize = true)
-        {
-            var normalizedPath = path;
-            if (normalize)
-            {
-                normalizedPath = NormalizePath(path);
-            }
-            return normalizedPath + _seperatorString + childName;
-        }
 
         private sealed class Entry : IEntry
         {

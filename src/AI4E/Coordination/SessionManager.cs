@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
 {
@@ -88,22 +89,61 @@ namespace AI4E.Coordination
 
             var start = await _storage.GetSessionAsync(session, cancellation);
 
-            while (start != null)
+            if (start != null)
             {
-                if (start.IsEnded)
-                    return;
+                await InternalWaitForTerminationAsync(start, cancellation);
+            }
+        }
+
+        private async Task<IStoredSession> InternalWaitForTerminationAsync(IStoredSession session, CancellationToken cancellation)
+        {
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+
+            do
+            {
+                if (session.IsEnded)
+                    return session;
 
                 var now = DateTime.Now;
-                var timeToWait = start.LeaseEnd - now;
+                var timeToWait = session.LeaseEnd - now;
 
                 await Task.Delay(timeToWait, cancellation);
 
-                var current = await _storage.GetSessionAsync(session, cancellation);
+                var current = await _storage.GetSessionAsync(session.Key, cancellation);
 
-                if (start != current)
+                if (session != current)
                 {
-                    start = current;
+                    session = current;
                 }
+            }
+            while (session != null);
+
+            return session;
+        }
+
+        public async Task<string> WaitForTerminationAsync(CancellationToken cancellation)
+        {
+            var sessions = await _storage.GetSessionsAsync(cancellation);
+
+            if (!sessions.Any())
+            {
+                return null;
+            }
+
+            Assert(sessions.All(p => p != null));
+
+            var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+
+            try
+            {
+                var completed = await Task.WhenAny(sessions.Select(p => InternalWaitForTerminationAsync(p, combinedCancellationSource.Token)));
+
+                return (await completed).Key;
+            }
+            finally
+            {
+                combinedCancellationSource.Cancel();
             }
         }
 

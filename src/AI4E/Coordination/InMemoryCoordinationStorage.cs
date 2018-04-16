@@ -461,6 +461,14 @@ namespace AI4E.Coordination
             return Task.FromResult<IStoredSession>(session);
         }
 
+        public Task<IEnumerable<IStoredSession>> GetSessionsAsync(CancellationToken cancellation)
+        {
+            lock (_sessions)
+            {
+                return Task.FromResult<IEnumerable<IStoredSession>>(_sessions.Values.ToArray());
+            }
+        }
+
         private sealed class Session : IStoredSession
         {
             private readonly bool _isEnded;

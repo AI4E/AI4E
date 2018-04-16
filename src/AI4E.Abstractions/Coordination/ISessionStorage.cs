@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -27,6 +28,7 @@ namespace AI4E.Coordination
     {
         IStoredSession CreateSession(string key);
         Task<IStoredSession> GetSessionAsync(string key, CancellationToken cancellation);
+        Task<IEnumerable<IStoredSession>> GetSessionsAsync(CancellationToken cancellation);
         Task<IStoredSession> UpdateSessionAsync(IStoredSession comparand, IStoredSession value, CancellationToken cancellation);
     }
 }
