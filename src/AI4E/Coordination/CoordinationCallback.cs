@@ -47,7 +47,7 @@ namespace AI4E.Coordination
 
         public string GetSession()
         {
-            return GetNextSessionFromAddress(LocalAddress);
+            return SessionHelper.GetNextSessionFromAddress(LocalAddress, _addressConversion);
         }
 
         public async Task InvalidateCacheEntryAsync(string entry, string session, CancellationToken cancellation)
@@ -62,7 +62,7 @@ namespace AI4E.Coordination
             }
             else
             {
-                var remoteAddress = GetAddressFromSession(session);
+                var remoteAddress = SessionHelper.GetAddressFromSession(session, _addressConversion);
 
                 Assert(remoteAddress != null);
 
@@ -124,8 +124,7 @@ namespace AI4E.Coordination
                     var message = await ReceiveMessageAsync(cancellation);
                     var (messageType, entry, session) = DecodeMessage(message);
 
-                    HandleMessageAsync(message, messageType, entry, session, cancellation).HandleExceptions();
-
+                    Task.Run(() => HandleMessageAsync(message, messageType, entry, session, cancellation)).HandleExceptions();
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
@@ -220,42 +219,6 @@ namespace AI4E.Coordination
         }
 
         #endregion
-
-        private static int _counter = 0;
-
-        // Creates a new unique session identifier for the specified address.
-        private string GetNextSessionFromAddress(TAddress address)
-        {
-            // The session is mainly the local physical address 
-            // combined with a prefix to distinguish between session 
-            // with the same physical address that live one after another.
-
-            // THe prefix is the current timestamp with a disciriminator 
-            // added to distinguish between sessions created at the same time.
-            var count = Interlocked.Increment(ref _counter);
-            var ticks = DateTime.Now.Ticks + count;
-
-            var prefix = BitConverter.GetBytes(ticks);
-            var serializedAddress = _addressConversion.SerializeAddress(address);
-
-            var arr = new byte[prefix.Length + serializedAddress.Length];
-
-            Array.Copy(prefix, arr, prefix.Length);
-            Array.Copy(serializedAddress, 0, arr, prefix.Length, serializedAddress.Length);
-
-            return Convert.ToBase64String(arr);
-        }
-
-        private TAddress GetAddressFromSession(string session)
-        {
-            var arr = Convert.FromBase64String(session);
-
-            var serializedAddress = new byte[arr.Length - 8];
-
-            Array.Copy(arr, 0, serializedAddress, 8, serializedAddress.Length);
-
-            return _addressConversion.DeserializeAddress(serializedAddress);
-        }
 
         private enum MessageType : byte
         {
