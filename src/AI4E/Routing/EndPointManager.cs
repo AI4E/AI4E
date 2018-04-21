@@ -52,6 +52,7 @@ namespace AI4E.Routing
         private readonly IRouteMap<TAddress> _routeManager;
         private readonly IMessageCoder<TAddress> _messageCoder;
         private readonly ILocalEndPointFactory<TAddress> _endPointFactory;
+        private readonly IEndPointScheduler<TAddress> _endPointScheduler;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger _logger;
 
@@ -66,6 +67,7 @@ namespace AI4E.Routing
                                IRouteMap<TAddress> routeManager,
                                IMessageCoder<TAddress> messageCoder,
                                ILocalEndPointFactory<TAddress> endPointFactory,
+                               IEndPointScheduler<TAddress> endPointScheduler,
                                IServiceProvider serviceProvider,
                                ILogger<EndPointManager<TAddress>> logger)
         {
@@ -81,6 +83,9 @@ namespace AI4E.Routing
             if (endPointFactory == null)
                 throw new ArgumentNullException(nameof(endPointFactory));
 
+            if (endPointScheduler == null)
+                throw new ArgumentNullException(nameof(endPointScheduler));
+
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
@@ -88,6 +93,7 @@ namespace AI4E.Routing
             _routeManager = routeManager;
             _messageCoder = messageCoder;
             _endPointFactory = endPointFactory;
+            _endPointScheduler = endPointScheduler;
             _serviceProvider = serviceProvider;
             _logger = logger;
             _endPoints = new ConcurrentDictionary<EndPointRoute, ILocalEndPoint<TAddress>>();
@@ -174,7 +180,7 @@ namespace AI4E.Routing
 
             var logger = _serviceProvider.GetService<ILogger<RemoteEndPoint<TAddress>>>();
 
-            return _remoteEndPoints.GetOrAdd(remoteEndPoint, _ => new RemoteEndPoint<TAddress>(this, remoteEndPoint, _messageCoder, _routeManager, logger));
+            return _remoteEndPoints.GetOrAdd(remoteEndPoint, _ => new RemoteEndPoint<TAddress>(this, remoteEndPoint, _messageCoder, _routeManager, _endPointScheduler, logger));
         }
 
         #endregion

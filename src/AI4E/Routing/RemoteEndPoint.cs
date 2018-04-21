@@ -46,6 +46,7 @@ namespace AI4E.Routing
         private readonly IEndPointManager<TAddress> _endPointManager;
         private readonly IMessageCoder<TAddress> _messageCoder;
         private readonly IRouteMap<TAddress> _routeManager;
+        private readonly IEndPointScheduler<TAddress> _endPointScheduler;
         private readonly ILogger<RemoteEndPoint<TAddress>> _logger;
 
         private readonly AsyncProcess _sendProcess;
@@ -58,6 +59,7 @@ namespace AI4E.Routing
                               EndPointRoute route,
                               IMessageCoder<TAddress> messageCoder,
                               IRouteMap<TAddress> routeManager,
+                              IEndPointScheduler<TAddress> endPointScheduler,
                               ILogger<RemoteEndPoint<TAddress>> logger)
         {
             if (endPointManager == null)
@@ -71,11 +73,13 @@ namespace AI4E.Routing
 
             if (routeManager == null)
                 throw new ArgumentNullException(nameof(routeManager));
-
+            if (endPointScheduler == null)
+                throw new ArgumentNullException(nameof(endPointScheduler));
             _endPointManager = endPointManager;
             Route = route;
             _messageCoder = messageCoder;
             _routeManager = routeManager;
+            _endPointScheduler = endPointScheduler;
             _logger = logger;
 
             _txQueue = new AsyncProducerConsumerQueue<(IMessage message, EndPointRoute localEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)>();
@@ -117,7 +121,7 @@ namespace AI4E.Routing
 
         private IEnumerable<TAddress> Schedule(IEnumerable<TAddress> replica)
         {
-            return replica; // TODO: Scheduling
+            return _endPointScheduler.Schedule(replica);
         }
 
         #region Send process
