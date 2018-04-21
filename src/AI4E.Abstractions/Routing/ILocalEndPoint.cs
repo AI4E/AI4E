@@ -32,7 +32,6 @@
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
-using AI4E.Modularity;
 using AI4E.Remoting;
 
 namespace AI4E.Routing
@@ -51,6 +50,5 @@ namespace AI4E.Routing
 
         Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation);
         Task OnReceivedAsync(IMessage message, TAddress remoteAddress, EndPointRoute remoteEndPoint, CancellationToken cancellation);
-        Task OnSignalledAsync(TAddress remoteAddress, CancellationToken cancellation);
     }
 }

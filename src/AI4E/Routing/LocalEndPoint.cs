@@ -187,17 +187,6 @@ namespace AI4E.Routing
                 throw new ArgumentNullException(nameof(message));
 
             await _rxQueue.EnqueueAsync(message, cancellation);
-
-            if (!remoteAddress.Equals(LocalAddress) || remoteEndPoint != Route)
-            {
-                await OnSignalledAsync(remoteAddress, cancellation);
-            }
-        }
-
-        public Task OnSignalledAsync(TAddress remoteAddress, CancellationToken cancellation)
-        {
-            var message = _messageCoder.EncodeMessage(LocalAddress, remoteAddress, default, Route, MessageType.Request);
-            return PhysicalEndPoint.SendAsync(message, remoteAddress, cancellation);
         }
 
         public Task<IMessage> ReceiveAsync(CancellationToken cancellation)

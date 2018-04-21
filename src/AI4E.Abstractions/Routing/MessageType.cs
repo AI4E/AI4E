@@ -44,16 +44,6 @@ namespace AI4E.Routing
         Message = 1,
 
         /// <summary>
-        /// A request for a (user) message.
-        /// </summary>
-        Request = 2,
-
-        /// <summary>
-        /// A signal that one or multiple (user) messages are available for request.
-        /// </summary>
-        Signal = 3,
-
-        /// <summary>
         /// The protocol of a received message is not supported. The payload is the seq-num of the message in raw format.
         /// </summary>
         ProtocolNotSupported = -1,

@@ -29,16 +29,14 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Processing;
 using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
+using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing
@@ -49,14 +47,12 @@ namespace AI4E.Routing
         private readonly IMessageCoder<TAddress> _messageCoder;
         private readonly IRouteMap<TAddress> _routeManager;
         private readonly ILogger<RemoteEndPoint<TAddress>> _logger;
-        private readonly ConcurrentQueue<(IMessage message, EndPointRoute localEndPoint)> _txQueue;
 
-        private readonly AsyncProcess _mapUpdateProcess;
+        private readonly AsyncProcess _sendProcess;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
-
-        private readonly Dictionary<TAddress, bool> _replica = new Dictionary<TAddress, bool>();
+        private readonly AsyncProducerConsumerQueue<(IMessage message, EndPointRoute localEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)> _txQueue;
 
         public RemoteEndPoint(IEndPointManager<TAddress> endPointManager,
                               EndPointRoute route,
@@ -82,9 +78,9 @@ namespace AI4E.Routing
             _routeManager = routeManager;
             _logger = logger;
 
-            _txQueue = new ConcurrentQueue<(IMessage message, EndPointRoute localEndPoint)>();
+            _txQueue = new AsyncProducerConsumerQueue<(IMessage message, EndPointRoute localEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)>();
 
-            _mapUpdateProcess = new AsyncProcess(MapUpdateProcess);
+            _sendProcess = new AsyncProcess(SendProcess);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
             _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
         }
@@ -110,109 +106,119 @@ namespace AI4E.Routing
             }
         }
 
-        private Task SignalAsync(TAddress remoteAddress, CancellationToken cancellation)
-        {
-            var message = _messageCoder.EncodeMessage(LocalAddress, remoteAddress, Route, default, MessageType.Signal);
-            return PhysicalEndPoint.SendAsync(message, remoteAddress, cancellation);
-        }
-
         public async Task SendAsync(IMessage message, EndPointRoute localEndPoint, CancellationToken cancellation)
         {
-            _txQueue.Enqueue((message, localEndPoint));
+            var tcs = new TaskCompletionSource<object>();
 
-            ImmutableArray<TAddress> replica;
+            await _txQueue.EnqueueAsync((message, localEndPoint, attempt: 0, tcs, cancellation)).WithCancellation(cancellation);
 
-            lock (_replica)
-            {
-                replica = _replica.Where(p => !p.Value).Select(p => p.Key).ToImmutableArray();
-
-                foreach (var entry in replica)
-                {
-                    _replica[entry] = true;
-                }
-            }
-
-            await Task.WhenAll(replica.Select(p => SignalAsync(p, cancellation)));
+            await tcs.Task.WithCancellation(cancellation);
         }
 
-        public async Task OnRequestAsync(TAddress remoteAddress, CancellationToken cancellation)
+        private IEnumerable<TAddress> Schedule(IEnumerable<TAddress> replica)
         {
-            if (!_txQueue.TryDequeue(out var entry))
-            {
-                lock (_replica)
-                {
-                    _replica[remoteAddress] = false;
-                }
-            }
-            else
-            {
-                try
-                {
-                    await SendAsync(entry.message, entry.localEndPoint, remoteAddress, cancellation);
-                }
-                catch
-                {
-                    _txQueue.Enqueue(entry);
-
-                    throw;
-                }
-
-                lock (_replica)
-                {
-                    _replica[remoteAddress] = true;
-                }
-            }
+            return replica; // TODO: Scheduling
         }
 
-        private async Task MapUpdateProcess(CancellationToken cancellation)
-        {
-            _logger?.LogDebug($"Started map update process for remote end-point '{Route}'.");
+        #region Send process
 
+        private async Task SendProcess(CancellationToken cancellation)
+        {
             while (cancellation.ThrowOrContinue())
             {
                 try
                 {
-                    await UpdateAddressList(cancellation);
-                    await Task.Delay(TimeSpan.FromSeconds(10), cancellation);
+                    var (message, localEndPoint, attempt, tcs, sendCancellation) = await _txQueue.DequeueAsync(cancellation);
+
+                    Task.Run(() => SendInternalAsync(message, localEndPoint, attempt, tcs, cancellation, sendCancellation)).HandleExceptions(_logger);
                 }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
                 {
-                    _logger?.LogWarning(exc, $"Failure while updating maps for remote end-point '{Route}'.");
+                    // TODO: Logging
                 }
             }
         }
 
-        private async Task UpdateAddressList(CancellationToken cancellation)
+        private async Task Reschedule(IMessage message, EndPointRoute localEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation, CancellationToken sendCancellation)
         {
-            var addresses = new List<TAddress>(await _routeManager.GetMapsAsync(Route, cancellation));
+            // Calculate wait time in seconds
+            var timeToWait = TimeSpan.FromSeconds(Pow(2, attempt - 1));
 
-            IEnumerable<TAddress> newAddresses;
+            await Task.Delay(timeToWait);
 
-            lock (_replica)
+            await _txQueue.EnqueueAsync((message, localEndPoint, attempt + 1, tcs, sendCancellation), cancellation);
+        }
+
+        // Adapted from: https://stackoverflow.com/questions/383587/how-do-you-do-integer-exponentiation-in-c
+        private static int Pow(int x, int pow)
+        {
+            if (pow < 0)
+                throw new ArgumentOutOfRangeException(nameof(pow));
+
+            var result = 1;
+            while (pow != 0)
             {
-                var currAddresses = _replica.Keys;
-                newAddresses = addresses.Except(currAddresses).ToArray();
-
-                foreach (var address in newAddresses)
-                {
-                    _replica[address] = true;
-                }
-
-                foreach (var address in currAddresses.Except(addresses))
-                {
-                    _replica.Remove(address);
-                }
+                if ((pow & 1) == 1)
+                    result *= x;
+                x *= x;
+                pow >>= 1;
             }
 
-            await Task.WhenAll(newAddresses.Select(p => SignalAsync(p, cancellation: default)));
+            if (result < 0)
+                return int.MaxValue;
+
+            return result;
         }
+
+        private async Task SendInternalAsync(IMessage message, EndPointRoute localEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation, CancellationToken sendCancellation)
+        {
+            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation, sendCancellation);
+
+            try
+            {
+                var replica = await _routeManager.GetMapsAsync(Route, cts.Token);
+
+                replica = Schedule(replica);
+
+                foreach (var replicat in replica)
+                {
+                    try
+                    {
+                        await SendAsync(message, localEndPoint, replicat, cts.Token);
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        tcs.SetResult(null);
+                    }
+                    catch (Exception exc)
+                    {
+                        // TODO: Logging
+                    }
+
+                    return;
+                }
+            }
+            catch (Exception exc)
+            {
+                // TODO: Logging
+            }
+
+            Reschedule(message, localEndPoint, attempt, tcs, cts.Token, sendCancellation).HandleExceptions(_logger);
+        }
+
+        #endregion
 
         #region Initialization
 
         private async Task InitializeInternalAsync(CancellationToken cancellation)
         {
-            await _mapUpdateProcess.StartAsync(cancellation);
+            await _sendProcess.StartAsync(cancellation);
         }
 
         #endregion
@@ -229,7 +235,7 @@ namespace AI4E.Routing
             }
             finally
             {
-                await _mapUpdateProcess.TerminateAsync();
+                await _sendProcess.TerminateAsync();
             }
         }
 

@@ -48,7 +48,5 @@ namespace AI4E.Routing
         TAddress LocalAddress { get; }
 
         Task SendAsync(IMessage message, EndPointRoute localEndPoint, TAddress remoteAddress, CancellationToken cancellation);
-
-        Task OnRequestAsync(TAddress remoteAddress, CancellationToken cancellation);
     }
 }

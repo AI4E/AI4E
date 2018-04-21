@@ -234,34 +234,19 @@ namespace AI4E.Routing
                     {
                         _logger?.LogTrace($"Received message from address {remoteAddress}, end-point {remoteEndPoint} for end-point {localEndPoint}.");
 
-                        var endPoint = await GetLocalEndPointAsync(remoteAddress, remoteEndPoint, localEndPoint, cancellation);
+                        var endPoint = GetLocalEndPoint(remoteAddress, remoteEndPoint, localEndPoint);
 
                         if (endPoint != null)
                         {
                             await endPoint.OnReceivedAsync(message, remoteAddress, remoteEndPoint, cancellation);
                         }
-
-                        break;
-                    }
-                case MessageType.Signal:
-                    {
-                        _logger?.LogTrace($"Received signal from address {remoteAddress}, end-point {remoteEndPoint} for end-point {localEndPoint}.");
-
-                        var endPoint = await GetLocalEndPointAsync(remoteAddress, remoteEndPoint, localEndPoint, cancellation);
-
-                        if (endPoint != null)
+                        else
                         {
-                            await endPoint.OnSignalledAsync(remoteAddress, cancellation);
+                            await SendEndPointNotPresentAsync(remoteAddress, remoteEndPoint, localEndPoint, cancellation);
                         }
 
-                        await endPoint.OnSignalledAsync(remoteAddress, cancellation);
                         break;
                     }
-                case MessageType.Request:
-                    _logger?.LogTrace($"Received request from address {remoteAddress}, end-point {remoteEndPoint} for end-point {localEndPoint}.");
-                    await GetRemoteEndPoint(remoteEndPoint).OnRequestAsync(remoteAddress, cancellation);
-                    break;
-
                 case MessageType.EndPointNotPresent:
                     /* TODO */
                     break;
@@ -277,11 +262,10 @@ namespace AI4E.Routing
             }
         }
 
-        private async Task<ILocalEndPoint<TAddress>> GetLocalEndPointAsync(TAddress remoteAddress, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation)
+        private ILocalEndPoint<TAddress> GetLocalEndPoint(TAddress remoteAddress, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint)
         {
             if (!TryGetEndPoint(localEndPoint, out var endPoint))
             {
-                await SendEndPointNotPresentAsync(remoteAddress, remoteEndPoint, localEndPoint, cancellation);
                 return null;
             }
 
@@ -372,7 +356,7 @@ namespace AI4E.Routing
             }
             catch (Exception exc)
             {
-                throw new ArgumentException("The message is not formatted as expected.", exc);
+                throw new ArgumentException("The message is not formatted as expected.", nameof(request), exc);
             }
 
             Assert(remoteAddress != null);
@@ -381,7 +365,7 @@ namespace AI4E.Routing
 
             try
             {
-                using (await _disposeHelper.ProhibitDisposalAsync())
+                using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
                 {
                     if (_disposeHelper.IsDisposed)
                         throw new ObjectDisposedException(GetType().FullName);
@@ -425,8 +409,14 @@ namespace AI4E.Routing
 
         private async Task DisposeInternalAsync()
         {
-            await _initializationHelper.CancelAsync();
-            await _receiveProcess.TerminateAsync();
+            try
+            {
+                await _initializationHelper.CancelAsync();
+            }
+            finally
+            {
+                await _receiveProcess.TerminateAsync();
+            }
         }
 
         public Task Disposal => _disposeHelper.Disposal;
