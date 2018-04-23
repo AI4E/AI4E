@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Async
 {
@@ -65,8 +66,10 @@ namespace AI4E.Async
             if (initialization == null)
                 throw new ArgumentNullException(nameof(initialization));
 
+            this = default;
+
             _cancellation = new CancellationTokenSource();
-            _initialization = initialization(_cancellation.Token);
+            _initialization = InitInternalAsync(initialization);
         }
 
         public AsyncInitializationHelper(Func<Task<T>> initialization)
@@ -74,11 +77,31 @@ namespace AI4E.Async
             if (initialization == null)
                 throw new ArgumentNullException(nameof(initialization));
 
+            this = default;
+
             _cancellation = null;
-            _initialization = initialization();
+            _initialization = InitInternalAsync(initialization); ;
         }
 
         public Task<T> Initialization => _initialization ?? Task.FromResult<T>(default);
+
+        private async Task<T> InitInternalAsync(Func<CancellationToken, Task<T>> initialization)
+        {
+            Assert(initialization != null);
+
+            await Task.Yield();
+
+            return await initialization(_cancellation.Token);
+        }
+
+        private async Task<T> InitInternalAsync(Func<Task<T>> initialization)
+        {
+            Assert(initialization != null);
+
+            await Task.Yield();
+
+            return await initialization();
+        }
 
         Task IAsyncInitialization.Initialization => Initialization;
 

@@ -11,14 +11,17 @@ namespace AI4E.Coordination
         // Creates a new unique session identifier for the specified address.
         public static string GetNextSessionFromAddress<TAddress>(TAddress address, IAddressConversion<TAddress> addressConversion)
         {
-            if (address.Equals(default))
+            if (address == null)
+                throw new ArgumentNullException(nameof(address));
+
+            if (address.Equals(default(TAddress)))
                 throw new ArgumentDefaultException(nameof(address));
 
             if (addressConversion == null)
                 throw new ArgumentNullException(nameof(addressConversion));
 
             // The session is mainly the local physical address 
-            // combined with a prefix to distinguish between session 
+            // combined with a prefix to distinguish between sessions 
             // with the same physical address that live one after another.
 
             // The prefix is the current timestamp with a discriminator 
@@ -50,7 +53,7 @@ namespace AI4E.Coordination
 
             var serializedAddress = new byte[arr.Length - 8];
 
-            Array.Copy(arr, 0, serializedAddress, 8, serializedAddress.Length);
+            Array.Copy(arr, 8, serializedAddress, 0, serializedAddress.Length);
 
             return addressConversion.DeserializeAddress(serializedAddress);
         }

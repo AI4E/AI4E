@@ -40,9 +40,10 @@ namespace AI4E.Coordination
             _addressConversion = addressConversion;
             _logger = logger;
 
+            _receiveProcess = new AsyncProcess(ReceiveProcess);
             _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
-            _receiveProcess = new AsyncProcess(ReceiveProcess);
+
         }
 
         public string GetSession()

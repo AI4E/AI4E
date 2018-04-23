@@ -27,7 +27,7 @@ namespace AI4E.Coordination
 {
     public interface ISessionManager
     {
-        Task<bool> TryBeginSessionAsync(string session, CancellationToken cancellation = default);
+        Task<bool> TryBeginSessionAsync(string session, DateTime leaseEnd, CancellationToken cancellation = default);
 
         Task UpdateSessionAsync(string session, DateTime leaseEnd, CancellationToken cancellation = default);
 

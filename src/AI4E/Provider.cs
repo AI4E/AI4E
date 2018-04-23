@@ -57,8 +57,16 @@ namespace AI4E
         {
             if (provider == null)
                 throw new ArgumentNullException(nameof(provider));
-            
+
             return new Provider<T>(() => ActivatorUtilities.CreateInstance<T>(provider));
+        }
+
+        public static IProvider<T> FromServices<T>(IServiceProvider provider)
+        {
+            if (provider == null)
+                throw new ArgumentNullException(nameof(provider));
+
+            return new Provider<T>(() => provider.GetRequiredService<T>());
         }
 
         public static IProvider<T> Create<T>(T value)

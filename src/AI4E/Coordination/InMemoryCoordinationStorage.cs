@@ -33,47 +33,7 @@ namespace AI4E.Coordination
 
         public Task<IStoredEntry> UpdateEntryAsync(IStoredEntry comparand, IStoredEntry value, CancellationToken cancellation)
         {
-            //Entry desired = null;
-
-            //if (value != null)
-            //{
-            //    if (comparand != null && value.Path != comparand.Path)
-            //    {
-            //        throw new ArgumentException("The key of the comparand must be equal to the key of the new value.");
-            //    }
-
-            //    desired = value as Entry ?? new Entry(value);
-
-            //    Assert(desired != null);
-            //    Assert(desired.Path == value.Path);
-            //}
-
-            //if (comparand == null)
-            //{
-            //    if (desired == null)
-            //    {
-            //        throw new ArgumentException("Either comparand or value may be null but not both.");
-            //    }
-
-            //    if (!_entries.TryAdd(value.Path, desired) && TryGetEntry(comparand.Path, out var e))
-            //    {
-            //        return Task.FromResult(e);
-            //    }
-            //}
-            //else
-            //{
-            //    if (comparand is Entry existing && _entries.TryUpdate(comparand.Path, desired, existing))
-            //    {
-            //        return Task.FromResult(comparand);
-            //    }
-
-            //    if (TryGetEntry(comparand.Path, out var entry))
-            //    {
-            //        return Task.FromResult(entry);
-            //    }
-            //}
-
-            //return Task.FromResult<IStoredEntry>(null);
+            string path;
 
             if (comparand != null && value != null)
             {
@@ -86,13 +46,63 @@ namespace AI4E.Coordination
                 {
                     return Task.FromResult(value);
                 }
-            }
 
-            if (value is null && comparand is null)
+                path = comparand.Path;
+            }
+            else if (comparand != null)
+            {
+                path = comparand.Path;
+            }
+            else if (value != null)
+            {
+                path = value.Path;
+            }
+            else // (value == null && comparand == null)
             {
                 throw new ArgumentException("Either comparand or value may be null but not both.");
             }
 
+            var convertedValue = ConvertValue(value);
+            var comparandVersion = comparand?.StorageVersion ?? 0;
+
+            lock (_entries)
+            {
+                return CompareExchange(path, convertedValue, comparandVersion);
+            }
+        }
+
+        private Task<IStoredEntry> CompareExchange(string path, Entry value, int comparandVersion)
+        {
+            var currentVersion = 0;
+
+            if (_entries.TryGetValue(path, out var currentEntry))
+            {
+                Assert(currentEntry != null);
+
+                currentVersion = currentEntry.StorageVersion;
+            }
+            else
+            {
+                currentEntry = null;
+            }
+
+            if (comparandVersion == currentVersion)
+            {
+                if (value == null)
+                {
+                    _entries.Remove(path);
+                }
+                else
+                {
+                    _entries[path] = value;
+                }
+            }
+
+            return Task.FromResult<IStoredEntry>(currentEntry);
+        }
+
+        private static Entry ConvertValue(IStoredEntry value)
+        {
             Entry convertedValue = null;
 
             if (value != null)
@@ -103,35 +113,7 @@ namespace AI4E.Coordination
                 Assert(convertedValue.Path == value.Path);
             }
 
-            var comparandVersion = comparand?.StorageVersion ?? 0;
-            var result = convertedValue;
-
-            lock (_entries)
-            {
-                var currentVersion = 0;
-
-                if (_entries.TryGetValue(comparand.Path, out var currentEntry))
-                {
-                    Assert(currentEntry != null);
-
-                    currentVersion = currentEntry.StorageVersion;
-                }
-                else
-                {
-                    currentEntry = null;
-                }
-
-                if (comparandVersion == currentVersion)
-                {
-                    _entries[comparand.Path] = convertedValue;
-                }
-                else
-                {
-                    convertedValue = currentEntry;
-                }
-            }
-
-            return Task.FromResult<IStoredEntry>(result);
+            return convertedValue;
         }
 
         public Task<IStoredEntry> GetEntryAsync(string path, CancellationToken cancellation)
@@ -374,16 +356,18 @@ namespace AI4E.Coordination
 
         #region Session
 
-        public IStoredSession CreateSession(string key)
+        public IStoredSession CreateSession(string key, DateTime leaseEnd)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
 
-            return new Session(key);
+            return new Session(key, leaseEnd);
         }
 
         public Task<IStoredSession> UpdateSessionAsync(IStoredSession comparand, IStoredSession value, CancellationToken cancellation)
         {
+            string key;
+
             if (comparand != null && value != null)
             {
                 if (comparand.Key != value.Key)
@@ -395,13 +379,63 @@ namespace AI4E.Coordination
                 {
                     return Task.FromResult(value);
                 }
-            }
 
-            if (value is null && comparand is null)
+                key = comparand.Key;
+            }
+            else if (comparand != null)
+            {
+                key = comparand.Key;
+            }
+            else if (value != null)
+            {
+                key = value.Key;
+            }
+            else // (value == null && comparand == null)
             {
                 throw new ArgumentException("Either comparand or value may be null but not both.");
             }
 
+            var convertedValue = ConvertValue(value);
+            var comparandVersion = comparand?.StorageVersion ?? 0;
+
+            lock (_sessions)
+            {
+                return CompareExchange(key, convertedValue, comparandVersion);
+            }
+        }
+
+        private Task<IStoredSession> CompareExchange(string key, Session value, int comparandVersion)
+        {
+            var currentVersion = 0;
+
+            if (_sessions.TryGetValue(key, out var currentSession))
+            {
+                Assert(currentSession != null);
+
+                currentVersion = currentSession.StorageVersion;
+            }
+            else
+            {
+                currentSession = null;
+            }
+
+            if (comparandVersion == currentVersion)
+            {
+                if (value == null)
+                {
+                    _sessions.Remove(key);
+                }
+                else
+                {
+                    _sessions[key] = value;
+                }
+            }
+
+            return Task.FromResult<IStoredSession>(currentSession);
+        }
+
+        private static Session ConvertValue(IStoredSession value)
+        {
             Session convertedValue = null;
 
             if (value != null)
@@ -412,35 +446,7 @@ namespace AI4E.Coordination
                 Assert(convertedValue.Key == value.Key);
             }
 
-            var comparandVersion = comparand?.StorageVersion ?? 0;
-            var result = convertedValue;
-
-            lock (_sessions)
-            {
-                var currentVersion = 0;
-
-                if (_sessions.TryGetValue(comparand.Key, out var currentSession))
-                {
-                    Assert(currentSession != null);
-
-                    currentVersion = currentSession.StorageVersion;
-                }
-                else
-                {
-                    currentSession = null;
-                }
-
-                if (comparandVersion == currentVersion)
-                {
-                    _sessions[comparand.Key] = convertedValue;
-                }
-                else
-                {
-                    convertedValue = currentSession;
-                }
-            }
-
-            return Task.FromResult<IStoredSession>(result);
+            return convertedValue;
         }
 
         public Task<IStoredSession> GetSessionAsync(string key, CancellationToken cancellation)
@@ -473,13 +479,13 @@ namespace AI4E.Coordination
         {
             private readonly bool _isEnded;
 
-            public Session(string key)
+            public Session(string key, DateTime leaseEnd)
             {
                 if (key == null)
                     throw new ArgumentNullException(nameof(key));
 
                 Key = key;
-                LeaseEnd = DateTime.Now + TimeSpan.FromSeconds(30);
+                LeaseEnd = leaseEnd;
                 _isEnded = false;
                 Entries = ImmutableArray<string>.Empty;
                 StorageVersion = 1;

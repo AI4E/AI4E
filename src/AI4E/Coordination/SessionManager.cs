@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Async;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
 {
-    // TODO: Sessions are never actually deleted currently.
     public sealed class SessionManager : ISessionManager
     {
         private readonly ISessionStorage _storage;
@@ -20,12 +20,12 @@ namespace AI4E.Coordination
             _storage = storage;
         }
 
-        public async Task<bool> TryBeginSessionAsync(string session, CancellationToken cancellation = default)
+        public async Task<bool> TryBeginSessionAsync(string session, DateTime leaseEnd, CancellationToken cancellation = default)
         {
             if (session == null)
                 throw new ArgumentNullException(nameof(session));
 
-            var newSession = _storage.CreateSession(session);
+            var newSession = _storage.CreateSession(session, leaseEnd);
 
             var previousSession = await _storage.UpdateSessionAsync(null, newSession, cancellation);
 
@@ -124,27 +124,29 @@ namespace AI4E.Coordination
 
         public async Task<string> WaitForTerminationAsync(CancellationToken cancellation)
         {
-            var sessions = await _storage.GetSessionsAsync(cancellation);
-
-            if (!sessions.Any())
+            while (cancellation.ThrowOrContinue())
             {
-                return null;
+                var sessions = await _storage.GetSessionsAsync(cancellation);
+
+                var delay = TimeSpan.FromSeconds(2);
+
+                foreach (var session in sessions)
+                {
+                    if (session.IsEnded)
+                        return session.Key;
+
+                    var now = DateTime.Now;
+                    var timeToWait = session.LeaseEnd - now;
+
+                    if (timeToWait < delay)
+                        delay = timeToWait;
+                }
+
+                await Task.Delay(delay, cancellation);
             }
 
-            Assert(sessions.All(p => p != null));
-
-            var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
-
-            try
-            {
-                var completed = await Task.WhenAny(sessions.Select(p => InternalWaitForTerminationAsync(p, combinedCancellationSource.Token)));
-
-                return (await completed).Key;
-            }
-            finally
-            {
-                combinedCancellationSource.Cancel();
-            }
+            Assert(false);
+            return null;
         }
 
         public async Task<bool> IsAliveAsync(string session, CancellationToken cancellation = default)
@@ -154,7 +156,7 @@ namespace AI4E.Coordination
 
             var s = await _storage.GetSessionAsync(session, cancellation);
 
-            return s == null || s.IsEnded;
+            return s != null && !s.IsEnded;
         }
 
         public async Task AddSessionEntryAsync(string session, string entry, CancellationToken cancellation = default)
@@ -166,8 +168,8 @@ namespace AI4E.Coordination
                 throw new ArgumentNullException(nameof(entry));
 
             IStoredSession current = await _storage.GetSessionAsync(session, cancellation),
-                     start,
-                     desired;
+                           start,
+                           desired;
 
             do
             {

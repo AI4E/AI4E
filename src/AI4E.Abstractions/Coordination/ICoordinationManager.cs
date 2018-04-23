@@ -31,13 +31,19 @@ namespace AI4E.Coordination
         Task<IEntry> GetAsync(string path, CancellationToken cancellation = default);
 
         /// <summary>
-        /// Asynchronously sets the value with the specified key.
+        /// Asynchronously sets the value with the specified path.
         /// </summary>
         /// <param name="path">The key that identifies the value.</param>
         /// <param name="value">The value that shall be set.</param>
+        /// <param name="version">The version the existing value must have in order to execute the operation or zero to execute the operation anyway.</param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operatio or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>A task representing the asnychronous operation.</returns>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the version of the entry before it was modified or zero if <paramref name="version"/> is zero.
+        /// If the value is equal to <paramref name="version"/> the operation was executed, otherwise a version conflict occured.
+        /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if either <paramref name="path"/> or <paramref name="value"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="version"/> is negative.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
         Task<int> SetValueAsync(string path, byte[] value, int version = default, CancellationToken cancellation = default);
 
