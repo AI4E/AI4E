@@ -29,13 +29,6 @@ namespace AI4E.Coordination
         bool IsEnded { get; }
         DateTime LeaseEnd { get; }
         ImmutableArray<string> Entries { get; }
-
         int StorageVersion { get; }
-
-        IStoredSession End();
-        IStoredSession UpdateLease(DateTime leaseEnd);
-
-        IStoredSession AddEntry(string entry);
-        IStoredSession RemoveEntry(string entry);
     }
 }

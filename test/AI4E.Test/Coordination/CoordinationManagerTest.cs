@@ -144,7 +144,11 @@ namespace AI4E.Test.Coordination
             Assert.IsNull(entryY);
         }
 
-        private IServiceProvider BuildServiceProvider<TStorage>(IPhysicalEndPoint<TestAddress> physicalEndPoint, TStorage coordinationStorage)
+        private IServiceProvider BuildServiceProvider<TStorage>(IPhysicalEndPoint<TestAddress> physicalEndPoint,
+                                                                IDateTimeProvider dateTimeProvider,
+                                                                IStoredEntryManager storedEntryManager,
+                                                                IStoredSessionManager storedSessionManager,
+                                                                TStorage coordinationStorage)
             where TStorage : ICoordinationStorage, ISessionStorage
         {
             IServiceCollection services = new ServiceCollection();
@@ -157,21 +161,28 @@ namespace AI4E.Test.Coordination
             services.AddSingleton(p => Provider.FromServices<ICoordinationManager>(p));
             services.AddSingleton<ICoordinationCallback, CoordinationCallback<TestAddress>>();
             services.AddSingleton(p => p.GetRequiredService<ICoordinationCallback>() as ISessionProvider);
+            services.AddSingleton(dateTimeProvider);
+            services.AddSingleton(storedEntryManager);
+            services.AddSingleton(storedSessionManager);
             services.AddLogging(options =>
             {
                 options.SetMinimumLevel(LogLevel.Trace);
                 options.AddDebug();
-                
+
             });
             return services.BuildServiceProvider();
         }
 
         private (ICoordinationManager x, ICoordinationManager y, ISessionManager sessionManagerX) BuildCoordinationSystem()
         {
+            var dateTimeProvider = new DateTimeProvider();
+            var storedSessionManager = new StoredSessionManager(dateTimeProvider);
+            var storedEntryManager = new StoredEntryManager(dateTimeProvider);
+
             var messagingSubsystem = new PhysicalMessingSubsystem();
-            var coordinationStorage = new InMemoryCoordinationStorage();
-            var serviceProviderX = BuildServiceProvider(messagingSubsystem.X, coordinationStorage);
-            var serviceProviderY = BuildServiceProvider(messagingSubsystem.Y, coordinationStorage);
+            var coordinationStorage = new InMemoryCoordinationStorage(dateTimeProvider, storedEntryManager, storedSessionManager);
+            var serviceProviderX = BuildServiceProvider(messagingSubsystem.X, dateTimeProvider, storedEntryManager, storedSessionManager, coordinationStorage);
+            var serviceProviderY = BuildServiceProvider(messagingSubsystem.Y, dateTimeProvider, storedEntryManager, storedSessionManager, coordinationStorage);
 
             return (serviceProviderX.GetRequiredService<ICoordinationManager>(),
                     serviceProviderY.GetRequiredService<ICoordinationManager>(),

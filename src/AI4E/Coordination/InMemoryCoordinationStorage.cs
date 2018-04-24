@@ -8,12 +8,29 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
 {
-    public sealed class InMemoryCoordinationStorage : ICoordinationStorage, ISessionStorage
+    public sealed partial class InMemoryCoordinationStorage : ICoordinationStorage, ISessionStorage
     {
-        private readonly Dictionary<string, Entry> _entries = new Dictionary<string, Entry>();
-        private readonly Dictionary<string, Session> _sessions = new Dictionary<string, Session>();
+        private readonly Dictionary<string, IStoredEntry> _entries = new Dictionary<string, IStoredEntry>();
+        private readonly Dictionary<string, IStoredSession> _sessions = new Dictionary<string, IStoredSession>();
+        private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IStoredEntryManager _storedEntryManager;
+        private readonly IStoredSessionManager _storedSessionManager;
 
-        public InMemoryCoordinationStorage() { }
+        public InMemoryCoordinationStorage(IDateTimeProvider dateTimeProvider, IStoredEntryManager storedEntryManager, IStoredSessionManager storedSessionManager)
+        {
+            if (dateTimeProvider == null)
+                throw new ArgumentNullException(nameof(dateTimeProvider));
+
+            if (storedEntryManager == null)
+                throw new ArgumentNullException(nameof(storedEntryManager));
+
+            if (storedSessionManager == null)
+                throw new ArgumentNullException(nameof(storedSessionManager));
+
+            _dateTimeProvider = dateTimeProvider;
+            _storedEntryManager = storedEntryManager;
+            _storedSessionManager = storedSessionManager;
+        }
 
         #region Entry
 
@@ -28,7 +45,7 @@ namespace AI4E.Coordination
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
 
-            return new Entry(path, session, isEphemeral, value.ToImmutableArray());
+            return _storedEntryManager.Create(path, session, isEphemeral, value.ToImmutableArray());
         }
 
         public Task<IStoredEntry> UpdateEntryAsync(IStoredEntry comparand, IStoredEntry value, CancellationToken cancellation)
@@ -62,7 +79,7 @@ namespace AI4E.Coordination
                 throw new ArgumentException("Either comparand or value may be null but not both.");
             }
 
-            var convertedValue = ConvertValue(value);
+            var convertedValue = _storedEntryManager.Copy(value);
             var comparandVersion = comparand?.StorageVersion ?? 0;
 
             lock (_entries)
@@ -71,7 +88,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private Task<IStoredEntry> CompareExchange(string path, Entry value, int comparandVersion)
+        private Task<IStoredEntry> CompareExchange(string path, IStoredEntry value, int comparandVersion)
         {
             var currentVersion = 0;
 
@@ -98,258 +115,25 @@ namespace AI4E.Coordination
                 }
             }
 
-            return Task.FromResult<IStoredEntry>(currentEntry);
-        }
-
-        private static Entry ConvertValue(IStoredEntry value)
-        {
-            Entry convertedValue = null;
-
-            if (value != null)
-            {
-                convertedValue = value as Entry ?? new Entry(value);
-
-                Assert(convertedValue != null);
-                Assert(convertedValue.Path == value.Path);
-            }
-
-            return convertedValue;
+            return Task.FromResult(currentEntry);
         }
 
         public Task<IStoredEntry> GetEntryAsync(string path, CancellationToken cancellation)
         {
-            var entry = default(Entry);
+            var entry = default(IStoredEntry);
 
             lock (_entries)
             {
                 if (!_entries.TryGetValue(path, out entry))
                 {
-                    return Task.FromResult<IStoredEntry>(null);
+                    return Task.FromResult(default(IStoredEntry));
                 }
             }
 
             Assert(entry != null);
             Assert(entry.Path == path);
 
-            return Task.FromResult<IStoredEntry>(entry);
-        }
-
-        private sealed class Entry : IStoredEntry
-        {
-            private static readonly ImmutableArray<string> _noReadLocks = ImmutableArray<string>.Empty;
-
-            #region C'tor
-
-            public Entry(string key, string session, bool isEphemeral, ImmutableArray<byte> value)
-            {
-                Path = key;
-                Value = value;
-                WriteLock = session;
-                ReadLocks = _noReadLocks;
-                Childs = ImmutableArray<string>.Empty;
-                LastWriteTime = CreationTime = DateTime.Now;
-                Version = 1;
-                StorageVersion = 1;
-
-                if (isEphemeral)
-                {
-                    EphemeralOwner = session;
-                }
-            }
-
-            public Entry(IStoredEntry entry)
-            {
-                Path = entry.Path;
-                Value = entry.Value;
-                ReadLocks = entry.ReadLocks;
-                WriteLock = entry.WriteLock;
-                Childs = entry.Childs;
-                CreationTime = entry.CreationTime;
-                LastWriteTime = entry.LastWriteTime;
-                Version = entry.Version;
-                StorageVersion = entry.StorageVersion;
-                EphemeralOwner = entry.EphemeralOwner;
-            }
-
-            private Entry(string key,
-                          ImmutableArray<byte> value,
-                          ImmutableArray<string> readLocks,
-                          string writeLock,
-                          ImmutableArray<string> childs,
-                          int version,
-                          int storageVersion,
-                          string ephemeralOwner,
-                          DateTime creationTime)
-            {
-                Path = key;
-                Value = value;
-                ReadLocks = readLocks;
-                WriteLock = writeLock;
-                Childs = childs;
-                Version = version;
-                StorageVersion = storageVersion;
-                EphemeralOwner = ephemeralOwner;
-                CreationTime = creationTime;
-                LastWriteTime = DateTime.Now;
-            }
-
-            private Entry(string key,
-                          ImmutableArray<byte> value,
-                          ImmutableArray<string> readLocks,
-                          string writeLock,
-                          ImmutableArray<string> childs,
-                          int version,
-                          int storageVersion,
-                          string ephemeralOwner,
-                          DateTime creationTime,
-                          DateTime lastWriteTime)
-            {
-                Path = key;
-                Value = value;
-                ReadLocks = readLocks;
-                WriteLock = writeLock;
-                Childs = childs;
-                Version = version;
-                StorageVersion = storageVersion;
-                EphemeralOwner = ephemeralOwner;
-                CreationTime = creationTime;
-                LastWriteTime = lastWriteTime;
-            }
-
-            #endregion
-
-            #region Properties
-
-            public string Path { get; }
-
-            public ImmutableArray<byte> Value { get; }
-
-            public ImmutableArray<string> ReadLocks { get; }
-
-            public string WriteLock { get; }
-
-            public DateTime CreationTime { get; }
-
-            public DateTime LastWriteTime { get; }
-
-            public ImmutableArray<string> Childs { get; }
-
-            public int Version { get; }
-
-            public string EphemeralOwner { get; }
-
-            public int StorageVersion { get; }
-
-            #endregion
-
-            public IStoredEntry AcquireWriteLock(string session)
-            {
-                if (session == null)
-                    throw new ArgumentNullException(nameof(session));
-
-                if (WriteLock == session)
-                    return this;
-
-                if (WriteLock != null)
-                    throw new InvalidOperationException();
-
-                return new Entry(Path, Value, ReadLocks, writeLock: session, Childs, Version, StorageVersion + 1, EphemeralOwner, CreationTime, LastWriteTime);
-            }
-
-            public IStoredEntry ReleaseWriteLock()
-            {
-                if (WriteLock == null)
-                    return null;
-
-                if (ReadLocks.Length > 0)
-                    throw new InvalidOperationException();
-
-                return new Entry(Path, Value, _noReadLocks, writeLock: null, Childs, Version, StorageVersion + 1, EphemeralOwner, CreationTime, LastWriteTime);
-            }
-
-            public IStoredEntry AcquireReadLock(string session)
-            {
-                if (session == null)
-                    throw new ArgumentNullException(nameof(session));
-
-                if (WriteLock != null)
-                    throw new InvalidOperationException();
-
-                if (ReadLocks.Contains(session))
-                    return this;
-
-                return new Entry(Path, Value, ReadLocks.Add(session), writeLock: null, Childs, Version, StorageVersion + 1, EphemeralOwner, CreationTime, LastWriteTime);
-            }
-
-            public IStoredEntry ReleaseReadLock(string session)
-            {
-                if (session == null)
-                    throw new ArgumentNullException(nameof(session));
-
-                if (ReadLocks.Length == 0 || !ReadLocks.Contains(session))
-                    return this;
-
-                return new Entry(Path, Value, ReadLocks.Remove(session), WriteLock, Childs, Version, StorageVersion + 1, EphemeralOwner, CreationTime, LastWriteTime);
-            }
-
-            public IStoredEntry Remove()
-            {
-                if (ReadLocks.Length > 0)
-                    throw new InvalidOperationException();
-
-                if (WriteLock == null)
-                    throw new InvalidOperationException();
-
-                if (Childs.Any())
-                    throw new InvalidOperationException();
-
-                return null;
-            }
-
-            public IStoredEntry SetValue(ImmutableArray<byte> value)
-            {
-                if (ReadLocks.Length > 0)
-                    throw new InvalidOperationException();
-
-                if (WriteLock == null)
-                    throw new InvalidOperationException();
-
-                return new Entry(Path, value, _noReadLocks, WriteLock, Childs, Version + 1, StorageVersion + 1, EphemeralOwner, CreationTime);
-            }
-
-            public IStoredEntry AddChild(string name)
-            {
-                if (name == null)
-                    throw new ArgumentNullException(nameof(name));
-
-                if (ReadLocks.Length > 0)
-                    throw new InvalidOperationException();
-
-                if (WriteLock == null)
-                    throw new InvalidOperationException();
-
-                if (Childs.Contains(name))
-                    return this;
-
-                return new Entry(Path, Value, ReadLocks, WriteLock, Childs.Add(name), Version, StorageVersion + 1, EphemeralOwner, CreationTime, LastWriteTime);
-            }
-
-            public IStoredEntry RemoveChild(string name)
-            {
-                if (name == null)
-                    throw new ArgumentNullException(nameof(name));
-
-                if (ReadLocks.Length > 0)
-                    throw new InvalidOperationException();
-
-                if (WriteLock == null)
-                    throw new InvalidOperationException();
-
-                if (!Childs.Contains(name))
-                    return this;
-
-                return new Entry(Path, Value, ReadLocks, WriteLock, Childs.Remove(name), Version, StorageVersion + 1, EphemeralOwner, CreationTime, LastWriteTime);
-            }
+            return Task.FromResult(entry);
         }
 
         #endregion
@@ -361,7 +145,7 @@ namespace AI4E.Coordination
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
 
-            return new Session(key, leaseEnd);
+            return _storedSessionManager.Begin(key, leaseEnd);
         }
 
         public Task<IStoredSession> UpdateSessionAsync(IStoredSession comparand, IStoredSession value, CancellationToken cancellation)
@@ -395,7 +179,7 @@ namespace AI4E.Coordination
                 throw new ArgumentException("Either comparand or value may be null but not both.");
             }
 
-            var convertedValue = ConvertValue(value);
+            var convertedValue = _storedSessionManager.Copy(value);
             var comparandVersion = comparand?.StorageVersion ?? 0;
 
             lock (_sessions)
@@ -404,7 +188,8 @@ namespace AI4E.Coordination
             }
         }
 
-        private Task<IStoredSession> CompareExchange(string key, Session value, int comparandVersion)
+
+        private Task<IStoredSession> CompareExchange(string key, IStoredSession value, int comparandVersion)
         {
             var currentVersion = 0;
 
@@ -434,24 +219,9 @@ namespace AI4E.Coordination
             return Task.FromResult<IStoredSession>(currentSession);
         }
 
-        private static Session ConvertValue(IStoredSession value)
-        {
-            Session convertedValue = null;
-
-            if (value != null)
-            {
-                convertedValue = value as Session ?? new Session(value);
-
-                Assert(convertedValue != null);
-                Assert(convertedValue.Key == value.Key);
-            }
-
-            return convertedValue;
-        }
-
         public Task<IStoredSession> GetSessionAsync(string key, CancellationToken cancellation)
         {
-            var session = default(Session);
+            var session = default(IStoredSession);
 
             lock (_sessions)
             {
@@ -464,7 +234,7 @@ namespace AI4E.Coordination
             Assert(session != null);
             Assert(session.Key == key);
 
-            return Task.FromResult<IStoredSession>(session);
+            return Task.FromResult(session);
         }
 
         public Task<IEnumerable<IStoredSession>> GetSessionsAsync(CancellationToken cancellation)
@@ -472,98 +242,6 @@ namespace AI4E.Coordination
             lock (_sessions)
             {
                 return Task.FromResult<IEnumerable<IStoredSession>>(_sessions.Values.ToArray());
-            }
-        }
-
-        private sealed class Session : IStoredSession
-        {
-            private readonly bool _isEnded;
-
-            public Session(string key, DateTime leaseEnd)
-            {
-                if (key == null)
-                    throw new ArgumentNullException(nameof(key));
-
-                Key = key;
-                LeaseEnd = leaseEnd;
-                _isEnded = false;
-                Entries = ImmutableArray<string>.Empty;
-                StorageVersion = 1;
-            }
-
-            public Session(IStoredSession session)
-            {
-                Key = session.Key;
-                _isEnded = session.IsEnded;
-                LeaseEnd = session.LeaseEnd;
-                Entries = session.Entries;
-                StorageVersion = session.StorageVersion;
-            }
-
-            private Session(string key, bool isEnded, DateTime leaseEnd, ImmutableArray<string> entries, int storageVersion)
-            {
-                Key = key;
-                _isEnded = isEnded;
-                LeaseEnd = leaseEnd;
-                Entries = entries;
-                StorageVersion = storageVersion;
-            }
-
-            public string Key { get; }
-
-            public bool IsEnded => _isEnded || LeaseEnd <= DateTime.Now;
-
-            public DateTime LeaseEnd { get; }
-
-            public ImmutableArray<string> Entries { get; }
-
-            public int StorageVersion { get; }
-
-            public IStoredSession End()
-            {
-                if (IsEnded)
-                    return this;
-
-                return new Session(Key, isEnded: true, LeaseEnd, Entries, StorageVersion + 1);
-            }
-
-            public IStoredSession UpdateLease(DateTime leaseEnd)
-            {
-                if (_isEnded)
-                    return this;
-
-                if (LeaseEnd <= DateTime.Now)
-                    return new Session(Key, isEnded: true, LeaseEnd, Entries, StorageVersion + 1);
-
-                if (leaseEnd < LeaseEnd)
-                    return this;
-
-                return new Session(Key, isEnded: false, leaseEnd, Entries, StorageVersion + 1);
-            }
-
-            public IStoredSession AddEntry(string entry)
-            {
-                if (entry == null)
-                    throw new ArgumentNullException(nameof(entry));
-
-                if (IsEnded)
-                    throw new InvalidOperationException();
-
-                if (Entries.Contains(entry))
-                    return this;
-
-                return new Session(Key, IsEnded, LeaseEnd, Entries.Add(entry), StorageVersion + 1);
-            }
-
-            public IStoredSession RemoveEntry(string entry)
-            {
-                if (entry == null)
-                    throw new ArgumentNullException(nameof(entry));
-
-                if (!Entries.Contains(entry))
-                    return this;
-
-                return new Session(Key, IsEnded, LeaseEnd, Entries.Remove(entry), StorageVersion + 1);
             }
         }
 

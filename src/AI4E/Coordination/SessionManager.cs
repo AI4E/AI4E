@@ -11,13 +11,25 @@ namespace AI4E.Coordination
     public sealed class SessionManager : ISessionManager
     {
         private readonly ISessionStorage _storage;
+        private readonly IStoredSessionManager _storedSessionManager;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public SessionManager(ISessionStorage storage)
+        public SessionManager(ISessionStorage storage,
+                              IStoredSessionManager storedSessionManager,
+                              IDateTimeProvider dateTimeProvider)
         {
             if (storage == null)
                 throw new ArgumentNullException(nameof(storage));
 
+            if (storedSessionManager == null)
+                throw new ArgumentNullException(nameof(storedSessionManager));
+
+            if (dateTimeProvider == null)
+                throw new ArgumentNullException(nameof(dateTimeProvider));
+
             _storage = storage;
+            _storedSessionManager = storedSessionManager;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<bool> TryBeginSessionAsync(string session, DateTime leaseEnd, CancellationToken cancellation = default)
@@ -25,7 +37,7 @@ namespace AI4E.Coordination
             if (session == null)
                 throw new ArgumentNullException(nameof(session));
 
-            var newSession = _storage.CreateSession(session, leaseEnd);
+            var newSession = _storedSessionManager.Begin(session, leaseEnd);
 
             var previousSession = await _storage.UpdateSessionAsync(null, newSession, cancellation);
 
@@ -45,12 +57,12 @@ namespace AI4E.Coordination
             {
                 start = current;
 
-                if (start == null || start.IsEnded)
+                if (start == null || _storedSessionManager.IsEnded(start))
                 {
                     throw new SessionTerminatedException(session);
                 }
 
-                desired = start.UpdateLease(leaseEnd);
+                desired = _storedSessionManager.UpdateLease(start, leaseEnd);
 
                 current = await _storage.UpdateSessionAsync(start, desired, cancellation);
             }
@@ -70,12 +82,12 @@ namespace AI4E.Coordination
             {
                 start = current;
 
-                if (start == null || start.IsEnded)
+                if (start == null || _storedSessionManager.IsEnded(start))
                 {
                     return;
                 }
 
-                desired = start.End();
+                desired = _storedSessionManager.End(start);
 
                 current = await _storage.UpdateSessionAsync(start, desired, cancellation);
             }
@@ -102,10 +114,10 @@ namespace AI4E.Coordination
 
             do
             {
-                if (session.IsEnded)
+                if (_storedSessionManager.IsEnded(session))
                     return session;
 
-                var now = DateTime.Now;
+                var now = _dateTimeProvider.GetCurrentTime();
                 var timeToWait = session.LeaseEnd - now;
 
                 await Task.Delay(timeToWait, cancellation);
@@ -132,10 +144,10 @@ namespace AI4E.Coordination
 
                 foreach (var session in sessions)
                 {
-                    if (session.IsEnded)
+                    if (_storedSessionManager.IsEnded(session))
                         return session.Key;
 
-                    var now = DateTime.Now;
+                    var now = _dateTimeProvider.GetCurrentTime();
                     var timeToWait = session.LeaseEnd - now;
 
                     if (timeToWait < delay)
@@ -156,7 +168,7 @@ namespace AI4E.Coordination
 
             var s = await _storage.GetSessionAsync(session, cancellation);
 
-            return s != null && !s.IsEnded;
+            return s != null && !_storedSessionManager.IsEnded(s);
         }
 
         public async Task AddSessionEntryAsync(string session, string entry, CancellationToken cancellation = default)
@@ -175,12 +187,12 @@ namespace AI4E.Coordination
             {
                 start = current;
 
-                if (start == null || start.IsEnded)
+                if (start == null || _storedSessionManager.IsEnded(start))
                 {
                     throw new SessionTerminatedException();
                 }
 
-                desired = start.AddEntry(entry);
+                desired = _storedSessionManager.AddEntry(start, entry);
 
                 current = await _storage.UpdateSessionAsync(start, desired, cancellation);
             }
@@ -208,9 +220,9 @@ namespace AI4E.Coordination
                     return;
                 }
 
-                desired = start.RemoveEntry(entry);
+                desired = _storedSessionManager.RemoveEntry(start, entry);
 
-                if (desired.IsEnded && !desired.Entries.Any())
+                if (_storedSessionManager.IsEnded(desired) && !desired.Entries.Any())
                 {
                     desired = null;
                 }

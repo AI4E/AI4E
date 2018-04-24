@@ -54,9 +54,11 @@ namespace AI4E.Coordination
         private static readonly TimeSpan _leaseLengthHalf = new TimeSpan(_leaseLength.Ticks / 2);
 
         private readonly ICoordinationStorage _storage;
+        private readonly IStoredEntryManager _storedEntryManager;
         private readonly ISessionManager _sessionManager;
         private readonly ICoordinationCallback _callback;
         private readonly ISessionProvider _sessionProvider;
+        private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILogger<CoordinationManager> _logger;
         private readonly ConcurrentDictionary<string, IStoredEntry> _entries;
         private readonly AsyncProcess _updateSessionProcess;
@@ -65,13 +67,18 @@ namespace AI4E.Coordination
         private readonly AsyncDisposeHelper _disposeHelper;
 
         public CoordinationManager(ICoordinationStorage storage,
+                                   IStoredEntryManager storedEntryManager,
                                    ISessionManager sessionManager,
                                    ICoordinationCallback callback,
                                    ISessionProvider sessionProvider,
+                                   IDateTimeProvider dateTimeProvider,
                                    ILogger<CoordinationManager> logger)
         {
             if (storage == null)
                 throw new ArgumentNullException(nameof(storage));
+
+            if (storedEntryManager == null)
+                throw new ArgumentNullException(nameof(storedEntryManager));
 
             if (sessionManager == null)
                 throw new ArgumentNullException(nameof(sessionManager));
@@ -82,10 +89,15 @@ namespace AI4E.Coordination
             if (sessionProvider == null)
                 throw new ArgumentNullException(nameof(sessionProvider));
 
+            if (dateTimeProvider == null)
+                throw new ArgumentNullException(nameof(dateTimeProvider));
+
             _storage = storage;
+            _storedEntryManager = storedEntryManager;
             _sessionManager = sessionManager;
             _callback = callback;
             _sessionProvider = sessionProvider;
+            _dateTimeProvider = dateTimeProvider;
             _logger = logger;
             _entries = new ConcurrentDictionary<string, IStoredEntry>();
 
@@ -157,7 +169,7 @@ namespace AI4E.Coordination
         {
             Assert(session != null);
 
-            var leaseEnd = DateTime.Now + _leaseLength;
+            var leaseEnd = _dateTimeProvider.GetCurrentTime() + _leaseLength;
 
             try
             {
@@ -185,7 +197,7 @@ namespace AI4E.Coordination
 
                 Assert(session != null);
             }
-            while (!await _sessionManager.TryBeginSessionAsync(session, DateTime.Now + _leaseLength, cancellation));
+            while (!await _sessionManager.TryBeginSessionAsync(session, leaseEnd: _dateTimeProvider.GetCurrentTime() + _leaseLength, cancellation));
 
             await _updateSessionProcess.StartAsync(cancellation);
             await _sessionCleanupProcess.StartAsync(cancellation);
@@ -366,7 +378,7 @@ namespace AI4E.Coordination
 
                 await _initializationHelper.Initialization.WithCancellation(combinedCancellationSource.Token);
 
-                var entry = _storage.CreateEntry(normalizedPath, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value);
+                var entry = _storedEntryManager.Create(normalizedPath, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.ToImmutableArray());
                 var parent = (parentPath != null) ? await _storage.GetEntryAsync(parentPath, combinedCancellationSource.Token) : null;
 
                 Assert(parentPath == null || parent != null);
@@ -396,7 +408,7 @@ namespace AI4E.Coordination
                                 throw new InvalidOperationException($"Unable to create the entry. The parent entry is an ephemeral node and is not allowed to have child entries.");
                             }
 
-                            var result = _storage.UpdateEntryAsync(parent, parent.AddChild(name), cancellation);
+                            var result = _storage.UpdateEntryAsync(parent, _storedEntryManager.AddChild(parent, name), cancellation);
 
                             // We are holding the exclusive lock => No one else can alter the entry.
                             // The only exception is that out session terminates.
@@ -492,7 +504,7 @@ namespace AI4E.Coordination
 
                 if (childEntry == null)
                 {
-                    var result = _storage.UpdateEntryAsync(entry, entry.RemoveChild(child), cancellation);
+                    var result = _storage.UpdateEntryAsync(entry, _storedEntryManager.RemoveChild(entry, child), cancellation);
 
                     // We are holding the exclusive lock => No one else can alter the entry.
                     // The only exception is that out session terminates.
@@ -578,7 +590,7 @@ namespace AI4E.Coordination
 
                         // Delete the entry
                         {
-                            var result = await _storage.UpdateEntryAsync(entry, entry.Remove(), combinedCancellationSource.Token);
+                            var result = await _storage.UpdateEntryAsync(entry, _storedEntryManager.Remove(entry), combinedCancellationSource.Token);
 
                             // We are holding the exclusive lock => No one else can alter the entry.
                             // The only exception is that out session terminates.
@@ -595,7 +607,7 @@ namespace AI4E.Coordination
                             // Remove the entry from its parent
                             if (parent != null)
                             {
-                                var result = _storage.UpdateEntryAsync(parent, parent.RemoveChild(name), combinedCancellationSource.Token);
+                                var result = _storage.UpdateEntryAsync(parent, _storedEntryManager.RemoveChild(parent, name), combinedCancellationSource.Token);
 
                                 // We are holding the exclusive lock => No one else can alter the parent.
                                 // The only exception is that out session terminates.
@@ -674,7 +686,7 @@ namespace AI4E.Coordination
                         return entry.Version;
                     }
 
-                    var result = await _storage.UpdateEntryAsync(entry, entry.SetValue(value.ToImmutableArray()), combinedCancellationSource.Token);
+                    var result = await _storage.UpdateEntryAsync(entry, _storedEntryManager.SetValue(entry, value.ToImmutableArray()), combinedCancellationSource.Token);
 
                     // We are holding the exclusive lock => No one else can alter the entry.
                     // The only exception is that out session terminates.
@@ -756,7 +768,7 @@ namespace AI4E.Coordination
 
                 Assert(start.WriteLock == null);
 
-                desired = start.AcquireReadLock(session);
+                desired = _storedEntryManager.AcquireReadLock(start, session);
 
                 entry = await _storage.UpdateEntryAsync(start, desired, cancellation);
             }
@@ -791,7 +803,7 @@ namespace AI4E.Coordination
                     return null;
                 }
 
-                desired = start.ReleaseReadLock(session);
+                desired = _storedEntryManager.ReleaseReadLock(start, session);
 
                 entry = await _storage.UpdateEntryAsync(start, desired, cancellation: _disposeHelper.DisposalRequested);
             }
@@ -829,7 +841,7 @@ namespace AI4E.Coordination
 
                 Assert(start.WriteLock == null);
 
-                desired = start.AcquireWriteLock(session);
+                desired = _storedEntryManager.AcquireWriteLock(start, session);
 
                 entry = await _storage.UpdateEntryAsync(start, desired, cancellation);
             }
@@ -878,7 +890,7 @@ namespace AI4E.Coordination
                     return start;
                 }
 
-                desired = start.ReleaseWriteLock();
+                desired = _storedEntryManager.ReleaseWriteLock(start);
 
                 entry = await _storage.UpdateEntryAsync(start, desired, cancellation: _disposeHelper.DisposalRequested);
             }
@@ -1006,11 +1018,11 @@ namespace AI4E.Coordination
 
                 if (entry.WriteLock == session)
                 {
-                    desired = start.ReleaseWriteLock();
+                    desired = _storedEntryManager.ReleaseWriteLock(start);
                 }
                 else if (entry.ReadLocks.Contains(session))
                 {
-                    desired = start.ReleaseReadLock(session);
+                    desired = _storedEntryManager.ReleaseReadLock(start, session);
                 }
                 else
                 {

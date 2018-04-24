@@ -9,7 +9,7 @@ namespace AI4E.Coordination
         private static int _counter = 0;
 
         // Creates a new unique session identifier for the specified address.
-        public static string GetNextSessionFromAddress<TAddress>(TAddress address, IAddressConversion<TAddress> addressConversion)
+        public static string GetNextSessionFromAddress<TAddress>(TAddress address, IAddressConversion<TAddress> addressConversion, IDateTimeProvider dateTimeProvider)
         {
             if (address == null)
                 throw new ArgumentNullException(nameof(address));
@@ -20,6 +20,9 @@ namespace AI4E.Coordination
             if (addressConversion == null)
                 throw new ArgumentNullException(nameof(addressConversion));
 
+            if (dateTimeProvider == null)
+                throw new ArgumentNullException(nameof(dateTimeProvider));
+
             // The session is mainly the local physical address 
             // combined with a prefix to distinguish between sessions 
             // with the same physical address that live one after another.
@@ -28,7 +31,7 @@ namespace AI4E.Coordination
             // added to distinguish between sessions created at the same time.
 
             var count = Interlocked.Increment(ref _counter);
-            var ticks = DateTime.Now.Ticks + count;
+            var ticks = dateTimeProvider.GetCurrentTime().Ticks + count;
 
             var prefix = BitConverter.GetBytes(ticks);
             var serializedAddress = addressConversion.SerializeAddress(address);

@@ -16,6 +16,7 @@ namespace AI4E.Coordination
         private readonly IPhysicalEndPoint<TAddress> _physicalEndPoint;
         private readonly IProvider<ICoordinationManager> _coordinationManagerProvider;
         private readonly IAddressConversion<TAddress> _addressConversion;
+        private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILogger<CoordinationCallback<TAddress>> _logger;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
@@ -24,6 +25,7 @@ namespace AI4E.Coordination
         public CoordinationCallback(IPhysicalEndPoint<TAddress> physicalEndPoint,
                                     IProvider<ICoordinationManager> coordinationManagerProvider,
                                     IAddressConversion<TAddress> addressConversion,
+                                    IDateTimeProvider dateTimeProvider,
                                     ILogger<CoordinationCallback<TAddress>> logger)
         {
             if (physicalEndPoint == null)
@@ -35,9 +37,13 @@ namespace AI4E.Coordination
             if (addressConversion == null)
                 throw new ArgumentNullException(nameof(addressConversion));
 
+            if (dateTimeProvider == null)
+                throw new ArgumentNullException(nameof(dateTimeProvider));
+
             _physicalEndPoint = physicalEndPoint;
             _coordinationManagerProvider = coordinationManagerProvider;
             _addressConversion = addressConversion;
+            _dateTimeProvider = dateTimeProvider;
             _logger = logger;
 
             _receiveProcess = new AsyncProcess(ReceiveProcess);
@@ -48,7 +54,7 @@ namespace AI4E.Coordination
 
         public string GetSession()
         {
-            return SessionHelper.GetNextSessionFromAddress(LocalAddress, _addressConversion);
+            return SessionHelper.GetNextSessionFromAddress(LocalAddress, _addressConversion, _dateTimeProvider);
         }
 
         public async Task InvalidateCacheEntryAsync(string entry, string session, CancellationToken cancellation)
