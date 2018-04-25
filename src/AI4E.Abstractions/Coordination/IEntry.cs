@@ -31,6 +31,6 @@ namespace AI4E.Coordination
         DateTime LastWriteTime { get; }
 
         IReadOnlyList<byte> Value { get; }
-        IReadOnlyCollection<string> Children { get; }
+        IAsyncEnumerable<IEntry> Children { get; }
     }
 }

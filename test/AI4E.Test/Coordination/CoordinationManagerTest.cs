@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using AI4E.Coordination;
 using AI4E.Remoting;
@@ -44,7 +45,7 @@ namespace AI4E.Test.Coordination
             Assert.AreEqual("/", entryX.Path);
             Assert.AreEqual(1, entryX.Version);
             Assert.IsNotNull(entryX.Children);
-            Assert.AreEqual(0, entryX.Children.Count);
+            Assert.AreEqual(0, await entryX.Children.Count());
 
             Assert.IsNotNull(entryY);
             Assert.AreEqual(1, entryY.Value[0]);
@@ -54,7 +55,7 @@ namespace AI4E.Test.Coordination
             Assert.AreEqual("/", entryY.Path);
             Assert.AreEqual(1, entryY.Version);
             Assert.IsNotNull(entryY.Children);
-            Assert.AreEqual(0, entryY.Children.Count);
+            Assert.AreEqual(0, await entryY.Children.Count());
         }
 
         [TestMethod]
@@ -86,7 +87,7 @@ namespace AI4E.Test.Coordination
             Assert.AreEqual("/", entryX.Path);
             Assert.AreEqual(2, entryX.Version);
             Assert.IsNotNull(entryX.Children);
-            Assert.AreEqual(0, entryX.Children.Count);
+            Assert.AreEqual(0, await entryX.Children.Count());
 
             Assert.IsNotNull(entryY);
             Assert.AreEqual(4, entryY.Value[0]);
@@ -96,7 +97,7 @@ namespace AI4E.Test.Coordination
             Assert.AreEqual("/", entryY.Path);
             Assert.AreEqual(2, entryY.Version);
             Assert.IsNotNull(entryY.Children);
-            Assert.AreEqual(0, entryY.Children.Count);
+            Assert.AreEqual(0, await entryY.Children.Count());
         }
 
         [TestMethod]
@@ -119,7 +120,7 @@ namespace AI4E.Test.Coordination
             Assert.AreEqual("/", entryX.Path);
             Assert.AreEqual(1, entryX.Version);
             Assert.IsNotNull(entryX.Children);
-            Assert.AreEqual(0, entryX.Children.Count);
+            Assert.AreEqual(0, await entryX.Children.Count());
 
             Assert.IsNotNull(entryY);
             Assert.AreEqual(1, entryY.Value[0]);
@@ -129,7 +130,7 @@ namespace AI4E.Test.Coordination
             Assert.AreEqual("/", entryY.Path);
             Assert.AreEqual(1, entryY.Version);
             Assert.IsNotNull(entryY.Children);
-            Assert.AreEqual(0, entryY.Children.Count);
+            Assert.AreEqual(0, await entryY.Children.Count());
 
             (coordinationManagerX as IDisposable).Dispose();
 

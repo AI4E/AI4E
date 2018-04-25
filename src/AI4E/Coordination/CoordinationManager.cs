@@ -45,6 +45,7 @@ namespace AI4E.Coordination
 {
     public sealed class CoordinationManager : ICoordinationManager, IAsyncDisposable
     {
+        private static readonly ImmutableArray<byte> _emptyValue = ImmutableArray<byte>.Empty;
         private static readonly TimeSpan _leaseLength =
 #if DEBUG
         TimeSpan.FromSeconds(2);
@@ -279,7 +280,7 @@ namespace AI4E.Coordination
                 return null;
             }
 
-            return new Entry(entry);
+            return new Entry(this, entry);
         }
 
         private async Task<IStoredEntry> GetEntryAsync(string path, CancellationToken cancellation = default)
@@ -351,7 +352,7 @@ namespace AI4E.Coordination
 
         #region Create entry
 
-        public async Task CreateAsync(string path, byte[] value, EntryCreationModes modes = default, CancellationToken cancellation = default)
+        public async Task<IEntry> CreateAsync(string path, byte[] value, EntryCreationModes modes = default, CancellationToken cancellation = default)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -378,112 +379,212 @@ namespace AI4E.Coordination
 
                 await _initializationHelper.Initialization.WithCancellation(combinedCancellationSource.Token);
 
-                var entry = _storedEntryManager.Create(normalizedPath, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.ToImmutableArray());
-                var parent = (parentPath != null) ? await _storage.GetEntryAsync(parentPath, combinedCancellationSource.Token) : null;
 
-                Assert(parentPath == null || parent != null);
+                var (entry, created) = await CreateInternalAsync(normalizedPath,
+                                                      parentPath,
+                                                      name,
+                                                      value,
+                                                      session,
+                                                      modes,
+                                                      releaseLock: true,
+                                                      combinedCancellationSource.Token);
+
+                // There is already an entry present.
+                if (!created)
+                {
+                    throw new DuplicateEntryException(normalizedPath);
+                }
+
                 Assert(entry != null);
+
+                // This must not be places in the cache as we do not own a read lock for it.
+                return new Entry(this, entry);
+            }
+        }
+
+        public async Task<IEntry> GetOrCreateAsync(string path, byte[] value, EntryCreationModes modes = default, CancellationToken cancellation = default)
+        {
+            if (path == null)
+                throw new ArgumentNullException(nameof(path));
+
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
+
+            if (modes < 0 || modes > EntryCreationModes.Ephemeral)
+                throw new ArgumentOutOfRangeException(nameof(modes), $"The argument must be one or a combination of the values defined in '{nameof(EntryCreationModes)}'.");
+
+            var session = await GetSessionAsync(cancellation);
+
+            if (!await _sessionManager.IsAliveAsync(session))
+                throw new SessionTerminatedException();
+
+            var normalizedPath = EntryPathHelper.NormalizePath(path);
+            var parentPath = EntryPathHelper.GetParentPath(normalizedPath, out var name, normalize: false);
+            var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
+
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            {
+                if (_disposeHelper.IsDisposed)
+                    throw new ObjectDisposedException(GetType().FullName);
+
+                await _initializationHelper.Initialization.WithCancellation(combinedCancellationSource.Token);
+
+
+                var (entry, _) = await CreateInternalAsync(normalizedPath,
+                                                      parentPath,
+                                                      name,
+                                                      value,
+                                                      session,
+                                                      modes,
+                                                      releaseLock: true,
+                                                      combinedCancellationSource.Token);
+
+                Assert(entry != null);
+
+                // TODO: Throw if the entry did already exists but with other creation-modes than specified?
+
+                // This must not be places in the cache as we do not own a read lock for it.
+                return new Entry(this, entry);
+            }
+        }
+
+        private async Task<(IStoredEntry entry, bool created)> CreateInternalAsync(string normalizedPath,
+                                                             string parentPath,
+                                                             string name,
+                                                             byte[] value,
+                                                             string session,
+                                                             EntryCreationModes modes,
+                                                             bool releaseLock,
+                                                             CancellationToken cancellation)
+        {
+            Assert(normalizedPath != null);
+            Assert(name != null);
+            Assert(value != null);
+
+            Assert(modes >= 0 && modes <= EntryCreationModes.Ephemeral);
+
+            var entry = _storedEntryManager.Create(normalizedPath, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.ToImmutableArray());
+            var parent = (parentPath != null) ? await _storage.GetEntryAsync(parentPath, cancellation) : null;
+
+            Assert(entry != null);
+
+            try
+            {
+                if ((modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral)
+                {
+                    await _sessionManager.AddSessionEntryAsync(session, normalizedPath, cancellation);
+                }
 
                 try
                 {
-                    if ((modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral)
+                    // This is not the root node.
+                    if (parentPath != null)
                     {
-                        await _sessionManager.AddSessionEntryAsync(session, normalizedPath, combinedCancellationSource.Token);
-                    }
+                        parent = await EnsureOwningParentWriteLock(parent, parentPath, session, cancellation);
 
-                    try
-                    {
-                        // This is not the root node.
-                        if (parent != null)
+                        Assert(parent != null);
+
+                        if (parent.EphemeralOwner != null)
                         {
-                            parent = await AcquireWriteLockAsync(parent, cancellation);
-
-                            if (parent == null)
-                            {
-                                throw new InvalidOperationException($"Unable to create the entry. The parent entry with the path '{parentPath}' cannot be found.");
-                            }
-
-                            if (parent.EphemeralOwner != null)
-                            {
-                                throw new InvalidOperationException($"Unable to create the entry. The parent entry is an ephemeral node and is not allowed to have child entries.");
-                            }
-
-                            var result = _storage.UpdateEntryAsync(parent, _storedEntryManager.AddChild(parent, name), cancellation);
-
-                            // We are holding the exclusive lock => No one else can alter the entry.
-                            // The only exception is that out session terminates.
-                            if (result != entry)
-                            {
-                                throw new SessionTerminatedException();
-                            }
-
-                            Assert(result == entry);
+                            throw new InvalidOperationException($"Unable to create the entry. The parent entry is an ephemeral node and is not allowed to have child entries.");
                         }
 
-                        entry = await CreateCoreAsync(entry, combinedCancellationSource);
+                        var result = _storage.UpdateEntryAsync(parent, _storedEntryManager.AddChild(parent, name), cancellation);
 
-                        // There is already an entry present.
-                        if (entry == null)
+                        // We are holding the exclusive lock => No one else can alter the entry.
+                        // The only exception is that out session terminates.
+                        if (result != entry)
                         {
-                            throw new DuplicateEntryException(normalizedPath);
+                            throw new SessionTerminatedException();
                         }
 
+                        Assert(result == entry);
                     }
-                    catch (SessionTerminatedException) { throw; }
-                    catch (DuplicateEntryException) { throw; }
-                    catch
-                    {
-                        // This is not the root node and the parent node was found. 
-                        // We did not successfully create the entry.
-                        if (parent != null && entry != null)
-                        {
-                            await RemoveChildEntryAsync(parent, name, cancellation: default);
-                        }
 
-                        throw;
-                    }
-                    finally
-                    {
-                        // Releasing a write lock we do not own is a no op.
-                        await ReleaseWriteLockAsync(parent);
-                    }
+                    return await CreateCoreAsync(entry, releaseLock, cancellation);
                 }
                 catch (SessionTerminatedException) { throw; }
-                catch (DuplicateEntryException) { throw; }
                 catch
                 {
-                    if ((modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral)
+                    // This is not the root node and the parent node was found. 
+                    // We did not successfully create the entry.
+                    if (parentPath != null && entry != null)
                     {
-                        await _sessionManager.RemoveSessionEntryAsync(session, normalizedPath, combinedCancellationSource.Token);
+                        await RemoveChildEntryAsync(parent, name, cancellation: default);
                     }
 
                     throw;
                 }
+                finally
+                {
+                    // Releasing a write lock we do not own is a no op.
+                    await ReleaseWriteLockAsync(parent);
+                }
+            }
+            catch (SessionTerminatedException) { throw; }
+            catch
+            {
+                if ((modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral)
+                {
+                    await _sessionManager.RemoveSessionEntryAsync(session, normalizedPath, cancellation);
+                }
+
+                throw;
             }
         }
 
-        private async Task<IStoredEntry> CreateCoreAsync(IStoredEntry entry, CancellationTokenSource cancellation)
+        private async Task<IStoredEntry> EnsureOwningParentWriteLock(IStoredEntry parent, string normalizedPath, string session, CancellationToken cancellation)
+        {
+            while (true)
+            {
+                // Try to aquire the write lock
+                parent = await AcquireWriteLockAsync(parent, cancellation);
+
+                // Unable to acquire write lock. Parent does not exist.
+                if (parent == null)
+                {
+                    var parentPath = EntryPathHelper.GetParentPath(normalizedPath, out var name, normalize: false);
+                    bool created;
+
+                    (parent, created) = await CreateInternalAsync(normalizedPath, parentPath, name, new byte[0], session, EntryCreationModes.Default, releaseLock: false, cancellation);
+
+                    // The parent does already exist.
+                    if (!created)
+                    {
+                        continue;
+                    }
+                }
+
+                // The parent does exist now and we own the write lock.
+                return parent;
+            }
+        }
+
+        private async Task<(IStoredEntry entry, bool created)> CreateCoreAsync(IStoredEntry entry, bool releaseLock, CancellationToken cancellation)
         {
             Assert(entry != null);
 
             try
             {
-                var result = await _storage.UpdateEntryAsync(comparand: null, entry, cancellation.Token);
+                var result = await _storage.UpdateEntryAsync(comparand: null, entry, cancellation);
 
                 // There is already an entry present
                 if (result != null)
                 {
-                    entry = null;
+                    return (result, false);
                 }
 
-                return entry;
+                return (entry, true);
             }
             finally
             {
-                // If we created the entry successfully, we own the write lock and must unlock now.
-                // If an entry was already present, we must not release the write lock (we do not own it).
-                // entry is null in this case and ReleaseWriteLockAsync is a no-op.
-                await ReleaseWriteLockAsync(entry);
+                if (releaseLock)
+                {
+                    // If we created the entry successfully, we own the write lock and must unlock now.
+                    // If an entry was already present, we must not release the write lock (we do not own it).
+                    // entry is null in this case and ReleaseWriteLockAsync is a no-op.
+                    await ReleaseWriteLockAsync(entry);
+                }
             }
         }
 
@@ -774,10 +875,9 @@ namespace AI4E.Coordination
             }
             while (start != entry);
 
-            if (entry != null)
-            {
-                _logger?.LogTrace($"({session}): Acquired read-lock for entry '{entry.Path}'.");
-            }
+            Assert(entry != null);
+
+            _logger?.LogTrace($"({session}): Acquired read-lock for entry '{entry.Path}'.");
 
             return desired;
         }
@@ -809,10 +909,9 @@ namespace AI4E.Coordination
             }
             while (start != entry);
 
-            if (entry != null)
-            {
-                _logger?.LogTrace($"({session}): Released read-lock for entry '{entry.Path}'.");
-            }
+            Assert(entry != null);
+
+            _logger?.LogTrace($"({session}): Released read-lock for entry '{entry.Path}'.");
 
             return desired;
         }
@@ -847,25 +946,27 @@ namespace AI4E.Coordination
             }
             while (entry != start);
 
-            if (entry != null)
-            {
-                _logger?.LogTrace($"({session}): Pending write-lock for entry '{entry.Path}'. Waiting for read-locks to release.");
-            }
+            entry = desired;
+
+            Assert(entry != null);
+
+            _logger?.LogTrace($"({session}): Pending write-lock for entry '{entry.Path}'. Waiting for read-locks to release.");
 
             try
             {
-                entry = await WaitForReadLocksReleaseAsync(desired, cancellation);
+                entry = await WaitForReadLocksReleaseAsync(entry, cancellation);
 
-                if (entry != null)
-                {
-                    _logger?.LogTrace($"({session}): Acquired write-lock for entry '{entry.Path}'.");
-                }
+                // We hold the write lock. No-one can alter the entry except for our session is terminated. But this will cause WaitForReadLocksReleaseAsync to throw.
+                Assert(entry != null);
+
+                _logger?.LogTrace($"({session}): Acquired write-lock for entry '{entry.Path}'.");
 
                 return entry;
             }
-            finally
+            catch
             {
-                await ReleaseReadLockAsync(entry); // TODO: What is this thing for?
+                await ReleaseWriteLockAsync(entry);
+                throw;
             }
         }
 
@@ -922,7 +1023,6 @@ namespace AI4E.Coordination
                 {
                     return entry;
                 }
-
 
                 var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
 
@@ -1124,14 +1224,22 @@ namespace AI4E.Coordination
 
         private sealed class Entry : IEntry
         {
-            public Entry(IStoredEntry entry)
+            private readonly ImmutableArray<string> _children;
+            private readonly CoordinationManager _coordinationManager;
+
+            public Entry(CoordinationManager coordinationManager, IStoredEntry entry)
             {
+                Assert(coordinationManager != null);
+                Assert(entry != null);
+
                 Path = entry.Path;
                 Version = entry.Version;
                 CreationTime = entry.CreationTime;
                 LastWriteTime = entry.LastWriteTime;
                 Value = entry.Value;
-                Children = entry.Childs;
+                _children = entry.Childs;
+                _coordinationManager = coordinationManager;
+                Children = new ChildrenEnumerable(this);
             }
 
             public string Path { get; }
@@ -1144,7 +1252,67 @@ namespace AI4E.Coordination
 
             public IReadOnlyList<byte> Value { get; }
 
-            public IReadOnlyCollection<string> Children { get; }
+            public IAsyncEnumerable<IEntry> Children { get; }
+
+            private sealed class ChildrenEnumerable : IAsyncEnumerable<IEntry>
+            {
+                private readonly Entry _entry;
+
+                public ChildrenEnumerable(Entry entry)
+                {
+                    Assert(entry != null);
+
+                    _entry = entry;
+                }
+
+                public IAsyncEnumerator<IEntry> GetEnumerator()
+                {
+                    return new ChildrenEnumerator(_entry);
+                }
+            }
+
+            private sealed class ChildrenEnumerator : IAsyncEnumerator<IEntry>
+            {
+                private readonly Entry _entry;
+
+                private IEntry _current = default;
+                private int _currentIndex = -1;
+
+                public ChildrenEnumerator(Entry entry)
+                {
+                    Assert(entry != null);
+
+                    _entry = entry;
+                }
+
+                public async Task<bool> MoveNext(CancellationToken cancellationToken)
+                {
+                    string child;
+
+                    do
+                    {
+                        var index = ++_currentIndex;
+
+                        if (index >= _entry._children.Length)
+                        {
+                            return false;
+                        }
+
+                        child = _entry._children[index];
+                    }
+                    while (child == null);
+
+                    var childFullName = EntryPathHelper.GetChildPath(_entry.Path, child, normalize: false);
+
+                    _current = await _entry._coordinationManager.GetAsync(childFullName, cancellationToken);
+
+                    return true;
+                }
+
+                public IEntry Current => _current;
+
+                public void Dispose() { }
+            }
         }
     }
 }

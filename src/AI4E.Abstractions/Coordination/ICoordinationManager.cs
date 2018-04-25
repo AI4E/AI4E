@@ -26,7 +26,9 @@ namespace AI4E.Coordination
 {
     public interface ICoordinationManager
     {
-        Task CreateAsync(string path, byte[] value, EntryCreationModes modes = default, CancellationToken cancellation = default);
+        Task<IEntry> CreateAsync(string path, byte[] value, EntryCreationModes modes = default, CancellationToken cancellation = default);
+
+        Task<IEntry> GetOrCreateAsync(string path, byte[] value, EntryCreationModes modes = default, CancellationToken cancellation = default);
 
         Task<IEntry> GetAsync(string path, CancellationToken cancellation = default);
 
