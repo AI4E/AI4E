@@ -565,28 +565,34 @@ namespace AI4E.Coordination
         {
             Assert(entry != null);
 
+            var created = false;
+            IStoredEntry result;
+
             try
             {
-                var result = await _storage.UpdateEntryAsync(comparand: null, entry, cancellation);
+                var comparand = await _storage.UpdateEntryAsync(comparand: null, entry, cancellation);
 
                 // There is already an entry present
-                if (result != null)
+                if (comparand != null)
                 {
-                    return (result, false);
+                    (result, created) = (comparand, false);
                 }
-
-                return (entry, true);
+                else
+                {
+                    (result, created) = (entry, true);
+                }
             }
             finally
             {
-                if (releaseLock)
+                // If we created the entry successfully, we own the write lock and must unlock now.
+                // If an entry was not created, we must not release the write lock (we do not own it).
+                if (releaseLock && created)
                 {
-                    // If we created the entry successfully, we own the write lock and must unlock now.
-                    // If an entry was already present, we must not release the write lock (we do not own it).
-                    // entry is null in this case and ReleaseWriteLockAsync is a no-op.
                     await ReleaseWriteLockAsync(entry);
                 }
             }
+
+            return (result, created);
         }
 
         private async Task<IStoredEntry> RemoveChildEntryAsync(IStoredEntry entry, string child, CancellationToken cancellation)
