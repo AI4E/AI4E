@@ -82,7 +82,6 @@ namespace AI4E.Routing
                 throw new ArgumentDefaultException(nameof(address));
 
             var route = localEndPoint.Route;
-            var routeEntry = await GetRouteEntryAsync(route, cancellation);
             var session = await _coordinationManager.GetSessionAsync(cancellation);
             var path = GetPath(route, session);
 

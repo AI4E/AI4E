@@ -1,140 +1,154 @@
-﻿//using System;
-//using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-//using System.Threading;
-//using System.Threading.Tasks;
-//using AI4E.Coordination;
-//using static System.Diagnostics.Debug;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using AI4E.Coordination;
+using static System.Diagnostics.Debug;
 
-//namespace AI4E.Routing
-//{
-//    public sealed class RouteManager : IRouteStore
-//    {
-//        private const string _routesRootPath = "/routes";
+namespace AI4E.Routing
+{
+    public sealed class RouteManager : IRouteStore
+    {
+        private const string _routesRootPath = "/routes";
 
-//        private static readonly string[] _seperatorStrings = { "/", "\\" };
-//        private static readonly char[] _seperatorChars = { '/', '\\' };
-//        private const char _escapeChar = '-';
-//        private const string _escapeString = "-";
+        private const char _escapeChar = '-';
 
-//        private const string _escapedEscapeString = "--";
-//        private const string _escapedSeperatorString = "-/";
+        private readonly ICoordinationManager _coordinationManager;
 
+        public RouteManager(ICoordinationManager coordinationManager)
+        {
+            if (coordinationManager == null)
+                throw new ArgumentNullException(nameof(coordinationManager));
 
-//        private readonly ICoordinationManager _coordinationManager;
+            _coordinationManager = coordinationManager;
+        }
 
-//        public RouteManager(ICoordinationManager coordinationManager)
-//        {
-//            if (coordinationManager == null)
-//                throw new ArgumentNullException(nameof(coordinationManager));
+        private static string GetPath(string messageType)
+        {
+            var messageTypeB = new StringBuilder(messageType.Length + EscapeHelper.CountCharsToEscape(messageType));
+            messageTypeB.Append(messageType);
+            EscapeHelper.Escape(messageTypeB, startIndex: 0);
 
-//            _coordinationManager = coordinationManager;
-//        }
+            return EntryPathHelper.GetChildPath(_routesRootPath, messageType.ToString(), normalize: false);
+        }
 
-//        private static string GetPath(string messageType)
-//        {
-//            var messageTypeB = new StringBuilder(messageType.Length + CountCharsToEscape(messageType));
-//            messageTypeB.Append(messageType);
-//            Escape(messageTypeB, startIndex: 0);
+        private static string GetPath(string messageType, string route, string session)
+        {
+            return EntryPathHelper.GetChildPath(GetPath(messageType), GetEntryName(route, session));
+        }
 
-//            return EntryPathHelper.GetChildPath(_routesRootPath, messageType.ToString(), normalize: false);
-//        }
+        // Gets the entry name that is roughly {route}->{session}
+        private static string GetEntryName(string route, string session)
+        {
+            var resultsBuilder = new StringBuilder(route.Length +
+                                                   session.Length +
+                                                   EscapeHelper.CountCharsToEscape(route) +
+                                                   EscapeHelper.CountCharsToEscape(session) +
+                                                   1);
+            resultsBuilder.Append(route);
 
-//        private static int CountCharsToEscape(string str)
-//        {
-//            return str.Count(p => _seperatorChars.Contains(p) || p == _escapeChar);
-//        }
+            EscapeHelper.Escape(resultsBuilder, 0);
 
-//        private static string GetPath(string messageType, string route, string session)
-//        {
-//            return EntryPathHelper.GetChildPath(GetPath(messageType), GetEntryName(route, session));
-//        }
+            var sepIndex = resultsBuilder.Length;
 
-//        // Gets the entry name that is roughly {route}-){session}
-//        private static string GetEntryName(string route, string session)
-//        {
-//            var resultsBuilder = new StringBuilder(route.Length +
-//                                                   session.Length +
-//                                                   CountCharsToEscape(route) +
-//                                                   CountCharsToEscape(session) +
-//                                                   1);
-//            resultsBuilder.Append(route);
+            resultsBuilder.Append(' ');
+            resultsBuilder.Append(' ');
 
-//            Escape(resultsBuilder, 0);
+            resultsBuilder.Append(session);
 
-//            var sepIndex = resultsBuilder.Length;
+            EscapeHelper.Escape(resultsBuilder, sepIndex + 2);
 
-//            resultsBuilder.Append(' ');
-//            resultsBuilder.Append(' ');
+            resultsBuilder[sepIndex] = _escapeChar;
+            resultsBuilder[sepIndex + 1] = '>'; // We need to ensure that the created entry is unique. Append any char that is neither - nor / not \
 
-//            resultsBuilder.Append(session);
+            return resultsBuilder.ToString();
 
-//            Escape(resultsBuilder, sepIndex + 2);
+        }
 
-//            resultsBuilder[sepIndex] = _escapeChar;
-//            resultsBuilder[sepIndex + 1] = ')'; // We need to ensure that the created entry is unique. Append any char that is neither - nor /
+        private static string ExtractRoute(string path)
+        {
+            var index = path.IndexOf("->");
 
-//            return resultsBuilder.ToString();
+            if (index == -1)
+            {
+                // TODO: Log warning
+                return null;
+            }
 
-//        }
+            var resultBuilder = new StringBuilder(path, startIndex: 0, length: index, capacity: index);
 
-//        private static void Escape(StringBuilder str, int startIndex)
-//        {
-//            // Replace all occurances of - with --
-//            str.Replace(_escapeString, _escapedEscapeString, startIndex, str.Length - startIndex);
+            EscapeHelper.Unescape(resultBuilder, startIndex: 0);
 
-//            // Replace all occurances of / and \ with -/
-//            foreach (var seperator in _seperatorStrings)
-//            {
-//                str.Replace(seperator, _escapedSeperatorString, startIndex, str.Length - startIndex);
-//            }
-//        }
+            return resultBuilder.ToString();
+        }
 
-//        public Task<bool> AddRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
-//        {
-//            if (localEndPoint == null)
-//                throw new ArgumentNullException(nameof(localEndPoint));
+        // TODO: Remove return value
+        public async Task<bool> AddRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
+        {
+            if (localEndPoint == null)
+                throw new ArgumentNullException(nameof(localEndPoint));
 
-//            if (string.IsNullOrWhiteSpace(messageType))
-//                throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
+            if (string.IsNullOrWhiteSpace(messageType))
+                throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
 
+            var route = localEndPoint.Route;
+            var session = await _coordinationManager.GetSessionAsync(cancellation);
+            var path = GetPath(messageType, route, session);
 
-//        }
+            await _coordinationManager.GetOrCreateAsync(path, new byte[0], EntryCreationModes.Ephemeral, cancellation);
 
-//        public Task<bool> RemoveRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
-//        {
-//            if (localEndPoint == null)
-//                throw new ArgumentNullException(nameof(localEndPoint));
+            return true;
+        }
 
-//            if (string.IsNullOrWhiteSpace(messageType))
-//                throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
+        // TODO: Remove return value
+        public async Task<bool> RemoveRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
+        {
+            if (localEndPoint == null)
+                throw new ArgumentNullException(nameof(localEndPoint));
 
+            if (string.IsNullOrWhiteSpace(messageType))
+                throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
 
-//        }
+            var route = localEndPoint.Route;
+            var session = await _coordinationManager.GetSessionAsync(cancellation);
+            var path = GetPath(messageType, route, session);
 
-//        public Task RemoveRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
-//        {
-//            if (localEndPoint == null)
-//                throw new ArgumentNullException(nameof(localEndPoint));
+            await _coordinationManager.DeleteAsync(path, cancellation: cancellation);
 
+            return true;
+        }
 
-//        }
+        // TODO: Remove
+        public Task RemoveRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
+        {
+            if (localEndPoint == null)
+                throw new ArgumentNullException(nameof(localEndPoint));
 
-//        public Task<IEnumerable<EndPointRoute>> GetRoutesAsync(string messageType, CancellationToken cancellation)
-//        {
-//            if (messageType == null)
-//                throw new ArgumentNullException(nameof(messageType));
+            throw new NotImplementedException();
+        }
 
-//            if (string.IsNullOrWhiteSpace(messageType))
-//                throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
+        public async Task<IEnumerable<EndPointRoute>> GetRoutesAsync(string messageType, CancellationToken cancellation)
+        {
+            if (messageType == null)
+                throw new ArgumentNullException(nameof(messageType));
 
+            if (string.IsNullOrWhiteSpace(messageType))
+                throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
 
-//        }
+            var path = GetPath(messageType);
+            var entry = await _coordinationManager.GetOrCreateAsync(path, new byte[0], EntryCreationModes.Default, cancellation);
 
-//        public Task<IEnumerable<EndPointRoute>> GetRoutesAsync(CancellationToken cancellation)
-//        {
+            Assert(entry != null);
 
-//        }
-//    }
-//}
+            return await entry.Children.Select(p => EndPointRoute.CreateRoute(ExtractRoute(p.Path))).Distinct().ToArray();
+        }
+
+        // TODO: Remove
+        public Task<IEnumerable<EndPointRoute>> GetRoutesAsync(CancellationToken cancellation)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}
