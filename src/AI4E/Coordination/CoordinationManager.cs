@@ -489,16 +489,14 @@ namespace AI4E.Coordination
                             throw new InvalidOperationException($"Unable to create the entry. The parent entry is an ephemeral node and is not allowed to have child entries.");
                         }
 
-                        var result = _storage.UpdateEntryAsync(parent, _storedEntryManager.AddChild(parent, name), cancellation);
+                        var result = await _storage.UpdateEntryAsync(parent, _storedEntryManager.AddChild(parent, name), cancellation);
 
                         // We are holding the exclusive lock => No one else can alter the entry.
                         // The only exception is that out session terminates.
-                        if (result != entry)
+                        if (!AreVersionEqual(result, parent))
                         {
                             throw new SessionTerminatedException();
                         }
-
-                        Assert(result == entry);
                     }
 
                     return await CreateCoreAsync(entry, releaseLock, cancellation);
@@ -555,6 +553,9 @@ namespace AI4E.Coordination
                     }
                 }
 
+                Assert(parent != null);
+                Assert(parent.WriteLock == session);
+
                 // The parent does exist now and we own the write lock.
                 return parent;
             }
@@ -605,11 +606,11 @@ namespace AI4E.Coordination
 
                 if (childEntry == null)
                 {
-                    var result = _storage.UpdateEntryAsync(entry, _storedEntryManager.RemoveChild(entry, child), cancellation);
+                    var result = await _storage.UpdateEntryAsync(entry, _storedEntryManager.RemoveChild(entry, child), cancellation);
 
                     // We are holding the exclusive lock => No one else can alter the entry.
                     // The only exception is that out session terminates.
-                    if (result != entry)
+                    if (!AreVersionEqual(result, entry))
                     {
                         throw new SessionTerminatedException();
                     }

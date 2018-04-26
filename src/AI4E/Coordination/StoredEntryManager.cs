@@ -40,7 +40,7 @@ namespace AI4E.Coordination
             return new StoredEntry(key,
                                    value,
                                    _noReadLocks,
-                                   writeLock: null,
+                                   writeLock: session,
                                    _noChilds,
                                    version: 1,
                                    storageVersion: 1,

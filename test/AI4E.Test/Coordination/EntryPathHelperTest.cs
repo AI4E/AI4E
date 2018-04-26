@@ -59,6 +59,10 @@ namespace AI4E.Test.Coordination
             Assert.IsNull(parentPath);
             Assert.AreEqual("", name);
 
+            path = "/a";
+            parentPath = EntryPathHelper.GetParentPath(path, out name, normalize: true);
+            Assert.AreEqual("/", parentPath);
+            Assert.AreEqual("a", name);
         }
 
         [TestMethod]

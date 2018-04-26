@@ -53,7 +53,7 @@ namespace AI4E.Coordination
             var lastIndexOfSeparator = normalizedPath.LastIndexOf(_seperatorChar);
 
             // This is the root node.
-            if (lastIndexOfSeparator == 0)
+            if (path.Length == 1 && lastIndexOfSeparator == 0)
             {
                 childName = string.Empty;
                 return null;
@@ -63,6 +63,13 @@ namespace AI4E.Coordination
             Assert(lastIndexOfSeparator < normalizedPath.Length - 1);
 
             childName = normalizedPath.Substring(lastIndexOfSeparator + 1);
+
+            // The parent node is the root node
+            if (lastIndexOfSeparator == 0)
+            {
+                return "/";
+            }
+
             return normalizedPath.Substring(0, lastIndexOfSeparator);
         }
 
