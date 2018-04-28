@@ -29,47 +29,10 @@ namespace AI4E.Routing
             _addressConversion = addressConversion;
         }
 
-        public async Task<IEnumerable<TAddress>> GetMapsAsync(EndPointRoute endPoint, CancellationToken cancellation)
-        {
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+        #region IRouteMap<TAddress>
 
-            var route = endPoint.Route;
-            var routeEntry = await GetRouteEntryAsync(route, cancellation);
-
-            Assert(routeEntry != null);
-
-            var entries = routeEntry.Children;
-
-            return await entries.Select(p => _addressConversion.DeserializeAddress(p.Value.ToArray())).ToArray(cancellation);
-        }
-
-        private Task<IEntry> GetRouteEntryAsync(string route, CancellationToken cancellation)
-        {
-            var path = GetPath(route);
-            return _coordinationManager.GetOrCreateAsync(path, new byte[0], EntryCreationModes.Default, cancellation);
-        }
-
-        private static string GetPath(string route)
-        {
-            var escapedRoute = new StringBuilder(EscapeHelper.CountCharsToEscape(route) + route.Length);
-            escapedRoute.Append(route);
-            EscapeHelper.Escape(escapedRoute, 0);
-
-            return EntryPathHelper.GetChildPath(_mapsRootPath, escapedRoute.ToString(), normalize: false);
-        }
-
-        private static string GetPath(string route, string session)
-        {
-            var escapedSession = new StringBuilder(EscapeHelper.CountCharsToEscape(session) + session.Length);
-            escapedSession.Append(session);
-            EscapeHelper.Escape(escapedSession, 0);
-
-            return EntryPathHelper.GetChildPath(GetPath(route), escapedSession.ToString(), normalize: false);
-        }
-
-        // TODO: Remove leaseEnd as this is not needed any more.
-        // TODO: Why does this return bool?
+        // TODO: Remove leaseEnd
+        // TODO: Remove return value
         public async Task<bool> MapRouteAsync(EndPointRoute localEndPoint, TAddress address, DateTime leaseEnd, CancellationToken cancellation)
         {
             if (localEndPoint == null)
@@ -90,7 +53,7 @@ namespace AI4E.Routing
             return true;
         }
 
-        // TODO: Why does this return bool?
+        // TODO: Remove return value
         public async Task<bool> UnmapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation)
         {
             if (localEndPoint == null)
@@ -121,6 +84,47 @@ namespace AI4E.Routing
             var path = GetPath(route);
 
             await _coordinationManager.DeleteAsync(path, recursive: true, cancellation: cancellation);
+        }
+
+        public async Task<IEnumerable<TAddress>> GetMapsAsync(EndPointRoute endPoint, CancellationToken cancellation)
+        {
+            if (endPoint == null)
+                throw new ArgumentNullException(nameof(endPoint));
+
+            var route = endPoint.Route;
+            var routeEntry = await GetRouteEntryAsync(route, cancellation);
+
+            Assert(routeEntry != null);
+
+            var entries = routeEntry.Children;
+
+            return await entries.Select(p => _addressConversion.DeserializeAddress(p.Value.ToArray())).ToArray(cancellation);
+        }
+
+        #endregion
+
+        private Task<IEntry> GetRouteEntryAsync(string route, CancellationToken cancellation)
+        {
+            var path = GetPath(route);
+            return _coordinationManager.GetOrCreateAsync(path, new byte[0], EntryCreationModes.Default, cancellation);
+        }
+
+        private static string GetPath(string route)
+        {
+            var escapedRoute = new StringBuilder(EscapeHelper.CountCharsToEscape(route) + route.Length);
+            escapedRoute.Append(route);
+            EscapeHelper.Escape(escapedRoute, 0);
+
+            return EntryPathHelper.GetChildPath(_mapsRootPath, escapedRoute.ToString(), normalize: false);
+        }
+
+        private static string GetPath(string route, string session)
+        {
+            var escapedSession = new StringBuilder(EscapeHelper.CountCharsToEscape(session) + session.Length);
+            escapedSession.Append(session);
+            EscapeHelper.Escape(escapedSession, 0);
+
+            return EntryPathHelper.GetChildPath(GetPath(route), escapedSession.ToString(), normalize: false);
         }
     }
 }

@@ -12,8 +12,7 @@ namespace AI4E.Routing
     public sealed class RouteManager : IRouteStore
     {
         private const string _routesRootPath = "/routes";
-
-        private const char _escapeChar = '-';
+        private const string _seperatorString = "->";
 
         private readonly ICoordinationManager _coordinationManager;
 
@@ -25,64 +24,7 @@ namespace AI4E.Routing
             _coordinationManager = coordinationManager;
         }
 
-        private static string GetPath(string messageType)
-        {
-            var messageTypeB = new StringBuilder(messageType.Length + EscapeHelper.CountCharsToEscape(messageType));
-            messageTypeB.Append(messageType);
-            EscapeHelper.Escape(messageTypeB, startIndex: 0);
-
-            return EntryPathHelper.GetChildPath(_routesRootPath, messageType.ToString(), normalize: false);
-        }
-
-        private static string GetPath(string messageType, string route, string session)
-        {
-            return EntryPathHelper.GetChildPath(GetPath(messageType), GetEntryName(route, session));
-        }
-
-        // Gets the entry name that is roughly {route}->{session}
-        private static string GetEntryName(string route, string session)
-        {
-            var resultsBuilder = new StringBuilder(route.Length +
-                                                   session.Length +
-                                                   EscapeHelper.CountCharsToEscape(route) +
-                                                   EscapeHelper.CountCharsToEscape(session) +
-                                                   1);
-            resultsBuilder.Append(route);
-
-            EscapeHelper.Escape(resultsBuilder, 0);
-
-            var sepIndex = resultsBuilder.Length;
-
-            resultsBuilder.Append(' ');
-            resultsBuilder.Append(' ');
-
-            resultsBuilder.Append(session);
-
-            EscapeHelper.Escape(resultsBuilder, sepIndex + 2);
-
-            resultsBuilder[sepIndex] = _escapeChar;
-            resultsBuilder[sepIndex + 1] = '>'; // We need to ensure that the created entry is unique. Append any char that is neither - nor / not \
-
-            return resultsBuilder.ToString();
-
-        }
-
-        private static string ExtractRoute(string path)
-        {
-            var index = path.IndexOf("->");
-
-            if (index == -1)
-            {
-                // TODO: Log warning
-                return null;
-            }
-
-            var resultBuilder = new StringBuilder(path, startIndex: 0, length: index, capacity: index);
-
-            EscapeHelper.Unescape(resultBuilder, startIndex: 0);
-
-            return resultBuilder.ToString();
-        }
+        #region IRouteStore
 
         // TODO: Remove return value
         public async Task<bool> AddRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
@@ -120,15 +62,6 @@ namespace AI4E.Routing
             return true;
         }
 
-        // TODO: Remove
-        public Task RemoveRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
-        {
-            if (localEndPoint == null)
-                throw new ArgumentNullException(nameof(localEndPoint));
-
-            throw new NotImplementedException();
-        }
-
         public async Task<IEnumerable<EndPointRoute>> GetRoutesAsync(string messageType, CancellationToken cancellation)
         {
             if (messageType == null)
@@ -143,6 +76,77 @@ namespace AI4E.Routing
             Assert(entry != null);
 
             return await entry.Children.Select(p => EndPointRoute.CreateRoute(ExtractRoute(p.Path))).Distinct().ToArray();
+        }
+
+        #endregion
+
+        private static string GetPath(string messageType)
+        {
+            var messageTypeB = new StringBuilder(messageType.Length + EscapeHelper.CountCharsToEscape(messageType));
+            messageTypeB.Append(messageType);
+            EscapeHelper.Escape(messageTypeB, startIndex: 0);
+
+            return EntryPathHelper.GetChildPath(_routesRootPath, messageType.ToString(), normalize: false);
+        }
+
+        private static string GetPath(string messageType, string route, string session)
+        {
+            return EntryPathHelper.GetChildPath(GetPath(messageType), GetEntryName(route, session));
+        }
+
+        // Gets the entry name that is roughly {route}->{session}
+        private static string GetEntryName(string route, string session)
+        {
+            var resultsBuilder = new StringBuilder(route.Length +
+                                                   session.Length +
+                                                   EscapeHelper.CountCharsToEscape(route) +
+                                                   EscapeHelper.CountCharsToEscape(session) +
+                                                   1);
+            resultsBuilder.Append(route);
+
+            EscapeHelper.Escape(resultsBuilder, 0);
+
+            var sepIndex = resultsBuilder.Length;
+
+            resultsBuilder.Append(' ');
+            resultsBuilder.Append(' ');
+
+            resultsBuilder.Append(session);
+
+            EscapeHelper.Escape(resultsBuilder, sepIndex + 2);
+
+            // We need to ensure that the created entry is unique. Append any char that is neither - nor / not \
+            resultsBuilder[sepIndex] = _seperatorString[0];
+            resultsBuilder[sepIndex + 1] = _seperatorString[1];
+
+            return resultsBuilder.ToString();
+
+        }
+
+        private static string ExtractRoute(string path)
+        {
+            var index = path.IndexOf(_seperatorString);
+
+            if (index == -1)
+            {
+                // TODO: Log warning
+                return null;
+            }
+
+            var resultBuilder = new StringBuilder(path, startIndex: 0, length: index, capacity: index);
+
+            EscapeHelper.Unescape(resultBuilder, startIndex: 0);
+
+            return resultBuilder.ToString();
+        }
+
+        // TODO: Remove
+        public Task RemoveRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
+        {
+            if (localEndPoint == null)
+                throw new ArgumentNullException(nameof(localEndPoint));
+
+            throw new NotImplementedException();
         }
 
         // TODO: Remove
