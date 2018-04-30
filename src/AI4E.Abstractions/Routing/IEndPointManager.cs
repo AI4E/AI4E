@@ -32,7 +32,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Modularity;
 using AI4E.Remoting;
 
 namespace AI4E.Routing
@@ -49,7 +48,7 @@ namespace AI4E.Routing
 
     public interface IEndPointManager<TAddress> : IEndPointManager
     {
-        IPhysicalEndPoint<TAddress> PhysicalEndPoint { get; }
+        //IPhysicalEndPoint<TAddress> PhysicalEndPoint { get; }
         TAddress LocalAddress { get; }
 
         bool TryGetEndPoint(EndPointRoute localEndPoint, out ILocalEndPoint<TAddress> endPoint);

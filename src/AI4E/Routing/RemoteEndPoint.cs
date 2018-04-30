@@ -43,7 +43,7 @@ namespace AI4E.Routing
 {
     public class RemoteEndPoint<TAddress> : IRemoteEndPoint<TAddress>, IAsyncDisposable
     {
-        private readonly IEndPointManager<TAddress> _endPointManager;
+        private readonly IEndPointManager<TAddress> _endPointManager;    
         private readonly IMessageCoder<TAddress> _messageCoder;
         private readonly IRouteMap<TAddress> _routeManager;
         private readonly IEndPointScheduler<TAddress> _endPointScheduler;
@@ -56,6 +56,7 @@ namespace AI4E.Routing
         private readonly AsyncProducerConsumerQueue<(IMessage message, EndPointRoute localEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)> _txQueue;
 
         public RemoteEndPoint(IEndPointManager<TAddress> endPointManager,
+                              IPhysicalEndPoint<TAddress> physicalEndPoint,
                               EndPointRoute route,
                               IMessageCoder<TAddress> messageCoder,
                               IRouteMap<TAddress> routeManager,
@@ -65,6 +66,9 @@ namespace AI4E.Routing
             if (endPointManager == null)
                 throw new ArgumentNullException(nameof(endPointManager));
 
+            if (physicalEndPoint == null)
+                throw new ArgumentNullException(nameof(physicalEndPoint));
+
             if (route == null)
                 throw new ArgumentNullException(nameof(route));
 
@@ -73,9 +77,12 @@ namespace AI4E.Routing
 
             if (routeManager == null)
                 throw new ArgumentNullException(nameof(routeManager));
+
             if (endPointScheduler == null)
                 throw new ArgumentNullException(nameof(endPointScheduler));
+
             _endPointManager = endPointManager;
+            PhysicalEndPoint = physicalEndPoint;
             Route = route;
             _messageCoder = messageCoder;
             _routeManager = routeManager;
@@ -91,7 +98,7 @@ namespace AI4E.Routing
 
         public EndPointRoute Route { get; }
         public TAddress LocalAddress => _endPointManager.LocalAddress;
-        public IPhysicalEndPoint<TAddress> PhysicalEndPoint => _endPointManager.PhysicalEndPoint;
+        public IPhysicalEndPoint<TAddress> PhysicalEndPoint { get; }
 
         public async Task SendAsync(IMessage message, EndPointRoute localEndPoint, TAddress remoteAddress, CancellationToken cancellation)
         {

@@ -8,5 +8,7 @@ namespace AI4E.Remoting
         IPhysicalEndPoint<TAddress> GetMultiplexEndPoint(string address);
 
         Task<IPhysicalEndPoint<TAddress>> GetMultiplexEndPointAsync(string address, CancellationToken cancellation = default);
+
+        TAddress LocalAddress { get; }
     }
 }

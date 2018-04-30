@@ -28,10 +28,15 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using AI4E.Remoting;
+
 namespace AI4E.Routing
 {
     public interface ILocalEndPointFactory<TAddress>
     {
-        ILocalEndPoint<TAddress> CreateLocalEndPoint(IEndPointManager<TAddress> endPointManager, IRemoteEndPointManager<TAddress> remoteEndPointManager, EndPointRoute route);
+        ILocalEndPoint<TAddress> CreateLocalEndPoint(IEndPointManager<TAddress> endPointManager,
+                                                     IRemoteEndPointManager<TAddress> remoteEndPointManager,
+                                                     IPhysicalEndPoint<TAddress> physicalEndPoint,
+                                                     EndPointRoute route);
     }
 }

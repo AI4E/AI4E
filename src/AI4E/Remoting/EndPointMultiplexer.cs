@@ -36,6 +36,8 @@ namespace AI4E.Remoting
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
+        public TAddress LocalAddress => _physicalEndPoint.LocalAddress;
+
         #region ReceiveProcess
 
         private async Task ReceiveProcess(CancellationToken cancellation)
@@ -136,7 +138,7 @@ namespace AI4E.Remoting
             Assert(address != null);
 
             var frameIdx = message.FrameIndex;
-            var addressBytes = Encoding.UTF32.GetBytes(address);
+            var addressBytes = Encoding.UTF8.GetBytes(address);
 
             try
             {
@@ -243,7 +245,7 @@ namespace AI4E.Remoting
 
                 _multiplexer = multiplexer;
                 _address = address;
-                LocalAddress = _multiplexer._physicalEndPoint.LocalAddress;
+                LocalAddress = _multiplexer.LocalAddress;
 
                 _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
             }

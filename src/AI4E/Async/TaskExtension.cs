@@ -66,6 +66,76 @@ namespace AI4E.Async
             HandleExceptions(task, logger: null);
         }
 
+        public static async Task HandleExceptionsAsync(this Task task, ILogger logger)
+        {
+            if (task == null)
+                throw new ArgumentNullException(nameof(task));
+
+            try
+            {
+                await task;
+            }
+            catch (Exception exc)
+            {
+                if (logger != null)
+                {
+                    logger.LogError(exc, "An exception occured in the task.");
+                }
+                else
+                {
+                    Debug.WriteLine("An exception occured in the task.");
+                    Debug.WriteLine(exc.ToString());
+                }
+            }
+        }
+
+        public static Task HandleExceptionsAsync(this Task task)
+        {
+            return HandleExceptionsAsync(task, logger: null);
+        }
+
+        public static async Task<T> HandleExceptionsAsync<T>(this Task<T> task, ILogger logger, T placeholder)
+        {
+            if (task == null)
+                throw new ArgumentNullException(nameof(task));
+
+            var result = placeholder;
+
+            try
+            {
+                result = await task;
+            }
+            catch (Exception exc)
+            {
+                if (logger != null)
+                {
+                    logger.LogError(exc, "An exception occured in the task.");
+                }
+                else
+                {
+                    Debug.WriteLine("An exception occured in the task.");
+                    Debug.WriteLine(exc.ToString());
+                }
+            }
+
+            return result;
+        }
+
+        public static Task<T> HandleExceptionsAsync<T>(this Task<T> task, T placeholder)
+        {
+            return HandleExceptionsAsync(task, logger: default, placeholder);
+        }
+
+        public static Task<T> HandleExceptionsAsync<T>(this Task<T> task, ILogger logger)
+        {
+            return HandleExceptionsAsync(task, logger, placeholder: default);
+        }
+
+        public static Task<T> HandleExceptionsAsync<T>(this Task<T> task)
+        {
+            return HandleExceptionsAsync(task, logger: null, placeholder: default);
+        }
+
         public static async Task WithCancellation(this Task task, CancellationToken cancellation)
         {
             if (task == null)

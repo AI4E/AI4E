@@ -33,17 +33,20 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Processing;
+using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
 {
-    public sealed class CoordinationManager : ICoordinationManager, IAsyncDisposable
+    public sealed class CoordinationManager<TAddress> : ICoordinationManager, IAsyncDisposable
     {
         private static readonly ImmutableArray<byte> _emptyValue = ImmutableArray<byte>.Empty;
         private static readonly TimeSpan _leaseLength =
@@ -57,23 +60,27 @@ namespace AI4E.Coordination
         private readonly ICoordinationStorage _storage;
         private readonly IStoredEntryManager _storedEntryManager;
         private readonly ISessionManager _sessionManager;
-        private readonly ICoordinationCallback _callback;
+        private readonly IEndPointMultiplexer<TAddress> _endPointMultiplexer;
         private readonly ISessionProvider _sessionProvider;
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly ILogger<CoordinationManager> _logger;
+        private readonly IAddressConversion<TAddress> _addressConversion;
+        private readonly ILogger<CoordinationManager<TAddress>> _logger;
         private readonly ConcurrentDictionary<string, IStoredEntry> _entries;
+
         private readonly AsyncProcess _updateSessionProcess;
         private readonly AsyncProcess _sessionCleanupProcess;
-        private readonly AsyncInitializationHelper<string> _initializationHelper;
+        private readonly AsyncProcess _receiveProcess;
+        private readonly AsyncInitializationHelper<(string session, IPhysicalEndPoint<TAddress> physicalEndPoint)> _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
         public CoordinationManager(ICoordinationStorage storage,
                                    IStoredEntryManager storedEntryManager,
                                    ISessionManager sessionManager,
-                                   ICoordinationCallback callback,
+                                   IEndPointMultiplexer<TAddress> endPointMultiplexer,
                                    ISessionProvider sessionProvider,
                                    IDateTimeProvider dateTimeProvider,
-                                   ILogger<CoordinationManager> logger)
+                                   IAddressConversion<TAddress> addressConversion,
+                                   ILogger<CoordinationManager<TAddress>> logger)
         {
             if (storage == null)
                 throw new ArgumentNullException(nameof(storage));
@@ -84,8 +91,8 @@ namespace AI4E.Coordination
             if (sessionManager == null)
                 throw new ArgumentNullException(nameof(sessionManager));
 
-            if (callback == null)
-                throw new ArgumentNullException(nameof(callback));
+            if (endPointMultiplexer == null)
+                throw new ArgumentNullException(nameof(endPointMultiplexer));
 
             if (sessionProvider == null)
                 throw new ArgumentNullException(nameof(sessionProvider));
@@ -93,25 +100,165 @@ namespace AI4E.Coordination
             if (dateTimeProvider == null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
 
+            if (addressConversion == null)
+                throw new ArgumentNullException(nameof(addressConversion));
+
             _storage = storage;
             _storedEntryManager = storedEntryManager;
             _sessionManager = sessionManager;
-            _callback = callback;
+            _endPointMultiplexer = endPointMultiplexer;
             _sessionProvider = sessionProvider;
             _dateTimeProvider = dateTimeProvider;
+            _addressConversion = addressConversion;
             _logger = logger;
             _entries = new ConcurrentDictionary<string, IStoredEntry>();
 
             _updateSessionProcess = new AsyncProcess(UpdateSessionProcess);
             _sessionCleanupProcess = new AsyncProcess(SessionCleanupProcess);
-            _initializationHelper = new AsyncInitializationHelper<string>(InitializeInternalAsync);
+            _receiveProcess = new AsyncProcess(ReceiveProcess);
+            _initializationHelper = new AsyncInitializationHelper<(string session, IPhysicalEndPoint<TAddress> physicalEndPoint)>(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
-        public Task<string> GetSessionAsync(CancellationToken cancellation = default)
+        public async Task<string> GetSessionAsync(CancellationToken cancellation = default)
         {
-            return _initializationHelper.Initialization.WithCancellation(cancellation);
+            var (session, _) = await _initializationHelper.Initialization.WithCancellation(cancellation);
+
+            return session;
         }
+
+        private async Task<IPhysicalEndPoint<TAddress>> GetPhysicalEndPointAsync(CancellationToken cancellation = default)
+        {
+            var (_, physicalEndPoint) = await _initializationHelper.Initialization.WithCancellation(cancellation);
+
+            return physicalEndPoint;
+        }
+
+        #region Receive
+
+        private async Task ReceiveProcess(CancellationToken cancellation)
+        {
+            while (cancellation.ThrowOrContinue())
+            {
+                try
+                {
+                    var message = await ReceiveMessageAsync(cancellation);
+                    var (messageType, entry, session) = DecodeMessage(message);
+
+                    Task.Run(() => HandleMessageAsync(message, messageType, entry, session, cancellation)).HandleExceptions();
+                }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
+                catch (Exception exc)
+                {
+                    _logger?.LogWarning(exc, $"Failure while decoding received message.");
+                }
+            }
+        }
+
+        private async Task HandleMessageAsync(IMessage message, MessageType messageType, string entry, string session, CancellationToken cancellation)
+        {
+            switch (messageType)
+            {
+                case MessageType.InvalidateCacheEntry:
+                    if (session != await GetSessionAsync(cancellation))
+                    {
+                        _logger?.LogWarning("Received invalidate message for session that is not present.");
+                    }
+                    else
+                    {
+                        await InvalidateCacheEntryAsync(entry, cancellation);
+                    }
+                    break;
+
+                case MessageType.Unknown:
+                default:
+                    _logger?.LogWarning("Received invalid message or message with unknown message type.");
+                    break;
+            }
+        }
+
+        private async Task<IMessage> ReceiveMessageAsync(CancellationToken cancellation)
+        {
+            var physicalEndPoint = await GetPhysicalEndPointAsync(cancellation);
+
+            return await physicalEndPoint.ReceiveAsync(cancellation);
+        }
+
+        private async Task InvalidateCacheEntryAsync(string entry, string session, CancellationToken cancellation)
+        {
+            if (session == await GetSessionAsync(cancellation))
+            {
+                await InvalidateCacheEntryAsync(entry, cancellation);
+            }
+            else
+            {
+                var remoteAddress = SessionHelper.GetAddressFromSession(session, _addressConversion);
+
+                Assert(remoteAddress != null);
+
+                var message = new Message();
+
+                EncodeMessage(message, MessageType.InvalidateCacheEntry, entry, session);
+
+                var physicalEndPoint = await GetPhysicalEndPointAsync(cancellation);
+
+                await physicalEndPoint.SendAsync(message, remoteAddress, cancellation);
+            }
+        }
+
+        private (MessageType messageType, string entry, string session) DecodeMessage(IMessage message)
+        {
+            Assert(message != null);
+
+            var messageType = default(MessageType);
+            var session = default(string);
+            var entry = default(string);
+
+            using (var frameStream = message.PopFrame().OpenStream())
+            using (var binaryReader = new BinaryReader(frameStream))
+            {
+                messageType = (MessageType)binaryReader.ReadByte();
+
+                var entryLength = binaryReader.ReadInt32();
+                var entryBytes = binaryReader.ReadBytes(entryLength);
+                entry = Encoding.UTF8.GetString(entryBytes);
+
+                var sessionLength = binaryReader.ReadInt32();
+                var sessionBytes = binaryReader.ReadBytes(sessionLength);
+                session = Encoding.UTF8.GetString(sessionBytes);
+            }
+
+            return (messageType, entry, session);
+        }
+
+        private void EncodeMessage(IMessage message, MessageType messageType, string entry, string session)
+        {
+            Assert(message != null);
+            // Modify if other message types are added
+            Assert(messageType >= MessageType.InvalidateCacheEntry && messageType <= MessageType.InvalidateCacheEntry);
+
+            using (var frameStream = message.PushFrame().OpenStream())
+            using (var binaryWriter = new BinaryWriter(frameStream))
+            {
+                binaryWriter.Write((byte)messageType);
+
+                var entryBytes = Encoding.UTF8.GetBytes(entry);
+                binaryWriter.Write(entryBytes.Length);
+                binaryWriter.Write(entryBytes);
+
+                var sessionBytes = Encoding.UTF8.GetBytes(session);
+                binaryWriter.Write(sessionBytes.Length);
+                binaryWriter.Write(sessionBytes);
+            }
+        }
+
+        private enum MessageType : byte
+        {
+            Unknown = 0,
+            InvalidateCacheEntry = 1
+        }
+
+        #endregion
 
         #region SessionManagement
 
@@ -188,7 +335,7 @@ namespace AI4E.Coordination
 
         #region Initialization
 
-        private async Task<string> InitializeInternalAsync(CancellationToken cancellation)
+        private async Task<(string session, IPhysicalEndPoint<TAddress> physicalEndPoint)> InitializeInternalAsync(CancellationToken cancellation)
         {
             string session;
 
@@ -200,10 +347,31 @@ namespace AI4E.Coordination
             }
             while (!await _sessionManager.TryBeginSessionAsync(session, leaseEnd: _dateTimeProvider.GetCurrentTime() + _leaseLength, cancellation));
 
-            await _updateSessionProcess.StartAsync(cancellation);
-            await _sessionCleanupProcess.StartAsync(cancellation);
+            try
+            {
+                var physicalEndPoint = await _endPointMultiplexer.GetMultiplexEndPointAsync("coord/session", cancellation);
 
-            return session;
+                try
+                {
+                    await _updateSessionProcess.StartAsync(cancellation);
+                    await _sessionCleanupProcess.StartAsync(cancellation);
+                    await _receiveProcess.StartAsync(cancellation);
+                }
+                catch
+                {
+                    await physicalEndPoint.DisposeAsync().HandleExceptionsAsync(_logger);
+
+                    throw;
+                }
+
+                return (session, physicalEndPoint);
+            }
+            catch
+            {
+                await _sessionManager.EndSessionAsync(session).HandleExceptionsAsync(_logger);
+
+                throw;
+            }
         }
 
         #endregion
@@ -224,42 +392,17 @@ namespace AI4E.Coordination
 
         private async Task DisposeInternalAsync()
         {
-            var success = false;
-            var session = string.Empty;
+            var (success, (session, physicalEndPoint)) = await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
 
-            try
+            await Task.WhenAll(_sessionCleanupProcess.TerminateAsync().HandleExceptionsAsync(_logger),
+                               _updateSessionProcess.TerminateAsync().HandleExceptionsAsync(_logger),
+                               _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger));
+
+            if (success)
             {
-                await _sessionCleanupProcess.TerminateAsync();
-            }
-            finally
-            {
-                try
-                {
-                    try
-                    {
-                        (success, session) = await _initializationHelper.CancelAsync();
-                    }
-                    finally
-                    {
-                        await _updateSessionProcess.TerminateAsync();
-                    }
-                }
-                finally
-                {
-                    if (success)
-                    {
-                        try
-                        {
-                            await _sessionManager.EndSessionAsync(session);
-                        }
-                        finally
-                        {
-                            // We shoot ourself in the foot here.
-                            // The session is ended => We are not allowed to allocate any read locks any more.
-                            //await CleanupSessionAsync(session, cancellation: default);
-                        }
-                    }
-                }
+                await Task.WhenAll(_sessionManager.EndSessionAsync(session).HandleExceptionsAsync(_logger),
+                                   physicalEndPoint.DisposeAsync().HandleExceptionsAsync(_logger));
+
             }
         }
 
@@ -1171,7 +1314,7 @@ namespace AI4E.Coordination
                 return;
             }
 
-            await _callback.InvalidateCacheEntryAsync(path, session, cancellation);
+            await InvalidateCacheEntryAsync(path, session, cancellation);
 
             var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
 
@@ -1232,9 +1375,9 @@ namespace AI4E.Coordination
         private sealed class Entry : IEntry
         {
             private readonly ImmutableArray<string> _children;
-            private readonly CoordinationManager _coordinationManager;
+            private readonly CoordinationManager<TAddress> _coordinationManager;
 
-            public Entry(CoordinationManager coordinationManager, IStoredEntry entry)
+            public Entry(CoordinationManager<TAddress> coordinationManager, IStoredEntry entry)
             {
                 Assert(coordinationManager != null);
                 Assert(entry != null);

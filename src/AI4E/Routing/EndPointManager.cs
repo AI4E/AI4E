@@ -48,8 +48,7 @@ namespace AI4E.Routing
         #region Fields
 
         private readonly AsyncDisposeHelper _disposeHelper;
-        private readonly AsyncInitializationHelper _initializationHelper;
-        private readonly AsyncProcess _receiveProcess;
+        private readonly IEndPointMultiplexer<TAddress> _endPointMultiplexer;
         private readonly IRouteMap<TAddress> _routeManager;
         private readonly IMessageCoder<TAddress> _messageCoder;
         private readonly ILocalEndPointFactory<TAddress> _endPointFactory;
@@ -64,7 +63,7 @@ namespace AI4E.Routing
 
         #region C'tor
 
-        public EndPointManager(IPhysicalEndPoint<TAddress> physicalEndPoint,
+        public EndPointManager(IEndPointMultiplexer<TAddress> endPointMultiplexer,
                                IRouteMap<TAddress> routeManager,
                                IMessageCoder<TAddress> messageCoder,
                                ILocalEndPointFactory<TAddress> endPointFactory,
@@ -72,8 +71,8 @@ namespace AI4E.Routing
                                IServiceProvider serviceProvider,
                                ILogger<EndPointManager<TAddress>> logger)
         {
-            if (physicalEndPoint == null)
-                throw new ArgumentNullException(nameof(physicalEndPoint));
+            if (endPointMultiplexer == null)
+                throw new ArgumentNullException(nameof(endPointMultiplexer));
 
             if (routeManager == null)
                 throw new ArgumentNullException(nameof(routeManager));
@@ -90,7 +89,7 @@ namespace AI4E.Routing
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            PhysicalEndPoint = physicalEndPoint;
+            _endPointMultiplexer = endPointMultiplexer;
             _routeManager = routeManager;
             _messageCoder = messageCoder;
             _endPointFactory = endPointFactory;
@@ -99,16 +98,12 @@ namespace AI4E.Routing
             _logger = logger;
             _endPoints = new Dictionary<EndPointRoute, ILocalEndPoint<TAddress>>();
             _remoteEndPoints = new ConcurrentDictionary<EndPointRoute, RemoteEndPoint<TAddress>>();
-
-            _receiveProcess = new AsyncProcess(ReceiveProcedure);
-            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
         #endregion
 
-        public TAddress LocalAddress => PhysicalEndPoint.LocalAddress;
-        public IPhysicalEndPoint<TAddress> PhysicalEndPoint { get; }
+        public TAddress LocalAddress => _endPointMultiplexer.LocalAddress;
 
         #region EndPoints
 
@@ -132,7 +127,9 @@ namespace AI4E.Routing
                 {
                     if (!_endPoints.TryGetValue(localEndPoint, out endPoint) || endPoint.IsDisposed)
                     {
-                        endPoint = _endPointFactory.CreateLocalEndPoint(this, this, localEndPoint);
+                        var physicalEndPoint = _endPointMultiplexer.GetMultiplexEndPoint("end-points/" + localEndPoint.Route);
+
+                        endPoint = _endPointFactory.CreateLocalEndPoint(this, this, physicalEndPoint, localEndPoint);
                         _endPoints[localEndPoint] = endPoint;
 
                         _logger?.LogInformation($"Registered end-point {localEndPoint.Route}");
@@ -216,102 +213,9 @@ namespace AI4E.Routing
 
             var logger = _serviceProvider.GetService<ILogger<RemoteEndPoint<TAddress>>>();
 
-            return _remoteEndPoints.GetOrAdd(remoteEndPoint, _ => new RemoteEndPoint<TAddress>(this, remoteEndPoint, _messageCoder, _routeManager, _endPointScheduler, logger));
-        }
+            var physicalEndPoint = _endPointMultiplexer.GetMultiplexEndPoint("end-points/" + remoteEndPoint.Route);
 
-        #endregion
-
-        #region Phyical end point
-
-        private async Task ReceiveProcedure(CancellationToken cancellation)
-        {
-            while (cancellation.ThrowOrContinue())
-            {
-                try
-                {
-                    var (message, localAddress, remoteAddress, remoteEndPoint, localEndPoint, messageType) = await ReceiveAsync(cancellation);
-
-                    Task.Run(() => HandleMessageAsync(message, localAddress, remoteAddress, remoteEndPoint, localEndPoint, messageType, cancellation)).HandleExceptions(_logger);
-                }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception exc)
-                {
-                    _logger.LogWarning(exc, "An error occured while receiving a message.");
-                }
-            }
-        }
-
-        private async Task<(IMessage message, TAddress localAddress, TAddress remoteAddress, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, MessageType messageType)> ReceiveAsync(CancellationToken cancellation)
-        {
-            // Receive a single message
-            var message = await PhysicalEndPoint.ReceiveAsync(cancellation);
-
-            // Decode first message frame
-            return _messageCoder.DecodeMessage(message);
-        }
-
-        private Task SendMisroutedAsync(TAddress remoteAddress, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation)
-        {
-            var message = _messageCoder.EncodeMessage(LocalAddress, remoteAddress, remoteEndPoint, localEndPoint, MessageType.Misrouted);
-            return PhysicalEndPoint.SendAsync(message, remoteAddress, cancellation);
-        }
-
-        private Task SendEndPointNotPresentAsync(TAddress remoteAddress, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation)
-        {
-            var message = _messageCoder.EncodeMessage(LocalAddress, remoteAddress, remoteEndPoint, localEndPoint, MessageType.EndPointNotPresent);
-            return PhysicalEndPoint.SendAsync(message, remoteAddress, cancellation);
-        }
-
-        private async Task HandleMessageAsync(IMessage message, TAddress localAddress, TAddress remoteAddress, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, MessageType messageType, CancellationToken cancellation)
-        {
-            if (!localAddress.Equals(LocalAddress))
-            {
-                await SendMisroutedAsync(remoteAddress, remoteEndPoint, localEndPoint, cancellation);
-                return;
-            }
-
-            switch (messageType)
-            {
-                case MessageType.Message:
-                    {
-                        _logger?.LogTrace($"Received message from address {remoteAddress}, end-point {remoteEndPoint} for end-point {localEndPoint}.");
-
-                        var endPoint = GetLocalEndPoint(remoteAddress, remoteEndPoint, localEndPoint);
-
-                        if (endPoint != null)
-                        {
-                            await endPoint.OnReceivedAsync(message, remoteAddress, remoteEndPoint, cancellation);
-                        }
-                        else
-                        {
-                            await SendEndPointNotPresentAsync(remoteAddress, remoteEndPoint, localEndPoint, cancellation);
-                        }
-
-                        break;
-                    }
-                case MessageType.EndPointNotPresent:
-                    /* TODO */
-                    break;
-
-                case MessageType.ProtocolNotSupported:
-                    /* TODO */
-                    break;
-
-                case MessageType.Unknown:
-                default:
-                    /* TODO */
-                    break;
-            }
-        }
-
-        private ILocalEndPoint<TAddress> GetLocalEndPoint(TAddress remoteAddress, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint)
-        {
-            if (!TryGetEndPoint(localEndPoint, out var endPoint))
-            {
-                return null;
-            }
-
-            return endPoint;
+            return _remoteEndPoints.GetOrAdd(remoteEndPoint, _ => new RemoteEndPoint<TAddress>(this, physicalEndPoint, remoteEndPoint, _messageCoder, _routeManager, _endPointScheduler, logger));
         }
 
         #endregion
@@ -428,15 +332,6 @@ namespace AI4E.Routing
             }
         }
 
-        #region Initialization
-
-        private async Task InitializeInternalAsync(CancellationToken cancellation)
-        {
-            await _receiveProcess.StartAsync(cancellation);
-        }
-
-        #endregion
-
         #region Disposal
 
         public void Dispose()
@@ -451,14 +346,14 @@ namespace AI4E.Routing
 
         private async Task DisposeInternalAsync()
         {
-            try
+            IEnumerable<ILocalEndPoint<TAddress>> localEndPoints;
+
+            lock (_endPoints)
             {
-                await _initializationHelper.CancelAsync();
+                localEndPoints = _endPoints.Values;
             }
-            finally
-            {
-                await _receiveProcess.TerminateAsync();
-            }
+
+            await Task.WhenAll(localEndPoints.Select(p => p.DisposeAsync()));
         }
 
         public Task Disposal => _disposeHelper.Disposal;

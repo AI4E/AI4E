@@ -232,14 +232,14 @@ namespace AI4E.Test.Coordination
         {
             IServiceCollection services = new ServiceCollection();
             services.AddSingleton<IAddressConversion<TestAddress>, TestAddressSerializer>();
-            services.AddSingleton(physicalEndPoint);
+            //services.AddSingleton(physicalEndPoint);
+            services.AddSingleton<IEndPointMultiplexer<TestAddress>>(p => new EndPointMultiplexer<TestAddress>(physicalEndPoint, p.GetService<ILogger<EndPointMultiplexer<TestAddress>>>()));
             services.AddSingleton<ICoordinationStorage>(coordinationStorage);
             services.AddSingleton<ISessionStorage>(coordinationStorage);
             services.AddSingleton<ISessionManager, SessionManager>();
-            services.AddSingleton<ICoordinationManager, CoordinationManager>();
+            services.AddSingleton<ICoordinationManager, CoordinationManager<TestAddress>>();
             services.AddSingleton(p => Provider.FromServices<ICoordinationManager>(p));
-            services.AddSingleton<ICoordinationCallback, CoordinationCallback<TestAddress>>();
-            services.AddSingleton(p => p.GetRequiredService<ICoordinationCallback>() as ISessionProvider);
+            services.AddSingleton<ISessionProvider, SessionProvider<TestAddress>>();
             services.AddSingleton(dateTimeProvider);
             services.AddSingleton(storedEntryManager);
             services.AddSingleton(storedSessionManager);

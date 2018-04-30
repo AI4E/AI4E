@@ -29,6 +29,7 @@
  */
 
 using System;
+using AI4E.Remoting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -58,7 +59,10 @@ namespace AI4E.Routing
             _serviceProvider = serviceProvider;
         }
 
-        public ILocalEndPoint<TAddress> CreateLocalEndPoint(IEndPointManager<TAddress> endPointManager, IRemoteEndPointManager<TAddress> remoteEndPointManager, EndPointRoute route)
+        public ILocalEndPoint<TAddress> CreateLocalEndPoint(IEndPointManager<TAddress> endPointManager,
+                                                            IRemoteEndPointManager<TAddress> remoteEndPointManager,
+                                                            IPhysicalEndPoint<TAddress> physicalEndPoint,
+                                                            EndPointRoute route)
         {
             if (endPointManager == null)
                 throw new ArgumentNullException(nameof(endPointManager));
@@ -66,12 +70,15 @@ namespace AI4E.Routing
             if (remoteEndPointManager == null)
                 throw new ArgumentNullException(nameof(remoteEndPointManager));
 
+            if (physicalEndPoint == null)
+                throw new ArgumentNullException(nameof(physicalEndPoint));
+
             if (route == null)
                 throw new ArgumentNullException(nameof(route));
 
             var logger = _serviceProvider.GetService<ILogger<LocalEndPoint<TAddress>>>();
 
-            return new LocalEndPoint<TAddress>(endPointManager, remoteEndPointManager, route, _messageCoder, _routeManager, logger);
+            return new LocalEndPoint<TAddress>(endPointManager, remoteEndPointManager, physicalEndPoint, route, _messageCoder, _routeManager, logger);
         }
     }
 }

@@ -5,12 +5,12 @@ namespace AI4E.Coordination
 {
     public sealed class CoordinationServiceCollectionExtension
     {
-        public ICoordinationBuilder AddCoordinationService(IServiceCollection services)
+        public ICoordinationBuilder AddCoordinationService<TAddress>(IServiceCollection services)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            services.AddSingleton<ICoordinationManager, CoordinationManager>();
+            services.AddSingleton<ICoordinationManager, CoordinationManager<TAddress>>();
 
             return new CoordinationBuilder(services);
         }
