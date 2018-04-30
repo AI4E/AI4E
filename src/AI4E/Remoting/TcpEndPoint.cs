@@ -47,7 +47,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Remoting
 {
-    public sealed class TcpEndPoint : IPhysicalEndPoint<IPEndPoint>, IAsyncDisposable
+    public sealed class TcpEndPoint : IPhysicalEndPoint<IPEndPoint>
     {
         private readonly IAsyncProcess _connectionProcess;
         private readonly TcpListener _tcpHost;

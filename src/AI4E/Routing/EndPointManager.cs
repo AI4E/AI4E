@@ -30,6 +30,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -56,7 +57,7 @@ namespace AI4E.Routing
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger _logger;
 
-        private readonly ConcurrentDictionary<EndPointRoute, ILocalEndPoint<TAddress>> _endPoints;
+        private readonly Dictionary<EndPointRoute, ILocalEndPoint<TAddress>> _endPoints;
         private readonly ConcurrentDictionary<EndPointRoute, RemoteEndPoint<TAddress>> _remoteEndPoints;
 
         #endregion
@@ -96,13 +97,12 @@ namespace AI4E.Routing
             _endPointScheduler = endPointScheduler;
             _serviceProvider = serviceProvider;
             _logger = logger;
-            _endPoints = new ConcurrentDictionary<EndPointRoute, ILocalEndPoint<TAddress>>();
+            _endPoints = new Dictionary<EndPointRoute, ILocalEndPoint<TAddress>>();
             _remoteEndPoints = new ConcurrentDictionary<EndPointRoute, RemoteEndPoint<TAddress>>();
 
             _receiveProcess = new AsyncProcess(ReceiveProcedure);
             _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
-
         }
 
         #endregion
@@ -124,13 +124,22 @@ namespace AI4E.Routing
 
                 var cancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
-                var endPoint = _endPointFactory.CreateLocalEndPoint(this, this, localEndPoint);
+                ILocalEndPoint<TAddress> endPoint;
 
-                if (_endPoints.TryAdd(localEndPoint, endPoint))
+                Assert(_endPoints != null);
+
+                lock (_endPoints)
                 {
-                    _logger?.LogInformation($"Registered end-point {localEndPoint.Route}");
-                    await endPoint.Initialization.WithCancellation(cancellationSource.Token);
+                    if (!_endPoints.TryGetValue(localEndPoint, out endPoint) || endPoint.IsDisposed)
+                    {
+                        endPoint = _endPointFactory.CreateLocalEndPoint(this, this, localEndPoint);
+                        _endPoints[localEndPoint] = endPoint;
+
+                        _logger?.LogInformation($"Registered end-point {localEndPoint.Route}");
+                    }
                 }
+
+                await endPoint.Initialization.WithCancellation(cancellationSource.Token);
             }
         }
 
@@ -146,10 +155,20 @@ namespace AI4E.Routing
 
                 var cancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
-                if (_endPoints.TryRemove(localEndPoint, out var endPoint))
+                Assert(_endPoints != null);
+
+                if (TryGetEndPoint(localEndPoint, out var endPoint))
                 {
                     await endPoint.DisposeAsync().WithCancellation(cancellationSource.Token);
-                    _logger?.LogInformation($"Unregistered end-point {localEndPoint.Route}");
+                }
+
+                lock (_endPoints)
+                {
+                    if (_endPoints.TryGetValue(localEndPoint, out var comparand) && comparand == endPoint)
+                    {
+                        _endPoints.Remove(localEndPoint);
+                        _logger?.LogInformation($"Unregistered end-point {localEndPoint.Route}");
+                    }
                 }
             }
         }
@@ -160,8 +179,25 @@ namespace AI4E.Routing
                 throw new ArgumentNullException(nameof(localEndPoint));
 
             Assert(localEndPoint != null);
+            Assert(_endPoints != null);
 
-            return _endPoints.TryGetValue(localEndPoint, out endPoint);
+            lock (_endPoints)
+            {
+                if (_endPoints.TryGetValue(localEndPoint, out endPoint))
+                {
+                    if (endPoint.IsDisposed)
+                    {
+                        _endPoints.Remove(localEndPoint);
+
+                        endPoint = default;
+                        return false;
+                    }
+
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         bool IEndPointManager<TAddress>.TryGetEndPoint(EndPointRoute localEndPoint, out ILocalEndPoint<TAddress> endPoint)

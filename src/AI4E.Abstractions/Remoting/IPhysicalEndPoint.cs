@@ -30,10 +30,11 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Async;
 
 namespace AI4E.Remoting
 {
-    public interface IPhysicalEndPoint<TAddress>
+    public interface IPhysicalEndPoint<TAddress> : IAsyncDisposable
     {
         Task SendAsync(IMessage message, TAddress address, CancellationToken cancellation);
         Task<IMessage> ReceiveAsync(CancellationToken cancellation);

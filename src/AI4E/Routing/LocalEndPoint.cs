@@ -84,7 +84,7 @@ namespace AI4E.Routing
             _mapProcess = new AsyncProcess(MapProcessAsync);
             _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
-            
+
         }
 
         public EndPointRoute Route { get; }
@@ -104,6 +104,8 @@ namespace AI4E.Routing
         #endregion
 
         #region Disposal
+
+        public bool IsDisposed => _disposeHelper.IsDisposed;
 
         public Task Disposal => _disposeHelper.Disposal;
 

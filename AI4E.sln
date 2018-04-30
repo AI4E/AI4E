@@ -45,7 +45,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.RPC.Sample"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.InMemory", "src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj", "{F3D1468C-1005-43FC-A786-4E0094DACED7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Messaging.InMemory.Sample", "samples\AI4E.Messaging.InMemory.Sample\AI4E.Messaging.InMemory.Sample.csproj", "{DA158552-2650-49C3-B08E-3DB7A8F11054}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Messaging.InMemory.Sample", "samples\AI4E.Messaging.InMemory.Sample\AI4E.Messaging.InMemory.Sample.csproj", "{DA158552-2650-49C3-B08E-3DB7A8F11054}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

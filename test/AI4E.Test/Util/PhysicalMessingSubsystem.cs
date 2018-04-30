@@ -65,6 +65,18 @@ namespace AI4E.Test.Util
             }
 
             public TestAddress LocalAddress { get; }
+
+            public void Dispose()
+            {
+                
+            }
+
+            public Task DisposeAsync()
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task Disposal => new TaskCompletionSource<object>().Task;
         }
     }
 }
