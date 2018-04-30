@@ -858,11 +858,11 @@ namespace AI4E.Coordination
                             // Remove the entry from its parent
                             if (parent != null)
                             {
-                                var result = _storage.UpdateEntryAsync(parent, _storedEntryManager.RemoveChild(parent, name), combinedCancellationSource.Token);
+                                var result = await _storage.UpdateEntryAsync(parent, _storedEntryManager.RemoveChild(parent, name), combinedCancellationSource.Token);
 
                                 // We are holding the exclusive lock => No one else can alter the parent.
                                 // The only exception is that out session terminates.
-                                if (result != parent)
+                                if (!AreVersionEqual(result, parent))
                                 {
                                     throw new SessionTerminatedException();
                                 }
