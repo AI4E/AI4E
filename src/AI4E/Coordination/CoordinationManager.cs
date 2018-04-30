@@ -964,7 +964,7 @@ namespace AI4E.Coordination
         // 2. The write request locks the entry and sends an unlock message.
         // 3. The unlock message is received and the cache entry is cleared.
         // 4. The read request succeeds and places the entry into the cache.
-        public async Task InvalidateCacheEntryAsync(string path, CancellationToken cancellation)
+        private async Task InvalidateCacheEntryAsync(string path, CancellationToken cancellation)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
