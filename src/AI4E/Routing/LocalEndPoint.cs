@@ -49,10 +49,7 @@ namespace AI4E.Routing
         private readonly ILogger<LocalEndPoint<TAddress>> _logger;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
-        private readonly AsyncProcess _mapProcess;
         private readonly AsyncProcess _receiveProcess;
-
-        private readonly TimeSpan _leaseLength = TimeSpan.FromSeconds(30);
 
         public LocalEndPoint(IEndPointManager<TAddress> endPointManager,
                              IRemoteEndPointManager<TAddress> remoteEndPointManager,
@@ -87,7 +84,6 @@ namespace AI4E.Routing
             _messageCoder = messageCoder;
             _routeManager = routeManager;
             _logger = logger;
-            _mapProcess = new AsyncProcess(MapProcessAsync);
             _receiveProcess = new AsyncProcess(ReceiveProcess);
             _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
@@ -103,8 +99,25 @@ namespace AI4E.Routing
 
         private async Task InitializeInternalAsync(CancellationToken cancellation)
         {
-            await MapRouteAsync(cancellation);
-            await _mapProcess.StartAsync(cancellation);
+            _logger?.LogDebug($"Map local end-point '{Route}' to physical end-point {LocalAddress}.");
+
+            for (var waitTime = TimeSpan.FromSeconds(2); true; waitTime = new TimeSpan(waitTime.Ticks * 2))
+            {
+                try
+                {
+                    await _routeManager.MapRouteAsync(Route, LocalAddress, cancellation);
+                    break;
+                }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
+                catch (Exception exc)
+                {
+                    _logger?.LogWarning(exc, $"Failure in map process for local end-point '{Route}'.");
+
+                    await Task.Delay(waitTime, cancellation);
+                    continue;
+                }
+            }
+
             await _receiveProcess.StartAsync(cancellation);
         }
 
@@ -132,8 +145,9 @@ namespace AI4E.Routing
 
             async Task UnmapAsync()
             {
-                await _mapProcess.TerminateAsync().HandleExceptionsAsync(_logger);
-                await UnmapRouteAsync().HandleExceptionsAsync(_logger);
+                _logger?.LogDebug($"Unmap local end-point '{Route}' from physical end-point {LocalAddress}.");
+
+                await _routeManager.UnmapRouteAsync(Route, LocalAddress, cancellation: default).HandleExceptionsAsync(_logger);
             }
 
             async Task TerminateReception()
@@ -211,60 +225,7 @@ namespace AI4E.Routing
 
         #endregion
 
-        #region MapProcess
-
-        private async Task MapProcessAsync(CancellationToken cancellation)
-        {
-            var leaseLengthHalf = new TimeSpan(_leaseLength.Ticks / 2);
-
-            while (cancellation.ThrowOrContinue())
-            {
-                try
-                {
-                    await Task.Delay(leaseLengthHalf);
-
-                    await MapRouteAsync(cancellation);
-                }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception exc)
-                {
-                    _logger?.LogWarning(exc, $"Failure in map process for local end-point '{Route}'.");
-                }
-            }
-        }
-
-        private async Task MapRouteAsync(CancellationToken cancellation)
-        {
-            _logger?.LogDebug($"Map local end-point '{Route}' to physical end-point {LocalAddress}.");
-
-            for (var waitTime = TimeSpan.FromSeconds(2); true; waitTime = new TimeSpan(waitTime.Ticks * 2))
-            {
-                try
-                {
-                    await _routeManager.MapRouteAsync(Route, LocalAddress, DateTime.Now + _leaseLength, cancellation);
-                    break;
-                }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception exc)
-                {
-                    _logger?.LogWarning(exc, $"Failure in map process for local end-point '{Route}'.");
-
-                    await Task.Delay(waitTime, cancellation);
-                    continue;
-                }
-            }
-        }
-
-        private async Task UnmapRouteAsync()
-        {
-            _logger?.LogDebug($"Unmap local end-point '{Route}' from physical end-point {LocalAddress}.");
-
-            await _routeManager.UnmapRouteAsync(Route, LocalAddress, cancellation: default);
-        }
-
-        #endregion
-
-        public async Task OnReceivedAsync(IMessage message, TAddress remoteAddress, EndPointRoute remoteEndPoint, CancellationToken cancellation)
+        private async Task OnReceivedAsync(IMessage message, TAddress remoteAddress, EndPointRoute remoteEndPoint, CancellationToken cancellation)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));

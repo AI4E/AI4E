@@ -22,6 +22,7 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using AI4E.Coordination;
 using AI4E.Modularity.Debugging;
 using AI4E.Modularity.HttpDispatch;
 using AI4E.Remoting;
@@ -62,13 +63,24 @@ namespace AI4E.Modularity
             services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<IRemoteMessageDispatcher>());
             services.AddSingleton<IPhysicalEndPoint<IPEndPoint>, TcpEndPoint>();
-            //services.AddSingleton<IEndPointManager, EndPointManager<IPEndPoint>>(); /* TODO */
+            services.AddSingleton<IEndPointMultiplexer<IPEndPoint>, EndPointMultiplexer<IPEndPoint>>();
+            services.AddSingleton<IEndPointManager, EndPointManager<IPEndPoint>>();
+            services.AddSingleton<IProvider<ICoordinationManager>, CoordinationManager<IPEndPoint>.Provider>();
+            services.AddSingleton(p => p.GetRequiredService<IProvider<ICoordinationManager>>().ProvideInstance());
             services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
             services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
             services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
+            services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+            services.AddSingleton<IRouteStore, RouteManager>();
+            services.AddSingleton<IRouteMap<IPEndPoint>, RouteMap<IPEndPoint>>();
             services.AddSingleton<HttpDispatchTable>();
             services.AddSingleton<DebugPort>();
-            services.AddSingleton(EndPointRoute.CreateRoute("host"));
+
+            services.Configure<RemoteMessagingOptions>(options =>
+            {
+                options.LocalEndPoint = EndPointRoute.CreateRoute("host");
+            });
+
             return new ModularityBuilder(services);
         }
 

@@ -46,7 +46,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
 {
-    public sealed class CoordinationManager<TAddress> : ICoordinationManager, IAsyncDisposable
+    public sealed class CoordinationManager<TAddress> : ICoordinationManager
     {
         private static readonly ImmutableArray<byte> _emptyValue = ImmutableArray<byte>.Empty;
         private static readonly TimeSpan _leaseLength =
@@ -65,7 +65,8 @@ namespace AI4E.Coordination
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IAddressConversion<TAddress> _addressConversion;
         private readonly ILogger<CoordinationManager<TAddress>> _logger;
-        private readonly ConcurrentDictionary<string, IStoredEntry> _entries;
+
+        private readonly ConcurrentDictionary<string, CacheEntry> _cache;
 
         private readonly AsyncProcess _updateSessionProcess;
         private readonly AsyncProcess _sessionCleanupProcess;
@@ -111,7 +112,7 @@ namespace AI4E.Coordination
             _dateTimeProvider = dateTimeProvider;
             _addressConversion = addressConversion;
             _logger = logger;
-            _entries = new ConcurrentDictionary<string, IStoredEntry>();
+            _cache = new ConcurrentDictionary<string, CacheEntry>();
 
             _updateSessionProcess = new AsyncProcess(UpdateSessionProcess);
             _sessionCleanupProcess = new AsyncProcess(SessionCleanupProcess);
@@ -439,19 +440,56 @@ namespace AI4E.Coordination
 
                 await _initializationHelper.Initialization.WithCancellation(combinedCancellationSource.Token);
 
-                if (_entries.TryGetValue(path, out var value))
+                var comparandVersion = 0;
+
+                if (_cache.TryGetValue(path, out var cacheEntry))
                 {
-                    return value;
+                    if (cacheEntry.IsValid)
+                    {
+                        return cacheEntry.Entry;
+                    }
+
+                    comparandVersion = cacheEntry.Version;
                 }
 
-                value = await LoadEntryAsync(path, combinedCancellationSource.Token);
+                var entry = await LoadEntryAsync(path, combinedCancellationSource.Token);
 
-                if (value != null)
+                bool writeOk;
+
+                do
                 {
-                    _entries.TryUpdate(path, value, null);
-                }
+                    if (!_cache.TryGetValue(path, out var current))
+                    {
+                        // No one may actually delete a cache entry from the cache.
+                        Assert(comparandVersion == 0);
 
-                return value;
+                        current = null;
+                    }
+
+                    var start = current;
+
+                    if (start == null)
+                    {
+                        var desired = new CacheEntry(path, entry);
+
+                        writeOk = _cache.TryAdd(path, desired);
+                    }
+                    else
+                    {
+                        var desired = start.Update(entry, comparandVersion);
+
+                        // Nothing to change in the cache. We are done.
+                        if (start == desired)
+                        {
+                            break;
+                        }
+
+                        writeOk = _cache.TryUpdate(path, desired, start);
+                    }
+                }
+                while (!writeOk);
+
+                return entry;
             }
         }
 
@@ -958,12 +996,6 @@ namespace AI4E.Coordination
 
         #endregion
 
-        // TODO: Race condition: 
-        // A concurrent read and write request. 
-        // 1. The read request reads the entry.
-        // 2. The write request locks the entry and sends an unlock message.
-        // 3. The unlock message is received and the cache entry is cleared.
-        // 4. The read request succeeds and places the entry into the cache.
         private async Task InvalidateCacheEntryAsync(string path, CancellationToken cancellation)
         {
             if (path == null)
@@ -972,10 +1004,31 @@ namespace AI4E.Coordination
             var normalizedPath = EntryPathHelper.NormalizePath(path);
             var session = await GetSessionAsync(cancellation);
 
-            //if (!await _sessionManager.IsAliveAsync(session, cancellation))
-            //    throw new SessionTerminatedException();
+            bool writeOk;
 
-            _entries.TryRemove(path, out _);
+            do
+            {
+                if (!_cache.TryGetValue(path, out var current))
+                {
+                    current = null;
+                }
+
+                var start = current;
+
+                if (start == null)
+                {
+                    var desired = new CacheEntry(path);
+
+                    writeOk = _cache.TryAdd(path, desired);
+                }
+                else
+                {
+                    var desired = start.Invalidate();
+
+                    writeOk = _cache.TryUpdate(path, desired, start);
+                }
+            }
+            while (!writeOk);
 
             var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
@@ -1374,13 +1427,15 @@ namespace AI4E.Coordination
 
         private sealed class Entry : IEntry
         {
-            private readonly ImmutableArray<string> _children;
             private readonly CoordinationManager<TAddress> _coordinationManager;
+            private readonly ImmutableArray<string> _children;
 
             public Entry(CoordinationManager<TAddress> coordinationManager, IStoredEntry entry)
             {
                 Assert(coordinationManager != null);
                 Assert(entry != null);
+
+                _coordinationManager = coordinationManager;
 
                 Path = entry.Path;
                 Version = entry.Version;
@@ -1388,7 +1443,7 @@ namespace AI4E.Coordination
                 LastWriteTime = entry.LastWriteTime;
                 Value = entry.Value;
                 _children = entry.Childs;
-                _coordinationManager = coordinationManager;
+
                 Children = new ChildrenEnumerable(this);
             }
 
@@ -1401,6 +1456,9 @@ namespace AI4E.Coordination
             public DateTime LastWriteTime { get; }
 
             public IReadOnlyList<byte> Value { get; }
+
+            // This is needed for proxying (see CoordinationManagerSkeleton)
+            public IReadOnlyList<string> ChildNames => _children;
 
             public IAsyncEnumerable<IEntry> Children { get; }
 
@@ -1462,6 +1520,128 @@ namespace AI4E.Coordination
                 public IEntry Current => _current;
 
                 public void Dispose() { }
+            }
+        }
+
+        private sealed class CacheEntry
+        {
+            public CacheEntry(string path)
+            {
+                Assert(path != null);
+
+                Path = path;
+                Entry = default;
+                Version = 1;
+                IsValid = false;
+            }
+
+            public CacheEntry(string path, IStoredEntry entry)
+            {
+                Assert(path != null);
+
+                Path = path;
+                Entry = entry;
+                Version = 1;
+                IsValid = true;
+            }
+
+            private CacheEntry(string path, IStoredEntry entry, bool isValid, int version)
+            {
+                Assert(path != null);
+
+                Path = path;
+                Entry = entry;
+                Version = version;
+                IsValid = isValid;
+            }
+
+            public string Path { get; }
+
+            public bool IsValid { get; }
+
+            public IStoredEntry Entry { get; }
+
+            public int Version { get; }
+
+            public CacheEntry Invalidate()
+            {
+                return new CacheEntry(Path, null, isValid: false, Version + 1);
+            }
+
+            public CacheEntry Update(IStoredEntry entry, int version)
+            {
+                if (version != Version ||
+                    entry == null ||
+                    IsValid && Entry != null && Entry.StorageVersion > entry.StorageVersion)
+                {
+                    return this;
+                }
+
+                return new CacheEntry(Path, entry, isValid: true, version);
+            }
+        }
+
+        public sealed class Provider : IProvider<ICoordinationManager>
+        {
+            private readonly ICoordinationStorage _storage;
+            private readonly IStoredEntryManager _storedEntryManager;
+            private readonly ISessionManager _sessionManager;
+            private readonly IEndPointMultiplexer<TAddress> _endPointMultiplexer;
+            private readonly ISessionProvider _sessionProvider;
+            private readonly IDateTimeProvider _dateTimeProvider;
+            private readonly IAddressConversion<TAddress> _addressConversion;
+            private readonly ILogger<CoordinationManager<TAddress>> _logger;
+
+            public Provider(ICoordinationStorage storage,
+                            IStoredEntryManager storedEntryManager,
+                            ISessionManager sessionManager,
+                            IEndPointMultiplexer<TAddress> endPointMultiplexer,
+                            ISessionProvider sessionProvider,
+                            IDateTimeProvider dateTimeProvider,
+                            IAddressConversion<TAddress> addressConversion,
+                            ILogger<CoordinationManager<TAddress>> logger)
+            {
+                if (storage == null)
+                    throw new ArgumentNullException(nameof(storage));
+
+                if (storedEntryManager == null)
+                    throw new ArgumentNullException(nameof(storedEntryManager));
+
+                if (sessionManager == null)
+                    throw new ArgumentNullException(nameof(sessionManager));
+
+                if (endPointMultiplexer == null)
+                    throw new ArgumentNullException(nameof(endPointMultiplexer));
+
+                if (sessionProvider == null)
+                    throw new ArgumentNullException(nameof(sessionProvider));
+
+                if (dateTimeProvider == null)
+                    throw new ArgumentNullException(nameof(dateTimeProvider));
+
+                if (addressConversion == null)
+                    throw new ArgumentNullException(nameof(addressConversion));
+
+                _storage = storage;
+                _storedEntryManager = storedEntryManager;
+                _sessionManager = sessionManager;
+                _endPointMultiplexer = endPointMultiplexer;
+                _sessionProvider = sessionProvider;
+                _dateTimeProvider = dateTimeProvider;
+                _addressConversion = addressConversion;
+                _logger = logger;
+            }
+
+            public ICoordinationManager ProvideInstance()
+            {
+                return new CoordinationManager<TAddress>(_storage,
+                                                         _storedEntryManager,
+                                                         _sessionManager,
+                                                         _endPointMultiplexer,
+                                                         _sessionProvider,
+                                                         _dateTimeProvider,
+                                                         _addressConversion,
+                                                         _logger);
             }
         }
     }

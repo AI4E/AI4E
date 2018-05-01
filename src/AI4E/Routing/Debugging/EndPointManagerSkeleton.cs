@@ -57,7 +57,6 @@ namespace AI4E.Routing.Debugging
 
             _endPointManager = endPointManager;
             _messageDispatcher = messageDispatcher;
-
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 

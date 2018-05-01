@@ -23,13 +23,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Modularity;
 using AI4E.Routing;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 
 namespace AI4E.Storage.MongoDB
 {
+    [Obsolete]
     public sealed class MongoRouteStore : IRouteStore
     {
         private readonly IMongoDatabase _database;
@@ -52,7 +52,7 @@ namespace AI4E.Storage.MongoDB
             _sequence = _database.GetCollection<MongoSequenceEntry>("seq-store");
         }
 
-        public async Task<bool> AddRouteAsync(EndPointRoute localRoute, string messageType, CancellationToken cancellation)
+        public async Task AddRouteAsync(EndPointRoute localRoute, string messageType, CancellationToken cancellation)
         {
             var seq = (await _sequence.FindOneAndUpdateAsync(Builders<MongoSequenceEntry>.Filter.Eq(p => p.Id, "route-store-entry"),
                                                             Builders<MongoSequenceEntry>.Update.Inc(p => p.Seq, 1),
@@ -71,35 +71,16 @@ namespace AI4E.Storage.MongoDB
                                                   new MongoRouteStoreEntry(serializedMessageType, serializedRoute, seq),
                                                   new UpdateOptions { IsUpsert = true },
                                                   cancellation));
-
-            return replaceResult.IsAcknowledged && replaceResult.MatchedCount == 0;
         }
 
-        public async Task<bool> RemoveRouteAsync(EndPointRoute localRoute, string messageType, CancellationToken cancellation)
+        public async Task RemoveRouteAsync(EndPointRoute localRoute, string messageType, CancellationToken cancellation)
         {
             var res = await MongoWriteHelper.TryWriteOperation(() => _collection.DeleteOneAsync(p => p.MessageType == messageType && p.Route == _routeSerializer.SerializeRoute(localRoute), cancellation));
-
-            if (!res.IsAcknowledged || res.DeletedCount == 0)
-            {
-                return false;
-            }
-
-            return true;
         }
-
-        public Task RemoveRouteAsync(EndPointRoute localRoute, CancellationToken cancellation)
-        {
-            return MongoWriteHelper.TryWriteOperation(() => _collection.DeleteManyAsync(p => p.Route == _routeSerializer.SerializeRoute(localRoute), cancellation));
-        }
-
+     
         public async Task<IEnumerable<EndPointRoute>> GetRoutesAsync(string messageType, CancellationToken cancellation)
         {
             return (await _collection.AsQueryable().Where(p => p.MessageType == messageType).Select(p => p.Route).ToListAsync(cancellation)).Select(p => _routeSerializer.DeserializeRoute(p));
-        }
-
-        public async Task<IEnumerable<EndPointRoute>> GetRoutesAsync(CancellationToken cancellation)
-        {
-            return (await _collection.AsQueryable().Select(p => p.Route).ToListAsync(cancellation)).Select(p => _routeSerializer.DeserializeRoute(p));
         }
     }
 }

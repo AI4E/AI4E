@@ -26,8 +26,7 @@ namespace AI4E.Routing
 
         #region IRouteStore
 
-        // TODO: Remove return value
-        public async Task<bool> AddRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
+        public async Task AddRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
         {
             if (localEndPoint == null)
                 throw new ArgumentNullException(nameof(localEndPoint));
@@ -40,12 +39,9 @@ namespace AI4E.Routing
             var path = GetPath(messageType, route, session);
 
             await _coordinationManager.GetOrCreateAsync(path, new byte[0], EntryCreationModes.Ephemeral, cancellation);
-
-            return true;
         }
 
-        // TODO: Remove return value
-        public async Task<bool> RemoveRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
+        public async Task RemoveRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
         {
             if (localEndPoint == null)
                 throw new ArgumentNullException(nameof(localEndPoint));
@@ -58,8 +54,6 @@ namespace AI4E.Routing
             var path = GetPath(messageType, route, session);
 
             await _coordinationManager.DeleteAsync(path, cancellation: cancellation);
-
-            return true;
         }
 
         public async Task<IEnumerable<EndPointRoute>> GetRoutesAsync(string messageType, CancellationToken cancellation)
@@ -138,21 +132,6 @@ namespace AI4E.Routing
             EscapeHelper.Unescape(resultBuilder, startIndex: 0);
 
             return resultBuilder.ToString();
-        }
-
-        // TODO: Remove
-        public Task RemoveRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
-        {
-            if (localEndPoint == null)
-                throw new ArgumentNullException(nameof(localEndPoint));
-
-            throw new NotImplementedException();
-        }
-
-        // TODO: Remove
-        public Task<IEnumerable<EndPointRoute>> GetRoutesAsync(CancellationToken cancellation)
-        {
-            throw new NotImplementedException();
         }
     }
 }

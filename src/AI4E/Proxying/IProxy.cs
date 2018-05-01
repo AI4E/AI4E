@@ -32,6 +32,7 @@
 using System;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+using AI4E.Async;
 
 namespace AI4E.Proxying
 {
@@ -47,7 +48,7 @@ namespace AI4E.Proxying
         void Register(ProxyHost host, int proxyId, Action unregisterAction);
     }
 
-    public interface IProxy<TRemote>
+    public interface IProxy<TRemote> : IAsyncDisposable
         where TRemote : class
     {
         TRemote LocalInstance { get; }

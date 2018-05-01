@@ -32,5 +32,8 @@ namespace AI4E.Coordination
 
         IReadOnlyList<byte> Value { get; }
         IAsyncEnumerable<IEntry> Children { get; }
+
+        // This is needed for proxying (see CoordinationManagerSkeleton)
+        IReadOnlyList<string> ChildNames { get; }
     }
 }

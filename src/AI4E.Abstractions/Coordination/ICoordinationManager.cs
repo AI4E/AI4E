@@ -21,10 +21,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Async;
 
 namespace AI4E.Coordination
 {
-    public interface ICoordinationManager
+    public interface ICoordinationManager : IAsyncDisposable
     {
         Task<IEntry> CreateAsync(string path, byte[] value, EntryCreationModes modes = default, CancellationToken cancellation = default);
 

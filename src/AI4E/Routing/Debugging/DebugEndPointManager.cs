@@ -4,7 +4,7 @@
  * Types:           AI4E.Routing.Debugging.DebugEndPointManager
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   01.05.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -31,66 +31,127 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Async;
 using AI4E.Proxying;
 using AI4E.Remoting;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing.Debugging
 {
-    public sealed class DebugEndPointManager : IEndPointManager
+    public sealed class DebugEndPointManager : IEndPointManager, IAsyncDisposable
     {
-        private IProxy<EndPointManagerSkeleton> _proxy;
-        private readonly ProxyHost _rpcHost;
-        private readonly Task _initialization;
+        private readonly ProxyHost _proxyHost;
+        private readonly AsyncInitializationHelper<IProxy<EndPointManagerSkeleton>> _initializationHelper;
+        private readonly AsyncDisposeHelper _disposeHelper;
 
-        public DebugEndPointManager(ProxyHost rpcHost)
+        public DebugEndPointManager(ProxyHost proxyHost)
         {
-            if (rpcHost == null)
-                throw new ArgumentNullException(nameof(rpcHost));
+            if (proxyHost == null)
+                throw new ArgumentNullException(nameof(proxyHost));
 
-            _rpcHost = rpcHost;
-            _initialization = InitializeAsync();
+            _proxyHost = proxyHost;
+            _initializationHelper = new AsyncInitializationHelper<IProxy<EndPointManagerSkeleton>>(
+                async cancellation => await _proxyHost.ActivateAsync<EndPointManagerSkeleton>(ActivationMode.Create, cancellation));
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
-        private async Task InitializeAsync()
+        private Task<IProxy<EndPointManagerSkeleton>> GetProxyAsync(CancellationToken cancellation)
         {
-            _proxy = await _rpcHost.ActivateAsync<EndPointManagerSkeleton>(ActivationMode.Create, cancellation: default);
+            return _initializationHelper.Initialization.WithCancellation(cancellation);
         }
+
+        #region Disposal
+
+        public Task Disposal => _disposeHelper.Disposal;
+
+        public void Dispose()
+        {
+            _disposeHelper.Dispose();
+        }
+
+        public Task DisposeAsync()
+        {
+            return _disposeHelper.DisposeAsync();
+        }
+
+        private async Task DisposeInternalAsync()
+        {
+            var (success, proxy) = await _initializationHelper.CancelAsync().HandleExceptionsAsync();
+
+            if (success)
+            {
+                Assert(proxy != null);
+
+                await proxy.DisposeAsync();
+            }
+        }
+
+        private void CheckDisposal()
+        {
+            if (_disposeHelper.IsDisposed)
+                throw new ObjectDisposedException(GetType().FullName);
+        }
+
+        #endregion
 
         public async Task AddEndPointAsync(EndPointRoute route, CancellationToken cancellation)
         {
-            await _initialization;
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            {
+                CheckDisposal();
 
-            await _proxy.ExecuteAsync(p => p.AddEndPointAsync(route, cancellation));
+                var proxy = await GetProxyAsync(cancellation);
+
+                await proxy.ExecuteAsync(p => p.AddEndPointAsync(route, cancellation));
+            }
         }
 
         public async Task RemoveEndPointAsync(EndPointRoute route, CancellationToken cancellation)
         {
-            await _initialization;
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            {
+                CheckDisposal();
 
-            await _proxy.ExecuteAsync(p => p.RemoveEndPointAsync(route, cancellation));
+                var proxy = await GetProxyAsync(cancellation);
+
+                await proxy.ExecuteAsync(p => p.RemoveEndPointAsync(route, cancellation));
+            }
         }
 
         public async Task<IMessage> ReceiveAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
         {
-            await _initialization;
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            {
+                CheckDisposal();
 
-            return await _proxy.ExecuteAsync(p => p.ReceiveAsync(localEndPoint, CancellationToken.None));
+                var proxy = await GetProxyAsync(cancellation);
+
+                return await proxy.ExecuteAsync(p => p.ReceiveAsync(localEndPoint, CancellationToken.None));
+            }
         }
 
         public async Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation)
         {
-            await _initialization;
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            {
+                CheckDisposal();
 
-            await _proxy.ExecuteAsync(p => p.SendAsync(message, remoteEndPoint, localEndPoint, CancellationToken.None));
+                var proxy = await GetProxyAsync(cancellation);
+
+                await proxy.ExecuteAsync(p => p.SendAsync(message, remoteEndPoint, localEndPoint, CancellationToken.None));
+            }
         }
 
         public async Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation)
         {
-            await _initialization;
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            {
+                CheckDisposal();
 
-            await _proxy.ExecuteAsync(p => p.SendAsync(response, request, CancellationToken.None));
+                var proxy = await GetProxyAsync(cancellation);
+
+                await proxy.ExecuteAsync(p => p.SendAsync(response, request, CancellationToken.None));
+            }
         }
-
-        public void Dispose() { }
     }
 }

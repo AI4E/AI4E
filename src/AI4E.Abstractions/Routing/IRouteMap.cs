@@ -28,7 +28,6 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,8 +37,8 @@ namespace AI4E.Routing
     public interface IRouteMap<TAddress>
     {
         Task<IEnumerable<TAddress>> GetMapsAsync(EndPointRoute endPoint, CancellationToken cancellation);
-        Task<bool> MapRouteAsync(EndPointRoute localEndPoint, TAddress address, DateTime leaseEnd, CancellationToken cancellation);
-        Task<bool> UnmapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation);
+        Task MapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation);
+        Task UnmapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation);
         Task UnmapRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation);
     }
 }

@@ -31,9 +31,7 @@ namespace AI4E.Routing
 
         #region IRouteMap<TAddress>
 
-        // TODO: Remove leaseEnd
-        // TODO: Remove return value
-        public async Task<bool> MapRouteAsync(EndPointRoute localEndPoint, TAddress address, DateTime leaseEnd, CancellationToken cancellation)
+        public async Task MapRouteAsync(EndPointRoute localEndPoint, TAddress address,  CancellationToken cancellation)
         {
             if (localEndPoint == null)
                 throw new ArgumentNullException(nameof(localEndPoint));
@@ -49,12 +47,9 @@ namespace AI4E.Routing
             var path = GetPath(route, session);
 
             await _coordinationManager.GetOrCreateAsync(path, _addressConversion.SerializeAddress(address), EntryCreationModes.Ephemeral, cancellation);
-
-            return true;
         }
 
-        // TODO: Remove return value
-        public async Task<bool> UnmapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation)
+        public async Task UnmapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation)
         {
             if (localEndPoint == null)
                 throw new ArgumentNullException(nameof(localEndPoint));
@@ -71,8 +66,6 @@ namespace AI4E.Routing
             var path = GetPath(route, session);
 
             await _coordinationManager.DeleteAsync(path, cancellation: cancellation);
-
-            return true;
         }
 
         public async Task UnmapRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation)

@@ -31,6 +31,7 @@ using MongoDB.Driver.Linq;
 
 namespace AI4E.Storage.MongoDB
 {
+    [Obsolete]
     public sealed class MongoRouteMap<TAddress> : IRouteMap<TAddress>
     {
         private readonly IMongoDatabase _database;
@@ -58,41 +59,27 @@ namespace AI4E.Storage.MongoDB
                                      .Where(p => p.Route == routeString)
                                      .ToListAsync(cancellation);
 
-            var now = DateTime.Now;
-
-            await Task.WhenAll(entries.Where(p => p.LeaseEnd < now)
-                                      .Select(p => InternalUnmapRouteAsync(p.Route.ToString(), _addressConversion.Parse(p.Address), cancellation)));
-
-            return entries.Where(p => p.LeaseEnd <= now).Select(p => _addressConversion.Parse(p.Address));
+            return entries.Select(p => _addressConversion.Parse(p.Address));
         }
 
-        public async Task<bool> MapRouteAsync(EndPointRoute localEndPoint, TAddress address, DateTime leaseEnd, CancellationToken cancellation)
+        public async Task MapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation)
         {
             var routeString = localEndPoint.ToString();
             var addressString = _addressConversion.ToString(address);
 
             var replaceResult = await MongoWriteHelper.TryWriteOperation(
                 () => _collection.ReplaceOneAsync(entry => entry.Address == addressString && entry.Route == routeString,
-                                                  new MongoRouteMapEntry(addressString, routeString, leaseEnd),
+                                                  new MongoRouteMapEntry(addressString, routeString),
                                                   new UpdateOptions { IsUpsert = true },
                                                   cancellation));
-
-            return replaceResult.IsAcknowledged && replaceResult.MatchedCount == 0;
         }
 
-        public Task<bool> UnmapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation)
-        {
-            return InternalUnmapRouteAsync(localEndPoint.ToString(), address, cancellation);
-        }
-
-        private async Task<bool> InternalUnmapRouteAsync(string localEndPoint, TAddress address, CancellationToken cancellation)
+        public async Task UnmapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation)
         {
             var routeString = localEndPoint;
             var addressString = _addressConversion.ToString(address);
 
-            var deleteResult = await MongoWriteHelper.TryWriteOperation(() => _collection.DeleteOneAsync(entry => entry.Route == routeString && entry.Address == addressString, cancellation));
-
-            return deleteResult.IsAcknowledged && deleteResult.DeletedCount > 0;
+            var deleteResult = await MongoWriteHelper.TryWriteOperation(() => _collection.DeleteOneAsync(entry => entry.Route == addressString && entry.Address == addressString, cancellation));
         }
 
         public Task UnmapRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
@@ -105,11 +92,10 @@ namespace AI4E.Storage.MongoDB
 
     public sealed class MongoRouteMapEntry
     {
-        public MongoRouteMapEntry(string address, string route, DateTime leaseEnd)
+        public MongoRouteMapEntry(string address, string route)
         {
             Address = address;
             Route = route;
-            LeaseEnd = leaseEnd;
 
             Id = MongoIdGenerator.GenerateId(address, route);
         }
@@ -122,7 +108,5 @@ namespace AI4E.Storage.MongoDB
         public string Address { get; internal set; }
 
         public string Route { get; internal set; }
-
-        public DateTime LeaseEnd { get; internal set; }
     }
 }

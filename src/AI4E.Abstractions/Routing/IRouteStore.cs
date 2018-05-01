@@ -36,11 +36,8 @@ namespace AI4E.Routing
 {
     public interface IRouteStore
     {
-        Task<bool> AddRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation);
-        Task<bool> RemoveRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation);
-        Task RemoveRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation);
-
+        Task AddRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation);
+        Task RemoveRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation);
         Task<IEnumerable<EndPointRoute>> GetRoutesAsync(string messageType, CancellationToken cancellation);
-        Task<IEnumerable<EndPointRoute>> GetRoutesAsync(CancellationToken cancellation);
     }
 }

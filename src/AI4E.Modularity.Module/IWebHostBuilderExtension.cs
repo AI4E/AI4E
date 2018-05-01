@@ -21,6 +21,7 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
+using AI4E.Coordination;
 using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
@@ -47,10 +48,14 @@ namespace AI4E.Modularity
                 services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
                 services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
                 services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
+                services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+                services.AddSingleton<IRouteStore, RouteManager>();
+                services.AddSingleton<IRouteMap<IPEndPoint>, RouteMap<IPEndPoint>>();
+
+                services.AddSingleton(ConfigurePhysicalEndPoint);
                 services.AddSingleton(ConfigureRPCHost);
                 services.AddSingleton(ConfigureEndPointManager);
-                services.AddSingleton(ConfigureRouteStore);
-                services.AddSingleton(ConfigurePhysicalEndPoint);
+                services.AddSingleton(ConfigureCoordinationManager);
             });
 
             return webHostBuilder;
@@ -84,18 +89,19 @@ namespace AI4E.Modularity
             return ActivatorUtilities.CreateInstance<TcpEndPoint>(provider);
         }
 
-        private static IRouteStore ConfigureRouteStore(IServiceProvider provider)
+        private static ICoordinationManager ConfigureCoordinationManager(IServiceProvider provider)
         {
             var optionsAccessor = provider.GetRequiredService<IOptions<ModuleServerOptions>>();
             var options = optionsAccessor.Value ?? new ModuleServerOptions();
 
-            if (!options.UseDebugConnection)
+            if (options.UseDebugConnection)
             {
-                return null;
+                return ActivatorUtilities.CreateInstance<DebugCoordinationManager>(provider);
             }
-
-            return ActivatorUtilities.CreateInstance<DebugRouteStore>(provider);
-
+            else
+            {
+                return ActivatorUtilities.CreateInstance<CoordinationManager<IPEndPoint>>(provider);
+            }
         }
 
         private static IEndPointManager ConfigureEndPointManager(IServiceProvider provider)
@@ -109,8 +115,7 @@ namespace AI4E.Modularity
             }
             else
             {
-                return null; /* TODO */
-                //return ActivatorUtilities.CreateInstance<EndPointManager<IPEndPoint>>(provider);
+                return ActivatorUtilities.CreateInstance<EndPointManager<IPEndPoint>>(provider);
             }
         }
 

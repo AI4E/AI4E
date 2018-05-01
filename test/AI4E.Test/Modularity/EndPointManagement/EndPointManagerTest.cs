@@ -93,18 +93,18 @@ namespace AI4E.Test.Modularity.EndPointManagement
             return Task.FromResult(_maps.GetOrAdd(endPoint, _ => new RouteMap(endPoint)).Maps);
         }
 
-        public Task<bool> MapRouteAsync(EndPointRoute localEndPoint, TestAddress address, DateTime leaseEnd, CancellationToken cancellation)
+        public Task MapRouteAsync(EndPointRoute localEndPoint, TestAddress address, CancellationToken cancellation)
         {
-            _maps.GetOrAdd(localEndPoint, _ => new RouteMap(localEndPoint)).Map(address, leaseEnd);
+            _maps.GetOrAdd(localEndPoint, _ => new RouteMap(localEndPoint)).Map(address);
 
-            return Task.FromResult(true);
+            return Task.CompletedTask;
         }
 
-        public Task<bool> UnmapRouteAsync(EndPointRoute localEndPoint, TestAddress address, CancellationToken cancellation)
+        public Task UnmapRouteAsync(EndPointRoute localEndPoint, TestAddress address, CancellationToken cancellation)
         {
             _maps.GetOrAdd(localEndPoint, _ => new RouteMap(localEndPoint)).Unmap(address);
 
-            return Task.FromResult(true);
+            return Task.CompletedTask;
         }
 
         public Task UnmapRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
@@ -117,7 +117,7 @@ namespace AI4E.Test.Modularity.EndPointManagement
         private sealed class RouteMap
         {
             private readonly EndPointRoute _route;
-            private volatile ImmutableDictionary<TestAddress, DateTime> _maps = ImmutableDictionary<TestAddress, DateTime>.Empty;
+            private volatile ImmutableHashSet<TestAddress> _maps = ImmutableHashSet<TestAddress>.Empty;
             private readonly object _lock = new object();
 
             public RouteMap(EndPointRoute route)
@@ -128,7 +128,7 @@ namespace AI4E.Test.Modularity.EndPointManagement
                 _route = route;
             }
 
-            public IEnumerable<TestAddress> Maps => _maps.Where(p => p.Value > DateTime.Now).Select(p => p.Key);
+            public IEnumerable<TestAddress> Maps => _maps;
 
             public void Unmap(TestAddress address)
             {
@@ -142,15 +142,15 @@ namespace AI4E.Test.Modularity.EndPointManagement
             {
                 lock (_lock)
                 {
-                    _maps = ImmutableDictionary<TestAddress, DateTime>.Empty;
+                    _maps = ImmutableHashSet<TestAddress>.Empty;
                 }
             }
 
-            public void Map(TestAddress address, DateTime leaseEnd)
+            public void Map(TestAddress address)
             {
                 lock (_lock)
                 {
-                    _maps = _maps.SetItem(address, leaseEnd);
+                    _maps = _maps.Add(address);
                 }
             }
         }
