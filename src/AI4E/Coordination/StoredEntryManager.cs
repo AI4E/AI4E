@@ -83,8 +83,8 @@ namespace AI4E.Coordination
             if (storedEntry.WriteLock == null)
                 return null;
 
-            if (storedEntry.ReadLocks.Length > 0)
-                throw new InvalidOperationException();
+            //if (storedEntry.ReadLocks.Length > 0)
+            //    throw new InvalidOperationException();
 
             return new StoredEntry(storedEntry.Path,
                                    storedEntry.Value,

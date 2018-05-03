@@ -69,6 +69,7 @@ namespace AI4E.Proxying
             _host = host;
             _id = id;
             _remoteType = remoteType;
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
         public TRemote LocalInstance { get; }

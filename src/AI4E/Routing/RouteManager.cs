@@ -11,6 +11,8 @@ namespace AI4E.Routing
 {
     public sealed class RouteManager : IRouteStore
     {
+        private static readonly byte[] _emptyPayload = new byte[0];
+        private static readonly char[] _pathSeperators = { '/', '\\' };
         private const string _routesRootPath = "/routes";
         private const string _seperatorString = "->";
 
@@ -38,7 +40,7 @@ namespace AI4E.Routing
             var session = await _coordinationManager.GetSessionAsync(cancellation);
             var path = GetPath(messageType, route, session);
 
-            await _coordinationManager.GetOrCreateAsync(path, new byte[0], EntryCreationModes.Ephemeral, cancellation);
+            await _coordinationManager.GetOrCreateAsync(path, _emptyPayload, EntryCreationModes.Ephemeral, cancellation);
         }
 
         public async Task RemoveRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
@@ -58,9 +60,6 @@ namespace AI4E.Routing
 
         public async Task<IEnumerable<EndPointRoute>> GetRoutesAsync(string messageType, CancellationToken cancellation)
         {
-            if (messageType == null)
-                throw new ArgumentNullException(nameof(messageType));
-
             if (string.IsNullOrWhiteSpace(messageType))
                 throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
 
@@ -69,18 +68,19 @@ namespace AI4E.Routing
 
             Assert(entry != null);
 
-            return await entry.Children.Select(p => EndPointRoute.CreateRoute(ExtractRoute(p.Path))).Distinct().ToArray();
+            return await entry.Childs.Select(p => EndPointRoute.CreateRoute(ExtractRoute(p.Path))).Distinct().ToArray();
         }
 
         #endregion
 
         private static string GetPath(string messageType)
         {
-            var messageTypeB = new StringBuilder(messageType.Length + EscapeHelper.CountCharsToEscape(messageType));
-            messageTypeB.Append(messageType);
-            EscapeHelper.Escape(messageTypeB, startIndex: 0);
+            var escapedMessageTypeBuilder = new StringBuilder(messageType.Length + EscapeHelper.CountCharsToEscape(messageType));
+            escapedMessageTypeBuilder.Append(messageType);
+            EscapeHelper.Escape(escapedMessageTypeBuilder, startIndex: 0);
+            var escapedMessageType = escapedMessageTypeBuilder.ToString();
 
-            return EntryPathHelper.GetChildPath(_routesRootPath, messageType.ToString(), normalize: false);
+            return EntryPathHelper.GetChildPath(_routesRootPath, escapedMessageType, normalize: false);
         }
 
         private static string GetPath(string messageType, string route, string session)
@@ -109,16 +109,16 @@ namespace AI4E.Routing
 
             EscapeHelper.Escape(resultsBuilder, sepIndex + 2);
 
-            // We need to ensure that the created entry is unique. Append any char that is neither - nor / not \
+            // We need to ensure that the created entry is unique.
             resultsBuilder[sepIndex] = _seperatorString[0];
             resultsBuilder[sepIndex + 1] = _seperatorString[1];
 
             return resultsBuilder.ToString();
-
         }
 
         private static string ExtractRoute(string path)
         {
+            var nameIndex = path.LastIndexOfAny(_pathSeperators);
             var index = path.IndexOf(_seperatorString);
 
             if (index == -1)
@@ -127,7 +127,7 @@ namespace AI4E.Routing
                 return null;
             }
 
-            var resultBuilder = new StringBuilder(path, startIndex: 0, length: index, capacity: index);
+            var resultBuilder = new StringBuilder(path, startIndex: nameIndex + 1, length: index - nameIndex - 1, capacity: index);
 
             EscapeHelper.Unescape(resultBuilder, startIndex: 0);
 

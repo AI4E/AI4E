@@ -326,12 +326,13 @@ namespace AI4E.Remoting
 
             public void Dispose()
             {
-                _disposeHelper.Dispose();
+                //_disposeHelper.Dispose();
             }
 
             public Task DisposeAsync()
             {
-                return _disposeHelper.DisposeAsync();
+                //return _disposeHelper.DisposeAsync();
+                return Task.CompletedTask;
             }
 
             private async Task DisposeInternalAsync()

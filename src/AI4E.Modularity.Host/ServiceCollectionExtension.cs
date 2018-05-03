@@ -60,20 +60,42 @@ namespace AI4E.Modularity
 
             // These services are the public api for the modular host.
             services.TryAddScoped<IModuleManager, ModuleManager>();
+
+            // High level messaging
             services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<IRemoteMessageDispatcher>());
+            services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
+
+            // Physical messaging
             services.AddSingleton<IPhysicalEndPoint<IPEndPoint>, TcpEndPoint>();
             services.AddSingleton<IEndPointMultiplexer<IPEndPoint>, EndPointMultiplexer<IPEndPoint>>();
-            services.AddSingleton<IEndPointManager, EndPointManager<IPEndPoint>>();
-            services.AddSingleton<IProvider<ICoordinationManager>, CoordinationManager<IPEndPoint>.Provider>();
-            services.AddSingleton(p => p.GetRequiredService<IProvider<ICoordinationManager>>().ProvideInstance());
             services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
+
+            // Logical messaging
+            services.AddSingleton<IEndPointManager, EndPointManager<IPEndPoint>>();
+            services.AddSingleton<IMessageCoder<IPEndPoint>, MessageCoder<IPEndPoint>>();
+            services.AddSingleton<ILocalEndPointFactory<IPEndPoint>, LocalEndPointFactory<IPEndPoint>>();
+            services.AddSingleton<IEndPointScheduler<IPEndPoint>, RandomEndPointScheduler<IPEndPoint>>();
             services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
-            services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
-            services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
             services.AddSingleton<IRouteStore, RouteManager>();
             services.AddSingleton<IRouteMap<IPEndPoint>, RouteMap<IPEndPoint>>();
-            services.AddSingleton<HttpDispatchTable>();
+
+            // Coordination
+            services.AddSingleton<IProvider<ICoordinationManager>, CoordinationManager<IPEndPoint>.Provider>();
+            services.AddSingleton(p => p.GetRequiredService<IProvider<ICoordinationManager>>().ProvideInstance());
+            services.AddSingleton<ISessionManager, SessionManager>();
+            services.AddSingleton<ISessionProvider, SessionProvider<IPEndPoint>>();
+            services.AddSingleton<IStoredEntryManager, StoredEntryManager>();
+            services.AddSingleton<IStoredSessionManager, StoredSessionManager>();
+
+            // Utils
+            services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+
+            // Http-dispatch
+            //services.AddSingleton<HttpDispatchTable>();
+            services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
+
+            // Debugging
             services.AddSingleton<DebugPort>();
 
             services.Configure<RemoteMessagingOptions>(options =>

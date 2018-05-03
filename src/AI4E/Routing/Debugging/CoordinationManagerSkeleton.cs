@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
@@ -27,6 +28,9 @@ namespace AI4E.Routing.Debugging
         {
             var result = await _coordinationManager.CreateAsync(path, value, modes, cancellation);
 
+            if (result == null)
+                return null;
+
             return new Entry((Proxy<CoordinationManagerSkeleton>)this, result);
         }
 
@@ -34,12 +38,18 @@ namespace AI4E.Routing.Debugging
         {
             var result = await _coordinationManager.GetOrCreateAsync(path, value, modes, cancellation);
 
+            if (result == null)
+                return null;
+
             return new Entry((Proxy<CoordinationManagerSkeleton>)this, result);
         }
 
         public async Task<IEntry> GetAsync(string path, CancellationToken cancellation = default)
         {
             var result = await _coordinationManager.GetAsync(path, cancellation);
+
+            if (result == null)
+                return null;
 
             return new Entry((Proxy<CoordinationManagerSkeleton>)this, result);
         }
@@ -69,10 +79,19 @@ namespace AI4E.Routing.Debugging
         #endregion
 
         [Serializable]
-        private sealed class Entry : IEntry
+        internal /*private*/ sealed class Entry : IEntry
         {
-            private readonly IProxy<CoordinationManagerSkeleton> _proxy;
-            private readonly ImmutableArray<string> _children;
+            [NonSerialized] // TODO: Proxy is currently not serializable. This is a bug in the proying infrastructure
+            private /*readonly*/ IProxy<CoordinationManagerSkeleton> _proxy;
+
+            internal void SetProxy(IProxy<CoordinationManagerSkeleton> proxy)
+            {
+                _proxy = proxy;
+            }
+
+
+            private readonly string[] _childNames;
+            private readonly byte[] _value;
 
             public Entry(IProxy<CoordinationManagerSkeleton> proxy, IEntry entry)
             {
@@ -85,10 +104,10 @@ namespace AI4E.Routing.Debugging
                 Version = entry.Version;
                 CreationTime = entry.CreationTime;
                 LastWriteTime = entry.LastWriteTime;
-                Value = entry.Value;
-                _children = entry.ChildNames.ToImmutableArray();
-
-                Children = new ChildrenEnumerable(this);
+                _value = entry.Value.ToArray();
+                _childNames = entry.ChildNames.ToArray();
+                Name = entry.Name;
+                ParentPath = entry.ParentPath;
             }
 
             public string Path { get; }
@@ -99,11 +118,20 @@ namespace AI4E.Routing.Debugging
 
             public DateTime LastWriteTime { get; }
 
-            public IReadOnlyList<byte> Value { get; }
+            public IReadOnlyList<byte> Value => _value;
 
-            public IAsyncEnumerable<IEntry> Children { get; }
+            public IAsyncEnumerable<IEntry> Childs => new ChildrenEnumerable(this);
 
-            public IReadOnlyList<string> ChildNames => _children;
+            public IReadOnlyList<string> ChildNames => _childNames;
+
+            public string Name { get; }
+
+            public Task<IEntry> GetParentAsync(CancellationToken cancellation)
+            {
+                return _proxy.ExecuteAsync(p => p.GetAsync(ParentPath, cancellation));
+            }
+
+            public string ParentPath { get; }
 
             private sealed class ChildrenEnumerable : IAsyncEnumerable<IEntry>
             {
@@ -138,25 +166,33 @@ namespace AI4E.Routing.Debugging
 
                 public async Task<bool> MoveNext(CancellationToken cancellationToken)
                 {
-                    string child;
+                    IEntry next;
 
                     do
                     {
-                        var index = ++_currentIndex;
+                        string child;
 
-                        if (index >= _entry._children.Length)
+                        do
                         {
-                            return false;
+                            var index = ++_currentIndex;
+
+                            if (index >= _entry._childNames.Length)
+                            {
+                                _current = default;
+                                return false;
+                            }
+
+                            child = _entry._childNames[index];
                         }
+                        while (child == null);
 
-                        child = _entry._children[index];
+                        var childFullName = EntryPathHelper.GetChildPath(_entry.Path, child, normalize: false);
+
+                        next = await _entry._proxy.ExecuteAsync(p => p.GetAsync(childFullName, cancellationToken));
                     }
-                    while (child == null);
+                    while (next == null);
 
-                    var childFullName = EntryPathHelper.GetChildPath(_entry.Path, child, normalize: false);
-
-                    _current = await _entry._proxy.ExecuteAsync(p => p.GetAsync(childFullName, cancellationToken));
-
+                    _current = next;
                     return true;
                 }
 

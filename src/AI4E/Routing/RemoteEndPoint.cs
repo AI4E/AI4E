@@ -121,7 +121,7 @@ namespace AI4E.Routing
         {
             var tcs = new TaskCompletionSource<object>();
 
-            await _txQueue.EnqueueAsync((message, localEndPoint, attempt: 0, tcs, cancellation)).WithCancellation(cancellation);
+            await _txQueue.EnqueueAsync((message, localEndPoint, attempt: 1, tcs, cancellation)).WithCancellation(cancellation);
 
             await tcs.Task.WithCancellation(cancellation);
         }

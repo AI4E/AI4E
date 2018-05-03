@@ -20,20 +20,25 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace AI4E.Coordination
 {
     public interface IEntry
     {
+        string Name { get; }
         string Path { get; }
         int Version { get; }
         DateTime CreationTime { get; }
         DateTime LastWriteTime { get; }
 
         IReadOnlyList<byte> Value { get; }
-        IAsyncEnumerable<IEntry> Children { get; }
 
-        // This is needed for proxying (see CoordinationManagerSkeleton)
+        Task<IEntry> GetParentAsync(CancellationToken cancellation);
+        string ParentPath { get; }
+
+        IAsyncEnumerable<IEntry> Childs { get; }
         IReadOnlyList<string> ChildNames { get; }
     }
 }

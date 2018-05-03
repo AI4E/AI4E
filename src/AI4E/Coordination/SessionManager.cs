@@ -82,13 +82,12 @@ namespace AI4E.Coordination
             {
                 start = current;
 
-                if (start == null || _storedSessionManager.IsEnded(start))
+                if (start == null)
                 {
                     return;
                 }
 
-                desired = _storedSessionManager.End(start);
-
+                desired = start.Entries.Any() ? _storedSessionManager.End(start) : null;
                 current = await _storage.UpdateSessionAsync(start, desired, cancellation);
             }
             while (start != current);

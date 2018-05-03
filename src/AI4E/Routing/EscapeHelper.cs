@@ -17,18 +17,18 @@ namespace AI4E.Routing
         private const string _escapeString = "-";
 
         private const string _escapedEscapeString = "--";
-        private const string _escapedSlashString = "-/";
-        private const string _escapedBackslashString = "-\\";
+        private const string _escapedSlashString = "-X";
+        private const string _escapedBackslashString = "-Y";
 
         public static void Escape(StringBuilder str, int startIndex)
         {
             // Replace all occurances of - with --
             str.Replace(_escapeString, _escapedEscapeString, startIndex, str.Length - startIndex);
 
-            // Replace all occurances of / with -/
+            // Replace all occurances of / with -X
             str.Replace(_slashString, _escapedSlashString, startIndex, str.Length - startIndex);
 
-            // Replace all occurances of \ with -\
+            // Replace all occurances of \ with -Y
             str.Replace(_backSlashString, _escapedBackslashString, startIndex, str.Length - startIndex);
         }
 
@@ -37,10 +37,10 @@ namespace AI4E.Routing
             // Replace all occurances of -- with -
             str.Replace(_escapedEscapeString, _escapeString, startIndex, str.Length - startIndex);
 
-            // Replace all occurances of -/ with /
+            // Replace all occurances of -X with /
             str.Replace(_escapedSlashString, _slashString, startIndex, str.Length - startIndex);
 
-            // Replace all occurances of -\ with \
+            // Replace all occurances of -Y with \
             str.Replace(_escapedBackslashString, _backSlashString, startIndex, str.Length - startIndex);
         }
 

@@ -128,6 +128,13 @@ namespace AI4E.Storage.MongoDB
             }
             else
             {
+                var entry = await GetEntryAsync(path, cancellation);
+
+                if (entry != null)
+                {
+                    return entry;
+                }
+
                 try
                 {
                     await MongoWriteHelper.TryWriteOperation(() => _entryCollection.InsertOneAsync(convertedValue, new InsertOneOptions { }, cancellation));

@@ -31,7 +31,7 @@ namespace AI4E.Routing
 
         #region IRouteMap<TAddress>
 
-        public async Task MapRouteAsync(EndPointRoute localEndPoint, TAddress address,  CancellationToken cancellation)
+        public async Task MapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation)
         {
             if (localEndPoint == null)
                 throw new ArgumentNullException(nameof(localEndPoint));
@@ -89,7 +89,7 @@ namespace AI4E.Routing
 
             Assert(routeEntry != null);
 
-            var entries = routeEntry.Children;
+            var entries = routeEntry.Childs;
 
             return await entries.Select(p => _addressConversion.DeserializeAddress(p.Value.ToArray())).ToArray(cancellation);
         }
@@ -104,20 +104,22 @@ namespace AI4E.Routing
 
         private static string GetPath(string route)
         {
-            var escapedRoute = new StringBuilder(EscapeHelper.CountCharsToEscape(route) + route.Length);
-            escapedRoute.Append(route);
-            EscapeHelper.Escape(escapedRoute, 0);
+            var escapedRouteBuilder = new StringBuilder(EscapeHelper.CountCharsToEscape(route) + route.Length);
+            escapedRouteBuilder.Append(route);
+            EscapeHelper.Escape(escapedRouteBuilder, 0);
 
-            return EntryPathHelper.GetChildPath(_mapsRootPath, escapedRoute.ToString(), normalize: false);
+            var escapedRoute = escapedRouteBuilder.ToString();
+            return EntryPathHelper.GetChildPath(_mapsRootPath, escapedRoute, normalize: false);
         }
 
         private static string GetPath(string route, string session)
         {
-            var escapedSession = new StringBuilder(EscapeHelper.CountCharsToEscape(session) + session.Length);
-            escapedSession.Append(session);
-            EscapeHelper.Escape(escapedSession, 0);
+            var escapedSessionBuilder = new StringBuilder(EscapeHelper.CountCharsToEscape(session) + session.Length);
+            escapedSessionBuilder.Append(session);
+            EscapeHelper.Escape(escapedSessionBuilder, 0);
 
-            return EntryPathHelper.GetChildPath(GetPath(route), escapedSession.ToString(), normalize: false);
+            var escapedSession = escapedSessionBuilder.ToString();
+            return EntryPathHelper.GetChildPath(GetPath(route), escapedSession, normalize: false);
         }
     }
 }

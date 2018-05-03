@@ -22,10 +22,8 @@ using System;
 using System.Threading.Tasks;
 using System.Threading;
 using Microsoft.Extensions.Logging;
-
-#if DEBUG
 using System.Diagnostics;
-#endif
+
 
 namespace AI4E.Async
 {

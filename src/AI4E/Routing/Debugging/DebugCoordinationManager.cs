@@ -73,7 +73,14 @@ namespace AI4E.Routing.Debugging
 
                 var proxy = await GetProxyAsync(cancellation);
 
-                return await proxy.ExecuteAsync(p => p.CreateAsync(path, value, modes, cancellation));
+                var entry = (await proxy.ExecuteAsync(p => p.CreateAsync(path, value, modes, cancellation))) as CoordinationManagerSkeleton.Entry;
+
+                if (entry == null)
+                    return null;
+
+                entry.SetProxy(proxy);
+
+                return entry;
             }
         }
 
@@ -85,7 +92,14 @@ namespace AI4E.Routing.Debugging
 
                 var proxy = await GetProxyAsync(cancellation);
 
-                return await proxy.ExecuteAsync(p => p.GetOrCreateAsync(path, value, modes, cancellation));
+                var entry = (await proxy.ExecuteAsync(p => p.GetOrCreateAsync(path, value, modes, cancellation))) as CoordinationManagerSkeleton.Entry;
+
+                if (entry == null)
+                    return null;
+
+                entry.SetProxy(proxy);
+
+                return entry;
             }
         }
 
@@ -97,7 +111,14 @@ namespace AI4E.Routing.Debugging
 
                 var proxy = await GetProxyAsync(cancellation);
 
-                return await proxy.ExecuteAsync(p => p.GetAsync(path, cancellation));
+                var entry = (await proxy.ExecuteAsync(p => p.GetAsync(path, cancellation))) as CoordinationManagerSkeleton.Entry;
+
+                if (entry == null)
+                    return null;
+
+                entry.SetProxy(proxy);
+
+                return entry;
             }
         }
 

@@ -52,6 +52,9 @@ namespace AI4E.Modularity
                 services.AddSingleton<IRouteStore, RouteManager>();
                 services.AddSingleton<IRouteMap<IPEndPoint>, RouteMap<IPEndPoint>>();
 
+                // Http-dispatch
+                services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
+
                 services.AddSingleton(ConfigurePhysicalEndPoint);
                 services.AddSingleton(ConfigureRPCHost);
                 services.AddSingleton(ConfigureEndPointManager);
