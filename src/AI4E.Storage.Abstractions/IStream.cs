@@ -128,7 +128,7 @@ namespace AI4E.Storage
         /// If evaluated, the tasks result contains the concurrency token of the generated commit.
         /// A return value of <see cref="Guid.Empty"/> indicates that no commit was generated.
         /// </returns>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="InvalidOperationException">Thrown if this is a read-only stream view.</exception>
         /// <exception cref="ConcurrencyException">Thrown if a concurrency conflict occurs.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
@@ -146,7 +146,7 @@ namespace AI4E.Storage
         /// A task representing the asynchronous operation.
         /// If evaluated, the tasks result contains a boolean value indicating whether the stream view changed.
         /// </returns>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="InvalidOperationException">Thrown if this is a read-only stream view.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         Task<bool> UpdateAsync(CancellationToken cancellation);
@@ -157,7 +157,7 @@ namespace AI4E.Storage
         /// <param name="body">The body that is a snapshot of the commits till the current stream revision.</param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="InvalidOperationException">Thrown if this is a read-only stream view.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         Task AddSnapshotAsync(object body, CancellationToken cancellation = default);

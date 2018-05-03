@@ -26,8 +26,9 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
-using AI4E.Modularity.RPC;
 using AI4E.Processing;
+using AI4E.Proxying;
+using AI4E.Remoting;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 
@@ -137,7 +138,7 @@ namespace AI4E.Modularity.Debugging
             private readonly DebugPort _debugPort;
             private readonly Stream _stream;
             private readonly IServiceProvider _serviceProvider;
-            private readonly RPCHost _rpcHost;
+            private readonly ProxyHost _rpcHost;
 
             public DebugSession(DebugPort debugPort,
                                 Stream stream,
@@ -155,7 +156,7 @@ namespace AI4E.Modularity.Debugging
                 _debugPort = debugPort;
                 _stream = stream;
                 _serviceProvider = serviceProvider;
-                _rpcHost = new RPCHost(stream, serviceProvider);
+                _rpcHost = new ProxyHost(stream, serviceProvider);
             }
 
             public void Dispose()

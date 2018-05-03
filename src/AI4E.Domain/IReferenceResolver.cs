@@ -52,7 +52,7 @@ namespace AI4E.Domain
         /// When evaluated, the tasks result contains the loaded entity or null if the reference could not be resolved.
         /// </returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="revision"/> is a negative value.</exception>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         Task<TEntity> ResolveAsync<TEntity>(Guid id, long revision, CancellationToken cancellation)
                    where TEntity : AggregateRoot;
     }
@@ -73,7 +73,7 @@ namespace AI4E.Domain
         /// When evaluated, the tasks result contains the loaded entity or null if the reference could not be resolved.
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="referenceResolver"/> is null.</exception>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         public static Task<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, Guid id, CancellationToken cancellation)
             where TEntity : AggregateRoot
         {

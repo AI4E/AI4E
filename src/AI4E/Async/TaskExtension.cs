@@ -21,10 +21,9 @@
 using System;
 using System.Threading.Tasks;
 using System.Threading;
-
-#if DEBUG
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-#endif
+
 
 namespace AI4E.Async
 {
@@ -38,7 +37,7 @@ namespace AI4E.Async
             return !(task.IsCanceled || task.IsCompleted || task.IsFaulted);
         }
 
-        public static void HandleExceptions(this Task task) // TODO: Receive an instance of ILogger type
+        public static void HandleExceptions(this Task task, ILogger logger)
         {
             if (task == null)
                 throw new ArgumentNullException(nameof(task));
@@ -47,14 +46,92 @@ namespace AI4E.Async
             {
                 if (t.Exception != null)
                 {
-#if DEBUG
-                    Debugger.Break();
-#endif
-
-                    Console.WriteLine(t.Exception.ToString());
-                    Console.WriteLine();
+                    if (logger != null)
+                    {
+                        logger.LogError(t.Exception.InnerException, "An exception occured in the task.");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("An exception occured in the task.");
+                        Debug.WriteLine(t.Exception.InnerException.ToString());
+                    }
                 }
             });
+        }
+
+        public static void HandleExceptions(this Task task)
+        {
+            HandleExceptions(task, logger: null);
+        }
+
+        public static async Task HandleExceptionsAsync(this Task task, ILogger logger)
+        {
+            if (task == null)
+                throw new ArgumentNullException(nameof(task));
+
+            try
+            {
+                await task;
+            }
+            catch (Exception exc)
+            {
+                if (logger != null)
+                {
+                    logger.LogError(exc, "An exception occured in the task.");
+                }
+                else
+                {
+                    Debug.WriteLine("An exception occured in the task.");
+                    Debug.WriteLine(exc.ToString());
+                }
+            }
+        }
+
+        public static Task HandleExceptionsAsync(this Task task)
+        {
+            return HandleExceptionsAsync(task, logger: null);
+        }
+
+        public static async Task<T> HandleExceptionsAsync<T>(this Task<T> task, ILogger logger, T placeholder)
+        {
+            if (task == null)
+                throw new ArgumentNullException(nameof(task));
+
+            var result = placeholder;
+
+            try
+            {
+                result = await task;
+            }
+            catch (Exception exc)
+            {
+                if (logger != null)
+                {
+                    logger.LogError(exc, "An exception occured in the task.");
+                }
+                else
+                {
+                    Debug.WriteLine("An exception occured in the task.");
+                    Debug.WriteLine(exc.ToString());
+                }
+            }
+
+            return result;
+        }
+
+        public static Task<T> HandleExceptionsAsync<T>(this Task<T> task, T placeholder)
+        {
+            return HandleExceptionsAsync(task, logger: default, placeholder);
+        }
+
+        public static Task<T> HandleExceptionsAsync<T>(this Task<T> task, ILogger logger)
+        {
+            return HandleExceptionsAsync(task, logger, placeholder: default);
+        }
+
+        public static Task<T> HandleExceptionsAsync<T>(this Task<T> task)
+        {
+            return HandleExceptionsAsync(task, logger: null, placeholder: default);
         }
 
         public static async Task WithCancellation(this Task task, CancellationToken cancellation)

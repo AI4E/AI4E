@@ -12,6 +12,7 @@ namespace AI4E.Async
         private readonly TaskCompletionSource<byte> _disposalSource;
         private readonly Func<Task> _asyncDisposal;
         private readonly AsyncReaderWriterLock _lock;
+        private readonly CancellationTokenSource _cts;
 
         public AsyncDisposeHelper(Func<Task> asyncDisposal)
         {
@@ -23,6 +24,7 @@ namespace AI4E.Async
             _disposalSource = new TaskCompletionSource<byte>();
             _lock = new AsyncReaderWriterLock();
             _disposal = null;
+            _cts = new CancellationTokenSource();
         }
 
         public void Dispose()
@@ -35,7 +37,13 @@ namespace AI4E.Async
             lock (_disposalSource)
             {
                 if (_disposal == null)
+                {
+                    // The cancellation has to be done before locking, because this cancellation signals
+                    // holders of the prohibit disposal locks to cancel and allow disposal.
+                    _cts.Cancel();
+
                     _disposal = DisposeInternalAsync();
+                }
             }
         }
 
@@ -80,9 +88,31 @@ namespace AI4E.Async
             }
         }
 
+        /// <summary>
+        /// Gets a cancellation token that is canceled when disposal is requested.
+        /// </summary>
+        public CancellationToken DisposalRequested => _cts?.Token ?? default;
+
+        public CancellationToken CancelledOrDisposed(CancellationToken cancellation)
+        {
+            if (_cts == null)
+            {
+                return cancellation;
+            }
+
+            if (cancellation == default)
+            {
+                return DisposalRequested;
+            }
+
+            var combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(DisposalRequested, cancellation);
+
+            return combinedCancellationTokenSource.Token;
+        }
+
         public AwaitableDisposable<IDisposable> ProhibitDisposalAsync(CancellationToken cancellation)
         {
-            return _lock.ReaderLockAsync(cancellation);
+            return _lock.ReaderLockAsync(CancelledOrDisposed(cancellation));
         }
 
         public AwaitableDisposable<IDisposable> ProhibitDisposalAsync()

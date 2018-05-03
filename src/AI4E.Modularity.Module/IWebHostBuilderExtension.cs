@@ -21,8 +21,11 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
-using AI4E.Modularity.Debugging;
-using AI4E.Modularity.RPC;
+using AI4E.Coordination;
+using AI4E.Proxying;
+using AI4E.Remoting;
+using AI4E.Routing;
+using AI4E.Routing.Debugging;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,10 +48,17 @@ namespace AI4E.Modularity
                 services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
                 services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
                 services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
+                services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+                services.AddSingleton<IRouteStore, RouteManager>();
+                services.AddSingleton<IRouteMap<IPEndPoint>, RouteMap<IPEndPoint>>();
+
+                // Http-dispatch
+                services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
+
+                services.AddSingleton(ConfigurePhysicalEndPoint);
                 services.AddSingleton(ConfigureRPCHost);
                 services.AddSingleton(ConfigureEndPointManager);
-                services.AddSingleton(ConfigureRouteStore);
-                services.AddSingleton(ConfigurePhysicalEndPoint);
+                services.AddSingleton(ConfigureCoordinationManager);
             });
 
             return webHostBuilder;
@@ -82,18 +92,19 @@ namespace AI4E.Modularity
             return ActivatorUtilities.CreateInstance<TcpEndPoint>(provider);
         }
 
-        private static IRouteStore ConfigureRouteStore(IServiceProvider provider)
+        private static ICoordinationManager ConfigureCoordinationManager(IServiceProvider provider)
         {
             var optionsAccessor = provider.GetRequiredService<IOptions<ModuleServerOptions>>();
             var options = optionsAccessor.Value ?? new ModuleServerOptions();
 
-            if (!options.UseDebugConnection)
+            if (options.UseDebugConnection)
             {
-                return null;
+                return ActivatorUtilities.CreateInstance<DebugCoordinationManager>(provider);
             }
-
-            return ActivatorUtilities.CreateInstance<DebugRouteStore>(provider);
-
+            else
+            {
+                return ActivatorUtilities.CreateInstance<CoordinationManager<IPEndPoint>>(provider);
+            }
         }
 
         private static IEndPointManager ConfigureEndPointManager(IServiceProvider provider)
@@ -111,7 +122,7 @@ namespace AI4E.Modularity
             }
         }
 
-        private static RPCHost ConfigureRPCHost(IServiceProvider provider)
+        private static ProxyHost ConfigureRPCHost(IServiceProvider provider)
         {
             var optionsAccessor = provider.GetRequiredService<IOptions<ModuleServerOptions>>();
             var options = optionsAccessor.Value ?? new ModuleServerOptions();
@@ -126,7 +137,7 @@ namespace AI4E.Modularity
             var tcpClient = new TcpClient(endPoint.AddressFamily);
             tcpClient.Connect(endPoint.Address, endPoint.Port);
             var stream = tcpClient.GetStream();
-            return new RPCHost(stream, provider);
+            return new ProxyHost(stream, provider);
         }
     }
 }

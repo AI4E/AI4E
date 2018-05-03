@@ -18,6 +18,8 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using AI4E.Routing;
+
 namespace AI4E.Modularity
 {
     public sealed class EndPointConnected

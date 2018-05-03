@@ -51,5 +51,14 @@ namespace AI4E.Internal
                 enumerator?.Dispose();
             }
         }
+
+        public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source)
+        {
+            var result = new List<T>(source);
+
+            result.Shuffle();
+
+            return result;
+        }
     }
 }

@@ -25,7 +25,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
-using AI4E.Modularity.HttpDispatch;
+using AI4E.Routing;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -37,13 +37,17 @@ namespace AI4E.Modularity
     public sealed class ModuleServer : IServer
     {
         private readonly IRemoteMessageDispatcher _messageEndPoint;
+        private readonly IHttpDispatchStore _httpDispatchStore;
         private readonly string _prefix;
         private IHandlerRegistration _handlerRegistration;
 
-        public ModuleServer(IRemoteMessageDispatcher messageEndPoint, IOptions<ModuleServerOptions> optionsAccessor)
+        public ModuleServer(IRemoteMessageDispatcher messageEndPoint, IHttpDispatchStore httpDispatchStore, IOptions<ModuleServerOptions> optionsAccessor)
         {
             if (messageEndPoint == null)
                 throw new ArgumentNullException(nameof(messageEndPoint));
+
+            if (httpDispatchStore == null)
+                throw new ArgumentNullException(nameof(httpDispatchStore));
 
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
@@ -56,6 +60,7 @@ namespace AI4E.Modularity
             }
 
             _messageEndPoint = messageEndPoint;
+            _httpDispatchStore = httpDispatchStore;
             _prefix = options.Prefix;
             Features.Set<IHttpRequestFeature>(new HttpRequestFeature());
             Features.Set<IHttpResponseFeature>(new HttpResponseFeature());
@@ -70,66 +75,70 @@ namespace AI4E.Modularity
 
             _handlerRegistration = _messageEndPoint.Register(handler);
 
-            if (!await RegisterHttpPrefixAsync())
-            {
-                try
-                {
-                    var handlerRegistration = _handlerRegistration;
-                    Debug.Assert(handlerRegistration != null);
+            await _httpDispatchStore.AddRouteAsync(_messageEndPoint.LocalEndPoint, _prefix, cancellationToken);
 
-                    handlerRegistration.Cancel();
-                    await handlerRegistration.Cancellation;
-                }
-                finally
-                {
-                    throw new ModuleServerException("Failed to start server.");
-                }
-            }
+            //if (!await RegisterHttpPrefixAsync())
+            //{
+            //    try
+            //    {
+            //        var handlerRegistration = _handlerRegistration;
+            //        Debug.Assert(handlerRegistration != null);
+
+            //        handlerRegistration.Cancel();
+            //        await handlerRegistration.Cancellation;
+            //    }
+            //    finally
+            //    {
+            //        throw new ModuleServerException("Failed to start server.");
+            //    }
+            //}
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            var result = await UnregisterHttpPrefixAsync();
+            await _httpDispatchStore.RemoveRouteAsync(_messageEndPoint.LocalEndPoint, _prefix, cancellationToken);
 
-            try
-            {
-                var handlerRegistration = _handlerRegistration;
-                Debug.Assert(handlerRegistration != null);
+            //var result = await UnregisterHttpPrefixAsync();
 
-                handlerRegistration.Cancel();
-                await handlerRegistration.Cancellation;
-            }
-            finally
-            {
-                throw new ModuleServerException("Failed to stop server.");
-            }
+            //try
+            //{
+            //    var handlerRegistration = _handlerRegistration;
+            //    Debug.Assert(handlerRegistration != null);
+
+            //    handlerRegistration.Cancel();
+            //    await handlerRegistration.Cancellation;
+            //}
+            //finally
+            //{
+            //    throw new ModuleServerException("Failed to stop server.");
+            //}
         }
 
-        private async Task<bool> RegisterHttpPrefixAsync()
-        {
-            var message = new RegisterHttpPrefix(_messageEndPoint.LocalEndPoint, _prefix);
-            var result = await _messageEndPoint.DispatchAsync(message);
+        //private async Task<bool> RegisterHttpPrefixAsync()
+        //{
+        //    var message = new RegisterHttpPrefix(_messageEndPoint.LocalEndPoint, _prefix);
+        //    var result = await _messageEndPoint.DispatchAsync(message);
 
-            if (!result.IsSuccess)
-            {
-                // TODO: Log result message
-            }
+        //    if (!result.IsSuccess)
+        //    {
+        //        // TODO: Log result message
+        //    }
 
-            return result.IsSuccess;
-        }
+        //    return result.IsSuccess;
+        //}
 
-        private async Task<bool> UnregisterHttpPrefixAsync()
-        {
-            var message = new UnregisterHttpPrefix(_prefix);
-            var result = await _messageEndPoint.DispatchAsync(message);
+        //private async Task<bool> UnregisterHttpPrefixAsync()
+        //{
+        //    var message = new UnregisterHttpPrefix(_prefix);
+        //    var result = await _messageEndPoint.DispatchAsync(message);
 
-            if (!result.IsSuccess)
-            {
-                // TODO: Log result message
-            }
+        //    if (!result.IsSuccess)
+        //    {
+        //        // TODO: Log result message
+        //    }
 
-            return result.IsSuccess;
-        }
+        //    return result.IsSuccess;
+        //}
 
         public IFeatureCollection Features { get; } = new FeatureCollection();
 

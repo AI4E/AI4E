@@ -21,10 +21,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
-using AI4E.DispatchResults;
 using AI4E.Internal;
-using AI4E.Modularity.HttpDispatch;
+using AI4E.Routing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,20 +49,24 @@ namespace AI4E.Modularity
             var installer = serviceProvider.GetRequiredService<IModuleInstaller>();
 
             var dispatcher = serviceProvider.GetRequiredService<IRemoteMessageDispatcher>();
-            var dispatchTable = serviceProvider.GetRequiredService<HttpDispatchTable>();
+            //var dispatchTable = serviceProvider.GetRequiredService<HttpDispatchTable>();
+            var dispatchStore = serviceProvider.GetRequiredService<IHttpDispatchStore>();
 
-            dispatcher.Register<EndPointDisconnected>(m =>
-            {
-                dispatchTable.Unregister(m.EndPoint);
+            //dispatcher.Register<EndPointDisconnected>(m =>
+            //{
+            //    dispatchTable.Unregister(m.EndPoint);
 
-                return Task.FromResult<IDispatchResult>(new SuccessDispatchResult());
-            });
+            //    return Task.FromResult<IDispatchResult>(new SuccessDispatchResult());
+            //});
 
             var debugPort = serviceProvider.GetRequiredService<Debugging.DebugPort>();
 
             applicationBuilder.Use(async (context, next) =>
             {
-                if (dispatchTable.TryGetEndPoint(context.Features.Get<IHttpRequestFeature>().Path, out var endPoint))
+                var cancellation = context?.RequestAborted ?? default;
+                var endPoint = await dispatchStore.GetRouteAsync(context.Features.Get<IHttpRequestFeature>().Path, cancellation);
+
+                if (endPoint != null)
                 {
                     var requestFeature = context.Features.FirstOrDefault(p => p.Key == typeof(IHttpRequestFeature)).Value as IHttpRequestFeature;
 
@@ -88,7 +90,7 @@ namespace AI4E.Modularity
 
                     var message = moduleHttpRequest;
 
-                    var dispatchResult = await dispatcher.DispatchAsync(message, new DispatchValueDictionary(), publish: false, endPoint, cancellation: default);
+                    var dispatchResult = await dispatcher.DispatchAsync(message, new DispatchValueDictionary(), publish: false, endPoint, cancellation);
 
                     var response = default(ModuleHttpResponse);
 

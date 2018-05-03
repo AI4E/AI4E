@@ -19,7 +19,7 @@
  */
 
 using System;
-using AI4E.Modularity;
+using AI4E.Coordination;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
@@ -44,8 +44,11 @@ namespace AI4E.Storage.MongoDB
             builder.Services.AddSingleton(typeof(IStreamPersistence<,>), typeof(MongoStreamPersistence<,>));
             builder.Services.AddSingleton(typeof(IDataStore), typeof(MongoDataStore));
 
-            builder.Services.AddSingleton(typeof(IRouteMap<>), typeof(MongoRouteMap<>));
-            builder.Services.AddSingleton(typeof(IRouteStore), typeof(MongoRouteStore));
+            builder.Services.AddSingleton<MongoCoordinationStorage>();
+            builder.Services.AddSingleton<ICoordinationStorage>(p => p.GetRequiredService<MongoCoordinationStorage>());
+            builder.Services.AddSingleton<ISessionStorage>(p => p.GetRequiredService<MongoCoordinationStorage>());
+            //builder.Services.AddSingleton(typeof(IRouteMap<>), typeof(MongoRouteMap<>));
+            //builder.Services.AddSingleton(typeof(IRouteStore), typeof(MongoRouteStore));
             builder.Services.AddSingleton(typeof(IProjectionDependencyStore<,>), typeof(MongoProjectionDependencyStore<,>));
 
             return builder;

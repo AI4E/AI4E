@@ -69,7 +69,7 @@ namespace AI4E.Storage
         /// <summary>
         /// The callback to be used to resolve the current moment in time.
         /// </summary>
-        public static Func<DateTime> Resolver;
+        internal static Func<DateTime> Resolver;
 
         /// <summary>
         /// Gets the current moment in time.

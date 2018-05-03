@@ -25,30 +25,56 @@ namespace AI4E.Internal
 {
     internal static class IListExtensions
     {
-        [ThreadStatic] private static Random _rnd = new Random();
+        private static object _lock = new object();
+        private static int _seed = Environment.TickCount;
+        [ThreadStatic] private static Random _rnd;
 
         private static Random Rnd
         {
             get
             {
                 if (_rnd == null)
-                    _rnd = new Random();
+                {
+                    var seed = GetNextSeed();
+
+                    _rnd = new Random(seed);
+                }
 
                 return _rnd;
+            }
+        }
+
+        private static int GetNextSeed()
+        {
+            lock (_lock)
+            {
+                unchecked
+                {
+                    _seed += 1;
+
+                    if (_seed < 0)
+                        _seed = 1;
+                }
+                return _seed;
             }
         }
 
         // https://stackoverflow.com/questions/6165379/quickest-way-to-randomly-re-order-a-linq-collection
         public static void Shuffle<T>(this IList<T> list)
         {
-            var n = list.Count;
-            while (n > 1)
+            if (list.Count < 2)
+                return;
+
+            for (var i = list.Count; i > 1; i--)
             {
-                n--;
-                var k = Rnd.Next(n + 1);
+                var k = Rnd.Next(i);
+
+                if (k == (i - 1))
+                    continue;
+
                 var value = list[k];
-                list[k] = list[n];
-                list[n] = value;
+                list[k] = list[i - 1];
+                list[i - 1] = list[k];
             }
         }
     }

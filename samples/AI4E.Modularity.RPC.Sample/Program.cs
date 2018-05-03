@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Proxying;
 using Microsoft.Extensions.DependencyInjection;
 using Nito.AsyncEx;
 
@@ -17,11 +18,11 @@ namespace AI4E.Modularity.RPC.Sample
             using (var mux1 = new MultiplexStream(fs1, fs2))
             using (var mux2 = new MultiplexStream(fs2, fs1))
             {
-                var server = new RPCHost(mux1, new ServiceCollection().BuildServiceProvider());
+                var server = new ProxyHost(mux1, new ServiceCollection().BuildServiceProvider());
 
                 Task.Run(async () =>
                 {
-                    var client = new RPCHost(mux2, new ServiceCollection().BuildServiceProvider());
+                    var client = new ProxyHost(mux2, new ServiceCollection().BuildServiceProvider());
 
                     var valueProxy = new Proxy<Value>(new Value(12), ownsInstance: true);
                     var barProxy = await client.ActivateAsync<Bar>(ActivationMode.Create, cancellation: default);
