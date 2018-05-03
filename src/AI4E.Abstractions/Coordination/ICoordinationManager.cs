@@ -47,7 +47,7 @@ namespace AI4E.Coordination
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if either <paramref name="path"/> or <paramref name="value"/> is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="version"/> is negative.</exception>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         Task<int> SetValueAsync(string path, byte[] value, int version = default, CancellationToken cancellation = default);
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace AI4E.Coordination
         /// or the version of the current entry if <paramref name="version"/> is not equal to zero and the current entry's version is not equal to <paramref name="version"/>.
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="path"/> is null.</exception>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="InvalidOperationException">Thrown if <paramref name="recursive"/> is false and the entry specified by <paramref name="path"/> contains child entries.</exception>
         Task<int> DeleteAsync(string path, int version = default, bool recursive = false, CancellationToken cancellation = default);
 

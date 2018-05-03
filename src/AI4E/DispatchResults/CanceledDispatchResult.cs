@@ -18,19 +18,16 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using AI4E.Routing;
-
-namespace AI4E.Modularity.HttpDispatch
+namespace AI4E.DispatchResults
 {
-    public sealed class RegisterHttpPrefix
+    public sealed class CanceledDispatchResult : FailureDispatchResult
     {
-        public RegisterHttpPrefix(EndPointRoute endPoint, string prefix)
+        public CanceledDispatchResult() : base("Canceled")
         {
-            EndPoint = endPoint;
-            Prefix = prefix;
         }
 
-        public EndPointRoute EndPoint { get; }
-        public string Prefix { get; }
+        public CanceledDispatchResult(string message) : base(message)
+        {
+        }
     }
 }

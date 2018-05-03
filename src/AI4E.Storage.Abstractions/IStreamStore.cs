@@ -81,7 +81,7 @@ namespace AI4E.Storage
         /// A task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the stream.
         /// </returns>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         /// <exception cref="StreamNotFoundException">Thrown if the stream cannot be found and <paramref name="throwIfNotFound"/> is true.</exception>
         Task<IStream<TBucketId, TStreamId>> OpenStreamAsync(TBucketId bucketId, TStreamId streamId, bool throwIfNotFound = false, CancellationToken cancellation = default);
@@ -97,7 +97,7 @@ namespace AI4E.Storage
         /// A task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the read-only view of the stream.
         /// </returns>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         /// <exception cref="StreamNotFoundException">Thrown if the stream either cannot be found or cannot be opened within the specified revision.</exception>
         Task<IStream<TBucketId, TStreamId>> OpenStreamAsync(TBucketId bucketId, TStreamId streamId, long revision, CancellationToken cancellation = default);
@@ -110,7 +110,7 @@ namespace AI4E.Storage
         /// <returns>
         /// An asynchronous enumerable that enumerates over all streams of the specified bucket.
         /// </returns>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         IAsyncEnumerable<IStream<TBucketId, TStreamId>> OpenAllAsync(TBucketId bucketId, CancellationToken cancellation);
 
@@ -121,7 +121,7 @@ namespace AI4E.Storage
         /// <returns>
         /// An asynchronous enumerable that enumerates over all streams.
         /// </returns>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         IAsyncEnumerable<IStream<TBucketId, TStreamId>> OpenAllAsync(CancellationToken cancellation);
 
@@ -133,7 +133,7 @@ namespace AI4E.Storage
         /// <returns>
         /// An asynchronous enumerable that enumerates over all streams a snapshot to be taken of.
         /// </returns>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="maxThreshold"/> is less than or equal zero.</exception>
         IAsyncEnumerable<IStream<TBucketId, TStreamId>> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation);

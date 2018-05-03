@@ -305,10 +305,19 @@ namespace AI4E.Remoting
 
                         try
                         {
-                            // TODO: If any of the following fails, the message may be corrupted. Correct this.
-                            EncodeAddress(message, _address);
+                            var frameIdx = message.FrameIndex;
+                           EncodeAddress(message, _address);
 
-                            await _multiplexer._physicalEndPoint.SendAsync(message, address, combinedCancellationSource.Token);
+                            try
+                            {
+                                await _multiplexer._physicalEndPoint.SendAsync(message, address, combinedCancellationSource.Token);
+                            }
+                            catch when (frameIdx != message.FrameIndex)
+                            {
+                                message.PopFrame();
+                                Assert(frameIdx == message.FrameIndex);
+                                throw;
+                            }
                         }
                         catch (OperationCanceledException exc) when (_multiplexer._disposeHelper.DisposalRequested.IsCancellationRequested)
                         {
@@ -326,13 +335,12 @@ namespace AI4E.Remoting
 
             public void Dispose()
             {
-                //_disposeHelper.Dispose();
+                _disposeHelper.Dispose();
             }
 
             public Task DisposeAsync()
             {
-                //return _disposeHelper.DisposeAsync();
-                return Task.CompletedTask;
+                return _disposeHelper.DisposeAsync();
             }
 
             private async Task DisposeInternalAsync()

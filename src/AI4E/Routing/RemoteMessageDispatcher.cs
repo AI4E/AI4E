@@ -457,11 +457,11 @@ namespace AI4E.Routing
 
             cancellation.Register(() =>
             {
-                tcs.TrySetResult(new CancelledDispatchResult());
+                tcs.TrySetResult(new CanceledDispatchResult());
                 _responseTable.TryRemove(seqNum, out _);
             });
 
-            // The operation may be cancelled in the mean time.
+            // The operation may be canceled in the mean time.
             if (tcs.Task.IsCompleted)
             {
                 _responseTable.TryRemove(seqNum, out _);

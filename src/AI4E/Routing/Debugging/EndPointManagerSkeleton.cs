@@ -93,7 +93,7 @@ namespace AI4E.Routing.Debugging
 
         public async Task AddEndPointAsync(EndPointRoute route, CancellationToken cancellation)
         {
-            using (await _disposeHelper.ProhibitDisposalAsync())
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
                 if (_disposeHelper.IsDisposed)
                     throw new ObjectDisposedException(GetType().FullName);
@@ -113,7 +113,7 @@ namespace AI4E.Routing.Debugging
 
         public async Task RemoveEndPointAsync(EndPointRoute route, CancellationToken cancellation)
         {
-            using (await _disposeHelper.ProhibitDisposalAsync())
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
                 if (_disposeHelper.IsDisposed)
                     throw new ObjectDisposedException(GetType().FullName);
@@ -123,7 +123,7 @@ namespace AI4E.Routing.Debugging
                     if (!_addedEndPoints.Contains(route))
                         return;
 
-                    await _endPointManager.RemoveEndPointAsync(route, cancellation);
+                    await _endPointManager.RemoveEndPointAsync(route, _disposeHelper.CancelledOrDisposed(cancellation));
                     _addedEndPoints.Remove(route);
 
                     await _messageDispatcher.DispatchAsync(new EndPointDisconnected(route), publish: true);
@@ -133,34 +133,34 @@ namespace AI4E.Routing.Debugging
 
         public async Task<IMessage> ReceiveAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
         {
-            using (await _disposeHelper.ProhibitDisposalAsync())
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
                 if (_disposeHelper.IsDisposed)
                     throw new ObjectDisposedException(GetType().FullName);
 
-                return await _endPointManager.ReceiveAsync(localEndPoint, cancellation);
+                return await _endPointManager.ReceiveAsync(localEndPoint, _disposeHelper.CancelledOrDisposed(cancellation));
             }
         }
 
         public async Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation)
         {
-            using (await _disposeHelper.ProhibitDisposalAsync())
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
                 if (_disposeHelper.IsDisposed)
                     throw new ObjectDisposedException(GetType().FullName);
 
-                await _endPointManager.SendAsync(message, remoteEndPoint, localEndPoint, cancellation);
+                await _endPointManager.SendAsync(message, remoteEndPoint, localEndPoint, _disposeHelper.CancelledOrDisposed(cancellation));
             }
         }
 
         public async Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation)
         {
-            using (await _disposeHelper.ProhibitDisposalAsync())
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
                 if (_disposeHelper.IsDisposed)
                     throw new ObjectDisposedException(GetType().FullName);
 
-                await _endPointManager.SendAsync(response, request, cancellation);
+                await _endPointManager.SendAsync(response, request, _disposeHelper.CancelledOrDisposed(cancellation));
             }
         }
     }

@@ -71,9 +71,9 @@ namespace AI4E.Routing.Debugging
             {
                 CheckDisposal();
 
-                var proxy = await GetProxyAsync(cancellation);
-
-                var entry = (await proxy.ExecuteAsync(p => p.CreateAsync(path, value, modes, cancellation))) as CoordinationManagerSkeleton.Entry;
+                var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
+                var proxy = await GetProxyAsync(cancelledOrDisposed);
+                var entry = (await proxy.ExecuteAsync(p => p.CreateAsync(path, value, modes, cancelledOrDisposed))) as CoordinationManagerSkeleton.Entry;
 
                 if (entry == null)
                     return null;
@@ -90,9 +90,9 @@ namespace AI4E.Routing.Debugging
             {
                 CheckDisposal();
 
-                var proxy = await GetProxyAsync(cancellation);
-
-                var entry = (await proxy.ExecuteAsync(p => p.GetOrCreateAsync(path, value, modes, cancellation))) as CoordinationManagerSkeleton.Entry;
+                var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
+                var proxy = await GetProxyAsync(cancelledOrDisposed);
+                var entry = (await proxy.ExecuteAsync(p => p.GetOrCreateAsync(path, value, modes, cancelledOrDisposed))) as CoordinationManagerSkeleton.Entry;
 
                 if (entry == null)
                     return null;
@@ -109,9 +109,9 @@ namespace AI4E.Routing.Debugging
             {
                 CheckDisposal();
 
-                var proxy = await GetProxyAsync(cancellation);
-
-                var entry = (await proxy.ExecuteAsync(p => p.GetAsync(path, cancellation))) as CoordinationManagerSkeleton.Entry;
+                var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
+                var proxy = await GetProxyAsync(cancelledOrDisposed);
+                var entry = (await proxy.ExecuteAsync(p => p.GetAsync(path, cancelledOrDisposed))) as CoordinationManagerSkeleton.Entry;
 
                 if (entry == null)
                     return null;
@@ -128,9 +128,10 @@ namespace AI4E.Routing.Debugging
             {
                 CheckDisposal();
 
-                var proxy = await GetProxyAsync(cancellation);
+                var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
+                var proxy = await GetProxyAsync(cancelledOrDisposed);
 
-                return await proxy.ExecuteAsync(p => p.SetValueAsync(path, value, version, cancellation));
+                return await proxy.ExecuteAsync(p => p.SetValueAsync(path, value, version, cancelledOrDisposed));
             }
         }
 
@@ -140,9 +141,10 @@ namespace AI4E.Routing.Debugging
             {
                 CheckDisposal();
 
-                var proxy = await GetProxyAsync(cancellation);
+                var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
+                var proxy = await GetProxyAsync(cancelledOrDisposed);
 
-                return await proxy.ExecuteAsync(p => p.DeleteAsync(path, version, recursive, cancellation));
+                return await proxy.ExecuteAsync(p => p.DeleteAsync(path, version, recursive, cancelledOrDisposed));
             }
         }
 
@@ -161,9 +163,10 @@ namespace AI4E.Routing.Debugging
                 if (session != null)
                     return session;
 
-                var proxy = await GetProxyAsync(cancellation);
+                var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
+                var proxy = await GetProxyAsync(cancelledOrDisposed);
 
-                session = await proxy.ExecuteAsync(p => p.GetSessionAsync(cancellation));
+                session = await proxy.ExecuteAsync(p => p.GetSessionAsync(cancelledOrDisposed));
 
                 Interlocked.CompareExchange(ref _session, session, null);
 

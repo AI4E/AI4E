@@ -100,9 +100,10 @@ namespace AI4E.Routing.Debugging
             {
                 CheckDisposal();
 
-                var proxy = await GetProxyAsync(cancellation);
+                var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
+                var proxy = await GetProxyAsync(cancelledOrDisposed);
 
-                await proxy.ExecuteAsync(p => p.AddEndPointAsync(route, cancellation));
+                await proxy.ExecuteAsync(p => p.AddEndPointAsync(route, cancelledOrDisposed));
             }
         }
 
@@ -112,9 +113,10 @@ namespace AI4E.Routing.Debugging
             {
                 CheckDisposal();
 
-                var proxy = await GetProxyAsync(cancellation);
+                var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
+                var proxy = await GetProxyAsync(cancelledOrDisposed);
 
-                await proxy.ExecuteAsync(p => p.RemoveEndPointAsync(route, cancellation));
+                await proxy.ExecuteAsync(p => p.RemoveEndPointAsync(route, cancelledOrDisposed));
             }
         }
 
@@ -124,9 +126,10 @@ namespace AI4E.Routing.Debugging
             {
                 CheckDisposal();
 
-                var proxy = await GetProxyAsync(cancellation);
+                var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
+                var proxy = await GetProxyAsync(cancelledOrDisposed);
 
-                return await proxy.ExecuteAsync(p => p.ReceiveAsync(localEndPoint, CancellationToken.None));
+                return await proxy.ExecuteAsync(p => p.ReceiveAsync(localEndPoint, cancelledOrDisposed));
             }
         }
 
@@ -136,9 +139,10 @@ namespace AI4E.Routing.Debugging
             {
                 CheckDisposal();
 
-                var proxy = await GetProxyAsync(cancellation);
+                var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
+                var proxy = await GetProxyAsync(cancelledOrDisposed);
 
-                await proxy.ExecuteAsync(p => p.SendAsync(message, remoteEndPoint, localEndPoint, CancellationToken.None));
+                await proxy.ExecuteAsync(p => p.SendAsync(message, remoteEndPoint, localEndPoint, cancelledOrDisposed));
             }
         }
 
@@ -148,9 +152,10 @@ namespace AI4E.Routing.Debugging
             {
                 CheckDisposal();
 
-                var proxy = await GetProxyAsync(cancellation);
+                var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
+                var proxy = await GetProxyAsync(cancelledOrDisposed);
 
-                await proxy.ExecuteAsync(p => p.SendAsync(response, request, CancellationToken.None));
+                await proxy.ExecuteAsync(p => p.SendAsync(response, request, cancelledOrDisposed));
             }
         }
     }

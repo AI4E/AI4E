@@ -1319,8 +1319,8 @@ namespace AI4E.Coordination
         /// <param name="session">The session thats termination shall be awaited.</param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
-        /// <exception cref="SessionTerminatedException">Thrown if <paramref name="session"/> is the local session and the session terminated before the operation is cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
+        /// <exception cref="SessionTerminatedException">Thrown if <paramref name="session"/> is the local session and the session terminated before the operation is canceled.</exception>
         private async Task WaitForSessionTermination(string key, string session, CancellationToken cancellation)
         {
             await _sessionManager.WaitForTerminationAsync(session, cancellation);
@@ -1403,7 +1403,7 @@ namespace AI4E.Coordination
         /// <param name="session">The session that holds the read lock.</param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was cancelled.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         private async Task WaitForReadLockRelease(string path, string session, CancellationToken cancellation)
         {
             var entry = await _storage.GetEntryAsync(path, cancellation);

@@ -89,13 +89,30 @@ namespace AI4E.Async
         }
 
         /// <summary>
-        /// Gets a cancellation token that is cancelled when disposal is requested.
+        /// Gets a cancellation token that is canceled when disposal is requested.
         /// </summary>
         public CancellationToken DisposalRequested => _cts?.Token ?? default;
 
+        public CancellationToken CancelledOrDisposed(CancellationToken cancellation)
+        {
+            if (_cts == null)
+            {
+                return cancellation;
+            }
+
+            if (cancellation == default)
+            {
+                return DisposalRequested;
+            }
+
+            var combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(DisposalRequested, cancellation);
+
+            return combinedCancellationTokenSource.Token;
+        }
+
         public AwaitableDisposable<IDisposable> ProhibitDisposalAsync(CancellationToken cancellation)
         {
-            return _lock.ReaderLockAsync(cancellation);
+            return _lock.ReaderLockAsync(CancelledOrDisposed(cancellation));
         }
 
         public AwaitableDisposable<IDisposable> ProhibitDisposalAsync()
