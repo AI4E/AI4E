@@ -1188,7 +1188,7 @@ namespace AI4E.Coordination
             {
                 entry = await WaitForReadLocksReleaseAsync(entry, cancellation);
 
-                // We hold the write lock. No-one can alter the entry except for our session is terminated. But this will cause WaitForReadLocksReleaseAsync to throw.
+                // We hold the write lock. No-one can alter the entry except our session is terminated. But this will cause WaitForReadLocksReleaseAsync to throw.
                 Assert(entry != null);
 
                 _logger?.LogTrace($"[{await GetSessionAsync()}] Acquired write-lock for entry '{entry.Path}'.");

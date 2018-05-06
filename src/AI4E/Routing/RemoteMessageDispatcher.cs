@@ -332,7 +332,7 @@ namespace AI4E.Routing
             {
                 Debug.Assert(currType != null);
 
-                var routes = new HashSet<EndPointRoute>((await GetRoutesAsync(_messageTypeConversion.SerializeMessageType(messageType), cancellation)));
+                var routes = new HashSet<EndPointRoute>((await GetRoutesAsync(_messageTypeConversion.SerializeMessageType(currType), cancellation)));
                 routes.ExceptWith(handledRoutes);
                 handledRoutes.UnionWith(routes);
 
@@ -389,6 +389,13 @@ namespace AI4E.Routing
         {
             _logger?.LogInformation($"End-point '{LocalEndPoint}': Dispatching message of type {messageType.FullName} locally.");
 
+            IDispatchResult Result(IDispatchResult result)
+            {
+                _logger?.LogDebug($"End-point '{LocalEndPoint}': Dispatched message of type {messageType.FullName} locally.");
+
+                return result;
+            }
+
             var currType = messageType;
             var tasks = new List<Task<IDispatchResult>>();
 
@@ -404,7 +411,7 @@ namespace AI4E.Routing
 
                         if (!(dispatchResult is DispatchFailureDispatchResult))
                         {
-                            return dispatchResult;
+                            return Result(dispatchResult);
                         }
                     }
                     else
@@ -420,19 +427,19 @@ namespace AI4E.Routing
                 // When publishing a message and no handlers are available, this is a success.
                 if (publish)
                 {
-                    return new SuccessDispatchResult();
+                    return Result(new SuccessDispatchResult());
                 }
 
                 // When dispatching a message and no handlers are available, this is a failure.
-                return new DispatchFailureDispatchResult(messageType);
+                return Result(new DispatchFailureDispatchResult(messageType));
             }
 
             if (tasks.Count == 1)
             {
-                return await tasks[0];
+                return Result(await tasks[0]);
             }
 
-            return new AggregateDispatchResult(await Task.WhenAll(tasks));
+            return Result(new AggregateDispatchResult(await Task.WhenAll(tasks)));
         }
 
         private async Task<IDispatchResult> DispatchToEndPointAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, EndPointRoute remoteEndPoint, CancellationToken cancellation)
@@ -488,7 +495,11 @@ namespace AI4E.Routing
                 await _endPointManager.SendAsync(msg, remoteEndPoint, LocalEndPoint, cancellation);
             }
 
-            return await tcs.Task;
+            var result = await tcs.Task;
+
+            _logger?.LogDebug($"End-point '{LocalEndPoint}': Dispatched message of type {messageType.FullName} to end-point {remoteEndPoint}.");
+
+            return result;
         }
 
         #endregion

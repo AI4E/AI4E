@@ -80,6 +80,8 @@ namespace AI4E.Remoting
         private async Task InitializeInternalAsync(CancellationToken cancellation)
         {
             await _connectionProcess.StartAsync(cancellation);
+
+            _logger?.LogDebug($"Started physical-end-point on local address '{LocalAddress}'.");
         }
 
         #endregion
