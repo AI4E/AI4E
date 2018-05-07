@@ -126,7 +126,7 @@ namespace AI4E.Routing
                 {
                     if (!_endPoints.TryGetValue(localEndPoint, out endPoint) || endPoint.IsDisposed)
                     {
-                        var physicalEndPoint = _endPointMultiplexer.GetMultiplexEndPoint("end-points/" + localEndPoint.Route);
+                        var physicalEndPoint = GetEndPoint(localEndPoint); // TODO: Use async API
 
                         endPoint = _endPointFactory.CreateLocalEndPoint(this, this, physicalEndPoint, localEndPoint);
                         _endPoints[localEndPoint] = endPoint;
@@ -137,6 +137,11 @@ namespace AI4E.Routing
 
                 await endPoint.Initialization.WithCancellation(cancellationSource.Token);
             }
+        }
+
+        private IPhysicalEndPoint<TAddress> GetEndPoint(EndPointRoute route)
+        {
+            return _endPointMultiplexer.GetMultiplexEndPoint("end-points/" + route.Route);
         }
 
         public async Task RemoveEndPointAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
@@ -212,9 +217,7 @@ namespace AI4E.Routing
 
             var logger = _serviceProvider.GetService<ILogger<RemoteEndPoint<TAddress>>>();
 
-            var physicalEndPoint = _endPointMultiplexer.GetMultiplexEndPoint("end-points/" + remoteEndPoint.Route);
-
-            return _remoteEndPoints.GetOrAdd(remoteEndPoint, _ => new RemoteEndPoint<TAddress>(this, physicalEndPoint, remoteEndPoint, _messageCoder, _routeManager, _endPointScheduler, logger));
+            return _remoteEndPoints.GetOrAdd(remoteEndPoint, _ => new RemoteEndPoint<TAddress>(this, Provider.Create(() => GetEndPoint(remoteEndPoint)), remoteEndPoint, _messageCoder, _routeManager, _endPointScheduler, logger));
         }
 
         #endregion

@@ -52,7 +52,7 @@ namespace AI4E.Coordination
         private static readonly ImmutableArray<byte> _emptyValue = ImmutableArray<byte>.Empty;
         private static readonly TimeSpan _leaseLength =
 #if DEBUG
-        TimeSpan.FromSeconds(15);
+        TimeSpan.FromSeconds(30);
 #else
         TimeSpan.FromSeconds(30);
 #endif

@@ -36,14 +36,12 @@ using AI4E.Async;
 
 namespace AI4E.Proxying
 {
-    internal interface IProxy
+    internal interface IProxy : IAsyncDisposable
     {
         object LocalInstance { get; }
 
         Type ObjectType { get; }
         int Id { get; }
-
-        void Dispose();
 
         void Register(ProxyHost host, int proxyId, Action unregisterAction);
     }

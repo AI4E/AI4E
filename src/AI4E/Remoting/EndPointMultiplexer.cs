@@ -191,6 +191,8 @@ namespace AI4E.Remoting
 
         public IPhysicalEndPoint<TAddress> GetMultiplexEndPoint(string address)
         {
+            _logger?.LogDebug($"Retrieving multiplex end point on address '{LocalAddress}' with name '{address}'.");
+
             using (_disposeHelper.ProhibitDisposal())
             {
                 if (_disposeHelper.IsDisposed)
@@ -200,8 +202,9 @@ namespace AI4E.Remoting
                 {
                     if (!_endPoints.TryGetValue(address, out var result))
                     {
-                        result = new MultiplexEndPoint(this, address);
 
+
+                        result = new MultiplexEndPoint(this, address);
                         _endPoints.Add(address, result);
                     }
 
@@ -212,6 +215,8 @@ namespace AI4E.Remoting
 
         public async Task<IPhysicalEndPoint<TAddress>> GetMultiplexEndPointAsync(string address, CancellationToken cancellation = default)
         {
+            _logger?.LogDebug($"Retrieving multiplex end point on address '{LocalAddress}' with name '{address}'.");
+
             using (_disposeHelper.ProhibitDisposal())
             {
                 if (_disposeHelper.IsDisposed)
@@ -221,8 +226,9 @@ namespace AI4E.Remoting
                 {
                     if (!_endPoints.TryGetValue(address, out var result))
                     {
-                        result = new MultiplexEndPoint(this, address);
+                        _logger?.LogDebug($"Creating multiplex end point on address '{LocalAddress}' with name '{address}'.");
 
+                        result = new MultiplexEndPoint(this, address);
                         _endPoints.Add(address, result);
                     }
 
@@ -233,6 +239,10 @@ namespace AI4E.Remoting
 
         private sealed class MultiplexEndPoint : IPhysicalEndPoint<TAddress>
         {
+            private static int _next = 1;
+
+            private readonly int _id;
+
             private readonly AsyncDisposeHelper _disposeHelper;
             private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
             private readonly EndPointMultiplexer<TAddress> _multiplexer;
@@ -243,11 +253,15 @@ namespace AI4E.Remoting
                 Assert(multiplexer != null);
                 Assert(address != null);
 
+                _id = Interlocked.Increment(ref _next);
+
                 _multiplexer = multiplexer;
                 _address = address;
                 LocalAddress = _multiplexer.LocalAddress;
 
                 _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+
+                _multiplexer._logger?.LogDebug($"[{_id}] Creating multiplex end point on address '{LocalAddress}' with name '{address}'.");
             }
 
             public TAddress LocalAddress { get; }
@@ -277,11 +291,19 @@ namespace AI4E.Remoting
 
                         try
                         {
-                            return await _rxQueue.DequeueAsync(combinedCancellationSource.Token);
+                            var result = await _rxQueue.DequeueAsync(combinedCancellationSource.Token);
+
+                            _multiplexer._logger?.LogDebug($"[{_id}] Multiplex end point on '{LocalAddress}' with name '{_address}': Received message..");
+
+                            return result;
                         }
                         catch (OperationCanceledException exc) when (_multiplexer._disposeHelper.DisposalRequested.IsCancellationRequested)
                         {
                             throw new ObjectDisposedException(_multiplexer.GetType().FullName, exc);
+                        }
+                        catch (OperationCanceledException exc) when (_disposeHelper.DisposalRequested.IsCancellationRequested)
+                        {
+                            throw new ObjectDisposedException(GetType().FullName, exc);
                         }
                     }
                 }
@@ -289,6 +311,8 @@ namespace AI4E.Remoting
 
             public async Task SendAsync(IMessage message, TAddress address, CancellationToken cancellation)
             {
+                _multiplexer._logger?.LogDebug($"[{_id}] Multiplex end point on '{LocalAddress}' with name '{_address}': Sending message to remote '{address}'.");
+
                 using (await _multiplexer._disposeHelper.ProhibitDisposalAsync(cancellation))
                 {
                     if (_multiplexer._disposeHelper.IsDisposed)
@@ -306,7 +330,7 @@ namespace AI4E.Remoting
                         try
                         {
                             var frameIdx = message.FrameIndex;
-                           EncodeAddress(message, _address);
+                            EncodeAddress(message, _address);
 
                             try
                             {
@@ -323,6 +347,10 @@ namespace AI4E.Remoting
                         {
                             throw new ObjectDisposedException(_multiplexer.GetType().FullName, exc);
                         }
+                        catch (OperationCanceledException exc) when (_disposeHelper.DisposalRequested.IsCancellationRequested)
+                        {
+                            throw new ObjectDisposedException(GetType().FullName, exc);
+                        }
                     }
                 }
             }
@@ -335,16 +363,23 @@ namespace AI4E.Remoting
 
             public void Dispose()
             {
+                _multiplexer._logger?.LogDebug($"[{_id}] Requesting disposing multiplex end point on address '{LocalAddress}' with name '{_address}'.");
+
                 _disposeHelper.Dispose();
             }
 
             public Task DisposeAsync()
             {
+                _multiplexer._logger?.LogDebug($"[{_id}] Requesting disposing multiplex end point on address '{LocalAddress}' with name '{_address}'.");
+
                 return _disposeHelper.DisposeAsync();
+                //return Task.CompletedTask;
             }
 
             private async Task DisposeInternalAsync()
             {
+                _multiplexer._logger?.LogDebug($"[{_id}] Disposing multiplex end point on address '{LocalAddress}' with name '{_address}'.");
+
                 using (await _multiplexer._lock.LockAsync())
                 {
                     if (_multiplexer._endPoints.TryGetValue(_address, out var comparand) && comparand == this)

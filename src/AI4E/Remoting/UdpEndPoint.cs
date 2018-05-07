@@ -13,6 +13,11 @@ namespace AI4E.Remoting
 {
     public sealed class UdpEndPoint : IPhysicalEndPoint<IPEndPoint>
     {
+#pragma warning disable IDE1006
+        // https://msdn.microsoft.com/en-us/library/windows/desktop/ms740668(v=vs.85).aspx
+        private const int WSAECONNRESET = 10054;
+#pragma warning restore IDE1006
+
         private readonly ILogger<UdpEndPoint> _logger;
         private readonly UdpClient _udpClient;
         private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
@@ -27,8 +32,14 @@ namespace AI4E.Remoting
             // We generate an IPv4 end-point for now.
             _udpClient = new UdpClient(port: 0);
 
-            var host = Dns.GetHostEntry(Dns.GetHostName());
-            LocalAddress = GetLocalAddress(host);
+            // TODO: Does this thing work in linux/unix too?
+            // See: https://stackoverflow.com/questions/7201862/an-existing-connection-was-forcibly-closed-by-the-remote-host
+            //uint IOC_IN = 0x80000000,
+            //     IOC_VENDOR = 0x18000000,
+            //     SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
+            //_udpClient.Client.IOControl(unchecked((int)SIO_UDP_CONNRESET), new byte[] { Convert.ToByte(false) }, null);
+
+            LocalAddress = GetLocalAddress();
 
             if (LocalAddress == null)
             {
@@ -40,8 +51,9 @@ namespace AI4E.Remoting
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
-        private IPEndPoint GetLocalAddress(IPHostEntry host)
+        private IPEndPoint GetLocalAddress()
         {
+            var host = Dns.GetHostEntry(Dns.GetHostName());
             foreach (var ip in host.AddressList)
             {
                 if (ip.AddressFamily == AddressFamily.InterNetwork)
@@ -97,7 +109,18 @@ namespace AI4E.Remoting
             {
                 try
                 {
-                    var receiveResult = await _udpClient.ReceiveAsync().WithCancellation(cancellation);
+                    UdpReceiveResult receiveResult;
+                    try
+                    {
+                        receiveResult = await _udpClient.ReceiveAsync().WithCancellation(cancellation);
+                    }
+                    // Apparently, the udp socket does receive ICMP messages that a remote host was unreachable on sending
+                    // and throws an exception on the next receive call. We just ignore this currently.
+                    // https://msdn.microsoft.com/en-us/library/windows/desktop/ms740120%28v=vs.85%29.aspx
+                    catch (SocketException exc) when (exc.ErrorCode == WSAECONNRESET)
+                    {
+                        continue;
+                    }
 
                     var message = new Message();
 

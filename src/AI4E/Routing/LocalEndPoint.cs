@@ -101,21 +101,16 @@ namespace AI4E.Routing
         {
             _logger?.LogDebug($"Map local end-point '{Route}' to physical end-point {LocalAddress}.");
 
-            for (var waitTime = TimeSpan.FromSeconds(2); true; waitTime = new TimeSpan(waitTime.Ticks * 2))
+            try
             {
-                try
-                {
-                    await _routeManager.MapRouteAsync(Route, LocalAddress, cancellation);
-                    break;
-                }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception exc)
-                {
-                    _logger?.LogWarning(exc, $"Failure in map process for local end-point '{Route}'.");
+                await _routeManager.MapRouteAsync(Route, LocalAddress, cancellation);
+            }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
+            catch (Exception exc)
+            {
+                _logger?.LogWarning(exc, $"Failure in map process for local end-point '{Route}'.");
 
-                    await Task.Delay(waitTime, cancellation);
-                    continue;
-                }
+                throw;
             }
 
             await _receiveProcess.StartAsync(cancellation);
