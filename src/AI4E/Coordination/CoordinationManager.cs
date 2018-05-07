@@ -35,6 +35,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -67,6 +68,8 @@ namespace AI4E.Coordination
         private readonly ILogger<CoordinationManager<TAddress>> _logger;
 
         private readonly ConcurrentDictionary<string, CacheEntry> _cache;
+        private readonly WaitDirectory<(string session, string entry)> _readLockWaitDirectory;
+        private readonly WaitDirectory<(string session, string entry)> _writeLockWaitDirectory;
 
         private readonly AsyncProcess _updateSessionProcess;
         private readonly AsyncProcess _sessionCleanupProcess;
@@ -112,7 +115,10 @@ namespace AI4E.Coordination
             _dateTimeProvider = dateTimeProvider;
             _addressConversion = addressConversion;
             _logger = logger;
+
             _cache = new ConcurrentDictionary<string, CacheEntry>();
+            _readLockWaitDirectory = new WaitDirectory<(string session, string entry)>();
+            _writeLockWaitDirectory = new WaitDirectory<(string session, string entry)>();
 
             _updateSessionProcess = new AsyncProcess(UpdateSessionProcess);
             _sessionCleanupProcess = new AsyncProcess(SessionCleanupProcess);
@@ -171,6 +177,16 @@ namespace AI4E.Coordination
                     }
                     break;
 
+                case MessageType.ReleasedReadLock:
+                    _readLockWaitDirectory.Notify((session, entry));
+
+                    break;
+
+                case MessageType.ReleasedWriteLock:
+                    _writeLockWaitDirectory.Notify((session, entry));
+
+                    break;
+
                 case MessageType.Unknown:
                 default:
                     _logger?.LogWarning($"[{await GetSessionAsync()}] Received invalid message or message with unknown message type.");
@@ -193,18 +209,70 @@ namespace AI4E.Coordination
             }
             else
             {
-                var remoteAddress = SessionHelper.GetAddressFromSession(session, _addressConversion);
+                // The session is the read-lock owner (It caches the entry currently)
+                var message = EncodeMessage(MessageType.InvalidateCacheEntry, entry, session);
 
-                Assert(remoteAddress != null);
+                await SendMessageAsync(session, message, cancellation);
+            }
+        }
 
-                var message = new Message();
+        private async Task NotifyReadLockReleased(string entry, CancellationToken cancellation)
+        {
+            var sessions = await _sessionManager.GetSessionsAsync(cancellation);
+            var localSession = await GetSessionAsync(cancellation);
 
-                EncodeMessage(message, MessageType.InvalidateCacheEntry, entry, session);
+            foreach (var session in sessions)
+            {
+                if (session == localSession)
+                {
+                    _readLockWaitDirectory.Notify((localSession, entry));
 
-                var physicalEndPoint = await GetSessionEndPointAsync(session, cancellation);
+                    continue;
+                }
 
+                // The session is the former read-lock owner.
+                var message = EncodeMessage(MessageType.ReleasedReadLock, entry, localSession);
+
+                await SendMessageAsync(session, message, cancellation);
+            }
+        }
+
+        private async Task NotifyWriteLockReleased(string entry, CancellationToken cancellation)
+        {
+            var sessions = await _sessionManager.GetSessionsAsync(cancellation);
+            var localSession = await GetSessionAsync(cancellation);
+
+            foreach (var session in sessions)
+            {
+                if (session == localSession)
+                {
+                    _writeLockWaitDirectory.Notify((localSession, entry));
+
+                    continue;
+                }
+
+                // The session is the former write-lock owner.
+                var message = EncodeMessage(MessageType.ReleasedWriteLock, entry, localSession);
+
+                await SendMessageAsync(session, message, cancellation);
+            }
+        }
+
+        private async Task SendMessageAsync(string session, Message message, CancellationToken cancellation)
+        {
+            var remoteAddress = SessionHelper.GetAddressFromSession(session, _addressConversion);
+
+            Assert(remoteAddress != null);
+
+            var physicalEndPoint = await GetSessionEndPointAsync(session, cancellation);
+
+            try
+            {
                 await physicalEndPoint.SendAsync(message, remoteAddress, cancellation);
             }
+            catch (SocketException) { }
+            catch (IOException) { } // The remote session terminated or we just cannot transmit to it.
+
         }
 
         private async Task<IPhysicalEndPoint<TAddress>> GetSessionEndPointAsync(string session, CancellationToken cancellation)
@@ -250,11 +318,20 @@ namespace AI4E.Coordination
             return (messageType, entry, session);
         }
 
+        private Message EncodeMessage(MessageType messageType, string entry, string session)
+        {
+            var message = new Message();
+
+            EncodeMessage(message, messageType, entry, session);
+
+            return message;
+        }
+
         private void EncodeMessage(IMessage message, MessageType messageType, string entry, string session)
         {
             Assert(message != null);
             // Modify if other message types are added
-            Assert(messageType >= MessageType.InvalidateCacheEntry && messageType <= MessageType.InvalidateCacheEntry);
+            Assert(messageType >= MessageType.InvalidateCacheEntry && messageType <= MessageType.ReleasedWriteLock);
 
             using (var frameStream = message.PushFrame().OpenStream())
             using (var binaryWriter = new BinaryWriter(frameStream))
@@ -274,7 +351,9 @@ namespace AI4E.Coordination
         private enum MessageType : byte
         {
             Unknown = 0,
-            InvalidateCacheEntry = 1
+            InvalidateCacheEntry = 1,
+            ReleasedReadLock = 2,
+            ReleasedWriteLock = 3
         }
 
         #endregion
@@ -1143,6 +1222,7 @@ namespace AI4E.Coordination
 
             Assert(entry != null);
 
+            await NotifyReadLockReleased(entry.Path, cancellation: default);
             _logger?.LogTrace($"[{await GetSessionAsync()}] Released read-lock for entry '{entry.Path}'.");
 
             return desired;
@@ -1188,7 +1268,7 @@ namespace AI4E.Coordination
             {
                 entry = await WaitForReadLocksReleaseAsync(entry, cancellation);
 
-                // We hold the write lock. No-one can alter the entry except for our session is terminated. But this will cause WaitForReadLocksReleaseAsync to throw.
+                // We hold the write lock. No-one can alter the entry except our session is terminated. But this will cause WaitForReadLocksReleaseAsync to throw.
                 Assert(entry != null);
 
                 _logger?.LogTrace($"[{await GetSessionAsync()}] Acquired write-lock for entry '{entry.Path}'.");
@@ -1231,6 +1311,7 @@ namespace AI4E.Coordination
 
             if (entry != null)
             {
+                await NotifyWriteLockReleased(entry.Path, cancellation: default);
                 _logger?.LogTrace($"[{await GetSessionAsync()}] Released write-lock for entry '{entry.Path}'.");
             }
 
@@ -1259,27 +1340,39 @@ namespace AI4E.Coordination
                 var path = entry.Path;
 
                 var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+                var cancelled = default(Task);
 
                 try // Await the end of the session that holds 'writeLock' or the lock release, whichever occurs first.
                 {
-                    var lockRelease = SpinWaitAsync(async () =>
+                    async Task<bool> Predicate(CancellationToken c)
                     {
-                        entry = await _storage.GetEntryAsync(path, cancellation);
+                        entry = await _storage.GetEntryAsync(path, c);
                         return entry == null || entry.WriteLock == null;
-                    }, combinedCancellation.Token);
+                    }
 
+                    Task Release(CancellationToken c)
+                    {
+                        return _writeLockWaitDirectory.WaitForNotification((writeLock, path), c);
+                    }
+
+                    var lockRelease = SpinWaitAsync(Predicate, Release, combinedCancellation.Token);
                     var sessionTermination = WaitForSessionTermination(path, writeLock, combinedCancellation.Token);
-
                     var completed = await Task.WhenAny(sessionTermination, lockRelease);
 
                     if (completed == sessionTermination)
                     {
                         entry = await _storage.GetEntryAsync(path, cancellation);
+                        cancelled = lockRelease;
+                    }
+                    else
+                    {
+                        cancelled = sessionTermination;
                     }
                 }
                 finally
                 {
                     combinedCancellation.Cancel();
+                    cancelled?.IgnoreCancellation(_logger);
                 }
             }
 
@@ -1419,46 +1512,84 @@ namespace AI4E.Coordination
                 return;
             }
 
-            await InvalidateCacheEntryAsync(path, session, cancellation);
-
             var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+            var cancelled = default(Task);
 
             try
             {
-                var sessionTermination = WaitForSessionTermination(path, session, combinedCancellation.Token);
-
-                var lockRelease = SpinWaitAsync(async () =>
+                async Task<bool> Predicate(CancellationToken c)
                 {
-                    entry = await _storage.GetEntryAsync(path, cancellation);
-                    return entry == null || !entry.ReadLocks.Contains(session);
-                }, cancellation);
+                    entry = await _storage.GetEntryAsync(path, c);
+
+                    if (entry != null && entry.ReadLocks.Contains(session))
+                    {
+                        await InvalidateCacheEntryAsync(path, session, c);
+                        return false;
+                    }
+
+                    return true;
+                }
+
+                Task Release(CancellationToken c)
+                {
+                    return _readLockWaitDirectory.WaitForNotification((session, path), c);
+                }
+
+                var lockRelease = SpinWaitAsync(Predicate, Release, combinedCancellation.Token);
+                var sessionTermination = WaitForSessionTermination(path, session, combinedCancellation.Token);
 
                 var completed = await Task.WhenAny(sessionTermination, lockRelease);
 
                 if (completed == sessionTermination)
                 {
                     entry = await _storage.GetEntryAsync(entry.Path, cancellation);
+                    cancelled = lockRelease;
+                }
+                else
+                {
+                    cancelled = sessionTermination;
                 }
             }
             finally
             {
                 combinedCancellation.Cancel();
+                cancelled?.IgnoreCancellation();
             }
         }
 
-        private async Task SpinWaitAsync(Func<Task<bool>> predicate, CancellationToken cancellation)
+        private async Task SpinWaitAsync(Func<CancellationToken, Task<bool>> predicate, Func<CancellationToken, Task> release, CancellationToken cancellation)
         {
-            var timeToWait = new TimeSpan(100 * TimeSpan.TicksPerMillisecond);
+            var timeToWait = new TimeSpan(200 * TimeSpan.TicksPerMillisecond);
             var timeToWaitMax = new TimeSpan(12800 * TimeSpan.TicksPerMillisecond);
 
-            while (!await predicate())
+            var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+
+            try
             {
                 cancellation.ThrowIfCancellationRequested();
+                var releaseX = release(combinedCancellation.Token); // TODO: Rename
 
-                await Task.Delay(timeToWait, cancellation);
+                while (!await predicate(cancellation))
+                {
+                    cancellation.ThrowIfCancellationRequested();
 
-                if (timeToWait < timeToWaitMax)
-                    timeToWait = new TimeSpan(timeToWait.Ticks * 2);
+                    var delay = Task.Delay(timeToWait, cancellation);
+
+                    var completed = await Task.WhenAny(delay, releaseX);
+
+                    if (completed == releaseX)
+                    {
+                        return;
+                    }
+
+                    if (timeToWait < timeToWaitMax)
+                        timeToWait = new TimeSpan(timeToWait.Ticks * 2);
+                }
+
+            }
+            finally
+            {
+                combinedCancellation.Cancel();
             }
         }
 
@@ -1654,6 +1785,92 @@ namespace AI4E.Coordination
                 }
 
                 return new CacheEntry(Path, entry, isValid: true, version);
+            }
+        }
+
+        private sealed class WaitDirectory<TKey>
+        {
+            private readonly Dictionary<TKey, (TaskCompletionSource<object> tcs, int refCount)> _entries;
+
+            public WaitDirectory()
+            {
+                _entries = new Dictionary<TKey, (TaskCompletionSource<object> tcs, int refCount)>();
+            }
+
+            public Task WaitForNotification(TKey key, CancellationToken cancellation)
+            {
+                if (key == null)
+                    throw new ArgumentNullException(nameof(key));
+
+                if (cancellation.IsCancellationRequested)
+                    return Task.FromCanceled(cancellation);
+
+                TaskCompletionSource<object> tcs;
+
+                lock (_entries)
+                {
+                    var refCount = 0;
+
+                    if (_entries.TryGetValue(key, out var entry))
+                    {
+                        tcs = entry.tcs;
+                        refCount = entry.refCount;
+                    }
+                    else
+                    {
+                        tcs = new TaskCompletionSource<object>();
+                    }
+
+                    refCount++;
+
+                    _entries[key] = (tcs, refCount);
+                }
+
+                cancellation.Register(() =>
+                {
+                    lock (_entries)
+                    {
+                        if (!_entries.TryGetValue(key, out var entry))
+                        {
+                            return;
+                        }
+
+                        Assert(entry.refCount >= 1);
+
+                        if (entry.refCount == 1)
+                        {
+                            _entries.Remove(key);
+                        }
+                        else
+                        {
+                            _entries[key] = (entry.tcs, entry.refCount - 1);
+                        }
+                    }
+                });
+
+                return tcs.Task.WithCancellation(cancellation);
+            }
+
+            public void Notify(TKey key)
+            {
+                if (key == null)
+                    throw new ArgumentNullException(nameof(key));
+
+                TaskCompletionSource<object> tcs;
+
+                lock (_entries)
+                {
+                    if (!_entries.TryGetValue(key, out var entry))
+                    {
+                        return;
+                    }
+
+                    tcs = entry.tcs;
+                    _entries.Remove(key);
+
+                }
+
+                tcs.SetResult(null);
             }
         }
 

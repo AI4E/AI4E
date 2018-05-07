@@ -43,7 +43,8 @@ namespace AI4E.Routing
 {
     public class RemoteEndPoint<TAddress> : IRemoteEndPoint<TAddress>, IAsyncDisposable
     {
-        private readonly IEndPointManager<TAddress> _endPointManager;    
+        private readonly IEndPointManager<TAddress> _endPointManager;
+        private readonly IProvider<IPhysicalEndPoint<TAddress>> _physicalEndPointProvider;
         private readonly IMessageCoder<TAddress> _messageCoder;
         private readonly IRouteMap<TAddress> _routeManager;
         private readonly IEndPointScheduler<TAddress> _endPointScheduler;
@@ -56,7 +57,7 @@ namespace AI4E.Routing
         private readonly AsyncProducerConsumerQueue<(IMessage message, EndPointRoute localEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)> _txQueue;
 
         public RemoteEndPoint(IEndPointManager<TAddress> endPointManager,
-                              IPhysicalEndPoint<TAddress> physicalEndPoint,
+                              IProvider<IPhysicalEndPoint<TAddress>> physicalEndPointProvider,
                               EndPointRoute route,
                               IMessageCoder<TAddress> messageCoder,
                               IRouteMap<TAddress> routeManager,
@@ -66,8 +67,8 @@ namespace AI4E.Routing
             if (endPointManager == null)
                 throw new ArgumentNullException(nameof(endPointManager));
 
-            if (physicalEndPoint == null)
-                throw new ArgumentNullException(nameof(physicalEndPoint));
+            if (physicalEndPointProvider == null)
+                throw new ArgumentNullException(nameof(physicalEndPointProvider));
 
             if (route == null)
                 throw new ArgumentNullException(nameof(route));
@@ -82,7 +83,7 @@ namespace AI4E.Routing
                 throw new ArgumentNullException(nameof(endPointScheduler));
 
             _endPointManager = endPointManager;
-            PhysicalEndPoint = physicalEndPoint;
+            _physicalEndPointProvider = physicalEndPointProvider;
             Route = route;
             _messageCoder = messageCoder;
             _routeManager = routeManager;
@@ -98,7 +99,7 @@ namespace AI4E.Routing
 
         public EndPointRoute Route { get; }
         public TAddress LocalAddress => _endPointManager.LocalAddress;
-        public IPhysicalEndPoint<TAddress> PhysicalEndPoint { get; }
+        public IPhysicalEndPoint<TAddress> PhysicalEndPoint => _physicalEndPointProvider.ProvideInstance();
 
         public async Task SendAsync(IMessage message, EndPointRoute localEndPoint, TAddress remoteAddress, CancellationToken cancellation)
         {
@@ -209,7 +210,7 @@ namespace AI4E.Routing
                     }
                     catch (Exception exc)
                     {
-                        // TODO: Logging
+                        _logger.LogWarning(exc, "Exception occured while passing a message to the remote end.");
                     }
 
                     return;
@@ -217,7 +218,7 @@ namespace AI4E.Routing
             }
             catch (Exception exc)
             {
-                // TODO: Logging
+                _logger.LogWarning(exc, "Exception occured while passing a message to the remote end.");
             }
 
             Reschedule(message, localEndPoint, attempt, tcs, cts.Token, sendCancellation).HandleExceptions(_logger);

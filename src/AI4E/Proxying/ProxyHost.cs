@@ -165,17 +165,18 @@ namespace AI4E.Proxying
 
         private async Task DisposeInternalAsync()
         {
-            await _initializationHelper.CancelAsync();
+            await _initializationHelper.CancelAsync().HandleExceptionsAsync();
 
-            await _receiveProcess.TerminateAsync();
+            await _receiveProcess.TerminateAsync().HandleExceptionsAsync();
+
+            IEnumerable<IProxy> proxies;
 
             lock (_proxyLock)
             {
-                foreach (var proxy in _proxies.Values.ToList())
-                {
-                    proxy.Dispose();
-                }
+                proxies = _proxies.Values.ToList();
             }
+
+            await Task.WhenAll(proxies.Select(p => p.DisposeAsync())).HandleExceptionsAsync();
         }
 
         #endregion

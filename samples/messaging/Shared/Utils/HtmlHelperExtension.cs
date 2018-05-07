@@ -133,13 +133,13 @@ namespace Shared.Utils
             }
 
             var dispatcher = services.GetRequiredService<IMessageDispatcher>();
-            var cancellationSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(3000));
+            var cancellationSource = new CancellationTokenSource(); // TimeSpan.FromMilliseconds(3000));
             var cancellation = cancellationSource.Token;
             var dispatchResult = default(IDispatchResult);
 
             try
             {
-                dispatchResult = await dispatcher.DispatchAsync(viewExtension, new DispatchValueDictionary(), publish: true, cancellation);//.WithCancellation(cancellation);
+                dispatchResult = await dispatcher.DispatchAsync(viewExtension, new DispatchValueDictionary(), publish: true, cancellation);
             }
             catch (OperationCanceledException)
             {

@@ -243,5 +243,10 @@ namespace AI4E.Coordination
 
             return current.Entries;
         }
+
+        public async Task<IEnumerable<string>> GetSessionsAsync(CancellationToken cancellation = default)
+        {
+            return (await _storage.GetSessionsAsync(cancellation)).Where(p => !_storedSessionManager.IsEnded(p)).Select(p => p.Key);
+        }
     }
 }
