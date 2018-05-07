@@ -66,7 +66,7 @@ namespace AI4E.Modularity
             services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
 
             // Physical messaging
-            services.AddSingleton<IPhysicalEndPoint<IPEndPoint>, TcpEndPoint>();
+            services.AddSingleton<IPhysicalEndPoint<IPEndPoint>, UdpEndPoint>();
             services.AddSingleton<IEndPointMultiplexer<IPEndPoint>, EndPointMultiplexer<IPEndPoint>>();
             services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
 

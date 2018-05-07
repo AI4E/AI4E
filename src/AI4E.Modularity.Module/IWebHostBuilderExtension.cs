@@ -89,7 +89,7 @@ namespace AI4E.Modularity
                 return null;
             }
 
-            return ActivatorUtilities.CreateInstance<TcpEndPoint>(provider);
+            return ActivatorUtilities.CreateInstance<UdpEndPoint>(provider);
         }
 
         private static ICoordinationManager ConfigureCoordinationManager(IServiceProvider provider)

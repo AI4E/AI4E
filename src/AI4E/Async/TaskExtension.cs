@@ -37,6 +37,42 @@ namespace AI4E.Async
             return !(task.IsCanceled || task.IsCompleted || task.IsFaulted);
         }
 
+        #region IgnoreCancellation
+
+        public static void IgnoreCancellation(this Task task, ILogger logger)
+        {
+            if (task == null)
+                throw new ArgumentNullException(nameof(task));
+
+            task.ContinueWith(t =>
+            {
+                if (t.Exception != null)
+                {
+                    var exception = t.Exception.InnerException;
+
+                    if (!(exception is OperationCanceledException))
+                    {
+                        if (logger != null)
+                        {
+                            logger.LogError(exception, "An exception occured in the task.");
+                        }
+                        else
+                        {
+                            Debug.WriteLine("An exception occured in the task.");
+                            Debug.WriteLine(exception.ToString());
+                        }
+                    }
+                }
+            });
+        }
+
+        public static void IgnoreCancellation(this Task task)
+        {
+            IgnoreCancellation(task, logger: null);
+        }
+
+        #endregion
+
         public static void HandleExceptions(this Task task, ILogger logger)
         {
             if (task == null)

@@ -51,5 +51,7 @@ namespace AI4E.Coordination
         Task<string> WaitForTerminationAsync(CancellationToken cancellation = default);
 
         Task<bool> IsAliveAsync(string session, CancellationToken cancellation = default);
+
+        Task<IEnumerable<string>> GetSessionsAsync(CancellationToken cancellation = default);
     }
 }
