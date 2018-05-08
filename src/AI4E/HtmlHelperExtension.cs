@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Shared.Utils
+namespace AI4E
 {
-    public static class HtmlHelperExtension // TODO: Move to AI4E
+    public static class HtmlHelperExtension
     {
         public static async Task<string> RenderViewExtensionAsync<TViewExtension>(this IMessageDispatcher messageDispatcher)
         {
@@ -133,7 +133,7 @@ namespace Shared.Utils
             }
 
             var dispatcher = services.GetRequiredService<IMessageDispatcher>();
-            var cancellationSource = new CancellationTokenSource(); // TimeSpan.FromMilliseconds(3000));
+            var cancellationSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(3000));
             var cancellation = cancellationSource.Token;
             var dispatchResult = default(IDispatchResult);
 

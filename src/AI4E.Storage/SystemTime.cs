@@ -64,12 +64,15 @@ namespace AI4E.Storage
     /// Original idea by Ayende Rahien:
     /// http://ayende.com/Blog/archive/2008/07/07/Dealing-with-time-in-tests.aspx
     /// </summary>
+    [Obsolete("Use AI4E.IDateTimeProvider instead.")]
     public static class SystemTime
     {
+#pragma warning disable 0649
         /// <summary>
         /// The callback to be used to resolve the current moment in time.
         /// </summary>
         internal static Func<DateTime> Resolver;
+#pragma warning restore 0649
 
         /// <summary>
         /// Gets the current moment in time.
