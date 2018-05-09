@@ -34,7 +34,7 @@ namespace AI4E.Async
 
         public static Task AsTask(this CancellationToken cancellationToken)
         {
-            TaskCompletionSource<object> tcs = new TaskCompletionSource<object>();
+            var tcs = new TaskCompletionSource<object>();
 
             cancellationToken.Register(() => tcs.SetCanceled());
 

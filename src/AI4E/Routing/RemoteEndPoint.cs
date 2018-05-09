@@ -142,24 +142,31 @@ namespace AI4E.Routing
                 {
                     var (message, localEndPoint, attempt, tcs, sendCancellation) = await _txQueue.DequeueAsync(cancellation);
 
-                    Task.Run(() => SendInternalAsync(message, localEndPoint, attempt, tcs, cancellation, sendCancellation)).HandleExceptions(_logger);
+                    if (attempt == 1)
+                    {
+                        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation, sendCancellation);
+
+                        sendCancellation = cts.Token;
+                    }
+
+                    Task.Run(() => SendInternalAsync(message, localEndPoint, attempt, tcs, sendCancellation)).HandleExceptions(_logger);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
                 {
-                    // TODO: Logging
+                    _logger?.LogWarning(exc, $"Remote end point {Route}: Failure on sending message to remote.");
                 }
             }
         }
 
-        private async Task Reschedule(IMessage message, EndPointRoute localEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation, CancellationToken sendCancellation)
+        private async Task Reschedule(IMessage message, EndPointRoute localEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)
         {
             // Calculate wait time in seconds
             var timeToWait = TimeSpan.FromSeconds(Pow(2, attempt - 1));
 
             await Task.Delay(timeToWait);
 
-            await _txQueue.EnqueueAsync((message, localEndPoint, attempt + 1, tcs, sendCancellation), cancellation);
+            await _txQueue.EnqueueAsync((message, localEndPoint, attempt + 1, tcs, cancellation), cancellation);
         }
 
         // Adapted from: https://stackoverflow.com/questions/383587/how-do-you-do-integer-exponentiation-in-c
@@ -183,21 +190,19 @@ namespace AI4E.Routing
             return result;
         }
 
-        private async Task SendInternalAsync(IMessage message, EndPointRoute localEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation, CancellationToken sendCancellation)
+        private async Task SendInternalAsync(IMessage message, EndPointRoute localEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)
         {
-            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation, sendCancellation);
-
             try
             {
-                var replica = await _routeManager.GetMapsAsync(Route, cts.Token);
+                var replica = await _routeManager.GetMapsAsync(Route, cancellation);
 
                 replica = Schedule(replica);
 
-                foreach (var replicat in replica)
+                foreach (var singleReplica in replica)
                 {
                     try
                     {
-                        await SendAsync(message, localEndPoint, replicat, cts.Token);
+                        await SendAsync(message, localEndPoint, singleReplica, cancellation);
                     }
                     catch
                     {
@@ -206,7 +211,7 @@ namespace AI4E.Routing
 
                     try
                     {
-                        tcs.SetResult(null);
+                        tcs.TrySetResult(null);
                     }
                     catch (Exception exc)
                     {
@@ -216,12 +221,25 @@ namespace AI4E.Routing
                     return;
                 }
             }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+            {
+                try
+                {
+                    tcs.TrySetCanceled(cancellation);
+                }
+                catch (Exception exc)
+                {
+                    _logger.LogWarning(exc, "Exception occured while passing a message to the remote end.");
+                }
+
+                return;
+            }
             catch (Exception exc)
             {
                 _logger.LogWarning(exc, "Exception occured while passing a message to the remote end.");
             }
 
-            Reschedule(message, localEndPoint, attempt, tcs, cts.Token, sendCancellation).HandleExceptions(_logger);
+            Reschedule(message, localEndPoint, attempt, tcs, cancellation).HandleExceptions(_logger);
         }
 
         #endregion
