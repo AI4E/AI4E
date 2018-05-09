@@ -4,7 +4,7 @@
  * Types:           AI4E.Routing.IRemoteEndPointManager'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   09.05.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -30,8 +30,20 @@
 
 namespace AI4E.Routing
 {
+    /// <summary>
+    /// Represents a manager that manages views of remote logical end points.
+    /// </summary>
+    /// <typeparam name="TAddress">The type of physical address used in the protocol stack.</typeparam>
+    /// <remarks>
+    /// This type is not meant to be consumed directly but is part of the infrastructure to enable the remote message dispatching system.
+    /// </remarks>
     public interface IRemoteEndPointManager<TAddress>
     {
+        /// <summary>
+        /// Gets the remote end point for the specified route.
+        /// </summary>
+        /// <param name="remoteEndPoint">The route of the remote end point.</param>
+        /// <returns>An instance that represents the remote end point.</returns>
         IRemoteEndPoint<TAddress> GetRemoteEndPoint(EndPointRoute remoteEndPoint);
     }
 }

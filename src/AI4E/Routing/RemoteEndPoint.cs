@@ -4,7 +4,7 @@
  * Types:           AI4E.Routing.RemoteEndPoint'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   09.05.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -41,10 +41,19 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing
 {
+    /// <summary>
+    /// Represents a remote logical end point that messages can be sent to.
+    /// </summary>
+    /// <typeparam name="TAddress">The type of physical address used in the protocol stack.</typeparam>
+    /// <remarks>
+    /// This type is not meant to be consumed directly but is part of the infrastructure to enable the remote message dispatching system.
+    /// </remarks>
     public class RemoteEndPoint<TAddress> : IRemoteEndPoint<TAddress>, IAsyncDisposable
     {
+        #region Fields
+
         private readonly IEndPointManager<TAddress> _endPointManager;
-        private readonly IProvider<IPhysicalEndPoint<TAddress>> _physicalEndPointProvider;
+        private readonly IAsyncProvider<IPhysicalEndPoint<TAddress>> _physicalEndPointProvider;
         private readonly IMessageCoder<TAddress> _messageCoder;
         private readonly IRouteMap<TAddress> _routeManager;
         private readonly IEndPointScheduler<TAddress> _endPointScheduler;
@@ -54,13 +63,39 @@ namespace AI4E.Routing
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
+        // A buffer for messages to send. 
+        // Messages are not sent directly to the remote end point but stored and processed one after another by a seperate async process. 
+        // This enables to send again a messages that no physical end point can be found for currently or the sent failed.
         private readonly AsyncProducerConsumerQueue<(IMessage message, EndPointRoute localEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)> _txQueue;
 
+        #endregion
+
+        #region C'tor
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="RemoteEndPoint{TAddress}"/> type.
+        /// </summary>
+        /// <param name="endPointManager">The end-point manager, this instance is used in.</param>
+        /// <param name="physicalEndPointProvider">A provider that provides a physical end point when needed.</param>
+        /// <param name="route">The route of the remote virtual end point.</param>
+        /// <param name="messageCoder">A message coder used to encode messages.</param>
+        /// <param name="routeManager">A route map that maps virtual routes to physical addresses.</param>
+        /// <param name="endPointScheduler">A scheduler that determines the order of possible replications of the remote end point.</param>
+        /// <param name="logger">A logger used to log messages or null.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of 
+        /// <paramref name="endPointManager"/>, 
+        /// <paramref name="physicalEndPointProvider"/>, 
+        /// <paramref name="route"/>, 
+        /// <paramref name="messageCoder"/>, 
+        /// <paramref name="routeManager"/> or 
+        /// <paramref name="endPointScheduler"/> is null.
+        /// </exception>
         public RemoteEndPoint(IEndPointManager<TAddress> endPointManager,
-                              IProvider<IPhysicalEndPoint<TAddress>> physicalEndPointProvider,
+                              IAsyncProvider<IPhysicalEndPoint<TAddress>> physicalEndPointProvider,
                               EndPointRoute route,
                               IMessageCoder<TAddress> messageCoder,
-                              IRouteMap<TAddress> routeManager,
+                              IRouteMap<TAddress> routeManager, // TODO: Name both either route map OR route manager.
                               IEndPointScheduler<TAddress> endPointScheduler,
                               ILogger<RemoteEndPoint<TAddress>> logger)
         {
@@ -97,34 +132,102 @@ namespace AI4E.Routing
             _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
         }
 
-        public EndPointRoute Route { get; }
-        public TAddress LocalAddress => _endPointManager.LocalAddress;
-        public IPhysicalEndPoint<TAddress> PhysicalEndPoint => _physicalEndPointProvider.ProvideInstance();
+        #endregion
 
+        /// <summary>
+        /// Gets the route of the remote virtual end point.
+        /// </summary>
+        public EndPointRoute Route { get; }
+
+        /// <summary>
+        /// Gets the physical address of the local physical end point.
+        /// </summary>
+        public TAddress LocalAddress => _endPointManager.LocalAddress;
+
+        /// <summary>
+        /// Asynchronously sends a message the replication of the remote virtual end point with the specified address.
+        /// </summary>
+        /// <param name="message">The message to send.</param>
+        /// <param name="localEndPoint">The route of the local virtual end point.</param>
+        /// <param name="remoteAddress">The physical address of the replication to send the message to.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if any of <paramref name="message"/>, <paramref name="localEndPoint"/> or <paramref name="remoteAddress"/> is null. </exception>
+        /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="remoteAddress"/> is the default value of type <see cref="TAddress"/>.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
         public async Task SendAsync(IMessage message, EndPointRoute localEndPoint, TAddress remoteAddress, CancellationToken cancellation)
         {
-            var frameIdx = message.FrameIndex;
-            _messageCoder.EncodeMessage(message, LocalAddress, remoteAddress, Route, localEndPoint, MessageType.Message);
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
 
-            try
+            if (localEndPoint == null)
+                throw new ArgumentNullException(nameof(localEndPoint));
+
+            if (remoteAddress == null)
+                throw new ArgumentNullException(nameof(remoteAddress));
+
+            if (remoteAddress.Equals(default(TAddress)))
+                throw new ArgumentDefaultException(nameof(remoteAddress));
+
+            await _initializationHelper.Initialization.WithCancellation(cancellation);
+
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
-                await PhysicalEndPoint.SendAsync(message, remoteAddress, cancellation);
-            }
-            catch when (frameIdx != message.FrameIndex)
-            {
-                message.PopFrame();
-                Assert(frameIdx == message.FrameIndex);
-                throw;
+                if (_disposeHelper.IsDisposed)
+                    throw new ObjectDisposedException(GetType().FullName);
+
+                var combinedCancellation = _disposeHelper.CancelledOrDisposed(cancellation);
+
+                try
+                {
+                    await SendInternalAsync(message, localEndPoint, remoteAddress, combinedCancellation);
+                }
+                catch (OperationCanceledException exc) when (!cancellation.IsCancellationRequested)
+                {
+                    throw new ObjectDisposedException(GetType().FullName, exc);
+                }
             }
         }
 
+        /// <summary>
+        /// Asynchronously sends a message to the remote virtual end point.
+        /// </summary>
+        /// <param name="message">The message to send.</param>
+        /// <param name="localEndPoint">The route of the local virtual end point.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="message"/> or <paramref name="localEndPoint"/> is null. </exception>
+        /// <exception cref="OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
         public async Task SendAsync(IMessage message, EndPointRoute localEndPoint, CancellationToken cancellation)
         {
-            var tcs = new TaskCompletionSource<object>();
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
 
-            await _txQueue.EnqueueAsync((message, localEndPoint, attempt: 1, tcs, cancellation)).WithCancellation(cancellation);
+            if (localEndPoint == null)
+                throw new ArgumentNullException(nameof(localEndPoint));
 
-            await tcs.Task.WithCancellation(cancellation);
+            await _initializationHelper.Initialization.WithCancellation(cancellation);
+
+            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            {
+                if (_disposeHelper.IsDisposed)
+                    throw new ObjectDisposedException(GetType().FullName);
+
+                var combinedCancellation = _disposeHelper.CancelledOrDisposed(cancellation);
+
+                try
+                {
+                    var tcs = new TaskCompletionSource<object>();
+
+                    await _txQueue.EnqueueAsync((message, localEndPoint, attempt: 1, tcs, combinedCancellation), combinedCancellation);
+
+                    await tcs.Task.WithCancellation(combinedCancellation);
+                }
+                catch (OperationCanceledException exc) when (!cancellation.IsCancellationRequested)
+                {
+                    throw new ObjectDisposedException(GetType().FullName, exc);
+                }
+            }
         }
 
         private IEnumerable<TAddress> Schedule(IEnumerable<TAddress> replica)
@@ -242,6 +345,27 @@ namespace AI4E.Routing
             Reschedule(message, localEndPoint, attempt, tcs, cancellation).HandleExceptions(_logger);
         }
 
+        private async Task SendInternalAsync(IMessage message, EndPointRoute localEndPoint, TAddress remoteAddress, CancellationToken cancellation)
+        {
+            var frameIdx = message.FrameIndex;
+            _messageCoder.EncodeMessage(message, LocalAddress, remoteAddress, Route, localEndPoint, MessageType.Message);
+
+            try
+            {
+                var physicalEndPoint = await _physicalEndPointProvider.ProvideInstanceAsync(cancellation);
+
+                Assert(physicalEndPoint != null);
+
+                await physicalEndPoint.SendAsync(message, remoteAddress, cancellation);
+            }
+            catch when (frameIdx != message.FrameIndex)
+            {
+                message.PopFrame();
+                Assert(frameIdx == message.FrameIndex);
+                throw;
+            }
+        }
+
         #endregion
 
         #region Initialization
@@ -255,6 +379,9 @@ namespace AI4E.Routing
 
         #region Disposal
 
+        /// <summary>
+        /// Gets a task that represents the disposal of the type.
+        /// </summary>
         public Task Disposal => _disposeHelper.Disposal;
 
         private async Task DisposeInternalAsync()
@@ -269,11 +396,24 @@ namespace AI4E.Routing
             }
         }
 
+        /// <summary>
+        /// Disposes of the type.
+        /// </summary>
+        /// <remarks>
+        /// This method does not block but instead only initiates the disposal without actually waiting till disposal is completed.
+        /// </remarks>
         public void Dispose()
         {
             _disposeHelper.Dispose();
         }
 
+        /// <summary>
+        /// Asynchronously disposes of the type.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <remarks>
+        /// This method initiates the disposal and returns a task that represents the disposal of the type.
+        /// </remarks>
         public Task DisposeAsync()
         {
             return _disposeHelper.DisposeAsync();

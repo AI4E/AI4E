@@ -126,7 +126,7 @@ namespace AI4E.Routing
                 {
                     if (!_endPoints.TryGetValue(localEndPoint, out endPoint) || endPoint.IsDisposed)
                     {
-                        var physicalEndPoint = GetEndPoint(localEndPoint); // TODO: Use async API
+                        var physicalEndPoint = GetMultiplexEndPoint(localEndPoint); // TODO: Use async API
 
                         endPoint = _endPointFactory.CreateLocalEndPoint(this, this, physicalEndPoint, localEndPoint);
                         _endPoints[localEndPoint] = endPoint;
@@ -139,9 +139,14 @@ namespace AI4E.Routing
             }
         }
 
-        private IPhysicalEndPoint<TAddress> GetEndPoint(EndPointRoute route)
+        private IPhysicalEndPoint<TAddress> GetMultiplexEndPoint(EndPointRoute route)
         {
             return _endPointMultiplexer.GetMultiplexEndPoint("end-points/" + route.Route);
+        }
+
+        private Task<IPhysicalEndPoint<TAddress>> GetMultiplexEndPointAsync(EndPointRoute route, CancellationToken cancellation)
+        {
+            return _endPointMultiplexer.GetMultiplexEndPointAsync("end-points/" + route.Route, cancellation);
         }
 
         public async Task RemoveEndPointAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
@@ -215,9 +220,21 @@ namespace AI4E.Routing
             if (remoteEndPoint == null)
                 throw new ArgumentNullException(nameof(remoteEndPoint));
 
-            var logger = _serviceProvider.GetService<ILogger<RemoteEndPoint<TAddress>>>();
+            return _remoteEndPoints.GetOrAdd(remoteEndPoint, CreateRemoteEndPoint);
+        }
 
-            return _remoteEndPoints.GetOrAdd(remoteEndPoint, _ => new RemoteEndPoint<TAddress>(this, Provider.Create(() => GetEndPoint(remoteEndPoint)), remoteEndPoint, _messageCoder, _routeManager, _endPointScheduler, logger));
+        private RemoteEndPoint<TAddress> CreateRemoteEndPoint(EndPointRoute remoteEndPoint)
+        {
+            var logger = _serviceProvider.GetService<ILogger<RemoteEndPoint<TAddress>>>();
+            var physicalEndPointProvider = AsyncProvider.Create(cancellation => GetMultiplexEndPointAsync(remoteEndPoint, cancellation));
+
+            return new RemoteEndPoint<TAddress>(endPointManager: this,
+                                                physicalEndPointProvider, 
+                                                remoteEndPoint, 
+                                                _messageCoder, 
+                                                _routeManager, 
+                                                _endPointScheduler, 
+                                                logger);
         }
 
         #endregion

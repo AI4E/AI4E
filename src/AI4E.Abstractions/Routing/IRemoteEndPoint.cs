@@ -5,7 +5,7 @@
  *                  (2) AI4E.Routing.IRemoteEndPoint'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   09.05.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -36,17 +36,56 @@ using AI4E.Remoting;
 
 namespace AI4E.Routing
 {
+    /// <summary>
+    /// Represents a remote logical end point that messages can be sent to.
+    /// </summary>
+    /// <remarks>
+    /// This type is not meant to be consumed directly but is part of the infrastructure to enable the remote message dispatching system.
+    /// </remarks>
     public interface IRemoteEndPoint : IDisposable
     {
+        /// <summary>
+        /// Gets the route of the remote virtual end point.
+        /// </summary>
         EndPointRoute Route { get; }
 
+        /// <summary>
+        /// Asynchronously sends a message to the remote virtual end point.
+        /// </summary>
+        /// <param name="message">The message to send.</param>
+        /// <param name="localEndPoint">The route of the local virtual end point.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="message"/> or <paramref name="localEndPoint"/> is null. </exception>
+        /// <exception cref="OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
         Task SendAsync(IMessage message, EndPointRoute localEndPoint, CancellationToken cancellation);
     }
 
+    /// <summary>
+    /// Represents a remote logical end point that messages can be sent to.
+    /// </summary>
+    /// <typeparam name="TAddress">The type of physical address used in the protocol stack.</typeparam>
+    /// <remarks>
+    /// This type is not meant to be consumed directly but is part of the infrastructure to enable the remote message dispatching system.
+    /// </remarks>
     public interface IRemoteEndPoint<TAddress> : IRemoteEndPoint
     {
+        /// <summary>
+        /// Gets the physical address of the local physical end point.
+        /// </summary>
         TAddress LocalAddress { get; }
 
+        /// <summary>
+        /// Asynchronously sends a message the replication of the remote virtual end point with the specified address.
+        /// </summary>
+        /// <param name="message">The message to send.</param>
+        /// <param name="localEndPoint">The route of the local virtual end point.</param>
+        /// <param name="remoteAddress">The physical address of the replication to send the message to.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if any of <paramref name="message"/>, <paramref name="localEndPoint"/> or <paramref name="remoteAddress"/> is null. </exception>
+        /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="remoteAddress"/> is the default value of type <see cref="TAddress"/>.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
         Task SendAsync(IMessage message, EndPointRoute localEndPoint, TAddress remoteAddress, CancellationToken cancellation);
     }
 }
