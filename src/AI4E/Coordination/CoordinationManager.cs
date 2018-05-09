@@ -216,7 +216,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task NotifyReadLockReleased(string entry, CancellationToken cancellation)
+        private async Task NotifyReadLockReleasedAsync(string entry, CancellationToken cancellation = default)
         {
             var sessions = await _sessionManager.GetSessionsAsync(cancellation);
             var localSession = await GetSessionAsync(cancellation);
@@ -237,7 +237,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task NotifyWriteLockReleased(string entry, CancellationToken cancellation)
+        private async Task NotifyWriteLockReleasedAsync(string entry, CancellationToken cancellation = default)
         {
             var sessions = await _sessionManager.GetSessionsAsync(cancellation);
             var localSession = await GetSessionAsync(cancellation);
@@ -951,11 +951,20 @@ namespace AI4E.Coordination
                 await _initializationHelper.Initialization.WithCancellation(combinedCancellationSource.Token);
 
                 var entry = await _storage.GetEntryAsync(normalizedPath, combinedCancellationSource.Token);
-                var parent = (parentPath != null) ? await _storage.GetEntryAsync(parentPath, combinedCancellationSource.Token) : null;
+                var parent = default(IStoredEntry);
+
+                if (parentPath != null)
+                {
+                    parent = await _storage.GetEntryAsync(parentPath, combinedCancellationSource.Token);
+
+                    // The parent does not exist. The parent may only be deleted if all childs were deleted => Our entry does not exist any more.
+                    if (parent == null)
+                    {
+                        return 0;
+                    }
+                }
 
                 var isEphemeral = entry == null ? false : entry.EphemeralOwner != null;
-
-                Assert(parentPath == null || parent != null);
 
                 try
                 {
@@ -1222,7 +1231,7 @@ namespace AI4E.Coordination
 
             Assert(entry != null);
 
-            await NotifyReadLockReleased(entry.Path, cancellation: default);
+            NotifyReadLockReleasedAsync(entry.Path).HandleExceptions(_logger);
             _logger?.LogTrace($"[{await GetSessionAsync()}] Released read-lock for entry '{entry.Path}'.");
 
             return desired;
@@ -1311,7 +1320,7 @@ namespace AI4E.Coordination
 
             if (entry != null)
             {
-                await NotifyWriteLockReleased(entry.Path, cancellation: default);
+                NotifyWriteLockReleasedAsync(entry.Path).HandleExceptions(_logger);
                 _logger?.LogTrace($"[{await GetSessionAsync()}] Released write-lock for entry '{entry.Path}'.");
             }
 
@@ -1339,40 +1348,36 @@ namespace AI4E.Coordination
 
                 var path = entry.Path;
 
-                var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
-                var cancelled = default(Task);
 
-                try // Await the end of the session that holds 'writeLock' or the lock release, whichever occurs first.
+                async Task<bool> Predicate(CancellationToken c)
                 {
-                    async Task<bool> Predicate(CancellationToken c)
-                    {
-                        entry = await _storage.GetEntryAsync(path, c);
-                        return entry == null || entry.WriteLock == null;
-                    }
+                    entry = await _storage.GetEntryAsync(path, c);
+                    return entry == null || entry.WriteLock == null;
+                }
 
-                    Task Release(CancellationToken c)
-                    {
-                        return _writeLockWaitDirectory.WaitForNotification((writeLock, path), c);
-                    }
+                Task Release(CancellationToken c)
+                {
+                    return _writeLockWaitDirectory.WaitForNotification((writeLock, path), c);
+                }
 
-                    var lockRelease = SpinWaitAsync(Predicate, Release, combinedCancellation.Token);
-                    var sessionTermination = WaitForSessionTermination(path, writeLock, combinedCancellation.Token);
-                    var completed = await Task.WhenAny(sessionTermination, lockRelease);
+                var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+
+                try
+
+                {
+                    var lockRelease = SpinWaitAsync(Predicate, Release, combinedCancellationSource.Token);
+                    var sessionTermination = _sessionManager.WaitForTerminationAsync(writeLock);
+                    var completed = await (Task.WhenAny(sessionTermination, lockRelease).WithCancellation(cancellation));
 
                     if (completed == sessionTermination)
                     {
+                        await CleanupLocksOnSessionTermination(path, writeLock, cancellation);
                         entry = await _storage.GetEntryAsync(path, cancellation);
-                        cancelled = lockRelease;
-                    }
-                    else
-                    {
-                        cancelled = sessionTermination;
                     }
                 }
                 finally
                 {
-                    combinedCancellation.Cancel();
-                    cancelled?.IgnoreCancellation(_logger);
+                    combinedCancellationSource.Cancel();
                 }
             }
 
@@ -1405,21 +1410,21 @@ namespace AI4E.Coordination
             return entry;
         }
 
-        /// <summary>
-        /// Asynchronously waits for the specified session to terminate and releases all locks held by the session in regards to the entry with the specified path.
-        /// </summary>
-        /// <param name="key">The path to the entry the session holds locks of.</param>
-        /// <param name="session">The session thats termination shall be awaited.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
-        /// <exception cref="SessionTerminatedException">Thrown if <paramref name="session"/> is the local session and the session terminated before the operation is canceled.</exception>
-        private async Task WaitForSessionTermination(string key, string session, CancellationToken cancellation)
-        {
-            await _sessionManager.WaitForTerminationAsync(session, cancellation);
+        ///// <summary>
+        ///// Asynchronously waits for the specified session to terminate and releases all locks held by the session in regards to the entry with the specified path.
+        ///// </summary>
+        ///// <param name="key">The path to the entry the session holds locks of.</param>
+        ///// <param name="session">The session thats termination shall be awaited.</param>
+        ///// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        ///// <returns>A task representing the asynchronous operation.</returns>
+        ///// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
+        ///// <exception cref="SessionTerminatedException">Thrown if <paramref name="session"/> is the local session and the session terminated before the operation is canceled.</exception>
+        //private async Task WaitForSessionTermination(string key, string session, CancellationToken cancellation)
+        //{
+        //    await _sessionManager.WaitForTerminationAsync(session, cancellation);
 
-            await CleanupLocksOnSessionTermination(key, session, cancellation);
-        }
+        //    await CleanupLocksOnSessionTermination(key, session, cancellation);
+        //}
 
         private async Task CleanupLocksOnSessionTermination(string key, string session, CancellationToken cancellation)
         {
@@ -1512,49 +1517,43 @@ namespace AI4E.Coordination
                 return;
             }
 
-            var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
-            var cancelled = default(Task);
+            async Task<bool> Predicate(CancellationToken c)
+            {
+                entry = await _storage.GetEntryAsync(path, c);
+
+                if (entry != null && entry.ReadLocks.Contains(session))
+                {
+                    InvalidateCacheEntryAsync(path, session, c).HandleExceptions(_logger);
+                    return false;
+                }
+
+                return true;
+            }
+
+            Task Release(CancellationToken c)
+            {
+                return _readLockWaitDirectory.WaitForNotification((session, path), c);
+            }
+
+            var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
 
             try
             {
-                async Task<bool> Predicate(CancellationToken c)
-                {
-                    entry = await _storage.GetEntryAsync(path, c);
-
-                    if (entry != null && entry.ReadLocks.Contains(session))
-                    {
-                        await InvalidateCacheEntryAsync(path, session, c);
-                        return false;
-                    }
-
-                    return true;
-                }
-
-                Task Release(CancellationToken c)
-                {
-                    return _readLockWaitDirectory.WaitForNotification((session, path), c);
-                }
-
-                var lockRelease = SpinWaitAsync(Predicate, Release, combinedCancellation.Token);
-                var sessionTermination = WaitForSessionTermination(path, session, combinedCancellation.Token);
-
-                var completed = await Task.WhenAny(sessionTermination, lockRelease);
+                var lockRelease = SpinWaitAsync(Predicate, Release, combinedCancellationSource.Token);
+                var sessionTermination = _sessionManager.WaitForTerminationAsync(session);
+                var completed = await (Task.WhenAny(sessionTermination, lockRelease).WithCancellation(cancellation));
 
                 if (completed == sessionTermination)
                 {
-                    entry = await _storage.GetEntryAsync(entry.Path, cancellation);
-                    cancelled = lockRelease;
-                }
-                else
-                {
-                    cancelled = sessionTermination;
+                    await CleanupLocksOnSessionTermination(path, session, cancellation);
+                    entry = await _storage.GetEntryAsync(path, cancellation);
                 }
             }
             finally
             {
-                combinedCancellation.Cancel();
-                cancelled?.IgnoreCancellation();
+                combinedCancellationSource.Cancel();
             }
+
         }
 
         private async Task SpinWaitAsync(Func<CancellationToken, Task<bool>> predicate, Func<CancellationToken, Task> release, CancellationToken cancellation)
@@ -1562,34 +1561,24 @@ namespace AI4E.Coordination
             var timeToWait = new TimeSpan(200 * TimeSpan.TicksPerMillisecond);
             var timeToWaitMax = new TimeSpan(12800 * TimeSpan.TicksPerMillisecond);
 
-            var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+            cancellation.ThrowIfCancellationRequested();
+            var releaseX = release(cancellation); // TODO: Rename
 
-            try
+            while (!await predicate(cancellation))
             {
                 cancellation.ThrowIfCancellationRequested();
-                var releaseX = release(combinedCancellation.Token); // TODO: Rename
 
-                while (!await predicate(cancellation))
+                var delay = Task.Delay(timeToWait, cancellation);
+
+                var completed = await Task.WhenAny(delay, releaseX);
+
+                if (completed == releaseX)
                 {
-                    cancellation.ThrowIfCancellationRequested();
-
-                    var delay = Task.Delay(timeToWait, cancellation);
-
-                    var completed = await Task.WhenAny(delay, releaseX);
-
-                    if (completed == releaseX)
-                    {
-                        return;
-                    }
-
-                    if (timeToWait < timeToWaitMax)
-                        timeToWait = new TimeSpan(timeToWait.Ticks * 2);
+                    return;
                 }
 
-            }
-            finally
-            {
-                combinedCancellation.Cancel();
+                if (timeToWait < timeToWaitMax)
+                    timeToWait = new TimeSpan(timeToWait.Ticks * 2);
             }
         }
 

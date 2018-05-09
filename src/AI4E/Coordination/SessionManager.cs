@@ -14,6 +14,8 @@ namespace AI4E.Coordination
         private readonly IStoredSessionManager _storedSessionManager;
         private readonly IDateTimeProvider _dateTimeProvider;
 
+        private readonly Dictionary<string, Task> _sessionTerminationCache = new Dictionary<string, Task>();
+
         public SessionManager(ISessionStorage storage,
                               IStoredSessionManager storedSessionManager,
                               IDateTimeProvider dateTimeProvider)
@@ -93,44 +95,88 @@ namespace AI4E.Coordination
             while (start != current);
         }
 
-        public async Task WaitForTerminationAsync(string session, CancellationToken cancellation)
+        public Task WaitForTerminationAsync(string session, CancellationToken cancellation)
+        {
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+
+            lock (_sessionTerminationCache)
+            {
+                if (_sessionTerminationCache.TryGetValue(session, out var task))
+                {
+                    if (task.IsCompleted)
+                    {
+                        _sessionTerminationCache.Remove(session);
+                    }
+
+                    return task;
+                }
+            }
+
+            var internalCancellationSource = new CancellationTokenSource();
+            var result = InternalWaitForTerminationAsync(session, internalCancellationSource.Token);
+
+            // The session is already terminated.
+            if (result.IsCompleted)
+            {
+                return result;
+            }
+
+            lock (_sessionTerminationCache)
+            {
+                if (_sessionTerminationCache.ContainsKey(session))
+                {
+                    internalCancellationSource.Cancel();
+
+                    result = _sessionTerminationCache[session];
+                }
+                else
+                {
+                    _sessionTerminationCache.Add(session, result);
+                }
+            }
+
+            if (cancellation.CanBeCanceled)
+            {
+                return result.WithCancellation(cancellation);
+            }
+
+            return result;
+        }
+
+        private async Task InternalWaitForTerminationAsync(string session, CancellationToken cancellation)
         {
             if (session == null)
                 throw new ArgumentNullException(nameof(session));
 
             var start = await _storage.GetSessionAsync(session, cancellation);
 
-            if (start != null)
+            while (start != null)
             {
-                await InternalWaitForTerminationAsync(start, cancellation);
-            }
-        }
+                if (_storedSessionManager.IsEnded(start))
+                {
+                    lock (_sessionTerminationCache)
+                    {
+                        _sessionTerminationCache.Remove(session);
+                    }
 
-        private async Task<IStoredSession> InternalWaitForTerminationAsync(IStoredSession session, CancellationToken cancellation)
-        {
-            if (session == null)
-                throw new ArgumentNullException(nameof(session));
-
-            do
-            {
-                if (_storedSessionManager.IsEnded(session))
-                    return session;
+                    return;
+                }
 
                 var now = _dateTimeProvider.GetCurrentTime();
-                var timeToWait = session.LeaseEnd - now;
+                var timeToWait = start.LeaseEnd - now;
 
                 await Task.Delay(timeToWait, cancellation);
 
-                var current = await _storage.GetSessionAsync(session.Key, cancellation);
+                var current = await _storage.GetSessionAsync(start.Key, cancellation);
 
-                if (session != current)
+                if (start != current)
                 {
-                    session = current;
+                    start = current;
                 }
             }
-            while (session != null);
 
-            return session;
+            return;
         }
 
         public async Task<string> WaitForTerminationAsync(CancellationToken cancellation)
