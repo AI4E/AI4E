@@ -58,7 +58,7 @@ namespace AI4E.Routing
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger _logger;
 
-        private readonly WeakDictionary<EndPointRoute, LocalEndPoint> _endPoints;
+        private readonly WeakDictionary<EndPointRoute, LogicalEndPoint> _endPoints;
 
         private readonly AsyncProcess _sendProcess;
         private readonly AsyncInitializationHelper _initializationHelper;
@@ -101,7 +101,7 @@ namespace AI4E.Routing
             _endPointScheduler = endPointScheduler;
             _serviceProvider = serviceProvider;
             _logger = logger;
-            _endPoints = new WeakDictionary<EndPointRoute, LocalEndPoint>();
+            _endPoints = new WeakDictionary<EndPointRoute, LogicalEndPoint>();
 
             _txQueue = new AsyncProducerConsumerQueue<(IMessage message, EndPointRoute localEndPoint, EndPointRoute RemoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)>();
 
@@ -181,11 +181,11 @@ namespace AI4E.Routing
             return GetLogicalEndPoint(route);
         }
 
-        private LocalEndPoint CreateLogicalEndPoint(EndPointRoute route)
+        private LogicalEndPoint CreateLogicalEndPoint(EndPointRoute route)
         {
             var physicalEndPoint = GetMultiplexPhysicalEndPoint(route);
-            var logger = _serviceProvider.GetService<ILogger<LocalEndPoint>>();
-            var result = new LocalEndPoint(this, physicalEndPoint, route, _messageCoder, _routeManager, logger);
+            var logger = _serviceProvider.GetService<ILogger<LogicalEndPoint>>();
+            var result = new LogicalEndPoint(this, physicalEndPoint, route, _messageCoder, _routeManager, logger);
 
             Assert(result != null);
             return result;
@@ -400,24 +400,24 @@ namespace AI4E.Routing
 
         #endregion
 
-        private sealed class LocalEndPoint : ILogicalEndPoint<TAddress>
+        private sealed class LogicalEndPoint : ILogicalEndPoint<TAddress>
         {
             private readonly EndPointManager<TAddress> _endPointManager;
             private readonly IMessageCoder<TAddress> _messageCoder;
             private readonly IRouteMap<TAddress> _routeManager;
-            private readonly ILogger<LocalEndPoint> _logger;
+            private readonly ILogger<LogicalEndPoint> _logger;
 
             private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
             private readonly AsyncInitializationHelper _initializationHelper;
             private readonly AsyncDisposeHelper _disposeHelper;
             private readonly AsyncProcess _receiveProcess;
 
-            public LocalEndPoint(EndPointManager<TAddress> endPointManager,
+            public LogicalEndPoint(EndPointManager<TAddress> endPointManager,
                                  IPhysicalEndPoint<TAddress> physicalEndPoint,
                                  EndPointRoute route,
                                  IMessageCoder<TAddress> messageCoder,
                                  IRouteMap<TAddress> routeManager,
-                                 ILogger<LocalEndPoint> logger)
+                                 ILogger<LogicalEndPoint> logger)
             {
                 if (endPointManager == null)
                     throw new ArgumentNullException(nameof(endPointManager));
