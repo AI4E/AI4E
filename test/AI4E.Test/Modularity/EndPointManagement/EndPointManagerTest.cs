@@ -62,7 +62,7 @@ namespace AI4E.Test.Modularity.EndPointManagement
             services.AddSingleton<IEndPointScheduler<TestAddress>, RandomEndPointScheduler<TestAddress>>();
             services.AddEndPointManager<TestAddress>();
             services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
-            services.AddSingleton<IEndPointMultiplexer<TestAddress>>(p => new EndPointMultiplexer<TestAddress>(physicalEndPoint, p.GetService<ILogger<EndPointMultiplexer<TestAddress>>>()));
+            services.AddSingleton<IPhysicalEndPointMultiplexer<TestAddress>>(p => new PhysicalEndPointMultiplexer<TestAddress>(physicalEndPoint, p.GetService<ILogger<PhysicalEndPointMultiplexer<TestAddress>>>()));
             //services.AddSingleton(physicalEndPoint);
             services.AddSingleton(routeMap);
             services.AddLogging(options =>

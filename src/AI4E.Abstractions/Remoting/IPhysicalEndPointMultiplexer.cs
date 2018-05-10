@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace AI4E.Remoting
 {
-    public interface IEndPointMultiplexer<TAddress>
+    public interface IPhysicalEndPointMultiplexer<TAddress>
     {
         IPhysicalEndPoint<TAddress> GetMultiplexEndPoint(string address);
 

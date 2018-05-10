@@ -61,7 +61,7 @@ namespace AI4E.Coordination
         private readonly ICoordinationStorage _storage;
         private readonly IStoredEntryManager _storedEntryManager;
         private readonly ISessionManager _sessionManager;
-        private readonly IEndPointMultiplexer<TAddress> _endPointMultiplexer;
+        private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
         private readonly ISessionProvider _sessionProvider;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IAddressConversion<TAddress> _addressConversion;
@@ -80,7 +80,7 @@ namespace AI4E.Coordination
         public CoordinationManager(ICoordinationStorage storage,
                                    IStoredEntryManager storedEntryManager,
                                    ISessionManager sessionManager,
-                                   IEndPointMultiplexer<TAddress> endPointMultiplexer,
+                                   IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
                                    ISessionProvider sessionProvider,
                                    IDateTimeProvider dateTimeProvider,
                                    IAddressConversion<TAddress> addressConversion,
@@ -1868,7 +1868,7 @@ namespace AI4E.Coordination
             private readonly ICoordinationStorage _storage;
             private readonly IStoredEntryManager _storedEntryManager;
             private readonly ISessionManager _sessionManager;
-            private readonly IEndPointMultiplexer<TAddress> _endPointMultiplexer;
+            private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
             private readonly ISessionProvider _sessionProvider;
             private readonly IDateTimeProvider _dateTimeProvider;
             private readonly IAddressConversion<TAddress> _addressConversion;
@@ -1877,7 +1877,7 @@ namespace AI4E.Coordination
             public Provider(ICoordinationStorage storage,
                             IStoredEntryManager storedEntryManager,
                             ISessionManager sessionManager,
-                            IEndPointMultiplexer<TAddress> endPointMultiplexer,
+                            IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
                             ISessionProvider sessionProvider,
                             IDateTimeProvider dateTimeProvider,
                             IAddressConversion<TAddress> addressConversion,

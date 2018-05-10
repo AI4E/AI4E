@@ -9,7 +9,7 @@ namespace AI4E.Coordination
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IAddressConversion<TAddress> _addressConversion;
 
-        public SessionProvider(IEndPointMultiplexer<TAddress> endPointMultiplexer,
+        public SessionProvider(IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
                                IDateTimeProvider dateTimeProvider,
                                IAddressConversion<TAddress> addressConversion)
         {

@@ -47,7 +47,7 @@ namespace AI4E.Routing
         #region Fields
 
         private readonly AsyncDisposeHelper _disposeHelper;
-        private readonly IEndPointMultiplexer<TAddress> _endPointMultiplexer;
+        private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
         private readonly IRouteMap<TAddress> _routeManager;
         private readonly IMessageCoder<TAddress> _messageCoder;
         private readonly ILocalEndPointFactory<TAddress> _endPointFactory;
@@ -62,7 +62,7 @@ namespace AI4E.Routing
 
         #region C'tor
 
-        public EndPointManager(IEndPointMultiplexer<TAddress> endPointMultiplexer,
+        public EndPointManager(IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
                                IRouteMap<TAddress> routeManager,
                                IMessageCoder<TAddress> messageCoder,
                                ILocalEndPointFactory<TAddress> endPointFactory,

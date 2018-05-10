@@ -233,7 +233,7 @@ namespace AI4E.Test.Coordination
             IServiceCollection services = new ServiceCollection();
             services.AddSingleton<IAddressConversion<TestAddress>, TestAddressSerializer>();
             //services.AddSingleton(physicalEndPoint);
-            services.AddSingleton<IEndPointMultiplexer<TestAddress>>(p => new EndPointMultiplexer<TestAddress>(physicalEndPoint, p.GetService<ILogger<EndPointMultiplexer<TestAddress>>>()));
+            services.AddSingleton<IPhysicalEndPointMultiplexer<TestAddress>>(p => new PhysicalEndPointMultiplexer<TestAddress>(physicalEndPoint, p.GetService<ILogger<PhysicalEndPointMultiplexer<TestAddress>>>()));
             services.AddSingleton<ICoordinationStorage>(coordinationStorage);
             services.AddSingleton<ISessionStorage>(coordinationStorage);
             services.AddSingleton<ISessionManager, SessionManager>();

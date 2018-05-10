@@ -13,17 +13,17 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Remoting
 {
-    public sealed class EndPointMultiplexer<TAddress> : IEndPointMultiplexer<TAddress>, IAsyncDisposable
+    public sealed class PhysicalEndPointMultiplexer<TAddress> : IPhysicalEndPointMultiplexer<TAddress>, IAsyncDisposable
     {
         private readonly AsyncLock _lock = new AsyncLock();
         private readonly Dictionary<string, MultiplexEndPoint> _endPoints = new Dictionary<string, MultiplexEndPoint>();
         private readonly IPhysicalEndPoint<TAddress> _physicalEndPoint;
-        private readonly ILogger<EndPointMultiplexer<TAddress>> _logger;
+        private readonly ILogger<PhysicalEndPointMultiplexer<TAddress>> _logger;
         private readonly AsyncProcess _receiveProcess;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
-        public EndPointMultiplexer(IPhysicalEndPoint<TAddress> physicalEndPoint, ILogger<EndPointMultiplexer<TAddress>> logger)
+        public PhysicalEndPointMultiplexer(IPhysicalEndPoint<TAddress> physicalEndPoint, ILogger<PhysicalEndPointMultiplexer<TAddress>> logger)
         {
             if (physicalEndPoint == null)
                 throw new ArgumentNullException(nameof(physicalEndPoint));
@@ -245,10 +245,10 @@ namespace AI4E.Remoting
 
             private readonly AsyncDisposeHelper _disposeHelper;
             private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
-            private readonly EndPointMultiplexer<TAddress> _multiplexer;
+            private readonly PhysicalEndPointMultiplexer<TAddress> _multiplexer;
             private readonly string _address;
 
-            public MultiplexEndPoint(EndPointMultiplexer<TAddress> multiplexer, string address)
+            public MultiplexEndPoint(PhysicalEndPointMultiplexer<TAddress> multiplexer, string address)
             {
                 Assert(multiplexer != null);
                 Assert(address != null);
