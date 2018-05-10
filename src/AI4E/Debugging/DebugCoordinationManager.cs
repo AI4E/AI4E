@@ -6,7 +6,7 @@ using AI4E.Coordination;
 using AI4E.Proxying;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Routing.Debugging
+namespace AI4E.Debugging
 {
     public sealed class DebugCoordinationManager : ICoordinationManager, IAsyncDisposable
     {
@@ -73,9 +73,8 @@ namespace AI4E.Routing.Debugging
 
                 var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
                 var proxy = await GetProxyAsync(cancelledOrDisposed);
-                var entry = (await proxy.ExecuteAsync(p => p.CreateAsync(path, value, modes, cancelledOrDisposed))) as CoordinationManagerSkeleton.Entry;
 
-                if (entry == null)
+                if (!((await proxy.ExecuteAsync(p => p.CreateAsync(path, value, modes, cancelledOrDisposed))) is CoordinationManagerSkeleton.Entry entry))
                     return null;
 
                 entry.SetProxy(proxy);
@@ -92,9 +91,8 @@ namespace AI4E.Routing.Debugging
 
                 var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
                 var proxy = await GetProxyAsync(cancelledOrDisposed);
-                var entry = (await proxy.ExecuteAsync(p => p.GetOrCreateAsync(path, value, modes, cancelledOrDisposed))) as CoordinationManagerSkeleton.Entry;
 
-                if (entry == null)
+                if (!((await proxy.ExecuteAsync(p => p.GetOrCreateAsync(path, value, modes, cancelledOrDisposed))) is CoordinationManagerSkeleton.Entry entry))
                     return null;
 
                 entry.SetProxy(proxy);
@@ -111,9 +109,8 @@ namespace AI4E.Routing.Debugging
 
                 var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
                 var proxy = await GetProxyAsync(cancelledOrDisposed);
-                var entry = (await proxy.ExecuteAsync(p => p.GetAsync(path, cancelledOrDisposed))) as CoordinationManagerSkeleton.Entry;
 
-                if (entry == null)
+                if (!((await proxy.ExecuteAsync(p => p.GetAsync(path, cancelledOrDisposed))) is CoordinationManagerSkeleton.Entry entry))
                     return null;
 
                 entry.SetProxy(proxy);

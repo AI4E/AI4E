@@ -3,8 +3,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Remoting;
+using AI4E.Routing;
 
-namespace AI4E.Routing.Debugging
+namespace AI4E.Debugging
 {
     public sealed class LogicalEndPointSkeleton : IAsyncDisposable
     {

@@ -25,7 +25,7 @@ using AI4E.Coordination;
 using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
-using AI4E.Routing.Debugging;
+using AI4E.Debugging;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.Extensions.DependencyInjection;
