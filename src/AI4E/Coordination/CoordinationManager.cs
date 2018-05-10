@@ -2,10 +2,16 @@
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        CoordinationManager.cs 
  * Types:           (1) AI4E.Coordination.CoordinationManager
- *                  (2) AI4E.Coordination.CoordinationManager.Entry
+ *                  (2) AI4E.Coordination.CoordinationManager.CacheEntry
+ *                  (3) AI4E.Coordination.CoordinationManager.Entry
+ *                  (4) AI4E.Coordination.CoordinationManager.Entry.ChildrenEnumerable
+ *                  (5) AI4E.Coordination.CoordinationManager.Entry.ChildrenEnumerator
+ *                  (6) AI4E.Coordination.CoordinationManager.MessageType
+ *                  (7) AI4E.Coordination.CoordinationManager.Provider
+ *                  (8) AI4E.Coordination.CoordinationManager.WaitDirectory'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   10.05.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -265,7 +271,7 @@ namespace AI4E.Coordination
 
             Assert(remoteAddress != null);
 
-            var physicalEndPoint = await GetSessionEndPointAsync(session, cancellation);
+            var physicalEndPoint = GetSessionEndPoint(session);
 
             try
             {
@@ -276,13 +282,13 @@ namespace AI4E.Coordination
 
         }
 
-        private async Task<IPhysicalEndPoint<TAddress>> GetSessionEndPointAsync(string session, CancellationToken cancellation)
+        private IPhysicalEndPoint<TAddress> GetSessionEndPoint(string session)
         {
             Assert(session != null);
 
-            var name = GetMultiplexEndPointName(session);
+            var multiplexName = GetMultiplexEndPointName(session);
 
-            var result = await _endPointMultiplexer.GetMultiplexEndPointAsync(name, cancellation);
+            var result = _endPointMultiplexer.GetPhysicalEndPoint(multiplexName);
 
             Assert(result != null);
 
@@ -448,7 +454,7 @@ namespace AI4E.Coordination
 
             try
             {
-                var physicalEndPoint = await GetSessionEndPointAsync(session, cancellation);
+                var physicalEndPoint = GetSessionEndPoint(session);
 
                 try
                 {

@@ -1,11 +1,41 @@
-﻿using System;
-using System.Collections.Generic;
+﻿/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        PhysicalEndPointMultiplexer.cs 
+ * Types:           (1) AI4E.Remoting.PhysicalEndPointMultiplexer'1
+ *                  (2) AI4E.Remoting.MultiplexPhysicalEndPoint'1
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * Last modified:   10.05.2018 
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+using System;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
+using AI4E.Internal;
 using AI4E.Processing;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
@@ -13,16 +43,34 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Remoting
 {
+    /// <summary>
+    /// Multiplexes a single physical end point by to multiple end points each distinguished by a multiplex name.
+    /// </summary>
+    /// <typeparam name="TAddress">The type of physical address used.</typeparam>
+    /// <remarks>
+    /// This type is not meant to be consumed directly but is part of the infrastructure to enable the remote message dispatching system.
+    /// </remarks>
     public sealed class PhysicalEndPointMultiplexer<TAddress> : IPhysicalEndPointMultiplexer<TAddress>, IAsyncDisposable
     {
-        private readonly AsyncLock _lock = new AsyncLock();
-        private readonly Dictionary<string, MultiplexEndPoint> _endPoints = new Dictionary<string, MultiplexEndPoint>();
+        #region Fields
+
         private readonly IPhysicalEndPoint<TAddress> _physicalEndPoint;
         private readonly ILogger<PhysicalEndPointMultiplexer<TAddress>> _logger;
+
+        private readonly WeakDictionary<string, AsyncProducerConsumerQueue<IMessage>> _rxQueues = new WeakDictionary<string, AsyncProducerConsumerQueue<IMessage>>();
         private readonly AsyncProcess _receiveProcess;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
+        #endregion
+
+        #region C'tor
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="IMultiplexPhyiscalEndPoint{TAddress}"/> type.
+        /// </summary>
+        /// <param name="physicalEndPoint">The underlying physical end point.</param>
+        /// <param name="logger">A logger used to log messages.</param>
         public PhysicalEndPointMultiplexer(IPhysicalEndPoint<TAddress> physicalEndPoint, ILogger<PhysicalEndPointMultiplexer<TAddress>> logger)
         {
             if (physicalEndPoint == null)
@@ -36,6 +84,11 @@ namespace AI4E.Remoting
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
+        #endregion
+
+        /// <summary>
+        /// Gets the physical address of the underlying local physical end point.
+        /// </summary>
         public TAddress LocalAddress => _physicalEndPoint.LocalAddress;
 
         #region ReceiveProcess
@@ -53,102 +106,97 @@ namespace AI4E.Remoting
                     HandleMessageAsync(message, cancellation).HandleExceptions(_logger);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch
+                catch (Exception exc)
                 {
-                    // TODO: Logging
+                    _logger?.LogWarning(exc, "An incoming message could not be processed.");
                 }
             }
         }
 
-        private async Task HandleMessageAsync(IMessage message, CancellationToken cancellation)
+        private Task HandleMessageAsync(IMessage message, CancellationToken cancellation)
         {
             Assert(message != null);
 
-            var address = DecodeAddress(message);
-
-            MultiplexEndPoint endPoint;
-            bool endPointFound;
-
-            using (await _lock.LockAsync(cancellation))
-            {
-                endPointFound = _endPoints.TryGetValue(address, out endPoint);
-            }
-
-            if (endPointFound)
-            {
-                await endPoint.EnqueueAsync(message, cancellation);
-            }
-            else
-            {
-                // TODO: Log exception
-            }
+            var multiplexName = DecodeMultiplexName(message);
+            return GetRxQueue(multiplexName).EnqueueAsync(message, cancellation);
         }
 
         #endregion
 
         #region Initialization
 
-        public Task Initialization => _initializationHelper.Initialization;
+        private Task Initialization => _initializationHelper.Initialization;
 
-        private async Task InitializeInternalAsync(CancellationToken cancellation)
+        private Task InitializeInternalAsync(CancellationToken cancellation)
         {
-            await _receiveProcess.StartAsync(cancellation);
+            return _receiveProcess.StartAsync(cancellation);
         }
 
         #endregion
 
         #region Disposal
 
+        /// <summary>
+        /// Gets a task that represents the disposal of the type.
+        /// </summary>
         public Task Disposal => _disposeHelper.Disposal;
 
+        /// <summary>
+        /// Disposes of the type.
+        /// </summary>
+        /// <remarks>
+        /// This method does not block but instead only initiates the disposal without actually waiting till disposal is completed.
+        /// </remarks>
         public void Dispose()
         {
             _disposeHelper.Dispose();
         }
 
+        /// <summary>
+        /// Asynchronously disposes of the type.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <remarks>
+        /// This method initiates the disposal and returns a task that represents the disposal of the type.
+        /// </remarks>
         public Task DisposeAsync()
         {
             return _disposeHelper.DisposeAsync();
         }
 
-        private async Task DisposeInternalAsync()
+        private Task DisposeInternalAsync()
         {
-            try
-            {
-                await _receiveProcess.TerminateAsync();
-            }
-            finally
-            {
-                IEnumerable<MultiplexEndPoint> endPoints;
-
-                using (await _lock.LockAsync())
-                {
-                    endPoints = _endPoints.Values;
-                }
-
-                await Task.WhenAll(endPoints.Select(p => p.DisposeAsync()));
-            }
+            return _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
         }
 
         #endregion
 
+        private AsyncProducerConsumerQueue<IMessage> GetRxQueue(string multiplexName)
+        {
+            var result = _rxQueues.GetOrAdd(multiplexName, _ => new AsyncProducerConsumerQueue<IMessage>());
+
+            Assert(result != null);
+
+            return result;
+        }
+
         #region Coding
 
-        private static void EncodeAddress(IMessage message, string address)
+        private static void EncodeMultiplexName(IMessage message, string multiplexName)
         {
             Assert(message != null);
-            Assert(address != null);
+            Assert(multiplexName != null);
 
             var frameIdx = message.FrameIndex;
-            var addressBytes = Encoding.UTF8.GetBytes(address);
+            var multiplexNameBytes = Encoding.UTF8.GetBytes(multiplexName);
 
             try
             {
                 using (var frameStream = message.PushFrame().OpenStream(overrideContent: true))
                 using (var binaryWriter = new BinaryWriter(frameStream))
                 {
-                    binaryWriter.Write(addressBytes.Length);
-                    binaryWriter.Write(addressBytes);
+                    binaryWriter.Write(multiplexNameBytes.Length);
+                    binaryWriter.Write(multiplexNameBytes);
                 }
             }
             catch when (frameIdx != message.FrameIndex)
@@ -161,22 +209,22 @@ namespace AI4E.Remoting
             }
         }
 
-        private static string DecodeAddress(IMessage message)
+        private static string DecodeMultiplexName(IMessage message)
         {
             Assert(message != null);
 
             var frameIdx = message.FrameIndex;
-            var address = default(string);
+            var result = default(string);
 
             try
             {
                 using (var frameStream = message.PopFrame().OpenStream())
                 using (var binaryReader = new BinaryReader(frameStream))
                 {
-                    var addressLength = binaryReader.ReadInt32();
-                    var addressBytes = binaryReader.ReadBytes(addressLength);
+                    var multiplexNameLength = binaryReader.ReadInt32();
+                    var multiplexNameBytes = binaryReader.ReadBytes(multiplexNameLength);
 
-                    address = Encoding.UTF8.GetString(addressBytes);
+                    result = Encoding.UTF8.GetString(multiplexNameBytes);
                 }
             }
             catch when (frameIdx != message.FrameIndex)
@@ -188,208 +236,118 @@ namespace AI4E.Remoting
                 throw;
             }
 
-            return address;
+            Assert(result != null);
+
+            return result;
         }
 
         #endregion
 
-        public IPhysicalEndPoint<TAddress> GetMultiplexEndPoint(string address)
+        /// <summary>
+        /// Returns a physical end point that is identified by the specified multiplex name.
+        /// </summary>
+        /// <param name="multiplexName">The name of the multiplex end point.</param>
+        /// <returns>A physical end point identified by <paramref name="multiplexName"/>.</returns>
+        /// <exception cref="ArgumentNullOrWhiteSpaceException">Thrown if <paramref name="multiplexName"/> is either null, an emppty string or contains of whitespace only.</exception>
+        public IMultiplexPhyiscalEndPoint<TAddress> GetPhysicalEndPoint(string multiplexName)
         {
-            _logger?.LogDebug($"Retrieving multiplex end point on address '{LocalAddress}' with name '{address}'.");
+            if (string.IsNullOrWhiteSpace(multiplexName))
+                throw new ArgumentNullOrWhiteSpaceException(nameof(multiplexName));
 
-            using (_disposeHelper.ProhibitDisposal())
-            {
-                if (_disposeHelper.IsDisposed)
-                    throw new ObjectDisposedException(GetType().FullName);
-
-                using (_lock.Lock())
-                {
-                    if (!_endPoints.TryGetValue(address, out var result))
-                    {
-                        result = new MultiplexEndPoint(this, address);
-                        _endPoints.Add(address, result);
-                    }
-
-                    return result;
-                }
-            }
+            return new MultiplexPhysicalEndPoint(this, multiplexName);
         }
 
-        public async Task<IPhysicalEndPoint<TAddress>> GetMultiplexEndPointAsync(string address, CancellationToken cancellation = default)
+        private sealed class MultiplexPhysicalEndPoint : IMultiplexPhyiscalEndPoint<TAddress>
         {
-            _logger?.LogDebug($"Retrieving multiplex end point on address '{LocalAddress}' with name '{address}'.");
-
-            using (_disposeHelper.ProhibitDisposal())
-            {
-                if (_disposeHelper.IsDisposed)
-                    throw new ObjectDisposedException(GetType().FullName);
-
-                using (await _lock.LockAsync(cancellation))
-                {
-                    if (!_endPoints.TryGetValue(address, out var result))
-                    {
-                        result = new MultiplexEndPoint(this, address);
-                        _endPoints.Add(address, result);
-                    }
-
-                    return result;
-                }
-            }
-        }
-
-        private sealed class MultiplexEndPoint : IPhysicalEndPoint<TAddress>
-        {
-            private static int _next = 1;
-
-            private readonly int _id;
-
-            private readonly AsyncDisposeHelper _disposeHelper;
-            private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
+            // This must be stored as field and not looked up dynamically in ReceiveAsync
+            // in order that the Multiplexer does not delete the collection.
+            private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue;
             private readonly PhysicalEndPointMultiplexer<TAddress> _multiplexer;
-            private readonly string _address;
 
-            public MultiplexEndPoint(PhysicalEndPointMultiplexer<TAddress> multiplexer, string address)
+            public MultiplexPhysicalEndPoint(PhysicalEndPointMultiplexer<TAddress> multiplexer, string multiplexName)
             {
-                Assert(multiplexer != null);
-                Assert(address != null);
-
-                _id = Interlocked.Increment(ref _next);
+                if (multiplexer == null)
+                    throw new ArgumentNullException(nameof(multiplexer));
 
                 _multiplexer = multiplexer;
-                _address = address;
-                LocalAddress = _multiplexer.LocalAddress;
+                MultiplexName = multiplexName;
 
-                _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
-
-                _multiplexer._logger?.LogDebug($"[{_id}] Creating multiplex end point on address '{LocalAddress}' with name '{address}'.");
+                _rxQueue = _multiplexer.GetRxQueue(MultiplexName);
             }
 
-            public TAddress LocalAddress { get; }
+            public TAddress LocalAddress => _multiplexer.LocalAddress;
 
-            public Task EnqueueAsync(IMessage message, CancellationToken cancellation)
+            public string MultiplexName { get; }
+
+            public async Task<IMessage> ReceiveAsync(CancellationToken cancellation = default)
             {
-                Assert(message != null);
-
-                return _rxQueue.EnqueueAsync(message, cancellation);
-            }
-
-            public async Task<IMessage> ReceiveAsync(CancellationToken cancellation)
-            {
-                using (await _multiplexer._disposeHelper.ProhibitDisposalAsync(cancellation))
-                {
-                    if (_multiplexer._disposeHelper.IsDisposed)
-                        throw new ObjectDisposedException(_multiplexer.GetType().FullName);
-
-                    using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
-                    {
-                        if (_disposeHelper.IsDisposed)
-                            throw new ObjectDisposedException(GetType().FullName);
-
-                        var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(_multiplexer._disposeHelper.DisposalRequested,
-                                                                                                         _disposeHelper.DisposalRequested,
-                                                                                                         cancellation);
-
-                        try
-                        {
-                            var result = await _rxQueue.DequeueAsync(combinedCancellationSource.Token);
-
-                            _multiplexer._logger?.LogDebug($"[{_id}] Multiplex end point on '{LocalAddress}' with name '{_address}': Received message..");
-
-                            return result;
-                        }
-                        catch (OperationCanceledException exc) when (_multiplexer._disposeHelper.DisposalRequested.IsCancellationRequested)
-                        {
-                            throw new ObjectDisposedException(_multiplexer.GetType().FullName, exc);
-                        }
-                        catch (OperationCanceledException exc) when (_disposeHelper.DisposalRequested.IsCancellationRequested)
-                        {
-                            throw new ObjectDisposedException(GetType().FullName, exc);
-                        }
-                    }
-                }
-            }
-
-            public async Task SendAsync(IMessage message, TAddress address, CancellationToken cancellation)
-            {
-                _multiplexer._logger?.LogDebug($"[{_id}] Multiplex end point on '{LocalAddress}' with name '{_address}': Sending message to remote '{address}'.");
+                await _multiplexer.Initialization.WithCancellation(cancellation);
 
                 using (await _multiplexer._disposeHelper.ProhibitDisposalAsync(cancellation))
                 {
                     if (_multiplexer._disposeHelper.IsDisposed)
                         throw new ObjectDisposedException(_multiplexer.GetType().FullName);
 
-                    using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+                    var combinedCancellation = _multiplexer._disposeHelper.CancelledOrDisposed(cancellation);
+
+                    try
                     {
-                        if (_disposeHelper.IsDisposed)
-                            throw new ObjectDisposedException(GetType().FullName);
-
-                        var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(_multiplexer._disposeHelper.DisposalRequested,
-                                                                                                         _disposeHelper.DisposalRequested,
-                                                                                                         cancellation);
-
-                        try
-                        {
-                            var frameIdx = message.FrameIndex;
-                            EncodeAddress(message, _address);
-
-                            try
-                            {
-                                await _multiplexer._physicalEndPoint.SendAsync(message, address, combinedCancellationSource.Token);
-                            }
-                            catch when (frameIdx != message.FrameIndex)
-                            {
-                                message.PopFrame();
-                                Assert(frameIdx == message.FrameIndex);
-                                throw;
-                            }
-                        }
-                        catch (OperationCanceledException exc) when (_multiplexer._disposeHelper.DisposalRequested.IsCancellationRequested)
-                        {
-                            throw new ObjectDisposedException(_multiplexer.GetType().FullName, exc);
-                        }
-                        catch (OperationCanceledException exc) when (_disposeHelper.DisposalRequested.IsCancellationRequested)
-                        {
-                            throw new ObjectDisposedException(GetType().FullName, exc);
-                        }
+                        return await _rxQueue.DequeueAsync(combinedCancellation);
+                    }
+                    catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
+                    {
+                        throw new ObjectDisposedException(_multiplexer.GetType().FullName);
                     }
                 }
             }
 
-            #region Disposal
-
-            public bool IsDisposed => _disposeHelper.IsDisposed;
-
-            public Task Disposal => _disposeHelper.Disposal;
-
-            public void Dispose()
+            public async Task SendAsync(IMessage message, TAddress address, CancellationToken cancellation = default)
             {
-                _multiplexer._logger?.LogDebug($"[{_id}] Requesting disposing multiplex end point on address '{LocalAddress}' with name '{_address}'.");
+                if (message == null)
+                    throw new ArgumentNullException(nameof(message));
 
-                _disposeHelper.Dispose();
-            }
+                if (address == null)
+                    throw new ArgumentNullException(nameof(address));
 
-            public Task DisposeAsync()
-            {
-                _multiplexer._logger?.LogDebug($"[{_id}] Requesting disposing multiplex end point on address '{LocalAddress}' with name '{_address}'.");
+                if (address.Equals(default))
+                    throw new ArgumentDefaultException(nameof(message));
 
-                return _disposeHelper.DisposeAsync();
-                //return Task.CompletedTask;
-            }
+                await _multiplexer.Initialization.WithCancellation(cancellation);
 
-            private async Task DisposeInternalAsync()
-            {
-                _multiplexer._logger?.LogDebug($"[{_id}] Disposing multiplex end point on address '{LocalAddress}' with name '{_address}'.");
-
-                using (await _multiplexer._lock.LockAsync())
+                using (await _multiplexer._disposeHelper.ProhibitDisposalAsync(cancellation))
                 {
-                    if (_multiplexer._endPoints.TryGetValue(_address, out var comparand) && comparand == this)
+                    if (_multiplexer._disposeHelper.IsDisposed)
+                        throw new ObjectDisposedException(_multiplexer.GetType().FullName);
+
+                    var combinedCancellation = _multiplexer._disposeHelper.CancelledOrDisposed(cancellation);
+
+                    try
                     {
-                        _multiplexer._endPoints.Remove(_address);
+                        await SendInternalAsync(message, address, combinedCancellation);
+                    }
+                    catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
+                    {
+                        throw new ObjectDisposedException(_multiplexer.GetType().FullName);
                     }
                 }
             }
 
-            #endregion
+            private async Task SendInternalAsync(IMessage message, TAddress address, CancellationToken cancellation)
+            {
+                var frameIdx = message.FrameIndex;
+                EncodeMultiplexName(message, MultiplexName);
+
+                try
+                {
+                    await _multiplexer._physicalEndPoint.SendAsync(message, address, cancellation);
+                }
+                catch when (frameIdx != message.FrameIndex)
+                {
+                    message.PopFrame();
+                    Assert(frameIdx == message.FrameIndex);
+                    throw;
+                }
+            }
         }
     }
 }

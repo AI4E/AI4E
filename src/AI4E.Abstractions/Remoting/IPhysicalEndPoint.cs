@@ -45,7 +45,7 @@ namespace AI4E.Remoting
     public interface IPhysicalEndPoint<TAddress> : IInboundPhysicalEndPoint<TAddress>, IOutboundPhysicalEndPoint<TAddress>
     {
         /// <summary>
-        /// Gets the physical address of the local phyiscal end point.
+        /// Gets the physical address of the local physical end point.
         /// </summary>
         new TAddress LocalAddress { get; }
     }
@@ -71,7 +71,7 @@ namespace AI4E.Remoting
         Task<IMessage> ReceiveAsync(CancellationToken cancellation = default);
 
         /// <summary>
-        /// Gets the physical address of the local phyiscal end point.
+        /// Gets the physical address of the local physical end point.
         /// </summary>
         TAddress LocalAddress { get; }
     }
@@ -98,7 +98,7 @@ namespace AI4E.Remoting
         Task SendAsync(IMessage message, TAddress address, CancellationToken cancellation = default);
 
         /// <summary>
-        /// Gets the physical address of the local phyiscal end point.
+        /// Gets the physical address of the local physical end point.
         /// </summary>
         TAddress LocalAddress { get; }
     }

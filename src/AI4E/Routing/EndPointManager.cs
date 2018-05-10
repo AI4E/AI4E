@@ -4,7 +4,7 @@
  * Types:           AI4E.Routing.EndPointManager'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   10.05.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -141,12 +141,7 @@ namespace AI4E.Routing
 
         private IPhysicalEndPoint<TAddress> GetMultiplexEndPoint(EndPointRoute route)
         {
-            return _endPointMultiplexer.GetMultiplexEndPoint("end-points/" + route.Route);
-        }
-
-        private Task<IPhysicalEndPoint<TAddress>> GetMultiplexEndPointAsync(EndPointRoute route, CancellationToken cancellation)
-        {
-            return _endPointMultiplexer.GetMultiplexEndPointAsync("end-points/" + route.Route, cancellation);
+            return _endPointMultiplexer.GetPhysicalEndPoint("end-points/" + route.Route);
         }
 
         public async Task RemoveEndPointAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
@@ -226,7 +221,7 @@ namespace AI4E.Routing
         private RemoteEndPoint<TAddress> CreateRemoteEndPoint(EndPointRoute remoteEndPoint)
         {
             var logger = _serviceProvider.GetService<ILogger<RemoteEndPoint<TAddress>>>();
-            var physicalEndPointProvider = AsyncProvider.Create(cancellation => GetMultiplexEndPointAsync(remoteEndPoint, cancellation));
+            var physicalEndPointProvider = Provider.Create(() => GetMultiplexEndPoint(remoteEndPoint));
 
             return new RemoteEndPoint<TAddress>(endPointManager: this,
                                                 physicalEndPointProvider, 

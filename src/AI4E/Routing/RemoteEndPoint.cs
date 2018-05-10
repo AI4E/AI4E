@@ -53,7 +53,7 @@ namespace AI4E.Routing
         #region Fields
 
         private readonly IEndPointManager<TAddress> _endPointManager;
-        private readonly IAsyncProvider<IPhysicalEndPoint<TAddress>> _physicalEndPointProvider;
+        private readonly IProvider<IPhysicalEndPoint<TAddress>> _physicalEndPointProvider;
         private readonly IMessageCoder<TAddress> _messageCoder;
         private readonly IRouteMap<TAddress> _routeManager;
         private readonly IEndPointScheduler<TAddress> _endPointScheduler;
@@ -92,7 +92,7 @@ namespace AI4E.Routing
         /// <paramref name="endPointScheduler"/> is null.
         /// </exception>
         public RemoteEndPoint(IEndPointManager<TAddress> endPointManager,
-                              IAsyncProvider<IPhysicalEndPoint<TAddress>> physicalEndPointProvider,
+                              IProvider<IPhysicalEndPoint<TAddress>> physicalEndPointProvider,
                               EndPointRoute route,
                               IMessageCoder<TAddress> messageCoder,
                               IRouteMap<TAddress> routeManager, // TODO: Name both either route map OR route manager.
@@ -352,7 +352,7 @@ namespace AI4E.Routing
 
             try
             {
-                var physicalEndPoint = await _physicalEndPointProvider.ProvideInstanceAsync(cancellation);
+                var physicalEndPoint = _physicalEndPointProvider.ProvideInstance();
 
                 Assert(physicalEndPoint != null);
 
