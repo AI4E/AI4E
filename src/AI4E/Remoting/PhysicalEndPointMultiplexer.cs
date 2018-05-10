@@ -67,7 +67,7 @@ namespace AI4E.Remoting
         #region C'tor
 
         /// <summary>
-        /// Creates a new instance of the <see cref="IMultiplexPhyiscalEndPoint{TAddress}"/> type.
+        /// Creates a new instance of the <see cref="IMultiplexPhysicalEndPoint{TAddress}"/> type.
         /// </summary>
         /// <param name="physicalEndPoint">The underlying physical end point.</param>
         /// <param name="logger">A logger used to log messages.</param>
@@ -249,7 +249,7 @@ namespace AI4E.Remoting
         /// <param name="multiplexName">The name of the multiplex end point.</param>
         /// <returns>A physical end point identified by <paramref name="multiplexName"/>.</returns>
         /// <exception cref="ArgumentNullOrWhiteSpaceException">Thrown if <paramref name="multiplexName"/> is either null, an emppty string or contains of whitespace only.</exception>
-        public IMultiplexPhyiscalEndPoint<TAddress> GetPhysicalEndPoint(string multiplexName)
+        public IMultiplexPhysicalEndPoint<TAddress> GetPhysicalEndPoint(string multiplexName)
         {
             if (string.IsNullOrWhiteSpace(multiplexName))
                 throw new ArgumentNullOrWhiteSpaceException(nameof(multiplexName));
@@ -257,7 +257,7 @@ namespace AI4E.Remoting
             return new MultiplexPhysicalEndPoint(this, multiplexName);
         }
 
-        private sealed class MultiplexPhysicalEndPoint : IMultiplexPhyiscalEndPoint<TAddress>
+        private sealed class MultiplexPhysicalEndPoint : IMultiplexPhysicalEndPoint<TAddress>
         {
             // This must be stored as field and not looked up dynamically in ReceiveAsync
             // in order that the Multiplexer does not delete the collection.

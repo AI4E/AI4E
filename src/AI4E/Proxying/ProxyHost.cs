@@ -2,13 +2,14 @@
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        ProxyHost.cs
  * Types:           (1) AI4E.Proxying.ProxyHost
- *                  (2) AI4E.Proxying.ActivationMode
+ *                  (2) AI4E.Proxying.ProxyHost.ActivationMode
  *                  (3) AI4E.Proxying.ProxyHost.MessageType
  *                  (4) AI4E.Proxying.ProxyHost.ProxyOwner
  *                  (5) AI4E.Proxying.ProxyHost.TypeCode
+ *                  (6) AI4E.Proxying.ProxyHost.ActivationDescripor
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   10.05.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -92,7 +93,25 @@ namespace AI4E.Proxying
 
         #region Activation
 
-        public async Task<Proxy<TRemote>> ActivateAsync<TRemote>(ActivationMode mode, CancellationToken cancellation)
+        public Task<Proxy<TRemote>> CreateAsync<TRemote>(object[] parameter, CancellationToken cancellation)
+            where TRemote : class
+        {
+            return ActivateAsync<TRemote>(ActivationMode.Create, parameter ?? new object[0], cancellation);
+        }
+
+        public Task<Proxy<TRemote>> CreateAsync<TRemote>(CancellationToken cancellation)
+            where TRemote : class
+        {
+            return ActivateAsync<TRemote>(ActivationMode.Create, new object[0], cancellation);
+        }
+
+        public Task<Proxy<TRemote>> LoadAsync<TRemote>(CancellationToken cancellation)
+            where TRemote : class
+        {
+            return ActivateAsync<TRemote>(ActivationMode.Load, parameter: null, cancellation);
+        }
+
+        private async Task<Proxy<TRemote>> ActivateAsync<TRemote>(ActivationMode mode, object[] parameter, CancellationToken cancellation)
             where TRemote : class
         {
             int seqNum;
@@ -109,8 +128,7 @@ namespace AI4E.Proxying
                 {
                     writer.Write((byte)MessageType.Activation);
                     writer.Write(seqNum);
-                    writer.Write((byte)mode);
-                    Serialize(writer, typeof(TRemote));
+                    Serialize(writer, new ActivationDescripor { Mode = mode, RemoteType = typeof(TRemote).AssemblyQualifiedName, Parameter = parameter });
                 }
             }
             while (!TryGetResultTask(seqNum, out result));
@@ -306,18 +324,19 @@ namespace AI4E.Proxying
 
             try
             {
-                var mode = (ActivationMode)reader.ReadByte();
-                var type = (Type)Deserialize(reader, expectedType: default);
-
+                var activation = (ActivationDescripor)Deserialize(reader, expectedType: default);
+                var mode = activation.Mode;
+                var type = LoadTypeIgnoringVersion( activation.RemoteType);
                 var instance = default(object);
                 var ownsInstance = false;
 
                 if (mode == ActivationMode.Create)
                 {
-                    instance = ActivatorUtilities.CreateInstance(_serviceProvider, type);
+                    var parameter = activation.Parameter;
+                    instance = ActivatorUtilities.CreateInstance(_serviceProvider, type, parameter);
                     ownsInstance = true;
                 }
-                else if (mode == ActivationMode.LoadFromServices)
+                else if (mode == ActivationMode.Load)
                 {
                     instance = _serviceProvider.GetRequiredService(type);
                 }
@@ -918,11 +937,21 @@ namespace AI4E.Proxying
             Activation,
             Deactivation
         }
-    }
 
-    public enum ActivationMode : byte
-    {
-        Create,
-        LoadFromServices
+        private enum ActivationMode : byte
+        {
+            Create,
+            Load
+        }
+
+        [Serializable]
+        private struct ActivationDescripor
+        {
+            public string RemoteType { get; set; }
+
+            public ActivationMode Mode { get; set; }
+
+            public object[] Parameter { get; set; }
+        }
     }
 }

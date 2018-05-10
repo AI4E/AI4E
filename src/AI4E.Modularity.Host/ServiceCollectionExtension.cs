@@ -30,6 +30,8 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity
 {
@@ -72,8 +74,8 @@ namespace AI4E.Modularity
 
             // Logical messaging
             services.AddSingleton<IEndPointManager, EndPointManager<IPEndPoint>>();
+            services.AddSingleton(ConfigureLogicalEndPoint);
             services.AddSingleton<IMessageCoder<IPEndPoint>, MessageCoder<IPEndPoint>>();
-            services.AddSingleton<ILocalEndPointFactory<IPEndPoint>, LocalEndPointFactory<IPEndPoint>>();
             services.AddSingleton<IEndPointScheduler<IPEndPoint>, RandomEndPointScheduler<IPEndPoint>>();
             services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
             services.AddSingleton<IRouteStore, RouteManager>();
@@ -103,6 +105,22 @@ namespace AI4E.Modularity
             });
 
             return new ModularityBuilder(services);
+        }
+
+        private static ILogicalEndPoint ConfigureLogicalEndPoint(IServiceProvider serviceProvider)
+        {
+            Assert(serviceProvider != null);
+
+            var endPointManager = serviceProvider.GetRequiredService<IEndPointManager>();
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<RemoteMessagingOptions>>();
+            var options = optionsAccessor.Value ?? new RemoteMessagingOptions();
+
+            if (options.LocalEndPoint == default)
+            {
+                throw new InvalidOperationException("A local end point must be specified.");
+            }
+
+            return endPointManager.GetLogicalEndPoint(options.LocalEndPoint);
         }
 
         private static ApplicationPartManager GetApplicationPartManager(this IServiceCollection services)

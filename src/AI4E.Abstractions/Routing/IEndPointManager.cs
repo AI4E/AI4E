@@ -5,7 +5,7 @@
  *                  (2) AI4E.Routing.IEndPointManager'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   10.05.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -30,26 +30,18 @@
  */
 
 using System;
-using System.Threading;
-using System.Threading.Tasks;
-using AI4E.Remoting;
 
 namespace AI4E.Routing
 {
     public interface IEndPointManager : IDisposable
     {
-        Task AddEndPointAsync(EndPointRoute route, CancellationToken cancellation);
-        Task RemoveEndPointAsync(EndPointRoute route, CancellationToken cancellation);
-
-        Task<IMessage> ReceiveAsync(EndPointRoute localEndPoint, CancellationToken cancellation);
-        Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation);
-        Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation);
+        ILogicalEndPoint GetLogicalEndPoint(EndPointRoute route);
     }
 
     public interface IEndPointManager<TAddress> : IEndPointManager
     {
         TAddress LocalAddress { get; }
 
-        bool TryGetEndPoint(EndPointRoute localEndPoint, out ILocalEndPoint<TAddress> endPoint);
+        new ILogicalEndPoint<TAddress> GetLogicalEndPoint(EndPointRoute route);
     }
 }

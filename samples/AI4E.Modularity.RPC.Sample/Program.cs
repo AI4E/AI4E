@@ -25,7 +25,7 @@ namespace AI4E.Modularity.RPC.Sample
                     var client = new ProxyHost(mux2, new ServiceCollection().BuildServiceProvider());
 
                     var valueProxy = new Proxy<Value>(new Value(12), ownsInstance: true);
-                    var barProxy = await client.ActivateAsync<Bar>(ActivationMode.Create, cancellation: default);
+                    var barProxy = await client.CreateAsync<Bar>(cancellation: default);
                     var fooProxy = await barProxy.ExecuteAsync(bar => bar.GetFoo());
 
                     Console.WriteLine(await fooProxy.ExecuteAsync(foo => foo.Add(1, 2)));

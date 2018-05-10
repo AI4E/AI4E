@@ -49,7 +49,58 @@ namespace AI4E.Internal
                 throw new ArgumentNullException(nameof(factory));
 
             Cleanup();
+            return GetOrAddInternal(key, factory);
+        }
 
+        public TValue GetOrAdd(TKey key, TValue value)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
+
+            Cleanup();
+            return GetOrAddInternal(key, _ => value);
+        }
+
+        public bool TryRemove(TKey key, out TValue value)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+
+            Cleanup();
+
+            value = default;
+            return _entries.TryRemove(key, out var weakReference) && weakReference.TryGetTarget(out value);
+        }
+
+        public bool TryRemove(TKey key, TValue comparand)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+
+            if (comparand == null)
+                throw new ArgumentNullException(nameof(comparand));
+
+            Cleanup();
+
+            WeakReference<TValue> weakReference;
+
+            do
+            {
+                if (!_entries.TryGetValue(key, out weakReference) || !weakReference.TryGetTarget(out var value) || !value.Equals(comparand))
+                {
+                    return false;
+                }
+            }
+            while (!_entries.TryRemove(key, weakReference));
+
+            return true;
+        }
+
+        private TValue GetOrAddInternal(TKey key, Func<TKey, TValue> factory)
+        {
             var newValue = default(TValue);
             var newWeakReference = default(WeakReference<TValue>);
             var cleanCallback = default(Action<TValue>);

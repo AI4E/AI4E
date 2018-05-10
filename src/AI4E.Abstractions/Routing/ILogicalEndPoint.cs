@@ -1,11 +1,11 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        ILocalEndPoint.cs 
- * Types:           (1) AI4E.Routing.ILocalEndPoint
- *                  (2) AI4E.Routing.ILocalEndPoint'1
+ * Filename:        ILogicalEndPoint.cs 
+ * Types:           (1) AI4E.Routing.ILogicalEndPoint
+ *                  (2) AI4E.Routing.ILogicalEndPoint'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   10.05.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -36,19 +36,19 @@ using AI4E.Remoting;
 
 namespace AI4E.Routing
 {
-    public interface ILocalEndPoint : IAsyncInitialization, IAsyncDisposable
+    public interface ILogicalEndPoint : IAsyncInitialization, IAsyncDisposable
     {
         EndPointRoute Route { get; }
 
-        Task<IMessage> ReceiveAsync(CancellationToken cancellation);
-        Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, CancellationToken cancellation);
+        Task<IMessage> ReceiveAsync(CancellationToken cancellation = default);
+        Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, CancellationToken cancellation = default);
+        Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation = default);
     }
 
-    public interface ILocalEndPoint<TAddress> : ILocalEndPoint
+    public interface ILogicalEndPoint<TAddress> : ILogicalEndPoint
     {
         TAddress LocalAddress { get; }
-        bool IsDisposed { get; }
 
-        Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation);
+        Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation = default);
     }
 }

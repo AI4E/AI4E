@@ -9,7 +9,7 @@
  *                  (6) AI4E.Routing.RemoteMessageDispatcher.TypedRemoteMessageDispatcher'1.HandlerRegistration
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   10.05.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -55,18 +55,22 @@ using Nito.AsyncEx;
 
 namespace AI4E.Routing
 {
-    // TODO: Route caching and cache coherency
     public sealed class RemoteMessageDispatcher : IRemoteMessageDispatcher, IAsyncDisposable
     {
         #region Fields
 
-        private readonly IAsyncProcess _receiveProcess;
-        private readonly ConcurrentDictionary<Type, ITypedRemoteMessageDispatcher> _typedDispatchers = new ConcurrentDictionary<Type, ITypedRemoteMessageDispatcher>();
-        private readonly IServiceProvider _serviceProvider;
-        private readonly ILogger<RemoteMessageDispatcher> _logger;
-        private readonly IEndPointManager _endPointManager;
+        private readonly ILogicalEndPoint _logicalEndPoint;
         private readonly IRouteStore _routeStore;
         private readonly IMessageTypeConversion _messageTypeConversion;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<RemoteMessageDispatcher> _logger;
+
+
+        private readonly IAsyncProcess _receiveProcess;
+        private readonly AsyncInitializationHelper _initializationHelper;
+        private readonly AsyncDisposeHelper _disposeHelper;
+
+        private readonly ConcurrentDictionary<Type, ITypedRemoteMessageDispatcher> _typedDispatchers = new ConcurrentDictionary<Type, ITypedRemoteMessageDispatcher>();
         private readonly ConcurrentDictionary<int, TaskCompletionSource<IDispatchResult>> _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<IDispatchResult>>();
         private readonly JsonSerializer _serializer = new JsonSerializer() { TypeNameHandling = TypeNameHandling.Auto };
         private int _nextSeqNum = 1;
@@ -75,15 +79,15 @@ namespace AI4E.Routing
 
         #region C'tor
 
-        public RemoteMessageDispatcher(IEndPointManager endPointManager,
+        public RemoteMessageDispatcher(ILogicalEndPoint logicalEndPoint,
                                        IRouteStore routeStore,
                                        IMessageTypeConversion messageTypeConversion,
-                                       IOptions<RemoteMessagingOptions> optionsAccessor,
+
                                        IServiceProvider serviceProvider,
                                        ILogger<RemoteMessageDispatcher> logger)
         {
-            if (endPointManager == null)
-                throw new ArgumentNullException(nameof(endPointManager));
+            if (logicalEndPoint == null)
+                throw new ArgumentNullException(nameof(logicalEndPoint));
 
             if (routeStore == null)
                 throw new ArgumentNullException(nameof(routeStore));
@@ -91,22 +95,22 @@ namespace AI4E.Routing
             if (messageTypeConversion == null)
                 throw new ArgumentNullException(nameof(messageTypeConversion));
 
-            if (optionsAccessor == null)
-                throw new ArgumentNullException(nameof(optionsAccessor));
+            //if (optionsAccessor == null)
+            //    throw new ArgumentNullException(nameof(optionsAccessor));
 
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            var options = optionsAccessor.Value ?? new RemoteMessagingOptions();
+            //var options = optionsAccessor.Value ?? new RemoteMessagingOptions();
 
-            if (options.LocalEndPoint == default)
-            {
-                throw new ArgumentException("A local end point must be specified to create a remote message dispatcher.");
-            }
+            //if (options.LocalEndPoint == default)
+            //{
+            //    throw new ArgumentException("A local end point must be specified to create a remote message dispatcher.");
+            //}
 
-            _endPointManager = endPointManager;
+            _logicalEndPoint = logicalEndPoint;
             _routeStore = routeStore;
-            LocalEndPoint = options.LocalEndPoint;
+            LocalEndPoint = _logicalEndPoint.Route; //options.LocalEndPoint;
             _messageTypeConversion = messageTypeConversion;
             _serviceProvider = serviceProvider;
             _logger = logger;
@@ -115,49 +119,28 @@ namespace AI4E.Routing
             _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
-
-        public RemoteMessageDispatcher(IEndPointManager endPointManager,
-                                       IRouteStore routeStore,
-                                       IMessageTypeConversion messageTypeConversion,
-                                       IOptions<RemoteMessagingOptions> optionsAccessor,
-                                       IServiceProvider serviceProvider)
-            : this(endPointManager, routeStore, messageTypeConversion, optionsAccessor, serviceProvider, null) { }
-
         #endregion
 
         public EndPointRoute LocalEndPoint { get; }
 
         #region Initialization
 
-        private readonly AsyncInitializationHelper _initializationHelper;
-
-        private async Task InitializeInternalAsync(CancellationToken cancellation)
+        private Task InitializeInternalAsync(CancellationToken cancellation)
         {
-            await _endPointManager.AddEndPointAsync(LocalEndPoint, cancellation);
-            await _receiveProcess.StartAsync();
+            return _receiveProcess.StartAsync();
         }
 
         #endregion
 
         #region Disposal
 
-        private readonly AsyncDisposeHelper _disposeHelper;
-
         public Task Disposal => _disposeHelper.Disposal;
 
         private async Task DisposeInternalAsync()
         {
             // Cancel the initialization
-            await _initializationHelper.CancelAsync();
-
-            try
-            {
-                await _receiveProcess.TerminateAsync();
-            }
-            finally
-            {
-                await _endPointManager.RemoveEndPointAsync(LocalEndPoint, cancellation: default);
-            }
+            await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
+            await _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
         }
 
         public void Dispose()
@@ -182,7 +165,7 @@ namespace AI4E.Routing
             {
                 try
                 {
-                    var incoming = await _endPointManager.ReceiveAsync(LocalEndPoint, cancellation);
+                    var incoming = await _logicalEndPoint.ReceiveAsync(cancellation);
 
                     _logger?.LogDebug($"End-point '{LocalEndPoint}': Received message.");
 
@@ -249,7 +232,7 @@ namespace AI4E.Routing
 
             requestMessage.PushFrame();
 
-            await _endPointManager.SendAsync(message, requestMessage, cancellation: default);
+            await _logicalEndPoint.SendAsync(message, requestMessage, cancellation: default);
         }
 
         private Task ProcessResponseAsync(ResponseMessage response)
@@ -492,7 +475,7 @@ namespace AI4E.Routing
                     _serializer.Serialize(writer, request, typeof(object));
                 }
 
-                await _endPointManager.SendAsync(msg, remoteEndPoint, LocalEndPoint, cancellation);
+                await _logicalEndPoint.SendAsync(msg, remoteEndPoint, cancellation);
             }
 
             var result = await tcs.Task;

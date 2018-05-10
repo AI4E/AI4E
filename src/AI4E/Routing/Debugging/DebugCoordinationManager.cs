@@ -22,7 +22,7 @@ namespace AI4E.Routing.Debugging
 
             _proxyHost = proxyHost;
             _initializationHelper = new AsyncInitializationHelper<IProxy<CoordinationManagerSkeleton>>(
-                async cancellation => await proxyHost.ActivateAsync<CoordinationManagerSkeleton>(ActivationMode.Create, cancellation));
+                async cancellation => await proxyHost.CreateAsync<CoordinationManagerSkeleton>(cancellation));
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 

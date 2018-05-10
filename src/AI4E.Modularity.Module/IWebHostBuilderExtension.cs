@@ -30,6 +30,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity
 {
@@ -56,9 +57,10 @@ namespace AI4E.Modularity
                 services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
 
                 services.AddSingleton(ConfigurePhysicalEndPoint);
-                services.AddSingleton(ConfigureRPCHost);
+                services.AddSingleton(ConfigureProxyHost);
                 services.AddSingleton(ConfigureEndPointManager);
                 services.AddSingleton(ConfigureCoordinationManager);
+                services.AddSingleton(ConfigureLogicalEndPoint);
             });
 
             return webHostBuilder;
@@ -79,9 +81,9 @@ namespace AI4E.Modularity
             return result;
         }
 
-        private static IPhysicalEndPoint<IPEndPoint> ConfigurePhysicalEndPoint(IServiceProvider provider)
+        private static IPhysicalEndPoint<IPEndPoint> ConfigurePhysicalEndPoint(IServiceProvider serviceProvider)
         {
-            var optionsAccessor = provider.GetRequiredService<IOptions<ModuleServerOptions>>();
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
             var options = optionsAccessor.Value ?? new ModuleServerOptions();
 
             if (options.UseDebugConnection)
@@ -89,42 +91,68 @@ namespace AI4E.Modularity
                 return null;
             }
 
-            return ActivatorUtilities.CreateInstance<UdpEndPoint>(provider);
+            return ActivatorUtilities.CreateInstance<UdpEndPoint>(serviceProvider);
         }
 
-        private static ICoordinationManager ConfigureCoordinationManager(IServiceProvider provider)
+        private static ICoordinationManager ConfigureCoordinationManager(IServiceProvider serviceProvider)
         {
-            var optionsAccessor = provider.GetRequiredService<IOptions<ModuleServerOptions>>();
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
             var options = optionsAccessor.Value ?? new ModuleServerOptions();
 
             if (options.UseDebugConnection)
             {
-                return ActivatorUtilities.CreateInstance<DebugCoordinationManager>(provider);
+                return ActivatorUtilities.CreateInstance<DebugCoordinationManager>(serviceProvider);
             }
             else
             {
-                return ActivatorUtilities.CreateInstance<CoordinationManager<IPEndPoint>>(provider);
+                return ActivatorUtilities.CreateInstance<CoordinationManager<IPEndPoint>>(serviceProvider);
             }
         }
 
-        private static IEndPointManager ConfigureEndPointManager(IServiceProvider provider)
+        private static IEndPointManager ConfigureEndPointManager(IServiceProvider serviceProvider)
         {
-            var optionsAccessor = provider.GetRequiredService<IOptions<ModuleServerOptions>>();
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
             var options = optionsAccessor.Value ?? new ModuleServerOptions();
 
             if (options.UseDebugConnection)
             {
-                return ActivatorUtilities.CreateInstance<DebugEndPointManager>(provider);
+                return null;
             }
             else
             {
-                return ActivatorUtilities.CreateInstance<EndPointManager<IPEndPoint>>(provider);
+                return ActivatorUtilities.CreateInstance<EndPointManager<IPEndPoint>>(serviceProvider);
             }
         }
 
-        private static ProxyHost ConfigureRPCHost(IServiceProvider provider)
+        private static ILogicalEndPoint ConfigureLogicalEndPoint(IServiceProvider serviceProvider)
         {
-            var optionsAccessor = provider.GetRequiredService<IOptions<ModuleServerOptions>>();
+            Assert(serviceProvider != null);
+
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
+            var options = optionsAccessor.Value ?? new ModuleServerOptions();
+            var remoteOptionsAccessor = serviceProvider.GetRequiredService<IOptions<RemoteMessagingOptions>>();
+            var remoteOptions = remoteOptionsAccessor.Value ?? new RemoteMessagingOptions();
+
+            if (remoteOptions.LocalEndPoint == default)
+            {
+                throw new InvalidOperationException("A local end point must be specified.");
+            }
+
+            if (options.UseDebugConnection)
+            {
+                var proxyHost = serviceProvider.GetRequiredService<ProxyHost>();
+                return new DebugLogicalEndPoint(proxyHost, remoteOptions.LocalEndPoint);
+            }
+            else
+            {
+                var endPointManager = serviceProvider.GetRequiredService<IEndPointManager>();
+                return endPointManager.GetLogicalEndPoint(remoteOptions.LocalEndPoint);
+            }
+        }
+
+        private static ProxyHost ConfigureProxyHost(IServiceProvider serviceProvider)
+        {
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
             var options = optionsAccessor.Value ?? new ModuleServerOptions();
 
             if (!options.UseDebugConnection)
@@ -132,12 +160,12 @@ namespace AI4E.Modularity
                 return null;
             }
 
-            var addressSerializer = provider.GetRequiredService<IAddressConversion<IPEndPoint>>();
+            var addressSerializer = serviceProvider.GetRequiredService<IAddressConversion<IPEndPoint>>();
             var endPoint = addressSerializer.Parse(options.DebugConnection);
             var tcpClient = new TcpClient(endPoint.AddressFamily);
             tcpClient.Connect(endPoint.Address, endPoint.Port);
             var stream = tcpClient.GetStream();
-            return new ProxyHost(stream, provider);
+            return new ProxyHost(stream, serviceProvider);
         }
     }
 }
