@@ -40,6 +40,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
+using AI4E.Internal;
 using AI4E.Processing;
 using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
@@ -457,7 +458,7 @@ namespace AI4E.Coordination
                 }
                 catch
                 {
-                    await physicalEndPoint.DisposeAsync().HandleExceptionsAsync(_logger);
+                    await physicalEndPoint.DisposeIfDisposableAsync().HandleExceptionsAsync(_logger);
 
                     throw;
                 }
@@ -510,7 +511,7 @@ namespace AI4E.Coordination
             if (success)
             {
                 await Task.WhenAll(_sessionManager.EndSessionAsync(session).HandleExceptionsAsync(_logger),
-                                   physicalEndPoint.DisposeAsync().HandleExceptionsAsync(_logger));
+                                   physicalEndPoint.DisposeIfDisposableAsync().HandleExceptionsAsync(_logger));
 
             }
         }

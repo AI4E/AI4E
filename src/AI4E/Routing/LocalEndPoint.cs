@@ -32,6 +32,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
+using AI4E.Internal;
 using AI4E.Processing;
 using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
@@ -148,7 +149,7 @@ namespace AI4E.Routing
             async Task TerminateReception()
             {
                 await _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
-                await PhysicalEndPoint.DisposeAsync().HandleExceptionsAsync(_logger);
+                await PhysicalEndPoint.DisposeIfDisposableAsync().HandleExceptionsAsync(_logger);
             }
 
             await Task.WhenAll(UnmapAsync(), TerminateReception());

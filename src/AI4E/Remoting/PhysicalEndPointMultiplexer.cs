@@ -132,6 +132,8 @@ namespace AI4E.Remoting
 
         #endregion
 
+        #region Coding
+
         private static void EncodeAddress(IMessage message, string address)
         {
             Assert(message != null);
@@ -189,6 +191,8 @@ namespace AI4E.Remoting
             return address;
         }
 
+        #endregion
+
         public IPhysicalEndPoint<TAddress> GetMultiplexEndPoint(string address)
         {
             _logger?.LogDebug($"Retrieving multiplex end point on address '{LocalAddress}' with name '{address}'.");
@@ -202,8 +206,6 @@ namespace AI4E.Remoting
                 {
                     if (!_endPoints.TryGetValue(address, out var result))
                     {
-
-
                         result = new MultiplexEndPoint(this, address);
                         _endPoints.Add(address, result);
                     }
@@ -226,8 +228,6 @@ namespace AI4E.Remoting
                 {
                     if (!_endPoints.TryGetValue(address, out var result))
                     {
-                        _logger?.LogDebug($"Creating multiplex end point on address '{LocalAddress}' with name '{address}'.");
-
                         result = new MultiplexEndPoint(this, address);
                         _endPoints.Add(address, result);
                     }
