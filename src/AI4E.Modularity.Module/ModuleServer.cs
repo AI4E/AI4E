@@ -24,11 +24,15 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Async;
+using AI4E.Coordination;
 using AI4E.DispatchResults;
 using AI4E.Routing;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
@@ -38,16 +42,28 @@ namespace AI4E.Modularity
     {
         private readonly IRemoteMessageDispatcher _messageEndPoint;
         private readonly IHttpDispatchStore _httpDispatchStore;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<ModuleServer> _logger;
+        private readonly AsyncDisposeHelper _disposeHelper;
+
         private readonly string _prefix;
+        private readonly bool _isDebuggingConnection;
         private IHandlerRegistration _handlerRegistration;
 
-        public ModuleServer(IRemoteMessageDispatcher messageEndPoint, IHttpDispatchStore httpDispatchStore, IOptions<ModuleServerOptions> optionsAccessor)
+        public ModuleServer(IRemoteMessageDispatcher messageEndPoint,
+                            IHttpDispatchStore httpDispatchStore,
+                            IServiceProvider serviceProvider,
+                            IOptions<ModuleServerOptions> optionsAccessor,
+                            ILogger<ModuleServer> logger)
         {
             if (messageEndPoint == null)
                 throw new ArgumentNullException(nameof(messageEndPoint));
 
             if (httpDispatchStore == null)
                 throw new ArgumentNullException(nameof(httpDispatchStore));
+
+            if (serviceProvider == null)
+                throw new ArgumentNullException(nameof(serviceProvider));
 
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
@@ -61,97 +77,104 @@ namespace AI4E.Modularity
 
             _messageEndPoint = messageEndPoint;
             _httpDispatchStore = httpDispatchStore;
+            _serviceProvider = serviceProvider;
+            _logger = logger;
             _prefix = options.Prefix;
+            _isDebuggingConnection = options.UseDebugConnection;
             Features.Set<IHttpRequestFeature>(new HttpRequestFeature());
             Features.Set<IHttpResponseFeature>(new HttpResponseFeature());
         }
+
+        public IFeatureCollection Features { get; } = new FeatureCollection();
 
         public async Task StartAsync<TContext>(IHttpApplication<TContext> application, CancellationToken cancellationToken)
         {
             if (application == null)
                 throw new ArgumentNullException(nameof(application));
 
-            var handler = Provider.Create(() => new HttpRequestForwardingHandler<TContext>(application));
+            if (_isDebuggingConnection)
+            {
+                var tasks = new List<Task>();
 
+                if (_serviceProvider.GetRequiredService<ILogicalEndPoint>() is IAsyncInitialization logicalEndPoint)
+                {
+                    tasks.Add(logicalEndPoint.Initialization.WithCancellation(cancellationToken));
+                }
+
+                if (_serviceProvider.GetRequiredService<ICoordinationManager>() is IAsyncInitialization coordinationManager)
+                {
+                    tasks.Add(coordinationManager.Initialization.WithCancellation(cancellationToken));
+                }
+
+                await Task.WhenAll(tasks);
+            }
+
+            try
+            {
+                await Task.WhenAll(RegisterHandlerAsync(application, cancellationToken),
+                                   _httpDispatchStore.AddRouteAsync(_messageEndPoint.LocalEndPoint, _prefix, cancellationToken));
+            }
+            catch
+            {
+                try
+                {
+                    await Task.WhenAll(UnregisterHandlerAsync(cancellation: default).HandleExceptionsAsync(_logger),
+                                       _httpDispatchStore.RemoveRouteAsync(_messageEndPoint.LocalEndPoint, _prefix, cancellation: default).HandleExceptionsAsync(_logger));
+                }
+                catch { }
+
+                throw;
+            }
+        }
+
+        private async Task RegisterHandlerAsync<TContext>(IHttpApplication<TContext> application, CancellationToken cancellation)
+        {
+            var handler = Provider.Create(() => new HttpRequestForwardingHandler<TContext>(application, _logger));
             _handlerRegistration = _messageEndPoint.Register(handler);
 
-            await _httpDispatchStore.AddRouteAsync(_messageEndPoint.LocalEndPoint, _prefix, cancellationToken);
-
-            //if (!await RegisterHttpPrefixAsync())
-            //{
-            //    try
-            //    {
-            //        var handlerRegistration = _handlerRegistration;
-            //        Debug.Assert(handlerRegistration != null);
-
-            //        handlerRegistration.Cancel();
-            //        await handlerRegistration.Cancellation;
-            //    }
-            //    finally
-            //    {
-            //        throw new ModuleServerException("Failed to start server.");
-            //    }
-            //}
+            if (_handlerRegistration is IAsyncInitialization asyncInitialization)
+            {
+                await asyncInitialization.Initialization.WithCancellation(cancellation);
+            }
         }
 
-        public async Task StopAsync(CancellationToken cancellationToken)
+        private Task UnregisterHandlerAsync(CancellationToken cancellation)
         {
-            await _httpDispatchStore.RemoveRouteAsync(_messageEndPoint.LocalEndPoint, _prefix, cancellationToken);
-
-            //var result = await UnregisterHttpPrefixAsync();
-
-            //try
-            //{
-            //    var handlerRegistration = _handlerRegistration;
-            //    Debug.Assert(handlerRegistration != null);
-
-            //    handlerRegistration.Cancel();
-            //    await handlerRegistration.Cancellation;
-            //}
-            //finally
-            //{
-            //    throw new ModuleServerException("Failed to stop server.");
-            //}
+            _handlerRegistration?.Cancel();
+            return _handlerRegistration.Cancellation.WithCancellation(cancellation);
         }
 
-        //private async Task<bool> RegisterHttpPrefixAsync()
-        //{
-        //    var message = new RegisterHttpPrefix(_messageEndPoint.LocalEndPoint, _prefix);
-        //    var result = await _messageEndPoint.DispatchAsync(message);
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            return _disposeHelper.DisposeAsync().WithCancellation(cancellationToken);
+        }
 
-        //    if (!result.IsSuccess)
-        //    {
-        //        // TODO: Log result message
-        //    }
+        #region Disposal
 
-        //    return result.IsSuccess;
-        //}
+        public void Dispose()
+        {
+            _disposeHelper.Dispose();
+        }
 
-        //private async Task<bool> UnregisterHttpPrefixAsync()
-        //{
-        //    var message = new UnregisterHttpPrefix(_prefix);
-        //    var result = await _messageEndPoint.DispatchAsync(message);
+        private async Task DiposeInternalAsync()
+        {
+            await Task.WhenAll(UnregisterHandlerAsync(cancellation: default).HandleExceptionsAsync(_logger),
+                               _httpDispatchStore.RemoveRouteAsync(_messageEndPoint.LocalEndPoint, _prefix, cancellation: default).HandleExceptionsAsync(_logger));
+        }
 
-        //    if (!result.IsSuccess)
-        //    {
-        //        // TODO: Log result message
-        //    }
+        #endregion
 
-        //    return result.IsSuccess;
-        //}
-
-        public IFeatureCollection Features { get; } = new FeatureCollection();
-
-        public void Dispose() { }
-
-        private class HttpRequestForwardingHandler<TContext> : IMessageHandler<ModuleHttpRequest>
+        private sealed class HttpRequestForwardingHandler<TContext> : IMessageHandler<ModuleHttpRequest>
         {
             private readonly IHttpApplication<TContext> _application;
+            private readonly ILogger<ModuleServer> _logger;
 
-            public HttpRequestForwardingHandler(IHttpApplication<TContext> application)
+            public HttpRequestForwardingHandler(IHttpApplication<TContext> application, ILogger<ModuleServer> logger)
             {
                 Debug.Assert(application != null);
+
                 _application = application;
+                _logger = logger;
             }
 
             public async Task<IDispatchResult> HandleAsync(ModuleHttpRequest message, DispatchValueDictionary ctx)
@@ -170,18 +193,26 @@ namespace AI4E.Modularity
                     await _application.ProcessRequestAsync(context);
                     var response = BuildResponse(responseStream, responseFeature);
 
-                    try
-                    {
-                        _application.DisposeContext(context, null);
-                    }
-                    catch { /* TODO: Logging*/ }
+                    DisposeContext(context);
 
                     return new SuccessDispatchResult<ModuleHttpResponse>(response);
                 }
                 catch (Exception exc)
                 {
-                    _application.DisposeContext(context, exc);
+                    DisposeContext(context, exc);
                     throw;
+                }
+            }
+
+            private void DisposeContext(TContext context, Exception exc = null)
+            {
+                try
+                {
+                    _application.DisposeContext(context, exc);
+                }
+                catch (Exception exc2)
+                {
+                    _logger?.LogWarning(exc2, "Unable to dipose context.");
                 }
             }
 

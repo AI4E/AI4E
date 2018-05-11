@@ -45,21 +45,10 @@ namespace AI4E.Modularity
             }
 
             // Initialize the module-host.
-
             var installer = serviceProvider.GetRequiredService<IModuleInstaller>();
-
             var dispatcher = serviceProvider.GetRequiredService<IRemoteMessageDispatcher>();
-            //var dispatchTable = serviceProvider.GetRequiredService<HttpDispatchTable>();
             var dispatchStore = serviceProvider.GetRequiredService<IHttpDispatchStore>();
-
-            //dispatcher.Register<EndPointDisconnected>(m =>
-            //{
-            //    dispatchTable.Unregister(m.EndPoint);
-
-            //    return Task.FromResult<IDispatchResult>(new SuccessDispatchResult());
-            //});
-
-            var debugPort = serviceProvider.GetRequiredService<Debugging.DebugPort>();
+            var debugPort = serviceProvider.GetRequiredService<DebugPort>();
 
             applicationBuilder.Use(async (context, next) =>
             {

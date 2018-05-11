@@ -23,7 +23,6 @@ using System.Linq;
 using System.Net;
 using System.Reflection;
 using AI4E.Coordination;
-using AI4E.Modularity.Debugging;
 using AI4E.Remoting;
 using AI4E.Routing;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;

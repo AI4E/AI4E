@@ -32,7 +32,7 @@ using AI4E.Remoting;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Modularity.Debugging
+namespace AI4E.Modularity
 {
     public sealed class DebugPort : IAsyncDisposable
     {

@@ -758,7 +758,7 @@ namespace AI4E.Routing
 
             public string SerializedMessageType => _messageTypeConversion.SerializeMessageType(MessageType);
 
-            private sealed class HandlerRegistration : IHandlerRegistration<IMessageHandler<TMessage>>, IAsyncDisposable
+            private sealed class HandlerRegistration : IHandlerRegistration<IMessageHandler<TMessage>>, IAsyncInitialization, IAsyncDisposable
             {
                 private readonly Func<IContextualProvider<IMessageHandler<TMessage>>, Task> _unregistration;
 
@@ -819,7 +819,6 @@ namespace AI4E.Routing
                 }
 
                 #endregion
-
 
                 public Task Cancellation => Disposal;
 
