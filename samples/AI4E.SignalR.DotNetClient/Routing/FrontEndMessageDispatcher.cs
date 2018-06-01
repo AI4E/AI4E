@@ -16,12 +16,29 @@ namespace AI4E.SignalR.DotNetClient.Routing
         private int _nextSeqNum = 1;
 
         //TODO: make this private and create methods for getting and removing key/value pairs
-        public ConcurrentDictionary<int, TaskCompletionSource<IDispatchResult>> _responseTable { get; set; }
+        private ConcurrentDictionary<int, TaskCompletionSource<IDispatchResult>> _responseTable { get; set; }
 
 
         public FrontEndMessageDispatcher(HubConnection hubConnection)
         {
             _hubConnection = hubConnection;
+
+            _hubConnection.On<int, IDispatchResult>("GetDispatchResult", (seqNum, dispatchResult) =>
+            {
+                if (_responseTable.TryGetValue(seqNum, out TaskCompletionSource<IDispatchResult> tcs))
+                {
+                    if (tcs.TrySetResult(dispatchResult))
+                    {
+                        _responseTable.TryRemove(seqNum, out TaskCompletionSource<IDispatchResult> t);
+                    }
+                    else
+                        return;
+                }
+                else
+                {
+                    return;
+                }
+            });
         }
 
         public async Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, CancellationToken cancellation = default)

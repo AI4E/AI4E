@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using AI4E.Routing;
 using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNet.SignalR;
 
 namespace AI4E.SignalR.Server.Hubs
 {

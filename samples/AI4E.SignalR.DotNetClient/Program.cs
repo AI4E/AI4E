@@ -13,27 +13,9 @@ namespace AI4E.SignalR.DotNetClient
         static async Task Main(string[] args)
         {
             var connection = new HubConnectionBuilder().WithUrl("http://localhost:5002/MessageDispatcherHub").Build();
-            var frontEndMessageDispatcher = new FrontEndMessageDispatcher(connection);
-            connection.On<int, IDispatchResult>("GetDispatchResult", (seqNum, dispatchResult) =>
-            {
-                if (frontEndMessageDispatcher._responseTable.TryGetValue(seqNum, out TaskCompletionSource<IDispatchResult> tcs))
-                {
-                    if (tcs.TrySetResult(dispatchResult))
-                    {
-                        frontEndMessageDispatcher._responseTable.TryRemove(seqNum, out TaskCompletionSource<IDispatchResult> t);
-                    }
-                    else
-                        return;
-                }
-                else
-                {
-                    return;
-                }
-
-            });
+            var frontEndMessageDispatcher = new FrontEndMessageDispatcher(connection);          
             await connection.StartAsync();
-
-            
+           
             TestSignalRCommand command = new TestSignalRCommand("this was sent via SignalR");
             var result = await frontEndMessageDispatcher.DispatchAsync(typeof(TestSignalRCommand), command, null, default);
             Console.WriteLine(result);
