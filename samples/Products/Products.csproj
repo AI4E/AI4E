@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.All" Version="2.0.5" />
+    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="2.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <DotNetCliToolReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Tools" Version="2.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Domain.Services\AI4E.Domain.Services.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Domain\AI4E.Domain.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.MongoDB\AI4E.Storage.MongoDB.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
+    <ProjectReference Include="..\..\src\AI4E\AI4E.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,11 @@
+﻿@model ProductCreateModel
+@{ 
+
+}
+<form asp-action="Create" method="post">
+    <label asp-for="Name">Name</label>
+    <input placeholder="Name" asp-for="Name" />
+    <span asp-validation-for="Name" class="text-danger"></span>
+    <button type="submit">Save</button>
+    <a asp-action="List">Cancel</a>
+</form>

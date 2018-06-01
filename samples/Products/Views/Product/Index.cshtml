@@ -1,0 +1,14 @@
+﻿@model ProductModel
+@{ 
+    ViewBag.Title = Model.Name;
+}
+
+<div>
+    <span>Name: @Model.Name</span>
+    <a asp-action="Rename" asp-route-id="@Model.Id">Change Name</a>
+    <br />
+    <span>Price: @Model.Price</span>
+    <a asp-action="ChangePrice" asp-route-id="@Model.Id">Change Price</a>
+</div>
+
+<a asp-action="List">Back</a>

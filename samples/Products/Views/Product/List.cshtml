@@ -1,0 +1,23 @@
+﻿@model IEnumerable<ProductModel>
+@{
+    
+}
+
+<table class="table table-condensed table-bordered">
+    <tr><th>Id</th><th>Name</th><th>Price</th></tr>
+    @foreach (var product in Model)
+    {
+        <tr>
+            <td>@product?.Id</td>
+            <td>@product?.Name</td>
+            <td>@product?.Price</td>
+            <td>
+                @*<form asp-action="Delete" method="post" asp-route-id="@product?.Id">*@
+                    <a asp-action="Rename" asp-route-id="@product?.Id" class="btn btn-primary btn-sm">Rename</a>
+                    <a asp-action="ChangePrice" asp-route-id="@product?.Id" class="btn btn-primary btn-sm">Change Price</a>
+                    @*<button type="submit" class="btn btn-danger btn-sm">Delete</button>*@
+                @*</form>*@
+            </td>
+        </tr>
+    }
+</table>

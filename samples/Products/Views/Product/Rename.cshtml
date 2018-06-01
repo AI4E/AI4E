@@ -1,0 +1,22 @@
+﻿@model ProductRenameModel
+@{
+    ViewBag.Title = "Rename";
+}
+
+<div class="bg-primary panel-body"><h4>Rename Product</h4></div>
+<div asp-validation-summary="All" class="text-danger"></div>
+
+<form asp-action="Rename" method="post">
+    <div class="form-group">
+        <input type="hidden" asp-for="ConcurrencyToken" class="form-control"/>
+    </div>
+    <div class="form-group">
+        <input type="hidden" asp-for="Id" class="form-control" readonly />
+    </div>
+    <div class="form-group">
+        <label asp-for="Name"></label>
+        <input asp-for="Name" class="form-control" />
+    </div>
+    <button type="submit">Submit</button>
+    <a asp-action="List">Cancel</a>
+</form>
