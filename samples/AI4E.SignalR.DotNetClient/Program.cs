@@ -12,7 +12,7 @@ namespace AI4E.SignalR.DotNetClient
        
         static async Task Main(string[] args)
         {
-            var connection = new HubConnectionBuilder().WithUrl("https://localhost:44327/MessageDispatcherHub").Build();
+            var connection = new HubConnectionBuilder().WithUrl("http://localhost:64195/MessageDispatcherHub").Build();
             var frontEndMessageDispatcher = new FrontEndMessageDispatcher(connection);          
             await connection.StartAsync();
            

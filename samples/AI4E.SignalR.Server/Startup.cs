@@ -59,7 +59,6 @@ namespace AI4E.SignalR.Server
             });
           
             services.AddSignalR();
-            services.AddSingleton<IClientLogicalEndPointAssociationStorage, ClientLogicalEndPointAssociationInMemoryStorage>();
             services.AddSingleton<IClientRemoteMessageDispatcherAssociationStorage, ClientRemoteMessageDispatcherAssociationInMemoryStorage>();
             
         }

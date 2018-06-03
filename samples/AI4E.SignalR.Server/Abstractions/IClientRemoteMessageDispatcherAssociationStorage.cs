@@ -9,9 +9,8 @@ namespace AI4E.SignalR.Server.Abstractions
 {
     public interface IClientRemoteMessageDispatcherAssociationStorage
     {
-        ConcurrentDictionary<string, IRemoteMessageDispatcher> ClientRemoteMessageDispatcherAssociations { get; }
-        Task AddAssociationAsync(string connectionId, IRemoteMessageDispatcher remoteMessageDispatcher);
-        Task RemoveAssociationAsync(string connectionId);
-        Task<IMessageDispatcher> GetMessageDispatcherAsync(string connectionId);
+        void AddAssociation(string connectionId, Func<string, IRemoteMessageDispatcher> factory);
+        void RemoveAssociation(string connectionId);
+        IMessageDispatcher GetMessageDispatcher(string connectionId);
     }
 }

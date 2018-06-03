@@ -13,7 +13,6 @@ namespace AI4E.SignalR.Server.Hubs
 {
     public class MessageDispatcherHub : Hub
     {
-        private readonly IClientLogicalEndPointAssociationStorage _clientLogicalEndPointAssociationStorage;
         private readonly IClientRemoteMessageDispatcherAssociationStorage _clientRemoteMessageDispatcherAssociationStorage;
         private readonly IEndPointManager _endPointManager;
         private readonly IRouteStore _routeStore;
@@ -21,13 +20,11 @@ namespace AI4E.SignalR.Server.Hubs
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<RemoteMessageDispatcher> _logger;
 
-        public MessageDispatcherHub(IClientLogicalEndPointAssociationStorage clientLogicalEndPointAssociationStorage, 
-                                    IClientRemoteMessageDispatcherAssociationStorage clientRemoteMessageDispatcherAssociationStorage, 
+        public MessageDispatcherHub(IClientRemoteMessageDispatcherAssociationStorage clientRemoteMessageDispatcherAssociationStorage, 
                                     IEndPointManager endPointManager, IRouteStore routeStore, 
                                     IMessageTypeConversion messageTypeConversion, 
                                     IServiceProvider serviceProvider, ILogger<RemoteMessageDispatcher> logger)
         {
-            _clientLogicalEndPointAssociationStorage = clientLogicalEndPointAssociationStorage;
             _clientRemoteMessageDispatcherAssociationStorage = clientRemoteMessageDispatcherAssociationStorage;
             _endPointManager = endPointManager;
             _routeStore = routeStore;
@@ -38,15 +35,19 @@ namespace AI4E.SignalR.Server.Hubs
 
         public async override Task OnConnectedAsync()
         {
-            var lep = _endPointManager.GetLogicalEndPoint(EndPointRoute.CreateRoute(Context.ConnectionId));
-            await _clientLogicalEndPointAssociationStorage.AddAssociationAsync(Context.ConnectionId, lep);
-            await _clientRemoteMessageDispatcherAssociationStorage.AddAssociationAsync(Context.ConnectionId, new RemoteMessageDispatcher(lep, _routeStore, _messageTypeConversion, _serviceProvider, _logger));
+            _clientRemoteMessageDispatcherAssociationStorage.AddAssociation(Context.ConnectionId, BuildRemoteMessageDispatcher);
             await base.OnConnectedAsync();
+        }
+
+        private IRemoteMessageDispatcher BuildRemoteMessageDispatcher(string connectionId)
+        {
+            var lep = _endPointManager.GetLogicalEndPoint(EndPointRoute.CreateRoute(connectionId));
+            return new RemoteMessageDispatcher(lep, _routeStore, _messageTypeConversion, _serviceProvider, _logger);
         }
 
         public override async Task OnDisconnectedAsync(Exception exception)
         {
-            await _clientLogicalEndPointAssociationStorage.RemoveAssociationAsync(Context.ConnectionId);
+            _clientRemoteMessageDispatcherAssociationStorage.RemoveAssociation(Context.ConnectionId);
             await base.OnDisconnectedAsync(exception);
         }
 
@@ -62,7 +63,7 @@ namespace AI4E.SignalR.Server.Hubs
                 throw new ArgumentNullException(nameof(context));
             }
 
-            var dispatcher = await _clientRemoteMessageDispatcherAssociationStorage.GetMessageDispatcherAsync(Context.ConnectionId);
+            var dispatcher = _clientRemoteMessageDispatcherAssociationStorage.GetMessageDispatcher(Context.ConnectionId);
             var dispatchResult = await dispatcher.DispatchAsync(message);
             //if(dispatchResult.IsSuccess)
             //{

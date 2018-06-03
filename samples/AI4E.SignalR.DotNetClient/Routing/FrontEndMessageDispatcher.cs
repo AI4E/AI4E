@@ -17,24 +17,11 @@ namespace AI4E.SignalR.DotNetClient.Routing
         private int _nextSeqNum = 1;
         private ConcurrentDictionary<int, TaskCompletionSource<IDispatchResult>> _responseTable { get; set; }
 
-
         public FrontEndMessageDispatcher(HubConnection hubConnection)
         {
             _hubConnection = hubConnection;
             _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<IDispatchResult>>();
-
-            _hubConnection.On<int, IDispatchResult>("GetDispatchResult", (seqNum, dispatchResult) =>
-            {
-                if(_responseTable.TryRemove(seqNum, out TaskCompletionSource<IDispatchResult> tcs))
-                {
-                    tcs.TrySetResult(dispatchResult);
-                    Console.WriteLine("tcs result set to: " + dispatchResult.Message);
-                }
-                else
-                {
-                    Console.WriteLine("tcs not found");
-                }
-            });
+            _hubConnection.On<int, IDispatchResult>("GetDispatchResult", GetDispatchResult);
         }
 
         public Task<IDispatchResult> DispatchAsync(TestSignalRCommand message, DispatchValueDictionary context, CancellationToken cancellation = default)
@@ -47,6 +34,19 @@ namespace AI4E.SignalR.DotNetClient.Routing
             }
             _hubConnection.InvokeAsync("DispatchMessage", message, context, seqNum);
             return tcs.Task;
+        }
+
+        private void GetDispatchResult(int seqNum, IDispatchResult dispatchResult)
+        {
+            if (_responseTable.TryRemove(seqNum, out TaskCompletionSource<IDispatchResult> tcs))
+            {
+                tcs.TrySetResult(dispatchResult);
+                Console.WriteLine("tcs result set to: " + dispatchResult.Message);
+            }
+            else
+            {
+                Console.WriteLine("tcs not found");
+            }
         }
 
         public Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, EndPointRoute endPoint, CancellationToken cancellation = default)

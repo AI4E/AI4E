@@ -12,32 +12,28 @@ namespace AI4E.SignalR.Server.Infrastructure
     {
         public ClientRemoteMessageDispatcherAssociationInMemoryStorage()
         {
-            ClientRemoteMessageDispatcherAssociations = new ConcurrentDictionary<string, IRemoteMessageDispatcher>();
+            _dictionary = new ConcurrentDictionary<string, IRemoteMessageDispatcher>();
         }
 
-        public ConcurrentDictionary<string, IRemoteMessageDispatcher> ClientRemoteMessageDispatcherAssociations { get; private set; }
+        public ConcurrentDictionary<string, IRemoteMessageDispatcher> _dictionary { get; private set; }
 
 
-        public async Task AddAssociationAsync(string connectionId, IRemoteMessageDispatcher remoteMessageDispatcher)
+        public void AddAssociation(string connectionId, Func<string, IRemoteMessageDispatcher> factory)
         {
             if (string.IsNullOrEmpty(connectionId))
             {
                 throw new ArgumentException("must not be null or empty", nameof(connectionId));
             }
 
-            if (remoteMessageDispatcher == null)
+            if (factory == null)
             {
-                throw new ArgumentNullException(nameof(remoteMessageDispatcher));
+                throw new ArgumentNullException(nameof(factory));
             }
 
-            ClientRemoteMessageDispatcherAssociations.AddOrUpdate(connectionId, remoteMessageDispatcher,
-                (key, existingValue) =>
-                {
-                    return existingValue;
-                });
+            _dictionary.GetOrAdd(connectionId, factory);
         }
 
-        public async Task<IMessageDispatcher> GetMessageDispatcherAsync(string connectionId)
+        public IMessageDispatcher GetMessageDispatcher(string connectionId)
         {
             if (connectionId == null)
             {
@@ -46,7 +42,7 @@ namespace AI4E.SignalR.Server.Infrastructure
 
             IRemoteMessageDispatcher dispatcher;
 
-            if(ClientRemoteMessageDispatcherAssociations.TryGetValue(connectionId, out dispatcher))
+            if(_dictionary.TryGetValue(connectionId, out dispatcher))
             {
                 return dispatcher;
             }
@@ -56,14 +52,14 @@ namespace AI4E.SignalR.Server.Infrastructure
             }
         }
 
-        public async Task RemoveAssociationAsync(string connectionId)
+        public void RemoveAssociation(string connectionId)
         {
             if (string.IsNullOrEmpty(connectionId))
             {
                 throw new ArgumentException("must not be null or empty", nameof(connectionId));
             }
 
-            ClientRemoteMessageDispatcherAssociations.TryRemove(connectionId, out IRemoteMessageDispatcher value);
+            _dictionary.TryRemove(connectionId, out IRemoteMessageDispatcher value);
         }
     }
 }
