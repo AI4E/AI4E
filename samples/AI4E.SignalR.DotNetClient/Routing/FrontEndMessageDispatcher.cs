@@ -14,8 +14,6 @@ namespace AI4E.SignalR.DotNetClient.Routing
         public EndPointRoute LocalEndPoint => throw new NotImplementedException();
         private HubConnection _hubConnection;
         private int _nextSeqNum = 1;
-
-        //TODO: make this private and create methods for getting and removing key/value pairs
         private ConcurrentDictionary<int, TaskCompletionSource<IDispatchResult>> _responseTable { get; set; }
 
 
@@ -25,14 +23,9 @@ namespace AI4E.SignalR.DotNetClient.Routing
 
             _hubConnection.On<int, IDispatchResult>("GetDispatchResult", (seqNum, dispatchResult) =>
             {
-                if (_responseTable.TryGetValue(seqNum, out TaskCompletionSource<IDispatchResult> tcs))
+                if(_responseTable.TryRemove(seqNum, out TaskCompletionSource<IDispatchResult> tcs))
                 {
-                    if (tcs.TrySetResult(dispatchResult))
-                    {
-                        _responseTable.TryRemove(seqNum, out TaskCompletionSource<IDispatchResult> t);
-                    }
-                    else
-                        return;
+                    tcs.TrySetResult(dispatchResult);
                 }
                 else
                 {
@@ -41,7 +34,7 @@ namespace AI4E.SignalR.DotNetClient.Routing
             });
         }
 
-        public async Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, CancellationToken cancellation = default)
+        public Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, CancellationToken cancellation = default)
         {
             var seqNum = GetNextSeqNum();
             var tcs = new TaskCompletionSource<IDispatchResult>();
@@ -49,8 +42,8 @@ namespace AI4E.SignalR.DotNetClient.Routing
             {
                 seqNum = GetNextSeqNum();
             }
-            await _hubConnection.InvokeAsync("DispatchMessage", messageType, message, context, seqNum);
-            return await tcs.Task;
+            _hubConnection.InvokeAsync("DispatchMessage", messageType, message, context, seqNum);
+            return tcs.Task;
         }
 
         public Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, EndPointRoute endPoint, CancellationToken cancellation = default)

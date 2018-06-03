@@ -1,14 +1,10 @@
-﻿using AI4E.SignalR.Server.Infrastructure;
-using AI4E.SignalR.Server.Abstractions;
+﻿using AI4E.SignalR.Server.Abstractions;
 using Microsoft.AspNetCore.SignalR;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using AI4E.Routing;
 using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNet.SignalR;
 
 namespace AI4E.SignalR.Server.Hubs
 {
@@ -45,7 +41,7 @@ namespace AI4E.SignalR.Server.Hubs
             await base.OnConnectedAsync();
         }
 
-        public async override Task OnDisconnectedAsync(Exception exception)
+        public override async Task OnDisconnectedAsync(Exception exception)
         {
             await _clientLogicalEndPointAssociationStorage.RemoveAssociationAsync(Context.ConnectionId);
             await base.OnDisconnectedAsync(exception);

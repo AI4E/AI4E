@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace AI4E.SignalR.Server
+namespace WebApplication2
 {
     public class Program
     {
@@ -20,6 +20,5 @@ namespace AI4E.SignalR.Server
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>();
-          
     }
 }
