@@ -8,9 +8,9 @@ namespace AI4E.SignalR.Server.Services
 {
     public class TestSignalRCommandHandler : MessageHandler
     {
-        public async Task<IDispatchResult> HandleAsync(TestSignalRCommand command)
+        public IDispatchResult Handle(TestSignalRCommand command)
         {
-            return Success(command.Message + "; got handled");
+            return Success(" got handled");
         }
     }
 }

@@ -7,6 +7,7 @@ using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
 
 using System.Diagnostics;
+using AI4E.SignalR.DotNetClient.Api;
 
 namespace AI4E.SignalR.Server.Hubs
 {
@@ -49,13 +50,8 @@ namespace AI4E.SignalR.Server.Hubs
             await base.OnDisconnectedAsync(exception);
         }
 
-        public async Task DispatchMessage(Type messageType, object message, DispatchValueDictionary context, int seqNum)
+        public async Task DispatchMessage(TestSignalRCommand message, DispatchValueDictionary context, int seqNum)
         {
-            if (messageType == null)
-            {
-                throw new ArgumentNullException(nameof(messageType));
-            }
-
             if (message == null)
             {
                 throw new ArgumentNullException(nameof(message));
@@ -68,10 +64,10 @@ namespace AI4E.SignalR.Server.Hubs
 
             var dispatcher = await _clientRemoteMessageDispatcherAssociationStorage.GetMessageDispatcherAsync(Context.ConnectionId);
             var dispatchResult = await dispatcher.DispatchAsync(message);
-            if(dispatchResult.IsSuccess)
-            {
+            //if(dispatchResult.IsSuccess)
+            //{
                 await Clients.Caller.SendAsync("GetDispatchResult", seqNum, dispatchResult);
-            }
+            //}
         }
     }
 }

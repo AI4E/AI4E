@@ -17,7 +17,7 @@ namespace AI4E.SignalR.DotNetClient
             await connection.StartAsync();
            
             TestSignalRCommand command = new TestSignalRCommand("this was sent via SignalR");
-            var result = await frontEndMessageDispatcher.DispatchAsync(typeof(TestSignalRCommand), command, new DispatchValueDictionary(), default);
+            var result = await frontEndMessageDispatcher.DispatchAsync(command, new DispatchValueDictionary(), default);
             Console.WriteLine(result.ToString());
             Console.ReadLine();
         }     

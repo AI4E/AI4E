@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Routing;
+using AI4E.SignalR.DotNetClient.Api;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace AI4E.SignalR.DotNetClient.Routing
@@ -31,12 +32,12 @@ namespace AI4E.SignalR.DotNetClient.Routing
                 }
                 else
                 {
-                    Console.WriteLine("tcs result not set");
+                    Console.WriteLine("tcs not found");
                 }
             });
         }
 
-        public Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, CancellationToken cancellation = default)
+        public Task<IDispatchResult> DispatchAsync(TestSignalRCommand message, DispatchValueDictionary context, CancellationToken cancellation = default)
         {
             var seqNum = GetNextSeqNum();
             var tcs = new TaskCompletionSource<IDispatchResult>();
@@ -44,7 +45,7 @@ namespace AI4E.SignalR.DotNetClient.Routing
             {
                 seqNum = GetNextSeqNum();
             }
-            _hubConnection.InvokeAsync("DispatchMessage", messageType, message, context, seqNum);
+            _hubConnection.InvokeAsync("DispatchMessage", message, context, seqNum);
             return tcs.Task;
         }
 
