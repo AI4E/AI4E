@@ -136,11 +136,6 @@ namespace AI4E.Storage
             if (manager == null)
             {
                 manager = new ApplicationPartManager();
-                var parts = DefaultAssemblyPartDiscoveryProvider.DiscoverAssemblyParts(Assembly.GetEntryAssembly().FullName);
-                foreach (var part in parts)
-                {
-                    manager.ApplicationParts.Add(part);
-                }
             }
 
             return manager;
