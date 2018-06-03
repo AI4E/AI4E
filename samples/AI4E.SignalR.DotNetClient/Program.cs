@@ -12,13 +12,13 @@ namespace AI4E.SignalR.DotNetClient
        
         static async Task Main(string[] args)
         {
-            var connection = new HubConnectionBuilder().WithUrl("http://localhost:5002/MessageDispatcherHub").Build();
+            var connection = new HubConnectionBuilder().WithUrl("https://localhost:44327/MessageDispatcherHub").Build();
             var frontEndMessageDispatcher = new FrontEndMessageDispatcher(connection);          
             await connection.StartAsync();
            
             TestSignalRCommand command = new TestSignalRCommand("this was sent via SignalR");
-            var result = await frontEndMessageDispatcher.DispatchAsync(typeof(TestSignalRCommand), command, null, default);
-            Console.WriteLine(result);
+            var result = await frontEndMessageDispatcher.DispatchAsync(typeof(TestSignalRCommand), command, new DispatchValueDictionary(), default);
+            Console.WriteLine(result.ToString());
             Console.ReadLine();
         }     
     }

@@ -7,6 +7,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.All" Version="2.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.HttpsPolicy" Version="2.1.0" />
+    <PackageReference Include="System.Diagnostics.Debug" Version="4.3.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,7 +22,6 @@
     <ProjectReference Include="..\..\src\AI4E.Storage.MongoDB\AI4E.Storage.MongoDB.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\..\src\AI4E\AI4E.csproj" />
-    <ProjectReference Include="..\AI4E.Modularity.RPC.Sample\AI4E.Modularity.RPC.Sample.csproj" />
     <ProjectReference Include="..\AI4E.SignalR.DotNetClient\AI4E.SignalR.DotNetClient.csproj" />
   </ItemGroup>
 

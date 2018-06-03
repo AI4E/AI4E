@@ -10,7 +10,7 @@ namespace AI4E.SignalR.Server.Services
     {
         public async Task<IDispatchResult> HandleAsync(TestSignalRCommand command)
         {
-            return Success();
+            return Success(command.Message + "; got handled");
         }
     }
 }

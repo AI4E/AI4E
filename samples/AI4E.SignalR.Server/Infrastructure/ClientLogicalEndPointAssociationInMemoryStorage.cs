@@ -10,6 +10,11 @@ namespace AI4E.SignalR.Server.Infrastructure
 {
     public class ClientLogicalEndPointAssociationInMemoryStorage : IClientLogicalEndPointAssociationStorage
     {
+        public ClientLogicalEndPointAssociationInMemoryStorage()
+        {
+            ClientLogicalEndPointAssociations = new ConcurrentDictionary<string, ILogicalEndPoint>();
+        }
+
         public ConcurrentDictionary<string, ILogicalEndPoint> ClientLogicalEndPointAssociations { get; private set; }
 
         public async Task AddAssociationAsync(string connectionId, ILogicalEndPoint logicalEndPoint)

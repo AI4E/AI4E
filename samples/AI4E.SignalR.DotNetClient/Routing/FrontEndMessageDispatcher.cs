@@ -20,16 +20,18 @@ namespace AI4E.SignalR.DotNetClient.Routing
         public FrontEndMessageDispatcher(HubConnection hubConnection)
         {
             _hubConnection = hubConnection;
+            _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<IDispatchResult>>();
 
             _hubConnection.On<int, IDispatchResult>("GetDispatchResult", (seqNum, dispatchResult) =>
             {
                 if(_responseTable.TryRemove(seqNum, out TaskCompletionSource<IDispatchResult> tcs))
                 {
                     tcs.TrySetResult(dispatchResult);
+                    Console.WriteLine("tcs result set to: " + dispatchResult.Message);
                 }
                 else
                 {
-                    return;
+                    Console.WriteLine("tcs result not set");
                 }
             });
         }

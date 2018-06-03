@@ -10,6 +10,11 @@ namespace AI4E.SignalR.Server.Infrastructure
 {
     public class ClientRemoteMessageDispatcherAssociationInMemoryStorage : IClientRemoteMessageDispatcherAssociationStorage
     {
+        public ClientRemoteMessageDispatcherAssociationInMemoryStorage()
+        {
+            ClientRemoteMessageDispatcherAssociations = new ConcurrentDictionary<string, IRemoteMessageDispatcher>();
+        }
+
         public ConcurrentDictionary<string, IRemoteMessageDispatcher> ClientRemoteMessageDispatcherAssociations { get; private set; }
 
 

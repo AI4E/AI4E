@@ -6,6 +6,8 @@ using AI4E.Routing;
 using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
 
+using System.Diagnostics;
+
 namespace AI4E.SignalR.Server.Hubs
 {
     public class MessageDispatcherHub : Hub
