@@ -72,7 +72,7 @@ namespace AI4E.Storage
             return await _database.GetOneAsync<StreamHead>(head => head.BucketId.Equals(bucketId) && head.StreamId.Equals(streamId), cancellation);
         }
 
-        public Task<ISnapshot<TBucketId, TStreamId>> GetSnapshotAsync(TBucketId bucketId, TStreamId streamId, long maxRevision, CancellationToken cancellation = default)
+        public Task<ISnapshot<TBucketId, TStreamId>> GetSnapshotAsync(TBucketId bucketId, TStreamId streamId, long maxRevision = default, CancellationToken cancellation = default)
         {
             if (maxRevision < 0)
                 throw new ArgumentOutOfRangeException(nameof(maxRevision));
@@ -97,30 +97,24 @@ namespace AI4E.Storage
                             .FirstOrDefault(cancellation);
         }
 
-        // TODO: This should return an async enumerable.
-        public async Task<IEnumerable<ISnapshot<TBucketId, TStreamId>>> GetSnapshotsAsync(TBucketId bucketId, CancellationToken cancellation = default)
+        public IAsyncEnumerable<ISnapshot<TBucketId, TStreamId>> GetSnapshotsAsync(TBucketId bucketId, CancellationToken cancellation = default)
         {
             // TODO: Chek whether the database has query support. 
 
-            var snapshots = _database.GetAsync<Snapshot>(snapshot => snapshot.BucketId.Equals(bucketId), cancellation)
-                                     .GroupBy(snapshot => snapshot.StreamId)
-                                     .Select(group => group.OrderByDescending(snapshot => snapshot.StreamRevision).FirstOrDefault(cancellation))
-                                     .Evaluate();
-
-            return await snapshots.ToList();
+            return _database.GetAsync<Snapshot>(snapshot => snapshot.BucketId.Equals(bucketId), cancellation)
+                            .GroupBy(snapshot => snapshot.StreamId)
+                            .Select(group => group.OrderByDescending(snapshot => snapshot.StreamRevision).FirstOrDefault(cancellation))
+                            .Evaluate();
         }
 
-        // TODO: This should return an async enumerable.
-        public async Task<IEnumerable<ISnapshot<TBucketId, TStreamId>>> GetSnapshotsAsync(CancellationToken cancellation = default)
+        public IAsyncEnumerable<ISnapshot<TBucketId, TStreamId>> GetSnapshotsAsync(CancellationToken cancellation = default)
         {
             // TODO: Chek whether the database has query support. 
 
-            var snapshots = _database.GetAsync<Snapshot>(cancellation)
-                                     .GroupBy(snapshot => snapshot.StreamId)
-                                     .Select(group => group.OrderByDescending(snapshot => snapshot.StreamRevision).FirstOrDefault(cancellation))
-                                     .Evaluate();
-
-            return await snapshots.ToList();
+            return _database.GetAsync<Snapshot>(cancellation)
+                            .GroupBy(snapshot => snapshot.StreamId)
+                            .Select(group => group.OrderByDescending(snapshot => snapshot.StreamRevision).FirstOrDefault(cancellation))
+                            .Evaluate();
         }
 
         public IAsyncEnumerable<IStreamHead<TBucketId, TStreamId>> GetStreamsToSnapshotAsync(long maxThreshold,
@@ -211,8 +205,7 @@ namespace AI4E.Storage
                               isDispatched: false);
         }
 
-        // TODO: This should return an async enumerable.
-        public async Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync(TBucketId bucketId, TStreamId streamId, long minRevision = 0, long maxRevision = 0, CancellationToken cancellation = default)
+        public IAsyncEnumerable<ICommit<TBucketId, TStreamId>> GetCommitsAsync(TBucketId bucketId, TStreamId streamId, long minRevision = default, long maxRevision = default, CancellationToken cancellation = default)
         {
             if (bucketId == null)
                 throw new ArgumentNullException(nameof(bucketId));
@@ -220,24 +213,20 @@ namespace AI4E.Storage
             if (streamId == null)
                 throw new ArgumentNullException(nameof(streamId));
 
-            return (await GetCommitsInternalAsync(bucketId, streamId, minRevision, maxRevision, cancellation)).Where(commit => !commit.IsDeleted);
+            return GetCommitsInternalAsync(bucketId, streamId, minRevision, maxRevision, cancellation).Where(commit => !commit.IsDeleted);
         }
 
-        // TODO: This should return an async enumerable.
-        public async Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync(TBucketId bucketId, CancellationToken cancellation = default)
+        public IAsyncEnumerable<ICommit<TBucketId, TStreamId>> GetCommitsAsync(TBucketId bucketId, CancellationToken cancellation = default)
         {
             if (bucketId == null)
                 throw new ArgumentNullException(nameof(bucketId));
 
-            return await _database.GetAsync<Commit>(commit => commit.BucketId.Equals(bucketId) && !commit.IsDeleted)
-                                  .ToList(cancellation);
+            return _database.GetAsync<Commit>(commit => commit.BucketId.Equals(bucketId) && !commit.IsDeleted);
         }
 
-        // TODO: This should return an async enumerable.
-        public async Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync(CancellationToken cancellation = default)
+        public IAsyncEnumerable<ICommit<TBucketId, TStreamId>> GetCommitsAsync(CancellationToken cancellation = default)
         {
-            return await _database.GetAsync<Commit>(commit => !commit.IsDeleted)
-                                  .ToList(cancellation);
+            return _database.GetAsync<Commit>(commit => !commit.IsDeleted);
         }
 
         private IAsyncEnumerable<Commit> GetCommitsInternalAsync(TBucketId bucketId,
@@ -272,8 +261,7 @@ namespace AI4E.Storage
             return _database.GetAsync(predicate, cancellation).OrderBy(commit => commit.StreamRevision);
         }
 
-        // TODO: This should return an async enumerable.
-        public async Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetUndispatchedCommitsAsync(CancellationToken cancellation)
+        public IAsyncEnumerable<ICommit<TBucketId, TStreamId>> GetUndispatchedCommitsAsync(CancellationToken cancellation)
         {
             IAsyncEnumerable<Commit> LoadAsync(StreamHead streamHead)
             {
@@ -282,9 +270,8 @@ namespace AI4E.Storage
                                                streamHead.DispatchedRevision, cancellation: cancellation).Where(commit => !commit.IsDeleted);
             }
 
-            return await _database.GetAsync<StreamHead>(p => !p.IsDeleted, cancellation)
-                                   .SelectMany(LoadAsync)
-                                   .ToList(cancellation);
+            return _database.GetAsync<StreamHead>(p => !p.IsDeleted, cancellation)
+                            .SelectMany(LoadAsync);
         }
 
         public async Task MarkCommitAsDispatchedAsync(ICommit<TBucketId, TStreamId> commit, CancellationToken cancellation)

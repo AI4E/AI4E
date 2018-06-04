@@ -252,7 +252,10 @@ namespace AI4E.Storage
                     throw new ArgumentOutOfRangeException(nameof(revision));
 
                 var snapshot = await streamStore._persistence.GetSnapshotAsync(bucketId, streamId, revision, cancellation);
-                var commits = await streamStore._persistence.GetCommitsAsync(bucketId, streamId, (snapshot?.StreamRevision + 1) ?? default, revision, cancellation)
+                var commits = await streamStore._persistence.GetCommitsAsync(bucketId,
+                                                                             streamId, (snapshot?.StreamRevision + 1) ?? default,
+                                                                             revision,
+                                                                             cancellation).ToList()
                     ?? Enumerable.Empty<ICommit<TBucketId, TStreamId>>();
 
                 var isFixedRevision = revision != default;
@@ -378,7 +381,7 @@ namespace AI4E.Storage
                 if (_isFixedRevision)
                     throw new InvalidOperationException("Cannot modify a read-only stream view.");
 
-                var commits = await _streamStore._persistence.GetCommitsAsync(BucketId, StreamId, StreamRevision + 1, cancellation);
+                var commits = await _streamStore._persistence.GetCommitsAsync(BucketId, StreamId, StreamRevision + 1, cancellation: cancellation).ToList(cancellation);
 
                 ExecuteExtensions(commits);
 

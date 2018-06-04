@@ -1,10 +1,10 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IStreamPersistence.cs 
- * Types:           (1) AI4E.Storage.IStreamPersistence
+ * Types:           (1) AI4E.Storage.IStreamPersistence'2
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   08.01.2018 
+ * Last modified:   04.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -86,11 +86,11 @@ namespace AI4E.Storage
         /// <returns>If found, it returns the snapshot; otherwise null is returned.</returns>
         /// <exception cref="StorageException" />
         /// <exception cref="StorageUnavailableException" />
-        Task<ISnapshot<TBucketId, TStreamId>> GetSnapshotAsync(TBucketId bucketId, TStreamId streamId, long maxRevision, CancellationToken cancellation);
+        Task<ISnapshot<TBucketId, TStreamId>> GetSnapshotAsync(TBucketId bucketId, TStreamId streamId, long maxRevision = default, CancellationToken cancellation = default);
 
-        Task<IEnumerable<ISnapshot<TBucketId, TStreamId>>> GetSnapshotsAsync(TBucketId bucketId, CancellationToken cancellation);
+        IAsyncEnumerable<ISnapshot<TBucketId, TStreamId>> GetSnapshotsAsync(TBucketId bucketId, CancellationToken cancellation = default);
 
-        Task<IEnumerable<ISnapshot<TBucketId, TStreamId>>> GetSnapshotsAsync(CancellationToken cancellation);
+        IAsyncEnumerable<ISnapshot<TBucketId, TStreamId>> GetSnapshotsAsync(CancellationToken cancellation = default);
 
         /// <summary>
         /// Adds the snapshot provided to the stream indicated.
@@ -99,7 +99,7 @@ namespace AI4E.Storage
         /// <returns>If the snapshot was added, returns true; otherwise false.</returns>
         /// <exception cref="StorageException" />
         /// <exception cref="StorageUnavailableException" />
-        Task<bool> AddSnapshotAsync(ISnapshot<TBucketId, TStreamId> snapshot, CancellationToken cancellation);
+        Task<bool> AddSnapshotAsync(ISnapshot<TBucketId, TStreamId> snapshot, CancellationToken cancellation = default);
 
         /// <summary>
         /// Gets identifiers for all streams whose head revision differs from its last snapshot revision by at least the threshold specified.
@@ -109,9 +109,12 @@ namespace AI4E.Storage
         /// <returns>The streams for which the head and snapshot revisions differ by at least the threshold specified.</returns>
         /// <exception cref="StorageException" />
         /// <exception cref="StorageUnavailableException" />
-        IAsyncEnumerable<IStreamHead<TBucketId, TStreamId>> GetStreamsToSnapshotAsync(TBucketId bucketId, long maxThreshold, CancellationToken cancellation);
-    
-        IAsyncEnumerable<IStreamHead<TBucketId, TStreamId>> GetStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation);
+        IAsyncEnumerable<IStreamHead<TBucketId, TStreamId>> GetStreamsToSnapshotAsync(TBucketId bucketId, 
+                                                                                      long maxThreshold, 
+                                                                                      CancellationToken cancellation = default);
+
+        IAsyncEnumerable<IStreamHead<TBucketId, TStreamId>> GetStreamsToSnapshotAsync(long maxThreshold, 
+                                                                                      CancellationToken cancellation = default);
 
         /// <summary>
         /// Gets the corresponding commits from the stream indicated starting at the revision specified until the
@@ -124,11 +127,15 @@ namespace AI4E.Storage
         /// <returns>A series of committed events from the stream specified sorted in ascending order.</returns>
         /// <exception cref="StorageException" />
         /// <exception cref="StorageUnavailableException" />
-        Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync(TBucketId bucketId, TStreamId streamId, long minRevision, long maxRevision, CancellationToken cancellation);
+        IAsyncEnumerable<ICommit<TBucketId, TStreamId>> GetCommitsAsync(TBucketId bucketId, 
+                                                                        TStreamId streamId, 
+                                                                        long minRevision = default,
+                                                                        long maxRevision = default, 
+                                                                        CancellationToken cancellation = default);
 
-        Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync(TBucketId bucketId, CancellationToken cancellation);
+        IAsyncEnumerable<ICommit<TBucketId, TStreamId>> GetCommitsAsync(TBucketId bucketId, CancellationToken cancellation = default);
 
-        Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync(CancellationToken cancellation);
+        IAsyncEnumerable<ICommit<TBucketId, TStreamId>> GetCommitsAsync(CancellationToken cancellation = default);
 
         /// <summary>
         /// Writes the to-be-commited events provided to the underlying persistence mechanism.
@@ -145,7 +152,7 @@ namespace AI4E.Storage
         /// <returns>The set of commits to be dispatched.</returns>
         /// <exception cref="StorageException" />
         /// <exception cref="StorageUnavailableException" />
-        Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetUndispatchedCommitsAsync(CancellationToken cancellation = default);
+        IAsyncEnumerable<ICommit<TBucketId, TStreamId>> GetUndispatchedCommitsAsync(CancellationToken cancellation = default);
 
         /// <summary>
         /// Marks the commit specified as dispatched.
@@ -162,7 +169,7 @@ namespace AI4E.Storage
         /// <param name="streamId">The stream Id of the stream that is to be deleted.</param>
         Task DeleteStreamAsync(TBucketId bucketId, TStreamId streamId, CancellationToken cancellation = default);
 
-        IAsyncEnumerable<IStreamHead<TBucketId, TStreamId>> GetStreamHeadsAsync(TBucketId bucketId, CancellationToken cancellation);
-        IAsyncEnumerable<IStreamHead<TBucketId, TStreamId>> GetStreamHeadsAsync(CancellationToken cancellation);
+        IAsyncEnumerable<IStreamHead<TBucketId, TStreamId>> GetStreamHeadsAsync(TBucketId bucketId, CancellationToken cancellation = default);
+        IAsyncEnumerable<IStreamHead<TBucketId, TStreamId>> GetStreamHeadsAsync(CancellationToken cancellation = default);
     }
 }

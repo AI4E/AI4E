@@ -27,122 +27,122 @@ namespace AI4E.Storage
 {
     public static class StreamPersistenceExtension
     {
-        public static Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence, TBucketId bucketId)
-            where TBucketId : IEquatable<TBucketId>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
+        //public static Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence, TBucketId bucketId)
+        //    where TBucketId : IEquatable<TBucketId>
+        //    where TStreamId : IEquatable<TStreamId>
+        //{
+        //    if (persistence == null)
+        //        throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetCommitsAsync(bucketId, default);
-        }
+        //    return persistence.GetCommitsAsync(bucketId, default);
+        //}
 
-        public static Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence)
-            where TBucketId : IEquatable<TBucketId>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
+        //public static Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence)
+        //    where TBucketId : IEquatable<TBucketId>
+        //    where TStreamId : IEquatable<TStreamId>
+        //{
+        //    if (persistence == null)
+        //        throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetCommitsAsync(default);
-        }
+        //    return persistence.GetCommitsAsync(default);
+        //}
 
-        public static Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
-                                                                                                         TBucketId bucketId,
-                                                                                                         TStreamId streamId,
-                                                                                                         long minRevision,
-                                                                                                         CancellationToken cancellation = default)
-            where TBucketId : IEquatable<TBucketId>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
+        //public static Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
+        //                                                                                                 TBucketId bucketId,
+        //                                                                                                 TStreamId streamId,
+        //                                                                                                 long minRevision,
+        //                                                                                                 CancellationToken cancellation = default)
+        //    where TBucketId : IEquatable<TBucketId>
+        //    where TStreamId : IEquatable<TStreamId>
+        //{
+        //    if (persistence == null)
+        //        throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetCommitsAsync(bucketId, streamId, minRevision, maxRevision: default, cancellation);
-        }
+        //    return persistence.GetCommitsAsync(bucketId, streamId, minRevision, maxRevision: default, cancellation);
+        //}
 
-        public static Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
-                                                                                                         TBucketId bucketId,
-                                                                                                         TStreamId streamId,
-                                                                                                         CancellationToken cancellation = default)
-            where TBucketId : IEquatable<TBucketId>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
+        //public static Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
+        //                                                                                                 TBucketId bucketId,
+        //                                                                                                 TStreamId streamId,
+        //                                                                                                 CancellationToken cancellation = default)
+        //    where TBucketId : IEquatable<TBucketId>
+        //    where TStreamId : IEquatable<TStreamId>
+        //{
+        //    if (persistence == null)
+        //        throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetCommitsAsync(bucketId, streamId, minRevision: default, maxRevision: default, cancellation);
-        }
+        //    return persistence.GetCommitsAsync(bucketId, streamId, minRevision: default, maxRevision: default, cancellation);
+        //}
 
-        public static Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
-                                                                                                         TBucketId bucketId,
-                                                                                                         TStreamId streamId,
-                                                                                                         long minRevision)
-            where TBucketId : IEquatable<TBucketId>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
+        //public static Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
+        //                                                                                                 TBucketId bucketId,
+        //                                                                                                 TStreamId streamId,
+        //                                                                                                 long minRevision)
+        //    where TBucketId : IEquatable<TBucketId>
+        //    where TStreamId : IEquatable<TStreamId>
+        //{
+        //    if (persistence == null)
+        //        throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetCommitsAsync(bucketId, streamId, minRevision, maxRevision: default, default);
-        }
+        //    return persistence.GetCommitsAsync(bucketId, streamId, minRevision, maxRevision: default, default);
+        //}
 
-        public static Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
-                                                                                                         TBucketId bucketId,
-                                                                                                         TStreamId streamId)
-            where TBucketId : IEquatable<TBucketId>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
+        //public static Task<IEnumerable<ICommit<TBucketId, TStreamId>>> GetCommitsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
+        //                                                                                                 TBucketId bucketId,
+        //                                                                                                 TStreamId streamId)
+        //    where TBucketId : IEquatable<TBucketId>
+        //    where TStreamId : IEquatable<TStreamId>
+        //{
+        //    if (persistence == null)
+        //        throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetCommitsAsync(bucketId, streamId, minRevision: default, maxRevision: default, default);
-        }
+        //    return persistence.GetCommitsAsync(bucketId, streamId, minRevision: default, maxRevision: default, default);
+        //}
 
-        public static Task<ISnapshot<TBucketId, TStreamId>> GetSnapshotAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
-                                                                                               TBucketId bucketId,
-                                                                                               TStreamId streamId,
-                                                                                               CancellationToken cancellation = default)
-            where TBucketId : IEquatable<TBucketId>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
+        //public static Task<ISnapshot<TBucketId, TStreamId>> GetSnapshotAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
+        //                                                                                       TBucketId bucketId,
+        //                                                                                       TStreamId streamId,
+        //                                                                                       CancellationToken cancellation = default)
+        //    where TBucketId : IEquatable<TBucketId>
+        //    where TStreamId : IEquatable<TStreamId>
+        //{
+        //    if (persistence == null)
+        //        throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetSnapshotAsync(bucketId, streamId, maxRevision: default, cancellation);
-        }
+        //    return persistence.GetSnapshotAsync(bucketId, streamId, maxRevision: default, cancellation);
+        //}
 
-        public static Task<ISnapshot<TBucketId, TStreamId>> GetSnapshotAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
-                                                                                               TBucketId bucketId,
-                                                                                               TStreamId streamId)
-            where TBucketId : IEquatable<TBucketId>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
+        //public static Task<ISnapshot<TBucketId, TStreamId>> GetSnapshotAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
+        //                                                                                       TBucketId bucketId,
+        //                                                                                       TStreamId streamId)
+        //    where TBucketId : IEquatable<TBucketId>
+        //    where TStreamId : IEquatable<TStreamId>
+        //{
+        //    if (persistence == null)
+        //        throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetSnapshotAsync(bucketId, streamId, maxRevision: default, default);
-        }
+        //    return persistence.GetSnapshotAsync(bucketId, streamId, maxRevision: default, default);
+        //}
 
-        public static Task<IEnumerable<ISnapshot<TBucketId, TStreamId>>> GetSnapshotsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
-                                                                                                             TBucketId bucketId)
-            where TBucketId : IEquatable<TBucketId>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
+        //public static Task<IEnumerable<ISnapshot<TBucketId, TStreamId>>> GetSnapshotsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence,
+        //                                                                                                     TBucketId bucketId)
+        //    where TBucketId : IEquatable<TBucketId>
+        //    where TStreamId : IEquatable<TStreamId>
+        //{
+        //    if (persistence == null)
+        //        throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetSnapshotsAsync(bucketId, default);
-        }
+        //    return persistence.GetSnapshotsAsync(bucketId, default);
+        //}
 
-        public static Task<IEnumerable<ISnapshot<TBucketId, TStreamId>>> GetSnapshotsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence)
-            where TBucketId : IEquatable<TBucketId>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
+        //public static Task<IEnumerable<ISnapshot<TBucketId, TStreamId>>> GetSnapshotsAsync<TBucketId, TStreamId>(this IStreamPersistence<TBucketId, TStreamId> persistence)
+        //    where TBucketId : IEquatable<TBucketId>
+        //    where TStreamId : IEquatable<TStreamId>
+        //{
+        //    if (persistence == null)
+        //        throw new ArgumentNullException(nameof(persistence));
 
-            return persistence.GetSnapshotsAsync(default);
-        }
+        //    return persistence.GetSnapshotsAsync(default);
+        //}
     }
 }
