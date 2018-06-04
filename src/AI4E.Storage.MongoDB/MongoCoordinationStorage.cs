@@ -12,6 +12,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.MongoDB
 {
+    [Obsolete]
     public sealed class MongoCoordinationStorage : ICoordinationStorage, ISessionStorage
     {
         private readonly IMongoDatabase _database;
