@@ -29,6 +29,7 @@ using static AI4E.Storage.MongoDB.MongoWriteHelper;
 
 namespace AI4E.Storage.MongoDB
 {
+    [Obsolete]
     public sealed class MongoStreamPersistence<TBucketId, TStreamId> : IStreamPersistence<TBucketId, TStreamId>
         where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>
@@ -280,8 +281,8 @@ namespace AI4E.Storage.MongoDB
 
         public async Task DeleteStreamAsync(TBucketId bucketId, TStreamId streamId, CancellationToken cancellation)
         {
-            await TryWriteOperation(() => _snapshots.DeleteManyAsync(p => p.BucketId.Equals(bucketId) && p.StreamId.Equals(streamId), cancellation)); 
-            
+            await TryWriteOperation(() => _snapshots.DeleteManyAsync(p => p.BucketId.Equals(bucketId) && p.StreamId.Equals(streamId), cancellation));
+
             // TODO: What to do if the op fails in between?
             await TryWriteOperation(() => _commits.DeleteManyAsync(p => p.BucketId.Equals(bucketId) && p.StreamId.Equals(streamId), cancellation));
 

@@ -110,5 +110,58 @@ namespace AI4E.Async
                 }
             }
         }
+
+        public static IAsyncEnumerable<T> Evaluate<T>(this IAsyncEnumerable<Task<T>> enumerable)
+        {
+            if (enumerable == null)
+                throw new ArgumentNullException(nameof(enumerable));
+
+            return new EvaluationAsyncEnumerable<T>(enumerable);
+        }
+
+        private sealed class EvaluationAsyncEnumerable<T> : IAsyncEnumerable<T>
+        {
+            private readonly IAsyncEnumerable<Task<T>> _enumerable;
+
+            public EvaluationAsyncEnumerable(IAsyncEnumerable<Task<T>> enumerable)
+            {
+                Debug.Assert(enumerable != null);
+                _enumerable = enumerable;
+            }
+
+            public IAsyncEnumerator<T> GetEnumerator()
+            {
+                return new EvaluationAsyncEnumerator(_enumerable);
+            }
+
+            private sealed class EvaluationAsyncEnumerator : IAsyncEnumerator<T>
+            {
+                private readonly IAsyncEnumerator<Task<T>> _enumerator;
+
+                public EvaluationAsyncEnumerator(IAsyncEnumerable<Task<T>> enumerable)
+                {
+                    _enumerator = enumerable.GetEnumerator();
+                }
+
+                public T Current { get; private set; }
+
+                public void Dispose()
+                {
+                    _enumerator.Dispose();
+                }
+
+                public async Task<bool> MoveNext(CancellationToken cancellationToken)
+                {
+                    if (!await _enumerator.MoveNext(cancellationToken))
+                    {
+                        return false;
+                    }
+
+                    Current = await _enumerator.Current;
+                    return true;
+                }
+            }
+
+        }
     }
 }

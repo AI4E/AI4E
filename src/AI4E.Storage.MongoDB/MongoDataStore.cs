@@ -33,6 +33,7 @@ using static AI4E.Storage.MongoDB.MongoWriteHelper;
 
 namespace AI4E.Storage.MongoDB
 {
+    [Obsolete]
     public sealed class MongoDataStore : IDataStore
     {
         private readonly ConcurrentDictionary<Type, object> _collections = new ConcurrentDictionary<Type, object>();

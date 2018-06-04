@@ -22,6 +22,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace AI4E.Storage.MongoDB
 {
+    [Obsolete]
     public sealed class MongoSequenceEntry
     {
         [BsonId]

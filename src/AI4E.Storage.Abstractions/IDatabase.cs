@@ -134,6 +134,9 @@ namespace AI4E.Storage
                                                      CancellationToken cancellation = default)
             where TEntry : class;
 
+        ValueTask<TEntry> GetOrInsert<TEntry>(TEntry entry, CancellationToken cancellation = default) 
+            where TEntry : class;
+
         /// <summary>
         /// Asynchronously retrieves a collection of all stored entries.
         /// </summary>

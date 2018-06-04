@@ -25,6 +25,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace AI4E.Storage.MongoDB
 {
+    [Obsolete]
     internal class MongoCommit<TBucketId, TStreamId> : ICommit<TBucketId, TStreamId>
         where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>

@@ -19,11 +19,11 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace AI4E.Storage.MongoDB
 {
+    [Obsolete]
     public static class MongoIdGenerator
     {
         private const char _separator = '°';

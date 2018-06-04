@@ -23,6 +23,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace AI4E.Storage.MongoDB
 {
+    [Obsolete]
     internal sealed class MongoStreamHead<TBucketId, TStreamId> : IStreamHead<TBucketId, TStreamId>
         where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>

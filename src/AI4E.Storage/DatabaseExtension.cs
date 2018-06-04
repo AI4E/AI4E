@@ -47,62 +47,6 @@ namespace AI4E.Storage
             return database.CompareExchangeAsync<TEntry>(entry, comparand, BuildEqualityComparer(versionSelector), cancellation);
         }
 
-        //public static ValueTask<bool> CompareExchangeAsync<TEntry, TVersion>(this IDatabase database,
-        //                                                                     TEntry data,
-        //                                                                     TEntry comparand,
-        //                                                                     Expression<Func<TEntry, TVersion>> versionSelector,
-        //                                                                     CancellationToken cancellation = default)
-        //    where TEntry : class
-        //    where TVersion : struct, IEquatable<TVersion>
-        //{
-        //    if (database == null)
-        //        throw new ArgumentNullException(nameof(database));
-
-        //    if (versionSelector == null)
-        //        throw new ArgumentNullException(nameof(versionSelector));
-
-        //    // This is a nop actually. But we check whether comparand is up to date.
-        //    if (data == comparand)
-        //    {
-        //        return CheckComparandToBeUpToDate(database, comparand, versionSelector, cancellation);
-        //    }
-
-        //    // Trying to update an entry.
-        //    if (data != null && comparand != null)
-        //    {
-        //        return database.UpdateAsync(data, BuildPredicate(comparand, versionSelector), cancellation);
-        //    }
-
-        //    // Trying to create an entry.
-        //    if (data != null)
-        //    {
-        //        return database.InsertAsync(data, cancellation);
-        //    }
-
-        //    // Trying to remove an entry.
-        //    Assert(comparand != null);
-
-        //    return database.RemoveAsync(comparand, BuildPredicate(comparand, versionSelector), cancellation);
-        //}
-
-        //private static async ValueTask<bool> CheckComparandToBeUpToDate<TEntry, TVersion>(IDatabase database,
-        //                                                                                  TEntry comparand,
-        //                                                                                  Expression<Func<TEntry, TVersion>> versionSelector,
-        //                                                                                  CancellationToken cancellation)
-        //    where TEntry : class
-        //    where TVersion : struct, IEquatable<TVersion>
-        //{
-        //    var result = (await database.GetAsync(DataPropertyHelper.BuildPredicate(comparand), cancellation)).FirstOrDefault();
-
-        //    if (comparand == null)
-        //    {
-        //        return result == null;
-        //    }
-
-        //    var compiledVersionSelector = versionSelector.Compile(preferInterpretation: true);
-        //    return compiledVersionSelector(comparand).Equals(compiledVersionSelector(result));
-        //}
-
         private static Expression<Func<TEntry, TEntry, bool>> BuildEqualityComparer<TEntry, TVersion>(Expression<Func<TEntry, TVersion>> versionSelector)
             where TEntry : class
             where TVersion : IEquatable<TVersion>
