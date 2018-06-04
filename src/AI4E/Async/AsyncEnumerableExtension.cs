@@ -58,7 +58,7 @@ namespace AI4E.Async
 
             public IAsyncEnumerator<T> GetEnumerator()
             {
-                throw new NotImplementedException();
+                return new ComputedAsyncEnumerator(_enumerable);
             }
 
             private sealed class ComputedAsyncEnumerator : IAsyncEnumerator<T>
