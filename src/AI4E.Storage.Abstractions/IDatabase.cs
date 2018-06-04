@@ -147,7 +147,7 @@ namespace AI4E.Storage
         /// </returns>
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
-        IAsyncEnumerable<TEntry> GetAllAsync<TEntry>(CancellationToken cancellation = default)
+        IAsyncEnumerable<TEntry> GetAsync<TEntry>(CancellationToken cancellation = default)
             where TEntry : class;
 
         /// <summary>
@@ -163,7 +163,7 @@ namespace AI4E.Storage
         /// </returns>
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
-        ValueTask<TEntry> GetAsync<TId, TEntry>(TId id, CancellationToken cancellation = default)
+        ValueTask<TEntry> GetOneAsync<TId, TEntry>(TId id, CancellationToken cancellation = default)
             where TId : IEquatable<TId>
             where TEntry : class;
     }
@@ -189,7 +189,7 @@ namespace AI4E.Storage
         IAsyncEnumerable<TEntry> GetAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
             where TEntry : class;
 
-        ValueTask<TEntry> GetSingleAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
+        ValueTask<TEntry> GetOneAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
             where TEntry : class;
     }
 

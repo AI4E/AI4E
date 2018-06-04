@@ -69,7 +69,7 @@ namespace AI4E.Storage
 
         private async Task<StreamHead> LoadStreamHeadAsync(TBucketId bucketId, TStreamId streamId, CancellationToken cancellation)
         {
-            return await _database.GetSingleAsync<StreamHead>(head => head.BucketId.Equals(bucketId) && head.StreamId.Equals(streamId), cancellation);
+            return await _database.GetOneAsync<StreamHead>(head => head.BucketId.Equals(bucketId) && head.StreamId.Equals(streamId), cancellation);
         }
 
         public Task<ISnapshot<TBucketId, TStreamId>> GetSnapshotAsync(TBucketId bucketId, TStreamId streamId, long maxRevision, CancellationToken cancellation = default)
@@ -115,7 +115,7 @@ namespace AI4E.Storage
         {
             // TODO: Chek whether the database has query support. 
 
-            var snapshots = _database.GetAllAsync<Snapshot>(cancellation)
+            var snapshots = _database.GetAsync<Snapshot>(cancellation)
                                      .GroupBy(snapshot => snapshot.StreamId)
                                      .Select(group => group.OrderByDescending(snapshot => snapshot.StreamRevision).FirstOrDefault(cancellation))
                                      .Evaluate();
@@ -167,7 +167,7 @@ namespace AI4E.Storage
             }
             else
             {
-                streamHead = await _database.GetSingleAsync<StreamHead>(p => p.BucketId.Equals(attempt.BucketId) &&
+                streamHead = await _database.GetOneAsync<StreamHead>(p => p.BucketId.Equals(attempt.BucketId) &&
                                                                              p.StreamId.Equals(attempt.StreamId), cancellation);
             }
 
@@ -371,7 +371,7 @@ namespace AI4E.Storage
                     return desired;
                 }
 
-                streamHead = await _database.GetSingleAsync<StreamHead>(p => p.Id == id, cancellation);
+                streamHead = await _database.GetOneAsync<StreamHead>(p => p.Id == id, cancellation);
 
                 if (streamHead == null && (streamHead = await AddStreamHeadAsync(bucketId, streamId, cancellation)) == null)
                 {
@@ -403,7 +403,7 @@ namespace AI4E.Storage
                     return desired;
                 }
 
-                streamHead = await _database.GetSingleAsync<StreamHead>(p => p.Id == id, cancellation);
+                streamHead = await _database.GetOneAsync<StreamHead>(p => p.Id == id, cancellation);
 
                 if (streamHead == null && (streamHead = await AddStreamHeadAsync(bucketId, streamId, cancellation)) == null)
                 {
@@ -448,7 +448,7 @@ namespace AI4E.Storage
                     return desired;
                 }
 
-                streamHead = await _database.GetSingleAsync<StreamHead>(p => p.Id == id, cancellation);
+                streamHead = await _database.GetOneAsync<StreamHead>(p => p.Id == id, cancellation);
 
                 if (streamHead == null && (streamHead = await AddStreamHeadAsync(bucketId, streamId, cancellation)) == null)
                 {

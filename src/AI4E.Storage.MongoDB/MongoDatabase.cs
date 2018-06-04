@@ -133,7 +133,7 @@ namespace AI4E.Storage.MongoDB
 
             while (!await AddAsync(entry, cancellation))
             {
-                var result = await GetAsync(entry, cancellation);
+                var result = await GetOneAsync(entry, cancellation);
 
                 if (result != null)
                     return result;
@@ -239,7 +239,7 @@ namespace AI4E.Storage.MongoDB
                                                                          CancellationToken cancellation)
             where TEntry : class
         {
-            var result = await GetAsync(comparand, cancellation);
+            var result = await GetOneAsync(comparand, cancellation);
 
             if (comparand == null)
             {
@@ -252,15 +252,15 @@ namespace AI4E.Storage.MongoDB
             return equalityComparer.Compile(preferInterpretation: true).Invoke(comparand, result);
         }
 
-        private ValueTask<TEntry> GetAsync<TEntry>(TEntry comparand, CancellationToken cancellation)
+        private ValueTask<TEntry> GetOneAsync<TEntry>(TEntry comparand, CancellationToken cancellation)
             where TEntry : class
         {
             Assert(comparand != null);
             var predicate = DataPropertyHelper.BuildPredicate(comparand);
-            return GetSingleAsync(predicate, cancellation);
+            return GetOneAsync(predicate, cancellation);
         }
 
-        public ValueTask<TEntry> GetAsync<TId, TEntry>(TId id, CancellationToken cancellation = default)
+        public ValueTask<TEntry> GetOneAsync<TId, TEntry>(TId id, CancellationToken cancellation = default)
             where TId : IEquatable<TId>
             where TEntry : class
         {
@@ -268,10 +268,10 @@ namespace AI4E.Storage.MongoDB
                 return new ValueTask<TEntry>(default(TEntry));
 
             var predicate = DataPropertyHelper.BuildPredicate<TId, TEntry>(id);
-            return GetSingleAsync(predicate, cancellation);
+            return GetOneAsync(predicate, cancellation);
         }
 
-        public IAsyncEnumerable<TEntry> GetAllAsync<TEntry>(CancellationToken cancellation = default)
+        public IAsyncEnumerable<TEntry> GetAsync<TEntry>(CancellationToken cancellation = default)
             where TEntry : class
         {
             var collection = GetCollection<TEntry>();
@@ -290,7 +290,7 @@ namespace AI4E.Storage.MongoDB
             return new MongoQueryEvaluator<TEntry>(collection, predicate, cancellation);
         }
 
-        public async ValueTask<TEntry> GetSingleAsync<TEntry>(Expression<Func<TEntry, bool>> predicate,
+        public async ValueTask<TEntry> GetOneAsync<TEntry>(Expression<Func<TEntry, bool>> predicate,
                                                               CancellationToken cancellation = default)
             where TEntry : class
         {
