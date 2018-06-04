@@ -106,7 +106,7 @@ namespace AI4E.Storage.MongoDB
 
         #region IDatabase
 
-        public async ValueTask<bool> InsertAsync<TEntry>(TEntry entry, CancellationToken cancellation = default) where TEntry : class
+        public async ValueTask<bool> AddAsync<TEntry>(TEntry entry, CancellationToken cancellation = default) where TEntry : class
         {
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
@@ -125,13 +125,13 @@ namespace AI4E.Storage.MongoDB
             return true;
         }
 
-        public async ValueTask<TEntry> GetOrInsert<TEntry>(TEntry entry, CancellationToken cancellation = default)
+        public async ValueTask<TEntry> GetOrAdd<TEntry>(TEntry entry, CancellationToken cancellation = default)
             where TEntry : class
         {
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
 
-            while (!await InsertAsync(entry, cancellation))
+            while (!await AddAsync(entry, cancellation))
             {
                 var result = await GetAsync(entry, cancellation);
 
@@ -225,7 +225,7 @@ namespace AI4E.Storage.MongoDB
             // Trying to create an entry.
             if (entry != null)
             {
-                return InsertAsync(entry, cancellation);
+                return AddAsync(entry, cancellation);
             }
 
             // Trying to remove an entry.

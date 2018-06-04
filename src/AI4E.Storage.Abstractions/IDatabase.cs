@@ -45,22 +45,22 @@ namespace AI4E.Storage
     public interface IDatabase
     {
         /// <summary>
-        /// Asynchronously tries to inserts the specified entry into the database.
+        /// Asynchronously tries to add the specified entry into the database.
         /// </summary>
         /// <typeparam name="TEntry">The type of entry.</typeparam>
-        /// <param name="entry">The entry that shall be inserted.</param>
+        /// <param name="entry">The entry that shall be added.</param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>
         /// A value task that represents the asynchronous operation.
-        /// When evaluated, the tasks result contains a boolean value indicating whether the entry was inserted successfully.
+        /// When evaluated, the tasks result contains a boolean value indicating whether the entry was added successfully.
         /// </returns>
         /// <remarks>
-        /// The entry is inserted successfully, if the database does not contain an entry with the same id than the specified entry.
+        /// The entry is added successfully, if the database does not contain an entry with the same id than the specified entry.
         /// </remarks>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.</exception>
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
-        ValueTask<bool> InsertAsync<TEntry>(TEntry entry, CancellationToken cancellation = default)
+        ValueTask<bool> AddAsync<TEntry>(TEntry entry, CancellationToken cancellation = default)
             where TEntry : class;
 
         /// <summary>
@@ -109,7 +109,7 @@ namespace AI4E.Storage
             where TEntry : class;
 
         /// <summary>
-        /// Asynchronously inserts the specified entry if the existing entry equals the specified comparand.
+        /// Asynchronously replaces an entry with the specified one if the existing entry equals the specified comparand.
         /// </summary>
         /// <typeparam name="TEntry">The type of entry.</typeparam>
         /// <param name="entry">The entry to insert on succcess.</param>
@@ -134,7 +134,7 @@ namespace AI4E.Storage
                                                      CancellationToken cancellation = default)
             where TEntry : class;
 
-        ValueTask<TEntry> GetOrInsert<TEntry>(TEntry entry, CancellationToken cancellation = default) 
+        ValueTask<TEntry> GetOrAdd<TEntry>(TEntry entry, CancellationToken cancellation = default) 
             where TEntry : class;
 
         /// <summary>

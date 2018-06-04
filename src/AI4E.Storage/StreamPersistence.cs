@@ -56,7 +56,7 @@ namespace AI4E.Storage
 
             var wrappedSnapshot = new Snapshot(snapshot);
 
-            if (await _database.InsertAsync(wrappedSnapshot, cancellation))
+            if (await _database.AddAsync(wrappedSnapshot, cancellation))
             {
                 var streamHead = await LoadStreamHeadAsync(snapshot.BucketId, snapshot.StreamId, cancellation);
                 await UpdateStreamHeadSnapshotRevisionAsync(streamHead, snapshot.StreamRevision, cancellation);
@@ -180,7 +180,7 @@ namespace AI4E.Storage
 
             try
             {
-                if (!await _database.InsertAsync(commit, cancellation))
+                if (!await _database.AddAsync(commit, cancellation))
                 {
                     throw new ConcurrencyException();
                 }
@@ -347,7 +347,7 @@ namespace AI4E.Storage
         {
             var streamHead = new StreamHead(bucketId, streamId, headRevision, snapshotRevision, dispatchedRevision, version: 1);
 
-            return _database.GetOrInsert(streamHead, cancellation);
+            return _database.GetOrAdd(streamHead, cancellation);
         }
 
         private async ValueTask<StreamHead> UpdateStreamHeadRevisionAsync(StreamHead streamHead, long headRevision, CancellationToken cancellation)
