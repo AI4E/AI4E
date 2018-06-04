@@ -41,7 +41,11 @@ namespace AI4E.Storage.MongoDB
             builder.Services.AddSingleton(provider =>
                 provider.GetRequiredService<IMongoClient>().GetDatabase((provider.GetService<IOptions<MongoOptions>>()?.Value ?? new MongoOptions()).Database));
 
-            builder.Services.AddSingleton(typeof(IStreamPersistence<,>), typeof(MongoStreamPersistence<,>));
+            builder.Services.AddSingleton<IQueryableDatabase, MongoDatabase>();
+            builder.Services.AddSingleton<IFilterableDatabase>(p => p.GetRequiredService<IQueryableDatabase>());
+            builder.Services.AddSingleton<IDatabase>(p => p.GetRequiredService<IQueryableDatabase>());
+
+            //builder.Services.AddSingleton(typeof(IStreamPersistence<,>), typeof(MongoStreamPersistence<,>));
             builder.Services.AddSingleton(typeof(IDataStore), typeof(MongoDataStore));
 
             builder.Services.AddSingleton<MongoCoordinationStorage>();

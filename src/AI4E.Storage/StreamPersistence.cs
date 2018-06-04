@@ -312,6 +312,8 @@ namespace AI4E.Storage
             // await TryWriteOperation(() => _commits.DeleteManyAsync(p => p.BucketId.Equals(bucketId) && p.StreamId.Equals(streamId), cancellation));
 
             // TODO: How do we get rid of the stream heads?
+
+            throw new NotImplementedException();
         }
 
         #region StreamHead

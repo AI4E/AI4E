@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace AI4E.Storage.MongoDB

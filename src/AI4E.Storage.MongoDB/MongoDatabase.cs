@@ -133,7 +133,7 @@ namespace AI4E.Storage.MongoDB
 
             while (!await InsertAsync(entry, cancellation))
             {
-                var result = await GetAsync(entry, cancellation));
+                var result = await GetAsync(entry, cancellation);
 
                 if (result != null)
                     return result;

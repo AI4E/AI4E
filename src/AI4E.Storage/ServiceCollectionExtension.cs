@@ -64,6 +64,8 @@ namespace AI4E.Storage
                 provider => provider.GetRequiredService<IProvider<EntityStore<TId, TEventBase, TEntityBase>>>()
                                     .ProvideInstance());
 
+            services.AddSingleton(typeof(IStreamPersistence<,>), typeof(StreamPersistence<,>));
+
             services.AddSingleton(BuildProjector);
 
             return new StorageBuilder(services);
