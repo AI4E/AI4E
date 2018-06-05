@@ -18,12 +18,115 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Internal
 {
     internal static class EnumerableExtension
     {
+        [ThreadStatic]
+        private static Random _rnd;
+        private static int _count = 0;
+
+        // https://stackoverflow.com/questions/6165379/quickest-way-to-randomly-re-order-a-linq-collection
+        public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source)
+        {
+            var list = source.ToArray();
+
+            if (list.Length < 2)
+                return list;
+
+            for (var i = list.Length; i > 1; i--)
+            {
+                var k = Rnd.Next(i);
+
+                if (k == (i - 1))
+                    continue;
+
+                Swap(ref list[k], ref list[i - 1]);
+            }
+
+#if DEBUG
+
+            Assert(source.Count() == list.Length);
+
+            foreach (var element in source)
+            {
+                Assert(list.Contains(element));
+            }
+
+#endif
+
+            return list;
+        }
+
+        private static void Swap<T>(ref T left, ref T right)
+        {
+            var t = left;
+
+            left = right;
+            right = t;
+        }
+
+        private static Random Rnd
+        {
+            get
+            {
+                if (_rnd == null)
+                {
+                    var seed = GetNextSeed();
+
+                    _rnd = new Random(seed);
+                }
+
+                return _rnd;
+            }
+        }
+
+        private static int GetNextSeed()
+        {
+            var count = Interlocked.Increment(ref _count);
+
+            unchecked
+            {
+                return count + Environment.TickCount;
+            }
+        }
+
+        public static T FirstOrDefault<T>(this IEnumerable<T> collection, Func<T, bool> predicate, T defaultValue)
+        {
+            if (collection == null)
+                throw new ArgumentNullException(nameof(collection));
+
+            foreach (var entry in collection)
+            {
+                if (predicate(entry))
+                    return entry;
+            }
+
+            return defaultValue;
+        }
+
+        public static T FirstOrDefault<T>(this IEnumerable<T> collection, T defaultValue)
+        {
+            if (collection == null)
+                throw new ArgumentNullException(nameof(collection));
+
+            using (var enumerator = collection.GetEnumerator())
+            {
+                if (enumerator.MoveNext())
+                {
+                    return enumerator.Current;
+                }
+            }
+
+            return defaultValue;
+        }
+
         // https://stackoverflow.com/questions/1779129/how-to-take-all-but-the-last-element-in-a-sequence-using-linq
         public static IEnumerable<T> TakeAllButLast<T>(this IEnumerable<T> source)
         {
@@ -50,15 +153,6 @@ namespace AI4E.Internal
             {
                 enumerator?.Dispose();
             }
-        }
-
-        public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source)
-        {
-            var result = new List<T>(source);
-
-            result.Shuffle();
-
-            return result;
         }
     }
 }

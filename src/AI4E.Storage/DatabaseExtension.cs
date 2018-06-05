@@ -30,6 +30,20 @@ namespace AI4E.Storage
             Assert(success);
         }
 
+        public static ValueTask<TEntry> GetOneAsync<TEntry>(this IDatabase database, CancellationToken cancellation = default)
+            where TEntry : class
+        {
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
+
+            if (database is IFilterableDatabase filterableDatabase)
+            {
+                return filterableDatabase.GetOneAsync<TEntry>(p => true, cancellation);
+            }
+
+            return new ValueTask<TEntry>(database.GetAsync<TEntry>(cancellation).FirstOrDefault(cancellation));
+        }
+
         public static ValueTask<bool> CompareExchangeAsync<TEntry, TVersion>(this IDatabase database,
                                                                              TEntry entry,
                                                                              TEntry comparand,
