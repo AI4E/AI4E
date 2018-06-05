@@ -206,15 +206,19 @@ namespace AI4E.Storage.MongoDB
 
                     if (collection != null)
                     {
-                        var collectionKey = GetCollectionKey<TEntry>();
-                        var collectionName = await _database.GetCollectionNameAsync(collectionKey, cancellation);
-
-                        // Volatile write op.
-                        _collection = collection = _database.GetCollection<TEntry>(collectionName);
+                        return collection;
                     }
-                }
 
-                return collection;
+
+                    var collectionKey = GetCollectionKey<TEntry>();
+                    var collectionName = await _database.GetCollectionNameAsync(collectionKey, cancellation);
+
+                    // Volatile write op.
+                    _collection = collection = _database.GetCollection<TEntry>(collectionName);
+
+                    Assert(collection != null);
+                    return collection;
+                }
             }
         }
 

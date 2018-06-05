@@ -40,15 +40,21 @@ namespace AI4E.Storage.Transactions
 
         public async ValueTask<ITransactionState> GetLatestTransactionAsync(long minId = default, CancellationToken cancellation = default)
         {
+            // TODO: Check whether the database is queryable.
+
             StoredTransaction transaction;
 
             if (minId == default)
             {
-                transaction = await _database.GetOneAsync<StoredTransaction>(cancellation);
+                transaction = await _database.GetAsync<StoredTransaction>(cancellation)
+                                             .OrderByDescending(p => p.Id)
+                                             .FirstOrDefault();
             }
             else
             {
-                transaction = await _database.GetOneAsync<StoredTransaction>(p => p.Id >= minId, cancellation);
+                transaction = await _database.GetAsync<StoredTransaction>(p => p.Id >= minId, cancellation)
+                                             .OrderByDescending(p => p.Id)
+                                             .FirstOrDefault();
             }
 
             return transaction;
