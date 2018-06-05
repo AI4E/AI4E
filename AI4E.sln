@@ -54,7 +54,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Module", "samples\messaging
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Shared", "samples\messaging\Shared\Shared.csproj", "{A3AF4FDA-8FE9-4BED-ABF2-B82EE83662C9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Common", "src\AI4E.Common\AI4E.Common.csproj", "{10878116-F823-4091-91E2-44BE9AD4DD16}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Common", "src\AI4E.Common\AI4E.Common.csproj", "{10878116-F823-4091-91E2-44BE9AD4DD16}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Storage.Transactions.StressTest", "test\AI4E.Storage.Transactions.StressTest\AI4E.Storage.Transactions.StressTest.csproj", "{7F92B95B-AA54-4473-B4F0-61C9ABDB6742}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -134,6 +136,10 @@ Global
 		{10878116-F823-4091-91E2-44BE9AD4DD16}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{10878116-F823-4091-91E2-44BE9AD4DD16}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{10878116-F823-4091-91E2-44BE9AD4DD16}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F92B95B-AA54-4473-B4F0-61C9ABDB6742}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F92B95B-AA54-4473-B4F0-61C9ABDB6742}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F92B95B-AA54-4473-B4F0-61C9ABDB6742}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F92B95B-AA54-4473-B4F0-61C9ABDB6742}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -158,6 +164,7 @@ Global
 		{2FB4087F-72D8-4871-97F8-0D622D966031} = {4C10141F-F277-48F3-8611-82E0D315C433}
 		{A3AF4FDA-8FE9-4BED-ABF2-B82EE83662C9} = {4C10141F-F277-48F3-8611-82E0D315C433}
 		{10878116-F823-4091-91E2-44BE9AD4DD16} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
+		{7F92B95B-AA54-4473-B4F0-61C9ABDB6742} = {51EBAD3B-B475-4587-A6DE-2CCDDC1952F7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}
