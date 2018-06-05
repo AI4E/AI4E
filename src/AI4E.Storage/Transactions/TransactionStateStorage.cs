@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
@@ -125,7 +126,7 @@ namespace AI4E.Storage.Transactions
 
                 Id = operation.Id;
                 Entry = operation.Entry;
-                EntryType = operation.EntryType;
+                EntryType = operation.EntryType.AssemblyQualifiedName;
                 ExpectedVersion = operation.ExpectedVersion;
                 OperationType = operation.OperationType;
                 State = operation.State;
@@ -134,7 +135,7 @@ namespace AI4E.Storage.Transactions
 
             public object Entry { get; private set; }
 
-            public Type EntryType { get; private set; }
+            public string EntryType { get; private set; }
 
             public int? ExpectedVersion { get; private set; }
 
@@ -145,6 +146,13 @@ namespace AI4E.Storage.Transactions
             public long Id { get; private set; }
 
             public long TransactionId { get; private set; }
+
+            Type IOperation.EntryType => LoadTypeIgnoringVersion(EntryType);
+
+            private static Type LoadTypeIgnoringVersion(string assemblyQualifiedName)
+            {
+                return Type.GetType(assemblyQualifiedName, assemblyName => { assemblyName.Version = null; return Assembly.Load(assemblyName); }, null);
+            }
         }
     }
 }

@@ -4,8 +4,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Storage.InMemory;
+using AI4E.Storage.MongoDB;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
 
 namespace AI4E.Storage.Transactions.StressTest
 {
@@ -175,7 +177,14 @@ namespace AI4E.Storage.Transactions.StressTest
 
         private static void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton<IFilterableDatabase, InMemoryDatabase>();
+            services.AddSingleton<IMongoClient>(provider => new MongoClient("mongodb://localhost:27017"));
+
+            services.AddSingleton(provider =>
+                provider.GetRequiredService<IMongoClient>().GetDatabase("AI4E-Transactions-DB"));
+
+            services.AddSingleton<IFilterableDatabase, MongoDatabase>();
+
+            //services.AddSingleton<IFilterableDatabase, InMemoryDatabase>();
             services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
             services.AddSingleton<IEntryStateTransformerFactory, EntryStateTransformerFactory>();
             services.AddSingleton<IEntryStorageFactory, EntryStorageFactory>();

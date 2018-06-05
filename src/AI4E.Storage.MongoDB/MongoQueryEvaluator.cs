@@ -31,16 +31,16 @@ namespace AI4E.Storage.MongoDB
     {
         private readonly Func<Task<IAsyncCursor<T>>> _asyncCursorSource;
 
-        public MongoQueryEvaluator(IAsyncCursorSource<T> asyncCursorSource,
+        public MongoQueryEvaluator(ValueTask<IAsyncCursorSource<T>> asyncCursorSource,
                                    CancellationToken cancellation = default)
         {
             if (asyncCursorSource == null)
                 throw new ArgumentNullException(nameof(asyncCursorSource));
 
-            _asyncCursorSource = () => asyncCursorSource.ToCursorAsync(cancellation);
+            _asyncCursorSource = async () => await (await asyncCursorSource).ToCursorAsync(cancellation);
         }
 
-        public MongoQueryEvaluator(IMongoCollection<T> collection,
+        public MongoQueryEvaluator(ValueTask<IMongoCollection<T>> collection,
                                    Expression<Func<T, bool>> predicate,
                                    CancellationToken cancellation = default)
         {
@@ -50,7 +50,7 @@ namespace AI4E.Storage.MongoDB
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
 
-            _asyncCursorSource = () => collection.FindAsync<T>(predicate, cancellationToken: cancellation);
+            _asyncCursorSource = async () => await (await collection).FindAsync<T>(predicate, cancellationToken: cancellation);
         }
 
         public IAsyncEnumerator<T> GetEnumerator()

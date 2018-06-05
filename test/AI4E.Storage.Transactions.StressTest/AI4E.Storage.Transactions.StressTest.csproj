@@ -9,11 +9,13 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="2.1.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="2.1.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="2.1.0" />
+    <PackageReference Include="MongoDB.Driver" Version="2.5.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.MongoDB\AI4E.Storage.MongoDB.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
   </ItemGroup>
 

@@ -35,9 +35,12 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
+using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 using static AI4E.Storage.MongoDB.MongoWriteHelper;
 
@@ -45,8 +48,21 @@ namespace AI4E.Storage.MongoDB
 {
     public sealed class MongoDatabase : IQueryableDatabase
     {
+        private const string _collectionLookupEntryResourceKey = "collection-lookup-entry";
+        private const string _counterEntryCollectionName = "data-store-counter";
+        private const string _collectionLookupCollectionName = "data-store-collection-lookup";
+
+        #region Fields
+
         private readonly ConcurrentDictionary<Type, object> _collections = new ConcurrentDictionary<Type, object>();
         private readonly IMongoDatabase _database;
+
+        private readonly IMongoCollection<CounterEntry> _counterCollection;
+        private readonly IMongoCollection<CollectionLookupEntry> _collectionLookupCollection;
+
+        #endregion
+
+        #region C'tor
 
         public MongoDatabase(IMongoDatabase database)
         {
@@ -54,24 +70,157 @@ namespace AI4E.Storage.MongoDB
                 throw new ArgumentNullException(nameof(database));
 
             _database = database;
+
+            _counterCollection = _database.GetCollection<CounterEntry>(_counterEntryCollectionName);
+            _collectionLookupCollection = _database.GetCollection<CollectionLookupEntry>(_collectionLookupCollectionName);
         }
 
-        private IMongoCollection<TEntry> GetCollection<TEntry>()
+        #endregion
+
+        #region Resource id
+
+        public async Task<int> GetUniqueResourceIdAsync(string resourceKey, CancellationToken cancellation)
         {
-            return (IMongoCollection<TEntry>)_collections.GetOrAdd(typeof(TEntry), _ => CreateCollection<TEntry>());
+            if (resourceKey == null)
+                throw new ArgumentNullException(nameof(resourceKey));
+
+            var counterEntry = await _counterCollection.FindOneAndUpdateAsync<CounterEntry, CounterEntry>(
+                                p => p.ResourceKey == resourceKey,
+                                Builders<CounterEntry>.Update.Inc(p => p.Counter, 1),
+                                new FindOneAndUpdateOptions<CounterEntry, CounterEntry>
+                                {
+                                    ReturnDocument = ReturnDocument.After,
+                                    IsUpsert = true
+                                }, cancellation);
+
+            return counterEntry.Counter;
         }
 
-        private IMongoCollection<TEntry> CreateCollection<TEntry>()
+        private sealed class CounterEntry
         {
-            // TODO: It is possible that this is called multiple times.
+            [BsonId]
+            public string ResourceKey { get; set; }
+
+            public int Counter { get; set; }
+        }
+
+        #endregion
+
+        #region Collection lookup
+
+        private ValueTask<IMongoCollection<TEntry>> GetCollectionAsync<TEntry>(CancellationToken cancellation)
+        {
+            var lookup = (CollectionLookup<TEntry>)_collections.GetOrAdd(typeof(TEntry), _ => BuildCollectionLookup<TEntry>());
+
+            Assert(lookup != null);
+
+            return lookup.GetCollectionAsync(cancellation);
+        }
+
+        private CollectionLookup<TEntry> BuildCollectionLookup<TEntry>()
+        {
+            return new CollectionLookup<TEntry>(this);
+        }
+
+        private static string GetCollectionKey<TEntry>()
+        {
+            return typeof(TEntry).ToString();
+        }
+
+        private async Task<string> GetCollectionNameAsync(string collectionKey, CancellationToken cancellation)
+        {
+            var lookupEntry = await _collectionLookupCollection.AsQueryable()
+                                                               .FirstOrDefaultAsync(p => p.CollectionKey == collectionKey);
+
+            if (lookupEntry != null)
+            {
+                return lookupEntry.CollectionName;
+            }
+
+            // There is no collection entry. We have to allocate one. Get a unique key.
+            var collectionId = await GetUniqueResourceIdAsync(_collectionLookupEntryResourceKey, cancellation);
+
+            try
+            {
+                lookupEntry = new CollectionLookupEntry { CollectionKey = collectionKey, CollectionName = "data-store#" + collectionId };
+                await TryWriteOperation(() => _collectionLookupCollection.InsertOneAsync(lookupEntry, default, cancellation));
+            }
+            catch (ConcurrencyException)
+            {
+                lookupEntry = await _collectionLookupCollection.AsQueryable()
+                                                               .FirstOrDefaultAsync(p => p.CollectionKey == collectionKey);
+            }
+
+            Assert(lookupEntry != null);
+
+            return lookupEntry.CollectionName;
+        }
+
+        private IMongoCollection<TEntry> GetCollection<TEntry>(string collectionName)
+        {
             BsonClassMap.RegisterClassMap<TEntry>(map =>
             {
                 map.AutoMap();
                 map.MapIdMember(DataPropertyHelper.GetIdMember<TEntry>());
             });
 
-            return _database.GetCollection<TEntry>("data-store." + typeof(TEntry).FullName);
+            return _database.GetCollection<TEntry>(collectionName);
         }
+
+        private sealed class CollectionLookupEntry
+        {
+            [BsonId]
+            public string CollectionKey { get; set; }
+
+            public string CollectionName { get; set; }
+        }
+
+        private sealed class CollectionLookup<TEntry>
+        {
+            private readonly MongoDatabase _database;
+
+            private volatile IMongoCollection<TEntry> _collection = null;
+            private readonly AsyncLock _lock = new AsyncLock();
+
+            public CollectionLookup(MongoDatabase database)
+            {
+                Assert(database != null);
+
+                _database = database;
+            }
+
+            public async ValueTask<IMongoCollection<TEntry>> GetCollectionAsync(CancellationToken cancellation)
+            {
+                // Volatile read op.
+                var collection = _collection;
+
+                if (collection != null)
+                {
+                    return collection;
+                }
+
+                using (await _lock.LockAsync(cancellation))
+                {
+                    // Volatile read op.
+                    collection = _collection;
+
+                    if (collection != null)
+                    {
+                        var collectionKey = GetCollectionKey<TEntry>();
+                        var collectionName = await _database.GetCollectionNameAsync(collectionKey, cancellation);
+
+                        // Volatile write op.
+                        _collection = collection = _database.GetCollection<TEntry>(collectionName);
+                    }
+                }
+
+                return collection;
+            }
+        }
+
+        #endregion
+
+        #region BuildPredicate
 
         private static Expression<Func<TEntry, bool>> BuildPredicate<TEntry>(TEntry comparand,
                                                                              Expression<Func<TEntry, bool>> predicate)
@@ -104,6 +253,8 @@ namespace AI4E.Storage.MongoDB
             return Expression.Lambda<Func<TEntry, bool>>(body, parameter);
         }
 
+        #endregion
+
         #region IDatabase
 
         public async ValueTask<bool> AddAsync<TEntry>(TEntry entry, CancellationToken cancellation = default) where TEntry : class
@@ -111,7 +262,7 @@ namespace AI4E.Storage.MongoDB
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
 
-            var collection = GetCollection<TEntry>();
+            var collection = await GetCollectionAsync<TEntry>(cancellation);
 
             try
             {
@@ -150,7 +301,7 @@ namespace AI4E.Storage.MongoDB
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
 
-            var collection = GetCollection<TEntry>();
+            var collection = await GetCollectionAsync<TEntry>(cancellation);
             var deleteResult = await TryWriteOperation(() => collection.DeleteOneAsync(BuildPredicate(entry, predicate), cancellationToken: cancellation));
 
             if (!deleteResult.IsAcknowledged)
@@ -166,8 +317,7 @@ namespace AI4E.Storage.MongoDB
         public async Task Clear<TEntry>(CancellationToken cancellation = default)
              where TEntry : class
         {
-            var collection = GetCollection<TEntry>();
-
+            var collection = await GetCollectionAsync<TEntry>(cancellation);
             var deleteManyResult = await TryWriteOperation(() => collection.DeleteManyAsync(p => true, cancellation));
 
             if (!deleteManyResult.IsAcknowledged)
@@ -184,7 +334,7 @@ namespace AI4E.Storage.MongoDB
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
 
-            var collection = GetCollection<TEntry>();
+            var collection = await GetCollectionAsync<TEntry>(cancellation);
             var updateResult = await TryWriteOperation(() => collection.ReplaceOneAsync(BuildPredicate(entry, predicate),
                                                                                         entry,
                                                                                         options: new UpdateOptions { IsUpsert = false },
@@ -274,7 +424,7 @@ namespace AI4E.Storage.MongoDB
         public IAsyncEnumerable<TEntry> GetAsync<TEntry>(CancellationToken cancellation = default)
             where TEntry : class
         {
-            var collection = GetCollection<TEntry>();
+            var collection = GetCollectionAsync<TEntry>(cancellation);
             return new MongoQueryEvaluator<TEntry>(collection, p => true, cancellation);
         }
 
@@ -286,7 +436,7 @@ namespace AI4E.Storage.MongoDB
                                                          CancellationToken cancellation = default)
            where TEntry : class
         {
-            var collection = GetCollection<TEntry>();
+            var collection = GetCollectionAsync<TEntry>(cancellation);
             return new MongoQueryEvaluator<TEntry>(collection, predicate, cancellation);
         }
 
@@ -294,7 +444,7 @@ namespace AI4E.Storage.MongoDB
                                                               CancellationToken cancellation = default)
             where TEntry : class
         {
-            var collection = GetCollection<TEntry>();
+            var collection = await GetCollectionAsync<TEntry>(cancellation);
 
             using (var cursor = await collection.FindAsync(predicate, new FindOptions<TEntry, TEntry> { Limit = 1 }, cancellation))
             {
@@ -307,11 +457,17 @@ namespace AI4E.Storage.MongoDB
         #region IQueryableDatabase
 
         public IAsyncEnumerable<TResult> QueryAsync<TEntry, TResult>(Func<IQueryable<TEntry>, IQueryable<TResult>> queryShaper,
-                                                                                CancellationToken cancellation = default)
+                                                                     CancellationToken cancellation = default)
             where TEntry : class
         {
-            var cursorSource = ((IMongoQueryable<TResult>)queryShaper(GetCollection<TEntry>().AsQueryable()));
-            var queryEvaluator = new MongoQueryEvaluator<TResult>(cursorSource, cancellation);
+            async ValueTask<IAsyncCursorSource<TResult>> GetCursorSourceAsync()
+            {
+                var collection = await GetCollectionAsync<TEntry>(cancellation);
+
+                return ((IMongoQueryable<TResult>)queryShaper(collection.AsQueryable()));
+            }
+
+            var queryEvaluator = new MongoQueryEvaluator<TResult>(GetCursorSourceAsync(), cancellation);
 
             return queryEvaluator;
         }
