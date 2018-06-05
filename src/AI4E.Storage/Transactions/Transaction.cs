@@ -104,15 +104,22 @@ namespace AI4E.Storage.Transactions
             if (Exists)
                 return;
 
-            ITransactionState entry;
-            var id = 0L;
+            //ITransactionState entry;
 
-            do
-            {
-                id = (await _transactionStorage.GetLatestTransactionAsync(id, cancellation))?.Id + 1 ?? 1;
-                entry = _transactionStateTransformer.Create(id);
-            }
-            while (!await _transactionStorage.CompareExchangeAsync(entry, null, cancellation));
+            var id = await _transactionStorage.GetUniqueTransactionIdAsync(cancellation);
+            var entry = _transactionStateTransformer.Create(id);
+            var result = await _transactionStorage.CompareExchangeAsync(entry, null, cancellation);
+
+            Assert(result);
+
+            //var id = 0L;
+
+            //do
+            //{
+            //    id = (await _transactionStorage.GetLatestTransactionAsync(id, cancellation))?.Id + 1 ?? 1;
+            //    entry = _transactionStateTransformer.Create(id);
+            //}
+            //while (!await _transactionStorage.CompareExchangeAsync(entry, null, cancellation));
 
             lock (_idLock)
             {
@@ -312,7 +319,7 @@ namespace AI4E.Storage.Transactions
 
             if (entry != null)
             {
-                return new ValueTask<ImmutableArray<IOperation>>(((ITransactionState)entry).Operations);
+                return new ValueTask<ImmutableArray<IOperation>>(entry.Operations);
             }
 
             return new ValueTask<ImmutableArray<IOperation>>(GetPropertyAsync(p => p.Operations, ImmutableArray<IOperation>.Empty, cancellation));
@@ -457,16 +464,16 @@ namespace AI4E.Storage.Transactions
                 return defaultValue;
             }
 
-            var result = selector((ITransactionState)entry);
+            var result = selector(entry);
 
             Assert(entry != null);
 
             lock (_entryLock)
             {
-                if (_entryVersion < ((ITransactionState)entry).Version)
+                if (_entryVersion < entry.Version)
                 {
                     _entry = entry;
-                    _entryVersion = ((ITransactionState)entry).Version;
+                    _entryVersion = entry.Version;
                 }
             }
 
@@ -528,9 +535,9 @@ namespace AI4E.Storage.Transactions
                 }
             }
 
-            while (condition((ITransactionState)entry))
+            while (condition(entry))
             {
-                var desired = update((ITransactionState)entry);
+                var desired = update(entry);
 
                 if (desired == entry)
                 {
@@ -578,16 +585,16 @@ namespace AI4E.Storage.Transactions
             Assert(update != null);
             Assert(condition != null);
 
-            long? id;
+            long id;
 
             lock (_idLock)
             {
-                id = _id;
-            }
+                if (_id == null)
+                {
+                    return default;
+                }
 
-            if (id == null)
-            {
-                return default;
+                id = (long)_id;
             }
 
             ITransactionState entry;
@@ -600,7 +607,7 @@ namespace AI4E.Storage.Transactions
 
             if (entry == null)
             {
-                entry = await _transactionStorage.GetTransactionAsync((long)id, cancellation);
+                entry = await _transactionStorage.GetTransactionAsync(id, cancellation);
 
                 if (entry == null)
                 {
@@ -611,9 +618,9 @@ namespace AI4E.Storage.Transactions
             T result;
             T ret = default;
 
-            while (condition((ITransactionState)entry))
+            while (condition(entry))
             {
-                (desired, result) = update((ITransactionState)entry);
+                (desired, result) = update(entry);
 
                 if (desired == entry)
                 {
@@ -628,7 +635,7 @@ namespace AI4E.Storage.Transactions
                     break;
                 }
 
-                entry = await _transactionStorage.GetTransactionAsync((long)id, cancellation);
+                entry = await _transactionStorage.GetTransactionAsync(id, cancellation);
 
                 if (entry == null)
                 {
@@ -640,10 +647,10 @@ namespace AI4E.Storage.Transactions
 
             lock (_entryLock)
             {
-                if (_entryVersion < ((ITransactionState)entry).Version)
+                if (_entryVersion < entry.Version)
                 {
                     _entry = entry;
-                    _entryVersion = ((ITransactionState)entry).Version;
+                    _entryVersion = entry.Version;
                 }
             }
 

@@ -41,7 +41,7 @@ namespace AI4E.Storage.InMemory
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
-            return GetTypedStore<TData>().StoreAsync(data, p => p == null, cancellation);
+            return GetTypedStore<TData>().AddAsync(data, cancellation);
         }
 
         public ValueTask<bool> UpdateAsync<TData>(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
@@ -185,12 +185,32 @@ namespace AI4E.Storage.InMemory
             return Expression.Lambda<Func<TEntry, bool>>(body, parameter);
         }
 
+        private readonly ConcurrentDictionary<string, Resource> _resources = new ConcurrentDictionary<string, Resource>();
+
+        public sealed class Resource
+        {
+            private long _counter = 0;
+
+            public long NextId()
+            {
+                var result = Interlocked.Increment(ref _counter);
+                Assert(result > 0);
+                return result;
+            }
+        }
+
+        public ValueTask<long> GetUniqueResourceIdAsync(string resourceKey, CancellationToken cancellation)
+        {
+            return new ValueTask<long>(_resources.GetOrAdd(resourceKey, _ => new Resource()).NextId());
+        }
+
         #endregion
     }
 
     internal interface IInMemoryDatabase<TData>
         where TData : class
     {
+        ValueTask<bool> AddAsync(TData data, CancellationToken cancellation = default);
         ValueTask<bool> StoreAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
         ValueTask<bool> RemoveAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
         IAsyncEnumerable<TData> GetAsync(Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
@@ -221,6 +241,9 @@ namespace AI4E.Storage.InMemory
 
             var p = predicate.Compile();
 
+            if (comparand == null)
+                return false;
+
             if (!p(comparand))
             {
                 return false;
@@ -229,6 +252,43 @@ namespace AI4E.Storage.InMemory
             var copy = data.DeepCopyByExpressionTree();
 
             return await ExecuteAsync(data, p, (_1, _2) => _entries[id] = copy, cancellation);
+        }
+
+        public async ValueTask<bool> AddAsync(TData data, CancellationToken cancellation = default)
+        {
+            var id = DataPropertyHelper.GetId<TId, TData>(data);
+
+            TData comparand;
+
+            using (await _lock.ReaderLockAsync(cancellation))
+            {
+                if (!_entries.TryGetValue(id, out comparand))
+                {
+                    comparand = null;
+                }
+            }
+
+            if (comparand != null)
+                return false;
+
+            var copy = data.DeepCopyByExpressionTree();
+
+            using (await _lock.WriterLockAsync(cancellation))
+            {
+                if (!_entries.TryGetValue(id, out comparand))
+                {
+                    comparand = null;
+                }
+
+                if (comparand != null)
+                {
+                    return false;
+                }
+
+                _entries[id] = copy;
+            }
+
+            return true;
         }
 
         public ValueTask<bool> RemoveAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation)

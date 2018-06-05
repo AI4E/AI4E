@@ -358,21 +358,17 @@ namespace AI4E.Storage.Transactions
                             continue;
                         }
 
-                        if (!_identityMap.TryGetValue(id, out var snapshot))
-                        {
-                            if (compiledLambda(snapshot))
-                            {
-                                result.TryAdd(id, snapshot);
-                            }
-                        }
-                        else
+                        // It is not neccessary to check entries of the id map because ProcessEntriesAsync already processed the complete id map.
+                        if (!_identityMap.TryGetValue(id, out _))
                         {
                             var entry = await _entryStateStorage.GetEntryAsync(id, cancellation);
+
+                            Assert(entry != null);
 
                             if (entry.CreatingTransaction < Transaction.Id)
                             {
                                 // TODO: Do we need to reload added transactions?
-                                snapshot = await GetCommittedSnapshotAsync(entry, compiledLambda, cancellation);
+                                var snapshot = await GetCommittedSnapshotAsync(entry, compiledLambda, cancellation);
 
                                 if (snapshot != null)
                                 {

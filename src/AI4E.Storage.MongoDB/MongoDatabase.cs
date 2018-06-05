@@ -35,7 +35,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
@@ -79,7 +78,7 @@ namespace AI4E.Storage.MongoDB
 
         #region Resource id
 
-        public async Task<int> GetUniqueResourceIdAsync(string resourceKey, CancellationToken cancellation)
+        public async ValueTask<long> GetUniqueResourceIdAsync(string resourceKey, CancellationToken cancellation)
         {
             if (resourceKey == null)
                 throw new ArgumentNullException(nameof(resourceKey));
@@ -344,7 +343,7 @@ namespace AI4E.Storage.MongoDB
                                                                                         options: new UpdateOptions { IsUpsert = false },
                                                                                         cancellationToken: cancellation));
 
-            if (!updateResult.IsAcknowledged || updateResult.MatchedCount == 0 && updateResult.UpsertedId == null)
+            if (!updateResult.IsAcknowledged)
             {
                 throw new StorageException();
             }

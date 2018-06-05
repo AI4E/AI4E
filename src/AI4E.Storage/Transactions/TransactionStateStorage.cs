@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
+using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Transactions
@@ -38,26 +39,9 @@ namespace AI4E.Storage.Transactions
             return _database.RemoveAsync(data, cancellation);
         }
 
-        public async ValueTask<ITransactionState> GetLatestTransactionAsync(long minId = default, CancellationToken cancellation = default)
+        public ValueTask<long> GetUniqueTransactionIdAsync(CancellationToken cancellation = default)
         {
-            // TODO: Check whether the database is queryable.
-
-            StoredTransaction transaction;
-
-            if (minId == default)
-            {
-                transaction = await _database.GetAsync<StoredTransaction>(cancellation)
-                                             .OrderByDescending(p => p.Id)
-                                             .FirstOrDefault();
-            }
-            else
-            {
-                transaction = await _database.GetAsync<StoredTransaction>(p => p.Id >= minId, cancellation)
-                                             .OrderByDescending(p => p.Id)
-                                             .FirstOrDefault();
-            }
-
-            return transaction;
+            return _database.GetUniqueResourceIdAsync("transaction", cancellation);
         }
 
         public async ValueTask<ITransactionState> GetTransactionAsync(long id, CancellationToken cancellation = default)
@@ -124,6 +108,15 @@ namespace AI4E.Storage.Transactions
 
         private sealed class StoredOperation : IOperation
         {
+            private readonly JsonSerializerSettings _serializerSettings = new JsonSerializerSettings
+            {
+                TypeNameHandling = TypeNameHandling.Auto,
+                Formatting = Formatting.Indented,
+                PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+                ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
+                ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
+            };
+
             public StoredOperation() { }
 
             public StoredOperation(IOperation operation)
@@ -131,7 +124,12 @@ namespace AI4E.Storage.Transactions
                 Assert(operation != null);
 
                 Id = operation.Id;
-                Entry = operation.Entry;
+
+                var json = JsonConvert.SerializeObject(operation.Entry,
+                                                       operation.EntryType,
+                                                       _serializerSettings);
+
+                Entry = CompressionHelper.Zip(json);
                 EntryType = operation.EntryType.AssemblyQualifiedName;
                 ExpectedVersion = operation.ExpectedVersion;
                 OperationType = operation.OperationType;
@@ -139,7 +137,7 @@ namespace AI4E.Storage.Transactions
                 TransactionId = operation.TransactionId;
             }
 
-            public object Entry { get; private set; }
+            public byte[] Entry { get; private set; }
 
             public string EntryType { get; private set; }
 
@@ -154,6 +152,16 @@ namespace AI4E.Storage.Transactions
             public long TransactionId { get; private set; }
 
             Type IOperation.EntryType => LoadTypeIgnoringVersion(EntryType);
+
+            object IOperation.Entry
+            {
+                get
+                {
+                    var json = CompressionHelper.Unzip(Entry);
+
+                    return JsonConvert.DeserializeObject(json, LoadTypeIgnoringVersion(EntryType), _serializerSettings);
+                }
+            }
 
             private static Type LoadTypeIgnoringVersion(string assemblyQualifiedName)
             {

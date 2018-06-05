@@ -11,6 +11,7 @@ using Nito.AsyncEx;
 
 namespace AI4E.Storage.InMemory
 {
+    [Obsolete]
     public sealed class InMemoryDataStore : IDataStore
     {
         private readonly ConcurrentDictionary<Type, object> _typeStores = new ConcurrentDictionary<Type, object>();

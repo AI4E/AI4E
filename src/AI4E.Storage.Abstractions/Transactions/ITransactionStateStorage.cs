@@ -10,7 +10,7 @@ namespace AI4E.Storage.Transactions
 
         ValueTask<ITransactionState> GetTransactionAsync(long id, CancellationToken cancellation = default);
 
-        ValueTask<ITransactionState> GetLatestTransactionAsync(long minId = default, CancellationToken cancellation = default);
+        ValueTask<long> GetUniqueTransactionIdAsync(CancellationToken cancellation = default);
 
         Task RemoveAsync(ITransactionState transaction, CancellationToken cancellation = default);
 

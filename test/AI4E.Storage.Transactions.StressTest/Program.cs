@@ -184,7 +184,7 @@ namespace AI4E.Storage.Transactions.StressTest
 
             services.AddSingleton<IFilterableDatabase, MongoDatabase>();
 
-            //services.AddSingleton<IFilterableDatabase, InMemoryDatabase>();
+            // services.AddSingleton<IFilterableDatabase, InMemoryDatabase>();
             services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
             services.AddSingleton<IEntryStateTransformerFactory, EntryStateTransformerFactory>();
             services.AddSingleton<IEntryStorageFactory, EntryStorageFactory>();

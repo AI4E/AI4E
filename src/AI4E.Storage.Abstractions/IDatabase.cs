@@ -44,6 +44,8 @@ namespace AI4E.Storage
     /// </summary>
     public interface IDatabase
     {
+        ValueTask<long> GetUniqueResourceIdAsync(string resourceKey, CancellationToken cancellation);
+
         /// <summary>
         /// Asynchronously tries to add the specified entry into the database.
         /// </summary>
