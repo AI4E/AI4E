@@ -21,14 +21,63 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Transactions;
 using AI4E.Serialization;
+using AI4E.Storage.Transactions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage
 {
     public static class StorageBuilderExtension
     {
+        public static IStorageBuilder UseDatabase<TDatabase>(this IStorageBuilder builder)
+            where TDatabase : class, IDatabase
+        {
+            if (builder == null)
+                throw new ArgumentNullException(nameof(builder));
+
+            var services = builder.Services;
+
+            services.AddSingleton<IDatabase, TDatabase>();
+            services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IFilterableDatabase);
+            services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IQueryableDatabase);
+
+            services.UseTransactionSubsystem();
+
+            return builder;
+        }
+
+        public static IStorageBuilder UseDatabase<TDatabase>(this IStorageBuilder builder, Func<IServiceProvider, TDatabase> factory)
+            where TDatabase : class, IDatabase
+        {
+            if (builder == null)
+                throw new ArgumentNullException(nameof(builder));
+
+            if (factory == null)
+                throw new ArgumentNullException(nameof(factory));
+
+            var services = builder.Services;
+
+            services.AddSingleton<IDatabase, TDatabase>(factory);
+            services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IFilterableDatabase);
+            services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IQueryableDatabase);
+
+            services.UseTransactionSubsystem();
+
+            return builder;
+        }
+
+        private static void UseTransactionSubsystem(this IServiceCollection services)
+        {
+            services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+            services.AddSingleton<IEntryStateTransformerFactory, EntryStateTransformerFactory>();
+            services.AddSingleton<IEntryStorageFactory, EntryStorageFactory>();
+            services.AddSingleton<ITransactionStateTransformer, TransactionStateTransformer>();
+            services.AddSingleton<ITransactionStateStorage, TransactionStateStorage>();
+            services.AddSingleton<ITransactionManager, TransactionManager>();
+            services.AddTransient(provider => provider.GetRequiredService<ITransactionManager>().CreateStore());
+            services.AddTransient(provider => provider.GetRequiredService<ITransactionManager>().CreateStore() as IQueryableTransactionalDatabase);
+        }
+
         public static IStorageBuilder Configure(this IStorageBuilder builder, Action<StorageOptions> configuration)
         {
             if (builder == null)
@@ -68,26 +117,6 @@ namespace AI4E.Storage
                 throw new ArgumentNullException(nameof(hooks));
 
             return ExtendStorage(builder, hooks);
-        }
-
-        public static IStorageBuilder WithPersistence<TBucketId, TStreamId>(this IStorageBuilder builder, IStreamPersistence<TBucketId, TStreamId> persistence)
-            where TBucketId : IEquatable<TBucketId>
-            where TStreamId : IEquatable<TStreamId>
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
-            if (persistence == null)
-                throw new ArgumentNullException(nameof(persistence));
-
-            builder.Configure(options =>
-            {
-                options.TransactionScopeOption = TransactionScopeOption.Suppress;
-            });
-
-            builder.Services.AddSingleton(persistence);
-
-            return builder;
         }
 
         public static IStorageBuilder WithSerialization(this IStorageBuilder builder, ISerializer serializer)
@@ -167,11 +196,7 @@ namespace AI4E.Storage
             return builder;
         }
 
-        //public static IStorageBuilder WithProjection(this IStorageBuilder builder)
-        //{
-
-        //}
-
+        // TODO: This is a duplicate
         private static T GetService<T>(this IServiceCollection services)
         {
             return (T)services

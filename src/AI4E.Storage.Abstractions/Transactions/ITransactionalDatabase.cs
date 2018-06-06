@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,5 +22,12 @@ namespace AI4E.Storage.Transactions
 
         Task<bool> TryCommitAsync(CancellationToken cancellation = default);
         Task RollbackAsync(CancellationToken cancellation = default);
+    }
+
+    public interface IQueryableTransactionalDatabase : ITransactionalDatabase
+    {
+        IAsyncEnumerable<TResult> QueryAsync<TData, TResult>(Func<IQueryable<TData>, IQueryable<TResult>> queryShaper,
+                                                             CancellationToken cancellation = default)
+            where TData : class;
     }
 }

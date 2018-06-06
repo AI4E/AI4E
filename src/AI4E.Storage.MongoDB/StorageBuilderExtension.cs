@@ -28,7 +28,7 @@ namespace AI4E.Storage.MongoDB
 {
     public static class StorageBuilderExtension
     {
-        public static IStorageBuilder UsingMongoDBPersistence(this IStorageBuilder builder)
+        public static IStorageBuilder UseMongoDB(this IStorageBuilder builder)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
@@ -41,16 +41,14 @@ namespace AI4E.Storage.MongoDB
             builder.Services.AddSingleton(provider =>
                 provider.GetRequiredService<IMongoClient>().GetDatabase((provider.GetService<IOptions<MongoOptions>>()?.Value ?? new MongoOptions()).Database));
 
-            builder.Services.AddSingleton<IQueryableDatabase, MongoDatabase>();
-            builder.Services.AddSingleton<IFilterableDatabase>(p => p.GetRequiredService<IQueryableDatabase>());
-            builder.Services.AddSingleton<IDatabase>(p => p.GetRequiredService<IQueryableDatabase>());
+            builder.UseDatabase<MongoDatabase>();
 
             builder.Services.AddSingleton(typeof(IProjectionDependencyStore<,>), typeof(MongoProjectionDependencyStore<,>));
 
             return builder;
         }
 
-        public static IStorageBuilder UsingMongoDBPersistence(this IStorageBuilder builder, Action<MongoOptions> configuration)
+        public static IStorageBuilder UseMongoDB(this IStorageBuilder builder, Action<MongoOptions> configuration)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
@@ -58,7 +56,7 @@ namespace AI4E.Storage.MongoDB
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
-            builder.UsingMongoDBPersistence();
+            builder.UseMongoDB();
 
             builder.Services.Configure(configuration);
 
