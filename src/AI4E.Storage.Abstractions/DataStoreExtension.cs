@@ -24,22 +24,119 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage
 {
     public static class DataStoreExtension
     {
-        private static readonly MethodInfo _storeMethodDefinition;
-        private static readonly MethodInfo _removeMethodDefinition;
-        private static readonly ConcurrentDictionary<Type, MethodInfo> _storeMethods = new ConcurrentDictionary<Type, MethodInfo>();
-        private static readonly ConcurrentDictionary<Type, MethodInfo> _removeMethods = new ConcurrentDictionary<Type, MethodInfo>();
+        private static readonly ConditionalWeakTable<IDataStore, DataStoreExt> _extensions
+            = new ConditionalWeakTable<IDataStore, DataStoreExt>();
 
-        static DataStoreExtension()
+        public sealed class DataStoreExt
         {
-            _storeMethodDefinition = typeof(IDataStore).GetMethods().Single(p => p.Name == nameof(IDataStore.StoreAsync));
-            _removeMethodDefinition = typeof(IDataStore).GetMethods().Single(p => p.Name == nameof(IDataStore.RemoveAsync));
+            private static readonly MethodInfo _storeMethodDefinition;
+            private static readonly MethodInfo _removeMethodDefinition;
+
+            private readonly ConcurrentDictionary<Type, Func<object, CancellationToken, Task>> _storeMethods;
+            private readonly ConcurrentDictionary<Type, Func<object, CancellationToken, Task>> _removeMethods;
+            private volatile IDataStore _dataStore;
+
+            static DataStoreExt()
+            {
+                _storeMethodDefinition = typeof(IDataStore).GetMethods().Single(p => p.Name == nameof(IDataStore.StoreAsync));
+                _removeMethodDefinition = typeof(IDataStore).GetMethods().Single(p => p.Name == nameof(IDataStore.RemoveAsync));
+            }
+
+            public DataStoreExt()
+            {
+                _storeMethods = new ConcurrentDictionary<Type, Func<object, CancellationToken, Task>>();
+                _removeMethods = new ConcurrentDictionary<Type, Func<object, CancellationToken, Task>>();
+            }
+
+            public void Initialize(IDataStore dataStore)
+            {
+                // Volatile read op
+                if (_dataStore != null)
+                {
+                    return;
+                }
+
+                // Write _dataStore only if there is no data store present currently.
+                var current = Interlocked.CompareExchange(ref _dataStore, dataStore, null);
+
+                // If there was a data store present, it must be the same than the one, we wanted to write.
+                Assert(current == null || ReferenceEquals(current, dataStore));
+            }
+
+            public Task StoreAsync(object data, CancellationToken cancellation)
+            {
+                Assert(data != null);
+
+                var function = _storeMethods.GetOrAdd(data.GetType(), BuildStoreMethod);
+
+                Assert(function != null);
+
+                return function(data, cancellation);
+            }
+
+            public Task RemoveAsync(object data, CancellationToken cancellation)
+            {
+                Assert(data != null);
+
+                var function = _removeMethods.GetOrAdd(data.GetType(), BuildStoreMethod);
+
+                Assert(function != null);
+
+                return function(data, cancellation);
+            }
+
+            private Func<object, CancellationToken, Task> BuildStoreMethod(Type type)
+            {
+                Assert(type != null);
+                var methodInfo = _storeMethodDefinition.MakeGenericMethod(type);
+                return BuildMethod(type, methodInfo);
+            }
+
+            private Func<object, CancellationToken, Task> BuildRemoveMethod(Type type)
+            {
+                Assert(type != null);
+                var methodInfo = _removeMethodDefinition.MakeGenericMethod(type);
+                return BuildMethod(type, methodInfo);
+            }
+
+            private Func<object, CancellationToken, Task> BuildMethod(Type type, MethodInfo method)
+            {
+                Assert(type != null);
+                Assert(method != null);
+
+                // Volatile read op
+                var dataStore = _dataStore;
+
+                var instance = Expression.Constant(dataStore, typeof(IDataStore));
+
+                var dataParam = Expression.Parameter(typeof(object), "data");
+                var cancellationParam = Expression.Parameter(typeof(CancellationToken), "cancellation");
+                var data = Expression.Convert(dataParam, type);
+
+                var call = Expression.Call(instance, method, data, cancellationParam);
+                return Expression.Lambda<Func<object, CancellationToken, Task>>(call, dataParam, cancellationParam).Compile();
+            }
+        }
+
+        private static DataStoreExt GetExtension(IDataStore dataStore)
+        {
+            Assert(dataStore != null);
+
+            var result = _extensions.GetOrCreateValue(dataStore);
+            Assert(result != null);
+
+            result.Initialize(dataStore);
+
+            return result;
         }
 
         /// <summary>
@@ -58,7 +155,7 @@ namespace AI4E.Storage
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
-            return (Task)_storeMethods.GetOrAdd(data.GetType(), type => _storeMethodDefinition.MakeGenericMethod(type)).Invoke(dataStore, new object[] { data, cancellation });
+            return GetExtension(dataStore).StoreAsync(data, cancellation);
         }
 
         /// <summary>
@@ -77,10 +174,10 @@ namespace AI4E.Storage
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
-            return (Task)_removeMethods.GetOrAdd(data.GetType(), type => _removeMethodDefinition.MakeGenericMethod(type)).Invoke(dataStore, new object[] { data, cancellation });
+            return GetExtension(dataStore).RemoveAsync(data, cancellation);
         }
 
-        public static Task<IEnumerable<TData>> QueryAsync<TData>(this IDataStore dataStore, Func<IQueryable<TData>, IQueryable<TData>> queryShaper, CancellationToken cancellation = default)
+        public static IAsyncEnumerable<TData> QueryAsync<TData>(this IQueryableDataStore dataStore, Func<IQueryable<TData>, IQueryable<TData>> queryShaper, CancellationToken cancellation = default)
             where TData : class
         {
             if (dataStore == null)
@@ -92,46 +189,24 @@ namespace AI4E.Storage
             return dataStore.QueryAsync(queryShaper, cancellation);
         }
 
-        public static Task<IEnumerable<TData>> FindAsync<TData>(this IDataStore dataStore, Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
+        [Obsolete("Use IDataStore.AllAsync()")]
+        public static IAsyncEnumerable<TData> FindAsync<TData>(this IDataStore dataStore, CancellationToken cancellation = default)
              where TData : class
         {
             if (dataStore == null)
                 throw new ArgumentNullException(nameof(dataStore));
 
-            if (predicate == null)
-                throw new ArgumentNullException(nameof(predicate));
-
-            return dataStore.QueryAsync<TData, TData>(queryable => queryable.Where(predicate), cancellation);
+            return dataStore.AllAsync<TData>(cancellation);
         }
 
-        public static async Task<TData> FindOneAsync<TData>(this IDataStore dataStore, Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
-             where TData : class
+        [Obsolete("Use IDataStore.OneAsync()")]
+        public static ValueTask<TData> FindOneAsync<TData>(this IDataStore dataStore, CancellationToken cancellation = default)
+            where TData : class
         {
             if (dataStore == null)
                 throw new ArgumentNullException(nameof(dataStore));
 
-            if (predicate == null)
-                throw new ArgumentNullException(nameof(predicate));
-
-            return (await dataStore.QueryAsync<TData, TData>(queryable => queryable.Where(predicate).Take(1), cancellation)).FirstOrDefault();
-        }
-
-        public static Task<IEnumerable<TData>> FindAsync<TData>(this IDataStore dataStore, CancellationToken cancellation = default)
-             where TData : class
-        {
-            if (dataStore == null)
-                throw new ArgumentNullException(nameof(dataStore));
-
-            return dataStore.QueryAsync<TData, TData>(queryable => queryable, cancellation);
-        }
-
-        public static async Task<TData> FindOneAsync<TData>(this IDataStore dataStore, CancellationToken cancellation = default)
- where TData : class
-        {
-            if (dataStore == null)
-                throw new ArgumentNullException(nameof(dataStore));
-
-            return (await dataStore.QueryAsync<TData, TData>(queryable => queryable.Take(1), cancellation)).FirstOrDefault();
+            return dataStore.OneAsync<TData>(cancellation);
         }
     }
 }

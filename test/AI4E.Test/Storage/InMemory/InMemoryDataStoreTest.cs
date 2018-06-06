@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Linq;
 using System.Threading.Tasks;
+using AI4E.Storage;
 using AI4E.Storage.InMemory;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -12,16 +12,16 @@ namespace AI4E.Test.Storage.InMemory
         [TestMethod]
         public async Task BasicTest()
         {
-            var store = new InMemoryDataStore();
+            var store = new InMemoryDatabase();
 
             var model = new DataModel { Id = Guid.NewGuid(), X = 1, Y = 2 };
 
-            await store.StoreAsync(model);
+            await store.AddAsync(model);
 
             Assert.AreEqual(1, model.X);
             Assert.AreEqual(2, model.Y);
 
-            var model2 = (await store.QueryAsync<DataModel, DataModel>(q => q)).FirstOrDefault();
+            var model2 = await store.GetOneAsync<DataModel>();
 
             Assert.IsNotNull(model2);
             Assert.AreEqual(1, model.X);
@@ -33,7 +33,7 @@ namespace AI4E.Test.Storage.InMemory
 
             Assert.AreEqual(1, model.X);
 
-            await store.StoreAsync(model2);
+            await store.UpdateAsync(model2);
 
             Assert.AreEqual(1, model.X);
             Assert.AreEqual(2, model.Y);
@@ -44,21 +44,21 @@ namespace AI4E.Test.Storage.InMemory
         [TestMethod]
         public async Task NoIdPropertyTest()
         {
-            var store = new InMemoryDataStore();
+            var store = new InMemoryDatabase();
 
             var model = new InvalidDataModel { };
 
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => store.StoreAsync(model));
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => store.AddAsync(model).AsTask());
         }
 
         [TestMethod]
         public async Task WronglyTypedIdPropertyTest()
         {
-            var store = new InMemoryDataStore();
+            var store = new InMemoryDatabase();
 
             var model = new InvalidDataModel2 { };
 
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => store.StoreAsync(model));
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => store.AddAsync(model).AsTask());
         }
     }
 

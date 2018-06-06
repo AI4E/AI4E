@@ -29,6 +29,7 @@ using static AI4E.Storage.MongoDB.MongoWriteHelper;
 
 namespace AI4E.Storage.MongoDB
 {
+    [Obsolete]
     public sealed class MongoProjectionDependencyStore<TBucketId, TStreamId> : IProjectionDependencyStore<TBucketId, TStreamId>
        where TBucketId : IEquatable<TBucketId>
        where TStreamId : IEquatable<TStreamId>
@@ -99,6 +100,7 @@ namespace AI4E.Storage.MongoDB
         }
     }
 
+    [Obsolete]
     public sealed class MongoProjectionDependency<TBucketId, TStreamId> : IProjectionDependency<TBucketId, TStreamId>
         where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>
@@ -107,6 +109,7 @@ namespace AI4E.Storage.MongoDB
         public TBucketId BucketId { get; set; }
     }
 
+    [Obsolete]
     public sealed class MongoProjectionDependencyMap<TBucketId, TStreamId>
         where TBucketId : IEquatable<TBucketId>
         where TStreamId : IEquatable<TStreamId>
