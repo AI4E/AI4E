@@ -6,15 +6,19 @@
 
   <ItemGroup>
     <Compile Include="..\Common\AsyncEnumerableExtensions.cs" Link="Internal\AsyncEnumerableExtensions.cs" />
+    <Compile Include="..\Common\ConcurrentDictionaryExtension.cs" Link="Internal\ConcurrentDictionaryExtension.cs" />
+    <Compile Include="..\Common\CustomAttributeProviderExtension.cs" Link="Internal\CustomAttributeProviderExtension.cs" />
     <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
     <Compile Include="..\Common\DebugEx.cs" Link="Internal\DebugEx.cs" />
-    <Compile Include="..\Common\DictionaryExtensions.cs" Link="Internal\DictionaryExtensions.cs" />
+    <Compile Include="..\Common\DictionaryExtension.cs" Link="Internal\DictionaryExtension.cs" />
+    <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
     <Compile Include="..\Common\IdEqualityComparer.cs" Link="Internal\IdEqualityComparer.cs" />
     <Compile Include="..\Common\IdGenerator.cs" Link="Internal\IdGenerator.cs" />
     <Compile Include="..\Common\ImmutableArrayExtension.cs" Link="Internal\ImmutableArrayExtension.cs" />
     <Compile Include="..\Common\ObjectPool.cs" Link="Internal\ObjectPool.cs" />
     <Compile Include="..\Common\ParameterExpressionReplacer.cs" Link="Internal\ParameterExpressionReplacer.cs" />
     <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
+    <Compile Include="..\Common\WeakDictionary.cs" Link="WeakDictionary.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,9 +1,10 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace AI4E.Internal
 {
-    public static class DictionaryExtension
+    internal static class DictionaryExtension
     {
         public static bool Remove<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, out TValue value)
         {
@@ -20,5 +21,21 @@ namespace AI4E.Internal
             value = default;
             return false;
         }
+
+#if NETSTANDARD
+        public static bool TryAdd<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, TValue value)
+        {
+            if (dictionary == null)
+                throw new ArgumentNullException(nameof(dictionary));
+
+            if (dictionary.ContainsKey(key))
+            {
+                return false;
+            }
+
+            dictionary.Add(key, value);
+            return true;
+        }
+#endif
     }
 }

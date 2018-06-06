@@ -59,16 +59,24 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{4836898A-A46F-4139-A085-536903EE5E5A}"
 	ProjectSection(SolutionItems) = preProject
 		src\Common\AsyncEnumerableExtensions.cs = src\Common\AsyncEnumerableExtensions.cs
+		src\Common\ConcurrentDictionaryExtension.cs = src\Common\ConcurrentDictionaryExtension.cs
+		src\Common\CustomAttributeProviderExtension.cs = src\Common\CustomAttributeProviderExtension.cs
 		src\Common\DataPropertyHelper.cs = src\Common\DataPropertyHelper.cs
 		src\Common\DebugEx.cs = src\Common\DebugEx.cs
 		src\Common\DeepCopyByExpressionTrees.cs = src\Common\DeepCopyByExpressionTrees.cs
-		src\Common\DictionaryExtensions.cs = src\Common\DictionaryExtensions.cs
+		src\Common\DictionaryExtension.cs = src\Common\DictionaryExtension.cs
+		src\Common\EnumerableExtension.cs = src\Common\EnumerableExtension.cs
 		src\Common\IdEqualityComparer.cs = src\Common\IdEqualityComparer.cs
 		src\Common\IdGenerator.cs = src\Common\IdGenerator.cs
 		src\Common\ImmutableArrayExtension.cs = src\Common\ImmutableArrayExtension.cs
+		src\Common\MemberInfoExtension.cs = src\Common\MemberInfoExtension.cs
+		src\Common\ObjectExtension.cs = src\Common\ObjectExtension.cs
 		src\Common\ObjectPool.cs = src\Common\ObjectPool.cs
 		src\Common\ParameterExpressionReplacer.cs = src\Common\ParameterExpressionReplacer.cs
+		src\Common\StreamExtension.cs = src\Common\StreamExtension.cs
+		src\Common\StringBuilderExtension.cs = src\Common\StringBuilderExtension.cs
 		src\Common\TypeExtension.cs = src\Common\TypeExtension.cs
+		src\Common\WeakDictionary.cs = src\Common\WeakDictionary.cs
 	EndProjectSection
 EndProject
 Global

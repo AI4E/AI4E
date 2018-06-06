@@ -4,10 +4,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using AI4E.Internal;
 
-namespace AI4E.Internal
+namespace AI4E
 {
-    public sealed class WeakDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
+    internal sealed class WeakDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
         where TValue : class
     {
         private readonly ConcurrentDictionary<TKey, WeakReference<TValue>> _entries;
