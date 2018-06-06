@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace AI4E.Internal
 {
-    public static class DictionaryExtension
+    internal static class DictionaryExtension
     {
 #if NETSTANDARD
         public static bool TryAdd<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, TValue value)

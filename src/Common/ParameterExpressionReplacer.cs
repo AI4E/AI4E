@@ -35,7 +35,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Internal
 {
-    public static class ParameterExpressionReplacer
+    internal static class ParameterExpressionReplacer
     {
         private static ObjectPool<ReplacerExpressionVisitor> _pool;
 

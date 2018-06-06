@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace AI4E.Internal
 {
-    public sealed class IdEqualityComparer<TId> : IEqualityComparer<TId>
+    internal sealed class IdEqualityComparer<TId> : IEqualityComparer<TId>
     {
         private readonly Func<TId, TId, bool> _idEquality;
 

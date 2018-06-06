@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
 
 namespace AI4E.Internal
 {
-    public static class DataPropertyHelper
+    internal static class DataPropertyHelper
     {
         private static readonly ConcurrentDictionary<Type, MemberInfo> _idMembers = new ConcurrentDictionary<Type, MemberInfo>();
         private static readonly ConcurrentDictionary<Type, Delegate> _idAccessors = new ConcurrentDictionary<Type, Delegate>();

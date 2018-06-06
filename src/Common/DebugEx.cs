@@ -2,7 +2,7 @@
 
 namespace AI4E.Internal
 {
-    public static class DebugEx
+    internal static class DebugEx
     {
         // condition is only checked if precondition mets.
         public static void Assert(bool precondition, bool condition)

@@ -33,7 +33,7 @@ using System.Collections.Concurrent;
 
 namespace AI4E.Internal
 {
-    public class ObjectPool<T>
+    internal class ObjectPool<T>
     {
         private readonly ConcurrentBag<T> _objects = new ConcurrentBag<T>();
         private readonly Func<T> _objectGenerator;

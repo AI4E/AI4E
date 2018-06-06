@@ -4,7 +4,7 @@ using System.Text;
 
 namespace AI4E.Internal
 {
-    public static class IdGenerator
+    internal static class IdGenerator
     {
         private const char _separator = '°';
         private const string _separatorAsString = "°";
