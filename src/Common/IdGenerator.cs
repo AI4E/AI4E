@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace AI4E
+namespace AI4E.Internal
 {
     public static class IdGenerator
     {

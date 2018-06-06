@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AI4E.Storage.Internal
+namespace AI4E.Internal
 {
     internal static class AsyncEnumerableExtensions
     {

@@ -6,7 +6,7 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
-using AI4E.Storage.InMemory.Internal;
+using AI4E.Internal;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 

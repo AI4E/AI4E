@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace AI4E
+namespace AI4E.Internal
 {
     internal static class TypeExtension
     {

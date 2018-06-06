@@ -5,6 +5,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Internal;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Transactions

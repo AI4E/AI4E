@@ -31,7 +31,7 @@
 using System;
 using System.Collections.Concurrent;
 
-namespace AI4E
+namespace AI4E.Internal
 {
     public class ObjectPool<T>
     {

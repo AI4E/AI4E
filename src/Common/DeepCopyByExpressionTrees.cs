@@ -9,7 +9,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace AI4E.Storage.InMemory.Internal
+namespace AI4E.Internal
 {
     /// <summary>
     /// Superfast deep copier class, which uses Expression trees.

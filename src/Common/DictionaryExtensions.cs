@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace AI4E.Storage.Internal
+namespace AI4E.Internal
 {
     public static class DictionaryExtension
     {

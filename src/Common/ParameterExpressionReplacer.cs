@@ -33,7 +33,7 @@ using System;
 using System.Linq.Expressions;
 using static System.Diagnostics.Debug;
 
-namespace AI4E
+namespace AI4E.Internal
 {
     public static class ParameterExpressionReplacer
     {

@@ -2,7 +2,7 @@
 using System.Collections.Immutable;
 using System.Linq;
 using static System.Diagnostics.Debug;
-using static AI4E.DebugEx;
+using static AI4E.Internal.DebugEx;
 
 namespace AI4E.Storage.Transactions
 {

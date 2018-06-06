@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Immutable;
 
-namespace AI4E.Storage.Internal
+namespace AI4E.Internal
 {
     internal static class ImmutableArrayExtension
     {

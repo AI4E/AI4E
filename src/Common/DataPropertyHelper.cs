@@ -6,7 +6,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 
-namespace AI4E
+namespace AI4E.Internal
 {
     public static class DataPropertyHelper
     {

@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace AI4E
+namespace AI4E.Internal
 {
     public static class DebugEx
     {

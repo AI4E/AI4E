@@ -6,6 +6,7 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
+using AI4E.Internal;
 
 namespace AI4E.Storage
 {
