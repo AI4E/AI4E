@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Coordination.Abstractions\AI4E.Coordination.Abstractions.csproj" />
+    <ProjectReference Include="..\AI4E.Remoting\AI4E.Remoting.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
   </ItemGroup>

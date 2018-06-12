@@ -5,9 +5,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
-    <ProjectReference Include="..\AI4E.Remoting\AI4E.Remoting.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Internal\" />
   </ItemGroup>
 
 </Project>
