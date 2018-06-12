@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Modularity\AI4E.Modularity.csproj" />
+    <ProjectReference Include="..\AI4E.Proxying\AI4E.Proxying.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
   </ItemGroup>
 

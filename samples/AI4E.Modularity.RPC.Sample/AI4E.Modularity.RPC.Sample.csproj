@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\AI4E.Proxying\AI4E.Proxying.csproj" />
     <ProjectReference Include="..\..\src\AI4E\AI4E.csproj" />
   </ItemGroup>
 
