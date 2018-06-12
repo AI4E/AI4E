@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\src\Common\EntryPathHelper.cs" Link="Coordination\EntryPathHelper.cs" />
     <Compile Include="..\..\src\Common\EscapeHelper.cs" Link="Routing\EscapeHelper.cs" />
   </ItemGroup>
 
