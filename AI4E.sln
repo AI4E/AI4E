@@ -80,6 +80,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Modularity", "src\AI4E.Modularity\AI4E.Modularity.csproj", "{849A3BE7-363E-482E-AAC5-2E317EBFB216}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Modularity.Abstractions", "src\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj", "{B14633BB-5793-4241-904F-848BD537B536}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -162,6 +164,10 @@ Global
 		{849A3BE7-363E-482E-AAC5-2E317EBFB216}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{849A3BE7-363E-482E-AAC5-2E317EBFB216}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{849A3BE7-363E-482E-AAC5-2E317EBFB216}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B14633BB-5793-4241-904F-848BD537B536}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B14633BB-5793-4241-904F-848BD537B536}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B14633BB-5793-4241-904F-848BD537B536}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B14633BB-5793-4241-904F-848BD537B536}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -188,6 +194,7 @@ Global
 		{7F92B95B-AA54-4473-B4F0-61C9ABDB6742} = {51EBAD3B-B475-4587-A6DE-2CCDDC1952F7}
 		{4836898A-A46F-4139-A085-536903EE5E5A} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
 		{849A3BE7-363E-482E-AAC5-2E317EBFB216} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
+		{B14633BB-5793-4241-904F-848BD537B536} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}
