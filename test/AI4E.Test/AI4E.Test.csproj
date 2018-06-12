@@ -27,6 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Domain\AI4E.Domain.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Modularity\AI4E.Modularity.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\..\src\AI4E\AI4E.csproj" />

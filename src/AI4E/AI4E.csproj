@@ -7,7 +7,9 @@
   <ItemGroup>
     <Compile Include="..\Common\ConcurrentDictionaryExtension.cs" Link="Internal\ConcurrentDictionaryExtension.cs" />
     <Compile Include="..\Common\CustomAttributeProviderExtension.cs" Link="Internal\CustomAttributeProviderExtension.cs" />
+    <Compile Include="..\Common\EntryPathHelper.cs" Link="Coordination\EntryPathHelper.cs" />
     <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
+    <Compile Include="..\Common\EscapeHelper.cs" Link="Routing\EscapeHelper.cs" />
     <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
     <Compile Include="..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
     <Compile Include="..\Common\StringBuilderExtension.cs" Link="Internal\StringBuilderExtension.cs" />
