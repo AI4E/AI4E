@@ -92,6 +92,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.Abstractions",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Coordination", "src\AI4E.Coordination\AI4E.Coordination.csproj", "{527A478C-E586-44F1-AB4F-EA667B79D438}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Coordination.Abstractions", "src\AI4E.Coordination.Abstractions\AI4E.Coordination.Abstractions.csproj", "{7913D018-8716-41D8-92AC-888279CEBC3C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -198,6 +200,10 @@ Global
 		{527A478C-E586-44F1-AB4F-EA667B79D438}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{527A478C-E586-44F1-AB4F-EA667B79D438}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{527A478C-E586-44F1-AB4F-EA667B79D438}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7913D018-8716-41D8-92AC-888279CEBC3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7913D018-8716-41D8-92AC-888279CEBC3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7913D018-8716-41D8-92AC-888279CEBC3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7913D018-8716-41D8-92AC-888279CEBC3C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -230,6 +236,7 @@ Global
 		{5B41CE4C-91E4-4822-B2B2-5C8007164B03} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
 		{6B26D5C8-B3D4-434E-A18F-209D11514DC3} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
 		{527A478C-E586-44F1-AB4F-EA667B79D438} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
+		{7913D018-8716-41D8-92AC-888279CEBC3C} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}

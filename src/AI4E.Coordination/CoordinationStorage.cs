@@ -4,12 +4,12 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Coordination;
+using AI4E.Storage;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Storage
+namespace AI4E.Coordination
 {
-    public sealed class CoordinationStorage
+    public sealed class CoordinationStorage : ICoordinationStorage, ISessionStorage
     {
         private readonly IFilterableDatabase _database;
         private readonly IStoredSessionManager _storedSessionManager;

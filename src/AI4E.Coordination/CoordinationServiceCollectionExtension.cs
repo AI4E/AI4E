@@ -10,6 +10,9 @@ namespace AI4E.Coordination
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
+            services.AddSingleton<CoordinationStorage>();
+            services.AddSingleton<ICoordinationStorage, CoordinationStorage>();
+            services.AddSingleton<ISessionStorage, CoordinationStorage>();
             services.AddSingleton<ICoordinationManager, CoordinationManager<TAddress>>();
 
             return new CoordinationBuilder(services);

@@ -19,7 +19,6 @@
  */
 
 using System;
-using AI4E.Coordination;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
