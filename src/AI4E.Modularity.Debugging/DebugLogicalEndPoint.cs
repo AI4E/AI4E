@@ -8,7 +8,7 @@ using AI4E.Remoting;
 using AI4E.Routing;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Debugging
+namespace AI4E.Modularity.Debugging
 {
     public sealed class DebugLogicalEndPoint : ILogicalEndPoint
     {

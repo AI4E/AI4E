@@ -7,7 +7,7 @@ using AI4E.Coordination;
 using AI4E.Proxying;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Debugging
+namespace AI4E.Modularity.Debugging
 {
     internal class CoordinationManagerSkeleton : IDisposable
     {

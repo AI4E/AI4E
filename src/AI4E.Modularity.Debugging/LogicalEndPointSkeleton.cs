@@ -5,7 +5,7 @@ using AI4E.Async;
 using AI4E.Remoting;
 using AI4E.Routing;
 
-namespace AI4E.Debugging
+namespace AI4E.Modularity.Debugging
 {
     public sealed class LogicalEndPointSkeleton : IAsyncDisposable
     {
