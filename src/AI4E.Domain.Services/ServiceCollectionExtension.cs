@@ -32,7 +32,6 @@ namespace AI4E.Domain.Services
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            services.AddSingleton<IEntityAccessor<Guid, DomainEvent, AggregateRoot>, EntityAccessor>();
             services.AddTransient<IReferenceResolver, ReferenceResolver>();
             services.AddTransient<ISerializerSettingsResolver<Guid, DomainEvent, AggregateRoot>, SerializerSettingsResolver>();
         }
