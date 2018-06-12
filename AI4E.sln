@@ -70,12 +70,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\IdGenerator.cs = src\Common\IdGenerator.cs
 		src\Common\ImmutableArrayExtension.cs = src\Common\ImmutableArrayExtension.cs
 		src\Common\ObjectExtension.cs = src\Common\ObjectExtension.cs
-		src\Common\ObjectPool.cs = src\Common\ObjectPool.cs
 		src\Common\ParameterExpressionReplacer.cs = src\Common\ParameterExpressionReplacer.cs
 		src\Common\StreamExtension.cs = src\Common\StreamExtension.cs
 		src\Common\StringBuilderExtension.cs = src\Common\StringBuilderExtension.cs
 		src\Common\TypeExtension.cs = src\Common\TypeExtension.cs
-		src\Common\WeakDictionary.cs = src\Common\WeakDictionary.cs
 	EndProjectSection
 EndProject
 Global

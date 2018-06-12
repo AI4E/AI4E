@@ -11,7 +11,6 @@
     <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
     <Compile Include="..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
     <Compile Include="..\Common\StringBuilderExtension.cs" Link="Internal\StringBuilderExtension.cs" />
-    <Compile Include="..\Common\WeakDictionary.cs" Link="WeakDictionary.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -16,10 +16,8 @@
     <Compile Include="..\Common\IdGenerator.cs" Link="Internal\IdGenerator.cs" />
     <Compile Include="..\Common\ImmutableArrayExtension.cs" Link="Internal\ImmutableArrayExtension.cs" />
     <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
-    <Compile Include="..\Common\ObjectPool.cs" Link="Internal\ObjectPool.cs" />
     <Compile Include="..\Common\ParameterExpressionReplacer.cs" Link="Internal\ParameterExpressionReplacer.cs" />
     <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
-    <Compile Include="..\Common\WeakDictionary.cs" Link="WeakDictionary.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -31,9 +31,9 @@
 using System;
 using System.Collections.Concurrent;
 
-namespace AI4E.Internal
+namespace AI4E
 {
-    internal class ObjectPool<T>
+    public sealed class ObjectPool<T>
     {
         private readonly ConcurrentBag<T> _objects = new ConcurrentBag<T>();
         private readonly Func<T> _objectGenerator;

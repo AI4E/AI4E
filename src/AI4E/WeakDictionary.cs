@@ -8,7 +8,7 @@ using AI4E.Internal;
 
 namespace AI4E
 {
-    internal sealed class WeakDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
+    public sealed class WeakDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
         where TValue : class
     {
         private readonly ConcurrentDictionary<TKey, WeakReference<TValue>> _entries;
