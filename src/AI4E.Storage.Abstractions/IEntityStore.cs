@@ -56,5 +56,7 @@ namespace AI4E.Storage
             where TEntity : class, TEntityBase;
 
         Task DeleteAsync(Type entityType, TEntityBase entity, CancellationToken cancellation = default);
+
+        IEnumerable<(Type type, TId id, long revision, TEntityBase entity)> CachedEntries { get; }
     }
 }

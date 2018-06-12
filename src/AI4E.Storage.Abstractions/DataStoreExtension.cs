@@ -36,7 +36,7 @@ namespace AI4E.Storage
         private static readonly ConditionalWeakTable<IDataStore, DataStoreExt> _extensions
             = new ConditionalWeakTable<IDataStore, DataStoreExt>();
 
-        public sealed class DataStoreExt
+        private sealed class DataStoreExt
         {
             private static readonly MethodInfo _storeMethodDefinition;
             private static readonly MethodInfo _removeMethodDefinition;
@@ -72,22 +72,22 @@ namespace AI4E.Storage
                 Assert(current == null || ReferenceEquals(current, dataStore));
             }
 
-            public Task StoreAsync(object data, CancellationToken cancellation)
+            public Task StoreAsync(Type dataType, object data, CancellationToken cancellation)
             {
                 Assert(data != null);
 
-                var function = _storeMethods.GetOrAdd(data.GetType(), BuildStoreMethod);
+                var function = _storeMethods.GetOrAdd(dataType, BuildStoreMethod);
 
                 Assert(function != null);
 
                 return function(data, cancellation);
             }
 
-            public Task RemoveAsync(object data, CancellationToken cancellation)
+            public Task RemoveAsync(Type dataType, object data, CancellationToken cancellation)
             {
                 Assert(data != null);
 
-                var function = _removeMethods.GetOrAdd(data.GetType(), BuildStoreMethod);
+                var function = _removeMethods.GetOrAdd(dataType, BuildStoreMethod);
 
                 Assert(function != null);
 
@@ -155,7 +155,10 @@ namespace AI4E.Storage
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
-            return GetExtension(dataStore).StoreAsync(data, cancellation);
+            if (data is ValueType)
+                throw new ArgumentException("The argument must be a reference type.", nameof(data));
+
+            return GetExtension(dataStore).StoreAsync(data.GetType(), data, cancellation);
         }
 
         /// <summary>
@@ -174,7 +177,40 @@ namespace AI4E.Storage
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
-            return GetExtension(dataStore).RemoveAsync(data, cancellation);
+            if (data is ValueType)
+                throw new ArgumentException("The argument must be a reference type.", nameof(data));
+
+            return GetExtension(dataStore).RemoveAsync(data.GetType(), data, cancellation);
+        }
+
+        public static Task StoreAsync(this IDataStore dataStore, Type dataType, object data, CancellationToken cancellation = default)
+        {
+            CheckArguments(dataStore, dataType, data);
+            return GetExtension(dataStore).StoreAsync(dataType, data, cancellation);
+        }
+
+        public static Task RemoveAsync(this IDataStore dataStore, Type dataType, object data, CancellationToken cancellation = default)
+        {
+            CheckArguments(dataStore, dataType, data);
+            return GetExtension(dataStore).RemoveAsync(dataType, data, cancellation);
+        }
+
+        private static void CheckArguments(IDataStore dataStore, Type dataType, object data)
+        {
+            if (dataStore == null)
+                throw new ArgumentNullException(nameof(dataStore));
+
+            if (dataType == null)
+                throw new ArgumentNullException(nameof(dataType));
+
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            if (dataType.IsValueType)
+                throw new ArgumentException("The argument must be a reference type.", nameof(dataType));
+
+            if (!dataType.IsAssignableFrom(data.GetType()))
+                throw new ArgumentException($"The specified data must be of type '{dataType.FullName}' or an assignable type.");
         }
 
         public static IAsyncEnumerable<TData> QueryAsync<TData>(this IQueryableDataStore dataStore, Func<IQueryable<TData>, IQueryable<TData>> queryShaper, CancellationToken cancellation = default)

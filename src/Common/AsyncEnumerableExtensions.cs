@@ -20,7 +20,7 @@ namespace AI4E.Internal
 
         }
 
-        internal sealed class AsyncSelectEnumerable<TSource, TResult> : IAsyncEnumerable<TResult>
+        private sealed class AsyncSelectEnumerable<TSource, TResult> : IAsyncEnumerable<TResult>
         {
             private readonly IAsyncEnumerable<TSource> _source;
             private readonly Func<TSource, Task<TResult>> _asyncSelector;
@@ -85,6 +85,55 @@ namespace AI4E.Internal
                 public void Dispose()
                 {
                     _enumerator.Dispose();
+                }
+            }
+        }
+
+        public static IAsyncEnumerable<T> ToAsyncEnumerable<T>(in this ValueTask<T> task)
+        {
+            return new SingleAsyncEnumerable<T>(task);
+        }
+
+        private sealed class SingleAsyncEnumerable<T> : IAsyncEnumerable<T>
+        {
+            private readonly ValueTask<T> _task;
+
+            public SingleAsyncEnumerable(in ValueTask<T> task)
+            {
+                _task = task;
+            }
+
+            public IAsyncEnumerator<T> GetEnumerator()
+            {
+                return new SingleAsyncEnumerator(_task);
+            }
+
+            private sealed class SingleAsyncEnumerator : IAsyncEnumerator<T>
+            {
+                private readonly ValueTask<T> _task;
+                private bool _initialized = false;
+
+                public SingleAsyncEnumerator(in ValueTask<T> task)
+                {
+                    _task = task;
+                }
+
+                public T Current { get; private set; }
+
+                public void Dispose() { }
+
+                public async Task<bool> MoveNext(CancellationToken cancellationToken)
+                {
+                    if (_initialized)
+                    {
+                        Current = default;
+                        return false;
+                    }
+
+                    _initialized = true;
+
+                    Current = await _task;
+                    return true;
                 }
             }
         }

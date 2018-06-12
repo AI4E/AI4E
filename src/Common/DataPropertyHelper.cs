@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Internal
 {
@@ -119,6 +120,9 @@ namespace AI4E.Internal
 
         public static TId GetId<TId, TData>(TData data)
         {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
             var idType = GetIdType<TData>();
 
             if (!typeof(TId).IsAssignableFrom(idType))
@@ -126,9 +130,30 @@ namespace AI4E.Internal
                 throw new Exception("Type mismatch.");
             }
 
-            var accessor = (Func<TData, TId>)_idAccessors.GetOrAdd(typeof(TData), dataType => GetIdAccessor(dataType));
+            var idAccessor = (Func<TData, TId>)_idAccessors.GetOrAdd(typeof(TData), GetIdAccessor);
 
-            return accessor(data);
+            Assert(idAccessor != null);
+
+            return idAccessor(data);
+        }
+
+        public static object GetId(Type dataType, object data)
+        {
+            if (dataType == null)
+                throw new ArgumentNullException(nameof(dataType));
+
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            if (!dataType.IsAssignableFrom(data.GetType()))
+                throw new ArgumentException();
+
+            var idType = GetIdType(dataType);
+            var idAccessor = _idAccessors.GetOrAdd(dataType, _ => GetIdAccessor(dataType));
+
+            Assert(idAccessor != null);
+
+            return idAccessor.DynamicInvoke(data);
         }
 
         private static Delegate GetIdAccessor(Type type)

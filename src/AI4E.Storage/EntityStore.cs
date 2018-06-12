@@ -60,10 +60,26 @@ namespace AI4E.Storage
         private readonly IEntityAccessor<TId, TEventBase, TEntityBase> _entityAccessor;
         private readonly JsonDiffPatch _differ;
         private readonly JsonSerializer _jsonSerializer;
-        private readonly Dictionary<(TId id, long revision), TEntityBase> _lookup = new Dictionary<(TId id, long revision), TEntityBase>();
+
+        // TODO: This should be private. Find a good abstraction to access lookup from outside.
+        internal readonly Dictionary<(string bucket, TId id, long revision), TEntityBase> _lookup = new Dictionary<(string bucket, TId id, long revision), TEntityBase>();
         private bool _isDisposed;
 
         #endregion
+
+        public IEnumerable<(Type type, TId id, long revision, TEntityBase entity)> CachedEntries
+        {
+            get
+            {
+                foreach (var entry in _lookup)
+                {
+                    yield return (type: GetTypeFromBucket(entry.Key.bucket),
+                                  entry.Key.id,
+                                  entry.Key.revision,
+                                  entity: entry.Value);
+                }
+            }
+        }
 
         #region C'tor
 
@@ -103,16 +119,18 @@ namespace AI4E.Storage
             if (!typeof(TEntityBase).IsAssignableFrom(entityType))
                 throw new ArgumentException($"The argument must specify a subtype of '{typeof(TEntityBase).FullName}'.", nameof(entityType));
 
-            if (_lookup.TryGetValue((id, revision), out var cachedResult))
+            var bucketId = GetBucketId(entityType);
+
+            if (_lookup.TryGetValue((bucketId, id, revision), out var cachedResult))
                 return cachedResult;
 
-            var bucketId = GetBucketId(entityType);
+
             var streamId = GetStreamId(id);
             var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, revision, cancellation);
 
             var result = Deserialize(entityType, stream);
 
-            _lookup[(id, revision)] = result;
+            _lookup[(bucketId, id, revision)] = result;
 
             return result;
         }
@@ -150,14 +168,16 @@ namespace AI4E.Storage
 
         private TEntityBase CachedDeserialize(Type entityType, long revision, IStream<string, TId> stream)
         {
-            if (_lookup.TryGetValue((stream.StreamId, revision), out var cachedResult))
+            var bucketId = GetBucketId(entityType);
+
+            if (_lookup.TryGetValue((bucketId, stream.StreamId, revision), out var cachedResult))
             {
                 return cachedResult;
             }
 
             var result = Deserialize(entityType, stream);
 
-            _lookup[(stream.StreamId, revision)] = result;
+            _lookup[(bucketId, stream.StreamId, revision)] = result;
 
             return result;
         }
@@ -212,7 +232,7 @@ namespace AI4E.Storage
             _entityAccessor.SetRevision(entity, stream.StreamRevision);
             _entityAccessor.CommitEvents(entity);
 
-            _lookup[(_entityAccessor.GetId(entity), revision: default)] = entity;
+            _lookup[(bucketId, _entityAccessor.GetId(entity), revision: default)] = entity;
         }
 
         public IAsyncEnumerable<TEntityBase> GetAllAsync(Type entityType, CancellationToken cancellation)
@@ -489,6 +509,7 @@ namespace AI4E.Storage
             private readonly IMessageDispatcher _eventDispatcher;
             private readonly IProjectionDependencyStore<string, TId> _projectionDependencyStore;
             private readonly IProjector _projector;
+            private readonly IDataStore _dataStore;
             private readonly ILogger<CommitDispatcher> _logger;
             private readonly CancellationTokenSource _cancellationSource;
             private readonly Task _initialization;
@@ -501,11 +522,12 @@ namespace AI4E.Storage
             #region C'tor
 
             public CommitDispatcher(IProvider<EntityStore<TId, TEventBase, TEntityBase>> entityStoreProvider,
-                                          IStreamPersistence<string, TId> persistence,
-                                          IMessageDispatcher eventDispatcher,
-                                          IProjectionDependencyStore<string, TId> projectionDependencyStore,
-                                          IProjector projector,
-                                          ILogger<CommitDispatcher> logger)
+                                    IStreamPersistence<string, TId> persistence,
+                                    IMessageDispatcher eventDispatcher,
+                                    IProjectionDependencyStore<string, TId> projectionDependencyStore,
+                                    IProjector projector,
+                                    IDataStore dataStore,
+                                    ILogger<CommitDispatcher> logger)
             {
                 if (entityStoreProvider == null)
                     throw new ArgumentNullException(nameof(entityStoreProvider));
@@ -522,11 +544,15 @@ namespace AI4E.Storage
                 if (projector == null)
                     throw new ArgumentNullException(nameof(projector));
 
+                if (dataStore == null)
+                    throw new ArgumentNullException(nameof(dataStore));
+
                 _entityStoreProvider = entityStoreProvider;
                 _persistence = persistence;
                 _eventDispatcher = eventDispatcher;
                 _projectionDependencyStore = projectionDependencyStore;
                 _projector = projector;
+                _dataStore = dataStore;
                 _logger = logger;
                 _dispatchQueue = new AsyncProducerConsumerQueue<(ICommit<string, TId> commit, int attempt, TaskCompletionSource<object> tcs)>();
                 _cancellationSource = new CancellationTokenSource();
@@ -538,8 +564,9 @@ namespace AI4E.Storage
                                     IStreamPersistence<string, TId> persistence,
                                     IMessageDispatcher eventDispatcher,
                                     IProjectionDependencyStore<string, TId> projectionDependencyStore,
-                                    IProjector projector)
-                : this(entityStoreProvider, persistence, eventDispatcher, projectionDependencyStore, projector, null) { }
+                                    IProjector projector,
+                                    IDataStore dataStore)
+                : this(entityStoreProvider, persistence, eventDispatcher, projectionDependencyStore, projector, dataStore, null) { }
 
             #endregion
 
@@ -743,7 +770,10 @@ namespace AI4E.Storage
                 }
             }
 
-            private async Task ProjectSingleAsync(Type type, TId id, EntityStore<TId, TEventBase, TEntityBase> entityStore, CancellationToken cancellation)
+            private async Task ProjectSingleAsync(Type type,
+                                                  TId id,
+                                                  EntityStore<TId, TEventBase, TEntityBase> entityStore,
+                                                  CancellationToken cancellation)
             {
                 var entity = default(TEntityBase);
 
@@ -759,7 +789,12 @@ namespace AI4E.Storage
                     entity = await entityStore.GetByIdAsync(type, id, cancellation: default);
                 }
 
-                await _projector.ProjectAsync(entity.GetType(), entity, cancellation);
+                var projectionResults = await _projector.ProjectAsync(entity.GetType(), entity, cancellation);
+
+                foreach (var projectionResult in projectionResults)
+                {
+                    await _dataStore.StoreAsync(projectionResult.ResultType, projectionResult.Result, cancellation);
+                }
             }
 
             public Task DispatchAsync(ICommit<string, TId> commit)
