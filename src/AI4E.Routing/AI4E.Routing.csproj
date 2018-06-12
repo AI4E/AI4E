@@ -6,13 +6,13 @@
 
   <ItemGroup>
     <Compile Include="..\Common\EntryPathHelper.cs" Link="Internal\EntryPathHelper.cs" />
+    <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
     <Compile Include="..\Common\EscapeHelper.cs" Link="Internal\EscapeHelper.cs" />
-    <Compile Include="..\Common\StringBuilderExtension.cs" Link="Internal\StringBuilderExtension.cs" />
+    <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
-    <ProjectReference Include="..\AI4E.Routing\AI4E.Routing.csproj" />
+    <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
   </ItemGroup>
 

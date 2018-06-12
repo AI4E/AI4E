@@ -11,6 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\src\Common\EscapeHelper.cs" Link="Routing\EscapeHelper.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="Modularity\metadata.json" />
   </ItemGroup>
 
