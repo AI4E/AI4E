@@ -1,12 +1,12 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        EntityStore.cs 
- * Types:           (1) AI4E.Storage.EntityStore'3
- *                  (2) AI4E.Storage.EntityStore'3.SnapshotProcessor
- *                  (3) AI4E.Storage.EntityStore'3.CommitDispatcher
+ * Types:           (1) AI4E.Storage.Domain.EntityStore
+ *                  (2) AI4E.Storage.Domain.EntityStore.SnapshotProcessor
+ *                  (3) AI4E.Storage.Domain.EntityStore.CommitDispatcher
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   09.03.2018 
+ * Last modified:   13.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -39,6 +39,7 @@ using AI4E.Async;
 using AI4E.DispatchResults;
 using AI4E.Internal;
 using AI4E.Processing;
+using AI4E.Storage.Internal;
 using AI4E.Storage.Projection;
 using JsonDiffPatchDotNet;
 using Microsoft.Extensions.Logging;
@@ -47,7 +48,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Nito.AsyncEx;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
     public sealed class EntityStore : IEntityStore
     {

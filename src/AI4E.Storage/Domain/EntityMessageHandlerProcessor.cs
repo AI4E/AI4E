@@ -30,7 +30,7 @@ using AI4E.Internal;
 using AI4E.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E
+namespace AI4E.Storage.Domain
 {
     public sealed class EntityMessageHandlerProcessor : MessageProcessor
     {

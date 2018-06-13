@@ -19,9 +19,7 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using AI4E.Serialization;
 using AI4E.Storage.Transactions;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -89,115 +87,6 @@ namespace AI4E.Storage
             builder.Services.Configure(configuration);
 
             return builder;
-        }
-
-        public static IStorageBuilder ExtendStorage(this IStorageBuilder builder, IEnumerable<IStorageExtension> hooks)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
-            if (hooks == null)
-                throw new ArgumentNullException(nameof(hooks));
-
-
-            // TODO
-            return builder; // .Configure(options => options.Extensions.AddRange(hooks));
-        }
-
-        public static IStorageBuilder ExtendStorage(this IStorageBuilder builder, params IStorageExtension[] hooks)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
-            if (hooks == null)
-                throw new ArgumentNullException(nameof(hooks));
-
-            return ExtendStorage(builder, hooks);
-        }
-
-        public static IStorageBuilder WithSerialization(this IStorageBuilder builder, ISerializer serializer)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
-            if (serializer == null)
-                throw new ArgumentNullException(nameof(serializer));
-
-            builder.Services.AddSingleton(serializer);
-
-            return builder;
-        }
-
-        public static IStorageBuilder WithBinarySerialization(this IStorageBuilder builder)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
-            builder.Services.AddSingleton<ISerializer, BinarySerializer>();
-
-            return builder;
-        }
-
-        public static IStorageBuilder WithJsonSerialization(this IStorageBuilder builder)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
-            builder.Services.AddSingleton<ISerializer, JsonSerializer>();
-
-            return builder;
-        }
-
-        public static IStorageBuilder WithBsonSerialization(this IStorageBuilder builder)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
-            builder.Services.AddSingleton<ISerializer, BsonSerializer>();
-
-            return builder;
-        }
-
-        public static IStorageBuilder WithEncryption(this IStorageBuilder builder, byte[] encryptionKey)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
-            var wrapped = builder.Services.GetService<ISerializer>();
-
-            if (wrapped == null)
-            {
-                throw new InvalidOperationException("A serializer must be specified in order to use encryption.");
-            }
-
-            builder.Services.AddSingleton<ISerializer>(new RijndaelSerializer(wrapped, encryptionKey));
-
-            return builder;
-        }
-
-        public static IStorageBuilder WithCompression(this IStorageBuilder builder)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
-            var wrapped = builder.Services.GetService<ISerializer>();
-
-            if (wrapped == null)
-            {
-                throw new InvalidOperationException("A serializer must be specified in order to use compression.");
-            }
-
-            builder.Services.AddSingleton(new GZipSerializer(wrapped));
-
-            return builder;
-        }
-
-        // TODO: This is a duplicate
-        private static T GetService<T>(this IServiceCollection services)
-        {
-            return (T)services
-                .LastOrDefault(d => d.ServiceType == typeof(T))
-                ?.ImplementationInstance;
         }
     }
 }

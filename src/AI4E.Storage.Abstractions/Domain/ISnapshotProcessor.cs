@@ -18,27 +18,11 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
-    public interface IEntityStore : IDisposable
+    public interface ISnapshotProcessor
     {
-        ValueTask<object> GetByIdAsync(Type entityType, string id, CancellationToken cancellation = default);
 
-        ValueTask<object> GetByIdAsync(Type entityType, string id, long revision, CancellationToken cancellation = default);
-
-        IAsyncEnumerable<object> GetAllAsync(Type entityType, CancellationToken cancellation = default);
-
-        IAsyncEnumerable<object> GetAllAsync(CancellationToken cancellation = default);
-
-        Task StoreAsync(Type entityType, object entity, CancellationToken cancellation = default);
-
-        Task DeleteAsync(Type entityType, object entity, CancellationToken cancellation = default);
-
-        //IEnumerable<(Type type, string id, long revision, object entity)> CachedEntries { get; }
     }
 }

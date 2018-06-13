@@ -21,7 +21,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Storage;
+using AI4E.Storage.Domain;
 
 namespace AI4E.Domain.Services
 {

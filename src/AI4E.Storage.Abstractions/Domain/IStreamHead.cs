@@ -1,10 +1,10 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IStreamHead.cs 
- * Types:           (1) AI4E.Storage.IStreamHead
+ * Types:           (1) AI4E.Storage.Domain.IStreamHead
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   04.01.2018 
+ * Last modified:   13.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -57,7 +57,7 @@
 
 using System;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
     /// <summary>
     /// Indicates the most recent information representing the head of a given stream.

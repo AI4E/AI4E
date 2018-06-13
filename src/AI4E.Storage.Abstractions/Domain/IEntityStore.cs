@@ -18,42 +18,27 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.IO;
-using System.IO.Compression;
-using System.Text;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
-    internal static class CompressionHelper
+    public interface IEntityStore : IDisposable
     {
-        public static byte[] Zip(string str)
-        {
-            var bytes = Encoding.UTF8.GetBytes(str);
+        ValueTask<object> GetByIdAsync(Type entityType, string id, CancellationToken cancellation = default);
 
-            using (var msi = new MemoryStream(bytes))
-            using (var mso = new MemoryStream())
-            {
-                using (var gs = new GZipStream(mso, CompressionMode.Compress))
-                {
-                    msi.CopyTo(gs);
-                }
+        ValueTask<object> GetByIdAsync(Type entityType, string id, long revision, CancellationToken cancellation = default);
 
-                return mso.ToArray();
-            }
-        }
+        IAsyncEnumerable<object> GetAllAsync(Type entityType, CancellationToken cancellation = default);
 
-        public static string Unzip(byte[] bytes)
-        {
-            using (var msi = new MemoryStream(bytes))
-            using (var mso = new MemoryStream())
-            {
-                using (var gs = new GZipStream(msi, CompressionMode.Decompress))
-                {
-                    gs.CopyTo(mso);
-                }
+        IAsyncEnumerable<object> GetAllAsync(CancellationToken cancellation = default);
 
-                return Encoding.UTF8.GetString(mso.ToArray());
-            }
-        }
+        Task StoreAsync(Type entityType, object entity, CancellationToken cancellation = default);
+
+        Task DeleteAsync(Type entityType, object entity, CancellationToken cancellation = default);
+
+        //IEnumerable<(Type type, string id, long revision, object entity)> CachedEntries { get; }
     }
 }

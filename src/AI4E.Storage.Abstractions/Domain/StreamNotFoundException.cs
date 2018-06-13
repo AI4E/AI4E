@@ -1,10 +1,10 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IStorageExtension.cs 
- * Types:           (1) AI4E.Storage.IStorageExtension
+ * Filename:        StreamNotFoundException.cs 
+ * Types:           (1) AI4E.Storage.Domain.StreamNotFoundException
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   04.01.2018 
+ * Last modified:   13.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -56,41 +56,39 @@
  */
 
 using System;
+using System.Runtime.Serialization;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
     /// <summary>
-    /// Provides the ability to hook into the pipeline of persisting a commit.
+    /// Represents an attempt to retrieve a nonexistent event stream.
     /// </summary>
-    /// <remarks>
-    /// Instances of this class must be designed to be multi-thread safe such that they can be shared between threads.
-    /// </remarks>
-    public interface IStorageExtension : IDisposable
+    [Serializable]
+    public class StreamNotFoundException : Exception
     {
         /// <summary>
-        /// Hooks into the selection pipeline just prior to the commit being returned to the caller.
+        /// Initializes a new instance of the StreamNotFoundException class.
         /// </summary>
-        /// <param name="commit">The commit to be filtered.</param>
-        void OnLoad(ICommit commit);
+        public StreamNotFoundException() { }
 
         /// <summary>
-        /// Hooks into the commit pipeline prior to persisting the commit to durable storage.
+        /// Initializes a new instance of the StreamNotFoundException class.
         /// </summary>
-        /// <param name="attempt">The attempt to be committed.</param>
-        /// <returns>If processing should continue, returns true; otherwise returns false.</returns>
-        bool OnCommit(CommitAttempt attempt);
+        /// <param name="message">The message that describes the error.</param>
+        public StreamNotFoundException(string message) : base(message) { }
 
         /// <summary>
-        /// Hooks into the commit pipeline just after the commit has been *successfully* committed to durable storage.
+        /// Initializes a new instance of the StreamNotFoundException class.
         /// </summary>
-        /// <param name="commit">The commit which has been persisted.</param>
-        void OnCommited(ICommit commit);
+        /// <param name="message">The message that describes the error.</param>
+        /// <param name="innerException">The message that is the cause of the current exception.</param>
+        public StreamNotFoundException(string message, Exception innerException) : base(message, innerException) { }
 
         /// <summary>
-        /// Invoked when a stream has been deleted.
+        /// Initializes a new instance of the StreamNotFoundException class.
         /// </summary>
-        /// <param name="bucketId">The bucket Id from which the stream whch has been deleted.</param>
-        /// <param name="streamId">The stream Id of the stream which has been deleted.</param>
-        void OnStreamDeleted(string bucketId, string streamId);
+        /// <param name="info">The SerializationInfo that holds the serialized object data of the exception being thrown.</param>
+        /// <param name="context">The StreamingContext that contains contextual information about the source or destination.</param>
+        protected StreamNotFoundException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
 }

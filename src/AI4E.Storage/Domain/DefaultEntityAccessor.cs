@@ -6,7 +6,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
     public sealed class DefaultEntityAccessor : IEntityAccessor
     {

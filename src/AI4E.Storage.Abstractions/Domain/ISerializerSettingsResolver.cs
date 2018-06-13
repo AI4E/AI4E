@@ -19,27 +19,13 @@
  */
 
 using System;
-using System.Collections.Generic;
+using Newtonsoft.Json;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
-    public interface IEntityAccessor
+#warning TODO Replace
+    public interface ISerializerSettingsResolver
     {
-        /// <summary>
-        /// Returns the identifier of the specified entity.
-        /// </summary>
-        /// <param name="entity">The entity whose identifier is retrived.</param>
-        /// <returns>The identifier of <paramref name="entity"/>.</returns>
-        string GetId(Type entityType, object entity);
-
-        string GetConcurrencyToken(Type entityType, object entity);
-        void SetConcurrencyToken(Type entityType, object entity, string concurrencyToken);
-
-        long GetRevision(Type entityType, object entity);
-        void SetRevision(Type entityType, object entity, long revision);
-
-        void CommitEvents(Type entityType, object entity);
-
-        IEnumerable<object> GetUncommittedEvents(Type entityType, object entity);
+        JsonSerializerSettings ResolveSettings(IEntityStore entityStore);
     }
 }

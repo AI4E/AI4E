@@ -1,9 +1,9 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        StreamStore.cs 
- * Types:           (1) AI4E.Storage.StreamStore'2
- *                  (2) AI4E.Storage.StreamStore'2.Stream
- *                  (3) AI4E.Storage.StreamStore'2.Snapshot
+ * Types:           (1) AI4E.Storage.Domain.StreamStore
+ *                  (2) AI4E.Storage.Domain.StreamStore.Stream
+ *                  (3) AI4E.Storage.Domain.StreamStore.Snapshot
  * Version:         1.0
  * Author:          Andreas Trütschel
  * Last modified:   16.01.2018 
@@ -66,7 +66,7 @@ using System.Threading.Tasks;
 using AI4E.Internal;
 using Microsoft.Extensions.Logging;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
     public sealed partial class StreamStore : IStreamStore
     {
@@ -364,10 +364,6 @@ namespace AI4E.Storage
                         await _streamStore._commitDispatcher.DispatchAsync(commit);
 
                         return newToken;
-                    }
-                    catch (DuplicateCommitException)
-                    {
-                        continue;
                     }
                     catch (ConcurrencyException)
                     {

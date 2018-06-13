@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
+using AI4E.Storage.Domain;
 using AI4E.Storage.InMemory;
-using AI4E.Storage.Projection;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace AI4E.Storage.Sample
 {
@@ -25,7 +24,8 @@ namespace AI4E.Storage.Sample
             services.AddInMemoryMessaging();
 
             services.AddStorage()
-                    .UseInMemoryDatabase();
+                    .UseInMemoryDatabase()
+                    .UseDomainStorage();
         }
 
         private static async Task RunAsync()

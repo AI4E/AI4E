@@ -20,6 +20,7 @@
 
 using System;
 using AI4E.Storage;
+using AI4E.Storage.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 

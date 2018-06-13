@@ -19,6 +19,7 @@
  */
 
 using Microsoft.Extensions.DependencyInjection;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage
 {
@@ -26,6 +27,7 @@ namespace AI4E.Storage
     {
         public StorageBuilder(IServiceCollection services)
         {
+            Assert(services != null);
             Services = services;
         }
 

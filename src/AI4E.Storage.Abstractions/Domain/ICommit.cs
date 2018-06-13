@@ -1,10 +1,10 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        EventMessage.cs 
- * Types:           (1) AI4E.Storage.EventMessage
+ * Filename:        ICommit.cs 
+ * Types:           (1) AI4E.Storage.Domain.ICommit
  * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   04.01.2018 
+ * Author:          Andreas Tr�tschel
+ * Last modified:   13.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -57,40 +57,49 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
     /// <summary>
-    /// Represents a single element in a stream of events.
+    /// Represents a series of events which have been fully committed as a single unit and which apply to the stream indicated.
     /// </summary>
-    [Serializable]
-    [DataContract]
-    public class EventMessage
+    public interface ICommit
     {
         /// <summary>
-        /// Initializes a new instance of the EventMessage class.
+        /// Gets the value which identifies bucket to which the the stream and the the commit belongs.
         /// </summary>
-        public EventMessage()
-        {
-            Headers = new Dictionary<string, object>();
-        }
-
-        public EventMessage(Dictionary<string, object> headers)
-        {
-            Headers = new Dictionary<string, object>(headers);
-        }
+        string BucketId { get; }
 
         /// <summary>
-        /// Gets the metadata which provides additional, unstructured information about this message.
+        /// Gets the value which uniquely identifies the stream to which the commit belongs.
         /// </summary>
-        [DataMember]
-        public Dictionary<string, object> Headers { get; private set; }
+        string StreamId { get; }
 
         /// <summary>
-        /// Gets or sets the actual event message body.
+        /// Gets the value which uniquely identifies the commit within the stream.
         /// </summary>
-        [DataMember]
-        public object Body { get; set; }
+        string ConcurrencyToken { get; }
+
+        /// <summary>
+        /// Gets the value which indicates the sequence (or position) in the stream to which this commit applies.
+        /// </summary>
+        long StreamRevision { get; }
+
+        /// <summary>
+        /// Gets the point in time at which the commit was persisted.
+        /// </summary>
+        DateTime CommitStamp { get; }
+
+        /// <summary>
+        /// Gets the metadata which provides additional, unstructured information about this commit.
+        /// </summary>
+        IReadOnlyDictionary<string, object> Headers { get; }
+
+        object Body { get; }
+
+        /// <summary>
+        /// Gets the collection of event messages to be committed as a single unit.
+        /// </summary>
+        IReadOnlyCollection<EventMessage> Events { get; }
     }
 }

@@ -1,10 +1,10 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IStreamPersistence.cs 
- * Types:           (1) AI4E.Storage.IStreamPersistence'2
+ * Types:           (1) AI4E.Storage.Domain.IStreamPersistence
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   04.06.2018 
+ * Last modified:   13.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -60,7 +60,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
     /// <summary>
     /// Indicates the ability to adapt the underlying persistence infrastructure to behave like a stream of events.

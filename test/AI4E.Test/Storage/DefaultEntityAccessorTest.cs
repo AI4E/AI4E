@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using AI4E.Domain;
 using AI4E.Storage;
+using AI4E.Storage.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Test.Storage

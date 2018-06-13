@@ -1,10 +1,10 @@
-/* Summary
+﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        StreamNotFoundException.cs 
- * Types:           (1) AI4E.Storage.StreamNotFoundException
+ * Filename:        EventMessage.cs 
+ * Types:           (1) AI4E.Storage.Domain.EventMessage
  * Version:         1.0
- * Author:          Andreas Tr�tschel
- * Last modified:   04.01.2018 
+ * Author:          Andreas Trütschel
+ * Last modified:   13.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -56,39 +56,41 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
     /// <summary>
-    /// Represents an attempt to retrieve a nonexistent event stream.
+    /// Represents a single element in a stream of events.
     /// </summary>
     [Serializable]
-    public class StreamNotFoundException : Exception
+    [DataContract]
+    public class EventMessage
     {
         /// <summary>
-        /// Initializes a new instance of the StreamNotFoundException class.
+        /// Initializes a new instance of the EventMessage class.
         /// </summary>
-        public StreamNotFoundException() { }
+        public EventMessage()
+        {
+            Headers = new Dictionary<string, object>();
+        }
+
+        public EventMessage(Dictionary<string, object> headers)
+        {
+            Headers = new Dictionary<string, object>(headers);
+        }
 
         /// <summary>
-        /// Initializes a new instance of the StreamNotFoundException class.
+        /// Gets the metadata which provides additional, unstructured information about this message.
         /// </summary>
-        /// <param name="message">The message that describes the error.</param>
-        public StreamNotFoundException(string message) : base(message) { }
+        [DataMember]
+        public Dictionary<string, object> Headers { get; private set; }
 
         /// <summary>
-        /// Initializes a new instance of the StreamNotFoundException class.
+        /// Gets or sets the actual event message body.
         /// </summary>
-        /// <param name="message">The message that describes the error.</param>
-        /// <param name="innerException">The message that is the cause of the current exception.</param>
-        public StreamNotFoundException(string message, Exception innerException) : base(message, innerException) { }
-
-        /// <summary>
-        /// Initializes a new instance of the StreamNotFoundException class.
-        /// </summary>
-        /// <param name="info">The SerializationInfo that holds the serialized object data of the exception being thrown.</param>
-        /// <param name="context">The StreamingContext that contains contextual information about the source or destination.</param>
-        protected StreamNotFoundException(SerializationInfo info, StreamingContext context) : base(info, context) { }
+        [DataMember]
+        public object Body { get; set; }
     }
 }

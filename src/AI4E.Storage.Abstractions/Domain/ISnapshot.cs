@@ -1,10 +1,10 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        ISnapshot.cs 
- * Types:           (1) AI4E.Storage.ISnapshot
+ * Types:           (1) AI4E.Storage.Domain.ISnapshot
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   04.01.2018 
+ * Last modified:   13.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -55,10 +55,9 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
 using System.Collections.Generic;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
     /// <summary>
     /// Represents a materialized view of a stream at specific revision.

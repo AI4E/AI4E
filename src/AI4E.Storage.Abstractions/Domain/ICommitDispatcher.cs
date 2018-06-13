@@ -18,12 +18,12 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using Newtonsoft.Json;
+using System.Threading.Tasks;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
-    public interface ISerializerSettingsResolver
+    public interface ICommitDispatcher
     {
-        JsonSerializerSettings ResolveSettings(IEntityStore entityStore);
+        Task DispatchAsync(ICommit commit);
     }
 }
