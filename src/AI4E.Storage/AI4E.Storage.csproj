@@ -17,7 +17,9 @@
     <Compile Include="..\Common\ImmutableArrayExtension.cs" Link="Internal\ImmutableArrayExtension.cs" />
     <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
     <Compile Include="..\Common\ParameterExpressionReplacer.cs" Link="Internal\ParameterExpressionReplacer.cs" />
+    <Compile Include="..\Common\SGuid.cs" Link="Internal\SGuid.cs" />
     <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
+    <Compile Include="..\Common\TypeLoadHelper.cs" Link="Internal\TypeLoadHelper.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -17,9 +17,9 @@ namespace AI4E.Test.Storage
             var accessor = GetAccessor();
         }
 
-        private static IEntityAccessor<Guid, DomainEvent, AggregateRoot> GetAccessor()
+        private static IEntityAccessor GetAccessor()
         {
-            return new DefaultEntityAccessor<Guid, DomainEvent, AggregateRoot>();
+            return new DefaultEntityAccessor();
         }
 
         [TestMethod]
@@ -31,7 +31,7 @@ namespace AI4E.Test.Storage
 
             var id = accessor.GetId(entity);
 
-            Assert.AreEqual(entity.Id, id);
+            Assert.AreEqual(entity.Id.ToString(), id);
         }
 
         [TestMethod]
@@ -51,7 +51,7 @@ namespace AI4E.Test.Storage
         {
             var entity = new MyEntity(Guid.NewGuid());
             var accessor = GetAccessor();
-            var concurrencyToken = Guid.NewGuid();
+            var concurrencyToken = Guid.NewGuid().ToString();
 
             accessor.SetConcurrencyToken(entity, concurrencyToken);
 
@@ -135,7 +135,7 @@ namespace AI4E.Test.Storage
         public void SetConcurrencyToken(Guid concurrencyToken)
         {
             var property = typeof(AggregateRoot).GetProperty("ConcurrencyToken", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            property.SetValue(this, concurrencyToken);
+            property.SetValue(this, concurrencyToken.ToString());
         }
 
         public void SetRevision(long revision)

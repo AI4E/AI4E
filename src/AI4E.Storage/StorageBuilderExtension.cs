@@ -91,9 +91,7 @@ namespace AI4E.Storage
             return builder;
         }
 
-        public static IStorageBuilder ExtendStorage<TBucketId, TStreamId>(this IStorageBuilder builder, IEnumerable<IStorageExtension<TBucketId, TStreamId>> hooks)
-            where TBucketId : IEquatable<TBucketId>
-            where TStreamId : IEquatable<TStreamId>
+        public static IStorageBuilder ExtendStorage(this IStorageBuilder builder, IEnumerable<IStorageExtension> hooks)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
@@ -106,9 +104,7 @@ namespace AI4E.Storage
             return builder; // .Configure(options => options.Extensions.AddRange(hooks));
         }
 
-        public static IStorageBuilder ExtendStorage<TBucketId, TStreamId>(this IStorageBuilder builder, params IStorageExtension<TBucketId, TStreamId>[] hooks)
-            where TBucketId : IEquatable<TBucketId>
-            where TStreamId : IEquatable<TStreamId>
+        public static IStorageBuilder ExtendStorage(this IStorageBuilder builder, params IStorageExtension[] hooks)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));

@@ -20,26 +20,24 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage
 {
-    public sealed class DefaultMessageAccessor<TId> : IMessageAccessor<TId>
-        where TId : struct, IEquatable<TId>
+    public sealed class DefaultMessageAccessor : IMessageAccessor
     {
-        private static readonly ConcurrentDictionary<Type, MessageCacheEntry> _messageCache = new ConcurrentDictionary<Type, MessageCacheEntry>();
+        private readonly ConcurrentDictionary<Type, MessageCacheEntry> _messageCache;
 
-        public DefaultMessageAccessor() { }
-
-        public bool TryGetEntityId<TMessage>(TMessage message, out TId id)
+        public DefaultMessageAccessor()
         {
-            if (message is Command<TId> command)
-            {
-                id = command.Id;
-                return true;
-            }
+            _messageCache = new ConcurrentDictionary<Type, MessageCacheEntry>();
+        }
 
+        public bool TryGetEntityId<TMessage>(TMessage message, out string id)
+        {
             var cacheEntry = _messageCache.GetOrAdd(typeof(TMessage), messageType => new MessageCacheEntry(messageType));
 
             if (!cacheEntry.CanReadId)
@@ -52,14 +50,8 @@ namespace AI4E.Storage
             return true;
         }
 
-        public bool TryGetConcurrencyToken<TMessage>(TMessage message, out Guid concurrencyToken)
+        public bool TryGetConcurrencyToken<TMessage>(TMessage message, out string concurrencyToken)
         {
-            if (message is ConcurrencySafeCommand<TId> command)
-            {
-                concurrencyToken = command.ConcurrencyToken;
-                return true;
-            }
-
             var cacheEntry = _messageCache.GetOrAdd(typeof(TMessage), messageType => new MessageCacheEntry(messageType));
 
             if (!cacheEntry.CanReadConcurrencyToken)
@@ -74,8 +66,10 @@ namespace AI4E.Storage
 
         private readonly struct MessageCacheEntry
         {
-            private readonly Func<object, TId> _idAccessor;
-            private readonly Func<object, Guid> _concurrencyTokenAccessor;
+            private static readonly MethodInfo _toStringMethod = typeof(object).GetMethod(nameof(ToString));
+
+            private readonly Func<object, string> _idAccessor;
+            private readonly Func<object, string> _concurrencyTokenAccessor;
 
             public MessageCacheEntry(Type messageType) : this()
             {
@@ -84,26 +78,54 @@ namespace AI4E.Storage
 
                 var messageParam = Expression.Parameter(typeof(object), "message");
                 var messageConvert = Expression.Convert(messageParam, messageType);
-                var idProperty = messageType.GetProperty(nameof(Command<TId>.Id), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                var concurrencyTokenProperty = messageType.GetProperty(nameof(ConcurrencySafeCommand<TId>.ConcurrencyToken), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var idProperty = messageType.GetProperty(nameof(Command.Id), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var concurrencyTokenProperty = messageType.GetProperty(nameof(ConcurrencySafeCommand.ConcurrencyToken), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
                 if (idProperty != null &&
                     idProperty.CanRead &&
-                    idProperty.PropertyType == typeof(TId) &&
+                    //idProperty.PropertyType == typeof(TId) &&
                     idProperty.GetIndexParameters().Length == 0)
                 {
                     var idCall = Expression.MakeMemberAccess(messageConvert, idProperty);
-                    var idLambda = Expression.Lambda<Func<object, TId>>(idCall, messageParam);
+
+                    Expression<Func<object, string>> idLambda;
+                    if (!idProperty.PropertyType.IsValueType)
+                    {
+                        var isNotNull = Expression.ReferenceNotEqual(idCall, Expression.Constant(null, idProperty.PropertyType));
+                        var conversion = Expression.Call(idCall, _toStringMethod);
+                        var convertedId = Expression.Condition(isNotNull, conversion, Expression.Constant(null, typeof(string)));
+                        idLambda = Expression.Lambda<Func<object, string>>(convertedId, messageParam);
+                    }
+                    else if (idProperty.PropertyType.IsGenericType &&
+                            idProperty.PropertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                    {
+                        var underlyingType = idProperty.PropertyType.GetGenericArguments().First();
+                        var nullableType = typeof(Nullable<>).MakeGenericType(underlyingType);
+                        var hasValueProperty = nullableType.GetProperty("HasValue");
+                        var valueProperty = nullableType.GetProperty("Value");
+
+                        var isNotNull = Expression.MakeMemberAccess(idCall, hasValueProperty);
+                        var value = Expression.MakeMemberAccess(idCall, valueProperty);
+                        var conversion = Expression.Call(value, _toStringMethod);
+                        var convertedId = Expression.Condition(isNotNull, value, Expression.Constant(null, typeof(string)));
+                        idLambda = Expression.Lambda<Func<object, string>>(convertedId, messageParam);
+                    }
+                    else
+                    {
+                        var conversion = Expression.Call(idCall, _toStringMethod);
+                        idLambda = Expression.Lambda<Func<object, string>>(conversion, messageParam);
+                    }
+
                     _idAccessor = idLambda.Compile();
                 }
 
                 if (concurrencyTokenProperty != null &&
                     concurrencyTokenProperty.CanRead &&
-                    concurrencyTokenProperty.PropertyType == typeof(Guid) &&
+                    concurrencyTokenProperty.PropertyType == typeof(string) &&
                     concurrencyTokenProperty.GetIndexParameters().Length == 0)
                 {
                     var concurrencyTokenCall = Expression.MakeMemberAccess(messageConvert, concurrencyTokenProperty);
-                    var concurrencyTokenLambda = Expression.Lambda<Func<object, Guid>>(concurrencyTokenCall, messageParam);
+                    var concurrencyTokenLambda = Expression.Lambda<Func<object, string>>(concurrencyTokenCall, messageParam);
                     _concurrencyTokenAccessor = concurrencyTokenLambda.Compile();
                 }
             }
@@ -111,7 +133,7 @@ namespace AI4E.Storage
             public bool CanReadId => _idAccessor != null;
             public bool CanReadConcurrencyToken => _concurrencyTokenAccessor != null;
 
-            public TId ReadId(object message)
+            public string ReadId(object message)
             {
                 if (message == null)
                     throw new ArgumentNullException(nameof(message));
@@ -122,7 +144,7 @@ namespace AI4E.Storage
                 return _idAccessor(message);
             }
 
-            public Guid ReadConcurrencyToken(object message)
+            public string ReadConcurrencyToken(object message)
             {
                 if (message == null)
                     throw new ArgumentNullException(nameof(message));

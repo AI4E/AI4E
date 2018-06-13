@@ -60,27 +60,70 @@ using System.Collections.Generic;
 
 namespace AI4E.Storage
 {
+    ///// <summary>
+    ///// Represents a series of events which have been fully committed as a single unit and which apply to the stream indicated.
+    ///// </summary>
+    //public interface ICommit<TBucketId, TStreamId>
+    //    where TBucketId : IEquatable<TBucketId>
+    //    where TStreamId : IEquatable<TStreamId>
+    //{
+    //    /// <summary>
+    //    /// Gets the value which identifies bucket to which the the stream and the the commit belongs.
+    //    /// </summary>
+    //    TBucketId BucketId { get; }
+
+    //    /// <summary>
+    //    /// Gets the value which uniquely identifies the stream to which the commit belongs.
+    //    /// </summary>
+    //    TStreamId StreamId { get; }
+
+    //    /// <summary>
+    //    /// Gets the value which uniquely identifies the commit within the stream.
+    //    /// </summary>
+    //    Guid ConcurrencyToken { get; }
+
+    //    /// <summary>
+    //    /// Gets the value which indicates the sequence (or position) in the stream to which this commit applies.
+    //    /// </summary>
+    //    long StreamRevision { get; }
+
+    //    /// <summary>
+    //    /// Gets the point in time at which the commit was persisted.
+    //    /// </summary>
+    //    DateTime CommitStamp { get; }
+
+    //    /// <summary>
+    //    /// Gets the metadata which provides additional, unstructured information about this commit.
+    //    /// </summary>
+    //    IReadOnlyDictionary<string, object> Headers { get; }
+
+    //    object Body { get; }
+
+    //    /// <summary>
+    //    /// Gets the collection of event messages to be committed as a single unit.
+    //    /// </summary>
+    //    IReadOnlyCollection<EventMessage> Events { get; }
+    //}
+
     /// <summary>
     /// Represents a series of events which have been fully committed as a single unit and which apply to the stream indicated.
     /// </summary>
-    public interface ICommit<TBucketId, TStreamId>
-        where TBucketId : IEquatable<TBucketId>
-        where TStreamId : IEquatable<TStreamId>
+    public interface ICommit
     {
         /// <summary>
         /// Gets the value which identifies bucket to which the the stream and the the commit belongs.
         /// </summary>
-        TBucketId BucketId { get; }
+        string BucketId { get; }
 
         /// <summary>
         /// Gets the value which uniquely identifies the stream to which the commit belongs.
         /// </summary>
-        TStreamId StreamId { get; }
+        string StreamId { get; }
 
         /// <summary>
         /// Gets the value which uniquely identifies the commit within the stream.
         /// </summary>
-        Guid ConcurrencyToken { get; }
+        string ConcurrencyToken { get; }
 
         /// <summary>
         /// Gets the value which indicates the sequence (or position) in the stream to which this commit applies.

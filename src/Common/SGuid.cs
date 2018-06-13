@@ -25,14 +25,24 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 
-namespace AI4E.Domain
+namespace AI4E
+#if AI4E_DOMAIN
+    .Domain
+#else 
+    .Internal
+#endif
 {
     /// <summary>
     /// Represents a globally unique identifier (GUID) with a
     /// shorter string value. Sguid
     /// </summary>
     [DebuggerDisplay("{Guid} ({Value})")]
-    public struct SGuid : IEquatable<SGuid>
+#if AI4E_DOMAIN
+    public
+#else
+    internal
+#endif
+    readonly struct SGuid : IEquatable<SGuid>
     {
         #region Fields
 

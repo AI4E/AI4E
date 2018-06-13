@@ -39,16 +39,16 @@ namespace AI4E
 
     public abstract class ConcurrencySafeCommand<TId> : Command<TId>
     {
-        protected ConcurrencySafeCommand(TId id, Guid concurrencyToken) : base(id)
+        protected ConcurrencySafeCommand(TId id, string concurrencyToken) : base(id)
         {
             ConcurrencyToken = concurrencyToken;
         }
 
-        public Guid ConcurrencyToken { get; }
+        public string ConcurrencyToken { get; }
     }
 
     public abstract class ConcurrencySafeCommand : ConcurrencySafeCommand<Guid>
     {
-        protected ConcurrencySafeCommand(Guid id, Guid concurrencyToken) : base(id, concurrencyToken) { }
+        protected ConcurrencySafeCommand(Guid id, string concurrencyToken) : base(id, concurrencyToken) { }
     }
 }

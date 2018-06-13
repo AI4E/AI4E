@@ -33,10 +33,7 @@ namespace AI4E.Storage
 {
     public static class ServiceCollectionExtension
     {
-        public static IStorageBuilder AddStorage<TId, TEventBase, TEntityBase>(this IServiceCollection services)
-            where TId : struct, IEquatable<TId>
-            where TEventBase : class
-            where TEntityBase : class
+        public static IStorageBuilder AddStorage(this IServiceCollection services)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
@@ -45,8 +42,9 @@ namespace AI4E.Storage
             ConfigureApplicationParts(services);
 
             services.AddOptions();
+            services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
             services.AddSingleton<ISerializer>(new Serialization.JsonSerializer());
-            services.AddTransient<IStreamStore<string, TId>, StreamStore<string, TId>>();
+            services.AddTransient<IStreamStore, StreamStore>();
             services.AddSingleton(new JsonSerializerSettings
             {
                 TypeNameHandling = TypeNameHandling.Auto,
@@ -56,25 +54,22 @@ namespace AI4E.Storage
                 ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
             });
 
-            services.AddSingleton<ICommitDispatcher<string, TId>, EntityStore<TId, TEventBase, TEntityBase>.CommitDispatcher>();
-            services.AddSingleton<ISnapshotProcessor<string, TId>, EntityStore<TId, TEventBase, TEntityBase>.SnapshotProcessor>();
-            services.AddSingleton<IEntityAccessor<TId, TEventBase, TEntityBase>, DefaultEntityAccessor<TId, TEventBase, TEntityBase>>();
-            services.AddTransient(provider => Provider.Create<EntityStore<TId, TEventBase, TEntityBase>>(provider));
-            services.AddScoped<IEntityStore<TId, TEventBase, TEntityBase>>(
-                provider => provider.GetRequiredService<IProvider<EntityStore<TId, TEventBase, TEntityBase>>>()
+            services.AddSingleton<ICommitDispatcher, EntityStore.CommitDispatcher>();
+            services.AddSingleton<ISnapshotProcessor, EntityStore.SnapshotProcessor>();
+            services.AddSingleton<IEntityAccessor, DefaultEntityAccessor>();
+            services.AddTransient(provider => Provider.Create<EntityStore>(provider));
+            services.AddScoped<IEntityStore>(
+                provider => provider.GetRequiredService<IProvider<EntityStore>>()
                                     .ProvideInstance());
 
-            services.AddSingleton(typeof(IStreamPersistence<,>), typeof(StreamPersistence<,>));
+            services.AddSingleton<IStreamPersistence, StreamPersistence>();
 
             services.AddSingleton(BuildProjector);
 
             return new StorageBuilder(services);
         }
 
-        public static IStorageBuilder AddStorage<TId, TEventBase, TEntityBase>(this IServiceCollection services, Action<StorageOptions> configuration)
-            where TId : struct, IEquatable<TId>
-            where TEventBase : class
-            where TEntityBase : class
+        public static IStorageBuilder AddStorage(this IServiceCollection services, Action<StorageOptions> configuration)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
@@ -82,7 +77,7 @@ namespace AI4E.Storage
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
-            var builder = services.AddStorage<TId, TEventBase, TEntityBase>();
+            var builder = services.AddStorage();
             builder.Configure(configuration);
 
             return builder;

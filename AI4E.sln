@@ -76,6 +76,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\StreamExtension.cs = src\Common\StreamExtension.cs
 		src\Common\StringBuilderExtension.cs = src\Common\StringBuilderExtension.cs
 		src\Common\TypeExtension.cs = src\Common\TypeExtension.cs
+		src\Common\TypeLoadHelper.cs = src\Common\TypeLoadHelper.cs
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity", "src\AI4E.Modularity\AI4E.Modularity.csproj", "{849A3BE7-363E-482E-AAC5-2E317EBFB216}"
@@ -90,13 +91,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing", "src\AI4E.Ro
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.Abstractions", "src\AI4E.Routing.Abstractions\AI4E.Routing.Abstractions.csproj", "{6B26D5C8-B3D4-434E-A18F-209D11514DC3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Coordination", "src\AI4E.Coordination\AI4E.Coordination.csproj", "{527A478C-E586-44F1-AB4F-EA667B79D438}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Coordination", "src\AI4E.Coordination\AI4E.Coordination.csproj", "{527A478C-E586-44F1-AB4F-EA667B79D438}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Coordination.Abstractions", "src\AI4E.Coordination.Abstractions\AI4E.Coordination.Abstractions.csproj", "{7913D018-8716-41D8-92AC-888279CEBC3C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Coordination.Abstractions", "src\AI4E.Coordination.Abstractions\AI4E.Coordination.Abstractions.csproj", "{7913D018-8716-41D8-92AC-888279CEBC3C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Remoting", "src\AI4E.Remoting\AI4E.Remoting.csproj", "{DDC04251-EA38-4319-BC4D-3983FC35DEEF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting", "src\AI4E.Remoting\AI4E.Remoting.csproj", "{DDC04251-EA38-4319-BC4D-3983FC35DEEF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Remoting.Abstractions", "src\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj", "{41D73642-4F5A-4F3E-991B-D3D17D8682D5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting.Abstractions", "src\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj", "{41D73642-4F5A-4F3E-991B-D3D17D8682D5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Storage.Sample", "samples\AI4E.Storage.Sample\AI4E.Storage.Sample.csproj", "{4FB9CB32-DF46-4EF6-B8F3-EA440581FB52}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -216,6 +219,10 @@ Global
 		{41D73642-4F5A-4F3E-991B-D3D17D8682D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{41D73642-4F5A-4F3E-991B-D3D17D8682D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{41D73642-4F5A-4F3E-991B-D3D17D8682D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4FB9CB32-DF46-4EF6-B8F3-EA440581FB52}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4FB9CB32-DF46-4EF6-B8F3-EA440581FB52}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4FB9CB32-DF46-4EF6-B8F3-EA440581FB52}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4FB9CB32-DF46-4EF6-B8F3-EA440581FB52}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -251,6 +258,7 @@ Global
 		{7913D018-8716-41D8-92AC-888279CEBC3C} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
 		{DDC04251-EA38-4319-BC4D-3983FC35DEEF} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
 		{41D73642-4F5A-4F3E-991B-D3D17D8682D5} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
+		{4FB9CB32-DF46-4EF6-B8F3-EA440581FB52} = {8682A1B5-6D4B-4176-8BC8-9F93018B12CE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}

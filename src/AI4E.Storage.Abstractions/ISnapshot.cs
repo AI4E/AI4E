@@ -60,22 +60,52 @@ using System.Collections.Generic;
 
 namespace AI4E.Storage
 {
+    ///// <summary>
+    ///// Represents a materialized view of a stream at specific revision.
+    ///// </summary>
+    //public interface ISnapshot<TBucketId, TStreamId>
+    //    where TBucketId : IEquatable<TBucketId>
+    //    where TStreamId : IEquatable<TStreamId>
+    //{
+    //    /// <summary>
+    //    /// Gets the value which uniquely identifies the bucket to which the snapshot applies.
+    //    /// </summary>
+    //    TBucketId BucketId { get; }
+
+    //    /// <summary>
+    //    /// Gets the value which uniquely identifies the stream to which the snapshot applies.
+    //    /// </summary>
+    //    TStreamId StreamId { get; }
+
+    //    /// <summary>
+    //    /// Gets the position at which the snapshot applies.
+    //    /// </summary>
+    //    long StreamRevision { get; }
+
+    //    /// <summary>
+    //    /// Gets the snapshot or materialized view of the stream at the revision indicated.
+    //    /// </summary>
+    //    object Payload { get; }
+
+    //    Guid ConcurrencyToken { get; }
+
+    //    IReadOnlyDictionary<string, object> Headers { get; }
+    //}
+
     /// <summary>
     /// Represents a materialized view of a stream at specific revision.
     /// </summary>
-    public interface ISnapshot<TBucketId, TStreamId>
-        where TBucketId : IEquatable<TBucketId>
-        where TStreamId : IEquatable<TStreamId>
+    public interface ISnapshot
     {
         /// <summary>
         /// Gets the value which uniquely identifies the bucket to which the snapshot applies.
         /// </summary>
-        TBucketId BucketId { get;  }
+        string BucketId { get; }
 
         /// <summary>
         /// Gets the value which uniquely identifies the stream to which the snapshot applies.
         /// </summary>
-        TStreamId StreamId { get; }
+        string StreamId { get; }
 
         /// <summary>
         /// Gets the position at which the snapshot applies.
@@ -87,7 +117,7 @@ namespace AI4E.Storage
         /// </summary>
         object Payload { get; }
 
-        Guid ConcurrencyToken { get; }
+        string ConcurrencyToken { get; }
 
         IReadOnlyDictionary<string, object> Headers { get; }
     }

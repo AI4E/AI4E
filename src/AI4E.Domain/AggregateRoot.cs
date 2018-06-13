@@ -51,7 +51,7 @@ namespace AI4E.Domain
             }
         }
 
-        public Guid ConcurrencyToken { get; internal set; }
+        public string ConcurrencyToken { get; internal set; }
 
         public long Revision { get; internal set; }
 

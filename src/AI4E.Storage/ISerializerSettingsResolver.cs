@@ -18,16 +18,20 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
 using Newtonsoft.Json;
 
 namespace AI4E.Storage
 {
-    public interface ISerializerSettingsResolver<TId, TEventBase, TEntityBase>
-        where TId : struct, IEquatable<TId>
-        where TEventBase : class
-        where TEntityBase : class
+    //public interface ISerializerSettingsResolver<TId, TEventBase, TEntityBase>
+    //    where TId : struct, IEquatable<TId>
+    //    where TEventBase : class
+    //    where TEntityBase : class
+    //{
+    //    JsonSerializerSettings ResolveSettings(IEntityStore<TId, TEventBase, TEntityBase> entityStore);
+    //}
+
+    public interface ISerializerSettingsResolver
     {
-        JsonSerializerSettings ResolveSettings(IEntityStore<TId, TEventBase, TEntityBase> entityStore);
+        JsonSerializerSettings ResolveSettings(IEntityStore entityStore);
     }
 }

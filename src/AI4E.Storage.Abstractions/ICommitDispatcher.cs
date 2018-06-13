@@ -23,10 +23,15 @@ using System.Threading.Tasks;
 
 namespace AI4E.Storage
 {
-    public interface ICommitDispatcher<TBucketId, TStreamId>
-        where TBucketId : IEquatable<TBucketId>
-        where TStreamId : IEquatable<TStreamId>
+    //public interface ICommitDispatcher<TBucketId, TStreamId>
+    //    where TBucketId : IEquatable<TBucketId>
+    //    where TStreamId : IEquatable<TStreamId>
+    //{
+    //    Task DispatchAsync(ICommit<TBucketId, TStreamId> commit);
+    //}
+
+    public interface ICommitDispatcher
     {
-        Task DispatchAsync(ICommit<TBucketId, TStreamId> commit);
+        Task DispatchAsync(ICommit commit);
     }
 }

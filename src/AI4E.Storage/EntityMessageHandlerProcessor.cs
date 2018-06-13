@@ -23,6 +23,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
 using AI4E.Internal;
@@ -31,18 +32,18 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E
 {
-    public sealed class EntityMessageHandlerProcessor<TId, TEventBase, TEntityBase> : MessageProcessor
-        where TId : struct, IEquatable<TId>
-        where TEventBase : class
-        where TEntityBase : class
+    public sealed class EntityMessageHandlerProcessor : MessageProcessor
     {
         private readonly IServiceProvider _serviceProvider;
-        private readonly IEntityStore<TId, TEventBase, TEntityBase> _entityStore;
-        private readonly IEntityAccessor<TId, TEventBase, TEntityBase> _entityAccessor;
+        private readonly IEntityStore _entityStore;
+        private readonly IEntityAccessor _entityAccessor;
+        private volatile IMessageAccessor _messageAccessor = null;
 
         private static readonly ConcurrentDictionary<Type, HandlerCacheEntry> _handlerTypeCache = new ConcurrentDictionary<Type, HandlerCacheEntry>();
 
-        public EntityMessageHandlerProcessor(IServiceProvider serviceProvider, IEntityStore<TId, TEventBase, TEntityBase> entityStore, IEntityAccessor<TId, TEventBase, TEntityBase> entityAccessor)
+        public EntityMessageHandlerProcessor(IServiceProvider serviceProvider,
+                                             IEntityStore entityStore,
+                                             IEntityAccessor entityAccessor)
         {
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
@@ -58,7 +59,8 @@ namespace AI4E
             _entityAccessor = entityAccessor;
         }
 
-        public async override Task<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, Task<IDispatchResult>> next)
+        public async override Task<IDispatchResult> ProcessAsync<TMessage>(TMessage message,
+                                                                           Func<TMessage, Task<IDispatchResult>> next)
         {
             var handler = Context.MessageHandler;
             var cacheEntry = _handlerTypeCache.GetOrAdd(handler.GetType(), handlerType => new HandlerCacheEntry(handlerType));
@@ -68,7 +70,7 @@ namespace AI4E
                 return await next(message);
             }
 
-            var messageAccessor = _serviceProvider.GetService<IMessageAccessor<TId>>() ?? new DefaultMessageAccessor<TId>();
+            var messageAccessor = GetMessageAccessor();
 
             if (!messageAccessor.TryGetEntityId(message, out var id))
             {
@@ -84,16 +86,27 @@ namespace AI4E
 
                 if (entity == null)
                 {
-                    if (createsEntityAttribute == null || !createsEntityAttribute.CreatesEntity)
+                    if (createsEntityAttribute == null ||
+                        !createsEntityAttribute.CreatesEntity)
+                    {
                         return new EntityNotFoundDispatchResult(cacheEntry.EntityType, id.ToString());
+                    }
                 }
                 else
                 {
-                    if (createsEntityAttribute != null && createsEntityAttribute.CreatesEntity && !createsEntityAttribute.AllowExisingEntity)
+                    if (createsEntityAttribute != null &&
+                        createsEntityAttribute.CreatesEntity &&
+                        !createsEntityAttribute.AllowExisingEntity)
+                    {
                         return new EntityAlreadyPresentDispatchResult(cacheEntry.EntityType, id.ToString());
+                    }
 
-                    if (checkConcurrencyToken && concurrencyToken != _entityAccessor.GetConcurrencyToken(entity))
+                    if (checkConcurrencyToken &&
+                        concurrencyToken != _entityAccessor.GetConcurrencyToken(entity))
+                    {
                         return new ConcurrencyIssueDispatchResult();
+                    }
+
 
                     cacheEntry.SetHandlerEntity(handler, entity);
                 }
@@ -140,17 +153,33 @@ namespace AI4E
             } while (true);
         }
 
+        private IMessageAccessor GetMessageAccessor()
+        {
+            if (_messageAccessor != null)
+            {
+                return _messageAccessor;
+            }
+
+            var messageAccessor = _serviceProvider.GetService<IMessageAccessor>();
+
+            if (messageAccessor == null)
+            {
+                messageAccessor = new DefaultMessageAccessor();
+            }
+
+            return Interlocked.CompareExchange(ref _messageAccessor, messageAccessor, null) ?? messageAccessor;
+        }
+
         private readonly struct HandlerCacheEntry
         {
-            private readonly Action<object, TEntityBase> _entitySetter;
-            private readonly Func<object, TEntityBase> _entityGetter;
+            private readonly Action<object, object> _entitySetter;
+            private readonly Func<object, object> _entityGetter;
             private readonly Func<object, bool> _deleteFlagAccessor;
-            private readonly Type _entityType;
 
             public HandlerCacheEntry(Type handlerType) : this()
             {
                 var entityProperty = handlerType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                                                .FirstOrDefault(p => typeof(TEntityBase).IsAssignableFrom(p.PropertyType) &&
+                                                .FirstOrDefault(p => !p.PropertyType.IsValueType &&
                                                                      p.CanRead &&
                                                                      p.CanWrite &&
                                                                      p.GetIndexParameters().Length == 0 &&
@@ -162,24 +191,24 @@ namespace AI4E
                 }
 
                 var handlerParam = Expression.Parameter(typeof(object), "handler");
-                var entityParam = Expression.Parameter(typeof(TEntityBase), "entity");
+                var entityParam = Expression.Parameter(typeof(object), "entity");
                 var handlerConvert = Expression.Convert(handlerParam, handlerType);
                 var entityConvert = Expression.Convert(entityParam, entityProperty.PropertyType);
                 var propertyAccess = Expression.Property(handlerConvert, entityProperty);
                 var propertyAssign = Expression.Assign(propertyAccess, entityConvert);
-                var getterLambda = Expression.Lambda<Func<object, TEntityBase>>(propertyAccess, handlerParam);
-                var setterLambda = Expression.Lambda<Action<object, TEntityBase>>(propertyAssign, handlerParam, entityParam);
+                var getterLambda = Expression.Lambda<Func<object, object>>(propertyAccess, handlerParam);
+                var setterLambda = Expression.Lambda<Action<object, object>>(propertyAssign, handlerParam, entityParam);
 
                 _entityGetter = getterLambda.Compile();
                 _entitySetter = setterLambda.Compile();
 
-                _entityType = entityProperty.PropertyType;
+                EntityType = entityProperty.PropertyType;
                 var customType = entityProperty.GetCustomAttribute<MessageHandlerEntityAttribute>().EntityType;
 
                 if (customType != null &&
-                    _entityType.IsAssignableFrom(customType)) // If the types do not match, we just ignore the custom type.
+                    EntityType.IsAssignableFrom(customType)) // If the types do not match, we just ignore the custom type.
                 {
-                    _entityType = customType;
+                    EntityType = customType;
                 }
 
                 var deleteFlagProperty = handlerType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
@@ -198,9 +227,9 @@ namespace AI4E
             }
 
             public bool IsEntityMessageHandler => _entityGetter != null && _entitySetter != null;
-            public Type EntityType => _entityType;
+            public Type EntityType { get; }
 
-            public void SetHandlerEntity(object handler, TEntityBase entity)
+            public void SetHandlerEntity(object handler, object entity)
             {
                 if (handler == null)
                     throw new ArgumentNullException(nameof(handler));
@@ -211,7 +240,7 @@ namespace AI4E
                 _entitySetter(handler, entity);
             }
 
-            public TEntityBase GetHandlerEntity(object handler)
+            public object GetHandlerEntity(object handler)
             {
                 if (handler == null)
                     throw new ArgumentNullException(nameof(handler));

@@ -62,23 +62,122 @@ using System.Threading.Tasks;
 
 namespace AI4E.Storage
 {
+    ///// <summary>
+    ///// Represents a sequence (or stream) of commits.
+    ///// </summary>
+    ///// <remarks> This type is not thread-safe. </remarks>
+    //public interface IStream<TBucketId, TStreamId>
+    //    where TBucketId : IEquatable<TBucketId>
+    //    where TStreamId : IEquatable<TStreamId>
+    //{
+    //    /// <summary>
+    //    /// Gets the value which identifies the bucket to which the stream belongs.
+    //    /// </summary>
+    //    TBucketId BucketId { get; }
+
+    //    /// <summary>
+    //    /// Gets the value which uniquely identifies the stream.
+    //    /// </summary>
+    //    TStreamId StreamId { get; }
+
+    //    /// <summary>
+    //    /// Gets the number of commits that the stream contains.
+    //    /// </summary>
+    //    long StreamRevision { get; }
+
+    //    /// <summary>
+    //    /// Gets the concurrency token to uniquely identify the most recent commit in the sequence.
+    //    /// </summary>
+    //    Guid ConcurrencyToken { get; }
+
+    //    /// <summary>
+    //    /// Gets a boolean value indicating whether this is a read-only view of the stream.
+    //    /// </summary>
+    //    bool IsReadOnly { get; }
+
+    //    /// <summary>
+    //    /// Gets the collection of commits, the stream consists of, started by the underlying snapshot.
+    //    /// </summary>
+    //    IEnumerable<ICommit<TBucketId, TStreamId>> Commits { get; }
+
+    //    /// <summary>
+    //    /// Gets the collection of events, the commits contains.
+    //    /// </summary>
+    //    IReadOnlyList<EventMessage> Events { get; }
+
+    //    /// <summary>
+    //    /// Gets the headers of the stream.
+    //    /// </summary>
+    //    IReadOnlyDictionary<string, object> Headers { get; }
+
+    //    /// <summary>
+    //    /// Gets the underlying snapshot of the view of the stream.
+    //    /// </summary>
+    //    ISnapshot<TBucketId, TStreamId> Snapshot { get; }
+
+    //    /// <summary>
+    //    /// Asynchronouly adds a commit to the sequence.
+    //    /// </summary>
+    //    /// <param name="concurrencyToken">The concurrency token used to ensure consistency.</param>
+    //    /// <param name="events">The events, the commit contains.</param>
+    //    /// <param name="body">The commit body.</param>
+    //    /// <param name="headerGenerator">A function that generated the new stream headers from the existing.</param>
+    //    /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+    //    /// <returns>
+    //    /// A task representing the asynchronous operation. 
+    //    /// If evaluated, the tasks result contains the concurrency token of the generated commit.
+    //    /// A return value of <see cref="Guid.Empty"/> indicates that no commit was generated.
+    //    /// </returns>
+    //    /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
+    //    /// <exception cref="InvalidOperationException">Thrown if this is a read-only stream view.</exception>
+    //    /// <exception cref="ConcurrencyException">Thrown if a concurrency conflict occurs.</exception>
+    //    /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
+    //    Task<Guid> CommitAsync(Guid concurrencyToken,
+    //                           IEnumerable<EventMessage> events,
+    //                           object body,
+    //                           Action<IDictionary<string, object>> headerGenerator,
+    //                           CancellationToken cancellation = default);
+
+    //    /// <summary>
+    //    /// Asynchronously updates the view of the stream to the latest version.
+    //    /// </summary>
+    //    /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+    //    /// <returns>
+    //    /// A task representing the asynchronous operation.
+    //    /// If evaluated, the tasks result contains a boolean value indicating whether the stream view changed.
+    //    /// </returns>
+    //    /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
+    //    /// <exception cref="InvalidOperationException">Thrown if this is a read-only stream view.</exception>
+    //    /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
+    //    Task<bool> UpdateAsync(CancellationToken cancellation);
+
+    //    /// <summary>
+    //    /// Asynchronously adds a snapshot for the current stream revision.
+    //    /// </summary>
+    //    /// <param name="body">The body that is a snapshot of the commits till the current stream revision.</param>
+    //    /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+    //    /// <returns>A task representing the asynchronous operation.</returns>
+    //    /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
+    //    /// <exception cref="InvalidOperationException">Thrown if this is a read-only stream view.</exception>
+    //    /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
+    //    Task AddSnapshotAsync(object body, CancellationToken cancellation = default);
+    //}
+
     /// <summary>
     /// Represents a sequence (or stream) of commits.
     /// </summary>
     /// <remarks> This type is not thread-safe. </remarks>
-    public interface IStream<TBucketId, TStreamId>
-        where TBucketId : IEquatable<TBucketId>
-        where TStreamId : IEquatable<TStreamId>
+    public interface IStream
     {
         /// <summary>
         /// Gets the value which identifies the bucket to which the stream belongs.
         /// </summary>
-        TBucketId BucketId { get; }
+        string BucketId { get; }
 
         /// <summary>
         /// Gets the value which uniquely identifies the stream.
         /// </summary>
-        TStreamId StreamId { get; }
+        string StreamId { get; }
 
         /// <summary>
         /// Gets the number of commits that the stream contains.
@@ -88,7 +187,7 @@ namespace AI4E.Storage
         /// <summary>
         /// Gets the concurrency token to uniquely identify the most recent commit in the sequence.
         /// </summary>
-        Guid ConcurrencyToken { get; }
+        string ConcurrencyToken { get; }
 
         /// <summary>
         /// Gets a boolean value indicating whether this is a read-only view of the stream.
@@ -98,7 +197,7 @@ namespace AI4E.Storage
         /// <summary>
         /// Gets the collection of commits, the stream consists of, started by the underlying snapshot.
         /// </summary>
-        IEnumerable<ICommit<TBucketId, TStreamId>> Commits { get; }
+        IEnumerable<ICommit> Commits { get; }
 
         /// <summary>
         /// Gets the collection of events, the commits contains.
@@ -113,7 +212,7 @@ namespace AI4E.Storage
         /// <summary>
         /// Gets the underlying snapshot of the view of the stream.
         /// </summary>
-        ISnapshot<TBucketId, TStreamId> Snapshot { get; }
+        ISnapshot Snapshot { get; }
 
         /// <summary>
         /// Asynchronouly adds a commit to the sequence.
@@ -132,11 +231,11 @@ namespace AI4E.Storage
         /// <exception cref="InvalidOperationException">Thrown if this is a read-only stream view.</exception>
         /// <exception cref="ConcurrencyException">Thrown if a concurrency conflict occurs.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
-        Task<Guid> CommitAsync(Guid concurrencyToken,
-                               IEnumerable<EventMessage> events,
-                               object body,
-                               Action<IDictionary<string, object>> headerGenerator,
-                               CancellationToken cancellation = default);
+        Task<string> CommitAsync(string concurrencyToken,
+                                 IEnumerable<EventMessage> events,
+                                 object body,
+                                 Action<IDictionary<string, object>> headerGenerator,
+                                 CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously updates the view of the stream to the latest version.

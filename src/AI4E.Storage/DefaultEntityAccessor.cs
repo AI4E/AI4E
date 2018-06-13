@@ -1,140 +1,345 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage
 {
-    public sealed class DefaultEntityAccessor<TId, TEventBase, TEntityBase> : IEntityAccessor<TId, TEventBase, TEntityBase>
-        where TId : struct, IEquatable<TId>
-        where TEventBase : class
-        where TEntityBase : class
+    public sealed class DefaultEntityAccessor : IEntityAccessor
     {
-        private readonly Func<TEntityBase, TId> _idAccessor;
-        private readonly Func<TEntityBase, Guid> _concurrencyTokenAccessor;
-        private readonly Action<TEntityBase, Guid> _concurrencyTokenSetter;
-        private readonly Func<TEntityBase, long> _revisionAccessor;
-        private readonly Action<TEntityBase, long> _revisionSetter;
-        private readonly Func<TEntityBase, IEnumerable<TEventBase>> _uncommittedEventsAccessor;
-        private readonly Action<TEntityBase> _commitMethodInvoker;
+        private readonly ConcurrentDictionary<Type, TypedDefaultEntityAccessor> _typedAccessors;
 
         public DefaultEntityAccessor()
         {
-            var entityBaseType = typeof(TEntityBase);
-            var entityParameter = Expression.Parameter(entityBaseType, "entity");
+            _typedAccessors = new ConcurrentDictionary<Type, TypedDefaultEntityAccessor>();
+        }
 
-            var idProperty = entityBaseType.GetProperty("Id",
-                                                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                                                        binder: default,
-                                                        typeof(TId),
-                                                        new Type[0],
-                                                        new ParameterModifier[0]);
+        public void CommitEvents(Type entityType, object entity)
+        {
+            CheckArguments(entityType, entity);
 
-            if (idProperty == null || !idProperty.CanRead)
+            var typedAccessor = GetTypedDefaultEntityAccessor(entityType);
+            typedAccessor.CommitEvents(entity);
+        }
+
+        public string GetConcurrencyToken(Type entityType, object entity)
+        {
+            CheckArguments(entityType, entity);
+
+            var typedAccessor = GetTypedDefaultEntityAccessor(entityType);
+            return typedAccessor.GetConcurrencyToken(entity);
+        }
+
+        public string GetId(Type entityType, object entity)
+        {
+            CheckArguments(entityType, entity);
+
+            var typedAccessor = GetTypedDefaultEntityAccessor(entityType);
+            return typedAccessor.GetId(entity);
+        }
+
+        public long GetRevision(Type entityType, object entity)
+        {
+            CheckArguments(entityType, entity);
+
+            var typedAccessor = GetTypedDefaultEntityAccessor(entityType);
+            return typedAccessor.GetRevision(entity);
+        }
+
+        public IEnumerable<object> GetUncommittedEvents(Type entityType, object entity)
+        {
+            CheckArguments(entityType, entity);
+
+            var typedAccessor = GetTypedDefaultEntityAccessor(entityType);
+            return typedAccessor.GetUncommittedEvents(entity);
+        }
+
+        public void SetConcurrencyToken(Type entityType, object entity, string concurrencyToken)
+        {
+            CheckArguments(entityType, entity);
+
+            var typedAccessor = GetTypedDefaultEntityAccessor(entityType);
+            typedAccessor.SetConcurrencyToken(entity, concurrencyToken);
+        }
+
+        public void SetRevision(Type entityType, object entity, long revision)
+        {
+            CheckArguments(entityType, entity);
+
+            var typedAccessor = GetTypedDefaultEntityAccessor(entityType);
+            typedAccessor.SetRevision(entity, revision);
+        }
+
+        private static void CheckArguments(Type entityType, object entity)
+        {
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            if (entityType.IsValueType)
+                throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
+
+            if (!entityType.IsAssignableFrom(entity.GetType()))
+                throw new ArgumentException($"The argument must be of type '{entityType.FullName}' or a derived type.", nameof(entity));
+        }
+
+        private TypedDefaultEntityAccessor GetTypedDefaultEntityAccessor(Type entityType)
+        {
+            Assert(entityType != null);
+
+            return _typedAccessors.GetOrAdd(entityType, _ => new TypedDefaultEntityAccessor(entityType));
+        }
+
+        private sealed class TypedDefaultEntityAccessor
+        {
+            private static readonly MethodInfo _toStringMethod = typeof(object).GetMethod(nameof(ToString));
+
+            private readonly Func<object, string> _idAccessor;
+            private readonly Func<object, string> _concurrencyTokenAccessor;
+            private readonly Action<object, string> _concurrencyTokenSetter;
+            private readonly Func<object, long> _revisionAccessor;
+            private readonly Action<object, long> _revisionSetter;
+            private readonly Func<object, IEnumerable<object>> _uncommittedEventsAccessor;
+            private readonly Action<object> _commitMethodInvoker;
+
+            public TypedDefaultEntityAccessor(Type entityBaseType)
             {
-                throw new Exception(); // TODO
+                var entityParameter = Expression.Parameter(typeof(object), "entity");
+                var convertedParameter = Expression.Convert(entityParameter, entityBaseType);
+
+                var concurrencyTokenProperty = entityBaseType.GetProperty("ConcurrencyToken",
+                                                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                                                            binder: default,
+                                                            typeof(string),
+                                                            new Type[0],
+                                                            new ParameterModifier[0]);
+
+                if (concurrencyTokenProperty == null || !concurrencyTokenProperty.CanRead || !concurrencyTokenProperty.CanWrite)
+                {
+                    throw new Exception(); // TODO
+                }
+
+                var revisionProperty = entityBaseType.GetProperty("Revision",
+                                                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                                                            binder: default,
+                                                            typeof(long),
+                                                            new Type[0],
+                                                            new ParameterModifier[0]);
+
+                if (revisionProperty == null || !revisionProperty.CanRead || !revisionProperty.CanWrite)
+                {
+                    throw new Exception(); // TODO
+                }
+
+                var uncommittedEventsProperty = entityBaseType.GetProperty("UncommittedEvents", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+                if (uncommittedEventsProperty == null ||
+                    !uncommittedEventsProperty.CanRead ||
+                    uncommittedEventsProperty.GetIndexParameters().Length != 0 ||
+                    !typeof(IEnumerable<object>).IsAssignableFrom(uncommittedEventsProperty.PropertyType))
+                {
+                    throw new Exception(); // TODO
+                }
+
+                var commitEventsMethod = entityBaseType.GetMethod("CommitEvents",
+                                                                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                                                                    binder: default,
+                                                                    new Type[0],
+                                                                    new ParameterModifier[0]);
+
+                if (commitEventsMethod == null)
+                {
+                    throw new Exception(); // TODO
+                }
+
+                _idAccessor = BuildIdAccessor(entityParameter, convertedParameter);
+
+                var concurrencyTokenParameter = Expression.Parameter(typeof(string), "concurrencyToken");
+                var concurrencyTokenPropertyAccess = Expression.Property(convertedParameter, concurrencyTokenProperty);
+                var concurrencyTokenPropertyAssign = Expression.Assign(concurrencyTokenPropertyAccess, concurrencyTokenParameter);
+                _concurrencyTokenAccessor = Expression.Lambda<Func<object, string>>(concurrencyTokenPropertyAccess, entityParameter).Compile();
+                _concurrencyTokenSetter = Expression.Lambda<Action<object, string>>(concurrencyTokenPropertyAssign, entityParameter, concurrencyTokenParameter).Compile();
+
+                var revisionParameter = Expression.Parameter(typeof(long), "revision");
+                var revisionPropertyAccess = Expression.Property(convertedParameter, revisionProperty);
+                var revisionPropertyAssign = Expression.Assign(revisionPropertyAccess, revisionParameter);
+                _revisionAccessor = Expression.Lambda<Func<object, long>>(revisionPropertyAccess, entityParameter).Compile();
+                _revisionSetter = Expression.Lambda<Action<object, long>>(revisionPropertyAssign, entityParameter, revisionParameter).Compile();
+
+                var uncommittedEventsPropertyAccess = Expression.Property(convertedParameter, uncommittedEventsProperty);
+                _uncommittedEventsAccessor = Expression.Lambda<Func<object, IEnumerable<object>>>(uncommittedEventsPropertyAccess, entityParameter).Compile();
+
+                var commitMethodCall = Expression.Call(convertedParameter, commitEventsMethod);
+                _commitMethodInvoker = Expression.Lambda<Action<object>>(commitMethodCall, entityParameter).Compile();
             }
 
-            var concurrencyTokenProperty = entityBaseType.GetProperty("ConcurrencyToken",
-                                                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                                                        binder: default,
-                                                        typeof(Guid),
-                                                        new Type[0],
-                                                        new ParameterModifier[0]);
-
-            if (concurrencyTokenProperty == null || !concurrencyTokenProperty.CanRead || !concurrencyTokenProperty.CanWrite)
+            private static Func<object, string> BuildIdAccessor(ParameterExpression parameter, Expression entity)
             {
-                throw new Exception(); // TODO
+                var entityBaseType = entity.Type;
+
+                var idProperty = entityBaseType.GetProperty("Id", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+                if (idProperty == null || !idProperty.CanRead || idProperty.GetIndexParameters().Length != 0)
+                {
+                    throw new Exception(); // TODO
+                }
+
+                return BuildIdAccessor(parameter, entity, idProperty);
             }
 
-            var revisionProperty = entityBaseType.GetProperty("Revision",
-                                                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                                                        binder: default,
-                                                        typeof(long),
-                                                        new Type[0],
-                                                        new ParameterModifier[0]);
-
-            if (revisionProperty == null || !revisionProperty.CanRead || !revisionProperty.CanWrite)
+            private static Func<object, string> BuildIdAccessor(ParameterExpression parameter, Expression entity, PropertyInfo idProperty)
             {
-                throw new Exception(); // TODO
+                var idCall = Expression.MakeMemberAccess(entity, idProperty);
+                Expression body;
+
+                if (!idProperty.PropertyType.IsValueType)
+                {
+                    var isNotNull = Expression.ReferenceNotEqual(idCall, Expression.Constant(null, idProperty.PropertyType));
+                    var conversion = Expression.Call(idCall, _toStringMethod);
+                    body = Expression.Condition(isNotNull, conversion, Expression.Constant(null, typeof(string)));
+                }
+                else if (idProperty.PropertyType.IsGenericType &&
+                         idProperty.PropertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                {
+                    var underlyingType = idProperty.PropertyType.GetGenericArguments().First();
+                    var nullableType = typeof(Nullable<>).MakeGenericType(underlyingType);
+                    var hasValueProperty = nullableType.GetProperty("HasValue");
+                    var valueProperty = nullableType.GetProperty("Value");
+
+                    var isNotNull = Expression.MakeMemberAccess(idCall, hasValueProperty);
+                    var value = Expression.MakeMemberAccess(idCall, valueProperty);
+                    var conversion = Expression.Call(value, _toStringMethod);
+                    body = Expression.Condition(isNotNull, value, Expression.Constant(null, typeof(string)));
+                }
+                else
+                {
+                    body = Expression.Call(idCall, _toStringMethod);
+                }
+
+                var idLambda = Expression.Lambda<Func<object, string>>(body, parameter);
+                return idLambda.Compile();
             }
 
-            var uncommittedEventsProperty = entityBaseType.GetProperty("UncommittedEvents", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
-            if (uncommittedEventsProperty == null ||
-                !uncommittedEventsProperty.CanRead ||
-                uncommittedEventsProperty.GetIndexParameters().Length != 0 ||
-                !typeof(IEnumerable<TEventBase>).IsAssignableFrom(uncommittedEventsProperty.PropertyType))
+            public string GetId(object entity)
             {
-                throw new Exception(); // TODO
+                return _idAccessor(entity);
             }
 
-            var commitEventsMethod = entityBaseType.GetMethod("CommitEvents",
-                                                                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                                                                binder: default,
-                                                                new Type[0],
-                                                                new ParameterModifier[0]);
-
-            if (commitEventsMethod == null)
+            public string GetConcurrencyToken(object entity)
             {
-                throw new Exception(); // TODO
+                return _concurrencyTokenAccessor(entity);
             }
 
-            var idPropertyAccess = Expression.Property(entityParameter, idProperty);
-            _idAccessor = Expression.Lambda<Func<TEntityBase, TId>>(idPropertyAccess, entityParameter).Compile();
+            public void SetConcurrencyToken(object entity, string concurrencyToken)
+            {
+                _concurrencyTokenSetter(entity, concurrencyToken);
+            }
 
-            var concurrencyTokenParameter = Expression.Parameter(typeof(Guid), "concurrencyToken");
-            var concurrencyTokenPropertyAccess = Expression.Property(entityParameter, concurrencyTokenProperty);
-            var concurrencyTokenPropertyAssign = Expression.Assign(concurrencyTokenPropertyAccess, concurrencyTokenParameter);
-            _concurrencyTokenAccessor = Expression.Lambda<Func<TEntityBase, Guid>>(concurrencyTokenPropertyAccess, entityParameter).Compile();
-            _concurrencyTokenSetter = Expression.Lambda<Action<TEntityBase, Guid>>(concurrencyTokenPropertyAssign, entityParameter, concurrencyTokenParameter).Compile();
+            public long GetRevision(object entity)
+            {
+                return _revisionAccessor(entity);
+            }
 
-            var revisionParameter = Expression.Parameter(typeof(long), "revision");
-            var revisionPropertyAccess = Expression.Property(entityParameter, revisionProperty);
-            var revisionPropertyAssign = Expression.Assign(revisionPropertyAccess, revisionParameter);
-            _revisionAccessor = Expression.Lambda<Func<TEntityBase, long>>(revisionPropertyAccess, entityParameter).Compile();
-            _revisionSetter = Expression.Lambda<Action<TEntityBase, long>>(revisionPropertyAssign, entityParameter, revisionParameter).Compile();
+            public void SetRevision(object entity, long revision)
+            {
+                _revisionSetter(entity, revision);
+            }
 
-            var uncommittedEventsPropertyAccess = Expression.Property(entityParameter, uncommittedEventsProperty);
-            _uncommittedEventsAccessor = Expression.Lambda<Func<TEntityBase, IEnumerable<TEventBase>>>(uncommittedEventsPropertyAccess, entityParameter).Compile();
+            public void CommitEvents(object entity)
+            {
+                _commitMethodInvoker(entity);
+            }
 
-            var commitMethodCall = Expression.Call(entityParameter, commitEventsMethod);
-            _commitMethodInvoker = Expression.Lambda<Action<TEntityBase>>(commitMethodCall, entityParameter).Compile();
+            public IEnumerable<object> GetUncommittedEvents(object entity)
+            {
+                return _uncommittedEventsAccessor(entity);
+            }
+        }
+    }
+
+    public static class EntityAccessorExtension
+    {
+        public static void CommitEvents(this IEntityAccessor entityAccessor, object entity)
+        {
+            if (entityAccessor == null)
+                throw new ArgumentNullException(nameof(entityAccessor));
+
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            entityAccessor.CommitEvents(entity.GetType(), entity);
         }
 
-        public TId GetId(TEntityBase entity)
+        public static string GetConcurrencyToken(this IEntityAccessor entityAccessor, object entity)
         {
-            return _idAccessor(entity);
+            if (entityAccessor == null)
+                throw new ArgumentNullException(nameof(entityAccessor));
+
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            return entityAccessor.GetConcurrencyToken(entity.GetType(), entity);
         }
 
-        public Guid GetConcurrencyToken(TEntityBase entity)
+        public static string GetId(this IEntityAccessor entityAccessor, object entity)
         {
-            return _concurrencyTokenAccessor(entity);
+            if (entityAccessor == null)
+                throw new ArgumentNullException(nameof(entityAccessor));
+
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            return entityAccessor.GetId(entity.GetType(), entity);
         }
 
-        public void SetConcurrencyToken(TEntityBase entity, Guid concurrencyToken)
+        public static long GetRevision(this IEntityAccessor entityAccessor, object entity)
         {
-            _concurrencyTokenSetter(entity, concurrencyToken);
+            if (entityAccessor == null)
+                throw new ArgumentNullException(nameof(entityAccessor));
+
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            return entityAccessor.GetRevision(entity.GetType(), entity);
         }
 
-        public long GetRevision(TEntityBase entity)
+        public static IEnumerable<object> GetUncommittedEvents(this IEntityAccessor entityAccessor, object entity)
         {
-            return _revisionAccessor(entity);
+            if (entityAccessor == null)
+                throw new ArgumentNullException(nameof(entityAccessor));
+
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            return entityAccessor.GetUncommittedEvents(entity.GetType(), entity);
         }
 
-        public void SetRevision(TEntityBase entity, long revision)
+        public static void SetConcurrencyToken(this IEntityAccessor entityAccessor, object entity, string concurrencyToken)
         {
-            _revisionSetter(entity, revision);
+            if (entityAccessor == null)
+                throw new ArgumentNullException(nameof(entityAccessor));
+
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            entityAccessor.SetConcurrencyToken(entity.GetType(), entity, concurrencyToken);
         }
 
-        public void CommitEvents(TEntityBase entity)
+        public static void SetRevision(this IEntityAccessor entityAccessor, object entity, long revision)
         {
-            _commitMethodInvoker(entity);
-        }
+            if (entityAccessor == null)
+                throw new ArgumentNullException(nameof(entityAccessor));
 
-        public IEnumerable<TEventBase> GetUncommittedEvents(TEntityBase entity)
-        {
-            return _uncommittedEventsAccessor(entity);
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            entityAccessor.SetRevision(entity.GetType(), entity, revision);
         }
     }
 }

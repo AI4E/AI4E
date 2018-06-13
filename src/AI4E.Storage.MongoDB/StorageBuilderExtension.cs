@@ -33,16 +33,9 @@ namespace AI4E.Storage.MongoDB
                 throw new ArgumentNullException(nameof(builder));
 
             builder.Services.AddOptions();
-
-            builder.Services.AddSingleton<IMongoClient>(provider =>
-                new MongoClient((provider.GetService<IOptions<MongoOptions>>()?.Value ?? new MongoOptions()).ConnectionString));
-
-            builder.Services.AddSingleton(provider =>
-                provider.GetRequiredService<IMongoClient>().GetDatabase((provider.GetService<IOptions<MongoOptions>>()?.Value ?? new MongoOptions()).Database));
-
+            builder.Services.AddSingleton(BuildMongoClient);
+            builder.Services.AddSingleton(BuildMongoDatabase);
             builder.UseDatabase<MongoDatabase>();
-
-            builder.Services.AddSingleton(typeof(IProjectionDependencyStore<,>), typeof(MongoProjectionDependencyStore<,>));
 
             return builder;
         }
@@ -60,6 +53,27 @@ namespace AI4E.Storage.MongoDB
             builder.Services.Configure(configuration);
 
             return builder;
+        }
+
+        private static IMongoDatabase BuildMongoDatabase(IServiceProvider serviceProvider)
+        {
+            var options = GetMongoOptions(serviceProvider);
+
+            return serviceProvider.GetRequiredService<IMongoClient>().GetDatabase(options.Database);
+        }
+
+        private static IMongoClient BuildMongoClient(IServiceProvider serviceProvider)
+        {
+            var options = GetMongoOptions(serviceProvider);
+
+            return new MongoClient(options.ConnectionString);
+        }
+
+        private static MongoOptions GetMongoOptions(IServiceProvider serviceProvider)
+        {
+            var optionsAccessor = serviceProvider.GetService<IOptions<MongoOptions>>();
+            var options = optionsAccessor?.Value ?? new MongoOptions();
+            return options;
         }
     }
 }

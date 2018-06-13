@@ -25,38 +25,55 @@ using System.Threading.Tasks;
 
 namespace AI4E.Storage
 {
-    public interface IEntityStore<TId, TEventBase, TEntityBase> : IDisposable
-        where TId : struct, IEquatable<TId>
-        where TEventBase : class
-        where TEntityBase : class
+    //public interface IEntityStore<TId, TEventBase, TEntityBase> : IDisposable
+    //    where TId : struct, IEquatable<TId>
+    //    where TEventBase : class
+    //    where TEntityBase : class
+    //{
+    //    Task<TEntity> GetByIdAsync<TEntity>(TId id, CancellationToken cancellation = default)
+    //        where TEntity : class, TEntityBase;
+
+    //    Task<TEntity> GetByIdAsync<TEntity>(TId id, long revision, CancellationToken cancellation = default)
+    //        where TEntity : class, TEntityBase;
+
+    //    Task<TEntityBase> GetByIdAsync(Type entityType, TId id, CancellationToken cancellation = default);
+
+    //    Task<TEntityBase> GetByIdAsync(Type entityType, TId id, long revision, CancellationToken cancellation = default);
+
+    //    Task<IEnumerable<TEntity>> GetAllAsync<TEntity>(CancellationToken cancellation = default)
+    //        where TEntity : class, TEntityBase;
+
+    //    IAsyncEnumerable<TEntityBase> GetAllAsync(Type entityType, CancellationToken cancellation = default);
+
+    //    IAsyncEnumerable<TEntityBase> GetAllAsync(CancellationToken cancellation = default);
+
+    //    Task StoreAsync<TEntity>(TEntity entity, CancellationToken cancellation = default)
+    //        where TEntity : class, TEntityBase;
+
+    //    Task StoreAsync(Type entityType, TEntityBase entity, CancellationToken cancellation = default);
+
+    //    Task DeleteAsync<TEntity>(TEntity entity, CancellationToken cancellation = default)
+    //        where TEntity : class, TEntityBase;
+
+    //    Task DeleteAsync(Type entityType, TEntityBase entity, CancellationToken cancellation = default);
+
+    //    IEnumerable<(Type type, TId id, long revision, TEntityBase entity)> CachedEntries { get; }
+    //}
+
+    public interface IEntityStore : IDisposable
     {
-        Task<TEntity> GetByIdAsync<TEntity>(TId id, CancellationToken cancellation = default)
-            where TEntity : class, TEntityBase;
+        ValueTask<object> GetByIdAsync(Type entityType, string id, CancellationToken cancellation = default);
 
-        Task<TEntity> GetByIdAsync<TEntity>(TId id, long revision, CancellationToken cancellation = default)
-            where TEntity : class, TEntityBase;
+        ValueTask<object> GetByIdAsync(Type entityType, string id, long revision, CancellationToken cancellation = default);
 
-        Task<TEntityBase> GetByIdAsync(Type entityType, TId id, CancellationToken cancellation = default);
+        IAsyncEnumerable<object> GetAllAsync(Type entityType, CancellationToken cancellation = default);
 
-        Task<TEntityBase> GetByIdAsync(Type entityType, TId id, long revision, CancellationToken cancellation = default);
+        IAsyncEnumerable<object> GetAllAsync(CancellationToken cancellation = default);
 
-        Task<IEnumerable<TEntity>> GetAllAsync<TEntity>(CancellationToken cancellation = default)
-            where TEntity : class, TEntityBase;
+        Task StoreAsync(Type entityType, object entity, CancellationToken cancellation = default);
 
-        IAsyncEnumerable<TEntityBase> GetAllAsync(Type entityType, CancellationToken cancellation = default);
+        Task DeleteAsync(Type entityType, object entity, CancellationToken cancellation = default);
 
-        IAsyncEnumerable<TEntityBase> GetAllAsync(CancellationToken cancellation = default);
-
-        Task StoreAsync<TEntity>(TEntity entity, CancellationToken cancellation = default)
-            where TEntity : class, TEntityBase;
-
-        Task StoreAsync(Type entityType, TEntityBase entity, CancellationToken cancellation = default);
-
-        Task DeleteAsync<TEntity>(TEntity entity, CancellationToken cancellation = default)
-            where TEntity : class, TEntityBase;
-
-        Task DeleteAsync(Type entityType, TEntityBase entity, CancellationToken cancellation = default);
-
-        IEnumerable<(Type type, TId id, long revision, TEntityBase entity)> CachedEntries { get; }
+        //IEnumerable<(Type type, string id, long revision, object entity)> CachedEntries { get; }
     }
 }
