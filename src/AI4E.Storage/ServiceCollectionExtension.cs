@@ -20,11 +20,9 @@
 
 using System;
 using System.Linq;
-using System.Reflection;
 using AI4E.Serialization;
 using AI4E.Storage.Projection;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
-using Microsoft.AspNetCore.Mvc.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Newtonsoft.Json;
@@ -63,8 +61,12 @@ namespace AI4E.Storage
                                     .ProvideInstance());
 
             services.AddSingleton<IStreamPersistence, StreamPersistence>();
-
             services.AddSingleton(BuildProjector);
+
+            services.Configure<MessagingOptions>(options =>
+            {
+                options.MessageProcessors.Add(ContextualProvider.Create<EntityMessageHandlerProcessor>());
+            });
 
             return new StorageBuilder(services);
         }
