@@ -59,36 +59,6 @@ using System;
 
 namespace AI4E.Storage
 {
-    ///// <summary>
-    ///// Indicates the most recent information representing the head of a given stream.
-    ///// </summary>
-    //public interface IStreamHead<TBucketId, TStreamId>
-    //    where TBucketId : IEquatable<TBucketId>
-    //    where TStreamId : IEquatable<TStreamId>
-    //{
-    //    /// <summary>
-    //    /// Gets the value which uniquely identifies the stream where the last snapshot exceeds the allowed threshold.
-    //    /// </summary>
-    //    TBucketId BucketId { get; }
-
-    //    /// <summary>
-    //    /// Gets the value which uniquely identifies the stream where the last snapshot exceeds the allowed threshold.
-    //    /// </summary>
-    //    TStreamId StreamId { get; }
-
-    //    /// <summary>
-    //    /// Gets the value which indicates the sequence (or position) in the stream to which this commit applies.
-    //    /// </summary>
-    //    long HeadRevision { get; }
-
-    //    /// <summary>
-    //    /// Gets the value which indicates the revision at which the last snapshot was taken.
-    //    /// </summary>
-    //    long SnapshotRevision { get; }
-
-    //    bool IsDeleted { get; }
-    //}
-
     /// <summary>
     /// Indicates the most recent information representing the head of a given stream.
     /// </summary>

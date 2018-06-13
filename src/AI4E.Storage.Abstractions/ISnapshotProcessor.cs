@@ -24,11 +24,6 @@ using System.Text;
 
 namespace AI4E.Storage
 {
-    //public interface ISnapshotProcessor<TBucketId, TStreamId>
-    //{
-
-    //}
-
     public interface ISnapshotProcessor
     {
 

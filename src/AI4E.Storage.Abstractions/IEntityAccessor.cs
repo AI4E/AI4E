@@ -23,29 +23,6 @@ using System.Collections.Generic;
 
 namespace AI4E.Storage
 {
-    //public interface IEntityAccessor<TId, TEventBase, TEntityBase>
-    //    where TId : struct, IEquatable<TId>
-    //    where TEventBase : class
-    //    where TEntityBase : class
-    //{
-    //    /// <summary>
-    //    /// Returns the identifier of the specified entity.
-    //    /// </summary>
-    //    /// <param name="entity">The entity whose identifier is retrived.</param>
-    //    /// <returns>The identifier of <paramref name="entity"/>.</returns>
-    //    TId GetId(TEntityBase entity);
-
-    //    Guid GetConcurrencyToken(TEntityBase entity);
-    //    void SetConcurrencyToken(TEntityBase entity, Guid concurrencyToken);
-
-    //    long GetRevision(TEntityBase entity);
-    //    void SetRevision(TEntityBase entity, long revision);
-
-    //    void CommitEvents(TEntityBase entity);
-
-    //    IEnumerable<TEventBase> GetUncommittedEvents(TEntityBase entity);
-    //}
-
     public interface IEntityAccessor
     {
         /// <summary>
