@@ -13,7 +13,7 @@ namespace AI4E.Storage.Transactions
         ValueTask<bool> CompareExchangeAsync(IEntryState<TId, TData> entry, IEntryState<TId, TData> comparand, CancellationToken cancellation = default);
     }
 
-    public interface IEntryStorageFactory
+    public interface IEntryStateStorageFactory
     {
         IEntryStateStorage<TId, TData> GetEntryStorage<TId, TData>() where TData : class;
     }

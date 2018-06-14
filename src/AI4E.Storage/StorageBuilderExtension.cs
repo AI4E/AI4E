@@ -68,7 +68,7 @@ namespace AI4E.Storage
         {
             services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
             services.AddSingleton<IEntryStateTransformerFactory, EntryStateTransformerFactory>();
-            services.AddSingleton<IEntryStorageFactory, EntryStorageFactory>();
+            services.AddSingleton<IEntryStateStorageFactory, EntryStateStorageFactory>();
             services.AddSingleton<ITransactionStateTransformer, TransactionStateTransformer>();
             services.AddSingleton<ITransactionStateStorage, TransactionStateStorage>();
             services.AddSingleton<ITransactionManager, TransactionManager>();

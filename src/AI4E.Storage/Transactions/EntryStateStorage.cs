@@ -185,11 +185,11 @@ namespace AI4E.Storage.Transactions
         }
     }
 
-    public sealed class EntryStorageFactory : IEntryStorageFactory
+    public sealed class EntryStateStorageFactory : IEntryStateStorageFactory
     {
         private readonly IFilterableDatabase _dataStore;
 
-        public EntryStorageFactory(IFilterableDatabase database)
+        public EntryStateStorageFactory(IFilterableDatabase database)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));

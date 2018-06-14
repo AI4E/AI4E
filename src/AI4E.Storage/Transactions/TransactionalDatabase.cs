@@ -18,7 +18,7 @@ namespace AI4E.Storage.Transactions
 
         private readonly ITransactionManager _transactionManager;
         private readonly IEntryStateTransformerFactory _entryStateTransformerFactory;
-        private readonly IEntryStorageFactory _entryStorageFactory;
+        private readonly IEntryStateStorageFactory _entryStorageFactory;
         private readonly ILogger<TransactionalDatabase> _logger;
         private readonly ITransaction _transaction;
         private readonly AsyncLock _lock = new AsyncLock();
@@ -30,7 +30,7 @@ namespace AI4E.Storage.Transactions
 
         public TransactionalDatabase(ITransactionManager transactionManager,
                          IEntryStateTransformerFactory entryManagerFactory,
-                         IEntryStorageFactory entryStorageFactory,
+                         IEntryStateStorageFactory entryStorageFactory,
                          ILogger<TransactionalDatabase> logger)
         {
             if (transactionManager == null)

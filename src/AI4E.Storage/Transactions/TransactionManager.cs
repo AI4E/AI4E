@@ -18,7 +18,7 @@ namespace AI4E.Storage.Transactions
         private readonly ITransactionStateStorage _transactionStorage;
         private readonly ITransactionStateTransformer _transactionStateTransformer;
         private readonly IEntryStateTransformerFactory _entryStateTransformerFactory;
-        private readonly IEntryStorageFactory _entryStorageFactory;
+        private readonly IEntryStateStorageFactory _entryStorageFactory;
         private readonly ILoggerFactory _loggerFactory;
 
         private readonly ILogger<TransactionManager> _logger;
@@ -33,7 +33,7 @@ namespace AI4E.Storage.Transactions
 
         public TransactionManager(ITransactionStateStorage transactionStorage,
                                   ITransactionStateTransformer transactionStateTransformer,
-                                  IEntryStorageFactory entryStorageFactory,
+                                  IEntryStateStorageFactory entryStorageFactory,
                                   IEntryStateTransformerFactory entryStateTransformerFactory,
                                   ILoggerFactory loggerFactory)
         {
