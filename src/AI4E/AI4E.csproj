@@ -5,12 +5,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\Common\AsyncEnumerableExtensions.cs" Link="Internal\AsyncEnumerableExtensions.cs" />
+    <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
     <Compile Include="..\Common\ConcurrentDictionaryExtension.cs" Link="Internal\ConcurrentDictionaryExtension.cs" />
     <Compile Include="..\Common\CustomAttributeProviderExtension.cs" Link="Internal\CustomAttributeProviderExtension.cs" />
     <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
+    <Compile Include="..\Common\FileInfoExtensions.cs" Link="Internal\FileInfoExtensions.cs" />
     <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
     <Compile Include="..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
     <Compile Include="..\Common\StringBuilderExtension.cs" Link="Internal\StringBuilderExtension.cs" />
+    <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>

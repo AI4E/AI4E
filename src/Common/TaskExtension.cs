@@ -25,9 +25,9 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 
-namespace AI4E.Async
+namespace AI4E.Internal
 {
-    public static class TaskExtension
+    internal static class TaskExtension
     {
         public static bool IsRunning(this Task task)
         {

@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
 using AI4E.Async;
+using AI4E.Internal;
 
 namespace AI4E.Modularity
 {

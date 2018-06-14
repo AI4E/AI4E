@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
+using AI4E.Internal;
 using AI4E.Processing;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;

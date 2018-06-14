@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <Compile Include="..\Common\AsyncEnumerableExtensions.cs" Link="Internal\AsyncEnumerableExtensions.cs" />
+    <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
     <Compile Include="..\Common\ConcurrentDictionaryExtension.cs" Link="Internal\ConcurrentDictionaryExtension.cs" />
     <Compile Include="..\Common\CustomAttributeProviderExtension.cs" Link="Internal\CustomAttributeProviderExtension.cs" />
     <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
@@ -18,6 +19,7 @@
     <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
     <Compile Include="..\Common\ParameterExpressionReplacer.cs" Link="Internal\ParameterExpressionReplacer.cs" />
     <Compile Include="..\Common\SGuid.cs" Link="Internal\SGuid.cs" />
+    <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
     <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
     <Compile Include="..\Common\TypeLoadHelper.cs" Link="Internal\TypeLoadHelper.cs" />
   </ItemGroup>

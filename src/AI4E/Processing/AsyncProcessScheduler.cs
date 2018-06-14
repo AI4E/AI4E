@@ -23,7 +23,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
+using AI4E.Internal;
 using Nito.AsyncEx;
 
 namespace AI4E.Processing

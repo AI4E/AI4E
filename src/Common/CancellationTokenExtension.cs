@@ -18,19 +18,27 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace AI4E.Async
+namespace AI4E.Internal
 {
-    public static class FileInfoExtensions
+    internal static class CancellationTokenExtension
     {
-        public static FileStream OpenReadAsync(this FileInfo fileInfo)
+        public static bool ThrowOrContinue(this CancellationToken cancellationToken)
         {
-            if (fileInfo == null)
-                throw new ArgumentNullException(nameof(fileInfo));
+            cancellationToken.ThrowIfCancellationRequested();
 
-            return new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+            return true;
+        }
+
+        public static Task AsTask(this CancellationToken cancellationToken)
+        {
+            var tcs = new TaskCompletionSource<object>();
+
+            cancellationToken.Register(() => tcs.SetCanceled());
+
+            return tcs.Task;
         }
     }
 }

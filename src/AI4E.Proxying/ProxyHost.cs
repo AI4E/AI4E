@@ -45,6 +45,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
+using AI4E.Internal;
 using AI4E.Processing;
 using AI4E.Remoting;
 using Microsoft.Extensions.DependencyInjection;
@@ -326,7 +327,7 @@ namespace AI4E.Proxying
             {
                 var activation = (ActivationDescripor)Deserialize(reader, expectedType: default);
                 var mode = activation.Mode;
-                var type = LoadTypeIgnoringVersion( activation.RemoteType);
+                var type = LoadTypeIgnoringVersion(activation.RemoteType);
                 var instance = default(object);
                 var ownsInstance = false;
 
@@ -511,17 +512,16 @@ namespace AI4E.Proxying
                 }
                 else
                 {
-                    var exc = value as Exception;
 
-                    if (exc == null)
-                    {
-                        exc = new Exception();
-                    }
-                    else
+                    if (value is Exception exc)
                     {
                         var preserveStackTrace = typeof(Exception).GetMethod("InternalPreserveStackTrace", BindingFlags.Instance | BindingFlags.NonPublic);
                         if (preserveStackTrace != null)
                             preserveStackTrace.Invoke(exc, null);
+                    }
+                    else
+                    {
+                        exc = new Exception();
                     }
 
                     taskCompletionSource.SetException(exc);

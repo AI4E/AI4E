@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
+using AI4E.Internal;
 
 namespace AI4E.Processing
 {
