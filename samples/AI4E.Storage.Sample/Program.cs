@@ -30,7 +30,7 @@ namespace AI4E.Storage.Sample
 
         private static async Task RunAsync()
         {
-            var entityStore = ServiceProvider.GetRequiredService<IEntityStore>();
+            var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>();
         }
     }
 }

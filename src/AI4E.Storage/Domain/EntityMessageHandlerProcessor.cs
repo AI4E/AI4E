@@ -35,27 +35,27 @@ namespace AI4E.Storage.Domain
     public sealed class EntityMessageHandlerProcessor : MessageProcessor
     {
         private readonly IServiceProvider _serviceProvider;
-        private readonly IEntityStore _entityStore;
+        private readonly IEntityStorageEngine _entityStorageEngine;
         private readonly IEntityAccessor _entityAccessor;
         private volatile IMessageAccessor _messageAccessor = null;
 
         private static readonly ConcurrentDictionary<Type, HandlerCacheEntry> _handlerTypeCache = new ConcurrentDictionary<Type, HandlerCacheEntry>();
 
         public EntityMessageHandlerProcessor(IServiceProvider serviceProvider,
-                                             IEntityStore entityStore,
+                                             IEntityStorageEngine entityStorageEngine,
                                              IEntityAccessor entityAccessor)
         {
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            if (entityStore == null)
-                throw new ArgumentNullException(nameof(entityStore));
+            if (entityStorageEngine == null)
+                throw new ArgumentNullException(nameof(entityStorageEngine));
 
             if (entityAccessor == null)
                 throw new ArgumentNullException(nameof(entityAccessor));
 
             _serviceProvider = serviceProvider;
-            _entityStore = entityStore;
+            _entityStorageEngine = entityStorageEngine;
             _entityAccessor = entityAccessor;
         }
 
@@ -81,7 +81,7 @@ namespace AI4E.Storage.Domain
 
             do
             {
-                var entity = await _entityStore.GetByIdAsync(cacheEntry.EntityType, id);
+                var entity = await _entityStorageEngine.GetByIdAsync(cacheEntry.EntityType, id);
                 var createsEntityAttribute = Context.MessageHandlerAction.Member.GetCustomAttribute<CreatesEntityAttribute>();
 
                 if (entity == null)
@@ -125,11 +125,11 @@ namespace AI4E.Storage.Domain
                 {
                     if (markedAsDeleted)
                     {
-                        await _entityStore.DeleteAsync(cacheEntry.EntityType, id);
+                        await _entityStorageEngine.DeleteAsync(cacheEntry.EntityType, id);
                     }
                     else
                     {
-                        await _entityStore.StoreAsync(cacheEntry.EntityType, entity, id);
+                        await _entityStorageEngine.StoreAsync(cacheEntry.EntityType, entity, id);
                     }
                 }
                 catch (ConcurrencyException)

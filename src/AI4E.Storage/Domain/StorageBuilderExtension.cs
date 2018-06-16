@@ -30,12 +30,12 @@ namespace AI4E.Storage.Domain
                 ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
             });
 
-            services.AddSingleton<ICommitDispatcher, EntityStore.CommitDispatcher>();
-            services.AddSingleton<ISnapshotProcessor, EntityStore.SnapshotProcessor>();
+            services.AddSingleton<ICommitDispatcher, EntityStorageEngine.CommitDispatcher>();
+            services.AddSingleton<ISnapshotProcessor, EntityStorageEngine.SnapshotProcessor>();
             services.AddSingleton<IEntityAccessor, DefaultEntityAccessor>();
-            services.AddTransient(provider => Provider.Create<EntityStore>(provider));
-            services.AddScoped<IEntityStore>(
-                provider => provider.GetRequiredService<IProvider<EntityStore>>()
+            services.AddTransient(provider => Provider.Create<EntityStorageEngine>(provider));
+            services.AddScoped<IEntityStorageEngine>(
+                provider => provider.GetRequiredService<IProvider<EntityStorageEngine>>()
                                     .ProvideInstance());
 
             services.AddSingleton<IStreamPersistence, StreamPersistence>();

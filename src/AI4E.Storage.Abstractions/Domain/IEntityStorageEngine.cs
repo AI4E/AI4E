@@ -25,7 +25,7 @@ using System.Threading.Tasks;
 
 namespace AI4E.Storage.Domain
 {
-    public interface IEntityStore : IDisposable
+    public interface IEntityStorageEngine : IDisposable
     {
         ValueTask<object> GetByIdAsync(Type entityType, string id, CancellationToken cancellation = default);
 
@@ -39,6 +39,6 @@ namespace AI4E.Storage.Domain
 
         Task DeleteAsync(Type entityType, string id, CancellationToken cancellation = default);
 
-        //IEnumerable<(Type type, string id, long revision, object entity)> CachedEntries { get; }
+        IEnumerable<(Type type, string id, long revision, object entity)> CachedEntries { get; }
     }
 }

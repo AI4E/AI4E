@@ -27,14 +27,14 @@ namespace AI4E.Domain.Services
 {
     public sealed class ReferenceResolver : IReferenceResolver
     {
-        private readonly IEntityStore _entityStore;
+        private readonly IEntityStorageEngine _entityStorageEngine;
 
-        public ReferenceResolver(IEntityStore entityStore)
+        public ReferenceResolver(IEntityStorageEngine entityStorageEngine)
         {
-            if (entityStore == null)
-                throw new ArgumentNullException(nameof(entityStore));
+            if (entityStorageEngine == null)
+                throw new ArgumentNullException(nameof(entityStorageEngine));
 
-            _entityStore = entityStore;
+            _entityStorageEngine = entityStorageEngine;
         }
 
         public async ValueTask<TEntity> ResolveAsync<TEntity>(Guid id, long revision, CancellationToken cancellation)
@@ -43,7 +43,7 @@ namespace AI4E.Domain.Services
             if (id.Equals(default))
                 return null;
 
-            return (TEntity)await _entityStore.GetByIdAsync(typeof(TEntity), id.ToString(), revision, cancellation);
+            return (TEntity)await _entityStorageEngine.GetByIdAsync(typeof(TEntity), id.ToString(), revision, cancellation);
         }
     }
 }

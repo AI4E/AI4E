@@ -1,9 +1,9 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        EntityStore.cs 
- * Types:           (1) AI4E.Storage.Domain.EntityStore
- *                  (2) AI4E.Storage.Domain.EntityStore.SnapshotProcessor
- *                  (3) AI4E.Storage.Domain.EntityStore.CommitDispatcher
+ * Filename:        EntityStorageEngine.cs 
+ * Types:           (1) AI4E.Storage.Domain.EntityStorageEngine
+ *                  (2) AI4E.Storage.Domain.EntityStorageEngine.SnapshotProcessor
+ *                  (3) AI4E.Storage.Domain.EntityStorageEngine.CommitDispatcher
  * Version:         1.0
  * Author:          Andreas Trütschel
  * Last modified:   13.06.2018 
@@ -50,7 +50,7 @@ using Nito.AsyncEx;
 
 namespace AI4E.Storage.Domain
 {
-    public sealed class EntityStore : IEntityStore
+    public sealed class EntityStorageEngine : IEntityStorageEngine
     {
         #region Fields
 
@@ -81,7 +81,7 @@ namespace AI4E.Storage.Domain
 
         #region C'tor
 
-        public EntityStore(IStreamStore streamStore,
+        public EntityStorageEngine(IStreamStore streamStore,
                            IEntityAccessor entityAccessor,
                            ISerializerSettingsResolver serializerSettingsResolver)
         {
@@ -106,7 +106,7 @@ namespace AI4E.Storage.Domain
 
         private static JToken StreamRoot => JToken.Parse("{}");
 
-        #region IEntityStore
+        #region IEntityStorageEngine
 
         public ValueTask<object> GetByIdAsync(Type entityType, string id, CancellationToken cancellation)
         {
@@ -304,24 +304,24 @@ namespace AI4E.Storage.Domain
             #region Fields
 
             private readonly StorageOptions _options;
-            private readonly IProvider<EntityStore> _entityStoreProvider;
+            private readonly IProvider<EntityStorageEngine> _entityStorageEngineProvider;
             private readonly IAsyncProcess _snapshotProcess;
 
             #endregion
 
             #region C'tor
 
-            public SnapshotProcessor(IProvider<EntityStore> entityStoreProvider,
+            public SnapshotProcessor(IProvider<EntityStorageEngine> entityStorageEngineProvider,
                                      IOptions<StorageOptions> optionsAccessor)
             {
-                if (entityStoreProvider == null)
-                    throw new ArgumentNullException(nameof(entityStoreProvider));
+                if (entityStorageEngineProvider == null)
+                    throw new ArgumentNullException(nameof(entityStorageEngineProvider));
 
                 if (optionsAccessor == null)
                     throw new ArgumentNullException(nameof(optionsAccessor));
 
                 _options = optionsAccessor.Value ?? new StorageOptions();
-                _entityStoreProvider = entityStoreProvider;
+                _entityStorageEngineProvider = entityStorageEngineProvider;
                 _snapshotProcess = new AsyncProcess(SnapshotProcess);
                 _initialization = InitializeInternalAsync(_cancellationSource.Token);
             }
@@ -419,12 +419,12 @@ namespace AI4E.Storage.Domain
                 if (snapshotRevisionThreshold < 0)
                     snapshotRevisionThreshold = 20;
 
-                using (var entityStore = _entityStoreProvider.ProvideInstance())
+                using (var entityStorageEngine = _entityStorageEngineProvider.ProvideInstance())
                 {
                     var enumerator = default(IAsyncEnumerator<IStream>);
                     try
                     {
-                        enumerator = entityStore._streamStore.OpenStreamsToSnapshotAsync(snapshotRevisionThreshold, cancellation).GetEnumerator();
+                        enumerator = entityStorageEngine._streamStore.OpenStreamsToSnapshotAsync(snapshotRevisionThreshold, cancellation).GetEnumerator();
 
                         while (await enumerator.MoveNext(cancellation))
                         {
@@ -446,7 +446,7 @@ namespace AI4E.Storage.Domain
 
                             foreach (var commit in stream.Commits)
                             {
-                                serializedEntity = entityStore._differ.Patch(serializedEntity, JToken.Parse(CompressionHelper.Unzip(commit.Body as byte[])));
+                                serializedEntity = entityStorageEngine._differ.Patch(serializedEntity, JToken.Parse(CompressionHelper.Unzip(commit.Body as byte[])));
                             }
 
                             await stream.AddSnapshotAsync(CompressionHelper.Zip(serializedEntity.ToString()), cancellation);
@@ -464,7 +464,7 @@ namespace AI4E.Storage.Domain
         {
             #region Fields
 
-            private readonly IProvider<EntityStore> _entityStoreProvider;
+            private readonly IProvider<EntityStorageEngine> _entityStorageEngineProvider;
             private readonly IMessageDispatcher _eventDispatcher;
             private readonly IProjectionDependencyStore<string, string> _projectionDependencyStore;
             private readonly IProjector _projector;
@@ -480,7 +480,7 @@ namespace AI4E.Storage.Domain
 
             #region C'tor
 
-            public CommitDispatcher(IProvider<EntityStore> entityStoreProvider,
+            public CommitDispatcher(IProvider<EntityStorageEngine> entityStorageEngineProvider,
                                     IStreamPersistence persistence,
                                     IMessageDispatcher eventDispatcher,
                                     IProjectionDependencyStore<string, string> projectionDependencyStore,
@@ -488,8 +488,8 @@ namespace AI4E.Storage.Domain
                                     IDataStore dataStore,
                                     ILogger<CommitDispatcher> logger)
             {
-                if (entityStoreProvider == null)
-                    throw new ArgumentNullException(nameof(entityStoreProvider));
+                if (entityStorageEngineProvider == null)
+                    throw new ArgumentNullException(nameof(entityStorageEngineProvider));
 
                 if (persistence == null)
                     throw new ArgumentNullException(nameof(persistence));
@@ -506,7 +506,7 @@ namespace AI4E.Storage.Domain
                 if (dataStore == null)
                     throw new ArgumentNullException(nameof(dataStore));
 
-                _entityStoreProvider = entityStoreProvider;
+                _entityStorageEngineProvider = entityStorageEngineProvider;
                 _persistence = persistence;
                 _eventDispatcher = eventDispatcher;
                 _projectionDependencyStore = projectionDependencyStore;
@@ -518,14 +518,6 @@ namespace AI4E.Storage.Domain
                 _dispatchProcess = new AsyncProcess(DispatchProcess);
                 _initialization = InitializeInternalAsync(_cancellationSource.Token);
             }
-
-            //public CommitDispatcher(IProvider<EntityStore> entityStoreProvider,
-            //                        IStreamPersistence persistence,
-            //                        IMessageDispatcher eventDispatcher,
-            //                        IProjectionDependencyStore<string, string> projectionDependencyStore,
-            //                        IProjector projector,
-            //                        IDataStore dataStore)
-            //    : this(entityStoreProvider, persistence, eventDispatcher, projectionDependencyStore, projector, dataStore, null) { }
 
             #endregion
 
@@ -684,13 +676,13 @@ namespace AI4E.Storage.Domain
                     throw new InvalidOperationException($"Unable to load type for bucket '{bucketId}'");
                 }
 
-                using (var entityStore = _entityStoreProvider.ProvideInstance())
+                using (var entityStorageEngine = _entityStorageEngineProvider.ProvideInstance())
                 {
                     async Task ProjectLocalAsync()
                     {
                         try
                         {
-                            await ProjectSingleAsync(type, id, entityStore, cancellation);
+                            await ProjectSingleAsync(type, id, entityStorageEngine, cancellation);
                             Task.Run(() => tcs?.TrySetResult(null)).HandleExceptions();
                         }
                         catch (Exception exc)
@@ -712,7 +704,7 @@ namespace AI4E.Storage.Domain
                     await Task.WhenAll(tasks);
 
                     var oldDependencies = (await _projectionDependencyStore.GetDependenciesAsync(GetBucketId(type), id, cancellation)).Select(p => (bucket: p.BucketId, id: p.Id));
-                    var dependencies = entityStore._lookup.Where(p => !(p.Key.id.Equals(id) && p.Key.revision == default && p.Value.GetType() == type)).Select(p => (bucket: GetBucketId(p.Value.GetType()), p.Key.id));
+                    var dependencies = entityStorageEngine._lookup.Where(p => !(p.Key.id.Equals(id) && p.Key.revision == default && p.Value.GetType() == type)).Select(p => (bucket: GetBucketId(p.Value.GetType()), p.Key.id));
 
                     var added = dependencies.Except(oldDependencies);
                     var removed = oldDependencies.Except(dependencies);
@@ -731,21 +723,21 @@ namespace AI4E.Storage.Domain
 
             private async Task ProjectSingleAsync(Type type,
                                                   string id,
-                                                  EntityStore entityStore,
+                                                  EntityStorageEngine entityStorageEngine,
                                                   CancellationToken cancellation)
             {
                 var entity = default(object);
 
-                if (entityStore == null)
+                if (entityStorageEngine == null)
                 {
-                    using (entityStore = _entityStoreProvider.ProvideInstance())
+                    using (entityStorageEngine = _entityStorageEngineProvider.ProvideInstance())
                     {
-                        entity = await entityStore.GetByIdAsync(type, id, cancellation: default);
+                        entity = await entityStorageEngine.GetByIdAsync(type, id, cancellation: default);
                     }
                 }
                 else
                 {
-                    entity = await entityStore.GetByIdAsync(type, id, cancellation: default);
+                    entity = await entityStorageEngine.GetByIdAsync(type, id, cancellation: default);
                 }
 
                 var projectionResults = await _projector.ProjectAsync(entity.GetType(), entity, cancellation);

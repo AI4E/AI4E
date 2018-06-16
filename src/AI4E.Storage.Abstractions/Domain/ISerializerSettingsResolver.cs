@@ -26,6 +26,6 @@ namespace AI4E.Storage.Domain
 #warning TODO Replace
     public interface ISerializerSettingsResolver
     {
-        JsonSerializerSettings ResolveSettings(IEntityStore entityStore);
+        JsonSerializerSettings ResolveSettings(IEntityStorageEngine entityStorageEngine);
     }
 }

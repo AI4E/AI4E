@@ -40,7 +40,7 @@ namespace AI4E.Domain.Services
 
     public sealed class SerializerSettingsResolver : ISerializerSettingsResolver
     {
-        public JsonSerializerSettings ResolveSettings(IEntityStore entityStore)
+        public JsonSerializerSettings ResolveSettings(IEntityStorageEngine entityStorageEngine)
         {
             var settings = new JsonSerializerSettings
             {
@@ -51,7 +51,7 @@ namespace AI4E.Domain.Services
                 ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
             };
 
-            settings.Converters.Add(new ReferenceConverter(new ReferenceResolver(entityStore)));
+            settings.Converters.Add(new ReferenceConverter(new ReferenceResolver(entityStorageEngine)));
 
             return settings;
         }
