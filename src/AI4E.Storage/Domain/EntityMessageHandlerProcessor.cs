@@ -125,11 +125,11 @@ namespace AI4E.Storage.Domain
                 {
                     if (markedAsDeleted)
                     {
-                        await _entityStore.DeleteAsync(cacheEntry.EntityType, entity);
+                        await _entityStore.DeleteAsync(cacheEntry.EntityType, id);
                     }
                     else
                     {
-                        await _entityStore.StoreAsync(cacheEntry.EntityType, entity);
+                        await _entityStore.StoreAsync(cacheEntry.EntityType, entity, id);
                     }
                 }
                 catch (ConcurrencyException)

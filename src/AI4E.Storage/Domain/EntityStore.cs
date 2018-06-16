@@ -106,6 +106,8 @@ namespace AI4E.Storage.Domain
 
         private static JToken StreamRoot => JToken.Parse("{}");
 
+        #region IEntityStore
+
         public ValueTask<object> GetByIdAsync(Type entityType, string id, CancellationToken cancellation)
         {
             return GetByIdAsync(entityType, id, revision: default, cancellation: cancellation);
@@ -125,7 +127,7 @@ namespace AI4E.Storage.Domain
                 return cachedResult;
 
 
-            var streamId = GetStreamId(id);
+            var streamId = id;
             var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, revision, cancellation);
 
             var result = Deserialize(entityType, stream);
@@ -134,6 +136,96 @@ namespace AI4E.Storage.Domain
 
             return result;
         }
+
+        public IAsyncEnumerable<object> GetAllAsync(Type entityType, CancellationToken cancellation)
+        {
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            if (entityType.IsValueType)
+                throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
+
+            var bucketId = GetBucketId(entityType);
+
+            return _streamStore.OpenAllAsync(bucketId, cancellation).Select(stream => CachedDeserialize(entityType, revision: default, stream));
+        }
+
+        public IAsyncEnumerable<object> GetAllAsync(CancellationToken cancellation)
+        {
+            return _streamStore.OpenAllAsync(cancellation).Select(stream => CachedDeserialize(GetTypeFromBucket(stream.BucketId), revision: default, stream));
+        }
+
+        public async Task StoreAsync(Type entityType, object entity, string id, CancellationToken cancellation)
+        {
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            if (id == null)
+                throw new ArgumentNullException(nameof(id));
+
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            if (entityType.IsValueType)
+                throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
+
+            if (!entityType.IsAssignableFrom(entity.GetType()))
+                throw new ArgumentException($"The specified entity must be of type '{entityType.FullName}' or a derived type.", nameof(entity));
+
+            var bucketId = GetBucketId(entityType);
+            var streamId = id;
+            var concurrencyToken = _entityAccessor.GetConcurrencyToken(entity);
+
+            var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, throwIfNotFound: false, cancellation);
+            var baseToken = default(JToken);
+
+            if (stream.Snapshot == null)
+            {
+                baseToken = StreamRoot;
+            }
+            else
+            {
+                baseToken = JToken.Parse(CompressionHelper.Unzip(stream.Snapshot.Payload as byte[]));
+            }
+
+            foreach (var commit in stream.Commits)
+            {
+                baseToken = _differ.Patch(baseToken, JToken.Parse(CompressionHelper.Unzip(commit.Body as byte[])));
+            }
+
+            var serializedEntity = JToken.FromObject(entity, _jsonSerializer);
+            var diff = _differ.Diff(baseToken, serializedEntity);
+
+            var events = _entityAccessor.GetUncommittedEvents(entity).Select(p => new EventMessage { Body = p });
+
+            await stream.CommitAsync(concurrencyToken,
+                                     events,
+                                     CompressionHelper.Zip(diff.ToString()),
+                                     headers => { },
+                                     cancellation);
+
+            _entityAccessor.SetConcurrencyToken(entity, stream.ConcurrencyToken);
+            _entityAccessor.SetRevision(entity, stream.StreamRevision);
+            _entityAccessor.CommitEvents(entity);
+
+            _lookup[(bucketId, _entityAccessor.GetId(entity), revision: default)] = entity;
+        }
+
+        public Task DeleteAsync(Type entityType, string id, CancellationToken cancellation)
+        {
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            if (id == null)
+                throw new ArgumentNullException(nameof(id));
+
+            if (entityType.IsValueType)
+                throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
+
+            throw new NotSupportedException(); // TODO
+        }
+
+        #endregion
 
         private object Deserialize(Type entityType, IStream stream)
         {
@@ -182,94 +274,6 @@ namespace AI4E.Storage.Domain
             return result;
         }
 
-        public async Task StoreAsync(Type entityType, object entity, CancellationToken cancellation)
-        {
-            if (entity == null)
-                throw new ArgumentNullException(nameof(entity));
-
-            if (entityType == null)
-                throw new ArgumentNullException(nameof(entityType));
-
-            if (entityType.IsValueType)
-                throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
-
-            if (!entityType.IsAssignableFrom(entity.GetType()))
-                throw new ArgumentException($"The specified entity must be of type '{entityType.FullName}' or a derived type.", nameof(entity));
-
-            var bucketId = GetBucketId(entityType);
-            var streamId = GetStreamId(entity);
-            var concurrencyToken = _entityAccessor.GetConcurrencyToken(entity);
-
-            var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, throwIfNotFound: false, cancellation);
-            var baseToken = default(JToken);
-
-            if (stream.Snapshot == null)
-            {
-                baseToken = StreamRoot;
-            }
-            else
-            {
-                baseToken = JToken.Parse(CompressionHelper.Unzip(stream.Snapshot.Payload as byte[]));
-            }
-
-            foreach (var commit in stream.Commits)
-            {
-                baseToken = _differ.Patch(baseToken, JToken.Parse(CompressionHelper.Unzip(commit.Body as byte[])));
-            }
-
-            var serializedEntity = JToken.FromObject(entity, _jsonSerializer);
-            var diff = _differ.Diff(baseToken, serializedEntity);
-
-            var events = _entityAccessor.GetUncommittedEvents(entity).Select(p => new EventMessage { Body = p });
-
-            await stream.CommitAsync(concurrencyToken,
-                                     events,
-                                     CompressionHelper.Zip(diff.ToString()),
-                                     headers => { },
-                                     cancellation);
-
-            _entityAccessor.SetConcurrencyToken(entity, stream.ConcurrencyToken);
-            _entityAccessor.SetRevision(entity, stream.StreamRevision);
-            _entityAccessor.CommitEvents(entity);
-
-            _lookup[(bucketId, _entityAccessor.GetId(entity), revision: default)] = entity;
-        }
-
-        public IAsyncEnumerable<object> GetAllAsync(Type entityType, CancellationToken cancellation)
-        {
-            if (entityType == null)
-                throw new ArgumentNullException(nameof(entityType));
-
-            if (entityType.IsValueType)
-                throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
-
-            var bucketId = GetBucketId(entityType);
-
-            return _streamStore.OpenAllAsync(bucketId, cancellation).Select(stream => CachedDeserialize(entityType, revision: default, stream));
-        }
-
-        public IAsyncEnumerable<object> GetAllAsync(CancellationToken cancellation)
-        {
-            return _streamStore.OpenAllAsync(cancellation).Select(stream => CachedDeserialize(GetTypeFromBucket(stream.BucketId), revision: default, stream));
-        }
-
-        public Task DeleteAsync(Type entityType, object entity, CancellationToken cancellation)
-        {
-            if (entityType == null)
-                throw new ArgumentNullException(nameof(entityType));
-
-            if (entity == null)
-                throw new ArgumentNullException(nameof(entity));
-
-            if (entityType.IsValueType)
-                throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
-
-            if (!entityType.IsAssignableFrom(entity.GetType()))
-                throw new ArgumentException($"The specified entity must be of type '{entityType.FullName}' or a derived type.", nameof(entity));
-
-            throw new NotSupportedException(); // TODO
-        }
-
         public void Dispose()
         {
             if (_isDisposed)
@@ -291,11 +295,6 @@ namespace AI4E.Storage.Domain
         private static Type GetTypeFromBucket(string bucketId)
         {
             return TypeLoadHelper.LoadTypeFromUnqualifiedName(bucketId);
-        }
-
-        private string GetStreamId(object entity)
-        {
-            return _entityAccessor.GetId(entity);
         }
 
         #endregion
