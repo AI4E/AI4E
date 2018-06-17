@@ -30,7 +30,24 @@ namespace AI4E.Storage.Sample
 
         private static async Task RunAsync()
         {
+            var id = Guid.NewGuid().ToString();
+
             var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>();
+            var entity = new TestEntity(id)
+            {
+                Value = "abc"
+            };
+
+            await entityStorageEngine.StoreAsync(typeof(TestEntity), entity, id);
+
+            using (var dataStore = ServiceProvider.GetRequiredService<IDataStore>())
+            {
+                var model = await dataStore.FindOneAsync<TestEntityModel>(p => p.Id == id);
+
+                await Console.Out.WriteLineAsync(model.Value);
+            }
+
+            await Console.In.ReadLineAsync();
         }
     }
 }

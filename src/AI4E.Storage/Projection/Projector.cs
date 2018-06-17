@@ -106,7 +106,6 @@ namespace AI4E.Storage.Projection
 
         private sealed class TypedProjector<TSource, TProjectionId, TProjection> : ITypedProjector<TSource, TProjection>
             where TSource : class
-            where TProjectionId : struct, IEquatable<TProjectionId>
             where TProjection : class
 
         {
@@ -175,7 +174,6 @@ namespace AI4E.Storage.Projection
         }
 
         private sealed class ProjectionResult<TProjectionId, TProjection> : IProjectionResult<TProjectionId, TProjection>
-            where TProjectionId : struct, IEquatable<TProjectionId>
             where TProjection : class
         {
             public ProjectionResult(TProjection result)

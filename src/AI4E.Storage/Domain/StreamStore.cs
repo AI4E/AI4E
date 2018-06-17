@@ -396,6 +396,9 @@ namespace AI4E.Storage.Domain
 
             private async Task CheckConcurrencyAsync(string concurrencyToken, CancellationToken cancellation)
             {
+                if (StreamRevision == 0)
+                    return;
+
                 if (concurrencyToken == ConcurrencyToken)
                     return;
 

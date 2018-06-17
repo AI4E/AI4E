@@ -352,7 +352,7 @@ namespace AI4E.Routing
                     }
                     catch (Exception exc)
                     {
-                        _logger.LogWarning(exc, "Exception occured while passing a message to the remote end.");
+                        _logger?.LogWarning(exc, "Exception occured while passing a message to the remote end.");
                     }
 
                     return;
@@ -366,14 +366,14 @@ namespace AI4E.Routing
                 }
                 catch (Exception exc)
                 {
-                    _logger.LogWarning(exc, "Exception occured while passing a message to the remote end.");
+                    _logger?.LogWarning(exc, "Exception occured while passing a message to the remote end.");
                 }
 
                 return;
             }
             catch (Exception exc)
             {
-                _logger.LogWarning(exc, "Exception occured while passing a message to the remote end.");
+                _logger?.LogWarning(exc, "Exception occured while passing a message to the remote end.");
             }
 
             Reschedule(message, localEndPoint, remoteEndPoint, attempt, tcs, cancellation).HandleExceptions(_logger);

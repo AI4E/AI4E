@@ -46,7 +46,6 @@ namespace AI4E.Storage.Projection
     }
 
     public interface IProjectionResult<TProjectionId, TProjection> : IProjectionResult
-        where TProjectionId : struct, IEquatable<TProjectionId>
         where TProjection : class
     {
         new TProjectionId ResultId { get; }

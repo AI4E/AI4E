@@ -35,7 +35,7 @@ namespace AI4E.Storage.Transactions
                                   ITransactionStateTransformer transactionStateTransformer,
                                   IEntryStateStorageFactory entryStorageFactory,
                                   IEntryStateTransformerFactory entryStateTransformerFactory,
-                                  ILoggerFactory loggerFactory)
+                                  ILoggerFactory loggerFactory = null)
         {
             if (transactionStorage == null)
                 throw new ArgumentNullException(nameof(transactionStorage));
@@ -110,41 +110,41 @@ namespace AI4E.Storage.Transactions
             Assert(processedTransactions != null);
             Assert(visitedTransactions != null);
 
-            _logger.LogTrace($"Processing transaction {transaction.Id}");
+            _logger?.LogTrace($"Processing transaction {transaction.Id}");
 
             var transactionState = await transaction.GetStateAsync(cancellation);
             var operations = await transaction.GetOperationsAsync(cancellation);
 
             if (transactionState.IsCommitted())
             {
-                _logger.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction {transaction.Id} committed successfully.");
+                _logger?.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction {transaction.Id} committed successfully.");
 
                 return ProcessingState.Committed;
             }
 
             if (transactionState == TransactionStatus.Aborted)
             {
-                _logger.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction {transaction.Id} aborted.");
+                _logger?.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction {transaction.Id} aborted.");
 
                 return ProcessingState.Aborted;
             }
 
             if (transactionState == TransactionStatus.AbortRequested)
             {
-                _logger.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction abort requested. Aborting transaction {transaction.Id}");
+                _logger?.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction abort requested. Aborting transaction {transaction.Id}");
                 return await AbortTransactionAsync(originalTransaction, transaction, operations, cancellation);
             }
 
             if (visitedTransactions.Contains(transaction))
             {
-                _logger.LogTrace($"Processing transaction {originalTransaction.Id}. Detected cycle. Aborting transaction {transaction.Id}");
+                _logger?.LogTrace($"Processing transaction {originalTransaction.Id}. Detected cycle. Aborting transaction {transaction.Id}");
                 return await AbortTransactionAsync(originalTransaction, transaction, operations, cancellation);
             }
 
             var dependencies = new HashSet<ITransaction>();
             if (!await ApplyOperationsAsync(transaction, operations, dependencies, cancellation))
             {
-                _logger.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction abort requested concurrently. Aborting transaction {transaction.Id}");
+                _logger?.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction abort requested concurrently. Aborting transaction {transaction.Id}");
                 return await AbortTransactionAsync(originalTransaction, transaction, operations, cancellation);
             }
 
@@ -152,7 +152,7 @@ namespace AI4E.Storage.Transactions
             {
                 var stringifiedDependencies = dependencies.Select(p => p.Id.ToString()).Aggregate((e, n) => e + ", " + n);
 
-                _logger.LogTrace($"Processing transaction {originalTransaction.Id}. Processing dependencies of transaction {transaction.Id}: {stringifiedDependencies}.");
+                _logger?.LogTrace($"Processing transaction {originalTransaction.Id}. Processing dependencies of transaction {transaction.Id}: {stringifiedDependencies}.");
             }
 
             // Recursively process all dependencies.
@@ -172,17 +172,17 @@ namespace AI4E.Storage.Transactions
 
             if (!await CheckVersionsAsync(transaction, operations, cancellation))
             {
-                _logger.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction cannot be committed due to a version conflict. Aborting transaction {transaction.Id}");
+                _logger?.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction cannot be committed due to a version conflict. Aborting transaction {transaction.Id}");
                 return await AbortTransactionAsync(originalTransaction, transaction, operations, cancellation);
             }
 
             if (!await transaction.TryCommitAsync(cancellation))
             {
-                _logger.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction abort requested concurrently. Aborting transaction {transaction.Id}");
+                _logger?.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction abort requested concurrently. Aborting transaction {transaction.Id}");
                 return await AbortTransactionAsync(originalTransaction, transaction, operations, cancellation);
             }
 
-            _logger.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction {transaction.Id} committed successfully.");
+            _logger?.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction {transaction.Id} committed successfully.");
 
             await CleanUpTransactionAsync(transaction, operations, cancellation);
 
@@ -196,7 +196,7 @@ namespace AI4E.Storage.Transactions
         {
             if (!await transaction.TryRequestAbortAsync(cancellation))
             {
-                _logger.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction {transaction.Id} committed successfully.");
+                _logger?.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction {transaction.Id} committed successfully.");
                 await CleanUpTransactionAsync(transaction, operations, cancellation);
                 return ProcessingState.Committed;
             }
@@ -211,7 +211,7 @@ namespace AI4E.Storage.Transactions
 
             await transaction.AbortAsync(cancellation);
 
-            _logger.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction {transaction.Id} aborted.");
+            _logger?.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction {transaction.Id} aborted.");
 
             return ProcessingState.Aborted;
         }
@@ -412,7 +412,7 @@ namespace AI4E.Storage.Transactions
             {
                 try
                 {
-                    //_logger.LogDebug("Performing transaction garbage collection.");
+                    //_logger?.LogDebug("Performing transaction garbage collection.");
 
                     //// TODO: We can also include pending operations if we store a time stamp on the transaction that the respecting transaction was touched last.
                     ////       We can compare this time stamp with the current time and define a limit that must be reached in order to process the transaction.
@@ -462,7 +462,7 @@ namespace AI4E.Storage.Transactions
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
                 {
-                    _logger.LogWarning(exc, "Unexpected exception while collecting transactions.");
+                    _logger?.LogWarning(exc, "Unexpected exception while collecting transactions.");
                 }
             }
         }
@@ -754,7 +754,7 @@ namespace AI4E.Storage.Transactions
                 }
                 while (!await _entryStorage.CompareExchangeAsync(desired, entry, cancellation));
 
-                _logger.LogTrace($"Applied operation for transaction {transaction.Id} to entry {id}.");
+                _logger?.LogTrace($"Applied operation for transaction {transaction.Id} to entry {id}.");
 
                 Assert(desired.PendingOperations.Last().TransactionId == transaction.Id);
 
@@ -789,7 +789,7 @@ namespace AI4E.Storage.Transactions
 
                 var entry = await _entryStorage.UpdateEntryAsync(predicate, Update, cancellation);
 
-                _logger.LogTrace($"Aborted operation for transaction {transaction.Id} to entry {id}.");
+                _logger?.LogTrace($"Aborted operation for transaction {transaction.Id} to entry {id}.");
 
                 Assert(!entry.PendingOperations.Any(p => p.TransactionId == transaction.Id));
             }
@@ -822,7 +822,7 @@ namespace AI4E.Storage.Transactions
 
                 await _entryStorage.UpdateEntryAsync(predicate, Update, cancellation);
 
-                _logger.LogTrace($"Committed operation for transaction {transaction.Id} to entry {id}.");
+                _logger?.LogTrace($"Committed operation for transaction {transaction.Id} to entry {id}.");
             }
         }
     }

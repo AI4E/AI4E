@@ -27,7 +27,7 @@ using System.Threading.Tasks;
 
 namespace AI4E.Storage
 {
-    public interface IDataStore
+    public interface IDataStore : IDisposable
     {
         /// <summary>
         /// Stores an object in the store.

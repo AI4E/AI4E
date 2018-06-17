@@ -67,7 +67,11 @@ namespace AI4E.Storage.Projection
             {
                 do
                 {
-                    await database?.DisposeIfDisposableAsync();
+                    if (database != null)
+                    {
+                        await database.DisposeIfDisposableAsync();
+                    }
+
                     database = _databaseFactory.ProvideInstance();
                     var scopedEngine = new ScopedProjectionEngine(entityDescriptor, _projector, database, _serviceProvider);
                     dependents = await scopedEngine.ProjectAsync(cancellation);
@@ -76,7 +80,10 @@ namespace AI4E.Storage.Projection
             }
             finally
             {
-                await database?.DisposeIfDisposableAsync();
+                if (database != null)
+                {
+                    await database.DisposeIfDisposableAsync();
+                }
             }
 
             processedEntities.Add(entityDescriptor);

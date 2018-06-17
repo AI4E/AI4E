@@ -185,7 +185,7 @@ namespace AI4E.Storage.Transactions
                 // Volatile read op
                 var database = _database;
 
-                var instance = Expression.Constant(database, typeof(IDataStore));
+                var instance = Expression.Constant(database, typeof(ITransactionalDatabase));
 
                 var dataParam = Expression.Parameter(typeof(object), "data");
                 var cancellationParam = Expression.Parameter(typeof(CancellationToken), "cancellation");

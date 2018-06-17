@@ -90,7 +90,7 @@ namespace AI4E.Messaging.InMemory.Sample
             var str = message.Components.Aggregate((e, n) => e + " " + n);
 
             // We use the service that is injected into out constructor.
-            await _logger.LogToConsoleAsync(str);
+            await _logger?.LogToConsoleAsync(str);
 
             var evt = new LoggedEvent(str);
 

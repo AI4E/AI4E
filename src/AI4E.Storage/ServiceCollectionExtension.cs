@@ -34,6 +34,7 @@ namespace AI4E.Storage
             services.AddOptions();
             services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
             services.AddSingleton<ISerializer>(new Serialization.JsonSerializer());
+            services.AddTransient<IDataStore, DataStore>();
 
             return new StorageBuilder(services);
         }

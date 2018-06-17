@@ -55,5 +55,7 @@ namespace AI4E.Storage
         {
             return FindOneAsync<TData>(p => true, cancellation);
         }
+
+        public void Dispose() { }
     }
 }

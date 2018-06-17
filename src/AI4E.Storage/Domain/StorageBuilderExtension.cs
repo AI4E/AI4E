@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Linq;
+using AI4E.Internal;
 using AI4E.Storage.Projection;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Newtonsoft.Json;
 
 namespace AI4E.Storage.Domain
@@ -18,17 +18,19 @@ namespace AI4E.Storage.Domain
             var services = builder.Services;
 
             // Configure necessary application parts
-            ConfigureApplicationParts(services);
+            services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
             // TODO: Replace
-            services.AddSingleton(new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.Auto,
-                Formatting = Formatting.Indented,
-                PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-                ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
-                ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
-            });
+            //services.AddSingleton(new JsonSerializerSettings
+            //{
+            //    TypeNameHandling = TypeNameHandling.Auto,
+            //    Formatting = Formatting.Indented,
+            //    PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+            //    ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
+            //    ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
+            //});
+
+            services.AddTransient<ISerializerSettingsResolver, SerializerSettingsResolver>();
 
             AddStreamStore(services);
             AddDomainStorageEngine(services);
@@ -36,6 +38,20 @@ namespace AI4E.Storage.Domain
             AddMessageProcessors(services);
 
             return new DomainStorageBuilder(builder);
+        }
+
+        public static IDomainStorageBuilder UseDomainStorage(this IStorageBuilder builder,
+                                                             Action<DomainStorageOptions> configuration)
+        {
+            if (builder == null)
+                throw new ArgumentNullException(nameof(builder));
+
+            if (configuration == null)
+                throw new ArgumentNullException(nameof(configuration));
+
+            var result = UseDomainStorage(builder);
+            result.Services.Configure(configuration);
+            return result;
         }
 
         private static void AddStreamStore(IServiceCollection services)
@@ -73,19 +89,6 @@ namespace AI4E.Storage.Domain
             });
         }
 
-        public static IDomainStorageBuilder UseDomainStorage(this IStorageBuilder builder, Action<DomainStorageOptions> configuration)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
-            if (configuration == null)
-                throw new ArgumentNullException(nameof(configuration));
-
-            var result = UseDomainStorage(builder);
-            result.Services.Configure(configuration);
-            return result;
-        }
-
         private static IProjector BuildProjector(IServiceProvider serviceProvider)
         {
             var projector = new Projector(serviceProvider);
@@ -115,14 +118,7 @@ namespace AI4E.Storage.Domain
             return projector;
         }
 
-        private static void ConfigureApplicationParts(IServiceCollection services)
-        {
-            var partManager = services.GetApplicationPartManager();
-            partManager.ConfigureMessagingFeatureProviders();
-            services.TryAddSingleton(partManager);
-        }
-
-        private static void ConfigureMessagingFeatureProviders(this ApplicationPartManager partManager)
+        private static void ConfigureFeatureProviders(ApplicationPartManager partManager)
         {
             if (!partManager.FeatureProviders.OfType<ProjectionFeatureProvider>().Any())
             {
@@ -130,22 +126,21 @@ namespace AI4E.Storage.Domain
             }
         }
 
-        private static ApplicationPartManager GetApplicationPartManager(this IServiceCollection services)
+        private sealed class SerializerSettingsResolver : ISerializerSettingsResolver
         {
-            var manager = services.GetService<ApplicationPartManager>();
-            if (manager == null)
+            public JsonSerializerSettings ResolveSettings(IEntityStorageEngine entityStorageEngine)
             {
-                manager = new ApplicationPartManager();
+                var settings = new JsonSerializerSettings
+                {
+                    TypeNameHandling = TypeNameHandling.Auto,
+                    Formatting = Formatting.Indented,
+                    PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+                    ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
+                    ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
+                };
+
+                return settings;
             }
-
-            return manager;
-        }
-
-        private static T GetService<T>(this IServiceCollection services)
-        {
-            var serviceDescriptor = services.LastOrDefault(d => d.ServiceType == typeof(T));
-
-            return (T)serviceDescriptor?.ImplementationInstance;
         }
     }
 }

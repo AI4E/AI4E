@@ -5,7 +5,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
 using AI4E.Internal;
 
 namespace AI4E.Storage.Domain
@@ -13,19 +12,19 @@ namespace AI4E.Storage.Domain
     public sealed class StreamPersistence : IStreamPersistence
     {
         private readonly IFilterableDatabase _database;
-        private readonly ISnapshotProcessor _snapshotProcessor;
+        //private readonly ISnapshotProcessor _snapshotProcessor;
         private int _isDisposed;
 
-        public StreamPersistence(IFilterableDatabase database, ISnapshotProcessor snapshotProcessor)
+        public StreamPersistence(IFilterableDatabase database/*, ISnapshotProcessor snapshotProcessor*/)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
 
-            if (snapshotProcessor == null)
-                throw new ArgumentNullException(nameof(snapshotProcessor));
+            //if (snapshotProcessor == null)
+            //    throw new ArgumentNullException(nameof(snapshotProcessor));
 
             _database = database;
-            _snapshotProcessor = snapshotProcessor;
+            //_snapshotProcessor = snapshotProcessor;
         }
 
         #region Disposal
