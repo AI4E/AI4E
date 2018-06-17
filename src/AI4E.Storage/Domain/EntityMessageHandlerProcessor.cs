@@ -36,14 +36,14 @@ namespace AI4E.Storage.Domain
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly IEntityStorageEngine _entityStorageEngine;
-        private readonly IEntityAccessor _entityAccessor;
+        private readonly IEntityStoragePropertyManager _entityStoragePropertyManager; // TODO: Rename
         private volatile IMessageAccessor _messageAccessor = null;
 
         private static readonly ConcurrentDictionary<Type, HandlerCacheEntry> _handlerTypeCache = new ConcurrentDictionary<Type, HandlerCacheEntry>();
 
         public EntityMessageHandlerProcessor(IServiceProvider serviceProvider,
                                              IEntityStorageEngine entityStorageEngine,
-                                             IEntityAccessor entityAccessor)
+                                             IEntityStoragePropertyManager entityStoragePropertyManager) // TODO: Rename
         {
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
@@ -51,12 +51,12 @@ namespace AI4E.Storage.Domain
             if (entityStorageEngine == null)
                 throw new ArgumentNullException(nameof(entityStorageEngine));
 
-            if (entityAccessor == null)
-                throw new ArgumentNullException(nameof(entityAccessor));
+            if (entityStoragePropertyManager == null)
+                throw new ArgumentNullException(nameof(entityStoragePropertyManager));
 
             _serviceProvider = serviceProvider;
             _entityStorageEngine = entityStorageEngine;
-            _entityAccessor = entityAccessor;
+            _entityStoragePropertyManager = entityStoragePropertyManager;
         }
 
         public async override Task<IDispatchResult> ProcessAsync<TMessage>(TMessage message,
@@ -102,7 +102,7 @@ namespace AI4E.Storage.Domain
                     }
 
                     if (checkConcurrencyToken &&
-                        concurrencyToken != _entityAccessor.GetConcurrencyToken(entity))
+                        concurrencyToken != _entityStoragePropertyManager.GetConcurrencyToken(entity))
                     {
                         return new ConcurrencyIssueDispatchResult();
                     }

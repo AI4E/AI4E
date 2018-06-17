@@ -118,6 +118,22 @@ namespace AI4E.Internal
             return null;
         }
 
+        public static Func<TData, TId> GetIdAccessor<TId, TData>()
+        {
+            var idType = GetIdType<TData>();
+
+            if (!typeof(TId).IsAssignableFrom(idType))
+            {
+                throw new Exception("Type mismatch.");
+            }
+
+            var idAccessor = (Func<TData, TId>)_idAccessors.GetOrAdd(typeof(TData), GetIdAccessor);
+
+            Assert(idAccessor != null);
+
+            return idAccessor;
+        }
+
         public static TId GetId<TId, TData>(TData data)
         {
             if (data == null)

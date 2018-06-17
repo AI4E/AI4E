@@ -20,7 +20,7 @@ namespace AI4E.Storage.Domain
             // Configure necessary application parts
             ConfigureApplicationParts(services);
 
-            services.AddTransient<IStreamStore, StreamStore>();
+            // TODO: Replace
             services.AddSingleton(new JsonSerializerSettings
             {
                 TypeNameHandling = TypeNameHandling.Auto,
@@ -30,24 +30,46 @@ namespace AI4E.Storage.Domain
                 ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
             });
 
-            services.AddSingleton<ICommitDispatcher, EntityStorageEngine.CommitDispatcher>();
-            services.AddSingleton<ISnapshotProcessor, EntityStorageEngine.SnapshotProcessor>();
-            services.AddSingleton<IEntityAccessor, DefaultEntityAccessor>();
-            services.AddTransient(provider => Provider.Create<EntityStorageEngine>(provider));
-            services.AddScoped<IEntityStorageEngine>(
-                provider => provider.GetRequiredService<IProvider<EntityStorageEngine>>()
-                                    .ProvideInstance());
+            AddStreamStore(services);
+            AddDomainStorageEngine(services);
+            AddProjectionEngine(services);
+            AddMessageProcessors(services);
 
+            return new DomainStorageBuilder(builder);
+        }
+
+        private static void AddStreamStore(IServiceCollection services)
+        {
             services.AddSingleton<IStreamPersistence, StreamPersistence>();
-            services.AddSingleton(BuildProjector);
+            services.AddScoped<IStreamStore, StreamStore>();
+        }
 
+        private static void AddDomainStorageEngine(IServiceCollection services)
+        {
+            // Domain storage engine
+            services.AddScoped<IEntityStorageEngine, EntityStorageEngine>();       
+            services.AddScoped(typeof(IEntityStore<,,>), typeof(EntityStore<,,>));
+
+            // Domain storage engine background worker
+            services.AddSingleton<ICommitDispatcher, CommitDispatcher>();
+            services.AddSingleton<ISnapshotProcessor, SnapshotProcessor>();
+
+            // Helpers
+            services.AddScoped<IEntityStoragePropertyManager, EntityStoragePropertyManager>();
+            services.AddSingleton(typeof(IEntityIdAccessor<,>), typeof(DefaultEntityIdAccessor<,>));
+        }
+
+        private static void AddProjectionEngine(IServiceCollection services)
+        {
+            services.AddSingleton(BuildProjector);
+        }
+
+        private static void AddMessageProcessors(IServiceCollection services)
+        {
             services.Configure<MessagingOptions>(options =>
             {
                 options.MessageProcessors.Add(ContextualProvider.Create<EntityMessageHandlerProcessor>());
             });
-
-            var result = new DomainStorageBuilder(builder);
-            return result;
         }
 
         public static IDomainStorageBuilder UseDomainStorage(this IStorageBuilder builder, Action<DomainStorageOptions> configuration)
