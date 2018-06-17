@@ -8,11 +8,11 @@ namespace AI4E.Storage.Domain
     // The service must be registered with the same scope than the storage-engine to ensure consistency.
     public sealed class EntityStoragePropertyManager : IEntityStoragePropertyManager
     {
-        private readonly Dictionary<object, EntityMetadata> _metaDataStorage;
+        private readonly ConditionalWeakTable<object, EntityMetadata> _metaDataStorage;
 
         public EntityStoragePropertyManager()
         {
-            _metaDataStorage = new Dictionary<object, EntityMetadata>();
+            _metaDataStorage = new ConditionalWeakTable<object, EntityMetadata>();
         }
 
         public string GetConcurrencyToken(object entity)
@@ -49,14 +49,16 @@ namespace AI4E.Storage.Domain
         {
             Assert(entity != null);
 
-            if (!_metaDataStorage.TryGetValue(entity, out var result))
-            {
-                result = new EntityMetadata();
+            return _metaDataStorage.GetOrCreateValue(entity);
 
-                _metaDataStorage.Add(entity, result);
-            }
+            //if (!_metaDataStorage.TryGetValue(entity, out var result))
+            //{
+            //    result = new EntityMetadata();
 
-            return result;
+            //    _metaDataStorage.Add(entity, result);
+            //}
+
+            //return result;
         }
 
         private sealed class EntityMetadata

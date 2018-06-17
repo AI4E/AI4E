@@ -71,7 +71,7 @@ namespace AI4E.Storage.Domain
             services.AddSingleton<ISnapshotProcessor, SnapshotProcessor>();
 
             // Helpers
-            services.AddScoped<IEntityStoragePropertyManager, EntityStoragePropertyManager>();
+            services.AddSingleton<IEntityStoragePropertyManager, EntityStoragePropertyManager>();
             services.AddSingleton(typeof(IEntityIdAccessor<,>), typeof(DefaultEntityIdAccessor<,>));
         }
 

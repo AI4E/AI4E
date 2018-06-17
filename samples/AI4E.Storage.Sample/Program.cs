@@ -45,6 +45,7 @@ namespace AI4E.Storage.Sample
                 var model = await dataStore.FindOneAsync<TestEntityModel>(p => p.Id == id);
 
                 await Console.Out.WriteLineAsync(model.Value);
+                await Console.Out.WriteLineAsync(model.ConcurrencyToken);
             }
 
             await Console.In.ReadLineAsync();
