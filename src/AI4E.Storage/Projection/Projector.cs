@@ -117,6 +117,8 @@ namespace AI4E.Storage.Projection
             {
                 Assert(serviceProvider != null);
                 _serviceProvider = serviceProvider;
+
+                _projections = new HandlerRegistry<IProjection<TSource, TProjection>>();
             }
 
             public Type SourceType => typeof(TSource);

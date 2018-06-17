@@ -47,7 +47,7 @@ namespace AI4E.Storage.Domain
         private static void AddDomainStorageEngine(IServiceCollection services)
         {
             // Domain storage engine
-            services.AddScoped<IEntityStorageEngine, EntityStorageEngine>();       
+            services.AddScoped<IEntityStorageEngine, EntityStorageEngine>();
             services.AddScoped(typeof(IEntityStore<,,>), typeof(EntityStore<,,>));
 
             // Domain storage engine background worker
@@ -62,6 +62,7 @@ namespace AI4E.Storage.Domain
         private static void AddProjectionEngine(IServiceCollection services)
         {
             services.AddSingleton(BuildProjector);
+            services.AddSingleton<IProjectionEngine, ProjectionEngine>();
         }
 
         private static void AddMessageProcessors(IServiceCollection services)

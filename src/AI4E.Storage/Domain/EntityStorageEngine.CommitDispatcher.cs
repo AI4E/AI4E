@@ -19,10 +19,8 @@ namespace AI4E.Storage.Domain
     {
         #region Fields
 
-        private readonly IMessageDispatcher _eventDispatcher;
-        private readonly IProjectionDependencyStore<string, string> _projectionDependencyStore;
-        private readonly IProjector _projector;
-        private readonly IDataStore _dataStore;
+        private readonly IMessageDispatcher _eventDispatcher;    
+        private readonly IProjectionEngine _projectionEngine;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<CommitDispatcher> _logger;
 
@@ -38,9 +36,7 @@ namespace AI4E.Storage.Domain
 
         public CommitDispatcher(IStreamPersistence persistence,
                                 IMessageDispatcher eventDispatcher,
-                                IProjectionDependencyStore<string, string> projectionDependencyStore,
-                                IProjector projector,
-                                IDataStore dataStore,
+                                IProjectionEngine projectionEngine,
                                 IServiceProvider serviceProvider,
                                 ILogger<CommitDispatcher> logger = null)
         {
@@ -50,23 +46,15 @@ namespace AI4E.Storage.Domain
             if (eventDispatcher == null)
                 throw new ArgumentNullException(nameof(eventDispatcher));
 
-            if (projectionDependencyStore == null)
-                throw new ArgumentNullException(nameof(projectionDependencyStore));
-
-            if (projector == null)
-                throw new ArgumentNullException(nameof(projector));
-
-            if (dataStore == null)
-                throw new ArgumentNullException(nameof(dataStore));
+            if (projectionEngine == null)
+                throw new ArgumentNullException(nameof(projectionEngine));
 
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
             _persistence = persistence;
             _eventDispatcher = eventDispatcher;
-            _projectionDependencyStore = projectionDependencyStore;
-            _projector = projector;
-            _dataStore = dataStore;
+            _projectionEngine = projectionEngine;
             _serviceProvider = serviceProvider;
             _logger = logger;
             _dispatchQueue = new AsyncProducerConsumerQueue<(ICommit commit, int attempt, TaskCompletionSource<object> tcs)>();
@@ -140,6 +128,13 @@ namespace AI4E.Storage.Domain
         }
 
         #endregion
+
+        public Task DispatchAsync(ICommit commit)
+        {
+            var tcs = new TaskCompletionSource<object>();
+
+            return Task.WhenAll(_dispatchQueue.EnqueueAsync((commit, attempt: 1, tcs)), tcs.Task);
+        }
 
         private async Task DispatchProcess(CancellationToken cancellation)
         {
@@ -226,110 +221,25 @@ namespace AI4E.Storage.Domain
 
         private async Task ProjectAsync(string bucketId, string id, TaskCompletionSource<object> tcs, CancellationToken cancellation)
         {
-            var type = GetTypeFromBucket(bucketId);
-            if (type == null)
+            try
             {
-                throw new InvalidOperationException($"Unable to load type for bucket '{bucketId}'");
-            }
+                var type = TypeLoadHelper.LoadTypeFromUnqualifiedName(bucketId);
 
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var scopedServiceProvider = scope.ServiceProvider;
-                var entityStorageEngine = scopedServiceProvider.GetRequiredService<IEntityStorageEngine>();
-
-                async Task ProjectLocalAsync()
+                if (type == null)
                 {
-                    try
-                    {
-                        await ProjectSingleAsync(type, id, entityStorageEngine, cancellation);
-                        Task.Run(() => tcs?.TrySetResult(null)).HandleExceptions();
-                    }
-                    catch (Exception exc)
-                    {
-                        Task.Run(() => tcs?.TrySetException(exc)).HandleExceptions();
-                        throw;
-                    }
+                    throw new InvalidOperationException($"Unable to load type for bucket '{bucketId}'");
                 }
 
-                var tasks = new List<Task>
-                    {
-                        ProjectLocalAsync()
-                    };
-
-                var dependents = await _projectionDependencyStore.GetDependentsAsync(GetBucketId(type), id, cancellation);
-
-                tasks.AddRange(dependents.Select(p => ProjectSingleAsync(GetTypeFromBucket(p.BucketId), p.Id, null, cancellation)));
-
-                await Task.WhenAll(tasks);
-
-                var oldDependencies = (await _projectionDependencyStore.GetDependenciesAsync(GetBucketId(type), id, cancellation)).Select(p => (bucket: p.BucketId, id: p.Id));
-                var dependencies = entityStorageEngine.CachedEntries.Where(p => !(p.id.Equals(id) && p.revision == default && p.type == type)).Select(p => (bucket: GetBucketId(p.type), p.id));
-
-                var added = dependencies.Except(oldDependencies);
-                var removed = oldDependencies.Except(dependencies);
-
-                foreach (var a in added)
-                {
-                    await _projectionDependencyStore.AddDependencyAsync(GetBucketId(type), id, a.bucket, a.id, cancellation);
-                }
-
-                foreach (var a in removed)
-                {
-                    await _projectionDependencyStore.RemoveDependencyAsync(GetBucketId(type), id, a.bucket, a.id, cancellation);
-                }
+                await _projectionEngine.ProjectAsync(type, id, cancellation);
+                tcs.TrySetResult(null);
             }
-        }
 
-        private async Task ProjectSingleAsync(Type type,
-                                              string id,
-                                              IEntityStorageEngine entityStorageEngine,
-                                              CancellationToken cancellation)
-        {
-            var entity = default(object);
-
-            if (entityStorageEngine == null)
+            catch (Exception exc)
             {
-                using (var scope = _serviceProvider.CreateScope())
-                {
-                    var scopedServiceProvider = scope.ServiceProvider;
-                    var entityStorageEngine2 = scopedServiceProvider.GetRequiredService<IEntityStorageEngine>();
+                tcs.TrySetException(exc);
 
-                    entity = await entityStorageEngine2.GetByIdAsync(type, id, cancellation: default);
-
-                }
-            }
-            else
-            {
-                entity = await entityStorageEngine.GetByIdAsync(type, id, cancellation: default);
-            }
-
-            var projectionResults = await _projector.ProjectAsync(entity.GetType(), entity, cancellation);
-
-            foreach (var projectionResult in projectionResults)
-            {
-                await _dataStore.StoreAsync(projectionResult.ResultType, projectionResult.Result, cancellation);
+                throw;
             }
         }
-
-        public Task DispatchAsync(ICommit commit)
-        {
-            var tcs = new TaskCompletionSource<object>();
-
-            return Task.WhenAll(_dispatchQueue.EnqueueAsync((commit, attempt: 1, tcs)), tcs.Task);
-        }
-
-        #region Helpers
-
-        private static string GetBucketId(Type entityType)
-        {
-            return entityType.ToString();
-        }
-
-        private static Type GetTypeFromBucket(string bucketId)
-        {
-            return TypeLoadHelper.LoadTypeFromUnqualifiedName(bucketId);
-        }
-
-        #endregion 
     }
 }
