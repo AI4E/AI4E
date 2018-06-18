@@ -229,23 +229,21 @@ namespace AI4E.Storage.Projection
             {
                 var metadata = await GetMetadataAsync(cancellation);
                 var storedDependencies = metadata.Dependencies.Select(p => new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(p.Type), p.Id));
-                var addedDependencies = dependencies.Except(storedDependencies).ToArray();
-                var removedDependencies = storedDependencies.Except(dependencies).ToArray();
 
-                metadata.Dependencies.Clear();
-                metadata.Dependencies.AddRange(dependencies.Select(p => new Dependency { Id = p.SourceId, Type = StringifyType(p.SourceType) }));
-
-                _sourceMetadataCache[_sourceDescriptor] = new ProjectionSourceMetadataCacheEntry(metadata, touched: true);
-
-                foreach (var added in addedDependencies)
+                foreach (var added in dependencies.Except(storedDependencies))
                 {
                     await AddDependentAsync(added, cancellation);
                 }
 
-                foreach (var removed in removedDependencies)
+                foreach (var removed in storedDependencies.Except(dependencies))
                 {
                     await RemoveDependentAsync(removed, cancellation);
                 }
+
+                metadata.Dependencies.Clear();
+                metadata.Dependencies.AddRange(dependencies.Select(p => new Dependency { Id = p.SourceId, Type = StringifyType(p.SourceType) }));
+
+                _sourceMetadataCache[_sourceDescriptor] = new ProjectionSourceMetadataCacheEntry(metadata, touched: true);    
             }
 
             private async Task AddDependentAsync(ProjectionSourceDescriptor dependency,
