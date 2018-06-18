@@ -91,8 +91,7 @@ namespace AI4E.Storage.Domain
 
         private static IProjector BuildProjector(IServiceProvider serviceProvider)
         {
-            var projector = new Projector(serviceProvider);
-
+            var projector = new Projector();
             var partManager = serviceProvider.GetRequiredService<ApplicationPartManager>();
             var projectionFeature = new ProjectionFeature();
 

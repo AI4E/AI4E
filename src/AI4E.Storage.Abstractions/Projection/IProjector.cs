@@ -27,8 +27,8 @@ namespace AI4E.Storage.Projection
 {
     public interface IProjector
     {
-        Task<IEnumerable<IProjectionResult>> ProjectAsync(Type sourceType, object source, CancellationToken cancellation);
-        Task<IEnumerable<IProjectionResult>> ProjectAsync<TSource>(TSource source, CancellationToken cancellation)
+        Task<IEnumerable<IProjectionResult>> ProjectAsync(Type sourceType, object source, IServiceProvider serviceProvider, CancellationToken cancellation);
+        Task<IEnumerable<IProjectionResult>> ProjectAsync<TSource>(TSource source, IServiceProvider serviceProvider, CancellationToken cancellation)
             where TSource : class;
 
         IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection<TSource, TProjection>(

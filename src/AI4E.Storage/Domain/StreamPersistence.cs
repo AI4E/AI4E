@@ -157,10 +157,10 @@ namespace AI4E.Storage.Domain
             else
             {
                 streamHead = await _database.GetOneAsync<StreamHead>(p => p.BucketId.Equals(attempt.BucketId) &&
-                                                                             p.StreamId.Equals(attempt.StreamId), cancellation);
+                                                                          p.StreamId.Equals(attempt.StreamId), cancellation);
             }
 
-            if (streamHead.HeadRevision != 0)
+            if (streamHead.HeadRevision >= attempt.StreamRevision)
             {
                 throw new ConcurrencyException();
             }

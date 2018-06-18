@@ -31,14 +31,17 @@ namespace AI4E.Storage.Sample
         private static async Task RunAsync()
         {
             var id = Guid.NewGuid().ToString();
+            var dependentId = Guid.NewGuid().ToString();
 
-            var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>();
-            var entity = new TestEntity(id)
+            using (var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>())
             {
-                Value = "abc"
-            };
+                var entity = new TestEntity(id)
+                {
+                    Value = "abc"
+                };
 
-            await entityStorageEngine.StoreAsync(typeof(TestEntity), entity, id);
+                await entityStorageEngine.StoreAsync(typeof(TestEntity), entity, id);
+            }
 
             using (var dataStore = ServiceProvider.GetRequiredService<IDataStore>())
             {
@@ -46,6 +49,39 @@ namespace AI4E.Storage.Sample
 
                 await Console.Out.WriteLineAsync(model.Value);
                 await Console.Out.WriteLineAsync(model.ConcurrencyToken);
+            }
+
+            using (var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>())
+            {
+                var entity = new DependentEntity(dependentId)
+                {
+                    DependencyId = id
+                };
+
+                await entityStorageEngine.StoreAsync(typeof(DependentEntity), entity, dependentId);
+            }
+
+            using (var dataStore = ServiceProvider.GetRequiredService<IDataStore>())
+            {
+                var model = await dataStore.FindOneAsync<DependentEntityModel>(p => p.Id == dependentId);
+
+                await Console.Out.WriteLineAsync(model.DependencyValue);
+            }
+
+            using (var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>())
+            {
+                var entity = (TestEntity)await entityStorageEngine.GetByIdAsync(typeof(TestEntity), id);
+
+                entity.Value = "def";
+
+                await entityStorageEngine.StoreAsync(typeof(TestEntity), entity, id);
+            }
+
+            using (var dataStore = ServiceProvider.GetRequiredService<IDataStore>())
+            {
+                var model = await dataStore.FindOneAsync<DependentEntityModel>(p => p.Id == dependentId);
+
+                await Console.Out.WriteLineAsync(model.DependencyValue);
             }
 
             await Console.In.ReadLineAsync();

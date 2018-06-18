@@ -19,6 +19,7 @@
  */
 
 using System;
+using AI4E.Internal;
 using AI4E.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,6 +33,7 @@ namespace AI4E.Storage
                 throw new ArgumentNullException(nameof(services));
 
             services.AddOptions();
+            services.AddCoreServices();
             services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
             services.AddSingleton<ISerializer>(new Serialization.JsonSerializer());
             services.AddTransient<IDataStore, DataStore>();

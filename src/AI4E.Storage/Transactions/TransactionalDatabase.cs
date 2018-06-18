@@ -213,13 +213,9 @@ namespace AI4E.Storage.Transactions
                 return _entryStateStorage.UpdateEntryAsync(predicate, Update, Condition, cancellation).AsTask();
             }
 
-            private int? GetExpectedVersion(TData data)
+            private int? GetExpectedVersion(IEntrySnapshot<TId, TData> idMapEntry)
             {
-                Assert(data != null);
-
-                var id = DataPropertyHelper.GetId<TId, TData>(data);
-
-                if (!_identityMap.TryGetValue(id, out var mapEntry))
+                if (idMapEntry == null)
                 {
                     return default;
 
@@ -235,7 +231,7 @@ namespace AI4E.Storage.Transactions
                     // Currently Option (1) is implemented.
                 }
 
-                return mapEntry.DataVersion;
+                return idMapEntry.DataVersion;
             }
 
             public async Task StoreAsync(TData data, CancellationToken cancellation = default)
@@ -244,11 +240,12 @@ namespace AI4E.Storage.Transactions
 
                 var id = DataPropertyHelper.GetId<TId, TData>(data);
                 var entryPresent = _identityMap.TryGetValue(id, out var entry);
+                var expectedVersion = GetExpectedVersion(entryPresent ? entry : null);
                 UpdateIdMap(data, id, entryPresent, entry);
 
                 try
                 {
-                    await Transaction.StoreOperationAsync(data, GetExpectedVersion(data), cancellation);
+                    await Transaction.StoreOperationAsync(data, expectedVersion, cancellation);
                 }
                 catch
                 {
@@ -271,11 +268,12 @@ namespace AI4E.Storage.Transactions
 
                 var id = DataPropertyHelper.GetId<TId, TData>(data);
                 var entryPresent = _identityMap.TryGetValue(id, out var entry);
+                var expectedVersion = GetExpectedVersion(entryPresent ? entry : null);
                 UpdateIdMap(data, id, entryPresent, entry);
 
                 try
                 {
-                    await Transaction.DeleteOperationAsync(data, GetExpectedVersion(data), cancellation);
+                    await Transaction.DeleteOperationAsync(data, expectedVersion, cancellation);
                 }
                 catch
                 {

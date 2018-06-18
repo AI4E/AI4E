@@ -12,17 +12,11 @@ namespace AI4E.Storage.Projection
 {
     public sealed class Projector : IProjector
     {
-        private readonly IServiceProvider _serviceProvider;
         private TypedProjectorLookup _typedProjectors;
 
-        public Projector(IServiceProvider serviceProvider)
+        public Projector()
         {
-            if (serviceProvider == null)
-                throw new ArgumentNullException(nameof(serviceProvider));
-
-            _serviceProvider = serviceProvider;
-
-            _typedProjectors = new TypedProjectorLookup(serviceProvider);
+            _typedProjectors = new TypedProjectorLookup();
         }
 
         public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection<TSource, TProjection>(
@@ -39,6 +33,7 @@ namespace AI4E.Storage.Projection
 
         public async Task<IEnumerable<IProjectionResult>> ProjectAsync(Type sourceType,
                                                                        object source,
+                                                                       IServiceProvider serviceProvider,
                                                                        CancellationToken cancellation)
         {
             if (sourceType == null)
@@ -46,7 +41,8 @@ namespace AI4E.Storage.Projection
 
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
-
+            if (serviceProvider == null)
+                throw new ArgumentNullException(nameof(serviceProvider));
             if (sourceType.IsValueType)
                 throw new ArgumentException("The argument must be a reference type.", nameof(sourceType));
 
@@ -61,13 +57,15 @@ namespace AI4E.Storage.Projection
             //       This allows to remove the up-front evaluation and storage of the results.
             foreach (var typedProjector in typedProjectors)
             {
-                result.AddRange(await typedProjector.ProjectAsync(source, cancellation));
+                result.AddRange(await typedProjector.ProjectAsync(source, serviceProvider, cancellation));
             }
 
             return result;
         }
 
-        public Task<IEnumerable<IProjectionResult>> ProjectAsync<TSource>(TSource source, CancellationToken cancellation)
+        public Task<IEnumerable<IProjectionResult>> ProjectAsync<TSource>(TSource source,
+                                                                          IServiceProvider serviceProvider,
+                                                                          CancellationToken cancellation)
             where TSource : class
         {
             if (source == null)
@@ -78,12 +76,14 @@ namespace AI4E.Storage.Projection
                 throw new ArgumentException($"The argument must be of type '{ typeof(TSource).FullName }' or a derived type.", nameof(source));
             }
 
-            return ProjectAsync(typeof(TSource), source, cancellation);
+            return ProjectAsync(typeof(TSource), source, serviceProvider, cancellation);
         }
 
         private interface ITypedProjector
         {
-            Task<IEnumerable<IProjectionResult>> ProjectAsync(object source, CancellationToken cancellation);
+            Task<IEnumerable<IProjectionResult>> ProjectAsync(object source,
+                                                              IServiceProvider serviceProvider,
+                                                              CancellationToken cancellation);
 
             Type SourceType { get; }
 
@@ -93,7 +93,9 @@ namespace AI4E.Storage.Projection
         private interface ITypedProjector<TSource> : ITypedProjector
             where TSource : class
         {
-            Task<IEnumerable<IProjectionResult>> ProjectAsync(TSource source, CancellationToken cancellation);
+            Task<IEnumerable<IProjectionResult>> ProjectAsync(TSource source,
+                                                              IServiceProvider serviceProvider,
+                                                              CancellationToken cancellation);
         }
 
         private interface ITypedProjector<TSource, TProjection> : ITypedProjector<TSource>
@@ -110,13 +112,9 @@ namespace AI4E.Storage.Projection
 
         {
             private readonly HandlerRegistry<IProjection<TSource, TProjection>> _projections;
-            private readonly IServiceProvider _serviceProvider;
 
-            public TypedProjector(IServiceProvider serviceProvider)
+            public TypedProjector()
             {
-                Assert(serviceProvider != null);
-                _serviceProvider = serviceProvider;
-
                 _projections = new HandlerRegistry<IProjection<TSource, TProjection>>();
             }
 
@@ -126,15 +124,18 @@ namespace AI4E.Storage.Projection
             // There is no parallelism (with Task.WhenAll(projections.Select(...)) used because we cannot guarantee that it is allowed to access 'source' concurrently.
             // TODO: But it is possible to change the return type to IAsyncEnumerable<IProjectionResult> and process each batch on access. 
             //       This allows to remove the up-front evaluation and storage of the results.
-            public async Task<IEnumerable<IProjectionResult>> ProjectAsync(TSource source, CancellationToken cancellation)
+            public async Task<IEnumerable<IProjectionResult>> ProjectAsync(TSource source,
+                                                                           IServiceProvider serviceProvider,
+                                                                           CancellationToken cancellation)
             {
                 Assert(source != null);
+                Assert(serviceProvider != null);
 
                 var result = new List<IProjectionResult<TProjectionId, TProjection>>();
 
                 foreach (var projectionProvider in _projections.Handlers)
                 {
-                    var projection = projectionProvider.ProvideInstance(_serviceProvider);
+                    var projection = projectionProvider.ProvideInstance(serviceProvider);
 
                     Assert(projection != null);
 
@@ -158,12 +159,16 @@ namespace AI4E.Storage.Projection
                 return result;
             }
 
-            public Task<IEnumerable<IProjectionResult>> ProjectAsync(object source, CancellationToken cancellation)
+            public Task<IEnumerable<IProjectionResult>> ProjectAsync(object source,
+                                                                     IServiceProvider serviceProvider,
+                                                                     CancellationToken cancellation)
             {
                 Assert(source != null);
                 Assert(source is TSource);
 
-                return ProjectAsync(source as TSource, cancellation);
+                Assert(serviceProvider != null);
+
+                return ProjectAsync(source as TSource, serviceProvider, cancellation);
             }
 
             public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
@@ -204,13 +209,9 @@ namespace AI4E.Storage.Projection
             private readonly object _lock = new object();
             private readonly Dictionary<(Type sourceType, Type projectionType), object> _projectors;
             private readonly Dictionary<Type, ImmutableList<object>> _sourceProjectors;
-            private readonly IServiceProvider _serviceProvider;
 
-            public TypedProjectorLookup(IServiceProvider serviceProvider)
+            public TypedProjectorLookup()
             {
-                Assert(serviceProvider != null);
-                _serviceProvider = serviceProvider;
-
                 _projectors = new Dictionary<(Type sourceType, Type projectionType), object>();
                 _sourceProjectors = new Dictionary<Type, ImmutableList<object>>();
             }
@@ -322,7 +323,7 @@ namespace AI4E.Storage.Projection
                 var projectionType = typeof(TProjection);
                 var projectionIdType = DataPropertyHelper.GetIdType(projectionType);
                 var projectorType = MakeProjectorType(sourceType, projectionType, projectionIdType);
-                var typedProjector = Activator.CreateInstance(projectorType, _serviceProvider);
+                var typedProjector = Activator.CreateInstance(projectorType);
 
                 Assert(typedProjector != null);
 
