@@ -73,7 +73,7 @@ namespace AI4E.Storage
             services.AddSingleton<ITransactionStateStorage, TransactionStateStorage>();
             services.AddSingleton<ITransactionManager, TransactionManager>();
             services.AddTransient(provider => provider.GetRequiredService<ITransactionManager>().CreateStore());
-            services.AddTransient(provider => provider.GetRequiredService<ITransactionManager>().CreateStore() as IQueryableTransactionalDatabase);
+            services.AddTransient(provider => provider.GetRequiredService<ITransactionManager>().CreateStore() as IQueryableScopedTransactionalDatabase);
         }
 
         public static IStorageBuilder Configure(this IStorageBuilder builder, Action<StorageOptions> configuration)

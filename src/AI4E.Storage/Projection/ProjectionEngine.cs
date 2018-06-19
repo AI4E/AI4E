@@ -15,12 +15,12 @@ namespace AI4E.Storage.Projection
     public sealed class ProjectionEngine : IProjectionEngine
     {
         private readonly IProjector _projector;
-        private readonly IProvider<ITransactionalDatabase> _databaseFactory;
+        private readonly IProvider<IScopedTransactionalDatabase> _databaseFactory;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ProjectionEngine> _logger;
 
         public ProjectionEngine(IProjector projector,
-                                IProvider<ITransactionalDatabase> databaseFactory,
+                                IProvider<IScopedTransactionalDatabase> databaseFactory,
                                 IServiceProvider serviceProvider,
                                 ILogger<ProjectionEngine> logger = default)
         {
@@ -62,7 +62,7 @@ namespace AI4E.Storage.Projection
 
             IEnumerable<ProjectionSourceDescriptor> dependents;
 
-            ITransactionalDatabase database = null;
+            IScopedTransactionalDatabase database = null;
             try
             {
                 do
@@ -98,7 +98,7 @@ namespace AI4E.Storage.Projection
         {
             private readonly ProjectionSourceDescriptor _sourceDescriptor;
             private readonly IProjector _projector;
-            private readonly ITransactionalDatabase _database;
+            private readonly IScopedTransactionalDatabase _database;
             private readonly IServiceProvider _serviceProvider;
 
             private readonly IDictionary<ProjectionSourceDescriptor, ProjectionSourceMetadataCacheEntry> _sourceMetadataCache;
@@ -130,7 +130,7 @@ namespace AI4E.Storage.Projection
 
             public ScopedProjectionEngine(in ProjectionSourceDescriptor sourceDescriptor,
                               IProjector projector,
-                              ITransactionalDatabase database,
+                              IScopedTransactionalDatabase database,
                               IServiceProvider serviceProvider)
             {
                 Assert(sourceDescriptor != default);
@@ -576,9 +576,9 @@ namespace AI4E.Storage.Projection
             where TProjection : class
         {
             private readonly IDictionary<ProjectionTargetDescriptor, ProjectionTargetMetadataCacheEntry> _targetMetadataCache;
-            private readonly ITransactionalDatabase _database;
+            private readonly IScopedTransactionalDatabase _database;
 
-            public TargetScopedProjectionEngine(ITransactionalDatabase database)
+            public TargetScopedProjectionEngine(IScopedTransactionalDatabase database)
             {
                 _targetMetadataCache = new Dictionary<ProjectionTargetDescriptor, ProjectionTargetMetadataCacheEntry>();
                 _database = database;

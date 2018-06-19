@@ -54,7 +54,7 @@ namespace AI4E.Storage.Transactions.StressTest
             long bankAccountNo1, bankAccountNo2;
 
             {
-                var transactionalStore = serviceProvider.GetRequiredService<ITransactionalDatabase>();
+                var transactionalStore = serviceProvider.GetRequiredService<IScopedTransactionalDatabase>();
 
                 (bankAccountNo1, bankAccountNo2) = await CreateBankAccountsAsync(transactionalStore);
             }
@@ -92,7 +92,7 @@ namespace AI4E.Storage.Transactions.StressTest
             await Task.WhenAll(tasks);
 
             {
-                var transactionalStore = serviceProvider.GetRequiredService<ITransactionalDatabase>();
+                var transactionalStore = serviceProvider.GetRequiredService<IScopedTransactionalDatabase>();
 
                 await OutputAsync(bankAccountNo1, bankAccountNo2, transactionalStore);
             }
@@ -100,7 +100,7 @@ namespace AI4E.Storage.Transactions.StressTest
             await Console.In.ReadLineAsync();
         }
 
-        private static async Task OutputAsync(long bankAccountNo1, long bankAccountNo2, ITransactionalDatabase transactionalStore)
+        private static async Task OutputAsync(long bankAccountNo1, long bankAccountNo2, IScopedTransactionalDatabase transactionalStore)
         {
             BankAccount bankAccount1, bankAccount2;
 
@@ -129,7 +129,7 @@ namespace AI4E.Storage.Transactions.StressTest
         {
             var transferAmount = Rnd.Next(2001) - 1000;
 
-            ITransactionalDatabase transactionalStore;
+            IScopedTransactionalDatabase transactionalStore;
 
             do
             {
@@ -150,7 +150,7 @@ namespace AI4E.Storage.Transactions.StressTest
             Interlocked.Add(ref _ba2AmountComparand, transferAmount);
         }
 
-        private static async Task<(long bankAccountNo1, long bankAccountNo2)> CreateBankAccountsAsync(ITransactionalDatabase transactionalStore)
+        private static async Task<(long bankAccountNo1, long bankAccountNo2)> CreateBankAccountsAsync(IScopedTransactionalDatabase transactionalStore)
         {
             _ba1AmountComparand = Rnd.Next();
             _ba2AmountComparand = Rnd.Next();

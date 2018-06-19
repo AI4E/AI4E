@@ -12,7 +12,7 @@ namespace AI4E.Storage.Transactions
     public static class TransactionManagerExtension
     {
         public static async Task UnconditionalWriteAsync(this ITransactionManager transactionManager,
-                                                         Func<ITransactionalDatabase, CancellationToken, Task> operation,
+                                                         Func<IScopedTransactionalDatabase, CancellationToken, Task> operation,
                                                          CancellationToken cancellation = default)
         {
             if (transactionManager == null)
@@ -21,7 +21,7 @@ namespace AI4E.Storage.Transactions
             if (operation == null)
                 throw new ArgumentNullException(nameof(operation));
 
-            ITransactionalDatabase transactionalDatabase = null;
+            IScopedTransactionalDatabase transactionalDatabase = null;
             do
             {
                 if (transactionalDatabase is IDisposable disposable)
@@ -60,7 +60,7 @@ namespace AI4E.Storage.Transactions
 
             async Task<IEnumerable<TData>> PerformReadAsync()
             {
-                ITransactionalDatabase transactionalDatabase = null;
+                IScopedTransactionalDatabase transactionalDatabase = null;
                 IEnumerable<TData> result = null;
 
                 try

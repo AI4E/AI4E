@@ -12,14 +12,14 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Transactions
 {
-    public sealed class TransactionalDatabase : ITransactionalDatabase
+    public sealed class ScopedTransactionalDatabase : IScopedTransactionalDatabase
     {
         private readonly ConcurrentDictionary<Type, ITypedTransactionalStore> _typedStores = new ConcurrentDictionary<Type, ITypedTransactionalStore>();
 
         private readonly ITransactionManager _transactionManager;
         private readonly IEntryStateTransformerFactory _entryStateTransformerFactory;
         private readonly IEntryStateStorageFactory _entryStorageFactory;
-        private readonly ILogger<TransactionalDatabase> _logger;
+        private readonly ILogger<ScopedTransactionalDatabase> _logger;
         private readonly ITransaction _transaction;
         private readonly AsyncLock _lock = new AsyncLock();
 
@@ -28,10 +28,10 @@ namespace AI4E.Storage.Transactions
         // If we decided once for that, we have to take the same decision always to ensure transaction atomicity.
         private readonly ISet<ITransaction> _nonCommittedTransactions = new HashSet<ITransaction>();
 
-        public TransactionalDatabase(ITransactionManager transactionManager,
+        public ScopedTransactionalDatabase(ITransactionManager transactionManager,
                          IEntryStateTransformerFactory entryManagerFactory,
                          IEntryStateStorageFactory entryStorageFactory,
-                         ILogger<TransactionalDatabase> logger)
+                         ILogger<ScopedTransactionalDatabase> logger)
         {
             if (transactionManager == null)
                 throw new ArgumentNullException(nameof(transactionManager));
@@ -153,14 +153,14 @@ namespace AI4E.Storage.Transactions
         private sealed class TypedTransactionalStore<TId, TData> : ITypedTransactionalStore<TData>
             where TData : class
         {
-            private readonly TransactionalDatabase _dataStore;
+            private readonly ScopedTransactionalDatabase _dataStore;
             private readonly ITransactionManager _transactionManager;
             private readonly IEntryStateStorage<TId, TData> _entryStateStorage;
             private readonly IEntryStateTransformer<TId, TData> _entryStateTransformer;
             private readonly Dictionary<TId, IEntrySnapshot<TId, TData>> _identityMap;
             private readonly ISet<ITransaction> _nonCommittedTransactions;
 
-            public TypedTransactionalStore(TransactionalDatabase transactionalStore)
+            public TypedTransactionalStore(ScopedTransactionalDatabase transactionalStore)
             {
                 Assert(transactionalStore != null);
 

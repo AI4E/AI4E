@@ -10,12 +10,12 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Transactions
 {
-    public static class TransactionalDatabaseExtension
+    public static class ScopedTransactionalDatabaseExtension
     {
-        private static readonly ConditionalWeakTable<ITransactionalDatabase, TransactionalDataStoreExt> _extensions
-          = new ConditionalWeakTable<ITransactionalDatabase, TransactionalDataStoreExt>();
+        private static readonly ConditionalWeakTable<IScopedTransactionalDatabase, TransactionalDataStoreExt> _extensions
+          = new ConditionalWeakTable<IScopedTransactionalDatabase, TransactionalDataStoreExt>();
 
-        public static Task StoreAsync(this ITransactionalDatabase database,
+        public static Task StoreAsync(this IScopedTransactionalDatabase database,
                                       object data,
                                       CancellationToken cancellation = default)
         {
@@ -31,7 +31,7 @@ namespace AI4E.Storage.Transactions
             return GetExtension(database).StoreAsync(data.GetType(), data, cancellation);
         }
 
-        public static Task RemoveAsync(this ITransactionalDatabase database,
+        public static Task RemoveAsync(this IScopedTransactionalDatabase database,
                                        object data,
                                        CancellationToken cancellation = default)
         {
@@ -47,7 +47,7 @@ namespace AI4E.Storage.Transactions
             return GetExtension(database).RemoveAsync(data.GetType(), data, cancellation);
         }
 
-        public static Task StoreAsync(this ITransactionalDatabase database,
+        public static Task StoreAsync(this IScopedTransactionalDatabase database,
                                       Type dataType,
                                       object data,
                                       CancellationToken cancellation = default)
@@ -59,7 +59,7 @@ namespace AI4E.Storage.Transactions
 
 
 
-        public static Task RemoveAsync(this ITransactionalDatabase database,
+        public static Task RemoveAsync(this IScopedTransactionalDatabase database,
                                        Type dataType,
                                        object data,
                                        CancellationToken cancellation = default)
@@ -69,7 +69,7 @@ namespace AI4E.Storage.Transactions
             return GetExtension(database).RemoveAsync(dataType, data, cancellation);
         }
 
-        private static void CheckArguments(ITransactionalDatabase database, Type dataType, object data)
+        private static void CheckArguments(IScopedTransactionalDatabase database, Type dataType, object data)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -87,7 +87,7 @@ namespace AI4E.Storage.Transactions
                 throw new ArgumentException($"The specified data must be of type '{dataType.FullName}' or an assignable type.");
         }
 
-        private static TransactionalDataStoreExt GetExtension(ITransactionalDatabase database)
+        private static TransactionalDataStoreExt GetExtension(IScopedTransactionalDatabase database)
         {
             Assert(database != null);
 
@@ -106,12 +106,12 @@ namespace AI4E.Storage.Transactions
 
             private readonly ConcurrentDictionary<Type, Func<object, CancellationToken, Task>> _storeMethods;
             private readonly ConcurrentDictionary<Type, Func<object, CancellationToken, Task>> _removeMethods;
-            private volatile ITransactionalDatabase _database;
+            private volatile IScopedTransactionalDatabase _database;
 
             static TransactionalDataStoreExt()
             {
-                _storeMethodDefinition = typeof(ITransactionalDatabase).GetMethods().Single(p => p.Name == nameof(ITransactionalDatabase.StoreAsync));
-                _removeMethodDefinition = typeof(ITransactionalDatabase).GetMethods().Single(p => p.Name == nameof(ITransactionalDatabase.RemoveAsync));
+                _storeMethodDefinition = typeof(IScopedTransactionalDatabase).GetMethods().Single(p => p.Name == nameof(IScopedTransactionalDatabase.StoreAsync));
+                _removeMethodDefinition = typeof(IScopedTransactionalDatabase).GetMethods().Single(p => p.Name == nameof(IScopedTransactionalDatabase.RemoveAsync));
             }
 
             public TransactionalDataStoreExt()
@@ -120,7 +120,7 @@ namespace AI4E.Storage.Transactions
                 _removeMethods = new ConcurrentDictionary<Type, Func<object, CancellationToken, Task>>();
             }
 
-            public void Initialize(ITransactionalDatabase database)
+            public void Initialize(IScopedTransactionalDatabase database)
             {
                 // Volatile read op
                 if (_database != null)
@@ -185,7 +185,7 @@ namespace AI4E.Storage.Transactions
                 // Volatile read op
                 var database = _database;
 
-                var instance = Expression.Constant(database, typeof(ITransactionalDatabase));
+                var instance = Expression.Constant(database, typeof(IScopedTransactionalDatabase));
 
                 var dataParam = Expression.Parameter(typeof(object), "data");
                 var cancellationParam = Expression.Parameter(typeof(CancellationToken), "cancellation");

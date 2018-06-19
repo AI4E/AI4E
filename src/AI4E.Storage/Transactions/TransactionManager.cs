@@ -61,14 +61,14 @@ namespace AI4E.Storage.Transactions
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
-        public ITransactionalDatabase CreateStore()
+        public IScopedTransactionalDatabase CreateStore()
         {
             if (_disposeHelper.IsDisposed)
                 throw new ObjectDisposedException(GetType().FullName);
 
-            var logger = _loggerFactory?.CreateLogger<TransactionalDatabase>();
+            var logger = _loggerFactory?.CreateLogger<ScopedTransactionalDatabase>();
 
-            return new TransactionalDatabase(this, _entryStateTransformerFactory, _entryStorageFactory, logger);
+            return new ScopedTransactionalDatabase(this, _entryStateTransformerFactory, _entryStorageFactory, logger);
         }
 
         #region ProcessTransaction

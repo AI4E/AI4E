@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace AI4E.Storage.Transactions
 {
-    public interface ITransactionalDatabase
+    public interface IScopedTransactionalDatabase
     {
         Task StoreAsync<TData>(TData data, CancellationToken cancellation = default)
             where TData : class;
@@ -24,7 +24,7 @@ namespace AI4E.Storage.Transactions
         Task RollbackAsync(CancellationToken cancellation = default);
     }
 
-    public interface IQueryableTransactionalDatabase : ITransactionalDatabase
+    public interface IQueryableScopedTransactionalDatabase : IScopedTransactionalDatabase
     {
         IAsyncEnumerable<TResult> QueryAsync<TData, TResult>(Func<IQueryable<TData>, IQueryable<TResult>> queryShaper,
                                                              CancellationToken cancellation = default)

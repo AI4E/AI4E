@@ -7,7 +7,7 @@ namespace AI4E.Storage.Transactions
 {
     public interface ITransactionManager : IDisposable
     {
-        ITransactionalDatabase CreateStore();
+        IScopedTransactionalDatabase CreateStore();
 
         Task<ProcessingState> ProcessTransactionAsync(ITransaction transaction, CancellationToken cancellation);
 
