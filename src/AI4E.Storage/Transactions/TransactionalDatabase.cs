@@ -251,6 +251,7 @@ namespace AI4E.Storage.Transactions
                 {
                     if (entryPresent)
                     {
+                        Assert(entry.Data != null);
                         _identityMap[id] = entry;
                     }
                     else
@@ -279,6 +280,7 @@ namespace AI4E.Storage.Transactions
                 {
                     if (entryPresent)
                     {
+                        Assert(entry.Data != null);
                         _identityMap[id] = entry;
                     }
                     else
@@ -297,17 +299,24 @@ namespace AI4E.Storage.Transactions
 
             private static IEntrySnapshot<TId, TData> GetIdMapEntry(TData data, TId id, bool entryPresent, IEntrySnapshot<TId, TData> entry)
             {
-                if (entryPresent)
-                {
-                    if (entry is UpdatedSnapshot updatedSnapshot)
-                    {
-                        return new UpdatedSnapshot(updatedSnapshot.OriginalSnapshot, data);
-                    }
+                IEntrySnapshot<TId, TData> result;
 
-                    return new UpdatedSnapshot(entry, data);
+                if (!entryPresent)
+                {
+                    return new UpdatedSnapshot(id, data);
+                }
+                else if (entry is UpdatedSnapshot updatedSnapshot)
+                {
+                    result = new UpdatedSnapshot(updatedSnapshot.OriginalSnapshot, data);
+                }
+                else
+                {
+                    result = new UpdatedSnapshot(entry, data);
                 }
 
-                return new UpdatedSnapshot(id, data);
+                Assert(result.Data != null);
+
+                return result;
             }
 
             public async ValueTask<IEnumerable<TData>> GetAsync(Expression<Func<TData, bool>> predicate, CancellationToken cancellation)
@@ -389,6 +398,7 @@ namespace AI4E.Storage.Transactions
                 // 1) If the id of the transaction that created the entry is smaller than the current transactions id
                 //    to prevent phantom reads when other transactions add an entry.
                 // 2) If the entries payload matches the specified predicate.
+                // 3) If the entries data is not null (The entry is not deleted)
                 var parameter = Expression.Parameter(typeof(IEntryState<TId, TData>));
 
                 var creationTransactionAccessor = GetCreationTransactionAccessor();
@@ -397,8 +407,9 @@ namespace AI4E.Storage.Transactions
 
                 var dataAccessor = GetDataAccessor();
                 var data = ParameterExpressionReplacer.ReplaceParameter(dataAccessor.Body, dataAccessor.Parameters.First(), parameter);
+                var isDeleted = Expression.ReferenceEqual(data, Expression.Constant(null, typeof(TData)));
                 var body = ParameterExpressionReplacer.ReplaceParameter(predicate.Body, predicate.Parameters.First(), data);
-                return Expression.Lambda<Func<IEntryState<TId, TData>, bool>>(Expression.AndAlso(transactionComparison, body), parameter);
+                return Expression.Lambda<Func<IEntryState<TId, TData>, bool>>(Expression.AndAlso(Expression.Not(isDeleted),Expression.AndAlso(transactionComparison, body)), parameter);
             }
 
             private static Expression<Func<IEntryState<TId, TData>, long>> GetCreationTransactionAccessor()
@@ -459,6 +470,8 @@ namespace AI4E.Storage.Transactions
 
                 if (result != null)
                 {
+                    Assert(result.Data != null);
+
                     _identityMap.Add(result.Id, result);
                 }
 
@@ -616,6 +629,7 @@ namespace AI4E.Storage.Transactions
                     Id = OriginalSnapshot.Id;
                     DataVersion = original.DataVersion;
                     LastWriteTime = original.LastWriteTime;
+                    Data = data;
                 }
 
                 public UpdatedSnapshot(TId id, TData data)
@@ -624,6 +638,7 @@ namespace AI4E.Storage.Transactions
                     Id = id;
                     DataVersion = default;
                     LastWriteTime = default;
+                    Data = data;
                 }
 
                 public IEntrySnapshot<TId, TData> OriginalSnapshot { get; }

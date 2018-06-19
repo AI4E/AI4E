@@ -9,7 +9,7 @@ namespace AI4E.Storage.Projection
             if (sourceType == null)
                 throw new ArgumentNullException(nameof(sourceType));
 
-            if (sourceId.Equals(default))
+            if (sourceId == null || sourceId.Equals(default))
                 throw new ArgumentDefaultException(nameof(sourceId));
 
             SourceType = sourceType;

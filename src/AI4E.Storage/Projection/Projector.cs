@@ -139,7 +139,7 @@ namespace AI4E.Storage.Projection
 
                     Assert(projection != null);
 
-                    if (projection.Multiple)
+                    if (projection.MultipleResults)
                     {
                         result.AddRange(await projection.ProjectMultipleAsync(source)
                                                         .Where(p => p != null)

@@ -44,7 +44,7 @@ namespace AI4E.Storage.Projection
             _serviceProvider = serviceProvider;
         }
 
-        public bool Multiple => false;
+        public bool MultipleResults => _projectionDescriptor.MultipleResults;
 
         public ValueTask<TProjection> ProjectAsync(TSource source)
         {

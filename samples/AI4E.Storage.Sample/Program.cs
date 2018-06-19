@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using AI4E.Storage.Domain;
 using AI4E.Storage.InMemory;
@@ -49,6 +50,8 @@ namespace AI4E.Storage.Sample
 
                 await Console.Out.WriteLineAsync(model.Value);
                 await Console.Out.WriteLineAsync(model.ConcurrencyToken);
+
+                await Console.Out.WriteLineAsync();
             }
 
             using (var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>())
@@ -66,6 +69,8 @@ namespace AI4E.Storage.Sample
                 var model = await dataStore.FindOneAsync<DependentEntityModel>(p => p.Id == dependentId);
 
                 await Console.Out.WriteLineAsync(model.DependencyValue);
+
+                await Console.Out.WriteLineAsync();
             }
 
             using (var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>())
@@ -82,6 +87,58 @@ namespace AI4E.Storage.Sample
                 var model = await dataStore.FindOneAsync<DependentEntityModel>(p => p.Id == dependentId);
 
                 await Console.Out.WriteLineAsync(model.DependencyValue);
+
+                await Console.Out.WriteLineAsync();
+            }
+
+            using (var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>())
+            {
+                var entity = (TestEntity)await entityStorageEngine.GetByIdAsync(typeof(TestEntity), id);
+
+                var child1 = new ChildEntity(Guid.NewGuid().ToString());
+                var child2 = new ChildEntity(Guid.NewGuid().ToString());
+
+                await entityStorageEngine.StoreAsync(typeof(ChildEntity), child1, child1.Id);
+                await entityStorageEngine.StoreAsync(typeof(ChildEntity), child2, child2.Id);
+
+                entity.AddChild(child1);
+                entity.AddChild(child2);
+
+                await entityStorageEngine.StoreAsync(typeof(TestEntity), entity, id);
+            }
+
+            using (var dataStore = ServiceProvider.GetRequiredService<IDataStore>())
+            {
+                var models = await dataStore.FindAsync<TestEntityChildRelationshipModel>(p => p.ParentId == id).ToList();
+
+                foreach (var model in models)
+                {
+                    await Console.Out.WriteLineAsync(model.ChildId);
+                }
+
+                await Console.Out.WriteLineAsync();
+            }
+
+            using (var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>())
+            {
+                var entity = (TestEntity)await entityStorageEngine.GetByIdAsync(typeof(TestEntity), id);
+                var child = (ChildEntity)await entityStorageEngine.GetByIdAsync(typeof(ChildEntity), entity.ChildIds.First());
+
+                entity.RemoveChild(child);
+
+                await entityStorageEngine.StoreAsync(typeof(TestEntity), entity, id);
+            }
+
+            using (var dataStore = ServiceProvider.GetRequiredService<IDataStore>())
+            {
+                var models = await dataStore.FindAsync<TestEntityChildRelationshipModel>(p => p.ParentId == id).ToList();
+
+                foreach (var model in models)
+                {
+                    await Console.Out.WriteLineAsync(model.ChildId);
+                }
+
+                await Console.Out.WriteLineAsync();
             }
 
             await Console.In.ReadLineAsync();

@@ -154,12 +154,12 @@ namespace AI4E.Storage.Transactions
             if (entry != null)
             {
 #if DEBUG
-                var state = ((ITransactionState)entry).Status;
+                var state = entry.Status;
 
                 Assert(state == TransactionStatus.Aborted || state == TransactionStatus.CleanedUp);
 #endif
 
-                await _transactionStorage.RemoveAsync((ITransactionState)entry, cancellation);
+                await _transactionStorage.RemoveAsync(entry, cancellation);
             }
 
             lock (_entryLock)

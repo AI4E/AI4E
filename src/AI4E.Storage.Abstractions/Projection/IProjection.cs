@@ -46,6 +46,6 @@ namespace AI4E.Storage.Projection
         /// <summary>
         /// Gets a boolean value indicating whether the projection has multiple results
         /// </summary>
-        bool Multiple { get; }
+        bool MultipleResults { get; }
     }
 }

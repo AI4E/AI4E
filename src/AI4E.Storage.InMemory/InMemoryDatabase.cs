@@ -329,8 +329,16 @@ namespace AI4E.Storage.InMemory
                 {
                     foreach (var entry in _entries.Values)
                     {
-                        if (compiledPredicate(entry))
-                            result.Add(entry);
+                        try
+                        {
+                            if (compiledPredicate(entry))
+                                result.Add(entry);
+                        }
+                        catch (Exception exc)
+                        {
+
+                        }
+
                     }
                 }
 
