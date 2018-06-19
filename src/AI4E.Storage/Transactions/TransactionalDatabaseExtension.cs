@@ -9,51 +9,50 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Transactions
 {
-    public static class TransactionManagerExtension
+    public static class TransactionalDatabaseExtension
     {
-        public static async Task UnconditionalWriteAsync(this ITransactionManager transactionManager,
+        public static async Task UnconditionalWriteAsync(this ITransactionalDatabase database,
                                                          Func<IScopedTransactionalDatabase, CancellationToken, Task> operation,
                                                          CancellationToken cancellation = default)
         {
-            if (transactionManager == null)
-                throw new ArgumentNullException(nameof(transactionManager));
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
 
             if (operation == null)
                 throw new ArgumentNullException(nameof(operation));
 
             IScopedTransactionalDatabase transactionalDatabase = null;
-            do
+            try
             {
-                if (transactionalDatabase is IDisposable disposable)
+                do
                 {
-                    disposable.Dispose();
-                }
+                    transactionalDatabase?.Dispose();
 
-                transactionalDatabase = transactionManager.CreateStore();
-                try
-                {
-                    await operation(transactionalDatabase, cancellation);
+                    transactionalDatabase = database.CreateScope();
+                    try
+                    {
+                        await operation(transactionalDatabase, cancellation);
+                    }
+                    catch (TransactionAbortedException)
+                    {
+                        continue;
+                    }
                 }
-                catch (TransactionAbortedException)
-                {
-                    continue;
-                }
+                while (!await transactionalDatabase.TryCommitAsync(cancellation));
             }
-            while (!await transactionalDatabase.TryCommitAsync(cancellation));
-
-            if (transactionalDatabase is IDisposable disposable2)
+            finally
             {
-                disposable2.Dispose();
+                transactionalDatabase?.Dispose();
             }
         }
 
-        public static IAsyncEnumerable<TData> UnconditionalReadAsync<TData>(this ITransactionManager transactionManager,
+        public static IAsyncEnumerable<TData> UnconditionalReadAsync<TData>(this ITransactionalDatabase database,
                                                                             Expression<Func<TData, bool>> predicate,
                                                                             CancellationToken cancellation = default)
             where TData : class
         {
-            if (transactionManager == null)
-                throw new ArgumentNullException(nameof(transactionManager));
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
 
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
@@ -67,12 +66,9 @@ namespace AI4E.Storage.Transactions
                 {
                     do
                     {
-                        if (transactionalDatabase is IDisposable disposable)
-                        {
-                            disposable.Dispose();
-                        }
+                        transactionalDatabase?.Dispose();
 
-                        transactionalDatabase = transactionManager.CreateStore();
+                        transactionalDatabase = database.CreateScope();
                         try
                         {
                             result = await transactionalDatabase.GetAsync(predicate, cancellation);
@@ -86,10 +82,7 @@ namespace AI4E.Storage.Transactions
                 }
                 finally
                 {
-                    if (transactionalDatabase is IDisposable disposable)
-                    {
-                        disposable.Dispose();
-                    }
+                    transactionalDatabase?.Dispose();
                 }
 
                 Assert(result != null);

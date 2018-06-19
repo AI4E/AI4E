@@ -15,26 +15,26 @@ namespace AI4E.Storage.Projection
     public sealed class ProjectionEngine : IProjectionEngine
     {
         private readonly IProjector _projector;
-        private readonly IProvider<IScopedTransactionalDatabase> _databaseFactory;
+        private readonly ITransactionalDatabase _database;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ProjectionEngine> _logger;
 
         public ProjectionEngine(IProjector projector,
-                                IProvider<IScopedTransactionalDatabase> databaseFactory,
+                                ITransactionalDatabase database,
                                 IServiceProvider serviceProvider,
                                 ILogger<ProjectionEngine> logger = default)
         {
             if (projector == null)
                 throw new ArgumentNullException(nameof(projector));
 
-            if (databaseFactory == null)
-                throw new ArgumentNullException(nameof(databaseFactory));
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
 
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
             _projector = projector;
-            _databaseFactory = databaseFactory;
+            _database = database;
             _serviceProvider = serviceProvider;
             _logger = logger;
         }
@@ -67,12 +67,9 @@ namespace AI4E.Storage.Projection
             {
                 do
                 {
-                    if (database != null)
-                    {
-                        await database.DisposeIfDisposableAsync();
-                    }
+                    database?.Dispose();
 
-                    database = _databaseFactory.ProvideInstance();
+                    database = _database.CreateScope();
                     var scopedEngine = new ScopedProjectionEngine(entityDescriptor, _projector, database, _serviceProvider);
                     dependents = await scopedEngine.ProjectAsync(cancellation);
                 }
@@ -80,10 +77,7 @@ namespace AI4E.Storage.Projection
             }
             finally
             {
-                if (database != null)
-                {
-                    await database.DisposeIfDisposableAsync();
-                }
+                database?.Dispose();
             }
 
             processedEntities.Add(entityDescriptor);

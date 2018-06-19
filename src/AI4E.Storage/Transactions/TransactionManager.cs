@@ -18,7 +18,7 @@ namespace AI4E.Storage.Transactions
         private readonly ITransactionStateStorage _transactionStorage;
         private readonly ITransactionStateTransformer _transactionStateTransformer;
         private readonly IEntryStateTransformerFactory _entryStateTransformerFactory;
-        private readonly IEntryStateStorageFactory _entryStorageFactory;
+        private readonly IEntryStateStorageFactory _entryStateStorageFactory;
         private readonly ILoggerFactory _loggerFactory;
 
         private readonly ILogger<TransactionManager> _logger;
@@ -33,7 +33,7 @@ namespace AI4E.Storage.Transactions
 
         public TransactionManager(ITransactionStateStorage transactionStorage,
                                   ITransactionStateTransformer transactionStateTransformer,
-                                  IEntryStateStorageFactory entryStorageFactory,
+                                  IEntryStateStorageFactory entryStateStorageFactory,
                                   IEntryStateTransformerFactory entryStateTransformerFactory,
                                   ILoggerFactory loggerFactory = null)
         {
@@ -46,13 +46,13 @@ namespace AI4E.Storage.Transactions
             if (entryStateTransformerFactory == null)
                 throw new ArgumentNullException(nameof(entryStateTransformerFactory));
 
-            if (entryStorageFactory == null)
-                throw new ArgumentNullException(nameof(entryStorageFactory));
+            if (entryStateStorageFactory == null)
+                throw new ArgumentNullException(nameof(entryStateStorageFactory));
 
             _transactionStorage = transactionStorage;
             _transactionStateTransformer = transactionStateTransformer;
             _entryStateTransformerFactory = entryStateTransformerFactory;
-            _entryStorageFactory = entryStorageFactory;
+            _entryStateStorageFactory = entryStateStorageFactory;
             _loggerFactory = loggerFactory;
 
             _logger = loggerFactory?.CreateLogger<TransactionManager>();
@@ -61,15 +61,15 @@ namespace AI4E.Storage.Transactions
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
-        public IScopedTransactionalDatabase CreateStore()
-        {
-            if (_disposeHelper.IsDisposed)
-                throw new ObjectDisposedException(GetType().FullName);
+        //public IScopedTransactionalDatabase CreateStore()
+        //{
+        //    if (_disposeHelper.IsDisposed)
+        //        throw new ObjectDisposedException(GetType().FullName);
 
-            var logger = _loggerFactory?.CreateLogger<ScopedTransactionalDatabase>();
+        //    var logger = _loggerFactory?.CreateLogger<ScopedTransactionalDatabase>();
 
-            return new ScopedTransactionalDatabase(this, _entryStateTransformerFactory, _entryStorageFactory, logger);
-        }
+        //    return new ScopedTransactionalDatabase(this, _entryStateTransformerFactory, _entryStateStorageFactory, logger);
+        //}
 
         #region ProcessTransaction
 
@@ -585,7 +585,7 @@ namespace AI4E.Storage.Transactions
 
                 _transactionStorage = _transactionalManager._transactionStorage;
                 _entryStateTransformer = _transactionalManager._entryStateTransformerFactory.GetEntryManager<TId, TData>();
-                _entryStorage = _transactionalManager._entryStorageFactory.GetEntryStorage<TId, TData>();
+                _entryStorage = _transactionalManager._entryStateStorageFactory.GetEntryStorage<TId, TData>();
                 _logger = _transactionalManager._logger;
 
                 Assert(_transactionStorage != null);

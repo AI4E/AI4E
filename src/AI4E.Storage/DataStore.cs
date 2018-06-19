@@ -10,26 +10,26 @@ namespace AI4E.Storage
 {
     public sealed class DataStore : IDataStore
     {
-        private readonly ITransactionManager _transactionManager;
+        private readonly ITransactionalDatabase _database;
 
-        public DataStore(ITransactionManager transactionManager)
+        public DataStore(ITransactionalDatabase database)
         {
-            if (transactionManager == null)
-                throw new ArgumentNullException(nameof(transactionManager));
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
 
-            _transactionManager = transactionManager;
+            _database = database;
         }
 
         public Task RemoveAsync<TData>(TData data, CancellationToken cancellation = default)
             where TData : class
         {
-            return _transactionManager.UnconditionalWriteAsync((db, _) => db.RemoveAsync(data, cancellation), cancellation);
+            return _database.UnconditionalWriteAsync((db, _) => db.RemoveAsync(data, cancellation), cancellation);
         }
 
         public Task StoreAsync<TData>(TData data, CancellationToken cancellation = default)
             where TData : class
         {
-            return _transactionManager.UnconditionalWriteAsync((db, _) => db.StoreAsync(data, cancellation), cancellation);
+            return _database.UnconditionalWriteAsync((db, _) => db.StoreAsync(data, cancellation), cancellation);
         }
 
         public IAsyncEnumerable<TData> AllAsync<TData>(CancellationToken cancellation = default)
@@ -41,7 +41,7 @@ namespace AI4E.Storage
         public IAsyncEnumerable<TData> FindAsync<TData>(Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
             where TData : class
         {
-            return _transactionManager.UnconditionalReadAsync(predicate, cancellation);
+            return _database.UnconditionalReadAsync(predicate, cancellation);
         }
 
         public ValueTask<TData> FindOneAsync<TData>(Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)

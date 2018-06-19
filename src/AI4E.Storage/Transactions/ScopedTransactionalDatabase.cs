@@ -137,6 +137,11 @@ namespace AI4E.Storage.Transactions
             return (ITypedTransactionalStore)typedStore;
         }
 
+        public void Dispose()
+        {
+            // TODO: Abort if not committed yet.
+        }
+
         private interface ITypedTransactionalStore
         {
             Task AddPendingTransactionAsync(object data, CancellationToken cancellation);

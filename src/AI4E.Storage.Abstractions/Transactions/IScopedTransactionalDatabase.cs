@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace AI4E.Storage.Transactions
 {
-    public interface IScopedTransactionalDatabase
+    public interface IScopedTransactionalDatabase : IDisposable
     {
         Task StoreAsync<TData>(TData data, CancellationToken cancellation = default)
             where TData : class;
