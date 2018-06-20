@@ -34,10 +34,10 @@ namespace AI4E.Domain
 {
     public abstract class Entity : IEquatable<Entity>
     {
-        private Guid _id;
+        private SGuid _id;
         private readonly Lazy<Type> _entityType;
 
-        protected Entity(Guid id)
+        protected Entity(SGuid id)
         {
             if (id == default)
                 throw new ArgumentException("The id must not be an empty guid.", nameof(id));
@@ -48,11 +48,11 @@ namespace AI4E.Domain
 
         protected Entity()
         {
-            _id = Guid.NewGuid();
+            _id = SGuid.NewGuid();
             _entityType = new Lazy<Type>(() => GetType());
         }
 
-        public virtual Guid Id
+        public virtual SGuid Id
         {
             get => _id;
             internal set => _id = value;
@@ -62,7 +62,7 @@ namespace AI4E.Domain
 
         public bool Equals(Entity other)
         {
-            if (ReferenceEquals(other, null))
+            if (other is null)
                 return false;
 
             if (ReferenceEquals(other, this))
@@ -88,16 +88,16 @@ namespace AI4E.Domain
 
         public static bool operator ==(Entity left, Entity right)
         {
-            if (ReferenceEquals(left, null))
-                return ReferenceEquals(right, null);
+            if (left is null)
+                return right is null;
 
             return left.Equals(right);
         }
 
         public static bool operator !=(Entity left, Entity right)
         {
-            if (ReferenceEquals(left, null))
-                return !ReferenceEquals(right, null);
+            if (left is null)
+                return !(right is null);
 
             return !left.Equals(right);
         }

@@ -53,7 +53,7 @@ namespace AI4E.Domain
         /// </returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="revision"/> is a negative value.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
-        ValueTask<TEntity> ResolveAsync<TEntity>(Guid id, long revision, CancellationToken cancellation)
+        ValueTask<TEntity> ResolveAsync<TEntity>(SGuid id, long revision, CancellationToken cancellation)
                    where TEntity : AggregateRoot;
     }
 
@@ -74,7 +74,7 @@ namespace AI4E.Domain
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="referenceResolver"/> is null.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
-        public static ValueTask<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, Guid id, CancellationToken cancellation)
+        public static ValueTask<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, SGuid id, CancellationToken cancellation)
             where TEntity : AggregateRoot
         {
             if (referenceResolver == null)
@@ -95,7 +95,7 @@ namespace AI4E.Domain
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="referenceResolver"/> is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="revision"/> is a negative value.</exception>
-        public static ValueTask<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, Guid id, long revision)
+        public static ValueTask<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, SGuid id, long revision)
             where TEntity : AggregateRoot
         {
             if (referenceResolver == null)
@@ -117,7 +117,7 @@ namespace AI4E.Domain
         /// When evaluated, the tasks result contains the loaded entity or null if the reference could not be resolved.
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="referenceResolver"/> is null.</exception>
-        public static ValueTask<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, Guid id)
+        public static ValueTask<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, SGuid id)
             where TEntity : AggregateRoot
         {
             if (referenceResolver == null)

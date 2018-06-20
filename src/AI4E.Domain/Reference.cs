@@ -55,11 +55,11 @@ namespace AI4E.Domain
         {
             if (aggregate == null)
             {
-                Id = Guid.Empty;
+                Id = SGuid.Empty;
             }
             else
             {
-                if (aggregate.Id == Guid.Empty)
+                if (aggregate.Id == SGuid.Empty)
                 {
                     throw new ArgumentException("Cannot get a reference to an aggregate without an id specified.");
                 }
@@ -71,14 +71,14 @@ namespace AI4E.Domain
         }
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        private Reference(Guid id, IReferenceResolver referenceResolver)
+        private Reference(SGuid id, IReferenceResolver referenceResolver)
         {
             if (referenceResolver == null)
                 throw new ArgumentNullException(nameof(referenceResolver));
 
             Id = id;
 
-            if (id != Guid.Empty)
+            if (id != SGuid.Empty)
             {
                 _aggregate = new Lazy<ValueTask<T>>(() => referenceResolver.ResolveAsync<T>(id, cancellation: default), isThreadSafe: true);
             }
@@ -88,7 +88,7 @@ namespace AI4E.Domain
             }
         }
 
-        public Guid Id { get; }
+        public SGuid Id { get; }
 
         /// <summary>
         /// Asynchronously resolves the reference and provides an instance of the referenced aggregate.

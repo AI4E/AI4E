@@ -37,7 +37,7 @@ namespace AI4E.Domain.Services
             _entityStorageEngine = entityStorageEngine;
         }
 
-        public async ValueTask<TEntity> ResolveAsync<TEntity>(Guid id, long revision, CancellationToken cancellation)
+        public async ValueTask<TEntity> ResolveAsync<TEntity>(SGuid id, long revision, CancellationToken cancellation)
             where TEntity : AggregateRoot
         {
             if (id.Equals(default))

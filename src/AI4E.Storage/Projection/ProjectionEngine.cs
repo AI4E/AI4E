@@ -96,36 +96,12 @@ namespace AI4E.Storage.Projection
             private readonly IServiceProvider _serviceProvider;
 
             private readonly IDictionary<ProjectionSourceDescriptor, ProjectionSourceMetadataCacheEntry> _sourceMetadataCache;
-            //private readonly IDictionary<ProjectionTargetDescriptor, ProjectionTargetMetadataCacheEntry> _targetMetadataCache;
-
-            private readonly struct ProjectionSourceMetadataCacheEntry
-            {
-                public ProjectionSourceMetadataCacheEntry(ProjectionSourceMetadata metadata, bool touched)
-                {
-                    Metadata = metadata;
-                    Touched = touched;
-                }
-
-                public ProjectionSourceMetadata Metadata { get; }
-                public bool Touched { get; }
-            }
-
-            //private readonly struct ProjectionTargetMetadataCacheEntry
-            //{
-            //    public ProjectionTargetMetadataCacheEntry(ProjectionTargetMetadata metadata, bool touched)
-            //    {
-            //        Metadata = metadata;
-            //        Touched = touched;
-            //    }
-
-            //    public ProjectionTargetMetadata Metadata { get; }
-            //    public bool Touched { get; }
-            //}
+            private readonly IDictionary<Type, ITargetScopedProjectionEngine> _targetScopedProjectionEngines;
 
             public ScopedProjectionEngine(in ProjectionSourceDescriptor sourceDescriptor,
-                              IProjector projector,
-                              IScopedTransactionalDatabase database,
-                              IServiceProvider serviceProvider)
+                                          IProjector projector,
+                                          IScopedTransactionalDatabase database,
+                                          IServiceProvider serviceProvider)
             {
                 Assert(sourceDescriptor != default);
                 Assert(projector != null);
@@ -145,20 +121,36 @@ namespace AI4E.Storage.Projection
             // TODO: If all projections are deleted, we can remove the metadata from the entity.
             public async ValueTask<IEnumerable<ProjectionSourceDescriptor>> ProjectAsync(CancellationToken cancellation)
             {
-                using (var scope = _serviceProvider.CreateScope())
+                do
                 {
-                    var scopedServiceProvider = scope.ServiceProvider;
-                    var entityStorageEngine = scopedServiceProvider.GetRequiredService<IEntityStorageEngine>();
-                    var entityStoragePropertyManager = scopedServiceProvider.GetRequiredService<IEntityStoragePropertyManager>(); // TODO: Rename
-                    var entity = await entityStorageEngine.GetByIdAsync(_sourceDescriptor.SourceType, _sourceDescriptor.SourceId, cancellation);
-
-                    if (await CheckIfUpdateNeededAsync(entity, cancellation))
+                    using (var scope = _serviceProvider.CreateScope())
                     {
-                        await ProjectCoreAsync(entity, scopedServiceProvider, cancellation);
-                        var dependencies = GetDependencies(entityStorageEngine);
-                        await UpdateDependenciesAsync(dependencies, cancellation);
+                        var scopedServiceProvider = scope.ServiceProvider;
+                        var storageEngine = scopedServiceProvider.GetRequiredService<IEntityStorageEngine>();
+                        var propertyManager = scopedServiceProvider.GetRequiredService<IEntityStoragePropertyManager>(); // TODO: Rename
+                        var entity = await storageEngine.GetByIdAsync(_sourceDescriptor.SourceType, _sourceDescriptor.SourceId, cancellation);
+
+                        var (updateNeeded, conflict) = await GetProjectionStateAsync(storageEngine, propertyManager, entity, cancellation);
+
+                        if (conflict)
+                        {
+                            // TODO: Log conflict
+                            // TODO: Currently we are allocating a completely new storage engine. It is more performant to reuse the current storageEngine. 
+                            //       For this to work, it needs a way to flush its cache and refresh all cached streams on entity load.
+                            continue;
+                        }
+
+                        if (updateNeeded)
+                        {
+                            await ProjectCoreAsync(entity, scopedServiceProvider, cancellation);
+                            var dependencies = GetDependencies(storageEngine, propertyManager);
+                            await UpdateDependenciesAsync(dependencies, cancellation);
+                        }
+
+                        break;
                     }
                 }
+                while (true);
 
                 var dependents = await GetDependentsAsync(cancellation);
 
@@ -180,31 +172,63 @@ namespace AI4E.Storage.Projection
                     await targetTypedScopedEngine.WriteToDatabaseAsync(cancellation);
                 }
 
-                //// Write touched target metadata to database
-                //foreach (var touchedMetadata in _targetMetadataCache.Values.Where(p => p.Touched).Select(p => p.Metadata))
-                //{
-                //    if (touchedMetadata == null)
-                //    {
-                //        await _database.RemoveAsync(touchedMetadata, cancellation);
-                //    }
-                //    else
-                //    {
-                //        await _database.StoreAsync(touchedMetadata, cancellation);
-                //    }
-                //}
-
                 return dependents;
             }
 
-            private async Task<bool> CheckIfUpdateNeededAsync(object entity, CancellationToken cancellation)
+            private async ValueTask<(bool updateNeeded, bool conflict)> GetProjectionStateAsync(IEntityStorageEngine storageEngine,
+                                                                                                IEntityStoragePropertyManager propertyManager, // TODO: Rename
+                                                                                                object entity,
+                                                                                                CancellationToken cancellation)
             {
-                //var entityRevision = entityStoragePropertyManager.GetRevision(entity);
-                //var projectionRevision = await metadataStorage.GetProjectionRevisionAsync(cancellation);
-                //await metadataStorage.SetProjectionRevisionAsync(entityRevision, cancellation);
-                return true; // TODO: Implement
+
+
+                // We load all dependencies from the entity store. 
+                // As a projection source's dependencies do not change often, chances are good that the 
+                // entities are cached when accessed within the projection phase.
+                // For that reason, performance should not suffer very much 
+                // in comparison to not checking whether an update is needed.
+
+                var entityRevision = propertyManager.GetRevision(entity);
+                var metadata = await GetMetadataAsync(cancellation);
+                var projectionRevision = metadata.ProjectionRevision;
+                var projectionLaterEntity = entityRevision < projectionRevision;
+                var entityLaterProjection = entityRevision > projectionRevision;
+
+                (ProjectionSourceDescriptor dependency, long revision) ToDependency(Dependency p)
+                {
+                    return (new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(p.Type), p.Id), p.ProjectionRevision);
+                }
+
+                foreach (var (dependency, dependencyProjectionRevision) in metadata.Dependencies.Select(p => ToDependency(p)))
+                {
+                    var dependencyEntity = await storageEngine.GetByIdAsync(dependency.SourceType, dependency.SourceId, cancellation);
+                    var dependencyRevision = propertyManager.GetRevision(dependencyEntity);
+
+                    if (dependencyRevision < dependencyProjectionRevision)
+                    {
+                        projectionLaterEntity = true;
+                    }
+                    else if (dependencyRevision > dependencyProjectionRevision)
+                    {
+                        entityLaterProjection = true;
+                    }
+                }
+
+                var updateNeeded = entityLaterProjection && !projectionLaterEntity;
+                var conflict = entityLaterProjection && projectionLaterEntity;
+
+                if (updateNeeded)
+                {
+                    metadata.ProjectionRevision = entityRevision;
+                    _sourceMetadataCache[_sourceDescriptor] = new ProjectionSourceMetadataCacheEntry(metadata, touched: true);
+                }
+
+
+                return (updateNeeded, conflict);
             }
 
-            private IEnumerable<ProjectionSourceDescriptor> GetDependencies(IEntityStorageEngine entityStorageEngine)
+            private IEnumerable<(ProjectionSourceDescriptor dependency, long revision)> GetDependencies(IEntityStorageEngine storageEngine,
+                                                                                                        IEntityStoragePropertyManager propertyManager) // TODO: Rename
             {
                 var entityDescriptor = _sourceDescriptor;
 
@@ -213,9 +237,9 @@ namespace AI4E.Storage.Projection
                     return cacheEntry.id == entityDescriptor.SourceId && cacheEntry.type == entityDescriptor.SourceType;
                 }
 
-                return entityStorageEngine.CachedEntries
+                return storageEngine.CachedEntries
                                           .Where(p => !IsCurrentEntity(p) && p.revision == default)
-                                          .Select(p => new ProjectionSourceDescriptor(p.type, p.id))
+                                          .Select(p => (new ProjectionSourceDescriptor(p.type, p.id), propertyManager.GetRevision(p.entity)))
                                           .ToArray();
             }
 
@@ -225,23 +249,33 @@ namespace AI4E.Storage.Projection
                 return metadata.Dependents.Select(p => new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(p.Type), p.Id));
             }
 
-            private async Task UpdateDependenciesAsync(IEnumerable<ProjectionSourceDescriptor> dependencies, CancellationToken cancellation)
+            private async Task UpdateDependenciesAsync(IEnumerable<(ProjectionSourceDescriptor dependency, long revision)> dependencies, CancellationToken cancellation)
             {
                 var metadata = await GetMetadataAsync(cancellation);
                 var storedDependencies = metadata.Dependencies.Select(p => new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(p.Type), p.Id));
 
-                foreach (var added in dependencies.Except(storedDependencies))
+                foreach (var added in dependencies.Select(p => p.dependency).Except(storedDependencies))
                 {
                     await AddDependentAsync(added, cancellation);
                 }
 
-                foreach (var removed in storedDependencies.Except(dependencies))
+                foreach (var removed in storedDependencies.Except(dependencies.Select(p => p.dependency)))
                 {
                     await RemoveDependentAsync(removed, cancellation);
                 }
 
+                Dependency ToStoredDependency((ProjectionSourceDescriptor dependency, long revision) p)
+                {
+                    return new Dependency
+                    {
+                        Id = p.dependency.SourceId,
+                        Type = StringifyType(p.dependency.SourceType),
+                        ProjectionRevision = p.revision
+                    };
+                }
+
                 metadata.Dependencies.Clear();
-                metadata.Dependencies.AddRange(dependencies.Select(p => new Dependency { Id = p.SourceId, Type = StringifyType(p.SourceType) }));
+                metadata.Dependencies.AddRange(dependencies.Select(p => ToStoredDependency(p)));
 
                 _sourceMetadataCache[_sourceDescriptor] = new ProjectionSourceMetadataCacheEntry(metadata, touched: true);
             }
@@ -316,7 +350,7 @@ namespace AI4E.Storage.Projection
                 await UpdateAppliedProjectionsAsync(projections, cancellation);
             }
 
-            private readonly IDictionary<Type, ITargetScopedProjectionEngine> _targetScopedProjectionEngines;
+
 
             private ITargetScopedProjectionEngine GetTargetScopedProjectionEngine(Type targetType)
             {
@@ -349,40 +383,6 @@ namespace AI4E.Storage.Projection
                 return targetScopedProjectionEngine.AddEntityToProjectionAsync(_sourceDescriptor, projectionResult, cancellation);
             }
 
-            //private async Task<bool> RemoveEntityFromProjectionAsync(ProjectionTargetDescriptor removedProjection, CancellationToken cancellation)
-            //{
-            //    var metadata = await GetMetadataAsync(removedProjection, cancellation);
-            //    var sourceDescriptor = _sourceDescriptor;
-            //    var removed = metadata.ProjectionSources.RemoveFirstWhere(p => p.Id == sourceDescriptor.SourceId &&
-            //                                                                   p.Type == StringifyType(sourceDescriptor.SourceType));
-
-            //    Assert(removed != null);
-
-            //    if (!metadata.ProjectionSources.Any())
-            //    {
-            //        _targetMetadataCache[removedProjection] = new ProjectionTargetMetadataCacheEntry(metadata: null, touched: true);
-
-            //        return true;
-            //    }
-
-            //    _targetMetadataCache[removedProjection] = new ProjectionTargetMetadataCacheEntry(metadata, touched: true);
-
-            //    return false;
-            //}
-
-            //private async Task AddEntityToProjectionAsync(ProjectionTargetDescriptor addedProjection, CancellationToken cancellation)
-            //{
-            //    var metadata = await GetMetadataAsync(addedProjection, cancellation);
-
-            //    var source = _sourceDescriptor;
-
-            //    Assert(!metadata.ProjectionSources.Any(p => p.Id == source.SourceId && p.Type == StringifyType(source.SourceType)));
-
-            //    metadata.ProjectionSources.Add(new ProjectionSource { Id = source.SourceId, Type = StringifyType(source.SourceType) });
-
-            //    _targetMetadataCache[addedProjection] = new ProjectionTargetMetadataCacheEntry(metadata, touched: true);
-            //}
-
             private async ValueTask<IEnumerable<ProjectionTargetDescriptor>> GetAppliedProjectionsAsync(CancellationToken cancellation)
             {
                 var metadata = await GetMetadataAsync(cancellation);
@@ -398,8 +398,6 @@ namespace AI4E.Storage.Projection
             }
 
             #endregion
-
-            #region ProjectionSourceMetadata
 
             private ValueTask<ProjectionSourceMetadata> GetMetadataAsync(CancellationToken cancellation)
             {
@@ -431,6 +429,18 @@ namespace AI4E.Storage.Projection
                 }
 
                 return entry.Metadata;
+            }
+
+            private readonly struct ProjectionSourceMetadataCacheEntry
+            {
+                public ProjectionSourceMetadataCacheEntry(ProjectionSourceMetadata metadata, bool touched)
+                {
+                    Metadata = metadata;
+                    Touched = touched;
+                }
+
+                public ProjectionSourceMetadata Metadata { get; }
+                public bool Touched { get; }
             }
 
             private sealed class ProjectionSourceMetadata
@@ -469,7 +479,7 @@ namespace AI4E.Storage.Projection
                 public string Id { get; set; }
                 public string Type { get; set; }
 
-                public long ProjectionRevision { get; }
+                public long ProjectionRevision { get; set; }
             }
 
             private sealed class Dependent
@@ -483,73 +493,6 @@ namespace AI4E.Storage.Projection
                 public string Id { get; set; }
                 public string Type { get; set; }
             }
-
-            #endregion
-
-            //#region ProjectionTargetMetadata
-
-            //private async ValueTask<ProjectionTargetMetadata> GetMetadataAsync(ProjectionTargetDescriptor target,
-            //                                                                   CancellationToken cancellation)
-            //{
-            //    if (!_targetMetadataCache.TryGetValue(target, out var entry))
-            //    {
-            //        var entryId = ProjectionTargetMetadata.GenerateId(target.TargetId, StringifyType(target.TargetType));
-            //        var metadata = (await _database.GetAsync<ProjectionTargetMetadata>(p => p.Id == entryId, cancellation)).FirstOrDefault();
-            //        var touched = false;
-
-            //        if (metadata == null)
-            //        {
-            //            metadata = new ProjectionTargetMetadata
-            //            {
-            //                TargetId = target.TargetId,
-            //                TargetType = StringifyType(target.TargetType)
-            //            };
-
-            //            touched = true;
-            //        }
-
-            //        entry = new ProjectionTargetMetadataCacheEntry(metadata, touched);
-            //        _targetMetadataCache.Add(target, entry);
-            //    }
-
-            //    return entry.Metadata;
-            //}
-
-            //private sealed class ProjectionTargetMetadata
-            //{
-            //    private string _id;
-
-            //    public static string GenerateId(string targetId, string targetType)
-            //    {
-            //        return IdGenerator.GenerateId(targetId, targetType);
-            //    }
-
-            //    public string Id
-            //    {
-            //        get
-            //        {
-            //            if (_id == null)
-            //            {
-            //                _id = GenerateId(TargetId, TargetType);
-            //            }
-
-            //            return _id;
-            //        }
-            //        set => _id = value;
-            //    }
-
-            //    public string TargetId { get; set; }
-            //    public string TargetType { get; set; }
-            //    public List<ProjectionSource> ProjectionSources { get; } = new List<ProjectionSource>();
-            //}
-
-            //private sealed class ProjectionSource
-            //{
-            //    public string Id { get; set; }
-            //    public string Type { get; set; }
-            //}
-
-            //#endregion      
         }
 
         private static string StringifyType(Type t)

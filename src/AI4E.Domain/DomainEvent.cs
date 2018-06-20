@@ -35,7 +35,7 @@ namespace AI4E.Domain
 {
     public abstract class DomainEvent
     {
-        protected DomainEvent(Guid id)
+        protected DomainEvent(SGuid id)
         {
             if (id == default)
                 throw new ArgumentException("The id must not be an empty guid.", nameof(id));
@@ -43,7 +43,7 @@ namespace AI4E.Domain
             Id = id;
         }
 
-        public Guid Id { get; }
+        public SGuid Id { get; }
     }
 
     public abstract class DomainEvent<TAggregate> : DomainEvent

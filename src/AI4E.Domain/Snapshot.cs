@@ -63,14 +63,14 @@ namespace AI4E.Domain
                 }
 
                 Id = aggregate.Id;
-                Revision = aggregate.Revision;
+                Revision = 0; // TODO aggregate.Revision;
             }
 
             _aggregate = new Lazy<ValueTask<T>>(() => new ValueTask<T>(aggregate), isThreadSafe: true);
         }
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        private Snapshot(Guid id, long revision, IReferenceResolver referenceResolver)
+        private Snapshot(SGuid id, long revision, IReferenceResolver referenceResolver)
         {
             if (referenceResolver == null)
                 throw new ArgumentNullException(nameof(referenceResolver));
@@ -91,7 +91,7 @@ namespace AI4E.Domain
             }
         }
 
-        public Guid Id { get; }
+        public SGuid Id { get; }
 
         public long Revision { get; }
 

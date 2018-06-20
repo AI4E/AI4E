@@ -35,33 +35,13 @@ namespace AI4E.Domain
 {
     public abstract class AggregateRoot : Entity
     {
-        private bool _isDisposed;
         private readonly List<DomainEvent> _uncommittedEvents = new List<DomainEvent>();
 
-        protected AggregateRoot(Guid id) : base(id) { }
-
-        public bool IsDisposed => _isDisposed;
-
-        public void Dispose()
-        {
-            if (!_isDisposed)
-            {
-                DoDispose();
-                _isDisposed = true;
-            }
-        }
-
-        public string ConcurrencyToken { get; internal set; }
-
-        public long Revision { get; internal set; }
-
-        protected virtual void DoDispose() { }
+        protected AggregateRoot(SGuid id) : base(id) { }
 
         public void Publish<TEvent>(TEvent evt)
             where TEvent : DomainEvent
         {
-            ThrowIfDisposed();
-
             if (evt == null)
                 throw new ArgumentNullException(nameof(evt));
 
@@ -76,27 +56,6 @@ namespace AI4E.Domain
         internal void CommitEvents()
         {
             _uncommittedEvents.Clear();
-        }
-
-        protected virtual void ThrowIfDisposed()
-        {
-            if (_isDisposed)
-                throw new ObjectDisposedException(EntityType.FullName);
-        }
-
-        protected T ThrowIfDisposed<T>(T value)
-        {
-            ThrowIfDisposed();
-            return value;
-        }
-
-        protected T ThrowIfDisposed<T>(Func<T> factory)
-        {
-            if (factory == null)
-                throw new ArgumentNullException(nameof(factory));
-
-            ThrowIfDisposed();
-            return factory();
         }
     }
 }
