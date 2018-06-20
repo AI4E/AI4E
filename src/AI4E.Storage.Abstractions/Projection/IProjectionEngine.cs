@@ -6,6 +6,6 @@ namespace AI4E.Storage.Projection
 {
     public interface IProjectionEngine
     {
-        Task ProjectAsync(Type entityType, string id, CancellationToken cancellation = default);
+        Task ProjectAsync(Type sourceType, string sourceId, CancellationToken cancellation = default);
     }
 }

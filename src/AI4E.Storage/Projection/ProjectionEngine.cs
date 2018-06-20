@@ -48,12 +48,12 @@ namespace AI4E.Storage.Projection
                 throw new ArgumentNullException(nameof(id));
 
             var processedEntities = new HashSet<ProjectionSourceDescriptor>();
-            return ProjectSingleAsync(new ProjectionSourceDescriptor(entityType, id), processedEntities, cancellation);
+            return ProjectAsync(new ProjectionSourceDescriptor(entityType, id), processedEntities, cancellation);
         }
 
-        private async Task ProjectSingleAsync(ProjectionSourceDescriptor entityDescriptor,
-                                              ISet<ProjectionSourceDescriptor> processedEntities,
-                                              CancellationToken cancellation)
+        private async Task ProjectAsync(ProjectionSourceDescriptor entityDescriptor,
+                                        ISet<ProjectionSourceDescriptor> processedEntities,
+                                        CancellationToken cancellation)
         {
             if (processedEntities.Contains(entityDescriptor))
             {
@@ -70,7 +70,7 @@ namespace AI4E.Storage.Projection
                     database?.Dispose();
 
                     database = _database.CreateScope();
-                    var scopedEngine = new ScopedProjectionEngine(entityDescriptor, _projector, database, _serviceProvider);
+                    var scopedEngine = new SourceScopedProjectionEngine(entityDescriptor, _projector, database, _serviceProvider);
                     dependents = await scopedEngine.ProjectAsync(cancellation);
                 }
                 while (!await database.TryCommitAsync(cancellation));
@@ -84,11 +84,18 @@ namespace AI4E.Storage.Projection
 
             foreach (var dependent in dependents)
             {
-                await ProjectSingleAsync(dependent, processedEntities, cancellation);
+                await ProjectAsync(dependent, processedEntities, cancellation);
             }
         }
 
-        private readonly struct ScopedProjectionEngine
+        private static string StringifyType(Type t)
+        {
+            return t.ToString();
+        }
+
+        #region Scoped engines
+
+        private readonly struct SourceScopedProjectionEngine
         {
             private readonly ProjectionSourceDescriptor _sourceDescriptor;
             private readonly IProjector _projector;
@@ -98,10 +105,10 @@ namespace AI4E.Storage.Projection
             private readonly IDictionary<ProjectionSourceDescriptor, ProjectionSourceMetadataCacheEntry> _sourceMetadataCache;
             private readonly IDictionary<Type, ITargetScopedProjectionEngine> _targetScopedProjectionEngines;
 
-            public ScopedProjectionEngine(in ProjectionSourceDescriptor sourceDescriptor,
-                                          IProjector projector,
-                                          IScopedTransactionalDatabase database,
-                                          IServiceProvider serviceProvider)
+            public SourceScopedProjectionEngine(in ProjectionSourceDescriptor sourceDescriptor,
+                                                IProjector projector,
+                                                IScopedTransactionalDatabase database,
+                                                IServiceProvider serviceProvider)
             {
                 Assert(sourceDescriptor != default);
                 Assert(projector != null);
@@ -114,7 +121,6 @@ namespace AI4E.Storage.Projection
                 _serviceProvider = serviceProvider;
 
                 _sourceMetadataCache = new Dictionary<ProjectionSourceDescriptor, ProjectionSourceMetadataCacheEntry>();
-                //_targetMetadataCache = new Dictionary<ProjectionTargetDescriptor, ProjectionTargetMetadataCacheEntry>();
                 _targetScopedProjectionEngines = new Dictionary<Type, ITargetScopedProjectionEngine>();
             }
 
@@ -180,8 +186,6 @@ namespace AI4E.Storage.Projection
                                                                                                 object entity,
                                                                                                 CancellationToken cancellation)
             {
-
-
                 // We load all dependencies from the entity store. 
                 // As a projection source's dependencies do not change often, chances are good that the 
                 // entities are cached when accessed within the projection phase.
@@ -350,8 +354,6 @@ namespace AI4E.Storage.Projection
                 await UpdateAppliedProjectionsAsync(projections, cancellation);
             }
 
-
-
             private ITargetScopedProjectionEngine GetTargetScopedProjectionEngine(Type targetType)
             {
                 if (!_targetScopedProjectionEngines.TryGetValue(targetType, out var result))
@@ -493,11 +495,6 @@ namespace AI4E.Storage.Projection
                 public string Id { get; set; }
                 public string Type { get; set; }
             }
-        }
-
-        private static string StringifyType(Type t)
-        {
-            return t.ToString();
         }
 
         private interface ITargetScopedProjectionEngine
@@ -749,103 +746,155 @@ namespace AI4E.Storage.Projection
                 public string Type { get; set; }
             }
         }
-    }
 
-    public readonly struct ProjectionTargetDescriptor : IEquatable<ProjectionTargetDescriptor>
-    {
-        public ProjectionTargetDescriptor(Type targetType, string targetId)
+        #endregion
+
+        #region Descriptors
+
+        private readonly struct ProjectionSourceDescriptor : IEquatable<ProjectionSourceDescriptor>
         {
-            if (targetType == null)
-                throw new ArgumentNullException(nameof(targetType));
+            public ProjectionSourceDescriptor(Type sourceType, string sourceId)
+            {
+                if (sourceType == null)
+                    throw new ArgumentNullException(nameof(sourceType));
 
-            if (targetId == null || targetId.Equals(default))
-                throw new ArgumentDefaultException(nameof(targetId));
+                if (sourceId == null || sourceId.Equals(default))
+                    throw new ArgumentDefaultException(nameof(sourceId));
 
-            TargetType = targetType;
-            TargetId = targetId;
+                SourceType = sourceType;
+                SourceId = sourceId;
+            }
+
+            public Type SourceType { get; }
+            public string SourceId { get; }
+
+            public override bool Equals(object obj)
+            {
+                return obj is ProjectionSourceDescriptor entityDescriptor && Equals(entityDescriptor);
+            }
+
+            public bool Equals(ProjectionSourceDescriptor other)
+            {
+                return other.SourceType == null && SourceType == null || other.SourceType == SourceType && other.SourceId.Equals(SourceId);
+            }
+
+            public override int GetHashCode()
+            {
+                if (SourceType == null)
+                    return 0;
+
+                return SourceType.GetHashCode() ^ SourceId.GetHashCode();
+            }
+
+            public static bool operator ==(in ProjectionSourceDescriptor left, in ProjectionSourceDescriptor right)
+            {
+                return left.Equals(right);
+            }
+
+            public static bool operator !=(in ProjectionSourceDescriptor left, in ProjectionSourceDescriptor right)
+            {
+                return !left.Equals(right);
+            }
         }
 
-        public Type TargetType { get; }
-        public string TargetId { get; }
-
-        public override bool Equals(object obj)
+        private readonly struct ProjectionTargetDescriptor : IEquatable<ProjectionTargetDescriptor>
         {
-            return obj is ProjectionTargetDescriptor entityDescriptor && Equals(entityDescriptor);
+            public ProjectionTargetDescriptor(Type targetType, string targetId)
+            {
+                if (targetType == null)
+                    throw new ArgumentNullException(nameof(targetType));
+
+                if (targetId == null || targetId.Equals(default))
+                    throw new ArgumentDefaultException(nameof(targetId));
+
+                TargetType = targetType;
+                TargetId = targetId;
+            }
+
+            public Type TargetType { get; }
+            public string TargetId { get; }
+
+            public override bool Equals(object obj)
+            {
+                return obj is ProjectionTargetDescriptor entityDescriptor && Equals(entityDescriptor);
+            }
+
+            public bool Equals(ProjectionTargetDescriptor other)
+            {
+                return other.TargetType == null && TargetType == null || other.TargetType == TargetType && other.TargetId.Equals(TargetId);
+            }
+
+            public override int GetHashCode()
+            {
+                if (TargetType == null)
+                    return 0;
+
+                return TargetType.GetHashCode() ^ TargetId.GetHashCode();
+            }
+
+            public static bool operator ==(in ProjectionTargetDescriptor left, in ProjectionTargetDescriptor right)
+            {
+                return left.Equals(right);
+            }
+
+            public static bool operator !=(in ProjectionTargetDescriptor left, in ProjectionTargetDescriptor right)
+            {
+                return !left.Equals(right);
+            }
         }
 
-        public bool Equals(ProjectionTargetDescriptor other)
+        private readonly struct ProjectionTargetDescriptor<TId> : IEquatable<ProjectionTargetDescriptor<TId>>
         {
-            return other.TargetType == null && TargetType == null || other.TargetType == TargetType && other.TargetId.Equals(TargetId);
+            public ProjectionTargetDescriptor(Type targetType, TId targetId)
+            {
+                if (targetType == null)
+                    throw new ArgumentNullException(nameof(targetType));
+
+                if (targetId == null || targetId.Equals(default))
+                    throw new ArgumentDefaultException(nameof(targetId));
+
+                TargetType = targetType;
+                TargetId = targetId;
+            }
+
+            public Type TargetType { get; }
+            public TId TargetId { get; }
+            public string StringifiedTargetId => TargetId.ToString();
+
+            public override bool Equals(object obj)
+            {
+                return obj is ProjectionTargetDescriptor<TId> entityDescriptor && Equals(entityDescriptor);
+            }
+
+            public bool Equals(ProjectionTargetDescriptor<TId> other)
+            {
+                return other.TargetType == null && TargetType == null || other.TargetType == TargetType && other.TargetId.Equals(TargetId);
+            }
+
+            public override int GetHashCode()
+            {
+                if (TargetType == null)
+                    return 0;
+
+                return TargetType.GetHashCode() ^ TargetId.GetHashCode();
+            }
+
+            public static bool operator ==(in ProjectionTargetDescriptor<TId> left, in ProjectionTargetDescriptor<TId> right)
+            {
+                return left.Equals(right);
+            }
+
+            public static bool operator !=(in ProjectionTargetDescriptor<TId> left, in ProjectionTargetDescriptor<TId> right)
+            {
+                return !left.Equals(right);
+            }
+
+            public static implicit operator ProjectionTargetDescriptor(in ProjectionTargetDescriptor<TId> typedDescriptor)
+            {
+                return new ProjectionTargetDescriptor(typedDescriptor.TargetType, typedDescriptor.StringifiedTargetId);
+            }
         }
 
-        public override int GetHashCode()
-        {
-            if (TargetType == null)
-                return 0;
-
-            return TargetType.GetHashCode() ^ TargetId.GetHashCode();
-        }
-
-        public static bool operator ==(in ProjectionTargetDescriptor left, in ProjectionTargetDescriptor right)
-        {
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(in ProjectionTargetDescriptor left, in ProjectionTargetDescriptor right)
-        {
-            return !left.Equals(right);
-        }
-    }
-
-    public readonly struct ProjectionTargetDescriptor<TId> : IEquatable<ProjectionTargetDescriptor<TId>>
-    {
-        public ProjectionTargetDescriptor(Type targetType, TId targetId)
-        {
-            if (targetType == null)
-                throw new ArgumentNullException(nameof(targetType));
-
-            if (targetId == null || targetId.Equals(default))
-                throw new ArgumentDefaultException(nameof(targetId));
-
-            TargetType = targetType;
-            TargetId = targetId;
-        }
-
-        public Type TargetType { get; }
-        public TId TargetId { get; }
-        public string StringifiedTargetId => TargetId.ToString();
-
-        public override bool Equals(object obj)
-        {
-            return obj is ProjectionTargetDescriptor<TId> entityDescriptor && Equals(entityDescriptor);
-        }
-
-        public bool Equals(ProjectionTargetDescriptor<TId> other)
-        {
-            return other.TargetType == null && TargetType == null || other.TargetType == TargetType && other.TargetId.Equals(TargetId);
-        }
-
-        public override int GetHashCode()
-        {
-            if (TargetType == null)
-                return 0;
-
-            return TargetType.GetHashCode() ^ TargetId.GetHashCode();
-        }
-
-        public static bool operator ==(in ProjectionTargetDescriptor<TId> left, in ProjectionTargetDescriptor<TId> right)
-        {
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(in ProjectionTargetDescriptor<TId> left, in ProjectionTargetDescriptor<TId> right)
-        {
-            return !left.Equals(right);
-        }
-
-        public static implicit operator ProjectionTargetDescriptor(in ProjectionTargetDescriptor<TId> typedDescriptor)
-        {
-            return new ProjectionTargetDescriptor(typedDescriptor.TargetType, typedDescriptor.StringifiedTargetId);
-        }
+        #endregion
     }
 }
