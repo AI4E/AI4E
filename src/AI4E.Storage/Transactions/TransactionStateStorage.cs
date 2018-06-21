@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
 using AI4E.Storage.Internal;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
@@ -50,10 +49,9 @@ namespace AI4E.Storage.Transactions
             return await _database.GetOneAsync<StoredTransaction>(p => p.Id == id, cancellation);
         }
 
-        // TODO: Return async enumerable
-        public async ValueTask<IEnumerable<ITransactionState>> GetNonCommittedTransactionsAsync(CancellationToken cancellation = default)
+        public IAsyncEnumerable<ITransactionState> GetNonCommittedTransactionsAsync(CancellationToken cancellation = default)
         {
-            return await _database.GetAsync<StoredTransaction>(p => p.Status == TransactionStatus.AbortRequested || p.Status == TransactionStatus.Pending, cancellation);
+            return _database.GetAsync<StoredTransaction>(p => p.Status == TransactionStatus.AbortRequested || p.Status == TransactionStatus.Pending, cancellation);
         }
 
         private static StoredTransaction AsStoredTransaction(ITransactionState transaction)

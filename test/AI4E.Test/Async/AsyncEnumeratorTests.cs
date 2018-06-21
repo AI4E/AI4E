@@ -101,6 +101,15 @@ namespace AI4E.Test.Async
             Assert.IsTrue(seq.IsCompleted, "Enumeration did not complete after return.");
         }
 
+        [TestMethod]
+        public async Task EmptyEnumeratorTest()
+        {
+            var seq = GetEmptyEnumerator();
+
+            Assert.IsFalse(await seq.MoveNext(), $"Call to {nameof(seq.MoveNext)} did not return false after enumeration completed.");
+
+            Assert.IsTrue(seq.IsCompleted, "Enumeration did not complete after return.");
+        }
 
         private static async AsyncEnumerator<int> ExceptionTest1()
         {
@@ -132,6 +141,13 @@ namespace AI4E.Test.Async
             {
                 await yield.Return(i);
             }
+
+            return yield.Break();
+        }
+
+        private static async AsyncEnumerator<int> GetEmptyEnumerator()
+        {
+            var yield = await AsyncEnumerator<int>.Capture();
 
             return yield.Break();
         }

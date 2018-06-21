@@ -106,8 +106,8 @@ namespace AI4E.Storage.Transactions.StressTest
 
             try
             {
-                bankAccount1 = (await transactionalStore.GetAsync<BankAccount>(p => p.Id == bankAccountNo1)).FirstOrDefault();
-                bankAccount2 = (await transactionalStore.GetAsync<BankAccount>(p => p.Id == bankAccountNo2)).FirstOrDefault();
+                bankAccount1 = await transactionalStore.GetAsync<BankAccount>(p => p.Id == bankAccountNo1).FirstOrDefault();
+                bankAccount2 = await transactionalStore.GetAsync<BankAccount>(p => p.Id == bankAccountNo2).FirstOrDefault();
 
                 await transactionalStore.TryCommitAsync();
             }
@@ -135,8 +135,8 @@ namespace AI4E.Storage.Transactions.StressTest
             {
                 transactionalStore = database.CreateScope();
 
-                var bankAccount1 = (await transactionalStore.GetAsync<BankAccount>(p => p.Id == bankAccountNo1)).FirstOrDefault();
-                var bankAccount2 = (await transactionalStore.GetAsync<BankAccount>(p => p.Id == bankAccountNo2)).FirstOrDefault();
+                var bankAccount1 = await transactionalStore.GetAsync<BankAccount>(p => p.Id == bankAccountNo1).FirstOrDefault();
+                var bankAccount2 = await transactionalStore.GetAsync<BankAccount>(p => p.Id == bankAccountNo2).FirstOrDefault();
 
                 bankAccount1.Amount -= transferAmount;
                 bankAccount2.Amount += transferAmount;

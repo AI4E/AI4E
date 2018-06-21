@@ -71,6 +71,8 @@ namespace AI4E.Storage.Transactions
                         transactionalDatabase = database.CreateScope();
                         try
                         {
+                            // We have to load all data to memory. 
+                            // Otherwise the data would be queried lazily by the caller after the transaction ended.
                             result = await transactionalDatabase.GetAsync(predicate, cancellation);
                         }
                         catch (TransactionAbortedException)

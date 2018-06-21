@@ -457,7 +457,7 @@ namespace AI4E.Storage.Projection
                 if (!_sourceMetadataCache.TryGetValue(sourceDescriptor, out var entry))
                 {
                     var entryId = ProjectionSourceMetadata.GenerateId(sourceDescriptor.SourceId, StringifyType(sourceDescriptor.SourceType));
-                    var metadata = (await _database.GetAsync<ProjectionSourceMetadata>(p => p.Id == entryId, cancellation)).FirstOrDefault();
+                    var metadata = await _database.GetAsync<ProjectionSourceMetadata>(p => p.Id == entryId, cancellation).FirstOrDefault();
                     var originalMetadata = metadata;
                     var touched = false;
 
@@ -657,7 +657,7 @@ namespace AI4E.Storage.Projection
                                                                                                      touched: true);
 
                     var predicate = DataPropertyHelper.BuildPredicate<TProjectionId, TProjection>(metadata.TargetId);
-                    var projection = (await _database.GetAsync(predicate, cancellation)).FirstOrDefault();
+                    var projection = await _database.GetAsync(predicate, cancellation).FirstOrDefault();
 
                     if (projection != null)
                     {
@@ -725,7 +725,7 @@ namespace AI4E.Storage.Projection
                 if (!_targetMetadataCache.TryGetValue(target, out var entry))
                 {
                     var entryId = ProjectionTargetMetadata.GenerateId(target.TargetId.ToString(), StringifyType(target.TargetType));
-                    var metadata = (await _database.GetAsync<ProjectionTargetMetadata>(p => p.Id == entryId, cancellation)).FirstOrDefault();
+                    var metadata = await _database.GetAsync<ProjectionTargetMetadata>(p => p.Id == entryId, cancellation).FirstOrDefault();
                     var originalMetadata = metadata;
                     var touched = false;
 
@@ -753,7 +753,7 @@ namespace AI4E.Storage.Projection
                 if (!_targetMetadataCache.TryGetValue(target, out var entry))
                 {
                     var entryId = ProjectionTargetMetadata.GenerateId(target.TargetId, StringifyType(target.TargetType));
-                    var metadata = (await _database.GetAsync<ProjectionTargetMetadata>(p => p.Id == entryId, cancellation)).FirstOrDefault();
+                    var metadata = await _database.GetAsync<ProjectionTargetMetadata>(p => p.Id == entryId, cancellation).FirstOrDefault();
 
                     entry = new ProjectionTargetMetadataCacheEntry(metadata, metadata, touched: false);
 

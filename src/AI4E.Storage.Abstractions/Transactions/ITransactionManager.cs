@@ -9,13 +9,13 @@ namespace AI4E.Storage.Transactions
     {
         //IScopedTransactionalDatabase CreateStore();
 
-        Task<ProcessingState> ProcessTransactionAsync(ITransaction transaction, CancellationToken cancellation);
+        ValueTask<ProcessingState> ProcessTransactionAsync(ITransaction transaction, CancellationToken cancellation);
 
         ITransaction GetTransaction(long id);
 
         ITransaction CreateTransaction();
 
-        Task<IEnumerable<ITransaction>> GetNonCommittedTransactionsAsync(CancellationToken cancellation = default);
+        IAsyncEnumerable<ITransaction> GetNonCommittedTransactionsAsync(CancellationToken cancellation = default);
     }
 
     public enum ProcessingState { Committed, Aborted };

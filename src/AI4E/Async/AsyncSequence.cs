@@ -67,7 +67,7 @@ namespace AI4E.Async
         private readonly ConcurrentQueue<T> _valueQueue = new ConcurrentQueue<T>();
         private ExceptionDispatchInfo _exception;
 
-        private TaskCompletionSource<bool> _nextSource;
+        private TaskCompletionSource<bool> _nextSource = new TaskCompletionSource<bool>();
 
         public static TaskProvider<IAsyncSequenceProducer<T>> Capture() => TaskProvider<IAsyncSequenceProducer<T>>._instance;
 

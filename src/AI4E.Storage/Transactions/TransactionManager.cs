@@ -73,7 +73,7 @@ namespace AI4E.Storage.Transactions
 
         #region ProcessTransaction
 
-        public async Task<ProcessingState> ProcessTransactionAsync(ITransaction transaction, CancellationToken cancellation)
+        public async ValueTask<ProcessingState> ProcessTransactionAsync(ITransaction transaction, CancellationToken cancellation)
         {
             if (transaction == null)
                 throw new ArgumentNullException(nameof(transaction));
@@ -100,7 +100,7 @@ namespace AI4E.Storage.Transactions
             return result;
         }
 
-        private async Task<ProcessingState> ProcessTransactionAsync(ITransaction originalTransaction,
+        private async ValueTask<ProcessingState> ProcessTransactionAsync(ITransaction originalTransaction,
                                                                     ITransaction transaction,
                                                                     ISet<ITransaction> processedTransactions,
                                                                     ISet<ITransaction> visitedTransactions,
@@ -189,7 +189,7 @@ namespace AI4E.Storage.Transactions
             return ProcessingState.Committed;
         }
 
-        private async Task<ProcessingState> AbortTransactionAsync(ITransaction originalTransaction,
+        private async ValueTask<ProcessingState> AbortTransactionAsync(ITransaction originalTransaction,
                                                                   ITransaction transaction,
                                                                   ImmutableArray<IOperation> operations,
                                                                   CancellationToken cancellation)
@@ -528,9 +528,9 @@ namespace AI4E.Storage.Transactions
             return new Transaction(_transactionStorage, _transactionStateTransformer);
         }
 
-        public async Task<IEnumerable<ITransaction>> GetNonCommittedTransactionsAsync(CancellationToken cancellation = default)
+        public IAsyncEnumerable<ITransaction> GetNonCommittedTransactionsAsync(CancellationToken cancellation = default)
         {
-            var transactions = await _transactionStorage.GetNonCommittedTransactionsAsync(cancellation);
+            var transactions = _transactionStorage.GetNonCommittedTransactionsAsync(cancellation);
 
             return transactions.Select(p => GetTransaction(p));
         }

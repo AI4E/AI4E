@@ -28,13 +28,12 @@ namespace AI4E.Storage.Transactions
             return _database.CompareExchangeAsync(AsStoredEntry(entry), AsStoredEntry(comparand), p => p.Version, cancellation);
         }
 
-        // TODO: Return async enumerable
-        public async ValueTask<IEnumerable<IEntryState<TId, TData>>> GetEntriesAsync(Expression<Func<IEntryState<TId, TData>, bool>> predicate, CancellationToken cancellation = default)
+        public IAsyncEnumerable<IEntryState<TId, TData>> GetEntriesAsync(Expression<Func<IEntryState<TId, TData>, bool>> predicate, CancellationToken cancellation = default)
         {
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
 
-            return await _database.GetAsync(TranslatePredicate(predicate), cancellation).ToList(cancellation);
+            return _database.GetAsync(TranslatePredicate(predicate), cancellation);
         }
 
         private Expression<Func<StoredEntry, bool>> TranslatePredicate(Expression<Func<IEntryState<TId, TData>, bool>> predicate)

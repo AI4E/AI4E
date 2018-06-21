@@ -17,7 +17,7 @@ namespace AI4E.Storage.Transactions
 
         // TODO: Return Async enumerable
         // Returns all entries of type 'TData' where predicate matches.
-        Task<IEnumerable<TData>> GetAsync<TData>(Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
+        IAsyncEnumerable<TData> GetAsync<TData>(Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
             where TData : class;
 
         Task<bool> TryCommitAsync(CancellationToken cancellation = default);

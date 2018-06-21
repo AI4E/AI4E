@@ -62,12 +62,12 @@ namespace AI4E.Async
     }
 
     [AsyncMethodBuilder(typeof(AsyncEnumeratorMethodBuilder<>))]
-    public class AsyncEnumerator<T> : TaskLikeBase, IAsyncEnumeratorProducer<T>, IAsyncEnumerator<T>
+    public sealed class AsyncEnumerator<T> : TaskLikeBase, IAsyncEnumeratorProducer<T>, IAsyncEnumerator<T>
     {
         private ExceptionDispatchInfo _exception;
 
         private bool _isStarted;
-        private TaskCompletionSource<bool> _nextSource;
+        private TaskCompletionSource<bool> _nextSource = new TaskCompletionSource<bool>();
         private TaskCompletionSource<bool> _yieldSource;
 
         public static TaskProvider<IAsyncEnumeratorProducer<T>> Capture() => TaskProvider<IAsyncEnumeratorProducer<T>>._instance;
@@ -81,11 +81,10 @@ namespace AI4E.Async
             if (!_isStarted)
             {
                 _isStarted = true;
-                return Task.FromResult(true);
+                return _nextSource.Task;
             }
 
             _nextSource = new TaskCompletionSource<bool>();
-
             _yieldSource?.TrySetResult(true);
 
             return _yieldSource is null ? Task.FromResult(true) : _nextSource.Task;
@@ -94,7 +93,7 @@ namespace AI4E.Async
         internal override void SetException(ExceptionDispatchInfo exception)
         {
             _exception = exception;
-            _nextSource?.TrySetException(exception.SourceException);
+            _nextSource.TrySetException(exception.SourceException);
         }
 
         T IAsyncEnumeratorProducer<T>.Break()
@@ -114,10 +113,8 @@ namespace AI4E.Async
         Task IAsyncEnumeratorProducer<T>.Return(T value)
         {
             Current = value;
-
             _yieldSource = new TaskCompletionSource<bool>();
-
-            _nextSource?.TrySetResult(true);
+            _nextSource.TrySetResult(true);
 
             return _yieldSource.Task;
         }

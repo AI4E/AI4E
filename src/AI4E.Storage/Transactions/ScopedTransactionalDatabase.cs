@@ -5,6 +5,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Async;
 using AI4E.Internal;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
@@ -67,13 +68,13 @@ namespace AI4E.Storage.Transactions
             return GetTypedStore<TData>().RemoveAsync(data, cancellation);
         }
 
-        public Task<IEnumerable<TData>> GetAsync<TData>(Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
+        public IAsyncEnumerable<TData> GetAsync<TData>(Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
             where TData : class
         {
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
 
-            return GetTypedStore<TData>().GetAsync(predicate, cancellation).AsTask();
+            return GetTypedStore<TData>().GetAsync(predicate, cancellation);
         }
 
         public async Task<bool> TryCommitAsync(CancellationToken cancellation)
@@ -152,7 +153,7 @@ namespace AI4E.Storage.Transactions
         {
             Task StoreAsync(TData data, CancellationToken cancellation);
             Task RemoveAsync(TData data, CancellationToken cancellation);
-            ValueTask<IEnumerable<TData>> GetAsync(Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
+            IAsyncEnumerable<TData> GetAsync(Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
         }
 
         private sealed class TypedTransactionalStore<TId, TData> : ITypedTransactionalStore<TData>
@@ -324,77 +325,142 @@ namespace AI4E.Storage.Transactions
                 return result;
             }
 
-            public async ValueTask<IEnumerable<TData>> GetAsync(Expression<Func<TData, bool>> predicate, CancellationToken cancellation)
+            public IAsyncEnumerable<TData> GetAsync(Expression<Func<TData, bool>> predicate, CancellationToken cancellation)
+            {
+                return new AsyncEnumerable<TData>(() => GetAsyncInternal(predicate, cancellation));
+            }
+
+            private async AsyncEnumerator<TData> GetAsyncInternal(Expression<Func<TData, bool>> predicate, CancellationToken cancellation)
             {
                 Assert(predicate != null);
+
+                var yield = await AsyncEnumerator<TData>.Capture();
 
                 await Transaction.EnsureExistenceAsync(cancellation);
 
                 var lamda = BuildPredicate(predicate);
                 var queryExpression = BuildQueryExpression(predicate);
                 var compiledLambda = lamda.Compile();
-
                 var idEqualityComparer = new IdEqualityComparer<TId>();
                 var result = new Dictionary<TId, IEntrySnapshot<TId, TData>>(idEqualityComparer);
 
-                var entries = await _entryStateStorage.GetEntriesAsync(queryExpression, cancellation);
-                await ProcessEntriesAsync(entries, result, compiledLambda, cancellation);
-                await ProcessNonCommittedTransactionsAsync(compiledLambda, result, cancellation);
+                // This is not parallelized with Task.WhenAll with care.
+                var entries = _entryStateStorage.GetEntriesAsync(queryExpression, cancellation);
+                IAsyncEnumerator<IEntryState<TId, TData>> entriesEnumerator = null;
 
-                return result.Values.Select(p => p.Data);
-            }
-
-            // There may be entries that match the predicate but are not included in the result set because 
-            // one / several transactions modified the entry but the transactions are not fully committed yet and the entry DID NOT MATCH the predicate.
-            // We have to check whether the entry matches the predicate without the changes that the transactions produced to prevent a dirty read.
-            // Therefore we have to look for all pending / request-aborted transactions that modified at least one entry of type 'TData'. 
-            private async Task ProcessNonCommittedTransactionsAsync(Func<IDataRepresentation<TId, TData>, bool> compiledLambda,
-                                                                    IDictionary<TId, IEntrySnapshot<TId, TData>> result,
-                                                                    CancellationToken cancellation)
-            {
-                var transactions = await LoadNonCommittedTransactionsAsync(cancellation);
-
-                foreach (var transaction in transactions)
+                try
                 {
-                    var operations = (await transaction.GetOperationsAsync(cancellation)).Where(p => p.EntryType == typeof(TData));
+                    entriesEnumerator = entries.GetEnumerator();
 
-                    foreach (var operation in operations)
+                    while (await entriesEnumerator.MoveNext(cancellation))
                     {
-                        Assert(operation.Entry is TData);
+                        var entry = entriesEnumerator.Current;
+                        var snapshot = await ProcessEntryAsync(entry, compiledLambda, cancellation);
 
-                        var id = DataPropertyHelper.GetId<TId, TData>(operation.Entry as TData);
-
-                        if (result.ContainsKey(id))
+                        if (snapshot != null)
                         {
-                            continue;
-                        }
-
-                        // It is not neccessary to check entries of the id map because ProcessEntriesAsync already processed the complete id map.
-                        if (!_identityMap.TryGetValue(id, out _))
-                        {
-                            var entry = await _entryStateStorage.GetEntryAsync(id, cancellation);
-
-                            Assert(entry != null);
-
-                            if (entry.CreatingTransaction < Transaction.Id)
+                            if (result.TryAdd(snapshot.Id, snapshot))
                             {
-                                // TODO: Do we need to reload added transactions?
-                                var snapshot = await GetCommittedSnapshotAsync(entry, compiledLambda, cancellation);
+                                await yield.Return(snapshot.Data);
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    entriesEnumerator?.Dispose();
+                }
 
-                                if (snapshot != null)
+                // Prevent phantom reads when other transactions deleted an entry.
+                foreach (var entry in _identityMap.Where(p => compiledLambda(p.Value)))
+                {
+                    if (result.TryAdd(entry.Key, entry.Value))
+                    {
+                        await yield.Return(entry.Value.Data);
+                    }
+                }
+
+                // ProcessNonCommittedTransactionsAsync
+                var transactions = LoadNonCommittedTransactionsAsync(cancellation);
+                IAsyncEnumerator<ITransaction> transactionsEnumerator = null;
+
+                try
+                {
+                    transactionsEnumerator = transactions.GetEnumerator();
+
+                    while (await transactionsEnumerator.MoveNext(cancellation))
+                    {
+                        var transaction = transactionsEnumerator.Current;
+                        var operations = (await transaction.GetOperationsAsync(cancellation)).Where(p => p.EntryType == typeof(TData));
+
+                        foreach (var operation in operations)
+                        {
+                            Assert(operation.Entry is TData);
+
+                            var id = DataPropertyHelper.GetId<TId, TData>(operation.Entry as TData);
+
+                            if (result.ContainsKey(id))
+                            {
+                                continue;
+                            }
+
+                            // It is not neccessary to check entries of the id map because ProcessEntriesAsync already processed the complete id map.
+                            if (!_identityMap.TryGetValue(id, out _))
+                            {
+                                var entry = await _entryStateStorage.GetEntryAsync(id, cancellation);
+
+                                Assert(entry != null);
+
+                                if (entry.CreatingTransaction < Transaction.Id)
                                 {
-                                    result.TryAdd(id, snapshot);
+                                    // TODO: Do we need to reload added transactions?
+                                    var snapshot = await GetCommittedSnapshotAsync(entry, compiledLambda, cancellation);
+
+                                    if (snapshot != null)
+                                    {
+                                        if (result.TryAdd(id, snapshot))
+                                        {
+                                            await yield.Return(snapshot.Data);
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                finally
+                {
+                    transactionsEnumerator?.Dispose();
+                }
+
+                return yield.Break();
             }
 
-            private async Task<IEnumerable<ITransaction>> LoadNonCommittedTransactionsAsync(CancellationToken cancellation)
+            private IAsyncEnumerable<ITransaction> LoadNonCommittedTransactionsAsync(CancellationToken cancellation)
             {
-                _nonCommittedTransactions.UnionWith(await _transactionManager.GetNonCommittedTransactionsAsync(cancellation));
-                return _nonCommittedTransactions;
+                return new AsyncEnumerable<ITransaction>(() => LoadNonCommittedTransactionsCoreAsync(cancellation));
+            }
+
+            private async AsyncEnumerator<ITransaction> LoadNonCommittedTransactionsCoreAsync(CancellationToken cancellation)
+            {
+                var yield = await AsyncEnumerator<ITransaction>.Capture();
+
+                foreach (var transaction in _nonCommittedTransactions)
+                {
+                    await yield.Return(transaction);
+                }
+
+                var transactions = _transactionManager.GetNonCommittedTransactionsAsync(cancellation);
+
+                await transactions.ForeachAsync(async transaction =>
+                {
+                    if (_nonCommittedTransactions.Add(transaction))
+                    {
+                        await yield.Return(transaction);
+                    }
+                });
+
+                return yield.Break();
             }
 
             private Expression<Func<IEntryState<TId, TData>, bool>> BuildQueryExpression(Expression<Func<TData, bool>> predicate)
@@ -414,7 +480,7 @@ namespace AI4E.Storage.Transactions
                 var data = ParameterExpressionReplacer.ReplaceParameter(dataAccessor.Body, dataAccessor.Parameters.First(), parameter);
                 var isDeleted = Expression.ReferenceEqual(data, Expression.Constant(null, typeof(TData)));
                 var body = ParameterExpressionReplacer.ReplaceParameter(predicate.Body, predicate.Parameters.First(), data);
-                return Expression.Lambda<Func<IEntryState<TId, TData>, bool>>(Expression.AndAlso(Expression.Not(isDeleted),Expression.AndAlso(transactionComparison, body)), parameter);
+                return Expression.Lambda<Func<IEntryState<TId, TData>, bool>>(Expression.AndAlso(Expression.Not(isDeleted), Expression.AndAlso(transactionComparison, body)), parameter);
             }
 
             private static Expression<Func<IEntryState<TId, TData>, long>> GetCreationTransactionAccessor()
@@ -425,30 +491,6 @@ namespace AI4E.Storage.Transactions
             private static Expression<Func<IEntryState<TId, TData>, TData>> GetDataAccessor()
             {
                 return p => p.Data;
-            }
-
-            private async Task ProcessEntriesAsync(IEnumerable<IEntryState<TId, TData>> entries,
-                                                   IDictionary<TId, IEntrySnapshot<TId, TData>> resultSet,
-
-                                                   Func<IDataRepresentation<TId, TData>, bool> predicate,
-                                                   CancellationToken cancellation)
-            {
-                // This is not parallelized with Task.WhenAll with care.
-                foreach (var entry in entries)
-                {
-                    var snapshot = await ProcessEntryAsync(entry, predicate, cancellation);
-
-                    if (snapshot == null)
-                        continue;
-
-                    resultSet.TryAdd(snapshot.Id, snapshot);
-                }
-
-                // Prevent phantom reads when other transactions deleted an entry.
-                foreach (var entry in _identityMap.Where(p => predicate(p.Value)))
-                {
-                    resultSet.TryAdd(entry.Key, entry.Value);
-                }
             }
 
             // We have to process the entries for the following reason.

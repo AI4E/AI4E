@@ -6,7 +6,7 @@ namespace AI4E.Storage.Transactions
 {
     public interface ITransactionStateStorage
     {
-        ValueTask<IEnumerable<ITransactionState>> GetNonCommittedTransactionsAsync(CancellationToken cancellation = default);
+        IAsyncEnumerable<ITransactionState> GetNonCommittedTransactionsAsync(CancellationToken cancellation = default);
 
         ValueTask<ITransactionState> GetTransactionAsync(long id, CancellationToken cancellation = default);
 
@@ -14,6 +14,7 @@ namespace AI4E.Storage.Transactions
 
         Task RemoveAsync(ITransactionState transaction, CancellationToken cancellation = default);
 
+        // TODO: Use Task<bool>
         ValueTask<bool> CompareExchangeAsync(ITransactionState transaction, ITransactionState comparand, CancellationToken cancellation = default);
     }
 }

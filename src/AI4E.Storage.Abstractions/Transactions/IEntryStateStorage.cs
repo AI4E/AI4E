@@ -8,9 +8,12 @@ namespace AI4E.Storage.Transactions
 {
     public interface IEntryStateStorage<TId, TData> where TData : class
     {
-        ValueTask<IEnumerable<IEntryState<TId, TData>>> GetEntriesAsync(Expression<Func<IEntryState<TId, TData>, bool>> predicate, CancellationToken cancellation = default);
+        IAsyncEnumerable<IEntryState<TId, TData>> GetEntriesAsync(Expression<Func<IEntryState<TId, TData>, bool>> predicate, 
+                                                                  CancellationToken cancellation = default);
 
-        ValueTask<bool> CompareExchangeAsync(IEntryState<TId, TData> entry, IEntryState<TId, TData> comparand, CancellationToken cancellation = default);
+        ValueTask<bool> CompareExchangeAsync(IEntryState<TId, TData> entry, 
+                                             IEntryState<TId, TData> comparand, 
+                                             CancellationToken cancellation = default);
     }
 
     public interface IEntryStateStorageFactory
