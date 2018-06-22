@@ -41,7 +41,7 @@ namespace AI4E.Domain
     /// </summary>
     /// <typeparam name="T">The type of aggregate root.</typeparam>
     public readonly struct Reference<T> : IEquatable<Reference<T>>
-        where T : AggregateRoot
+        where T : AggregateRootBase
     {
         private static readonly int _typeHashCode = typeof(T).GetHashCode();
 
@@ -71,7 +71,7 @@ namespace AI4E.Domain
         }
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        private Reference(SGuid id, IReferenceResolver referenceResolver)
+        private Reference(string id, IReferenceResolver referenceResolver)
         {
             if (referenceResolver == null)
                 throw new ArgumentNullException(nameof(referenceResolver));
@@ -88,7 +88,7 @@ namespace AI4E.Domain
             }
         }
 
-        public SGuid Id { get; }
+        public string Id { get; }
 
         /// <summary>
         /// Asynchronously resolves the reference and provides an instance of the referenced aggregate.
@@ -138,7 +138,7 @@ namespace AI4E.Domain
             return new Reference<T>(aggregate);
         }
 
-        public static Reference<T> UnsafeCreate(Guid id, IReferenceResolver referenceResolver)
+        public static Reference<T> UnsafeCreate(string id, IReferenceResolver referenceResolver)
         {
             return new Reference<T>(id, referenceResolver);
         }

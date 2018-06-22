@@ -18,20 +18,16 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+
 namespace AI4E.Domain
 {
-    public abstract class Entity<TId> : EntityBase
+    public abstract class DomainEventBase
     {
-        protected Entity(TId id) : base(id.ToString())
+        public DomainEventBase(string aggregateId)
         {
-            Id = id;
+            AggregateId = aggregateId;
         }
 
-        public new TId Id { get; }
-    }
-
-    public abstract class Entity : Entity<SGuid>
-    {
-        protected Entity(SGuid id) : base(id) { }
+        protected internal string AggregateId { get; }
     }
 }

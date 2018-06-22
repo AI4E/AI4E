@@ -33,7 +33,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
 
 namespace AI4E.Domain
 {
@@ -42,7 +41,7 @@ namespace AI4E.Domain
     /// </summary>
     /// <typeparam name="T">The type of aggregate root.</typeparam>
     public readonly struct Snapshot<T> : IEquatable<Snapshot<T>>
-        where T : AggregateRoot
+        where T : AggregateRootBase
     {
         private static readonly int _typeHashCode = typeof(T).GetHashCode();
 
@@ -63,14 +62,14 @@ namespace AI4E.Domain
                 }
 
                 Id = aggregate.Id;
-                Revision = 0; // TODO aggregate.Revision;
+                Revision = aggregate.Revision;
             }
 
             _aggregate = new Lazy<ValueTask<T>>(() => new ValueTask<T>(aggregate), isThreadSafe: true);
         }
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        private Snapshot(SGuid id, long revision, IReferenceResolver referenceResolver)
+        private Snapshot(string id, long revision, IReferenceResolver referenceResolver)
         {
             if (referenceResolver == null)
                 throw new ArgumentNullException(nameof(referenceResolver));
@@ -91,7 +90,7 @@ namespace AI4E.Domain
             }
         }
 
-        public SGuid Id { get; }
+        public string Id { get; }
 
         public long Revision { get; }
 
@@ -143,7 +142,7 @@ namespace AI4E.Domain
             return new Snapshot<T>(aggregate);
         }
 
-        public static Snapshot<T> UnsafeCreate(Guid id, long revision, IReferenceResolver referenceResolver)
+        public static Snapshot<T> UnsafeCreate(string id, long revision, IReferenceResolver referenceResolver)
         {
             return new Snapshot<T>(id, revision, referenceResolver);
         }

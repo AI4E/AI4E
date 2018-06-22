@@ -1,14 +1,4 @@
-﻿/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        AggregateRoot.cs 
- * Types:           (1) AI4E.Domain.AggregateRoot
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   18.10.2017 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -28,34 +18,20 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-using System.Collections.Generic;
-
 namespace AI4E.Domain
 {
-    public abstract class AggregateRoot : Entity
+    public abstract class AggregateRoot<TId> : AggregateRootBase
     {
-        private readonly List<DomainEvent> _uncommittedEvents = new List<DomainEvent>();
+        protected AggregateRoot(TId id) : base(id.ToString())
+        {
+            Id = id;
+        }
 
+        public new TId Id { get; }
+    }
+
+    public abstract class AggregateRoot : AggregateRoot<SGuid>
+    {
         protected AggregateRoot(SGuid id) : base(id) { }
-
-        public void Publish<TEvent>(TEvent evt)
-            where TEvent : DomainEvent
-        {
-            if (evt == null)
-                throw new ArgumentNullException(nameof(evt));
-
-            if (evt.Id != Id)
-                throw new ArgumentException("The event does not belong to the stream of the aggregate.", nameof(evt));
-
-            _uncommittedEvents.Add(evt);
-        }
-
-        internal IEnumerable<DomainEvent> UncommittedEvents => _uncommittedEvents;
-
-        internal void CommitEvents()
-        {
-            _uncommittedEvents.Clear();
-        }
     }
 }
