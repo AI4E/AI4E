@@ -261,7 +261,7 @@ namespace AI4E.Storage.MongoDB
 
         #region IDatabase
 
-        public async ValueTask<bool> AddAsync<TEntry>(TEntry entry, CancellationToken cancellation = default) where TEntry : class
+        public async Task<bool> AddAsync<TEntry>(TEntry entry, CancellationToken cancellation = default) where TEntry : class
         {
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
@@ -297,7 +297,7 @@ namespace AI4E.Storage.MongoDB
             return entry;
         }
 
-        public async ValueTask<bool> RemoveAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default) where TEntry : class
+        public async Task<bool> RemoveAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default) where TEntry : class
         {
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
@@ -330,7 +330,7 @@ namespace AI4E.Storage.MongoDB
             }
         }
 
-        public async ValueTask<bool> UpdateAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default) where TEntry : class
+        public async Task<bool> UpdateAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default) where TEntry : class
         {
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
@@ -356,7 +356,7 @@ namespace AI4E.Storage.MongoDB
 
 
 
-        public ValueTask<bool> CompareExchangeAsync<TEntry>(TEntry entry,
+        public Task<bool> CompareExchangeAsync<TEntry>(TEntry entry,
                                                             TEntry comparand,
                                                             Expression<Func<TEntry, TEntry, bool>> equalityComparer,
                                                             CancellationToken cancellation = default) where TEntry : class
@@ -388,7 +388,7 @@ namespace AI4E.Storage.MongoDB
             return RemoveAsync(comparand, BuildPredicate(comparand, equalityComparer), cancellation);
         }
 
-        private async ValueTask<bool> CheckComparandToBeUpToDate<TEntry>(TEntry comparand,
+        private async Task<bool> CheckComparandToBeUpToDate<TEntry>(TEntry comparand,
                                                                          Expression<Func<TEntry, TEntry, bool>> equalityComparer,
                                                                          CancellationToken cancellation)
             where TEntry : class

@@ -14,7 +14,6 @@ namespace AI4E.Storage.Transactions
 
         Task RemoveAsync(ITransactionState transaction, CancellationToken cancellation = default);
 
-        // TODO: Use Task<bool>
-        ValueTask<bool> CompareExchangeAsync(ITransactionState transaction, ITransactionState comparand, CancellationToken cancellation = default);
+        Task<bool> CompareExchangeAsync(ITransactionState transaction, ITransactionState comparand, CancellationToken cancellation = default);
     }
 }

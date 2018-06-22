@@ -48,7 +48,7 @@ namespace AI4E.Test.Storage.InMemory
 
             var model = new InvalidDataModel { };
 
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => store.AddAsync(model).AsTask());
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => store.AddAsync(model));
         }
 
         [TestMethod]
@@ -58,7 +58,7 @@ namespace AI4E.Test.Storage.InMemory
 
             var model = new InvalidDataModel2 { };
 
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => store.AddAsync(model).AsTask());
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => store.AddAsync(model));
         }
     }
 

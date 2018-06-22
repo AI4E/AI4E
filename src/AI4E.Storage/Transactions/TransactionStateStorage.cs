@@ -23,7 +23,7 @@ namespace AI4E.Storage.Transactions
             _database = database;
         }
 
-        public ValueTask<bool> CompareExchangeAsync(ITransactionState transaction,
+        public Task<bool> CompareExchangeAsync(ITransactionState transaction,
                                                     ITransactionState comparand,
                                                     CancellationToken cancellation = default)
         {

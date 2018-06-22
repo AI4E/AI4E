@@ -35,7 +35,7 @@ namespace AI4E.Storage.InMemory
 
         #region IDatabase
 
-        public ValueTask<bool> AddAsync<TData>(TData data, CancellationToken cancellation = default)
+        public Task<bool> AddAsync<TData>(TData data, CancellationToken cancellation = default)
              where TData : class
         {
             if (data == null)
@@ -44,7 +44,7 @@ namespace AI4E.Storage.InMemory
             return GetTypedStore<TData>().AddAsync(data, cancellation);
         }
 
-        public ValueTask<bool> UpdateAsync<TData>(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
+        public Task<bool> UpdateAsync<TData>(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
             where TData : class
         {
             if (data == null)
@@ -56,7 +56,7 @@ namespace AI4E.Storage.InMemory
             return GetTypedStore<TData>().StoreAsync(data, predicate, cancellation);
         }
 
-        public ValueTask<bool> RemoveAsync<TData>(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
+        public Task<bool> RemoveAsync<TData>(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
             where TData : class
         {
             if (data == null)
@@ -105,7 +105,7 @@ namespace AI4E.Storage.InMemory
             return GetTypedStore<TEntry>().GetOneAsync(predicate, cancellation);
         }
 
-        public ValueTask<bool> CompareExchangeAsync<TEntry>(TEntry entry, TEntry comparand, Expression<Func<TEntry, TEntry, bool>> equalityComparer, CancellationToken cancellation = default) where TEntry : class
+        public Task<bool> CompareExchangeAsync<TEntry>(TEntry entry, TEntry comparand, Expression<Func<TEntry, TEntry, bool>> equalityComparer, CancellationToken cancellation = default) where TEntry : class
         {
             if (equalityComparer == null)
                 throw new ArgumentNullException(nameof(equalityComparer));
@@ -151,7 +151,7 @@ namespace AI4E.Storage.InMemory
             return entry;
         }
 
-        private async ValueTask<bool> CheckComparandToBeUpToDate<TEntry>(TEntry comparand,
+        private async Task<bool> CheckComparandToBeUpToDate<TEntry>(TEntry comparand,
                                                                          Expression<Func<TEntry, TEntry, bool>> equalityComparer,
                                                                          CancellationToken cancellation)
             where TEntry : class
@@ -210,9 +210,9 @@ namespace AI4E.Storage.InMemory
     internal interface IInMemoryDatabase<TData>
         where TData : class
     {
-        ValueTask<bool> AddAsync(TData data, CancellationToken cancellation = default);
-        ValueTask<bool> StoreAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
-        ValueTask<bool> RemoveAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
+        Task<bool> AddAsync(TData data, CancellationToken cancellation = default);
+        Task<bool> StoreAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
+        Task<bool> RemoveAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
         IAsyncEnumerable<TData> GetAsync(Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
         ValueTask<TData> GetOneAsync(Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
     }
@@ -225,7 +225,7 @@ namespace AI4E.Storage.InMemory
 
         public InMemoryDatabase() { }
 
-        public async ValueTask<bool> StoreAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation)
+        public async Task<bool> StoreAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation)
         {
             var id = DataPropertyHelper.GetId<TId, TData>(data);
 
@@ -254,7 +254,7 @@ namespace AI4E.Storage.InMemory
             return await ExecuteAsync(data, p, (_1, _2) => _entries[id] = copy, cancellation);
         }
 
-        public async ValueTask<bool> AddAsync(TData data, CancellationToken cancellation = default)
+        public async Task<bool> AddAsync(TData data, CancellationToken cancellation = default)
         {
             var id = DataPropertyHelper.GetId<TId, TData>(data);
 
@@ -291,12 +291,12 @@ namespace AI4E.Storage.InMemory
             return true;
         }
 
-        public ValueTask<bool> RemoveAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation)
+        public Task<bool> RemoveAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation)
         {
             return ExecuteAsync(data, predicate.Compile(), (id, _) => _entries.Remove(id), cancellation);
         }
 
-        private async ValueTask<bool> ExecuteAsync(TData data, Func<TData, bool> predicate, Action<TId, TData> action, CancellationToken cancellation)
+        private async Task<bool> ExecuteAsync(TData data, Func<TData, bool> predicate, Action<TId, TData> action, CancellationToken cancellation)
         {
             var id = DataPropertyHelper.GetId<TId, TData>(data);
 
@@ -329,16 +329,8 @@ namespace AI4E.Storage.InMemory
                 {
                     foreach (var entry in _entries.Values)
                     {
-                        try
-                        {
                             if (compiledPredicate(entry))
                                 result.Add(entry);
-                        }
-                        catch (Exception exc)
-                        {
-
-                        }
-
                     }
                 }
 

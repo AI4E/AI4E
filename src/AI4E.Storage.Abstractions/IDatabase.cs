@@ -62,7 +62,7 @@ namespace AI4E.Storage
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.</exception>
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
-        ValueTask<bool> AddAsync<TEntry>(TEntry entry, CancellationToken cancellation = default)
+        Task<bool> AddAsync<TEntry>(TEntry entry, CancellationToken cancellation = default)
             where TEntry : class;
 
         /// <summary>
@@ -83,7 +83,7 @@ namespace AI4E.Storage
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified predicate.</exception>
-        ValueTask<bool> UpdateAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
+        Task<bool> UpdateAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
             where TEntry : class;
 
         /// <summary>
@@ -104,7 +104,7 @@ namespace AI4E.Storage
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified predicate.</exception>
-        ValueTask<bool> RemoveAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
+        Task<bool> RemoveAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
             where TEntry : class;
 
         Task Clear<TEntry>(CancellationToken cancellation = default)
@@ -130,7 +130,7 @@ namespace AI4E.Storage
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified equality comparer.</exception>
-        ValueTask<bool> CompareExchangeAsync<TEntry>(TEntry entry,
+        Task<bool> CompareExchangeAsync<TEntry>(TEntry entry,
                                                      TEntry comparand,
                                                      Expression<Func<TEntry, TEntry, bool>> equalityComparer,
                                                      CancellationToken cancellation = default)

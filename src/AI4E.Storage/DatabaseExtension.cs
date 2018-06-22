@@ -45,7 +45,7 @@ namespace AI4E.Storage
             return new ValueTask<TEntry>(database.GetAsync<TEntry>(cancellation).FirstOrDefault(cancellation));
         }
 
-        public static ValueTask<bool> CompareExchangeAsync<TEntry, TVersion>(this IDatabase database,
+        public static Task<bool> CompareExchangeAsync<TEntry, TVersion>(this IDatabase database,
                                                                              TEntry entry,
                                                                              TEntry comparand,
                                                                              Expression<Func<TEntry, TVersion>> versionSelector,
