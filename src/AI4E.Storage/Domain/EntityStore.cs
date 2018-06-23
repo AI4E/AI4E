@@ -151,7 +151,7 @@ namespace AI4E.Storage.Domain
 
             Assert(stringifiedId != null); // TODO: Does this have to be a runtime check?
 
-            return _storageEngine.DeleteAsync(entityType, stringifiedId, cancellation);
+            return _storageEngine.DeleteAsync(entityType, entity, stringifiedId, cancellation);
         }
 
         #region Disposal
