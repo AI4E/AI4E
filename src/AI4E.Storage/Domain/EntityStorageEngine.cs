@@ -2,10 +2,9 @@
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        EntityStorageEngine.cs 
  * Types:           (1) AI4E.Storage.Domain.EntityStorageEngine
- *                  (2) AI4E.Storage.Domain.EntityStorageEngine.SnapshotProcessor
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   17.06.2018 
+ * Last modified:   23.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -39,6 +38,7 @@ using AI4E.Storage.Internal;
 using JsonDiffPatchDotNet;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Domain
 {
@@ -103,7 +103,7 @@ namespace AI4E.Storage.Domain
             return GetByIdAsync(entityType, id, revision: default, cancellation: cancellation);
         }
 
-        public async ValueTask<object> GetByIdAsync(Type entityType, string id, long revision, CancellationToken cancellation)
+        public ValueTask<object> GetByIdAsync(Type entityType, string id, long revision, CancellationToken cancellation)
         {
             if (entityType == null)
                 throw new ArgumentNullException(nameof(entityType));
@@ -111,20 +111,7 @@ namespace AI4E.Storage.Domain
             if (entityType.IsValueType)
                 throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
 
-            var bucketId = GetBucketId(entityType);
-
-            if (_lookup.TryGetValue((bucketId, id, revision), out var cachedResult))
-                return cachedResult;
-
-
-            var streamId = id;
-            var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, revision, cancellation);
-
-            var result = Deserialize(entityType, stream);
-
-            _lookup[(bucketId, id, revision)] = result;
-
-            return result;
+            return CachedDeserializeAsync(entityType, id, revision, cancellation);
         }
 
         public IAsyncEnumerable<object> GetAllAsync(Type entityType, CancellationToken cancellation)
@@ -164,58 +151,119 @@ namespace AI4E.Storage.Domain
 
             var bucketId = GetBucketId(entityType);
             var streamId = id;
-            var concurrencyToken = _entityAccessor.GetConcurrencyToken(entity);
-
             var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, throwIfNotFound: false, cancellation);
-            var baseToken = default(JToken);
 
-            if (stream.Snapshot == null)
-            {
-                baseToken = StreamRoot;
-            }
-            else
-            {
-                baseToken = JToken.Parse(CompressionHelper.Unzip(stream.Snapshot.Payload as byte[]));
-            }
+            var (concurrencyToken, events) = GetEntityProperties(entity);
+            var commitBody = BuildCommitBody(entity, stream);
 
-            foreach (var commit in stream.Commits)
-            {
-                baseToken = _differ.Patch(baseToken, JToken.Parse(CompressionHelper.Unzip(commit.Body as byte[])));
-            }
-
-            var serializedEntity = JToken.FromObject(entity, _jsonSerializer);
-            var diff = _differ.Diff(baseToken, serializedEntity);
-
-            var events = _entityAccessor.GetUncommittedEvents(entity).Select(p => new EventMessage { Body = p });
+            void HeaderGenerator(IDictionary<string, object> headers) { }
 
             await stream.CommitAsync(concurrencyToken,
                                      events,
-                                     CompressionHelper.Zip(diff.ToString()),
-                                     headers => { },
+                                     commitBody,
+                                     HeaderGenerator,
                                      cancellation);
 
             _entityAccessor.SetConcurrencyToken(entity, stream.ConcurrencyToken);
             _entityAccessor.SetRevision(entity, stream.StreamRevision);
             _entityAccessor.CommitEvents(entity);
 
-            _lookup[(bucketId, id, revision: default)] = entity;
+            _lookup[(bucketId, streamId, revision: default)] = entity;
         }
 
-        public Task DeleteAsync(Type entityType, string id, CancellationToken cancellation)
+        public async Task DeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation)
         {
-            if (entityType == null)
-                throw new ArgumentNullException(nameof(entityType));
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
 
             if (id == null)
                 throw new ArgumentNullException(nameof(id));
 
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
             if (entityType.IsValueType)
                 throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
 
-            throw new NotSupportedException(); // TODO
+            if (!entityType.IsAssignableFrom(entity.GetType()))
+                throw new ArgumentException($"The specified entity must be of type '{entityType.FullName}' or a derived type.", nameof(entity));
+
+            var bucketId = GetBucketId(entityType);
+            var streamId = id;
+            var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, throwIfNotFound: false, cancellation);
+
+            var (concurrencyToken, events) = GetEntityProperties(entity);
+            var commitBody = BuildCommitBody(entity: null, stream);
+
+            void HeaderGenerator(IDictionary<string, object> headers) { }
+
+            await stream.CommitAsync(concurrencyToken,
+                                     events,
+                                     commitBody,
+                                     HeaderGenerator,
+                                     cancellation);
+
+            // TODO: Do we set the properties?
+            //_entityAccessor.SetConcurrencyToken(entity, stream.ConcurrencyToken);
+            //_entityAccessor.SetRevision(entity, stream.StreamRevision);
+            //_entityAccessor.CommitEvents(entity);
+
+            _lookup[(bucketId, streamId, revision: default)] = null;
         }
 
         #endregion
+
+        private (string concurrencyToken, IEnumerable<EventMessage> events) GetEntityProperties(object entity)
+        {
+            var concurrencyToken = _entityAccessor.GetConcurrencyToken(entity);
+            var events = _entityAccessor.GetUncommittedEvents(entity).Select(p => new EventMessage { Body = p });
+
+            return (concurrencyToken, events);
+        }
+
+        private byte[] BuildCommitBody(object entity, IStream stream)
+        {
+            var baseToken = GetBaseToken(stream);
+            var serializedEntity = GetSerializedEntity(entity);
+            var diff = _differ.Diff(baseToken, serializedEntity);
+            return CompressionHelper.Zip(diff.ToString());
+        }
+
+        private JToken GetSerializedEntity(object entity)
+        {
+            if (entity == null)
+            {
+                return StreamRoot;
+            }
+
+            return JToken.FromObject(entity, _jsonSerializer);
+        }
+
+        private JToken GetBaseToken(IStream stream)
+        {
+            Assert(stream != null);
+
+            JToken baseToken;
+            if (stream.Snapshot == null)
+            {
+                baseToken = StreamRoot;
+            }
+            else
+            {
+                var snapshotPayload = stream.Snapshot.Payload as byte[];
+
+                baseToken = JToken.Parse(CompressionHelper.Unzip(snapshotPayload));
+            }
+
+            foreach (var commit in stream.Commits)
+            {
+                var commitPayload = commit.Body as byte[];
+
+                baseToken = _differ.Patch(baseToken, JToken.Parse(CompressionHelper.Unzip(commitPayload)));
+            }
+
+            return baseToken;
+        }
 
         private object Deserialize(Type entityType, IStream stream)
         {
@@ -257,11 +305,44 @@ namespace AI4E.Storage.Domain
                 return cachedResult;
             }
 
+            Assert(stream.StreamRevision == revision);
             var result = Deserialize(entityType, stream);
 
             _lookup[(bucketId, stream.StreamId, revision)] = result;
 
             return result;
+        }
+
+        private async ValueTask<object> CachedDeserializeAsync(Type entityType,
+                                                               string id,
+                                                               long revision,
+                                                               CancellationToken cancellation)
+        {
+            var bucketId = GetBucketId(entityType);
+
+            if (_lookup.TryGetValue((bucketId, id, revision), out var cachedResult))
+            {
+                return cachedResult;
+            }
+
+            var stream = await _streamStore.OpenStreamAsync(bucketId, id, revision, cancellation);
+
+            Assert(stream.StreamRevision == revision);
+            var result = Deserialize(entityType, stream);
+
+            _lookup[(bucketId, stream.StreamId, revision)] = result;
+
+            return result;
+        }
+
+        private static string GetBucketId(Type entityType)
+        {
+            return entityType.ToString();
+        }
+
+        private static Type GetTypeFromBucket(string bucketId)
+        {
+            return TypeLoadHelper.LoadTypeFromUnqualifiedName(bucketId);
         }
 
         public void Dispose()
@@ -274,19 +355,5 @@ namespace AI4E.Storage.Domain
             _isDisposed = true;
             _streamStore.Dispose();
         }
-
-        #region Helpers
-
-        private static string GetBucketId(Type entityType)
-        {
-            return entityType.ToString();
-        }
-
-        private static Type GetTypeFromBucket(string bucketId)
-        {
-            return TypeLoadHelper.LoadTypeFromUnqualifiedName(bucketId);
-        }
-
-        #endregion 
     }
 }

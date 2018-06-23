@@ -107,10 +107,10 @@ namespace AI4E.Storage.Domain
                         return new ConcurrencyIssueDispatchResult();
                     }
 
-
                     cacheEntry.SetHandlerEntity(handler, entity);
                 }
 
+                var originalEntity = entity;
                 var dispatchResult = await next(message);
 
                 if (!dispatchResult.IsSuccess)
@@ -123,9 +123,16 @@ namespace AI4E.Storage.Domain
 
                 try
                 {
-                    if (markedAsDeleted)
+                    // The Store/Delete calls must be protected to be called with a null entity.
+                    if (entity == null && originalEntity == null)
                     {
-                        await _entityStorageEngine.DeleteAsync(cacheEntry.EntityType, id);
+                        // TODO: Do we care about events etc. here?
+                        return dispatchResult;
+                    }
+
+                    if (markedAsDeleted || entity == null)
+                    {
+                        await _entityStorageEngine.DeleteAsync(cacheEntry.EntityType, entity ?? originalEntity, id);
                     }
                     else
                     {
@@ -134,10 +141,7 @@ namespace AI4E.Storage.Domain
                 }
                 catch (ConcurrencyException)
                 {
-                    if (!checkConcurrencyToken)
-                        continue;
-
-                    return new ConcurrencyIssueDispatchResult();
+                    continue;
                 }
                 catch (StorageException exc)
                 {
@@ -150,7 +154,10 @@ namespace AI4E.Storage.Domain
 
                 return dispatchResult;
 
-            } while (true);
+            }
+            while (!checkConcurrencyToken);
+
+            return new ConcurrencyIssueDispatchResult();
         }
 
         private IMessageAccessor GetMessageAccessor()

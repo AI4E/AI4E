@@ -37,7 +37,7 @@ namespace AI4E.Storage.Domain
 
         Task StoreAsync(Type entityType, object entity, string id, CancellationToken cancellation = default);
 
-        Task DeleteAsync(Type entityType, string id, CancellationToken cancellation = default);
+        Task DeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation = default);
 
         IEnumerable<(Type type, string id, long revision, object entity)> CachedEntries { get; }
     }
