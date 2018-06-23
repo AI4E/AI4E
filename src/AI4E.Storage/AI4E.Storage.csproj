@@ -7,6 +7,7 @@
   <ItemGroup>
     <Compile Include="..\Common\AsyncEnumerableExtensions.cs" Link="Internal\AsyncEnumerableExtensions.cs" />
     <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
+    <Compile Include="..\Common\CompressionHelper.cs" Link="Internal\CompressionHelper.cs" />
     <Compile Include="..\Common\ConcurrentDictionaryExtension.cs" Link="Internal\ConcurrentDictionaryExtension.cs" />
     <Compile Include="..\Common\CustomAttributeProviderExtension.cs" Link="Internal\CustomAttributeProviderExtension.cs" />
     <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
@@ -16,6 +17,7 @@
     <Compile Include="..\Common\IdEqualityComparer.cs" Link="Internal\IdEqualityComparer.cs" />
     <Compile Include="..\Common\IdGenerator.cs" Link="Internal\IdGenerator.cs" />
     <Compile Include="..\Common\ImmutableArrayExtension.cs" Link="Internal\ImmutableArrayExtension.cs" />
+    <Compile Include="..\Common\ListExtension.cs" Link="Internal\ListExtension.cs" />
     <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
     <Compile Include="..\Common\ParameterExpressionReplacer.cs" Link="Internal\ParameterExpressionReplacer.cs" />
     <Compile Include="..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />

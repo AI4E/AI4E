@@ -22,7 +22,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 
-namespace AI4E.Storage.Internal
+namespace AI4E.Internal
 {
     internal static class CompressionHelper
     {
