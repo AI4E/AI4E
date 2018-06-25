@@ -38,6 +38,7 @@ using JsonDiffPatchDotNet;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using static System.Diagnostics.Debug;
+using static AI4E.Internal.DebugEx;
 
 namespace AI4E.Storage.Domain
 {
@@ -49,7 +50,7 @@ namespace AI4E.Storage.Domain
         private readonly IEntityStoragePropertyManager _entityAccessor; // TODO: Rename
         private readonly JsonDiffPatch _differ;
         private readonly JsonSerializer _jsonSerializer;
-        private readonly Dictionary<(string bucket, string id, long revision), object> _lookup;
+        private readonly Dictionary<(string bucket, string id, long requestedRevision), (object entity, long revision)> _lookup;
         private bool _isDisposed;
 
         #endregion
@@ -74,26 +75,16 @@ namespace AI4E.Storage.Domain
             _differ = new JsonDiffPatch();
             _jsonSerializer = JsonSerializer.Create(serializerSettingsResolver.ResolveSettings(this));
 
-            _lookup = new Dictionary<(string bucket, string id, long revision), object>();
+            _lookup = new Dictionary<(string bucket, string id, long requestedRevision), (object entity, long revision)>();
         }
 
         #endregion
 
-        public IEnumerable<(Type type, string id, long revision, object entity)> CachedEntries
-        {
-            get
-            {
-                foreach (var entry in _lookup)
-                {
-                    yield return (type: GetTypeFromBucket(entry.Key.bucket),
-                                  entry.Key.id,
-                                  entry.Key.revision,
-                                  entity: entry.Value);
-                }
-            }
-        }
+        public IEnumerable<(Type type, string id, long revision, object entity)> LoadedEntries =>
+            _lookup.Where(p => p.Key.requestedRevision == default)
+                   .Select(p => (type: GetTypeFromBucket(p.Key.bucket), p.Key.id, p.Value.revision, p.Value.entity));
 
-        private static JToken StreamRoot => JToken.Parse("{}");
+        private static JToken StreamRoot => JToken.Parse("null");
 
         #region IEntityStorageEngine
 
@@ -111,6 +102,22 @@ namespace AI4E.Storage.Domain
                 throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
 
             return CachedDeserializeAsync(entityType, id, revision, cancellation);
+        }
+
+        public async ValueTask<(object entity, long revision)> LoadEntityAsync(Type entityType, string id, CancellationToken cancellation = default)
+        {
+            var bucketId = GetBucketId(entityType);
+
+            if (!_lookup.TryGetValue((bucketId, id, requestedRevision: default), out var result))
+            {
+                var stream = await _streamStore.OpenStreamAsync(bucketId, id, revision: default, cancellation);
+                var entity = Deserialize(entityType, stream);
+                result = (entity, revision: stream.StreamRevision);
+
+                _lookup[(bucketId, stream.StreamId, requestedRevision: default)] = result;
+            }
+
+            return result;
         }
 
         public IAsyncEnumerable<object> GetAllAsync(Type entityType, CancellationToken cancellation)
@@ -167,7 +174,7 @@ namespace AI4E.Storage.Domain
             _entityAccessor.SetRevision(entity, stream.StreamRevision);
             _entityAccessor.CommitEvents(entity);
 
-            _lookup[(bucketId, streamId, revision: default)] = entity;
+            _lookup[(bucketId, streamId, requestedRevision: default)] = (entity, revision: stream.StreamRevision);
         }
 
         public async Task DeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation)
@@ -207,7 +214,7 @@ namespace AI4E.Storage.Domain
             //_entityAccessor.SetRevision(entity, stream.StreamRevision);
             //_entityAccessor.CommitEvents(entity);
 
-            _lookup[(bucketId, streamId, revision: default)] = null;
+            _lookup[(bucketId, streamId, requestedRevision: default)] = (null, revision: stream.StreamRevision);
         }
 
         #endregion
@@ -288,9 +295,12 @@ namespace AI4E.Storage.Domain
 
             var result = serializedEntity.ToObject(entityType, _jsonSerializer);
 
-            _entityAccessor.SetConcurrencyToken(result, stream.ConcurrencyToken);
-            _entityAccessor.SetRevision(result, stream.StreamRevision);
-            _entityAccessor.CommitEvents(result);
+            if (result != null)
+            {
+                _entityAccessor.SetConcurrencyToken(result, stream.ConcurrencyToken);
+                _entityAccessor.SetRevision(result, stream.StreamRevision);
+                _entityAccessor.CommitEvents(result);
+            }
 
             return result;
         }
@@ -304,12 +314,12 @@ namespace AI4E.Storage.Domain
                 return cachedResult;
             }
 
-            Assert(stream.StreamRevision == revision);
-            var result = Deserialize(entityType, stream);
+            Assert(revision != default, stream.StreamRevision == revision);
+            var entity = Deserialize(entityType, stream);
 
-            _lookup[(bucketId, stream.StreamId, revision)] = result;
+            _lookup[(bucketId, stream.StreamId, revision)] = (entity, revision: stream.StreamRevision);
 
-            return result;
+            return entity;
         }
 
         private async ValueTask<object> CachedDeserializeAsync(Type entityType,
@@ -326,12 +336,12 @@ namespace AI4E.Storage.Domain
 
             var stream = await _streamStore.OpenStreamAsync(bucketId, id, revision, cancellation);
 
-            Assert(stream.StreamRevision == revision);
-            var result = Deserialize(entityType, stream);
+            Assert(revision != default, stream.StreamRevision == revision);
+            var entity = Deserialize(entityType, stream);
 
-            _lookup[(bucketId, stream.StreamId, revision)] = result;
+            _lookup[(bucketId, stream.StreamId, revision)] = (entity, revision: stream.StreamRevision);
 
-            return result;
+            return entity;
         }
 
         private static string GetBucketId(Type entityType)

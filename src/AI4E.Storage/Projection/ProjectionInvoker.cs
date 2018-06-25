@@ -110,7 +110,7 @@ namespace AI4E.Storage.Projection
 
             if (result == null)
             {
-                return new ValueTask<TProjection>(null);
+                return new ValueTask<TProjection>(default(TProjection));
             }
 
             if (_projectionDescriptor.MultipleResults)

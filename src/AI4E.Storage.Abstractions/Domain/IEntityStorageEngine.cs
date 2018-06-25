@@ -31,6 +31,8 @@ namespace AI4E.Storage.Domain
 
         ValueTask<object> GetByIdAsync(Type entityType, string id, long revision, CancellationToken cancellation = default);
 
+        ValueTask<(object entity, long revision)> LoadEntityAsync(Type entityType, string id, CancellationToken cancellation = default);
+
         IAsyncEnumerable<object> GetAllAsync(Type entityType, CancellationToken cancellation = default);
 
         IAsyncEnumerable<object> GetAllAsync(CancellationToken cancellation = default);
@@ -39,6 +41,6 @@ namespace AI4E.Storage.Domain
 
         Task DeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation = default);
 
-        IEnumerable<(Type type, string id, long revision, object entity)> CachedEntries { get; }
+        IEnumerable<(Type type, string id, long revision, object entity)> LoadedEntries { get; }
     }
 }

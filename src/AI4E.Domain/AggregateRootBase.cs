@@ -46,7 +46,7 @@ namespace AI4E.Domain
 
         protected virtual void DoDispose() { }
 
-        protected void Publish<TEvent>(TEvent evt)
+        protected void Notify<TEvent>(TEvent evt)
             where TEvent : DomainEventBase
         {
             ThrowIfDisposed();

@@ -55,11 +55,11 @@ namespace AI4E.Domain
         {
             if (aggregate == null)
             {
-                Id = SGuid.Empty;
+                Id = string.Empty;
             }
             else
             {
-                if (aggregate.Id == SGuid.Empty)
+                if (string.IsNullOrEmpty(aggregate.Id))
                 {
                     throw new ArgumentException("Cannot get a reference to an aggregate without an id specified.");
                 }
@@ -78,7 +78,7 @@ namespace AI4E.Domain
 
             Id = id;
 
-            if (id != SGuid.Empty)
+            if(!string.IsNullOrEmpty(id))
             {
                 _aggregate = new Lazy<ValueTask<T>>(() => referenceResolver.ResolveAsync<T>(id, cancellation: default), isThreadSafe: true);
             }

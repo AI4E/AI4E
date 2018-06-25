@@ -18,6 +18,8 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+
 namespace AI4E.Domain
 {
     public abstract class DomainEvent<TId> : DomainEventBase
@@ -30,8 +32,8 @@ namespace AI4E.Domain
         public new TId AggregateId { get; }
     }
 
-    public abstract class DomainEvent : DomainEvent<SGuid>
+    public abstract class DomainEvent : DomainEvent<Guid>
     {
-        public DomainEvent(SGuid aggregateId) : base(aggregateId) { }
+        public DomainEvent(Guid aggregateId) : base(aggregateId) { }
     }
 }

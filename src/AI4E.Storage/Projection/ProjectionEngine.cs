@@ -131,11 +131,12 @@ namespace AI4E.Storage.Projection
                     using (var scope = _serviceProvider.CreateScope())
                     {
                         var scopedServiceProvider = scope.ServiceProvider;
-                        var storageEngine = scopedServiceProvider.GetRequiredService<IEntityStorageEngine>();
-                        var propertyManager = scopedServiceProvider.GetRequiredService<IEntityStoragePropertyManager>(); // TODO: Rename
-                        var entity = await storageEngine.GetByIdAsync(_sourceDescriptor.SourceType, _sourceDescriptor.SourceId, cancellation);
+                        //var storageEngine = scopedServiceProvider.GetRequiredService<IEntityStorageEngine>();
+                        //var propertyManager = scopedServiceProvider.GetRequiredService<IEntityStoragePropertyManager>(); // TODO: Rename
+                        var projectionSourceLoader = scopedServiceProvider.GetRequiredService<IProjectionSourceLoader>();
+                        var (source, sourceRevision) = await projectionSourceLoader.LoadAsync(_sourceDescriptor.SourceType, _sourceDescriptor.SourceId, cancellation);
 
-                        var (updateNeeded, conflict) = await GetProjectionStateAsync(storageEngine, propertyManager, entity, cancellation);
+                        var (updateNeeded, conflict) = await GetProjectionStateAsync(projectionSourceLoader, source, sourceRevision, cancellation);
 
                         if (conflict)
                         {
@@ -146,10 +147,10 @@ namespace AI4E.Storage.Projection
                         }
 
                         if (updateNeeded &&
-                            await ProjectCoreAsync(entity, scopedServiceProvider, cancellation))
+                            await ProjectCoreAsync(source, scopedServiceProvider, cancellation))
                         {
                             // Only update dependencies if there are any projections.
-                            var dependencies = GetDependencies(storageEngine, propertyManager);
+                            var dependencies = GetDependencies(projectionSourceLoader);
                             await UpdateDependenciesAsync(dependencies, cancellation);
                         }
 
@@ -183,9 +184,9 @@ namespace AI4E.Storage.Projection
                 return dependents;
             }
 
-            private async ValueTask<(bool updateNeeded, bool conflict)> GetProjectionStateAsync(IEntityStorageEngine storageEngine,
-                                                                                                IEntityStoragePropertyManager propertyManager, // TODO: Rename
-                                                                                                object entity,
+            private async ValueTask<(bool updateNeeded, bool conflict)> GetProjectionStateAsync(IProjectionSourceLoader projectionSourceLoader,
+                                                                                                object source,
+                                                                                                long sourceRevision,
                                                                                                 CancellationToken cancellation)
             {
                 // We load all dependencies from the entity store. 
@@ -194,7 +195,6 @@ namespace AI4E.Storage.Projection
                 // For that reason, performance should not suffer very much 
                 // in comparison to not checking whether an update is needed.
 
-                var entityRevision = propertyManager.GetRevision(entity);
                 var (originalMetadata, metadata) = await GetMetadataAsync(createIfNonExistent: false, cancellation);
 
                 if (metadata == null)
@@ -203,8 +203,8 @@ namespace AI4E.Storage.Projection
                 }
 
                 var projectionRevision = metadata.ProjectionRevision;
-                var projectionLaterEntity = entityRevision < projectionRevision;
-                var entityLaterProjection = entityRevision > projectionRevision;
+                var projectionLaterEntity = sourceRevision < projectionRevision;
+                var entityLaterProjection = sourceRevision > projectionRevision;
 
                 (ProjectionSourceDescriptor dependency, long revision) ToDependency(Dependency p)
                 {
@@ -213,8 +213,7 @@ namespace AI4E.Storage.Projection
 
                 foreach (var (dependency, dependencyProjectionRevision) in metadata.Dependencies.Select(p => ToDependency(p)))
                 {
-                    var dependencyEntity = await storageEngine.GetByIdAsync(dependency.SourceType, dependency.SourceId, cancellation);
-                    var dependencyRevision = propertyManager.GetRevision(dependencyEntity);
+                    var (dependencyEntity, dependencyRevision) = await projectionSourceLoader.LoadAsync(dependency.SourceType, dependency.SourceId, cancellation);
 
                     if (dependencyRevision < dependencyProjectionRevision)
                     {
@@ -231,7 +230,7 @@ namespace AI4E.Storage.Projection
 
                 if (updateNeeded)
                 {
-                    metadata.ProjectionRevision = entityRevision;
+                    metadata.ProjectionRevision = sourceRevision;
                     _sourceMetadataCache[_sourceDescriptor] = new ProjectionSourceMetadataCacheEntry(originalMetadata, metadata, touched: true);
                 }
 
@@ -239,20 +238,19 @@ namespace AI4E.Storage.Projection
                 return (updateNeeded, conflict);
             }
 
-            private IEnumerable<(ProjectionSourceDescriptor dependency, long revision)> GetDependencies(IEntityStorageEngine storageEngine,
-                                                                                                        IEntityStoragePropertyManager propertyManager) // TODO: Rename
+            private IEnumerable<(ProjectionSourceDescriptor dependency, long revision)> GetDependencies(IProjectionSourceLoader projectionSourceLoader)
             {
                 var entityDescriptor = _sourceDescriptor;
 
-                bool IsCurrentEntity((Type type, string id, long revision, object entity) cacheEntry)
+                bool IsCurrentEntity((Type type, string id, long revision) cacheEntry)
                 {
                     return cacheEntry.id == entityDescriptor.SourceId && cacheEntry.type == entityDescriptor.SourceType;
                 }
 
-                return storageEngine.CachedEntries
-                                          .Where(p => !IsCurrentEntity(p) && p.revision == default)
-                                          .Select(p => (new ProjectionSourceDescriptor(p.type, p.id), propertyManager.GetRevision(p.entity)))
-                                          .ToArray();
+                return projectionSourceLoader.LoadedSources
+                                             .Where(p => !IsCurrentEntity(p))
+                                             .Select(p => (new ProjectionSourceDescriptor(p.type, p.id), p.revision))
+                                             .ToArray();
             }
 
             private async ValueTask<IEnumerable<ProjectionSourceDescriptor>> GetDependentsAsync(CancellationToken cancellation)

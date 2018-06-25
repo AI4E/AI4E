@@ -19,6 +19,7 @@
  */
 
 using System;
+using AI4E.Internal;
 
 namespace AI4E
 {

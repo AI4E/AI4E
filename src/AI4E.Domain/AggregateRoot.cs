@@ -18,6 +18,8 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+
 namespace AI4E.Domain
 {
     public abstract class AggregateRoot<TId> : AggregateRootBase
@@ -30,8 +32,8 @@ namespace AI4E.Domain
         public new TId Id { get; }
     }
 
-    public abstract class AggregateRoot : AggregateRoot<SGuid>
+    public abstract class AggregateRoot : AggregateRoot<Guid>
     {
-        protected AggregateRoot(SGuid id) : base(id) { }
+        protected AggregateRoot(Guid id) : base(id) { }
     }
 }

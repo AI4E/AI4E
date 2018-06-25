@@ -18,6 +18,8 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+
 namespace AI4E.Domain
 {
     public abstract class Entity<TId> : EntityBase
@@ -30,8 +32,8 @@ namespace AI4E.Domain
         public new TId Id { get; }
     }
 
-    public abstract class Entity : Entity<SGuid>
+    public abstract class Entity : Entity<Guid>
     {
-        protected Entity(SGuid id) : base(id) { }
+        protected Entity(Guid id) : base(id) { }
     }
 }

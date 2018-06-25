@@ -156,7 +156,7 @@ namespace AI4E.Storage.Domain
 
                 var entityParameter = Expression.Parameter(typeof(object), "entity");
                 var convertedEntity = Expression.Convert(entityParameter, entityType);
-                var concurrencyTokenPropertyAccess = Expression.Property(entityParameter, concurrencyTokenProperty);
+                var concurrencyTokenPropertyAccess = Expression.Property(convertedEntity, concurrencyTokenProperty);
 
                 Expression concurrencyTokenAccess = concurrencyTokenPropertyAccess;
 
@@ -230,7 +230,7 @@ namespace AI4E.Storage.Domain
                                                     out Func<object, long> revisionGetAccessor,
                                                     out Action<object, long> revisionSetAccessor)
             {
-                var revisionProperty = GetConcurrencyTokenProperty(entityType);
+                var revisionProperty = GetRevisionProperty(entityType);
 
                 if (revisionProperty == null)
                 {
@@ -254,7 +254,7 @@ namespace AI4E.Storage.Domain
 
                 var entityParameter = Expression.Parameter(typeof(object), "entity");
                 var convertedEntity = Expression.Convert(entityParameter, entityType);
-                var revisionPropertyAccess = Expression.Property(entityParameter, revisionProperty);
+                var revisionPropertyAccess = Expression.Property(convertedEntity, revisionProperty);
 
                 revisionGetAccessor = Expression.Lambda<Func<object, long>>(revisionPropertyAccess, entityParameter)
                                                 .Compile();
@@ -345,12 +345,12 @@ namespace AI4E.Storage.Domain
 
                 var entityParameter = Expression.Parameter(typeof(object), "entity");
                 var convertedEntity = Expression.Convert(entityParameter, entityType);
-                var uncommittedEventsPropertyAccess = Expression.Property(entityParameter, uncommittedEventsProperty);
+                var uncommittedEventsPropertyAccess = Expression.Property(convertedEntity, uncommittedEventsProperty);
                 _uncommittedEventsGetAccessor = Expression.Lambda<Func<object, IEnumerable<object>>>(
                     uncommittedEventsPropertyAccess,
                     entityParameter).Compile();
 
-                var commitEventsMethodCall = Expression.Call(entityParameter, commitEventsMethod);
+                var commitEventsMethodCall = Expression.Call(convertedEntity, commitEventsMethod);
                 commitEventsInvoker = Expression.Lambda<Action<object>>(commitEventsMethodCall, entityParameter).Compile();
             }
 

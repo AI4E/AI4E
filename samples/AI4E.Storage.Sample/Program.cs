@@ -1,8 +1,13 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using AI4E.Domain;
+using AI4E.Domain.Services;
 using AI4E.Storage.Domain;
 using AI4E.Storage.InMemory;
+using AI4E.Storage.Sample.Api;
+using AI4E.Storage.Sample.Domain;
+using AI4E.Storage.Sample.Models;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Sample
@@ -27,121 +32,59 @@ namespace AI4E.Storage.Sample
             services.AddStorage()
                     .UseInMemoryDatabase()
                     .UseDomainStorage();
+
+            services.AddDomainServices();
         }
 
         private static async Task RunAsync()
         {
-            var id = Guid.NewGuid().ToString();
-            var dependentId = Guid.NewGuid().ToString();
+            var messageDispatcher = ServiceProvider.GetRequiredService<IMessageDispatcher>();
+            var dataStore = ServiceProvider.GetRequiredService<IDataStore>();
 
-            using (var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>())
-            {
-                var entity = new TestEntity(id)
-                {
-                    Value = "abc"
-                };
+            var command = new ProductCreateCommand(Guid.NewGuid(), "myProduct");
+            var commandResult = await messageDispatcher.DispatchAsync(command);
 
-                await entityStorageEngine.StoreAsync(typeof(TestEntity), entity, id);
-            }
+            await Console.Out.WriteLineAsync(commandResult.ToString());
 
-            using (var dataStore = ServiceProvider.GetRequiredService<IDataStore>())
-            {
-                var model = await dataStore.FindOneAsync<TestEntityModel>(p => p.Id == id);
+            var product = await LoadProductUncachedAsync(command.Id);
 
-                await Console.Out.WriteLineAsync(model.Value);
-                await Console.Out.WriteLineAsync(model.ConcurrencyToken);
+            await Console.Out.WriteLineAsync(product.ProductName);
 
-                await Console.Out.WriteLineAsync();
-            }
+            var listModel = await LoadProductListModelUncachedAsync(command.Id);
 
-            using (var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>())
-            {
-                var entity = new DependentEntity(dependentId)
-                {
-                    DependencyId = id
-                };
+            await Console.Out.WriteLineAsync(listModel.ProductName);
 
-                await entityStorageEngine.StoreAsync(typeof(DependentEntity), entity, dependentId);
-            }
+            var deleteModel = await dataStore.FindOneAsync<ProductDeleteModel>(p => p.Id == command.Id);
 
-            using (var dataStore = ServiceProvider.GetRequiredService<IDataStore>())
-            {
-                var model = await dataStore.FindOneAsync<DependentEntityModel>(p => p.Id == dependentId);
+            var deleteCommand = new ProductDeleteCommand(deleteModel.Id, deleteModel.ConcurrencyToken);
+            var deleteCommandResult = await messageDispatcher.DispatchAsync(deleteCommand);
+            product = await LoadProductUncachedAsync(command.Id);
 
-                await Console.Out.WriteLineAsync(model.DependencyValue);
+            await Console.Out.WriteLineAsync($"Product is{(product == null ? "" : " not")} deleted.");
 
-                await Console.Out.WriteLineAsync();
-            }
+            listModel = await LoadProductListModelUncachedAsync(command.Id);
 
-            using (var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>())
-            {
-                var entity = (TestEntity)await entityStorageEngine.GetByIdAsync(typeof(TestEntity), id);
-
-                entity.Value = "def";
-
-                await entityStorageEngine.StoreAsync(typeof(TestEntity), entity, id);
-            }
-
-            using (var dataStore = ServiceProvider.GetRequiredService<IDataStore>())
-            {
-                var model = await dataStore.FindOneAsync<DependentEntityModel>(p => p.Id == dependentId);
-
-                await Console.Out.WriteLineAsync(model.DependencyValue);
-
-                await Console.Out.WriteLineAsync();
-            }
-
-            using (var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>())
-            {
-                var entity = (TestEntity)await entityStorageEngine.GetByIdAsync(typeof(TestEntity), id);
-
-                var child1 = new ChildEntity(Guid.NewGuid().ToString());
-                var child2 = new ChildEntity(Guid.NewGuid().ToString());
-
-                await entityStorageEngine.StoreAsync(typeof(ChildEntity), child1, child1.Id);
-                await entityStorageEngine.StoreAsync(typeof(ChildEntity), child2, child2.Id);
-
-                entity.AddChild(child1);
-                entity.AddChild(child2);
-
-                await entityStorageEngine.StoreAsync(typeof(TestEntity), entity, id);
-            }
-
-            using (var dataStore = ServiceProvider.GetRequiredService<IDataStore>())
-            {
-                var models = await dataStore.FindAsync<TestEntityChildRelationshipModel>(p => p.ParentId == id).ToList();
-
-                foreach (var model in models)
-                {
-                    await Console.Out.WriteLineAsync(model.ChildId);
-                }
-
-                await Console.Out.WriteLineAsync();
-            }
-
-            using (var entityStorageEngine = ServiceProvider.GetRequiredService<IEntityStorageEngine>())
-            {
-                var entity = (TestEntity)await entityStorageEngine.GetByIdAsync(typeof(TestEntity), id);
-                var child = (ChildEntity)await entityStorageEngine.GetByIdAsync(typeof(ChildEntity), entity.ChildIds.First());
-
-                entity.RemoveChild(child);
-
-                await entityStorageEngine.StoreAsync(typeof(TestEntity), entity, id);
-            }
-
-            using (var dataStore = ServiceProvider.GetRequiredService<IDataStore>())
-            {
-                var models = await dataStore.FindAsync<TestEntityChildRelationshipModel>(p => p.ParentId == id).ToList();
-
-                foreach (var model in models)
-                {
-                    await Console.Out.WriteLineAsync(model.ChildId);
-                }
-
-                await Console.Out.WriteLineAsync();
-            }
+            await Console.Out.WriteLineAsync($"Product is{(listModel == null ? "" : " not")} deleted.");
 
             await Console.In.ReadLineAsync();
+        }
+
+        private static async Task<Product> LoadProductUncachedAsync(Guid id)
+        {
+            using (var scope = ServiceProvider.CreateScope())
+            {
+                var storageEngine = scope.ServiceProvider.GetRequiredService<IEntityStorageEngine>();
+                return await storageEngine.GetByIdAsync(typeof(Product), id.ToString()) as Product;
+            }
+        }
+
+        private static async Task<ProductListModel> LoadProductListModelUncachedAsync(Guid id)
+        {
+            using (var scope = ServiceProvider.CreateScope())
+            {
+                var dataStore = scope.ServiceProvider.GetRequiredService<IDataStore>();
+                return await dataStore.FindOneAsync<ProductListModel>(p => p.Id == id);
+            }
         }
     }
 }

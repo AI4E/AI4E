@@ -51,12 +51,12 @@ namespace AI4E.Domain
         {
             if (aggregate == null)
             {
-                Id = default;
+                Id = string.Empty;
                 Revision = default;
             }
             else
             {
-                if (aggregate.Id == default)
+                if (string.IsNullOrEmpty(aggregate.Id))
                 {
                     throw new ArgumentException("Cannot get a reference to an aggregate without an id specified.");
                 }

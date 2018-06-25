@@ -79,6 +79,7 @@ namespace AI4E.Storage.Domain
         {
             services.AddSingleton(BuildProjector);
             services.AddSingleton<IProjectionEngine, ProjectionEngine>();
+            services.AddScoped<IProjectionSourceLoader, ProjectionSourceLoader>();
         }
 
         private static void AddMessageProcessors(IServiceCollection services)

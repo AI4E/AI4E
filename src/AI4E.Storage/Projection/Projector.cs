@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using AI4E.Internal;
 using AI4E.Async;
 using static System.Diagnostics.Debug;
+using static AI4E.Internal.DebugEx;
 
 namespace AI4E.Storage.Projection
 {
@@ -32,21 +33,20 @@ namespace AI4E.Storage.Projection
         }
 
         public async Task<IEnumerable<IProjectionResult>> ProjectAsync(Type sourceType,
-                                                                       object source,
+                                                                       object source, // May be null
                                                                        IServiceProvider serviceProvider,
                                                                        CancellationToken cancellation)
         {
             if (sourceType == null)
                 throw new ArgumentNullException(nameof(sourceType));
 
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
+
             if (sourceType.IsValueType)
                 throw new ArgumentException("The argument must be a reference type.", nameof(sourceType));
 
-            if (!sourceType.IsAssignableFrom(source.GetType()))
+            if (source != null && !sourceType.IsAssignableFrom(source.GetType()))
                 throw new ArgumentException($"The argument '{nameof(source)}' must be of the type specified by '{nameof(sourceType)}' or a derived type.");
 
             var typedProjectors = _typedProjectors.GetProjectors(sourceType);
@@ -63,18 +63,11 @@ namespace AI4E.Storage.Projection
             return result;
         }
 
-        public Task<IEnumerable<IProjectionResult>> ProjectAsync<TSource>(TSource source,
+        public Task<IEnumerable<IProjectionResult>> ProjectAsync<TSource>(TSource source, // May be null
                                                                           IServiceProvider serviceProvider,
                                                                           CancellationToken cancellation)
             where TSource : class
         {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            if (!(source is TSource typedSource))
-            {
-                throw new ArgumentException($"The argument must be of type '{ typeof(TSource).FullName }' or a derived type.", nameof(source));
-            }
 
             return ProjectAsync(typeof(TSource), source, serviceProvider, cancellation);
         }
@@ -128,7 +121,7 @@ namespace AI4E.Storage.Projection
                                                                            IServiceProvider serviceProvider,
                                                                            CancellationToken cancellation)
             {
-                Assert(source != null);
+                //Assert(source != null);
                 Assert(serviceProvider != null);
 
                 var result = new List<IProjectionResult<TProjectionId, TProjection>>();
@@ -163,8 +156,8 @@ namespace AI4E.Storage.Projection
                                                                      IServiceProvider serviceProvider,
                                                                      CancellationToken cancellation)
             {
-                Assert(source != null);
-                Assert(source is TSource);
+                //Assert(source != null);
+                Assert(source != null, source is TSource);
 
                 Assert(serviceProvider != null);
 
