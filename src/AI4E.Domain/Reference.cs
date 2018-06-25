@@ -33,7 +33,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
 
 namespace AI4E.Domain
 {
@@ -42,12 +41,11 @@ namespace AI4E.Domain
     /// </summary>
     /// <typeparam name="T">The type of aggregate root.</typeparam>
     public readonly struct Reference<T> : IEquatable<Reference<T>>
-        where T : AggregateRoot
+        where T : AggregateRootBase
     {
         private static readonly int _typeHashCode = typeof(T).GetHashCode();
 
-        private readonly AsyncLazy<T> _aggregate;
-        private readonly Guid _id;
+        private readonly Lazy<ValueTask<T>> _aggregate;
 
         /// <summary>
         /// Creates a reference to the specified aggregate.
@@ -57,48 +55,48 @@ namespace AI4E.Domain
         {
             if (aggregate == null)
             {
-                _id = Guid.Empty;
+                Id = string.Empty;
             }
             else
             {
-                if (aggregate.Id == Guid.Empty)
+                if (string.IsNullOrEmpty(aggregate.Id))
                 {
                     throw new ArgumentException("Cannot get a reference to an aggregate without an id specified.");
                 }
 
-                _id = aggregate.Id;
+                Id = aggregate.Id;
             }
 
-            _aggregate = new AsyncLazy<T>(() => Task.FromResult(aggregate));
+            _aggregate = new Lazy<ValueTask<T>>(() => new ValueTask<T>(aggregate), isThreadSafe: true);
         }
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        private Reference(Guid id, IReferenceResolver referenceResolver)
+        private Reference(string id, IReferenceResolver referenceResolver)
         {
             if (referenceResolver == null)
                 throw new ArgumentNullException(nameof(referenceResolver));
 
-            _id = id;
+            Id = id;
 
-            if (id != Guid.Empty)
+            if(!string.IsNullOrEmpty(id))
             {
-                _aggregate = new AsyncLazy<T>(async () => await referenceResolver.ResolveAsync<T>(id, cancellation: default));
+                _aggregate = new Lazy<ValueTask<T>>(() => referenceResolver.ResolveAsync<T>(id, cancellation: default), isThreadSafe: true);
             }
             else
             {
-                _aggregate = new AsyncLazy<T>(() => Task.FromResult<T>(null));
+                _aggregate = new Lazy<ValueTask<T>>(() => new ValueTask<T>(default(T)), isThreadSafe: true);
             }
         }
 
-        public Guid Id => _id;
+        public string Id { get; }
 
         /// <summary>
         /// Asynchronously resolves the reference and provides an instance of the referenced aggregate.
         /// </summary>
         /// <returns>A task representing the asnychronous operation.</returns>
-        public Task<T> ResolveAsync() // TODO: Cancellation support?
+        public ValueTask<T> ResolveAsync() // TODO: Cancellation support?
         {
-            return _aggregate.Task;
+            return _aggregate.Value;
         }
 
         #region Equality
@@ -140,7 +138,7 @@ namespace AI4E.Domain
             return new Reference<T>(aggregate);
         }
 
-        public static Reference<T> UnsafeCreate(Guid id, IReferenceResolver referenceResolver)
+        public static Reference<T> UnsafeCreate(string id, IReferenceResolver referenceResolver)
         {
             return new Reference<T>(id, referenceResolver);
         }
@@ -148,7 +146,7 @@ namespace AI4E.Domain
 
     public static class ReferenceExtension
     {
-        public static TaskAwaiter<T> GetAwaiter<T>(in this Reference<T> reference)
+        public static ValueTaskAwaiter<T> GetAwaiter<T>(in this Reference<T> reference)
             where T : AggregateRoot
         {
             return reference.ResolveAsync().GetAwaiter();
@@ -157,7 +155,7 @@ namespace AI4E.Domain
         public static async Task<IEnumerable<T>> ResolveAsync<T>(this IEnumerable<Reference<T>> references)
              where T : AggregateRoot
         {
-            return await Task.WhenAll(references.Select(p => p.ResolveAsync()));
+            return await Task.WhenAll(references.Select(p => p.ResolveAsync().AsTask()));
         }
 
         public static TaskAwaiter<IEnumerable<T>> GetAwaiter<T>(this IEnumerable<Reference<T>> references)

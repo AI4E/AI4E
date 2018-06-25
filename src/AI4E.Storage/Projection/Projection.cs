@@ -31,7 +31,7 @@ namespace AI4E.Storage.Projection
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
     public sealed class NoProjectionAttribute : Attribute { }
 
-    [AttributeUsage(AttributeTargets.Method )]
+    [AttributeUsage(AttributeTargets.Method)]
     public sealed class ProjectionMemberAttribute : Attribute
     {
         public ProjectionMemberAttribute() { }
@@ -39,6 +39,8 @@ namespace AI4E.Storage.Projection
         public Type ProjectionType { get; set; }
 
         public Type SourceType { get; set; }
+
+        public bool? MultipleResults { get; set; }
     }
 
     [AttributeUsage(AttributeTargets.Method)]

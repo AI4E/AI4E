@@ -19,18 +19,21 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Runtime.Serialization;
 using System.Threading.Tasks;
+using AI4E.Async;
+using AI4E.Internal;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
-using AI4E.Internal;
-using System.Runtime.Serialization;
 
 namespace AI4E.Storage.Projection
 {
     internal class ProjectionInvoker<TSource, TProjection> : IProjection<TSource, TProjection>
     {
-        private object _handler;
+        private readonly object _handler;
         private ProjectionDescriptor _projectionDescriptor;
         private IServiceProvider _serviceProvider;
 
@@ -41,7 +44,9 @@ namespace AI4E.Storage.Projection
             _serviceProvider = serviceProvider;
         }
 
-        public async Task<TProjection> ProjectAsync(TSource source)
+        public bool MultipleResults => _projectionDescriptor.MultipleResults;
+
+        public ValueTask<TProjection> ProjectAsync(TSource source)
         {
             var member = _projectionDescriptor.Member;
 
@@ -76,28 +81,120 @@ namespace AI4E.Storage.Projection
                 callingArgs[i] = arg;
             }
 
-            var result = member.Invoke(_handler, callingArgs); 
+            var result = member.Invoke(_handler, callingArgs);
 
             if (result is Task task)
             {
-                await task;
+                if (_projectionDescriptor.MultipleResults)
+                {
+                    if (!(result is Task<IEnumerable<TProjection>> multProjTask))
+                    {
+                        throw new InvalidOperationException();
+                    }
 
-                if(!(result is Task<TProjection> projTask))
+                    async ValueTask<TProjection> GetFirstOrDefault()
+                    {
+                        return (await multProjTask).FirstOrDefault();
+                    }
+
+                    return GetFirstOrDefault();
+                }
+
+                if (!(result is Task<TProjection> projTask))
                 {
                     throw new InvalidOperationException();
                 }
 
-                return await projTask;
+                return new ValueTask<TProjection>(projTask);
             }
-            else
+
+            if (result == null)
             {
-                if (!(result is TProjection proj))
+                return new ValueTask<TProjection>(default(TProjection));
+            }
+
+            if (_projectionDescriptor.MultipleResults)
+            {
+                if (!(result is IEnumerable<TProjection> multProj))
                 {
                     throw new InvalidOperationException();
                 }
 
-                return proj;
+                return new ValueTask<TProjection>(multProj.FirstOrDefault());
             }
+
+            if (!(result is TProjection proj))
+            {
+                throw new InvalidOperationException();
+            }
+
+            return new ValueTask<TProjection>(proj);
+        }
+
+        public IAsyncEnumerable<TProjection> ProjectMultipleAsync(TSource source)
+        {
+            if (!_projectionDescriptor.MultipleResults)
+            {
+                return ProjectAsync(source).ToAsyncEnumerable();
+            }
+
+            var member = _projectionDescriptor.Member;
+
+            Debug.Assert(member != null);
+
+            var parameters = member.GetParameters();
+
+            var callingArgs = new object[parameters.Length];
+
+            callingArgs[0] = source;
+
+            for (var i = 1; i < callingArgs.Length; i++)
+            {
+                var parameterType = parameters[i].ParameterType;
+
+                object arg;
+
+                if (parameterType.IsDefined<FromServicesAttribute>())
+                {
+                    arg = _serviceProvider.GetRequiredService(parameterType);
+                }
+                else
+                {
+                    arg = _serviceProvider.GetService(parameterType);
+
+                    if (arg == null && parameterType.IsValueType)
+                    {
+                        arg = FormatterServices.GetUninitializedObject(parameterType);
+                    }
+                }
+
+                callingArgs[i] = arg;
+            }
+
+            var result = member.Invoke(_handler, callingArgs);
+
+            if (result is Task task)
+            {
+
+                if (!(result is Task<IEnumerable<TProjection>> multProjTask))
+                {
+                    throw new InvalidOperationException();
+                }
+
+                return multProjTask.ToAsyncEnumerable();
+            }
+
+            if (result == null)
+            {
+                return AsyncEnumerable.Empty<TProjection>();
+            }
+
+            if (!(result is IEnumerable<TProjection> multProj))
+            {
+                throw new InvalidOperationException();
+            }
+
+            return multProj.ToAsyncEnumerable();
         }
 
         internal sealed class Provider : IContextualProvider<IProjection<TSource, TProjection>>

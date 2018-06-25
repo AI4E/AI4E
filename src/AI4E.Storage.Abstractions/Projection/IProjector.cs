@@ -19,6 +19,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -26,8 +27,8 @@ namespace AI4E.Storage.Projection
 {
     public interface IProjector
     {
-        Task ProjectAsync(Type sourceType, object source, CancellationToken cancellation);
-        Task ProjectAsync<TSource>(TSource source, CancellationToken cancellation)
+        Task<IEnumerable<IProjectionResult>> ProjectAsync(Type sourceType, object source, IServiceProvider serviceProvider, CancellationToken cancellation);
+        Task<IEnumerable<IProjectionResult>> ProjectAsync<TSource>(TSource source, IServiceProvider serviceProvider, CancellationToken cancellation)
             where TSource : class;
 
         IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection<TSource, TProjection>(
@@ -35,5 +36,19 @@ namespace AI4E.Storage.Projection
             where TSource : class
             where TProjection : class;
 
+    }
+
+    public interface IProjectionResult
+    {
+        object ResultId { get; }
+        object Result { get; }
+        Type ResultType { get; }
+    }
+
+    public interface IProjectionResult<TProjectionId, TProjection> : IProjectionResult
+        where TProjection : class
+    {
+        new TProjectionId ResultId { get; }
+        new TProjection Result { get; }
     }
 }

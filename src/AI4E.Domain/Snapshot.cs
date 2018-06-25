@@ -33,7 +33,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
 
 namespace AI4E.Domain
 {
@@ -42,37 +41,35 @@ namespace AI4E.Domain
     /// </summary>
     /// <typeparam name="T">The type of aggregate root.</typeparam>
     public readonly struct Snapshot<T> : IEquatable<Snapshot<T>>
-        where T : AggregateRoot
+        where T : AggregateRootBase
     {
         private static readonly int _typeHashCode = typeof(T).GetHashCode();
 
-        private readonly AsyncLazy<T> _aggregate;
-        private readonly Guid _id;
-        private readonly long _revision;
+        private readonly Lazy<ValueTask<T>> _aggregate;
 
         public Snapshot(T aggregate)
         {
-            if (aggregate == default)
+            if (aggregate == null)
             {
-                _id = default;
-                _revision = default;
+                Id = string.Empty;
+                Revision = default;
             }
             else
             {
-                if (aggregate.Id == default)
+                if (string.IsNullOrEmpty(aggregate.Id))
                 {
                     throw new ArgumentException("Cannot get a reference to an aggregate without an id specified.");
                 }
 
-                _id = aggregate.Id;
-                _revision = aggregate.Revision;
+                Id = aggregate.Id;
+                Revision = aggregate.Revision;
             }
 
-            _aggregate = new AsyncLazy<T>(() => Task.FromResult(aggregate));
+            _aggregate = new Lazy<ValueTask<T>>(() => new ValueTask<T>(aggregate), isThreadSafe: true);
         }
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        private Snapshot(Guid id, long revision, IReferenceResolver referenceResolver)
+        private Snapshot(string id, long revision, IReferenceResolver referenceResolver)
         {
             if (referenceResolver == null)
                 throw new ArgumentNullException(nameof(referenceResolver));
@@ -80,29 +77,30 @@ namespace AI4E.Domain
             if (revision < 0)
                 throw new ArgumentOutOfRangeException(nameof(revision));
 
-            _id = id;
-            _revision = revision;
+            Id = id;
+            Revision = revision;
 
             if (id != default)
             {
-                _aggregate = new AsyncLazy<T>(async () => await referenceResolver.ResolveAsync<T>(id, revision, cancellation: default));
+                _aggregate = new Lazy<ValueTask<T>>(() => referenceResolver.ResolveAsync<T>(id, revision, cancellation: default), isThreadSafe: true);
             }
             else
             {
-                _aggregate = new AsyncLazy<T>(() => Task.FromResult<T>(null));
+                _aggregate = new Lazy<ValueTask<T>>(() => new ValueTask<T>(default(T)), isThreadSafe: true);
             }
         }
 
-        public Guid Id => _id;
-        public long Revision => _revision;
+        public string Id { get; }
+
+        public long Revision { get; }
 
         /// <summary>
         /// Asynchronously resolves the reference and provides an instance of the referenced aggregate.
         /// </summary>
         /// <returns>A task representing the asnychronous operation.</returns>
-        public Task<T> ResolveAsync()
+        public ValueTask<T> ResolveAsync()
         {
-            return _aggregate.Task;
+            return _aggregate.Value;
         }
 
         #region Equality
@@ -144,7 +142,7 @@ namespace AI4E.Domain
             return new Snapshot<T>(aggregate);
         }
 
-        public static Snapshot<T> UnsafeCreate(Guid id, long revision, IReferenceResolver referenceResolver)
+        public static Snapshot<T> UnsafeCreate(string id, long revision, IReferenceResolver referenceResolver)
         {
             return new Snapshot<T>(id, revision, referenceResolver);
         }
@@ -152,7 +150,7 @@ namespace AI4E.Domain
 
     public static class SnapshotExtension
     {
-        public static TaskAwaiter<T> GetAwaiter<T>(in this Snapshot<T> snapshot)
+        public static ValueTaskAwaiter<T> GetAwaiter<T>(in this Snapshot<T> snapshot)
             where T : AggregateRoot
         {
             return snapshot.ResolveAsync().GetAwaiter();
@@ -161,7 +159,7 @@ namespace AI4E.Domain
         public static async Task<IEnumerable<T>> ResolveAsync<T>(this IEnumerable<Snapshot<T>> snapshots)
              where T : AggregateRoot
         {
-            return await Task.WhenAll(snapshots.Select(p => p.ResolveAsync()));
+            return await Task.WhenAll(snapshots.Select(p => p.ResolveAsync().AsTask()));
         }
 
         public static TaskAwaiter<IEnumerable<T>> GetAwaiter<T>(this IEnumerable<Snapshot<T>> snapshots)

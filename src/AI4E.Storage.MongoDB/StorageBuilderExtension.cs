@@ -19,7 +19,6 @@
  */
 
 using System;
-using AI4E.Coordination;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
@@ -28,33 +27,20 @@ namespace AI4E.Storage.MongoDB
 {
     public static class StorageBuilderExtension
     {
-        public static IStorageBuilder UsingMongoDBPersistence(this IStorageBuilder builder)
+        public static IStorageBuilder UseMongoDB(this IStorageBuilder builder)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
 
             builder.Services.AddOptions();
-
-            builder.Services.AddSingleton<IMongoClient>(provider =>
-                new MongoClient((provider.GetService<IOptions<MongoOptions>>()?.Value ?? new MongoOptions()).ConnectionString));
-
-            builder.Services.AddSingleton(provider =>
-                provider.GetRequiredService<IMongoClient>().GetDatabase((provider.GetService<IOptions<MongoOptions>>()?.Value ?? new MongoOptions()).Database));
-
-            builder.Services.AddSingleton(typeof(IStreamPersistence<,>), typeof(MongoStreamPersistence<,>));
-            builder.Services.AddSingleton(typeof(IDataStore), typeof(MongoDataStore));
-
-            builder.Services.AddSingleton<MongoCoordinationStorage>();
-            builder.Services.AddSingleton<ICoordinationStorage>(p => p.GetRequiredService<MongoCoordinationStorage>());
-            builder.Services.AddSingleton<ISessionStorage>(p => p.GetRequiredService<MongoCoordinationStorage>());
-            //builder.Services.AddSingleton(typeof(IRouteMap<>), typeof(MongoRouteMap<>));
-            //builder.Services.AddSingleton(typeof(IRouteStore), typeof(MongoRouteStore));
-            builder.Services.AddSingleton(typeof(IProjectionDependencyStore<,>), typeof(MongoProjectionDependencyStore<,>));
+            builder.Services.AddSingleton(BuildMongoClient);
+            builder.Services.AddSingleton(BuildMongoDatabase);
+            builder.UseDatabase<MongoDatabase>();
 
             return builder;
         }
 
-        public static IStorageBuilder UsingMongoDBPersistence(this IStorageBuilder builder, Action<MongoOptions> configuration)
+        public static IStorageBuilder UseMongoDB(this IStorageBuilder builder, Action<MongoOptions> configuration)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
@@ -62,11 +48,32 @@ namespace AI4E.Storage.MongoDB
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
-            builder.UsingMongoDBPersistence();
+            builder.UseMongoDB();
 
             builder.Services.Configure(configuration);
 
             return builder;
+        }
+
+        private static IMongoDatabase BuildMongoDatabase(IServiceProvider serviceProvider)
+        {
+            var options = GetMongoOptions(serviceProvider);
+
+            return serviceProvider.GetRequiredService<IMongoClient>().GetDatabase(options.Database);
+        }
+
+        private static IMongoClient BuildMongoClient(IServiceProvider serviceProvider)
+        {
+            var options = GetMongoOptions(serviceProvider);
+
+            return new MongoClient(options.ConnectionString);
+        }
+
+        private static MongoOptions GetMongoOptions(IServiceProvider serviceProvider)
+        {
+            var optionsAccessor = serviceProvider.GetService<IOptions<MongoOptions>>();
+            var options = optionsAccessor?.Value ?? new MongoOptions();
+            return options;
         }
     }
 }

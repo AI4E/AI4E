@@ -45,10 +45,6 @@ namespace AI4E.Modularity
 
             services.AddSingleton<IMetadataReader, MetadataReader>();
 
-            // Configure necessary application parts
-            var partManager = services.GetApplicationPartManager();
-            services.TryAddSingleton(partManager);
-
             // This is added for the implementation to know that the required services were registered properly.
             services.AddSingleton<ModularityMarkerService>();
 
@@ -120,29 +116,6 @@ namespace AI4E.Modularity
             }
 
             return endPointManager.GetLogicalEndPoint(options.LocalEndPoint);
-        }
-
-        private static ApplicationPartManager GetApplicationPartManager(this IServiceCollection services)
-        {
-            var manager = services.GetService<ApplicationPartManager>();
-            if (manager == null)
-            {
-                manager = new ApplicationPartManager();
-                var parts = DefaultAssemblyPartDiscoveryProvider.DiscoverAssemblyParts(Assembly.GetEntryAssembly().FullName);
-                foreach (var part in parts)
-                {
-                    manager.ApplicationParts.Add(part);
-                }
-            }
-
-            return manager;
-        }
-
-        private static T GetService<T>(this IServiceCollection services)
-        {
-            return (T)services
-                .LastOrDefault(d => d.ServiceType == typeof(T))
-                ?.ImplementationInstance;
         }
 
         public static IModularityBuilder AddModularity(this IServiceCollection services, Action<ModularityOptions> configuration)

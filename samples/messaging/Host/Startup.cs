@@ -25,7 +25,7 @@ namespace Host
             services.AddMvc();
 
             services.AddStorage()
-                    .UsingMongoDBPersistence(options =>
+                    .UseMongoDB(options =>
                     {
                         options.ConnectionString = "mongodb://localhost:27017";
                         options.Database = "AI4E-DB";

@@ -20,6 +20,7 @@
 
 using System;
 using AI4E.Storage;
+using AI4E.Storage.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 
@@ -32,31 +33,14 @@ namespace AI4E.Domain.Services
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            services.AddSingleton<IEntityAccessor<Guid, DomainEvent, AggregateRoot>, EntityAccessor>();
             services.AddTransient<IReferenceResolver, ReferenceResolver>();
-            services.AddTransient<ISerializerSettingsResolver<Guid, DomainEvent, AggregateRoot>, SerializerSettingsResolver>();
-        }
-
-        public static IStorageBuilder AddStorage(this IServiceCollection services)
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            return services.AddStorage<Guid, DomainEvent, AggregateRoot>();
-        }
-
-        public static IStorageBuilder AddStorage(this IServiceCollection services, Action<StorageOptions> configuration)
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            return services.AddStorage<Guid, DomainEvent, AggregateRoot>(configuration);
+            services.AddTransient<ISerializerSettingsResolver, SerializerSettingsResolver>();
         }
     }
 
-    public sealed class SerializerSettingsResolver : ISerializerSettingsResolver<Guid, DomainEvent, AggregateRoot>
+    public sealed class SerializerSettingsResolver : ISerializerSettingsResolver
     {
-        public JsonSerializerSettings ResolveSettings(IEntityStore<Guid, DomainEvent, AggregateRoot> entityStore)
+        public JsonSerializerSettings ResolveSettings(IEntityStorageEngine entityStorageEngine)
         {
             var settings = new JsonSerializerSettings
             {
@@ -67,7 +51,7 @@ namespace AI4E.Domain.Services
                 ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
             };
 
-            settings.Converters.Add(new ReferenceConverter(new ReferenceResolver(entityStore)));
+            settings.Converters.Add(new ReferenceConverter(new ReferenceResolver(entityStorageEngine)));
 
             return settings;
         }

@@ -21,15 +21,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace AI4E.Storage
 {
-    public interface IDataStore
+    public interface IDataStore : IDisposable
     {
-        Task Clear(CancellationToken cancellation = default);
-
         /// <summary>
         /// Stores an object in the store.
         /// </summary>
@@ -38,7 +37,8 @@ namespace AI4E.Storage
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="data"/> is null.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if the object is disposed.</exception>
-        Task StoreAsync<TData>(TData data, CancellationToken cancellation = default) where TData : class;
+        Task StoreAsync<TData>(TData data, CancellationToken cancellation = default)
+            where TData : class;
 
         /// <summary>
         /// Removes an object from the store.
@@ -48,8 +48,26 @@ namespace AI4E.Storage
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="data"/> is null.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if the object is disposed.</exception>
-        Task RemoveAsync<TData>(TData data, CancellationToken cancellation = default) where TData : class;
+        Task RemoveAsync<TData>(TData data, CancellationToken cancellation = default)
+            where TData : class;
 
+        IAsyncEnumerable<TData> FindAsync<TData>(Expression<Func<TData, bool>> predicate,
+                                                 CancellationToken cancellation = default)
+             where TData : class;
+
+        ValueTask<TData> FindOneAsync<TData>(Expression<Func<TData, bool>> predicate,
+                                             CancellationToken cancellation = default)
+             where TData : class;
+
+        IAsyncEnumerable<TData> AllAsync<TData>(CancellationToken cancellation = default)
+             where TData : class;
+
+        ValueTask<TData> OneAsync<TData>(CancellationToken cancellation = default)
+             where TData : class;
+    }
+
+    public interface IQueryableDataStore : IDataStore
+    {
         /// <summary>
         /// Asynchronously performs a query.
         /// </summary>
@@ -62,8 +80,8 @@ namespace AI4E.Storage
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="queryShaper"/> is null.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if the object is disposed.</exception>
-        Task<IEnumerable<TResult>> QueryAsync<TData, TResult>(Func<IQueryable<TData>, IQueryable<TResult>> queryShaper, 
-                                                              CancellationToken cancellation = default) 
+        IAsyncEnumerable<TResult> QueryAsync<TData, TResult>(Func<IQueryable<TData>, IQueryable<TResult>> queryShaper,
+                                                              CancellationToken cancellation = default)
             where TData : class;
     }
 }

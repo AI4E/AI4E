@@ -21,29 +21,29 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Storage;
+using AI4E.Storage.Domain;
 
 namespace AI4E.Domain.Services
 {
     public sealed class ReferenceResolver : IReferenceResolver
     {
-        private readonly IEntityStore<Guid, DomainEvent, AggregateRoot> _entityStore;
+        private readonly IEntityStorageEngine _entityStorageEngine;
 
-        public ReferenceResolver(IEntityStore<Guid, DomainEvent, AggregateRoot> entityStore)
+        public ReferenceResolver(IEntityStorageEngine entityStorageEngine)
         {
-            if (entityStore == null)
-                throw new ArgumentNullException(nameof(entityStore));
+            if (entityStorageEngine == null)
+                throw new ArgumentNullException(nameof(entityStorageEngine));
 
-            _entityStore = entityStore;
+            _entityStorageEngine = entityStorageEngine;
         }
 
-        public Task<TEntity> ResolveAsync<TEntity>(Guid id, long revision, CancellationToken cancellation)
-            where TEntity : AggregateRoot
+        public async ValueTask<TEntity> ResolveAsync<TEntity>(string id, long revision, CancellationToken cancellation)
+            where TEntity : AggregateRootBase
         {
             if (id.Equals(default))
-                return Task.FromResult(default(TEntity));
+                return null;
 
-            return _entityStore.GetByIdAsync<TEntity>(id, revision, cancellation);
+            return (TEntity)await _entityStorageEngine.GetByIdAsync(typeof(TEntity), id, revision, cancellation);
         }
     }
 }

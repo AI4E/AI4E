@@ -57,8 +57,8 @@ namespace AI4E.Domain.Services
                 writer.WritePropertyName("id");
             }
 
-            var id = (Guid)value.GetType().GetProperty("Id").GetValue(value);
-            writer.WriteValue(id.ToString()); // TODO: Use SGuid
+            var id = (string)value.GetType().GetProperty("Id").GetValue(value);
+            writer.WriteValue(id);
 
             if (isSnapshot)
             {
@@ -79,8 +79,8 @@ namespace AI4E.Domain.Services
             var isSnapshot = objectType.GetGenericTypeDefinition() == typeof(Snapshot<>);
             var referencedType = objectType.GetGenericArguments()[0];
 
-            var id = default(Guid);
-            
+            var id = default(string);
+
             if (isSnapshot)
             {
                 var revision = default(long);
@@ -95,7 +95,7 @@ namespace AI4E.Domain.Services
                     {
                         case "id":
                             reader.Read();
-                            id = new Guid(reader.Value as string); // TODO: Use SGuid
+                            id = reader.Value as string;
                             break;
 
                         case "revision":
@@ -122,7 +122,7 @@ namespace AI4E.Domain.Services
                 return snapshotCtor.Invoke(new object[] { id, revision, _referenceResolver });
             }
 
-            id = new Guid(reader.Value as string); // TODO: Use SGuid
+            id = reader.Value as string;
 
             var revisionCtor = typeof(Reference<>).MakeGenericType(referencedType)
                                     ?.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,

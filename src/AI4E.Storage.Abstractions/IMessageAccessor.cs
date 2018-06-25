@@ -22,11 +22,10 @@ using System;
 
 namespace AI4E.Storage
 {
-    public interface IMessageAccessor<TId>
-        where TId : struct, IEquatable<TId>
+    public interface IMessageAccessor
     {
-        bool TryGetEntityId<TMessage>(TMessage message, out TId id);
+        bool TryGetEntityId<TMessage>(TMessage message, out string id);
 
-        bool TryGetConcurrencyToken<TMessage>(TMessage message, out Guid concurrencyToken);
+        bool TryGetConcurrencyToken<TMessage>(TMessage message, out string concurrencyToken);
     }
 }

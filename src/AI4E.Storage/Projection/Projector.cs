@@ -1,227 +1,334 @@
-﻿/* License
- * --------------------------------------------------------------------------------------------------------------------
- * This file is part of the AI4E distribution.
- *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
- * 
- * AI4E is free software: you can redistribute it and/or modify  
- * it under the terms of the GNU Lesser General Public License as   
- * published by the Free Software Foundation, version 3.
- *
- * AI4E is distributed in the hope that it will be useful, but 
- * WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- * --------------------------------------------------------------------------------------------------------------------
- */
-
-using System;
-using System.Collections.Concurrent;
+﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
+using AI4E.Internal;
+using AI4E.Async;
+using static System.Diagnostics.Debug;
+using static AI4E.Internal.DebugEx;
 
 namespace AI4E.Storage.Projection
 {
     public sealed class Projector : IProjector
     {
-        private readonly ConcurrentDictionary<Type, ITypedProjector> _typedProjectors = new ConcurrentDictionary<Type, ITypedProjector>();
-        private readonly IServiceProvider _serviceProvider;
+        private TypedProjectorLookup _typedProjectors;
 
-        public Projector(IServiceProvider serviceProvider)
+        public Projector()
         {
-            if (serviceProvider == null)
-                throw new ArgumentNullException(nameof(serviceProvider));
-
-            _serviceProvider = serviceProvider;
+            _typedProjectors = new TypedProjectorLookup();
         }
 
-        private Projector<TSource> GetTypedProjector<TSource>()
-            where TSource : class
-     
-        {
-            return (Projector<TSource>)_typedProjectors.GetOrAdd(typeof(TSource), _ => new Projector<TSource>(_serviceProvider));
-        }
-
-        public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection<TSource, TProjection>(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
+        public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection<TSource, TProjection>(
+            IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
             where TSource : class
             where TProjection : class
         {
             if (projectionProvider == null)
                 throw new ArgumentNullException(nameof(projectionProvider));
 
-            return GetTypedProjector<TSource>().RegisterProjection(projectionProvider);
+            return _typedProjectors.GetProjector<TSource, TProjection>()
+                                   .RegisterProjection(projectionProvider);
         }
 
-        public Task ProjectAsync(Type sourceType, object source, CancellationToken cancellation)
+        public async Task<IEnumerable<IProjectionResult>> ProjectAsync(Type sourceType,
+                                                                       object source, // May be null
+                                                                       IServiceProvider serviceProvider,
+                                                                       CancellationToken cancellation)
         {
             if (sourceType == null)
                 throw new ArgumentNullException(nameof(sourceType));
 
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
+            if (serviceProvider == null)
+                throw new ArgumentNullException(nameof(serviceProvider));
 
-            if (!sourceType.IsAssignableFrom(source.GetType()))
+            if (sourceType.IsValueType)
+                throw new ArgumentException("The argument must be a reference type.", nameof(sourceType));
+
+            if (source != null && !sourceType.IsAssignableFrom(source.GetType()))
                 throw new ArgumentException($"The argument '{nameof(source)}' must be of the type specified by '{nameof(sourceType)}' or a derived type.");
 
+            var typedProjectors = _typedProjectors.GetProjectors(sourceType);
+            var result = new List<IProjectionResult>();
 
-            var currType = sourceType;
-            var tasks = new List<Task>();
-
-            do
+            // There is no parallelism (with Task.WhenAll(projectors.Select(...)) used because we cannot guarantee that it is allowed to access 'source' concurrently.
+            // TODO: But it is possible to change the return type to IAsyncEnumerable<IProjectionResult> and process each batch on access. 
+            //       This allows to remove the up-front evaluation and storage of the results.
+            foreach (var typedProjector in typedProjectors)
             {
-                Debug.Assert(currType != null);
-
-                if (TryGetTypedProjector(currType, out var projector))
-                {
-                    tasks.Add(projector.ProjectAsync(source, cancellation));
-                }
+                result.AddRange(await typedProjector.ProjectAsync(source, serviceProvider, cancellation));
             }
-            while (!currType.IsInterface && (currType = currType.BaseType) != null);
 
-            return Task.WhenAll(tasks);
-        }
-
-        public Task ProjectAsync<TSource>(TSource source, CancellationToken cancellation)
-            where TSource : class
-        {
-            return ProjectAsync(typeof(TSource), source, cancellation);
-        }
-
-        private bool TryGetTypedProjector(Type type, out ITypedProjector typedProjector)
-        {
-            Debug.Assert(type != null);
-
-            var result = _typedProjectors.TryGetValue(type, out typedProjector);
-
-            Debug.Assert(!result || typedProjector != null);
-            Debug.Assert(!result || typedProjector.SourceType == type);
             return result;
         }
-    }
 
-    internal interface ITypedProjector
-    {
-        Task ProjectAsync(object source, CancellationToken cancellation);
-        Type SourceType { get; }
-    }
-
-    internal sealed class Projector<TSource> : ITypedProjector
-         where TSource : class
-    {
-        private readonly ConcurrentDictionary<Type, ITypedProjector<TSource>> _typedProjectors = new ConcurrentDictionary<Type, ITypedProjector<TSource>>();
-        private readonly IServiceProvider _serviceProvider;
-
-        public Type SourceType => typeof(TSource);
-
-        public Projector(IServiceProvider serviceProvider)
+        public Task<IEnumerable<IProjectionResult>> ProjectAsync<TSource>(TSource source, // May be null
+                                                                          IServiceProvider serviceProvider,
+                                                                          CancellationToken cancellation)
+            where TSource : class
         {
-            _serviceProvider = serviceProvider;
+
+            return ProjectAsync(typeof(TSource), source, serviceProvider, cancellation);
         }
 
-        private Projector<TSource, TProjection> GetTypedProjector<TProjection>()
+        private interface ITypedProjector
+        {
+            Task<IEnumerable<IProjectionResult>> ProjectAsync(object source,
+                                                              IServiceProvider serviceProvider,
+                                                              CancellationToken cancellation);
+
+            Type SourceType { get; }
+
+            Type ProjectionType { get; }
+        }
+
+        private interface ITypedProjector<TSource> : ITypedProjector
+            where TSource : class
+        {
+            Task<IEnumerable<IProjectionResult>> ProjectAsync(TSource source,
+                                                              IServiceProvider serviceProvider,
+                                                              CancellationToken cancellation);
+        }
+
+        private interface ITypedProjector<TSource, TProjection> : ITypedProjector<TSource>
+            where TSource : class
             where TProjection : class
         {
-            return (Projector<TSource, TProjection>)_typedProjectors.GetOrAdd(typeof(TProjection), _ => new Projector<TSource, TProjection>(_serviceProvider));
+            IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection(
+                IContextualProvider<IProjection<TSource, TProjection>> projectionProvider);
         }
 
-        public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection<TProjection>(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
+        private sealed class TypedProjector<TSource, TProjectionId, TProjection> : ITypedProjector<TSource, TProjection>
+            where TSource : class
+            where TProjection : class
+
+        {
+            private readonly HandlerRegistry<IProjection<TSource, TProjection>> _projections;
+
+            public TypedProjector()
+            {
+                _projections = new HandlerRegistry<IProjection<TSource, TProjection>>();
+            }
+
+            public Type SourceType => typeof(TSource);
+            public Type ProjectionType => typeof(TProjection);
+
+            // There is no parallelism (with Task.WhenAll(projections.Select(...)) used because we cannot guarantee that it is allowed to access 'source' concurrently.
+            // TODO: But it is possible to change the return type to IAsyncEnumerable<IProjectionResult> and process each batch on access. 
+            //       This allows to remove the up-front evaluation and storage of the results.
+            public async Task<IEnumerable<IProjectionResult>> ProjectAsync(TSource source,
+                                                                           IServiceProvider serviceProvider,
+                                                                           CancellationToken cancellation)
+            {
+                //Assert(source != null);
+                Assert(serviceProvider != null);
+
+                var result = new List<IProjectionResult<TProjectionId, TProjection>>();
+
+                foreach (var projectionProvider in _projections.Handlers)
+                {
+                    var projection = projectionProvider.ProvideInstance(serviceProvider);
+
+                    Assert(projection != null);
+
+                    if (projection.MultipleResults)
+                    {
+                        result.AddRange(await projection.ProjectMultipleAsync(source)
+                                                        .Where(p => p != null)
+                                                        .Select(p => new ProjectionResult<TProjectionId, TProjection>(p)));
+                    }
+                    else
+                    {
+                        var res = await projection.ProjectAsync(source);
+
+                        if (res != null)
+                        {
+                            result.Add(new ProjectionResult<TProjectionId, TProjection>(res));
+                        }
+                    }
+                }
+
+                return result;
+            }
+
+            public Task<IEnumerable<IProjectionResult>> ProjectAsync(object source,
+                                                                     IServiceProvider serviceProvider,
+                                                                     CancellationToken cancellation)
+            {
+                //Assert(source != null);
+                Assert(source != null, source is TSource);
+
+                Assert(serviceProvider != null);
+
+                return ProjectAsync(source as TSource, serviceProvider, cancellation);
+            }
+
+            public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
+            {
+                Assert(projectionProvider != null);
+                return HandlerRegistration.CreateRegistration(_projections, projectionProvider);
+            }
+        }
+
+        private sealed class ProjectionResult<TProjectionId, TProjection> : IProjectionResult<TProjectionId, TProjection>
             where TProjection : class
         {
-            if (projectionProvider == null)
-                throw new ArgumentNullException(nameof(projectionProvider));
-
-            return GetTypedProjector<TProjection>().RegisterProjection(projectionProvider);
-        }
-
-        public Task ProjectAsync(object source, CancellationToken cancellation)
-        {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            return Task.WhenAll(GetTypedProjectors().Select(p => p.ProjectAsync(source, cancellation)));
-        }
-
-        public Task ProjectAsync(TSource source, CancellationToken cancellation)
-        {
-            return ProjectAsync(source, cancellation);
-        }
-
-        private IEnumerable<ITypedProjector<TSource>> GetTypedProjectors()
-        {
-            return _typedProjectors.Values;
-        }
-    }
-
-    internal interface ITypedProjector<TSource>
-        where TSource : class
-    {
-        Task ProjectAsync(object source, CancellationToken cancellation);
-        Type ProjectionType { get; }
-    }
-
-    internal sealed class Projector<TSource, TProjection> : ITypedProjector<TSource>
-        where TSource : class
-        where TProjection : class
-    {
-        private readonly HandlerRegistry<IProjection<TSource, TProjection>> _projections;
-        private readonly IServiceProvider _serviceProvider;
-
-        public Projector(IServiceProvider serviceProvider)
-        {
-            _projections = new HandlerRegistry<IProjection<TSource, TProjection>>();
-            _serviceProvider = serviceProvider;
-        }
-
-        public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
-        {
-            return HandlerRegistration.CreateRegistration(_projections, projectionProvider);
-        }
-
-        public Task ProjectAsync(object source, CancellationToken cancellation)
-        {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            if (!(source is TSource typedSource))
+            public ProjectionResult(TProjection result)
             {
-                throw new ArgumentException($"The argument must be of type '{ typeof(TSource).FullName }' or a derived type.", nameof(source));
+                Assert(result != null);
+
+                Result = result;
+                ResultId = DataPropertyHelper.GetId<TProjectionId, TProjection>(result);
             }
 
-            return ProjectAsync(typedSource, cancellation);
+            public TProjectionId ResultId { get; }
+
+            public Type ResultIdType => typeof(TProjectionId);
+
+            public TProjection Result { get; }
+
+            public Type ResultType => typeof(TProjection);
+
+            object IProjectionResult.ResultId => ResultId;
+
+            object IProjectionResult.Result => Result;
         }
 
-        public Task ProjectAsync(TSource source, CancellationToken cancellation)
+        private sealed class TypedProjectorLookup
         {
-            var dataStore = _serviceProvider.GetRequiredService<IDataStore>();
+            private static readonly Type _typedProjectorTypeDefintion = typeof(TypedProjector<,,>);
 
-            return Task.WhenAll(_projections.Handlers.Select(p => ProjectSingleAsync(source, dataStore, p, cancellation)));
-        }
+            private readonly object _lock = new object();
+            private readonly Dictionary<(Type sourceType, Type projectionType), object> _projectors;
+            private readonly Dictionary<Type, ImmutableList<object>> _sourceProjectors;
 
-        private async Task ProjectSingleAsync(TSource source, IDataStore dataStore, IContextualProvider<IProjection<TSource, TProjection>> projectionProvider, CancellationToken cancellation)
-        {
-            var projection = projectionProvider.ProvideInstance(_serviceProvider);
-
-            Debug.Assert(projection != null);
-
-            var res = await projection.ProjectAsync(source);
-
-            if (res != null)
+            public TypedProjectorLookup()
             {
-                await dataStore.StoreAsync(res, cancellation);
+                _projectors = new Dictionary<(Type sourceType, Type projectionType), object>();
+                _sourceProjectors = new Dictionary<Type, ImmutableList<object>>();
             }
-            else
+
+            public bool TryGetProjector<TSource, TProjection>(out ITypedProjector<TSource, TProjection> projector)
+                where TSource : class
+                where TProjection : class
             {
-                throw new NotImplementedException();
+                bool result;
+                object untypedProjector;
+
+                lock (_lock)
+                {
+                    result = _projectors.TryGetValue((typeof(TSource), typeof(TProjection)), out untypedProjector);
+                }
+
+                if (!result)
+                {
+                    projector = null;
+                    return false;
+                }
+
+                projector = untypedProjector as ITypedProjector<TSource, TProjection>;
+
+                Assert(projector != null);
+
+                return true;
+            }
+
+            public ITypedProjector<TSource, TProjection> GetProjector<TSource, TProjection>()
+                where TSource : class
+                where TProjection : class
+            {
+                object projector;
+                bool found;
+
+                lock (_lock)
+                {
+                    found = _projectors.TryGetValue((typeof(TSource), typeof(TProjection)), out projector);
+                }
+
+                if (!found)
+                {
+                    projector = CreateProjector<TSource, TProjection>();
+
+                    lock (_lock)
+                    {
+                        if (_projectors.TryGetValue((typeof(TSource), typeof(TProjection)), out var p))
+                        {
+                            projector = p;
+                        }
+                        else
+                        {
+                            _projectors.Add((typeof(TSource), typeof(TProjection)), projector);
+
+                            if (!_sourceProjectors.TryGetValue(typeof(TSource), out var sourceProjectors))
+                            {
+                                sourceProjectors = ImmutableList<object>.Empty;
+                            }
+
+                            _sourceProjectors[typeof(TSource)] = sourceProjectors.Add(projector);
+                        }
+                    }
+                }
+
+                Assert(projector != null);
+                var result = projector as ITypedProjector<TSource, TProjection>;
+                Assert(result != null);
+                return result;
+            }
+
+            public IEnumerable<ITypedProjector<TSource>> GetProjectors<TSource>()
+                where TSource : class
+            {
+                var sourceProjectors = GetProjectorsInternal(typeof(TSource));
+                return sourceProjectors.Cast<ITypedProjector<TSource>>();
+            }
+
+            private ImmutableList<object> GetProjectorsInternal(Type sourceType)
+            {
+                ImmutableList<object> sourceProjectors;
+
+                lock (_lock)
+                {
+                    if (!_sourceProjectors.TryGetValue(sourceType, out sourceProjectors))
+                    {
+                        sourceProjectors = ImmutableList<object>.Empty;
+                    }
+                }
+
+                Assert(sourceProjectors != null);
+                return sourceProjectors;
+            }
+
+            public IEnumerable<ITypedProjector> GetProjectors(Type sourceType)
+            {
+                Assert(sourceType != null);
+                Assert(!sourceType.IsValueType);
+
+                var sourceProjectors = GetProjectorsInternal(sourceType);
+                return sourceProjectors.Cast<ITypedProjector>();
+            }
+
+            private ITypedProjector<TSource, TProjection> CreateProjector<TSource, TProjection>()
+                where TSource : class
+                where TProjection : class
+            {
+                var sourceType = typeof(TSource);
+                var projectionType = typeof(TProjection);
+                var projectionIdType = DataPropertyHelper.GetIdType(projectionType);
+                var projectorType = MakeProjectorType(sourceType, projectionType, projectionIdType);
+                var typedProjector = Activator.CreateInstance(projectorType);
+
+                Assert(typedProjector != null);
+
+                return (ITypedProjector<TSource, TProjection>)typedProjector;
+            }
+
+            private static Type MakeProjectorType(Type sourceType, Type projectionType, Type projectionIdType)
+            {
+                return _typedProjectorTypeDefintion.MakeGenericType(sourceType,
+                                                                    projectionIdType,
+                                                                    projectionType);
             }
         }
-
-        public Type ProjectionType => typeof(TProjection);
     }
 }

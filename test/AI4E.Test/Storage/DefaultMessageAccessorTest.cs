@@ -10,13 +10,13 @@ namespace AI4E.Test.Storage
         [TestMethod]
         public void ConstructionTest()
         {
-            var accessor = new DefaultMessageAccessor<Guid>();
+            var accessor = new DefaultMessageAccessor();
         }
 
         [TestMethod]
         public void AccessingNoneTest()
         {
-            var accessor = new DefaultMessageAccessor<Guid>();
+            var accessor = new DefaultMessageAccessor();
             var message = new EmptyMessage();
 
             Assert.IsFalse(accessor.TryGetEntityId(message, out _));
@@ -28,26 +28,26 @@ namespace AI4E.Test.Storage
         {
             var id = Guid.NewGuid();
 
-            var accessor = new DefaultMessageAccessor<Guid>();
+            var accessor = new DefaultMessageAccessor();
             var message = new MessageWithIdOnly(id);
 
             Assert.IsTrue(accessor.TryGetEntityId(message, out var aId));
             Assert.IsFalse(accessor.TryGetConcurrencyToken(message, out _));
-            Assert.AreEqual(id, aId);
+            Assert.AreEqual(id.ToString(), aId);
         }
 
         [TestMethod]
         public void AccessingBothTest()
         {
             var id = Guid.NewGuid();
-            var concurrencyToken = Guid.NewGuid();
+            var concurrencyToken = Guid.NewGuid().ToString();
 
-            var accessor = new DefaultMessageAccessor<Guid>();
+            var accessor = new DefaultMessageAccessor();
             var message = new MessageWithIdAndConcurrencyToken(id, concurrencyToken);
 
             Assert.IsTrue(accessor.TryGetEntityId(message, out var aId));
             Assert.IsTrue(accessor.TryGetConcurrencyToken(message, out var aConcurrencyToken));
-            Assert.AreEqual(id, aId);
+            Assert.AreEqual(id.ToString(), aId);
             Assert.AreEqual(concurrencyToken, aConcurrencyToken);
         }
 
@@ -55,43 +55,43 @@ namespace AI4E.Test.Storage
         public void AccessingNonPublicMembersTest()
         {
             var id = Guid.NewGuid();
-            var concurrencyToken = Guid.NewGuid();
+            var concurrencyToken = Guid.NewGuid().ToString();
 
-            var accessor = new DefaultMessageAccessor<Guid>();
+            var accessor = new DefaultMessageAccessor();
             var message = new MessageWithNonPublicMembers(id, concurrencyToken);
 
             Assert.IsTrue(accessor.TryGetEntityId(message, out var aId));
             Assert.IsTrue(accessor.TryGetConcurrencyToken(message, out var aConcurrencyToken));
-            Assert.AreEqual(id, aId);
+            Assert.AreEqual(id.ToString(), aId);
             Assert.AreEqual(concurrencyToken, aConcurrencyToken);
         }
 
-        [TestMethod]
-        public void AccessingWithWrongIdTypeTest()
-        {
-            var id = Guid.NewGuid();
-            var concurrencyToken = Guid.NewGuid();
+        //[TestMethod]
+        //public void AccessingWithWrongIdTypeTest()
+        //{
+        //    var id = Guid.NewGuid();
+        //    var concurrencyToken = Guid.NewGuid().ToString();
 
-            var accessor = new DefaultMessageAccessor<long>();
-            var message = new MessageWithIdAndConcurrencyToken(id, concurrencyToken);
+        //    var accessor = new DefaultMessageAccessor();
+        //    var message = new MessageWithIdAndConcurrencyToken(id, concurrencyToken);
 
-            Assert.IsFalse(accessor.TryGetEntityId(message, out _));
-            Assert.IsTrue(accessor.TryGetConcurrencyToken(message, out var aConcurrencyToken));
-            Assert.AreEqual(concurrencyToken, aConcurrencyToken);
-        }
+        //    Assert.IsFalse(accessor.TryGetEntityId(message, out _));
+        //    Assert.IsTrue(accessor.TryGetConcurrencyToken(message, out var aConcurrencyToken));
+        //    Assert.AreEqual(concurrencyToken, aConcurrencyToken);
+        //}
 
         [TestMethod]
         public void AccessingCommandTest()
         {
             var id = Guid.NewGuid();
-            var concurrencyToken = Guid.NewGuid();
+            var concurrencyToken = Guid.NewGuid().ToString();
 
-            var accessor = new DefaultMessageAccessor<Guid>();
+            var accessor = new DefaultMessageAccessor();
             var message = new TestCommand(id, concurrencyToken);
 
             Assert.IsTrue(accessor.TryGetEntityId(message, out var aId));
             Assert.IsTrue(accessor.TryGetConcurrencyToken(message, out var aConcurrencyToken));
-            Assert.AreEqual(id, aId);
+            Assert.AreEqual(id.ToString(), aId);
             Assert.AreEqual(concurrencyToken, aConcurrencyToken);
         }
 
@@ -109,7 +109,7 @@ namespace AI4E.Test.Storage
 
         public class MessageWithIdAndConcurrencyToken
         {
-            public MessageWithIdAndConcurrencyToken(Guid id, Guid concurrencyToken)
+            public MessageWithIdAndConcurrencyToken(Guid id, string concurrencyToken)
             {
                 Id = id;
                 ConcurrencyToken = concurrencyToken;
@@ -117,12 +117,12 @@ namespace AI4E.Test.Storage
 
             public Guid Id { get; }
 
-            public Guid ConcurrencyToken { get; }
+            public string ConcurrencyToken { get; }
         }
 
         public class MessageWithNonPublicMembers
         {
-            public MessageWithNonPublicMembers(Guid id, Guid concurrencyToken)
+            public MessageWithNonPublicMembers(Guid id, string concurrencyToken)
             {
                 Id = id;
                 ConcurrencyToken = concurrencyToken;
@@ -130,12 +130,12 @@ namespace AI4E.Test.Storage
 
             internal Guid Id { get; }
 
-            internal Guid ConcurrencyToken { get; }
+            internal string ConcurrencyToken { get; }
         }
 
         public class TestCommand : ConcurrencySafeCommand
         {
-            public TestCommand(Guid id, Guid concurrencyToken) : base(id, concurrencyToken) {}
+            public TestCommand(Guid id, string concurrencyToken) : base(id, concurrencyToken) { }
         }
     }
 }

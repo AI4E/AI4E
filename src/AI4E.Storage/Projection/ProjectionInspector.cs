@@ -77,7 +77,7 @@ namespace AI4E.Storage.Projection
                 return false;
             }
 
-            if (member.IsDefined<NoActionAttribute>())
+            if (member.IsDefined<NoProjectionMemberAttribute>())
             {
                 descriptor = default;
                 return false;
@@ -86,27 +86,17 @@ namespace AI4E.Storage.Projection
             var sourceType = parameters[0].ParameterType;
             var memberAttribute = member.GetCustomAttribute<ProjectionMemberAttribute>();
 
-            if (memberAttribute != null && memberAttribute.SourceType != null)
-            {
-                if (!sourceType.IsAssignableFrom(memberAttribute.SourceType))
-                {
-                    throw new InvalidOperationException();
-                }
-
-                sourceType = memberAttribute.SourceType;
-            }
-
             var projectionType = default(Type);
 
             // Synchronous handler
-            if ((member.Name.StartsWith("Project") || memberAttribute != null) &&
+            if ((member.Name.StartsWith("Project") && !member.Name.EndsWith("Async") || memberAttribute != null) &&
                 (member.ReturnType == typeof(void) || !typeof(Task).IsAssignableFrom(member.ReturnType)))
             {
                 projectionType = member.ReturnType;
             }
 
             // Asynchronous handler
-            else if ((member.Name.StartsWith("Project") && member.Name.EndsWith("Async") || memberAttribute != null) &&
+            else if ((member.Name.StartsWith("Project") || memberAttribute != null) &&
                 (typeof(Task).IsAssignableFrom(member.ReturnType)))
             {
                 projectionType = member.ReturnType == typeof(Task) ? typeof(void) : member.ReturnType.GetGenericArguments()[0];
@@ -117,17 +107,54 @@ namespace AI4E.Storage.Projection
                 return false;
             }
 
-            if (memberAttribute != null && memberAttribute.ProjectionType != null)
-            {
-                if (member.ReturnType == typeof(void) || !member.ReturnType.IsAssignableFrom(memberAttribute.ProjectionType))
-                {
-                    throw new InvalidOperationException();
-                }
+            var multipleResults = false;
+            Type multipleResultsType = null;
 
-                projectionType = memberAttribute.ProjectionType;
+            if (projectionType.IsGenericType && projectionType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            {
+                multipleResultsType = projectionType;
+                projectionType = multipleResultsType.GetGenericArguments().First();
+                multipleResults = true;
             }
 
-            descriptor = new ProjectionDescriptor(sourceType, projectionType, member);
+            if (memberAttribute != null)
+            {
+                if (memberAttribute.SourceType != null)
+                {
+                    if (!sourceType.IsAssignableFrom(memberAttribute.SourceType))
+                    {
+                        throw new InvalidOperationException();
+                    }
+
+                    sourceType = memberAttribute.SourceType;
+                }
+
+                if (memberAttribute.ProjectionType != null)
+                {
+                    if (member.ReturnType == typeof(void) || !memberAttribute.ProjectionType.IsAssignableFrom(projectionType))
+                    {
+                        throw new InvalidOperationException();
+                    }
+
+                    projectionType = memberAttribute.ProjectionType;
+                }
+
+                if (memberAttribute.MultipleResults != null)
+                {
+                    if (!multipleResults && (bool)memberAttribute.MultipleResults)
+                    {
+                        throw new InvalidOperationException();
+                    }
+
+                    if (multipleResults && !(bool)memberAttribute.MultipleResults)
+                    {
+                        projectionType = multipleResultsType;
+                        multipleResults = false;
+                    }
+                }
+            }
+
+            descriptor = new ProjectionDescriptor(sourceType, projectionType, multipleResults, member);
             return true;
         }
     }

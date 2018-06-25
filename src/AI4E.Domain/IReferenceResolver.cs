@@ -53,8 +53,8 @@ namespace AI4E.Domain
         /// </returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="revision"/> is a negative value.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
-        Task<TEntity> ResolveAsync<TEntity>(Guid id, long revision, CancellationToken cancellation)
-                   where TEntity : AggregateRoot;
+        ValueTask<TEntity> ResolveAsync<TEntity>(string id, long revision, CancellationToken cancellation = default)
+                   where TEntity : AggregateRootBase;
     }
 
     /// <summary>
@@ -74,56 +74,13 @@ namespace AI4E.Domain
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="referenceResolver"/> is null.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
-        public static Task<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, Guid id, CancellationToken cancellation)
-            where TEntity : AggregateRoot
+        public static ValueTask<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, string id, CancellationToken cancellation = default)
+            where TEntity : AggregateRootBase
         {
             if (referenceResolver == null)
                 throw new ArgumentNullException(nameof(referenceResolver));
 
             return referenceResolver.ResolveAsync<TEntity>(id, revision: default, cancellation);
-        }
-
-        /// <summary>
-        /// Asynchronously resolves the reference specified by its type, id and revision.
-        /// </summary>
-        /// <typeparam name="TEntity">The type of entity the reference refers to.</typeparam>
-        /// <param name="id">The id of the referenced entity.</param>
-        /// <param name="revision">The revision of the entity to load or <see cref="default(long)"/> to load the entity in the latest version.</param>
-        /// <returns>
-        /// A task representing the asynchronous operation.
-        /// When evaluated, the tasks result contains the loaded entity or null if the reference could not be resolved.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="referenceResolver"/> is null.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="revision"/> is a negative value.</exception>
-        public static Task<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, Guid id, long revision)
-            where TEntity : AggregateRoot
-        {
-            if (referenceResolver == null)
-                throw new ArgumentNullException(nameof(referenceResolver));
-
-            if (revision < 0)
-                throw new ArgumentOutOfRangeException(nameof(revision));
-
-            return referenceResolver.ResolveAsync<TEntity>(id, revision: default, cancellation: default);
-        }
-
-        /// <summary>
-        /// Asynchronously resolves the reference specified by its type and id within the latest revision.
-        /// </summary>
-        /// <typeparam name="TEntity">The type of entity the reference refers to.</typeparam>
-        /// <param name="id">The id of the referenced entity.</param>
-        /// <returns>
-        /// A task representing the asynchronous operation.
-        /// When evaluated, the tasks result contains the loaded entity or null if the reference could not be resolved.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="referenceResolver"/> is null.</exception>
-        public static Task<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, Guid id)
-            where TEntity : AggregateRoot
-        {
-            if (referenceResolver == null)
-                throw new ArgumentNullException(nameof(referenceResolver));
-
-            return referenceResolver.ResolveAsync<TEntity>(id, revision: default, cancellation: default);
         }
     }
 }

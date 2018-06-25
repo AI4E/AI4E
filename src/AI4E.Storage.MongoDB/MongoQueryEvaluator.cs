@@ -29,31 +29,39 @@ namespace AI4E.Storage.MongoDB
 {
     public sealed class MongoQueryEvaluator<T> : IAsyncEnumerable<T>
     {
-        private readonly IMongoCollection<T> _collection;
-        private readonly Expression<Func<T, bool>> _predicate;
-        private readonly CancellationToken _cancellation;
+        private readonly Func<Task<IAsyncCursor<T>>> _asyncCursorSource;
 
-        public MongoQueryEvaluator(IMongoCollection<T> collection, Expression<Func<T, bool>> predicate, CancellationToken cancellation)
+        public MongoQueryEvaluator(ValueTask<IAsyncCursorSource<T>> asyncCursorSource,
+                                   CancellationToken cancellation = default)
+        {
+            if (asyncCursorSource == null)
+                throw new ArgumentNullException(nameof(asyncCursorSource));
+
+            _asyncCursorSource = async () => await (await asyncCursorSource).ToCursorAsync(cancellation);
+        }
+
+        public MongoQueryEvaluator(ValueTask<IMongoCollection<T>> collection,
+                                   Expression<Func<T, bool>> predicate,
+                                   CancellationToken cancellation = default)
         {
             if (collection == null)
                 throw new ArgumentNullException(nameof(collection));
 
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
-            _collection = collection;
-            _predicate = predicate;
-            _cancellation = cancellation;
+
+            _asyncCursorSource = async () => await (await collection).FindAsync<T>(predicate, cancellationToken: cancellation);
         }
 
         public IAsyncEnumerator<T> GetEnumerator()
         {
-            return new MongoQueryResult<T>(_collection.FindAsync(_predicate, cancellationToken: _cancellation));
+            return new MongoQueryResult<T>(_asyncCursorSource());
         }
     }
 
     public sealed class MongoQueryResult<T> : IAsyncEnumerator<T>
     {
-        private readonly Task<IAsyncCursor<T>> _asyncCursor;
+        private readonly ValueTask<IAsyncCursor<T>> _asyncCursor;
 
         private IAsyncCursor<T> _asyncCursorInstance;
         private IEnumerator<T> _currentBatch;
@@ -64,7 +72,15 @@ namespace AI4E.Storage.MongoDB
             if (asyncCursor == null)
                 throw new ArgumentNullException(nameof(asyncCursor));
 
-            _asyncCursor = asyncCursor;
+            _asyncCursor = new ValueTask<IAsyncCursor<T>>(asyncCursor);
+        }
+
+        public MongoQueryResult(IAsyncCursor<T> asyncCursor)
+        {
+            if (asyncCursor == null)
+                throw new ArgumentNullException(nameof(asyncCursor));
+
+            _asyncCursor = new ValueTask<IAsyncCursor<T>>(asyncCursor);
         }
 
         public T Current

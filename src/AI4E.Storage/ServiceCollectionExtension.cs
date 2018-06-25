@@ -19,60 +19,29 @@
  */
 
 using System;
-using System.Linq;
-using System.Reflection;
+using AI4E.Internal;
 using AI4E.Serialization;
-using AI4E.Storage.Projection;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
-using Microsoft.AspNetCore.Mvc.Internal;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Newtonsoft.Json;
 
 namespace AI4E.Storage
 {
     public static class ServiceCollectionExtension
     {
-        public static IStorageBuilder AddStorage<TId, TEventBase, TEntityBase>(this IServiceCollection services)
-            where TId : struct, IEquatable<TId>
-            where TEventBase : class
-            where TEntityBase : class
+        public static IStorageBuilder AddStorage(this IServiceCollection services)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            // Configure necessary application parts
-            ConfigureApplicationParts(services);
-
             services.AddOptions();
+            services.AddCoreServices();
+            services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
             services.AddSingleton<ISerializer>(new Serialization.JsonSerializer());
-            services.AddTransient<IStreamStore<string, TId>, StreamStore<string, TId>>();
-            services.AddSingleton(new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.Auto,
-                Formatting = Formatting.Indented,
-                PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-                ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
-                ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
-            });
-
-            services.AddSingleton<ICommitDispatcher<string, TId>, EntityStore<TId, TEventBase, TEntityBase>.CommitDispatcher>();
-            services.AddSingleton<ISnapshotProcessor<string, TId>, EntityStore<TId, TEventBase, TEntityBase>.SnapshotProcessor>();
-            services.AddSingleton<IEntityAccessor<TId, TEventBase, TEntityBase>, DefaultEntityAccessor<TId, TEventBase, TEntityBase>>();
-            services.AddTransient(provider => Provider.Create<EntityStore<TId, TEventBase, TEntityBase>>(provider));
-            services.AddScoped<IEntityStore<TId, TEventBase, TEntityBase>>(
-                provider => provider.GetRequiredService<IProvider<EntityStore<TId, TEventBase, TEntityBase>>>()
-                                    .ProvideInstance());
-
-            services.AddSingleton(BuildProjector);
+            services.AddTransient<IDataStore, DataStore>();
 
             return new StorageBuilder(services);
         }
 
-        public static IStorageBuilder AddStorage<TId, TEventBase, TEntityBase>(this IServiceCollection services, Action<StorageOptions> configuration)
-            where TId : struct, IEquatable<TId>
-            where TEventBase : class
-            where TEntityBase : class
+        public static IStorageBuilder AddStorage(this IServiceCollection services, Action<StorageOptions> configuration)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
@@ -80,77 +49,10 @@ namespace AI4E.Storage
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
-            var builder = services.AddStorage<TId, TEventBase, TEntityBase>();
+            var builder = services.AddStorage();
             builder.Configure(configuration);
 
             return builder;
-        }
-
-        private static IProjector BuildProjector(IServiceProvider serviceProvider)
-        {
-            var projector = new Projector(serviceProvider);
-
-            var partManager = serviceProvider.GetRequiredService<ApplicationPartManager>();
-            var projectionFeature = new ProjectionFeature();
-
-            partManager.PopulateFeature(projectionFeature);
-
-            foreach (var type in projectionFeature.Projections)
-            {
-                var inspector = new ProjectionInspector(type);
-                var descriptors = inspector.GetDescriptors();
-
-                foreach (var descriptor in descriptors)
-                {
-                    var provider = Activator.CreateInstance(typeof(ProjectionInvoker<,>.Provider).MakeGenericType(descriptor.SourceType, descriptor.ProjectionType),
-                                                            type,
-                                                            descriptor);
-
-                    var registerMethodDefinition = typeof(IProjector).GetMethods().Single(p => p.Name == "RegisterProjection" && p.IsGenericMethodDefinition && p.GetGenericArguments().Length == 2);
-                    var registerMethod = registerMethodDefinition.MakeGenericMethod(descriptor.SourceType, descriptor.ProjectionType);
-                    registerMethod.Invoke(projector, new object[] { provider });
-                }
-            }
-
-            return projector;
-        }
-
-        private static void ConfigureApplicationParts(IServiceCollection services)
-        {
-            var partManager = services.GetApplicationPartManager();
-            partManager.ConfigureMessagingFeatureProviders();
-            services.TryAddSingleton(partManager);
-        }
-
-        private static void ConfigureMessagingFeatureProviders(this ApplicationPartManager partManager)
-        {
-            if (!partManager.FeatureProviders.OfType<ProjectionFeatureProvider>().Any())
-            {
-                partManager.FeatureProviders.Add(new ProjectionFeatureProvider());
-            }
-        }
-
-        private static ApplicationPartManager GetApplicationPartManager(this IServiceCollection services)
-        {
-            var manager = services.GetService<ApplicationPartManager>();
-            if (manager == null)
-            {
-                manager = new ApplicationPartManager();
-                var parts = DefaultAssemblyPartDiscoveryProvider.DiscoverAssemblyParts(Assembly.GetEntryAssembly().FullName);
-                foreach (var part in parts)
-                {
-                    manager.ApplicationParts.Add(part);
-                }
-            }
-
-            return manager;
-        }
-
-        private static T GetService<T>(this IServiceCollection services)
-        {
-            var serviceDescriptor = services.LastOrDefault(d => d.ServiceType == typeof(T));
-
-            return (T)serviceDescriptor?.ImplementationInstance;
         }
     }
 }

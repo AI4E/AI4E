@@ -50,13 +50,10 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Reflection;
 using AI4E;
 using AI4E.Internal;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
-using Microsoft.AspNetCore.Mvc.Internal;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace AI4E
@@ -92,7 +89,7 @@ namespace AI4E
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            ConfigureApplicationParts(services);
+            services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
             services.AddSingleton<IMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, ActivatorUtilities.CreateInstance<TMessageDispatcher>(serviceProvider)));
         }
@@ -106,7 +103,7 @@ namespace AI4E
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
 
-            ConfigureApplicationParts(services);
+            services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
             services.AddSingleton<IMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, instance));
         }
@@ -120,7 +117,7 @@ namespace AI4E
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
 
-            ConfigureApplicationParts(services);
+            services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
             services.AddSingleton<IMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, factory(serviceProvider)));
         }
@@ -132,7 +129,7 @@ namespace AI4E
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            ConfigureApplicationParts(services);
+            services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
             services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, ActivatorUtilities.CreateInstance<TMessageDispatcherImpl>(serviceProvider)));
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
@@ -148,7 +145,7 @@ namespace AI4E
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
 
-            ConfigureApplicationParts(services);
+            services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
             services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, instance));
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
@@ -164,17 +161,10 @@ namespace AI4E
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
 
-            ConfigureApplicationParts(services);
+            services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
             services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, factory(serviceProvider)));
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
-        }
-
-        private static void ConfigureApplicationParts(IServiceCollection services)
-        {
-            var partManager = services.GetApplicationPartManager();
-            partManager.ConfigureMessagingFeatureProviders();
-            services.TryAddSingleton(partManager);
         }
 
         private static TMessageDispatcher BuildMessageDispatcher<TMessageDispatcher>(IServiceProvider serviceProvider, TMessageDispatcher messageDispatcher)
@@ -231,35 +221,12 @@ namespace AI4E
             }
         }
 
-        private static void ConfigureMessagingFeatureProviders(this ApplicationPartManager partManager)
+        private static void ConfigureFeatureProviders(ApplicationPartManager partManager)
         {
             if (!partManager.FeatureProviders.OfType<MessageHandlerFeatureProvider>().Any())
             {
                 partManager.FeatureProviders.Add(new MessageHandlerFeatureProvider());
             }
-        }
-
-        private static ApplicationPartManager GetApplicationPartManager(this IServiceCollection services)
-        {
-            var manager = services.GetService<ApplicationPartManager>();
-            if (manager == null)
-            {
-                manager = new ApplicationPartManager();
-                var parts = DefaultAssemblyPartDiscoveryProvider.DiscoverAssemblyParts(Assembly.GetEntryAssembly().FullName);
-                foreach (var part in parts)
-                {
-                    manager.ApplicationParts.Add(part);
-                }
-            }
-
-            return manager;
-        }
-
-        private static T GetService<T>(this IServiceCollection services)
-        {
-            var serviceDescriptor = services.LastOrDefault(d => d.ServiceType == typeof(T));
-
-            return (T)serviceDescriptor?.ImplementationInstance;
         }
     }
 }

@@ -29,11 +29,20 @@
  */
 
 using System.Collections.Generic;
+using AI4E.Validation;
 
 namespace AI4E
 {
     public class MessagingOptions
     {
-        public IList<IContextualProvider<IMessageProcessor>> MessageProcessors { get; } = new List<IContextualProvider<IMessageProcessor>>();
+        public MessagingOptions()
+        {
+            MessageProcessors = new List<IContextualProvider<IMessageProcessor>>()
+            {
+                ContextualProvider.Create<ValidationCommandProcessor>()
+            };
+        }
+
+        public IList<IContextualProvider<IMessageProcessor>> MessageProcessors { get; }
     }
 }

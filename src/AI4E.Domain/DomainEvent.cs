@@ -1,15 +1,4 @@
-﻿/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        DomainEvent.cs 
- * Types:           (1) AI4E.Domain.DomainEvent
- *                  (2) AI4E.Domain.DomainEvent'1
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   15.03.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -33,27 +22,18 @@ using System;
 
 namespace AI4E.Domain
 {
-    public abstract class DomainEvent
+    public abstract class DomainEvent<TId> : DomainEventBase
     {
-        protected DomainEvent(Guid id)
+        public DomainEvent(TId aggregateId) : base(aggregateId.ToString())
         {
-            if (id == default)
-                throw new ArgumentException("The id must not be an empty guid.", nameof(id));
-
-            Id = id;
+            AggregateId = aggregateId;
         }
 
-        public Guid Id { get; }
+        public new TId AggregateId { get; }
     }
 
-    public abstract class DomainEvent<TAggregate> : DomainEvent
-        where TAggregate : AggregateRoot
+    public abstract class DomainEvent : DomainEvent<Guid>
     {
-        protected DomainEvent(Reference<TAggregate> aggregate) : base(aggregate.Id)
-        {
-            Aggregate = aggregate;
-        }
-
-        public Reference<TAggregate> Aggregate { get; }
+        public DomainEvent(Guid aggregateId) : base(aggregateId) { }
     }
 }

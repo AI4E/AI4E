@@ -1,14 +1,4 @@
-﻿/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        Entity.cs 
- * Types:           (1) AI4E.Domain.Entity
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   18.10.2017 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -32,74 +22,18 @@ using System;
 
 namespace AI4E.Domain
 {
-    public abstract class Entity : IEquatable<Entity>
+    public abstract class Entity<TId> : EntityBase
     {
-        private Guid _id;
-        private readonly Lazy<Type> _entityType;
-
-        protected Entity(Guid id)
+        protected Entity(TId id) : base(id.ToString())
         {
-            if (id == default)
-                throw new ArgumentException("The id must not be an empty guid.", nameof(id));
-
-            _id = id;
-            _entityType = new Lazy<Type>(() => GetType());
+            Id = id;
         }
 
-        protected Entity()
-        {
-            _id = Guid.NewGuid();
-            _entityType = new Lazy<Type>(() => GetType());
-        }
+        public new TId Id { get; }
+    }
 
-        public virtual Guid Id
-        {
-            get => _id;
-            internal set => _id = value;
-        }
-
-        private protected Type EntityType => _entityType.Value;
-
-        public bool Equals(Entity other)
-        {
-            if (ReferenceEquals(other, null))
-                return false;
-
-            if (ReferenceEquals(other, this))
-                return true;
-
-            return Equals(other.EntityType == EntityType && other.Id == Id);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as Entity);
-        }
-
-        public override int GetHashCode()
-        {
-            return EntityType.GetHashCode() ^ Id.GetHashCode();
-        }
-
-        public override string ToString()
-        {
-            return $"{{{EntityType.FullName} #{Id}}}";
-        }
-
-        public static bool operator ==(Entity left, Entity right)
-        {
-            if (ReferenceEquals(left, null))
-                return ReferenceEquals(right, null);
-
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(Entity left, Entity right)
-        {
-            if (ReferenceEquals(left, null))
-                return !ReferenceEquals(right, null);
-
-            return !left.Equals(right);
-        }
+    public abstract class Entity : Entity<Guid>
+    {
+        protected Entity(Guid id) : base(id) { }
     }
 }
