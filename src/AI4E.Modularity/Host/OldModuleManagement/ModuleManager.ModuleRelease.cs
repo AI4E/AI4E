@@ -13,9 +13,9 @@ namespace AI4E.Modularity
 
             public ModuleRelease(IModuleMetadata metadata, IModuleInstaller moduleInstaller, IModuleSource source)
             {
-                Debug.Assert(metadata != null);
-                Debug.Assert(moduleInstaller != null);
-                Debug.Assert(source != null);
+                System.Diagnostics.Debug.Assert(metadata != null);
+                System.Diagnostics.Debug.Assert(moduleInstaller != null);
+                System.Diagnostics.Debug.Assert(source != null);
 
                 _moduleInstaller = moduleInstaller;
                 Source = source;

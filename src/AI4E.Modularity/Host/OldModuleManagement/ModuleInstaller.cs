@@ -355,7 +355,7 @@ namespace AI4E.Modularity
 
         private async Task WriteConfigurationAsync(ModuleConfiguration configuration)
         {
-            Debug.Assert(configuration != null);
+            System.Diagnostics.Debug.Assert(configuration != null);
 
             using (var memoryStream = new MemoryStream())
             {

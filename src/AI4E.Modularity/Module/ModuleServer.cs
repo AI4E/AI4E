@@ -37,7 +37,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Module
 {
     public sealed class ModuleServer : IServer
     {
@@ -172,7 +172,7 @@ namespace AI4E.Modularity
 
             public HttpRequestForwardingHandler(IHttpApplication<TContext> application, ILogger<ModuleServer> logger)
             {
-                Debug.Assert(application != null);
+                System.Diagnostics.Debug.Assert(application != null);
 
                 _application = application;
                 _logger = logger;

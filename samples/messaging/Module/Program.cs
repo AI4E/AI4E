@@ -1,4 +1,4 @@
-﻿using AI4E.Modularity;
+﻿using AI4E.Modularity.Module;
 using Microsoft.AspNetCore.Hosting;
 
 namespace Module

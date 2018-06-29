@@ -16,10 +16,10 @@ namespace AI4E.Modularity
 
             public Module(ModuleIdentifier identifier, IEnumerable<ModuleRelease> releases, IModuleInstaller moduleInstaller)
             {
-                Debug.Assert(identifier != ModuleIdentifier.UnknownModule);
-                Debug.Assert(releases != null);
-                Debug.Assert(releases.Any());
-                Debug.Assert(moduleInstaller != null);
+                System.Diagnostics.Debug.Assert(identifier != ModuleIdentifier.UnknownModule);
+                System.Diagnostics.Debug.Assert(releases != null);
+                System.Diagnostics.Debug.Assert(releases.Any());
+                System.Diagnostics.Debug.Assert(moduleInstaller != null);
 
                 Identifier = identifier;
                 _releases = releases.ToImmutableArray();
@@ -30,8 +30,8 @@ namespace AI4E.Modularity
 
             public Module(ModuleIdentifier identifier, IModuleInstaller moduleInstaller)
             {
-                Debug.Assert(identifier != ModuleIdentifier.UnknownModule);
-                Debug.Assert(moduleInstaller != null);
+                System.Diagnostics.Debug.Assert(identifier != ModuleIdentifier.UnknownModule);
+                System.Diagnostics.Debug.Assert(moduleInstaller != null);
 
                 Identifier = identifier;
                 _releases = ImmutableArray<ModuleRelease>.Empty;

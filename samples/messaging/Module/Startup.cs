@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AI4E;
 using AI4E.Domain.Services;
 using AI4E.Modularity;
+using AI4E.Modularity.Module;
 using AI4E.Routing;
 using AI4E.Validation;
 using Microsoft.AspNetCore.Builder;

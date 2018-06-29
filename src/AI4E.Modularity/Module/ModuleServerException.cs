@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Module
 {
     public class ModuleServerException : Exception
     {

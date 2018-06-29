@@ -19,20 +19,17 @@
  */
 
 using System;
-using System.Linq;
 using System.Net;
-using System.Reflection;
 using AI4E.Coordination;
+using AI4E.Modularity.Debug;
 using AI4E.Remoting;
 using AI4E.Routing;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
-using Microsoft.AspNetCore.Mvc.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Host
 {
     public static class ServiceCollectionExtension
     {

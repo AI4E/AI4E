@@ -15,7 +15,7 @@ namespace AI4E.Modularity
 
             public ModuleSupervisor(IModuleInstallation installation)
             {
-                Debug.Assert(installation != null);
+                System.Diagnostics.Debug.Assert(installation != null);
                 ModuleInstallation = installation;
             }
 

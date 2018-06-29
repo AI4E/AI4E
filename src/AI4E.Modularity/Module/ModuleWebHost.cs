@@ -24,7 +24,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Module
 {
     public static class ModuleWebHost
     {

@@ -155,7 +155,7 @@ namespace AI4E.Modularity
             var result = new List<ModuleRelease>();
             var moduleLoader = _moduleInstaller.GetModuleLoader(source);
 
-            Debug.Assert(moduleLoader != null);
+            System.Diagnostics.Debug.Assert(moduleLoader != null);
 
             var availableModules = await moduleLoader.ListModulesAsync();
 
