@@ -13,12 +13,12 @@ namespace AI4E.Modularity.Debugging
     {
         private readonly ICoordinationManager _coordinationManager;
 
-        public CoordinationManagerSkeleton(IProvider<ICoordinationManager> coordinationManagerProvider)
+        public CoordinationManagerSkeleton(ICoordinationManagerFactory coordinationManagerFactory)
         {
-            if (coordinationManagerProvider == null)
-                throw new ArgumentNullException(nameof(coordinationManagerProvider));
+            if (coordinationManagerFactory == null)
+                throw new ArgumentNullException(nameof(coordinationManagerFactory));
 
-            _coordinationManager = coordinationManagerProvider.ProvideInstance();
+            _coordinationManager = coordinationManagerFactory.CreateCoordinationManager();
 
             Assert(_coordinationManager != null);
         }

@@ -77,22 +77,16 @@ namespace AI4E.Modularity
             services.AddSingleton<IRouteMap<IPEndPoint>, RouteMap<IPEndPoint>>();
 
             // Coordination
-            services.AddSingleton<IProvider<ICoordinationManager>, CoordinationManager<IPEndPoint>.Provider>();
-            services.AddSingleton(p => p.GetRequiredService<IProvider<ICoordinationManager>>().ProvideInstance());
-            services.AddSingleton<ISessionManager, SessionManager>();
-            services.AddSingleton<ISessionProvider, SessionProvider<IPEndPoint>>();
-            services.AddSingleton<IStoredEntryManager, StoredEntryManager>();
-            services.AddSingleton<IStoredSessionManager, StoredSessionManager>();
+            services.AddCoordinationService<IPEndPoint>();
 
             // Utils
             services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
             // Http-dispatch
-            //services.AddSingleton<HttpDispatchTable>();
             services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
 
             // Debugging
-            services.AddSingleton<DebugPort>();
+            services.AddSingleton(ConfigureDebugPort);
 
             services.Configure<RemoteMessagingOptions>(options =>
             {
@@ -100,6 +94,21 @@ namespace AI4E.Modularity
             });
 
             return new ModularityBuilder(services);
+        }
+
+        private static DebugPort ConfigureDebugPort(IServiceProvider serviceProvider)
+        {
+            Assert(serviceProvider != null);
+
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModularityOptions>>();
+            var options = optionsAccessor.Value ?? new ModularityOptions();
+
+            if (options.EnableDebugging)
+            {
+                return new DebugPort(serviceProvider, serviceProvider.GetRequiredService<IAddressConversion<IPEndPoint>>(), optionsAccessor);
+            }
+
+            return null;
         }
 
         private static ILogicalEndPoint ConfigureLogicalEndPoint(IServiceProvider serviceProvider)

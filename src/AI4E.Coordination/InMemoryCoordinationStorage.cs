@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,6 +7,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
 {
+    [Obsolete("Use CoordinationStorage in combination with InMemoryDatabase")]
     public sealed partial class InMemoryCoordinationStorage : ICoordinationStorage, ISessionStorage
     {
         private readonly Dictionary<string, IStoredEntry> _entries = new Dictionary<string, IStoredEntry>();
@@ -33,20 +33,6 @@ namespace AI4E.Coordination
         }
 
         #region Entry
-
-        public IStoredEntry CreateEntry(string path, string session, bool isEphemeral, byte[] value)
-        {
-            if (path == null)
-                throw new ArgumentNullException(nameof(path));
-
-            if (session == null)
-                throw new ArgumentNullException(nameof(session));
-
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
-
-            return _storedEntryManager.Create(path, session, isEphemeral, value.ToImmutableArray());
-        }
 
         public Task<IStoredEntry> UpdateEntryAsync(IStoredEntry comparand, IStoredEntry value, CancellationToken cancellation)
         {
@@ -139,15 +125,7 @@ namespace AI4E.Coordination
         #endregion
 
         #region Session
-
-        public IStoredSession CreateSession(string key, DateTime leaseEnd)
-        {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
-
-            return _storedSessionManager.Begin(key, leaseEnd);
-        }
-
+        
         public Task<IStoredSession> UpdateSessionAsync(IStoredSession comparand, IStoredSession value, CancellationToken cancellation)
         {
             string key;

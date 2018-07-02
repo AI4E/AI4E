@@ -48,7 +48,7 @@ namespace AI4E.Modularity
             var installer = serviceProvider.GetRequiredService<IModuleInstaller>();
             var dispatcher = serviceProvider.GetRequiredService<IRemoteMessageDispatcher>();
             var dispatchStore = serviceProvider.GetRequiredService<IHttpDispatchStore>();
-            var debugPort = serviceProvider.GetRequiredService<DebugPort>();
+            var debugPort = serviceProvider.GetService<DebugPort>();
 
             applicationBuilder.Use(async (context, next) =>
             {
