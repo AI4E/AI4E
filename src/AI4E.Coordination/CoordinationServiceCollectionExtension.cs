@@ -1,21 +1,58 @@
 ﻿using System;
+using AI4E.Storage;
+using AI4E.Storage.InMemory;
 using Microsoft.Extensions.DependencyInjection;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
 {
-    public sealed class CoordinationServiceCollectionExtension
+    public static class CoordinationServiceCollectionExtension
     {
-        public ICoordinationBuilder AddCoordinationService<TAddress>(IServiceCollection services)
+        public static ICoordinationBuilder AddCoordinationService<TAddress>(this IServiceCollection services)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            services.AddSingleton<CoordinationStorage>();
-            services.AddSingleton<ICoordinationStorage, CoordinationStorage>();
-            services.AddSingleton<ISessionStorage, CoordinationStorage>();
-            services.AddSingleton<ICoordinationManager, CoordinationManager<TAddress>>();
+            // Add helpers
+            services.AddSingleton<ISessionProvider, SessionProvider<TAddress>>();
+
+            // Add default storage
+            services.UseCoordinationStorage<CoordinationStorage>();
+
+            // Add state managers
+            services.AddSingleton<IStoredEntryManager, StoredEntryManager>();
+            services.AddSingleton<IStoredSessionManager, StoredSessionManager>();
+
+            // Add session manager
+            services.AddSingleton<ISessionManager, SessionManager>();
+
+            // Add coordination service
+            services.AddSingleton(p => p.GetRequiredService<ICoordinationManagerFactory>().CreateCoordinationManager());
+            services.AddSingleton<ICoordinationManagerFactory, CoordinationManagerFactory<TAddress>>();
 
             return new CoordinationBuilder(services);
+        }
+
+        internal static void UseCoordinationStorage<TCoordinationStorage>(this IServiceCollection services)
+              where TCoordinationStorage : class, ICoordinationStorage, ISessionStorage
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            services.AddSingleton<TCoordinationStorage>();
+            services.AddSingleton<ICoordinationStorage>(p => p.GetRequiredService<TCoordinationStorage>());
+            services.AddSingleton<ISessionStorage>(p => p.GetRequiredService<TCoordinationStorage>());
+        }
+
+        internal static void UseCoordinationStorage<TCoordinationStorage>(this IServiceCollection services, Func<IServiceProvider, TCoordinationStorage> factory)
+              where TCoordinationStorage : class, ICoordinationStorage, ISessionStorage
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            services.AddSingleton(factory);
+            services.AddSingleton<ICoordinationStorage>(p => p.GetRequiredService<TCoordinationStorage>());
+            services.AddSingleton<ISessionStorage>(p => p.GetRequiredService<TCoordinationStorage>());
         }
 
         private sealed class CoordinationBuilder : ICoordinationBuilder
@@ -45,9 +82,30 @@ namespace AI4E.Coordination
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
 
-            builder.Services.AddSingleton<TCoordinationStorage>();
-            builder.Services.AddSingleton<ICoordinationStorage>(p => p.GetRequiredService<TCoordinationStorage>());
-            builder.Services.AddSingleton<ISessionStorage>(p => p.GetRequiredService<TCoordinationStorage>());
+            builder.Services.UseCoordinationStorage<TCoordinationStorage>();
+
+            return builder;
+        }
+
+        public static ICoordinationBuilder UseDefaultCoordinationStorage(this ICoordinationBuilder builder)
+        {
+            if (builder == null)
+                throw new ArgumentNullException(nameof(builder));
+
+            builder.Services.UseCoordinationStorage<CoordinationStorage>();
+
+            return builder;
+        }
+
+        public static ICoordinationBuilder UseDatabase(this ICoordinationBuilder builder, IFilterableDatabase database)
+        {
+            if (builder == null)
+                throw new ArgumentNullException(nameof(builder));
+
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
+
+            builder.Services.UseCoordinationStorage(p => BuildCoordinationStorage(p, database));
 
             return builder;
         }
@@ -57,9 +115,25 @@ namespace AI4E.Coordination
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
 
-            builder.UseCoordinationStorage<InMemoryCoordinationStorage>();
+            builder.Services.UseCoordinationStorage(BuildInMemoryCoordinationStorage);
 
             return builder;
+        }
+
+        private static CoordinationStorage BuildCoordinationStorage(IServiceProvider serviceProvider, IFilterableDatabase database)
+        {
+            Assert(serviceProvider != null);
+            Assert(database != null);
+
+            var storedSessionManager = serviceProvider.GetRequiredService<IStoredSessionManager>();
+            var storedEntryManager = serviceProvider.GetRequiredService<IStoredEntryManager>();
+
+            return new CoordinationStorage(database, storedSessionManager, storedEntryManager);
+        }
+
+        private static CoordinationStorage BuildInMemoryCoordinationStorage(IServiceProvider serviceProvider)
+        {
+            return BuildCoordinationStorage(serviceProvider, new InMemoryDatabase());
         }
     }
 }

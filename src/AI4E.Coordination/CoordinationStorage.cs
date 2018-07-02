@@ -33,26 +33,12 @@ namespace AI4E.Coordination
 
         #region Entry
 
-        public IStoredEntry CreateEntry(string path, string session, bool isEphemeral, byte[] value)
-        {
-            if (path == null)
-                throw new ArgumentNullException(nameof(path));
-
-            if (session == null)
-                throw new ArgumentNullException(nameof(session));
-
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
-
-            return _storedEntryManager.Create(path, session, isEphemeral, value.ToImmutableArray());
-        }
-
         public async Task<IStoredEntry> GetEntryAsync(string path, CancellationToken cancellation)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
 
-            var storedEntry = await _database.GetOneAsync<StoredEntry>(p => p.Path == path, cancellation);
+            var storedEntry = await _database.GetOneAsync<StoredEntry>(p => p.Id == path, cancellation);
 
             return _storedEntryManager.Copy(storedEntry);
         }
@@ -61,7 +47,7 @@ namespace AI4E.Coordination
         public async Task<IStoredEntry> UpdateEntryAsync(IStoredEntry comparand, IStoredEntry value, CancellationToken cancellation)
         {
             var convertedValue = ConvertValue(value);
-            var convertedComparand = ConvertValue(value);
+            var convertedComparand = ConvertValue(comparand);
 
             if (await _database.CompareExchangeAsync(convertedValue, convertedComparand, (left, right) => left.StorageVersion == right.StorageVersion, cancellation))
             {
@@ -80,7 +66,7 @@ namespace AI4E.Coordination
                 convertedValue = value as StoredEntry ?? new StoredEntry(value);
 
                 Assert(convertedValue != null);
-                Assert(convertedValue.Path == value.Path);
+                Assert(convertedValue.Id == value.Path);
             }
 
             return convertedValue;
@@ -90,20 +76,12 @@ namespace AI4E.Coordination
 
         #region Session
 
-        public IStoredSession CreateSession(string key, DateTime leaseEnd)
-        {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
-
-            return _storedSessionManager.Begin(key, leaseEnd);
-        }
-
         public async Task<IStoredSession> GetSessionAsync(string key, CancellationToken cancellation)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
 
-            var storedSession = await _database.GetOneAsync<StoredSession>(p => p.Key == key, cancellation);
+            var storedSession = await _database.GetOneAsync<StoredSession>(p => p.Id == key, cancellation);
 
             return _storedSessionManager.Copy(storedSession);
         }
@@ -118,7 +96,7 @@ namespace AI4E.Coordination
         public async Task<IStoredSession> UpdateSessionAsync(IStoredSession comparand, IStoredSession value, CancellationToken cancellation)
         {
             var convertedValue = ConvertValue(value);
-            var convertedComparand = ConvertValue(value);
+            var convertedComparand = ConvertValue(comparand);
 
             if (await _database.CompareExchangeAsync(convertedValue, convertedComparand, (left, right) => left.StorageVersion == right.StorageVersion, cancellation))
             {
@@ -137,7 +115,7 @@ namespace AI4E.Coordination
                 convertedValue = value as StoredSession ?? new StoredSession(value);
 
                 Assert(convertedValue != null);
-                Assert(convertedValue.Key == value.Key);
+                Assert(convertedValue.Id == value.Key);
             }
 
             return convertedValue;
@@ -151,7 +129,7 @@ namespace AI4E.Coordination
 
             public StoredEntry(IStoredEntry entry)
             {
-                Path = entry.Path;
+                Id = entry.Path;
                 Value = entry.Value.ToArray();
                 ReadLocks = entry.ReadLocks.ToArray();
                 WriteLock = entry.WriteLock;
@@ -163,7 +141,8 @@ namespace AI4E.Coordination
                 EphemeralOwner = entry.EphemeralOwner;
             }
 
-            public string Path { get; set; }
+            public string Id { get; set; }
+            string IStoredEntry.Path => Id;
             public byte[] Value { get; set; }
             public string[] ReadLocks { get; set; }
             public string WriteLock { get; set; }
@@ -186,14 +165,15 @@ namespace AI4E.Coordination
 
             public StoredSession(IStoredSession session)
             {
-                Key = session.Key;
+                Id = session.Key;
                 IsEnded = session.IsEnded;
                 LeaseEnd = session.LeaseEnd;
                 Entries = session.Entries.ToArray();
                 StorageVersion = session.StorageVersion;
             }
 
-            public string Key { get; set; }
+            public string Id { get; set; }
+            string IStoredSession.Key => Id;
             public bool IsEnded { get; set; }
             public DateTime LeaseEnd { get; set; }
             public string[] Entries { get; set; }

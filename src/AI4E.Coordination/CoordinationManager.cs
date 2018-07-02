@@ -56,6 +56,8 @@ namespace AI4E.Coordination
 {
     public sealed class CoordinationManager<TAddress> : ICoordinationManager
     {
+        #region Fields
+
         private static readonly ImmutableArray<byte> _emptyValue = ImmutableArray<byte>.Empty;
         private static readonly TimeSpan _leaseLength =
 #if DEBUG
@@ -83,6 +85,10 @@ namespace AI4E.Coordination
         private readonly AsyncProcess _receiveProcess;
         private readonly AsyncInitializationHelper<(string session, IPhysicalEndPoint<TAddress> physicalEndPoint)> _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
+
+        #endregion
+
+        #region C'tor
 
         public CoordinationManager(ICoordinationStorage storage,
                                    IStoredEntryManager storedEntryManager,
@@ -134,19 +140,7 @@ namespace AI4E.Coordination
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
-        public async Task<string> GetSessionAsync(CancellationToken cancellation = default)
-        {
-            var (session, _) = await _initializationHelper.Initialization.WithCancellation(cancellation);
-
-            return session;
-        }
-
-        private async Task<IPhysicalEndPoint<TAddress>> GetPhysicalEndPointAsync(CancellationToken cancellation = default)
-        {
-            var (_, physicalEndPoint) = await _initializationHelper.Initialization.WithCancellation(cancellation);
-
-            return physicalEndPoint;
-        }
+        #endregion
 
         #region RX/TX
 
@@ -440,6 +434,20 @@ namespace AI4E.Coordination
 
         #region Initialization
 
+        public async Task<string> GetSessionAsync(CancellationToken cancellation = default)
+        {
+            var (session, _) = await _initializationHelper.Initialization.WithCancellation(cancellation);
+
+            return session;
+        }
+
+        private async Task<IPhysicalEndPoint<TAddress>> GetPhysicalEndPointAsync(CancellationToken cancellation = default)
+        {
+            var (_, physicalEndPoint) = await _initializationHelper.Initialization.WithCancellation(cancellation);
+
+            return physicalEndPoint;
+        }
+
         private async Task<(string session, IPhysicalEndPoint<TAddress> physicalEndPoint)> InitializeInternalAsync(CancellationToken cancellation)
         {
             string session;
@@ -693,7 +701,7 @@ namespace AI4E.Coordination
 
                 Assert(entry != null);
 
-                // This must not be places in the cache as we do not own a read lock for it.
+                // This must not be placed in the cache as we do not own a read lock for it.
                 return new Entry(this, entry);
             }
         }
@@ -739,7 +747,7 @@ namespace AI4E.Coordination
 
                 // TODO: Throw if the entry did already exists but with other creation-modes than specified?
 
-                // This must not be places in the cache as we do not own a read lock for it.
+                // This must not be placed in the cache as we do not own a read lock for it.
                 return new Entry(this, entry);
             }
         }
@@ -1869,69 +1877,69 @@ namespace AI4E.Coordination
                 tcs.SetResult(null);
             }
         }
+    }
 
-        public sealed class Provider : IProvider<ICoordinationManager>
+    public sealed class CoordinationManagerFactory<TAddress> : ICoordinationManagerFactory
+    {
+        private readonly ICoordinationStorage _storage;
+        private readonly IStoredEntryManager _storedEntryManager;
+        private readonly ISessionManager _sessionManager;
+        private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
+        private readonly ISessionProvider _sessionProvider;
+        private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IAddressConversion<TAddress> _addressConversion;
+        private readonly ILogger<CoordinationManager<TAddress>> _logger;
+
+        public CoordinationManagerFactory(ICoordinationStorage storage,
+                        IStoredEntryManager storedEntryManager,
+                        ISessionManager sessionManager,
+                        IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
+                        ISessionProvider sessionProvider,
+                        IDateTimeProvider dateTimeProvider,
+                        IAddressConversion<TAddress> addressConversion,
+                        ILogger<CoordinationManager<TAddress>> logger)
         {
-            private readonly ICoordinationStorage _storage;
-            private readonly IStoredEntryManager _storedEntryManager;
-            private readonly ISessionManager _sessionManager;
-            private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
-            private readonly ISessionProvider _sessionProvider;
-            private readonly IDateTimeProvider _dateTimeProvider;
-            private readonly IAddressConversion<TAddress> _addressConversion;
-            private readonly ILogger<CoordinationManager<TAddress>> _logger;
+            if (storage == null)
+                throw new ArgumentNullException(nameof(storage));
 
-            public Provider(ICoordinationStorage storage,
-                            IStoredEntryManager storedEntryManager,
-                            ISessionManager sessionManager,
-                            IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
-                            ISessionProvider sessionProvider,
-                            IDateTimeProvider dateTimeProvider,
-                            IAddressConversion<TAddress> addressConversion,
-                            ILogger<CoordinationManager<TAddress>> logger)
-            {
-                if (storage == null)
-                    throw new ArgumentNullException(nameof(storage));
+            if (storedEntryManager == null)
+                throw new ArgumentNullException(nameof(storedEntryManager));
 
-                if (storedEntryManager == null)
-                    throw new ArgumentNullException(nameof(storedEntryManager));
+            if (sessionManager == null)
+                throw new ArgumentNullException(nameof(sessionManager));
 
-                if (sessionManager == null)
-                    throw new ArgumentNullException(nameof(sessionManager));
+            if (endPointMultiplexer == null)
+                throw new ArgumentNullException(nameof(endPointMultiplexer));
 
-                if (endPointMultiplexer == null)
-                    throw new ArgumentNullException(nameof(endPointMultiplexer));
+            if (sessionProvider == null)
+                throw new ArgumentNullException(nameof(sessionProvider));
 
-                if (sessionProvider == null)
-                    throw new ArgumentNullException(nameof(sessionProvider));
+            if (dateTimeProvider == null)
+                throw new ArgumentNullException(nameof(dateTimeProvider));
 
-                if (dateTimeProvider == null)
-                    throw new ArgumentNullException(nameof(dateTimeProvider));
+            if (addressConversion == null)
+                throw new ArgumentNullException(nameof(addressConversion));
 
-                if (addressConversion == null)
-                    throw new ArgumentNullException(nameof(addressConversion));
+            _storage = storage;
+            _storedEntryManager = storedEntryManager;
+            _sessionManager = sessionManager;
+            _endPointMultiplexer = endPointMultiplexer;
+            _sessionProvider = sessionProvider;
+            _dateTimeProvider = dateTimeProvider;
+            _addressConversion = addressConversion;
+            _logger = logger;
+        }
 
-                _storage = storage;
-                _storedEntryManager = storedEntryManager;
-                _sessionManager = sessionManager;
-                _endPointMultiplexer = endPointMultiplexer;
-                _sessionProvider = sessionProvider;
-                _dateTimeProvider = dateTimeProvider;
-                _addressConversion = addressConversion;
-                _logger = logger;
-            }
-
-            public ICoordinationManager ProvideInstance()
-            {
-                return new CoordinationManager<TAddress>(_storage,
-                                                         _storedEntryManager,
-                                                         _sessionManager,
-                                                         _endPointMultiplexer,
-                                                         _sessionProvider,
-                                                         _dateTimeProvider,
-                                                         _addressConversion,
-                                                         _logger);
-            }
+        public ICoordinationManager CreateCoordinationManager()
+        {
+            return new CoordinationManager<TAddress>(_storage,
+                                                     _storedEntryManager,
+                                                     _sessionManager,
+                                                     _endPointMultiplexer,
+                                                     _sessionProvider,
+                                                     _dateTimeProvider,
+                                                     _addressConversion,
+                                                     _logger);
         }
     }
 }

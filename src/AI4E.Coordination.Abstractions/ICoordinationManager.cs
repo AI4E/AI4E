@@ -70,6 +70,11 @@ namespace AI4E.Coordination
         Task<string> GetSessionAsync(CancellationToken cancellation = default);
     }
 
+    public interface ICoordinationManagerFactory
+    {
+        ICoordinationManager CreateCoordinationManager();
+    }
+
     [Flags]
     public enum EntryCreationModes
     {

@@ -5,7 +5,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
 using AI4E.Internal;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
@@ -27,6 +26,12 @@ namespace AI4E.Storage.InMemory
         {
             var dataType = typeof(TData);
             var idType = DataPropertyHelper.GetIdType<TData>();
+
+            if (idType == null)
+            {
+                throw new Exception($"Cannot store objects of type '{typeof(TData).FullName}'. An id cannot be extracted."); // TODO
+            }
+
 
             var typedStore = Activator.CreateInstance(typeof(InMemoryDatabase<,>).MakeGenericType(idType, dataType));
 

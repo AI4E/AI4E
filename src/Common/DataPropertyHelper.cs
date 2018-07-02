@@ -104,16 +104,17 @@ namespace AI4E.Internal
 
             var idMember = GetIdMember(type);
 
-            if (idMember.MemberType == MemberTypes.Method)
-                return ((MethodInfo)idMember).ReturnType;
+            if (idMember != null)
+            {
+                if (idMember.MemberType == MemberTypes.Method)
+                    return ((MethodInfo)idMember).ReturnType;
 
+                if (idMember.MemberType == MemberTypes.Field)
+                    return ((FieldInfo)idMember).FieldType;
 
-            if (idMember.MemberType == MemberTypes.Field)
-                return ((FieldInfo)idMember).FieldType;
-
-
-            if (idMember.MemberType == MemberTypes.Property)
-                return ((PropertyInfo)idMember).PropertyType;
+                if (idMember.MemberType == MemberTypes.Property)
+                    return ((PropertyInfo)idMember).PropertyType;
+            }
 
             return null;
         }
