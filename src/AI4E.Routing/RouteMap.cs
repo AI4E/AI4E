@@ -89,9 +89,9 @@ namespace AI4E.Routing
 
             Assert(routeEntry != null);
 
-            var entries = routeEntry.Childs;
+            var entries = await routeEntry.Childs.ToArray(cancellation);
 
-            return await entries.Select(p => _addressConversion.DeserializeAddress(p.Value.ToArray())).ToArray(cancellation);
+            return entries.Select(p => _addressConversion.DeserializeAddress(p.Value.ToArray()));
         }
 
         #endregion

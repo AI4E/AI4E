@@ -625,7 +625,7 @@ namespace AI4E.Routing
                 }
             }
 
-            private Task<IDispatchResult> DispatchSingleHandlerAsync(IContextualProvider<IMessageHandler<TMessage>> handler,
+            private async Task<IDispatchResult> DispatchSingleHandlerAsync(IContextualProvider<IMessageHandler<TMessage>> handlerProvider,
                                                                      TMessage message,
                                                                      DispatchValueDictionary context,
                                                                      CancellationToken cancellation)
@@ -633,21 +633,28 @@ namespace AI4E.Routing
                 // TODO: Cancellation
 
                 Debug.Assert(message != null);
-                Debug.Assert(handler != null);
+                Debug.Assert(handlerProvider != null);
 
                 using (var scope = _serviceProvider.CreateScope())
                 {
                     try
                     {
-                        return handler.ProvideInstance(scope.ServiceProvider).HandleAsync(message, context);
+                        // TODO: If instancing the handler failed or the returned handler is null, 
+                        //       do we return a dispatchfailure result with a proper error message instead?
+                        var handler = handlerProvider.ProvideInstance(scope.ServiceProvider);
+
+                        if (handler == null)
+                            return new FailureDispatchResult();
+
+                        return await handler.HandleAsync(message, context);
                     }
                     catch (ConcurrencyException)
                     {
-                        return Task.FromResult<IDispatchResult>(new ConcurrencyIssueDispatchResult());
+                        return new ConcurrencyIssueDispatchResult();
                     }
                     catch (Exception exc)
                     {
-                        return Task.FromResult<IDispatchResult>(new FailureDispatchResult(exc));
+                        return new FailureDispatchResult(exc);
                     }
                 }
             }

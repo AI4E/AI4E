@@ -111,7 +111,7 @@ namespace AI4E.Domain.Services
                 var snapshotCtor = typeof(Snapshot<>).MakeGenericType(referencedType)
                                            ?.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,
                                                          binder: null,
-                                                         types: new[] { typeof(Guid), typeof(long), typeof(IReferenceResolver) },
+                                                         types: new[] { typeof(string), typeof(long), typeof(IReferenceResolver) },
                                                          modifiers: null);
 
                 if (snapshotCtor == null)
@@ -124,18 +124,18 @@ namespace AI4E.Domain.Services
 
             id = reader.Value as string;
 
-            var revisionCtor = typeof(Reference<>).MakeGenericType(referencedType)
+            var referenceCtor = typeof(Reference<>).MakeGenericType(referencedType)
                                     ?.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,
                                                      binder: null,
-                                                     types: new[] { typeof(Guid), typeof(IReferenceResolver) },
+                                                     types: new[] { typeof(string), typeof(IReferenceResolver) },
                                                      modifiers: null);
 
-            if (revisionCtor == null)
+            if (referenceCtor == null)
             {
                 throw new Exception(); // TODO
             }
 
-            return revisionCtor.Invoke(new object[] { id, _referenceResolver });
+            return referenceCtor.Invoke(new object[] { id, _referenceResolver });
         }
 
         public override bool CanConvert(Type objectType)

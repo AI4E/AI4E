@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using AI4E.Internal;
 using AI4E.Routing;
@@ -53,7 +54,17 @@ namespace AI4E.Modularity
             applicationBuilder.Use(async (context, next) =>
             {
                 var cancellation = context?.RequestAborted ?? default;
+
+                var watch = new Stopwatch();
+                watch.Start();
+
                 var endPoint = await dispatchStore.GetRouteAsync(context.Features.Get<IHttpRequestFeature>().Path, cancellation);
+
+                watch.Stop();
+
+                Console.WriteLine($"---> end-point lookup took: {watch.ElapsedMilliseconds}ms");
+
+                watch.Restart();
 
                 if (endPoint != null)
                 {
@@ -79,7 +90,19 @@ namespace AI4E.Modularity
 
                     var message = moduleHttpRequest;
 
+                    watch.Stop();
+
+                    Console.WriteLine($"---> request message building took: {watch.ElapsedMilliseconds}ms");
+
+                    watch.Restart();
+
                     var dispatchResult = await dispatcher.DispatchAsync(message, new DispatchValueDictionary(), publish: false, endPoint, cancellation);
+
+                    watch.Stop();
+
+                    Console.WriteLine($"---> message dispatch building took: {watch.ElapsedMilliseconds}ms");
+
+                    watch.Restart();
 
                     var response = default(ModuleHttpResponse);
 
@@ -105,7 +128,14 @@ namespace AI4E.Modularity
                         responseFeature.Headers.Add(header.Key, new StringValues(header.Value));
                     }
 
-                    await responseFeature.Body.WriteAsync(response.Body, 0, response.Body.Length);
+                    if (response.Body.Length > 0)
+                    {
+                        await responseFeature.Body.WriteAsync(response.Body, 0, response.Body.Length);
+                    }
+
+                    watch.Stop();
+
+                    Console.WriteLine($"---> message response extraction took: {watch.ElapsedMilliseconds}ms");
                 }
                 else
                 {

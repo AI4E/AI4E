@@ -39,6 +39,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -51,6 +52,7 @@ using AI4E.Processing;
 using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
+using static AI4E.Internal.DebugEx;
 
 namespace AI4E.Coordination
 {
@@ -534,6 +536,7 @@ namespace AI4E.Coordination
 
         #region Read entry
 
+        // TODO: Return ValueTask
         public async Task<IEntry> GetAsync(string path, CancellationToken cancellation = default)
         {
             if (path == null)
@@ -550,75 +553,43 @@ namespace AI4E.Coordination
             return new Entry(this, entry);
         }
 
-        private async Task<IStoredEntry> GetEntryAsync(string path, CancellationToken cancellation = default)
+        private async ValueTask<IStoredEntry> GetEntryAsync(string normalizedPath, CancellationToken cancellation = default)
         {
-            Assert(path != null);
-
-            var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
+            Assert(normalizedPath != null);
 
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
                 if (_disposeHelper.IsDisposed)
                     throw new ObjectDisposedException(GetType().FullName);
 
+                var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
+
                 await _initializationHelper.Initialization.WithCancellation(combinedCancellationSource.Token);
-
-                var comparandVersion = 0;
-
-                if (_cache.TryGetValue(path, out var cacheEntry))
-                {
-                    if (cacheEntry.IsValid)
-                    {
-                        return cacheEntry.Entry;
-                    }
-
-                    comparandVersion = cacheEntry.Version;
-                }
-
-                var entry = await LoadEntryAsync(path, combinedCancellationSource.Token);
-
-                bool writeOk;
-
-                do
-                {
-                    if (!_cache.TryGetValue(path, out var current))
-                    {
-                        // No one may actually delete a cache entry from the cache.
-                        Assert(comparandVersion == 0);
-
-                        current = null;
-                    }
-
-                    var start = current;
-
-                    if (start == null)
-                    {
-                        var desired = new CacheEntry(path, entry);
-
-                        writeOk = _cache.TryAdd(path, desired);
-                    }
-                    else
-                    {
-                        var desired = start.Update(entry, comparandVersion);
-
-                        // Nothing to change in the cache. We are done.
-                        if (start == desired)
-                        {
-                            break;
-                        }
-
-                        writeOk = _cache.TryUpdate(path, desired, start);
-                    }
-                }
-                while (!writeOk);
-
-                return entry;
+                return await InternalGetEntryAsync(normalizedPath, combinedCancellationSource.Token);
             }
         }
 
-        private async Task<IStoredEntry> LoadEntryAsync(string path, CancellationToken cancellation)
+        private async ValueTask<IStoredEntry> InternalGetEntryAsync(string normalizedPath, CancellationToken cancellation)
         {
-            var entry = await _storage.GetEntryAsync(path, cancellation);
+            var comparandVersion = 0;
+            if (TryGetCacheEntry(normalizedPath, out var cacheEntry))
+            {
+                if (cacheEntry.IsValid)
+                {
+                    var result = cacheEntry.Entry;
+                    Assert(result != null);
+                    return result;
+                }
+
+                comparandVersion = cacheEntry.Version;
+            }
+
+            return await LoadEntryAsync(normalizedPath, comparandVersion, cancellation);
+        }
+
+        private async Task<IStoredEntry> LoadEntryAsync(string normalizedPath, int comparandVersion, CancellationToken cancellation)
+        {
+            var entry = await _storage.GetEntryAsync(normalizedPath, cancellation);
 
             // We cannot cache a non existing entry.
             if (entry is null)
@@ -632,7 +603,7 @@ namespace AI4E.Coordination
 
                 if (entry == null)
                 {
-                    var parentPath = EntryPathHelper.GetParentPath(path, out var name, normalize: false);
+                    var parentPath = EntryPathHelper.GetParentPath(normalizedPath, out var name, normalize: false);
 
                     var parent = await _storage.GetEntryAsync(parentPath, cancellation);
 
@@ -641,6 +612,8 @@ namespace AI4E.Coordination
                         await RemoveChildEntryAsync(parent, name, cancellation);
                     }
                 }
+
+                UpdateCacheEntry(normalizedPath, comparandVersion, entry);
 
                 return entry;
             }
@@ -706,6 +679,7 @@ namespace AI4E.Coordination
             }
         }
 
+        // TODO: Return ValueTask
         public async Task<IEntry> GetOrCreateAsync(string path, byte[] value, EntryCreationModes modes = default, CancellationToken cancellation = default)
         {
             if (path == null)
@@ -733,15 +707,21 @@ namespace AI4E.Coordination
 
                 await _initializationHelper.Initialization.WithCancellation(combinedCancellationSource.Token);
 
+                var cachedEntry = await InternalGetEntryAsync(normalizedPath, combinedCancellationSource.Token);
+
+                if (cachedEntry != null)
+                {
+                    return new Entry(this, cachedEntry);
+                }
 
                 var (entry, _) = await CreateInternalAsync(normalizedPath,
-                                                      parentPath,
-                                                      name,
-                                                      value,
-                                                      session,
-                                                      modes,
-                                                      releaseLock: true,
-                                                      combinedCancellationSource.Token);
+                                                           parentPath,
+                                                           name,
+                                                           value,
+                                                           session,
+                                                           modes,
+                                                           releaseLock: true,
+                                                           combinedCancellationSource.Token);
 
                 Assert(entry != null);
 
@@ -803,7 +783,14 @@ namespace AI4E.Coordination
                         }
                     }
 
-                    return await CreateCoreAsync(entry, releaseLock, cancellation);
+                    var watch = new Stopwatch();
+                    watch.Start();
+                    var x = await CreateCoreAsync(entry, releaseLock, cancellation);
+                    watch.Stop();
+
+                    Console.WriteLine($"---> CreateCoreAsync took {watch.ElapsedMilliseconds}ms");
+
+                    return x;
                 }
                 catch (SessionTerminatedException) { throw; }
                 catch
@@ -1128,19 +1115,20 @@ namespace AI4E.Coordination
 
         #endregion
 
-        private async Task InvalidateCacheEntryAsync(string path, CancellationToken cancellation)
+        #region Cache
+
+        private bool TryGetCacheEntry(string normalizedPath, out CacheEntry cacheEntry)
         {
-            if (path == null)
-                throw new ArgumentNullException(nameof(path));
+            return _cache.TryGetValue(normalizedPath, out cacheEntry);
+        }
 
-            var normalizedPath = EntryPathHelper.NormalizePath(path);
-            var session = await GetSessionAsync(cancellation);
-
+        private void UpdateCacheEntry(string normalizedPath, Func<CacheEntry> createFunc, Func<CacheEntry, CacheEntry> updateFunc)
+        {
             bool writeOk;
 
             do
             {
-                if (!_cache.TryGetValue(path, out var current))
+                if (!_cache.TryGetValue(normalizedPath, out var current))
                 {
                     current = null;
                 }
@@ -1149,18 +1137,44 @@ namespace AI4E.Coordination
 
                 if (start == null)
                 {
-                    var desired = new CacheEntry(path);
+                    var desired = createFunc();
 
-                    writeOk = _cache.TryAdd(path, desired);
+                    writeOk = _cache.TryAdd(normalizedPath, desired);
                 }
                 else
                 {
-                    var desired = start.Invalidate();
+                    var desired = updateFunc(start);
 
-                    writeOk = _cache.TryUpdate(path, desired, start);
+                    // Nothing to change in the cache. We are done.
+                    if (start == desired)
+                    {
+                        break;
+                    }
+
+                    writeOk = _cache.TryUpdate(normalizedPath, desired, start);
                 }
             }
             while (!writeOk);
+        }
+
+        private void UpdateCacheEntry(string normalizedPath, int comparandVersion, IStoredEntry entry)
+        {
+            UpdateCacheEntry(normalizedPath,
+                             createFunc: () => new CacheEntry(normalizedPath, entry),
+                             updateFunc: currentEntry => currentEntry.Update(entry, comparandVersion));
+        }
+
+        private async Task InvalidateCacheEntryAsync(string path, CancellationToken cancellation)
+        {
+            if (path == null)
+                throw new ArgumentNullException(nameof(path));
+
+            var normalizedPath = EntryPathHelper.NormalizePath(path);
+            var session = await GetSessionAsync(cancellation);
+
+            UpdateCacheEntry(normalizedPath,
+                            createFunc: () => new CacheEntry(path),
+                            updateFunc: currentEntry => currentEntry.Invalidate());
 
             var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
@@ -1178,6 +1192,8 @@ namespace AI4E.Coordination
                 await ReleaseReadLockAsync(entry);
             }
         }
+
+        #endregion
 
         #region Locking
 
@@ -1749,6 +1765,7 @@ namespace AI4E.Coordination
             public CacheEntry(string path, IStoredEntry entry)
             {
                 Assert(path != null);
+                Assert(entry != null);
 
                 Path = path;
                 Entry = entry;
@@ -1759,6 +1776,7 @@ namespace AI4E.Coordination
             private CacheEntry(string path, IStoredEntry entry, bool isValid, int version)
             {
                 Assert(path != null);
+                Assert(isValid, entry != null);
 
                 Path = path;
                 Entry = entry;

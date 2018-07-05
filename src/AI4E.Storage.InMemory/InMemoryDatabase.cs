@@ -79,6 +79,7 @@ namespace AI4E.Storage.InMemory
 
             return Task.CompletedTask;
         }
+
         public IAsyncEnumerable<TData> GetAsync<TData>(Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
                     where TData : class
         {
@@ -87,6 +88,7 @@ namespace AI4E.Storage.InMemory
 
             return GetTypedStore<TData>().GetAsync(predicate, cancellation);
         }
+
         public IAsyncEnumerable<TEntry> GetAsync<TEntry>(CancellationToken cancellation = default) where TEntry : class
         {
             return GetAsync<TEntry>(p => true, cancellation);
