@@ -52,8 +52,8 @@ namespace AI4E.Internal
                    !type.IsAbstract &&
                    type.IsPublic &&
                    !type.ContainsGenericParameters &&
-                   !type.IsDefined<NoMessageHandlerAttribute>() &&
-                   (type.Name.EndsWith("Handler", StringComparison.OrdinalIgnoreCase) || type.IsDefined<MessageHandlerAttribute>());
+                   !type.IsDefined<NoMessageHandlerAttribute>(inherit: false) &&
+                   (type.Name.EndsWith("Handler", StringComparison.OrdinalIgnoreCase) || type.IsDefined<MessageHandlerAttribute>(inherit: true));
         }
     }
 }

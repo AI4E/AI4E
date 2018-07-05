@@ -331,7 +331,7 @@ namespace AI4E.Storage.Domain
 
             if (_lookup.TryGetValue((bucketId, id, revision), out var cachedResult))
             {
-                return cachedResult;
+                return cachedResult.entity;
             }
 
             var stream = await _streamStore.OpenStreamAsync(bucketId, id, revision, cancellation);

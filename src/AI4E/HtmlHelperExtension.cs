@@ -3,8 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E;
-using AI4E.Async;
+using AI4E.Internal;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.DependencyInjection;
@@ -129,17 +128,17 @@ namespace AI4E
 
             if (services == null)
             {
-                throw new InvalidOperationException("Unable to gte request services.");
+                throw new InvalidOperationException("Unable to get request services.");
             }
 
             var dispatcher = services.GetRequiredService<IMessageDispatcher>();
-            var cancellationSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(3000));
+            var cancellationSource = new CancellationTokenSource(/*TimeSpan.FromMilliseconds(3000)*/);
             var cancellation = cancellationSource.Token;
             var dispatchResult = default(IDispatchResult);
 
             try
             {
-                dispatchResult = await dispatcher.DispatchAsync(viewExtension, new DispatchValueDictionary(), publish: true, cancellation);
+                dispatchResult = await dispatcher.DispatchAsync(viewExtension, new DispatchValueDictionary(), publish: true, cancellation).WithCancellation(cancellation);
             }
             catch (OperationCanceledException)
             {

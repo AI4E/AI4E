@@ -22,6 +22,6 @@ using System;
 
 namespace AI4E
 {
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = true)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = false)]
     public sealed class NoMessageHandlerAttribute : Attribute { }
 }

@@ -102,6 +102,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Sample", "samp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.Hosting.Sample", "samples\AI4E.Modularity.Hosting.Sample\AI4E.Modularity.Hosting.Sample.csproj", "{349DE147-59E8-423A-9689-D32DC85231DE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Storage.Projection.Dependency.Test", "samples\AI4E.Storage.Projection.Dependency.Test\AI4E.Storage.Projection.Dependency.Test.csproj", "{467489CF-06C4-49A1-B4C4-8548716F8142}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -208,6 +210,10 @@ Global
 		{4FB9CB32-DF46-4EF6-B8F3-EA440581FB52}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4FB9CB32-DF46-4EF6-B8F3-EA440581FB52}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4FB9CB32-DF46-4EF6-B8F3-EA440581FB52}.Release|Any CPU.Build.0 = Release|Any CPU
+		{467489CF-06C4-49A1-B4C4-8548716F8142}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{467489CF-06C4-49A1-B4C4-8548716F8142}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{467489CF-06C4-49A1-B4C4-8548716F8142}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{467489CF-06C4-49A1-B4C4-8548716F8142}.Release|Any CPU.Build.0 = Release|Any CPU
 		{349DE147-59E8-423A-9689-D32DC85231DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{349DE147-59E8-423A-9689-D32DC85231DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{349DE147-59E8-423A-9689-D32DC85231DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -245,6 +251,7 @@ Global
 		{41D73642-4F5A-4F3E-991B-D3D17D8682D5} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
 		{4FB9CB32-DF46-4EF6-B8F3-EA440581FB52} = {8682A1B5-6D4B-4176-8BC8-9F93018B12CE}
 		{349DE147-59E8-423A-9689-D32DC85231DE} = {8682A1B5-6D4B-4176-8BC8-9F93018B12CE}
+		{467489CF-06C4-49A1-B4C4-8548716F8142} = {8682A1B5-6D4B-4176-8BC8-9F93018B12CE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}

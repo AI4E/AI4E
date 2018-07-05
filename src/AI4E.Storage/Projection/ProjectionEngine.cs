@@ -538,9 +538,9 @@ namespace AI4E.Storage.Projection
                 public string SourceId { get; set; }
                 public string SourceType { get; set; }
                 public long ProjectionRevision { get; set; }
-                public List<ProjectionTarget> ProjectionTargets { get; } = new List<ProjectionTarget>();
-                public List<Dependency> Dependencies { get; } = new List<Dependency>();
-                public List<Dependent> Dependents { get; } = new List<Dependent>();
+                public List<ProjectionTarget> ProjectionTargets { get; private set; } = new List<ProjectionTarget>();
+                public List<Dependency> Dependencies { get; private set; } = new List<Dependency>();
+                public List<Dependent> Dependents { get; private set; } = new List<Dependent>();
             }
 
             private sealed class Dependency

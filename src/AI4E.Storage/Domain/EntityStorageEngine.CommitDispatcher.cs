@@ -231,12 +231,11 @@ namespace AI4E.Storage.Domain
                 }
 
                 await _projectionEngine.ProjectAsync(type, id, cancellation);
-                tcs.TrySetResult(null);
+                tcs?.TrySetResult(null);
             }
-
             catch (Exception exc)
             {
-                tcs.TrySetException(exc);
+                tcs?.TrySetException(exc);
 
                 throw;
             }

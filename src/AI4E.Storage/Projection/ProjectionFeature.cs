@@ -54,7 +54,7 @@ namespace AI4E.Storage.Projection
                    type.IsPublic &&
                    !type.ContainsGenericParameters &&
                    !type.IsDefined<NoProjectionAttribute>() &&
-                   (type.Name.EndsWith("Projection", StringComparison.OrdinalIgnoreCase) || type.Name.EndsWith("Projector", StringComparison.OrdinalIgnoreCase) || type.IsDefined<ProjectionAttribute>());
+                   (type.Name.EndsWith("Projection", StringComparison.OrdinalIgnoreCase) || type.IsDefined<ProjectionAttribute>());
         }
     }
 }

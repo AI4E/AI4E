@@ -43,7 +43,9 @@ namespace AI4E.Domain.Services
             if (id.Equals(default))
                 return null;
 
-            return (TEntity)await _entityStorageEngine.GetByIdAsync(typeof(TEntity), id, revision, cancellation);
+            var result = await _entityStorageEngine.GetByIdAsync(typeof(TEntity), id, revision, cancellation);
+
+            return (TEntity)result;
         }
     }
 }

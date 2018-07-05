@@ -213,7 +213,7 @@ namespace AI4E.Modularity.Module
                 }
                 catch (Exception exc2)
                 {
-                    _logger?.LogWarning(exc2, "Unable to dipose context.");
+                    _logger?.LogWarning(exc2, "Unable to dispose context.");
                 }
             }
 
