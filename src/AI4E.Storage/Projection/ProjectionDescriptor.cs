@@ -25,7 +25,7 @@ namespace AI4E.Storage.Projection
 {
     public class ProjectionDescriptor
     {
-        public ProjectionDescriptor(Type sourceType, Type projectionType, bool multipleResults, MethodInfo member)
+        public ProjectionDescriptor(Type sourceType, Type projectionType, bool multipleResults, bool projectNonExisting, MethodInfo member)
         {
             if (sourceType == null)
                 throw new ArgumentNullException(nameof(sourceType));
@@ -39,12 +39,14 @@ namespace AI4E.Storage.Projection
             SourceType = sourceType;
             ProjectionType = projectionType;
             MultipleResults = multipleResults;
+            ProjectNonExisting = projectNonExisting;
             Member = member;
         }
 
         public Type SourceType { get; }
         public Type ProjectionType { get; }
         public bool MultipleResults { get; }
+        public bool ProjectNonExisting { get; }
         public MethodInfo Member { get; }
     }
 }

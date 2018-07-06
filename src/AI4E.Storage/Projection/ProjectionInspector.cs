@@ -107,6 +107,7 @@ namespace AI4E.Storage.Projection
                 return false;
             }
 
+            var projectNonExisting = false;
             var multipleResults = false;
             Type multipleResultsType = null;
 
@@ -152,9 +153,11 @@ namespace AI4E.Storage.Projection
                         multipleResults = false;
                     }
                 }
+
+                projectNonExisting = memberAttribute.ProjectNonExisting;
             }
 
-            descriptor = new ProjectionDescriptor(sourceType, projectionType, multipleResults, member);
+            descriptor = new ProjectionDescriptor(sourceType, projectionType, multipleResults, projectNonExisting, member);
             return true;
         }
     }
