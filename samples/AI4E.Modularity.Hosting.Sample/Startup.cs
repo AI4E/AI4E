@@ -60,7 +60,16 @@ namespace AI4E.Modularity.Hosting.Sample
 
             app.UseModularity();
 
-            app.UseMvc();
+            app.UseMvc(routes =>
+            {
+                routes.MapRoute(
+                    name: "area",
+                    template: "{area:exists}/{controller=default}/{action=Index}/{id?}");
+
+                routes.MapRoute(
+                    name: "default",
+                    template: "{controller=default}/{action=Index}/{id?}");
+            });
         }
     }
 }

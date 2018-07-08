@@ -15,7 +15,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
             _dataStore = dataStore;
         }
 
-        public async Task<IEnumerable<ModuleSourceListModel>> HandleAsync(Query<ModuleSourceListModel> query)
+        public async Task<IEnumerable<ModuleSourceListModel>> HandleAsync(Query<IEnumerable<ModuleSourceListModel>> query)
         {
             return await _dataStore.AllAsync<ModuleSourceListModel>().ToArray();
         }
@@ -28,6 +28,16 @@ namespace AI4E.Modularity.Hosting.Sample.Services
         public Task<ModuleSourceDeleteModel> HandleAsync(ByIdQuery<ModuleSourceDeleteModel> query)
         {
             return _dataStore.FindOneAsync<ModuleSourceDeleteModel>(p => p.Id == query.Id).AsTask();
+        }
+
+        public Task<ModuleSourceRenameModel> HandleAsync(ByIdQuery<ModuleSourceRenameModel> query)
+        {
+            return _dataStore.FindOneAsync<ModuleSourceRenameModel>(p => p.Id == query.Id).AsTask();
+        }
+
+        public Task<ModuleSourceUpdateLocationModel> HandleAsync(ByIdQuery<ModuleSourceUpdateLocationModel> query)
+        {
+            return _dataStore.FindOneAsync<ModuleSourceUpdateLocationModel>(p => p.Id == query.Id).AsTask();
         }
     }
 }

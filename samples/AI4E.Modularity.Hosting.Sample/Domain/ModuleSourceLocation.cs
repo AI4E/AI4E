@@ -12,16 +12,17 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
                 throw new ArgumentException(message, nameof(location));
             }
 
-            Uri = uri;
+            Location = uri.AbsoluteUri;
+            IsLocal = uri.IsFile;
         }
 
-        public Uri Uri { get; }
+        public string Location { get; }
 
-        public bool IsLocal => Uri?.IsFile ?? default;
+        public bool IsLocal { get; }
 
         public bool Equals(ModuleSourceLocation other)
         {
-            throw new NotImplementedException();
+            return Location == other.Location;
         }
 
         public override bool Equals(object obj)
@@ -31,7 +32,7 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
 
         public override int GetHashCode()
         {
-            return Uri?.GetHashCode() ?? 0;
+            return Location?.GetHashCode() ?? 0;
         }
 
         public static bool operator ==(in ModuleSourceLocation left, in ModuleSourceLocation right)

@@ -102,7 +102,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
 
             if (!validationFunction(value, out var message))
             {
-                validationResultsBuilder.AddValidationResult(member: null, message);
+                validationResultsBuilder.AddValidationResult(member, message);
             }
         }
 

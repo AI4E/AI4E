@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
+    <RunPostBuildEvent>Always</RunPostBuildEvent>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,4 +22,8 @@
     <ProjectReference Include="..\..\src\AI4E\AI4E.csproj" />
   </ItemGroup>
 
+  <Target Name="PreBuild" AfterTargets="PreBuildEvent">
+    <Copy SourceFiles="..\lib\bootstrap\dist\css\bootstrap.min.css" DestinationFolder=".\wwwroot\css" />
+    <Copy SourceFiles="..\lib\bootstrap\dist\js\bootstrap.min.js" DestinationFolder=".\wwwroot\js" />
+  </Target>
 </Project>

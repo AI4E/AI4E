@@ -1,0 +1,40 @@
+﻿@model ModuleSourceCreateModel
+
+@{
+    ViewBag.Title = "Add module source";
+}
+
+<div>
+    <form asp-action="Create" method="post" class="container">
+        <div class="row">
+            <div class="col-sm">
+                <label asp-for="Name">Name: </label>
+            </div>
+            <div class="col-sm-10">
+                <input asp-for="Name" />
+            </div>
+
+        </div>
+        <div class="row">
+            <span asp-validation-for="Name"></span>
+        </div>
+        <div class="row">
+            <div class="col-sm">
+                <label asp-for="Location">Location: </label>
+            </div>
+            <div class="col-sm-10">
+                <input asp-for="Location" />
+            </div>
+
+        </div>
+        <div class="row">
+            <span asp-validation-for="Location"></span>
+        </div>
+
+        <div>
+            <br />
+            <a asp-action="Index" asp-controller="ModuleSources" class="btn btn-primary">Cancel</a>
+            <input type="submit" value="Create" class="btn btn-primary" />
+        </div>
+    </form>
+</div>

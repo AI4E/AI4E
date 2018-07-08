@@ -1,0 +1,24 @@
+﻿@model IEnumerable<ModuleSourceListModel>
+@{
+    ViewBag.Title = "Module sources";
+}
+
+<div>
+    @if (!Model.Any())
+    {
+        <h2>No module sources configured.</h2>
+    }
+    else
+    {
+        <ul>
+            @foreach (var moduleSource in Model)
+            {
+                <li>
+                    <a asp-action="Details" asp-controller="ModuleSources" asp-route-id="@moduleSource.Id"><span>@moduleSource.Name</span>: <span>@moduleSource.Location</span></a>
+                </li>
+            }
+        </ul>
+    }
+
+    <a asp-action="Create" asp-controller="ModuleSources" class="btn btn-primary">Add module source</a>
+</div>
