@@ -24,7 +24,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using AI4E.Async;
 using AI4E.Internal;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +47,11 @@ namespace AI4E.Storage.Projection
 
         public ValueTask<TProjection> ProjectAsync(TSource source)
         {
+            if (source == null && !_projectionDescriptor.ProjectNonExisting)
+            {
+                return new ValueTask<TProjection>(default(TProjection));
+            }
+
             var member = _projectionDescriptor.Member;
 
             Debug.Assert(member != null);
@@ -133,6 +137,11 @@ namespace AI4E.Storage.Projection
 
         public IAsyncEnumerable<TProjection> ProjectMultipleAsync(TSource source)
         {
+            if (source == null && !_projectionDescriptor.ProjectNonExisting)
+            {
+                return AsyncEnumerable.Empty<TProjection>();
+            }
+
             if (!_projectionDescriptor.MultipleResults)
             {
                 return ProjectAsync(source).ToAsyncEnumerable();

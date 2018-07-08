@@ -41,6 +41,8 @@ namespace AI4E.Storage.Projection
         public Type SourceType { get; set; }
 
         public bool? MultipleResults { get; set; }
+
+        public bool ProjectNonExisting { get; set; }
     }
 
     [AttributeUsage(AttributeTargets.Method)]

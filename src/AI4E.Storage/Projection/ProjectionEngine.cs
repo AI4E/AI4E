@@ -804,7 +804,7 @@ namespace AI4E.Storage.Projection
                 }
 
                 public string TargetType { get; set; }
-                public List<ProjectionSource> ProjectionSources { get; } = new List<ProjectionSource>();
+                public List<ProjectionSource> ProjectionSources { get; private set; } = new List<ProjectionSource>();
             }
 
             private sealed class ProjectionSource
