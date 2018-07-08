@@ -1,4 +1,4 @@
-﻿@model ModuleSourceUpdateLocationModel
+﻿@model ModuleSourceDeleteModel
 @{
     ViewBag.Title = "Delete module source";
 }
@@ -9,13 +9,13 @@
         <input type="hidden" asp-for="ConcurrencyToken" />
 
         <div>
-            Are you sure to delete module source 'TODO'? This cannot be undone.
+            Are you sure to delete module source '@Model.Name'? This cannot be undone.
         </div>
 
         <div>
             <br />
             <a asp-action="Details" asp-controller="ModuleSources" asp-route-id="@Model.Id" class="btn btn-primary">Cancel</a>
-            <input type="submit" value="Löschen" class="btn btn-primary" />
+            <input type="submit" value="Delete" class="btn btn-primary" />
         </div>
     </form>
 </div>

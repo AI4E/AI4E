@@ -123,7 +123,7 @@ namespace AI4E.Modularity.Hosting.Sample.Controllers
         [HttpGet]
         public async Task<IActionResult> Delete(Guid id)
         {
-            var queryResult = await _messageDispatcher.QueryByIdAsync<ModuleSourceRenameModel>(id);
+            var queryResult = await _messageDispatcher.QueryByIdAsync<ModuleSourceDeleteModel>(id);
 
             if (queryResult.IsSuccessWithResult<ModuleSourceDeleteModel>(out var model))
             {
