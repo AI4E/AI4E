@@ -597,32 +597,7 @@ namespace AI4E.Coordination
                 return null;
             }
 
-            try
-            {
-                entry = await AcquireReadLockAsync(entry, cancellation);
-
-                if (entry == null)
-                {
-                    var parentPath = EntryPathHelper.GetParentPath(normalizedPath, out var name, normalize: false);
-
-                    var parent = await _storage.GetEntryAsync(parentPath, cancellation);
-
-                    if (parent != null && parent.Childs.Contains(name))
-                    {
-                        await RemoveChildEntryAsync(parent, name, cancellation);
-                    }
-                }
-
-                UpdateCacheEntry(normalizedPath, comparandVersion, entry);
-
-                return entry;
-            }
-            catch
-            {
-                await ReleaseReadLockAsync(entry);
-
-                throw;
-            }
+            return await AddToCacheAsync(entry, comparandVersion, cancellation);
         }
 
         #endregion
@@ -674,7 +649,10 @@ namespace AI4E.Coordination
 
                 Assert(entry != null);
 
-                // This must not be placed in the cache as we do not own a read lock for it.
+                await AddToCacheAsync(entry,
+                                      comparandVersion: default,
+                                      cancellation);
+
                 return new Entry(this, entry);
             }
         }
@@ -727,7 +705,10 @@ namespace AI4E.Coordination
 
                 // TODO: Throw if the entry did already exists but with other creation-modes than specified?
 
-                // This must not be placed in the cache as we do not own a read lock for it.
+                await AddToCacheAsync(entry,
+                                      comparandVersion: default,
+                                      cancellation);
+
                 return new Entry(this, entry);
             }
         }
@@ -1162,6 +1143,39 @@ namespace AI4E.Coordination
             UpdateCacheEntry(normalizedPath,
                              createFunc: () => new CacheEntry(normalizedPath, entry),
                              updateFunc: currentEntry => currentEntry.Update(entry, comparandVersion));
+        }
+
+        private async Task<IStoredEntry> AddToCacheAsync(IStoredEntry entry, int comparandVersion, CancellationToken cancellation)
+        {
+            Assert(entry != null);
+            var normalizedPath = entry.Path;
+
+            try
+            {
+                entry = await AcquireReadLockAsync(entry, cancellation);
+
+                if (entry == null)
+                {
+                    var parentPath = EntryPathHelper.GetParentPath(normalizedPath, out var name, normalize: false);
+
+                    var parent = await _storage.GetEntryAsync(parentPath, cancellation);
+
+                    if (parent != null && parent.Childs.Contains(name))
+                    {
+                        await RemoveChildEntryAsync(parent, name, cancellation);
+                    }
+                }
+
+                UpdateCacheEntry(normalizedPath, comparandVersion, entry);
+
+                return entry;
+            }
+            catch
+            {
+                await ReleaseReadLockAsync(entry);
+
+                throw;
+            }
         }
 
         private async Task InvalidateCacheEntryAsync(string path, CancellationToken cancellation)
