@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using AI4E.Remoting;
 using AI4E.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,11 @@ namespace AI4E.Modularity
 
     public sealed class RemoteMessagingOptions
     {
+        public RemoteMessagingOptions()
+        {
+            LocalEndPoint = EndPointRoute.CreateRoute(Assembly.GetEntryAssembly().GetName().Name);
+        }
+
         public EndPointRoute LocalEndPoint { get; set; }
     }
 }

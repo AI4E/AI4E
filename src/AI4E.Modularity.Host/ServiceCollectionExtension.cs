@@ -88,11 +88,6 @@ namespace AI4E.Modularity
             // Debugging
             services.AddSingleton(ConfigureDebugPort);
 
-            services.Configure<RemoteMessagingOptions>(options =>
-            {
-                options.LocalEndPoint = EndPointRoute.CreateRoute("host");
-            });
-
             return new ModularityBuilder(services);
         }
 
