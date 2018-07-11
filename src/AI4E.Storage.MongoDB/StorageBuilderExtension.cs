@@ -55,6 +55,25 @@ namespace AI4E.Storage.MongoDB
             return builder;
         }
 
+        public static IStorageBuilder UseMongoDB(this IStorageBuilder builder, string database)
+        {
+            if (builder == null)
+                throw new ArgumentNullException(nameof(builder));
+
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
+
+            builder.UseMongoDB();
+
+            builder.Services.Configure<MongoOptions>(options =>
+            {
+                options.Database = database;
+            });
+
+            return builder;
+        }
+
+
         private static IMongoDatabase BuildMongoDatabase(IServiceProvider serviceProvider)
         {
             var options = GetMongoOptions(serviceProvider);
