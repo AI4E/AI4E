@@ -118,7 +118,9 @@ namespace AI4E.Internal
 
         private readonly struct HandlerMemberCacheEntry
         {
-            private static readonly MethodInfo _getServiceMethod = typeof(ServiceProviderServiceExtensions).GetMethod(nameof(ServiceProviderServiceExtensions.GetRequiredService), BindingFlags.Instance | BindingFlags.Public);
+            private static readonly MethodInfo _getServiceMethod = typeof(ServiceProviderServiceExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public)
+                                                                                                           .SingleOrDefault(p => p.Name == nameof(ServiceProviderServiceExtensions.GetRequiredService) &&
+                                                                                                                                !p.IsGenericMethodDefinition);
             private readonly ConstructorInfo _createTypedSuccessDispatchResult;
             private readonly Func<object, object, IServiceProvider, Task<IDispatchResult>> _invoker;
             private readonly MethodInfo _methodInfo;

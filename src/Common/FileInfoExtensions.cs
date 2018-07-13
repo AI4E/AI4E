@@ -30,7 +30,7 @@ namespace AI4E.Internal
             if (fileInfo == null)
                 throw new ArgumentNullException(nameof(fileInfo));
 
-            return new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+            return new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
         }
     }
 }

@@ -13,9 +13,11 @@ namespace AI4E.Modularity
 
     public interface IModuleMetadata
     {
-        ModuleIdentifier Id { get; }
+        ModuleIdentifier Module { get; }
 
         ModuleVersion Version { get; }
+
+        ModuleReleaseIdentifier Release { get; }
 
         DateTime ReleaseDate { get; }
 

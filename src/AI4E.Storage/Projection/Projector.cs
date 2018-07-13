@@ -315,6 +315,12 @@ namespace AI4E.Storage.Projection
                 var sourceType = typeof(TSource);
                 var projectionType = typeof(TProjection);
                 var projectionIdType = DataPropertyHelper.GetIdType(projectionType);
+
+                if (projectionIdType == null)
+                {
+                    throw new InvalidOperationException(); // TODO
+                }
+
                 var projectorType = MakeProjectorType(sourceType, projectionType, projectionIdType);
                 var typedProjector = Activator.CreateInstance(projectorType);
 

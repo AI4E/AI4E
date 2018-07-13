@@ -6,7 +6,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
 {
     public sealed class ModuleSourceProjection : Projection
     {
-        public ModuleSourceModel Project(ModuleSource moduleSource)
+        public ModuleSourceModel Project(FileSystemModuleSource moduleSource)
         {
             // TODO: This should be the default with a way to override it (via an attribute??)
             if (moduleSource == null)
@@ -21,7 +21,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
             };
         }
 
-        public ModuleSourceListModel ProjectToListModel(ModuleSource moduleSource)
+        public ModuleSourceListModel ProjectToListModel(FileSystemModuleSource moduleSource)
         {
             // TODO: This should be the default with a way to override it (via an attribute??)
             if (moduleSource == null)
@@ -31,12 +31,11 @@ namespace AI4E.Modularity.Hosting.Sample.Services
             {
                 Id = moduleSource.Id,
                 Location = moduleSource.Location.Location,
-                IsLocalSource = moduleSource.Location.IsLocal,
                 Name = moduleSource.Name.Value
             };
         }
 
-        public ModuleSourceDeleteModel ProjectToDeleteModel(ModuleSource moduleSource)
+        public ModuleSourceDeleteModel ProjectToDeleteModel(FileSystemModuleSource moduleSource)
         {
             // TODO: This should be the default with a way to override it (via an attribute??)
             if (moduleSource == null)
@@ -50,7 +49,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
             };
         }
 
-        public ModuleSourceRenameModel ProjectToRenameModel(ModuleSource moduleSource)
+        public ModuleSourceRenameModel ProjectToRenameModel(FileSystemModuleSource moduleSource)
         {
             // TODO: This should be the default with a way to override it (via an attribute??)
             if (moduleSource == null)
@@ -64,7 +63,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
             };
         }
 
-        public ModuleSourceUpdateLocationModel ProjectToUpdateLocationModel(ModuleSource moduleSource)
+        public ModuleSourceUpdateLocationModel ProjectToUpdateLocationModel(FileSystemModuleSource moduleSource)
         {
             // TODO: This should be the default with a way to override it (via an attribute??)
             if (moduleSource == null)

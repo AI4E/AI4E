@@ -87,7 +87,7 @@ namespace AI4E.Domain.Services
                 Assert(reader.TokenType == JsonToken.StartObject);
                 reader.Read(); // Read start object.
 
-                while (reader.TokenType == JsonToken.EndObject)
+                while (reader.TokenType != JsonToken.EndObject)
                 {
                     Assert(reader.TokenType == JsonToken.PropertyName);
 
@@ -96,11 +96,13 @@ namespace AI4E.Domain.Services
                         case "id":
                             reader.Read();
                             id = reader.Value as string;
+                            reader.Read();
                             break;
 
                         case "revision":
                             reader.Read();
                             revision = (long)reader.Value;
+                            reader.Read();
                             break;
 
                         default:

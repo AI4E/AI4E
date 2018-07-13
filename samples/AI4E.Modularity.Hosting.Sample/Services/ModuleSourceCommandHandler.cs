@@ -6,7 +6,7 @@ using AI4E.Modularity.Hosting.Sample.Domain;
 
 namespace AI4E.Modularity.Hosting.Sample.Services
 {
-    public sealed class ModuleSourceCommandHandler : MessageHandler<ModuleSource>
+    public sealed class ModuleSourceCommandHandler : MessageHandler<FileSystemModuleSource>
     {
         [CreatesEntity(AllowExisingEntity = false)]
         public IDispatchResult Handle(ModuleSourceAddCommand command)
@@ -19,9 +19,9 @@ namespace AI4E.Modularity.Hosting.Sample.Services
             }
 
             var moduleSourceName = new ModuleSourceName(command.Name);
-            var moduleSourceLocation = new ModuleSourceLocation(command.Location);
+            var moduleSourceLocation = new FileSystemModuleSourceLocation(command.Location);
 
-            Entity = new ModuleSource(command.Id, moduleSourceName, moduleSourceLocation);
+            Entity = new FileSystemModuleSource(command.Id, moduleSourceName, moduleSourceLocation);
 
             return Success();
         }
@@ -35,7 +35,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
                 return ValidationFailure(validationResults);
             }
 
-            Entity.Location = (ModuleSourceLocation)command.Location;
+            Entity.Location = (FileSystemModuleSourceLocation)command.Location;
             return Success();
         }
 
@@ -63,7 +63,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
             var validationResultsBuilder = new ValidationResultsBuilder();
 
             validationResultsBuilder.Validate(ModuleSourceName.IsValid, command.Name, nameof(command.Name));
-            validationResultsBuilder.Validate(ModuleSourceLocation.IsValid, command.Location, nameof(command.Location));
+            validationResultsBuilder.Validate(FileSystemModuleSourceLocation.IsValid, command.Location, nameof(command.Location));
 
             return validationResultsBuilder.GetValidationResults();
         }
@@ -72,7 +72,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
         {
             var validationResultsBuilder = new ValidationResultsBuilder();
 
-            validationResultsBuilder.Validate(ModuleSourceLocation.IsValid, command.Location, nameof(command.Location));
+            validationResultsBuilder.Validate(FileSystemModuleSourceLocation.IsValid, command.Location, nameof(command.Location));
 
             return validationResultsBuilder.GetValidationResults();
         }

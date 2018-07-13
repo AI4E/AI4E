@@ -25,7 +25,7 @@ using System.Globalization;
 namespace AI4E.Modularity
 {
     // A handle for a module (f.e. AI4E.Clustering)
-    [TypeConverter(typeof(ModuleIdentfierTypeConverter))]
+    [TypeConverter(typeof(ModuleIdentifierTypeConverter))]
     public struct ModuleIdentifier : IEquatable<ModuleIdentifier>
     {
         public static ModuleIdentifier UnknownModule { get; } = new ModuleIdentifier();
@@ -74,7 +74,7 @@ namespace AI4E.Modularity
         }
     }
 
-    public sealed class ModuleIdentfierTypeConverter : TypeConverter
+    public sealed class ModuleIdentifierTypeConverter : TypeConverter
     {
         public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
         {

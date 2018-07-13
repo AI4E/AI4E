@@ -31,7 +31,7 @@ namespace AI4E.Storage.Domain
         public IAsyncEnumerable<TEntity> GetAllAsync<TEntity>(CancellationToken cancellation = default)
             where TEntity : class, TEntityBase
         {
-            return GetAllAsync(typeof(TEntityBase), cancellation).AssertEach(p => p is TEntityBase).Cast<TEntity>();
+            return GetAllAsync(typeof(TEntity), cancellation).AssertEach(p => p is TEntityBase).Cast<TEntity>();
         }
 
         public Task StoreAsync<TEntity>(TEntity entity, CancellationToken cancellation = default)

@@ -22,7 +22,7 @@ namespace AI4E.Modularity
                 _metadata = metadata;
             }
 
-            public ModuleReleaseIdentifier Identifier => new ModuleReleaseIdentifier(_metadata.Id, Version);
+            public ModuleReleaseIdentifier Identifier => new ModuleReleaseIdentifier(_metadata.Module, Version);
 
             public bool IsPreRelease => Version.IsPreRelease;
 

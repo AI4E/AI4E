@@ -1,5 +1,6 @@
 using AI4E.Domain.Services;
 using AI4E.Modularity.Host;
+using AI4E.Modularity.Hosting.Sample.Domain;
 using AI4E.Storage;
 using AI4E.Storage.Domain;
 using AI4E.Storage.InMemory;
@@ -41,6 +42,8 @@ namespace AI4E.Modularity.Hosting.Sample
             services.AddModularity();
 
             services.AddDomainServices();
+
+            services.AddScoped<IModuleSearchEngine, ModuleSearchEngine>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

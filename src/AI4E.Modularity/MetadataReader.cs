@@ -15,41 +15,59 @@ namespace AI4E.Modularity
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
 
-            if (!(stream is MemoryStream memStream))
-            {
-                if (stream.CanSeek)
-                {
-                    memStream = new MemoryStream(checked((int)stream.Length));
-                }
-                else
-                {
-                    memStream = new MemoryStream();
-                }
-
-                await stream.CopyToAsync(memStream, 1024, cancellation);
-                memStream.Position = 0;
-            }
-
-            // Disposing a memory stream is a no-op
             using (stream)
             {
-                var serializer = JsonSerializer.CreateDefault();
+                var readableStream = await GetReadableStreamAsync(stream, cancellation);
 
-                using (var streamReader = new StreamReader(memStream))
-                using (var reader = new JsonTextReader(streamReader))
-                {
-                    return serializer.Deserialize<SerializedModuleMetadata>(reader);
-                }
+                return ReadMetadataInternal(readableStream);
+            }
+        }
+
+        private async ValueTask<MemoryStream> GetReadableStreamAsync(Stream stream, CancellationToken cancellation)
+        {
+            if (stream is MemoryStream result)
+            {
+                return result;
+            }
+
+            if (stream.CanSeek)
+            {
+                if (stream.Length > int.MaxValue)
+                    throw new InvalidOperationException("Unable to read module metadata. The streams size exceeds the readable limit.");
+
+                result = new MemoryStream(checked((int)stream.Length));
+            }
+            else
+            {
+                result = new MemoryStream();
+            }
+
+            await stream.CopyToAsync(result, bufferSize: 1024, cancellation);
+            result.Position = 0;
+            return result;
+        }
+
+        private IModuleMetadata ReadMetadataInternal(MemoryStream stream)
+        {
+            var serializer = JsonSerializer.CreateDefault();
+
+            using (var streamReader = new StreamReader(stream))
+            using (var reader = new JsonTextReader(streamReader))
+            {
+                // TODO: Validate metadata
+                return serializer.Deserialize<SerializedModuleMetadata>(reader);
             }
         }
 
         private sealed class SerializedModuleMetadata : IModuleMetadata
         {
-            [JsonProperty("id")]
-            public ModuleIdentifier Id { get; set; }
+            [JsonProperty("module")]
+            public ModuleIdentifier Module { get; set; }
 
             [JsonProperty("version")]
             public ModuleVersion Version { get; set; }
+
+            ModuleReleaseIdentifier IModuleMetadata.Release => new ModuleReleaseIdentifier(Module, Version);
 
             [JsonProperty("release-date")]
             public DateTime ReleaseDate { get; set; }
