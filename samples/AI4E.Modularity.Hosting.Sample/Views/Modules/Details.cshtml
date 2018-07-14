@@ -1,0 +1,69 @@
+﻿@model ModuleReleaseModel
+
+@{
+    ViewBag.Title = "Module details";
+}
+
+<div>
+    <h1>
+        @Model.Name
+        <small>
+            @Model.Version
+
+            @{
+                var installedVersion = Model.AvailableVersions.FirstOrDefault(p => p.IsInstalled)?.Version;
+            }
+
+            @if (installedVersion != null)
+            {
+                if (installedVersion == Model.Version)
+                {
+                    <text>(Installiert)</text>
+                }
+                else
+                {
+                    <text>(Installiert: @installedVersion)</text>
+                }
+            }
+        </small>
+    </h1>
+
+    <div>
+        @Model.Description
+    </div>
+    @if (Model.IsPreRelease)
+    {
+        <div>This is a pre-release of module'@Model.Name' that may be incomplete and can contain bugs.</div>
+    }
+
+    <div>
+        <h2>
+            Verfügbare Versionen
+        </h2>
+
+        <ol>
+            @foreach (var availableVersion in Model.AvailableVersions)
+            {
+                <li>
+                    <a asp-action="Details" asp-route-id="@(new AI4E.Modularity.ModuleReleaseIdentifier(@Model.Id.Module, availableVersion.Version))">
+                        @if (availableVersion.Version == Model.Version)
+                        {
+                            <strong>@availableVersion.Version</strong>
+                        }
+                        else
+                        {
+                            @availableVersion.Version
+                        }
+                        - @availableVersion.ReleaseDate.ToShortDateString()
+
+                        @if (availableVersion.IsInstalled)
+                        {
+                            <span> (Installed)</span>
+                        }
+                    </a>
+                </li>
+            }
+        </ol>
+    </div>
+
+</div>

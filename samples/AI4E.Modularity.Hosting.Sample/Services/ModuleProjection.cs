@@ -1,5 +1,8 @@
-﻿using AI4E.Modularity.Hosting.Sample.Models;
+﻿using System.Collections.Generic;
+using AI4E.Modularity.Hosting.Sample.Domain;
+using AI4E.Modularity.Hosting.Sample.Models;
 using AI4E.Storage.Projection;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Hosting.Sample.Services
 {
@@ -12,17 +15,61 @@ namespace AI4E.Modularity.Hosting.Sample.Services
         {
             var latestRelease = module.GetLatestRelease(includePreReleases);
 
+            Assert(latestRelease != null);
+
             return new ModuleListModel
             {
-                Id = module.Id.ToString(),
-                LatestVersion = latestRelease.Version.ToString(),
-                IsPreRelease = latestRelease.Version.IsPreRelease
+                Id = module.Id,
+                LatestVersion = latestRelease.Version
             };
         }
 
         public ModuleListModel ProjectToListModel(Module module)
         {
             return ProjectToListModel(module, includePreReleases: true);
+        }
+
+        public IEnumerable<ModuleReleaseModel> ProjectToReleaseModels(Module module)
+        {
+            var result = new List<ModuleReleaseModel>();
+            var availableVersions = new List<AvailableVersionModel>();
+
+            foreach (var release in module.Releases)
+            {
+                Assert(release != null);
+                Assert(release.Module != null);
+
+                result.Add(Project(release, availableVersions));
+                availableVersions.Add(ProjectToAvailableVersionModel(release));
+            }
+
+            return result;
+        }
+
+        [NoProjectionMember]
+        private ModuleReleaseModel Project(ModuleRelease release, List<AvailableVersionModel> availableVersions)
+        {
+            return new ModuleReleaseModel
+            {
+                Id = release.Id,
+                Version = release.Version,
+                ReleaseDate = release.ReleaseDate,
+                Name = release.Name,
+                Author = release.Author,
+                Description = release.Description,
+                AvailableVersions = availableVersions
+            };
+        }
+
+        [NoProjectionMember]
+        private AvailableVersionModel ProjectToAvailableVersionModel(ModuleRelease release)
+        {
+            return new AvailableVersionModel
+            {
+                ReleaseDate = release.ReleaseDate,
+                Version = release.Version,
+                IsInstalled = release.IsInstalled
+            };
         }
     }
 }

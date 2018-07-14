@@ -39,6 +39,9 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
                 await ProcessSourceAsync(source, searchPhrase, includePreReleases, result, cancellation);
             }
 
+            // We store the sources for the case that internal state changed (like caches), but ignore any concurrency conflicts.
+            await Task.WhenAll(sources.Select(source => TryStoreAsync(source, cancellation)));
+
             return result;
         }
 
@@ -86,16 +89,30 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
                     module.AddModuleRelease(metadata, source);
                 }
             }
-            while (!await TryStoreModuleAsync(module, cancellation));
+            while (!await TryStoreAsync(module, cancellation));
 
             return module;
         }
 
-        private async Task<bool> TryStoreModuleAsync(Module module, CancellationToken cancellation)
+        private async Task<bool> TryStoreAsync(Module module, CancellationToken cancellation)
         {
             try
             {
                 await _entityStorageEngine.StoreAsync(typeof(Module), module, module.Id.ToString(), cancellation);
+            }
+            catch (ConcurrencyException)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private async Task<bool> TryStoreAsync(FileSystemModuleSource source, CancellationToken cancellation)
+        {
+            try
+            {
+                await _entityStorageEngine.StoreAsync(typeof(FileSystemModuleSource), source, source.Id.ToString(), cancellation);
             }
             catch (ConcurrencyException)
             {

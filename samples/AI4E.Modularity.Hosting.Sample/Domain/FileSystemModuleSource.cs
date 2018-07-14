@@ -98,7 +98,6 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
 
             foreach (var file in files)
             {
-
                 var metadata = await ReadMetadataAsync(file, moduleMetadataReader, cancellation);
 
                 if (metadata == null)
@@ -108,7 +107,8 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
 
                 UpdateCacheEntry(metadata.Release, file, metadata);
 
-                if (regex == null || regex.IsMatch(metadata.Name))
+                if ((regex == null || regex.IsMatch(metadata.Name)) && 
+                    (includePreReleases || !metadata.Version.IsPreRelease))
                 {
                     result.Add(metadata.Release);
                 }
@@ -119,7 +119,7 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
 
         private async Task<IModuleMetadata> ReadMetadataAsync(string file, IMetadataReader moduleMetadataReader, CancellationToken cancellation)
         {
-            var path =  file;
+            var path = file;
 
             if (!File.Exists(path))
                 return null;
@@ -374,7 +374,7 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
 
             if (!_cache.TryGetValue(release.ToString(), out var cacheEntry))
             {
-                cacheEntry = new CacheEntry(release);
+                cacheEntry = new CacheEntry(/*release*/);
 
                 _cache.Add(release.ToString(), cacheEntry);
             }
@@ -387,14 +387,14 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
 
         private sealed class CacheEntry
         {
-            public CacheEntry(ModuleReleaseIdentifier release)
-            {
-                Assert(release != default);
+            //public CacheEntry(ModuleReleaseIdentifier release)
+            //{
+            //    Assert(release != default);
 
-                Release = release;
-            }
+            //    Release = release;
+            //}
 
-            public ModuleReleaseIdentifier Release { get; }
+            //public ModuleReleaseIdentifier Release { get; }
             public string Path { get; set; }
             public IModuleMetadata Metadata { get; set; }
         }

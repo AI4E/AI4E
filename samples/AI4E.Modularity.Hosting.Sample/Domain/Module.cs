@@ -33,6 +33,8 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
 
             foreach (var release in releases)
             {
+                // This should be set be the serializer actually. See https://github.com/JamesNK/Newtonsoft.Json/issues/1284
+                release.Module = this;
                 _releases.Add(release.Version, release);
             }
         }
@@ -147,37 +149,5 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
 
             Notify(new ModuleUninstalled(Id, installedRelease.Version));
         }
-    }
-
-    public sealed class ModuleInstalled : DomainEvent<ModuleIdentifier>
-    {
-        public ModuleInstalled(ModuleIdentifier aggregateId, ModuleVersion version) : base(aggregateId)
-        {
-            Version = version;
-        }
-
-        public ModuleVersion Version { get; }
-    }
-
-    public sealed class ModuleUninstalled : DomainEvent<ModuleIdentifier>
-    {
-        public ModuleUninstalled(ModuleIdentifier aggregateId, ModuleVersion version) : base(aggregateId)
-        {
-            Version = version;
-        }
-
-        public ModuleVersion Version { get; }
-    }
-
-    public sealed class ModuleUpdated : DomainEvent<ModuleIdentifier>
-    {
-        public ModuleUpdated(ModuleIdentifier aggregateId, ModuleVersion oldVersion, ModuleVersion updatedVersion) : base(aggregateId)
-        {
-            OldVersion = oldVersion;
-            UpdatedVersion = updatedVersion;
-        }
-
-        public ModuleVersion OldVersion { get; }
-        public ModuleVersion UpdatedVersion { get; }
     }
 }

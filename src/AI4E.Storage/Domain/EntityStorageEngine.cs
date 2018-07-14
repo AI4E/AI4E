@@ -130,12 +130,16 @@ namespace AI4E.Storage.Domain
 
             var bucketId = GetBucketId(entityType);
 
-            return _streamStore.OpenAllAsync(bucketId, cancellation).Select(stream => CachedDeserialize(entityType, revision: default, stream));
+            return _streamStore.OpenAllAsync(bucketId, cancellation)
+                               .Select(stream => CachedDeserialize(entityType, revision: default, stream))
+                               .Where(p => p != null); // TODO: Add a deleted marker to the stream to already filter the streams before deserializing the content and checking for null afterwards.
         }
 
         public IAsyncEnumerable<object> GetAllAsync(CancellationToken cancellation)
         {
-            return _streamStore.OpenAllAsync(cancellation).Select(stream => CachedDeserialize(GetTypeFromBucket(stream.BucketId), revision: default, stream));
+            return _streamStore.OpenAllAsync(cancellation)
+                               .Select(stream => CachedDeserialize(GetTypeFromBucket(stream.BucketId), revision: default, stream))
+                               .Where(p => p != null); // TODO: Add a deleted marker to the stream to already filter the streams before deserializing the content and checking for null afterwards.;
         }
 
         public async Task StoreAsync(Type entityType, object entity, string id, CancellationToken cancellation)

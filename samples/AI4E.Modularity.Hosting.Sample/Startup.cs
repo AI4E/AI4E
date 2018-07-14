@@ -33,7 +33,9 @@ namespace AI4E.Modularity.Hosting.Sample
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            services.AddMvc()
+                    .AddModuleModelBinders()
+                    .SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
             services.AddStorage()
                     .UseInMemoryDatabase()

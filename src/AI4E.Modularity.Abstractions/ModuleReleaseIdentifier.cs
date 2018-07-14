@@ -52,8 +52,11 @@ namespace AI4E.Modularity
             }
         }
 
-        public ModuleIdentifier Module { get; }
-        public ModuleVersion Version { get; }
+        // TODO: These should be read-only. 
+        //       The in-memory database and json.net have problems to recreate the object.
+        //       Maybe a custom type converter can help here.
+        public ModuleIdentifier Module { get; set; }
+        public ModuleVersion Version { get; set; }
 
         public bool Equals(ModuleReleaseIdentifier other)
         {

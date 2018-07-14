@@ -38,6 +38,19 @@ namespace AI4E.Modularity.Hosting.Sample.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> Details(ModuleReleaseIdentifier id)
+        {
+            var queryResult = await _messageDispatcher.QueryByIdAsync<ModuleReleaseIdentifier, ModuleReleaseModel>(id);
+
+            if (queryResult.IsSuccessWithResult<ModuleReleaseModel>(out var model))
+            {
+                return View(model);
+            }
+
+            return GetActionResult(queryResult);
+        }
+
+        [HttpGet]
         public async Task<IActionResult> Installed()
         {
             return null;
@@ -50,9 +63,7 @@ namespace AI4E.Modularity.Hosting.Sample.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Install(string module,
-                                                 [FromQuery(Name = "module-version")] string moduleVersion = null,
-                                                 [FromQuery(Name = "module-source")] Guid? moduleSource = null)
+        public async Task<IActionResult> Install(ModuleReleaseIdentifier id)
         {
             return null;
         }
@@ -64,7 +75,7 @@ namespace AI4E.Modularity.Hosting.Sample.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Uninstall(string module)
+        public async Task<IActionResult> Uninstall(ModuleIdentifier id)
         {
             return null;
         }

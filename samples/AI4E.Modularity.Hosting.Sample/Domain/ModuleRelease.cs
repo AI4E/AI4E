@@ -33,8 +33,12 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
             _metadata = metadata;
         }
 
-        // The private setter is necessary due to a bug in JSON.Net https://github.com/JamesNK/Newtonsoft.Json/issues/1284
-        public Module Module { get; private set; }
+        // This property is handled manually due to a bug in JSON.Net https://github.com/JamesNK/Newtonsoft.Json/issues/1284
+        [JsonIgnore]
+        public Module Module { get; internal set; }
+
+        [JsonIgnore]
+        public ModuleReleaseIdentifier Id => new ModuleReleaseIdentifier(Module.Id, Version);
 
         [JsonIgnore]
         public bool IsInstalled => Module.InstalledRelease == this;
@@ -46,16 +50,16 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
         public IEnumerable<Snapshot<FileSystemModuleSource>> Sources => _sources; // TODO: Create read-only wrapper
 
         [JsonIgnore]
-        DateTime ReleaseDate => _metadata.ReleaseDate;
+        public DateTime ReleaseDate => _metadata.ReleaseDate;
 
         [JsonIgnore]
-        string Name => _metadata.Name;
+        public string Name => _metadata.Name;
 
         [JsonIgnore]
-        string Description => _metadata.Description;
+        public string Description => _metadata.Description;
 
         [JsonIgnore]
-        string Author => _metadata.Author;
+        public string Author => _metadata.Author;
 
         public void AddSource(FileSystemModuleSource source)
         {

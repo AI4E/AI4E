@@ -4,7 +4,6 @@
 }
 
 <div>
-
     <form asp-action="Index" method="post">
         <div>
             <label asp-for="SearchPhrase">Suche:</label> <input asp-for="SearchPhrase" />
@@ -21,9 +20,7 @@
             @foreach (var searchResult in Model.SearchResult)
             {
                 <li>
-                    <a asp-action="Install"
-                       asp-route-module="@searchResult.Id"
-                       asp-route-module-version="@searchResult.LatestVersion">
+                    <a asp-action="Details" asp-route-id="@(new AI4E.Modularity.ModuleReleaseIdentifier(searchResult.Id, searchResult.LatestVersion))">
                         <span>@searchResult.Id</span><span>@searchResult.LatestVersion</span>
                     </a>
                 </li>
