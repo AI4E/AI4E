@@ -47,7 +47,7 @@ namespace AI4E.Modularity.Host
             }
 
             // Initialize the module-host.
-            var installer = serviceProvider.GetRequiredService<IModuleInstaller>();
+            //var installer = serviceProvider.GetRequiredService<IModuleInstaller>();
             var dispatcher = serviceProvider.GetRequiredService<IRemoteMessageDispatcher>();
             var dispatchStore = serviceProvider.GetRequiredService<IHttpDispatchStore>();
             var debugPort = serviceProvider.GetService<DebugPort>();

@@ -2,6 +2,8 @@
 
 @{
     ViewBag.Title = "Module details";
+
+    var installedVersion = Model.AvailableVersions.FirstOrDefault(p => p.IsInstalled)?.Version;
 }
 
 <div>
@@ -10,19 +12,15 @@
         <small>
             @Model.Version
 
-            @{
-                var installedVersion = Model.AvailableVersions.FirstOrDefault(p => p.IsInstalled)?.Version;
-            }
-
             @if (installedVersion != null)
             {
                 if (installedVersion == Model.Version)
                 {
-                    <text>(Installiert)</text>
+                    <text>(Installed)</text>
                 }
                 else
                 {
-                    <text>(Installiert: @installedVersion)</text>
+                    <text>(Installed: @installedVersion)</text>
                 }
             }
         </small>
@@ -66,4 +64,25 @@
         </ol>
     </div>
 
+    <div>
+        @if (installedVersion != null)
+        {
+            <a asp-action="Uninstall" asp-route-id="@Model.Id.Module" class="btn btn-primary">Uninstall module</a>
+        }
+
+        @if (installedVersion != Model.Version)
+        {
+            <a asp-action="Install" asp-route-id="@Model.Id" class="btn btn-primary">
+
+                @if (installedVersion == null)
+                {
+                    @:Install
+                }
+                else
+                {
+                    @:Update
+                }
+            </a>
+        }
+    </div>
 </div>

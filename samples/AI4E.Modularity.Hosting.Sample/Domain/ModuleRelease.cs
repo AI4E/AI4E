@@ -61,6 +61,9 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
         [JsonIgnore]
         public string Author => _metadata.Author;
 
+        [JsonIgnore]
+        public IEnumerable<ModuleDependency> Dependencies => _metadata.Dependencies;
+
         public void AddSource(FileSystemModuleSource source)
         {
             if (source == null)
@@ -79,7 +82,7 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
             // If there are no more sources available for the release, we have to remove it.
             if (!_sources.Any())
             {
-                Module.RemoveModuleRelease(this);
+                Module.RemoveRelease(this);
             }
         }
 

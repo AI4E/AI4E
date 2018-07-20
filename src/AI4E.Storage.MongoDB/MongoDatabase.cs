@@ -64,6 +64,11 @@ namespace AI4E.Storage.MongoDB
 
         #region C'tor
 
+        static MongoDatabase()
+        {
+            BsonSerializer.RegisterSerializationProvider(new StructSerializationProvider());
+        }
+
         public MongoDatabase(IMongoDatabase database)
         {
             if (database == null)

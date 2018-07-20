@@ -66,4 +66,7 @@ namespace AI4E
 
         public bool AllowExisingEntity { get; set; } = false;
     }
+
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    public class EntityLookupAttribute : Attribute { }
 }

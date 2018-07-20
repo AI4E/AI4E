@@ -39,6 +39,7 @@ namespace AI4E.Modularity.Hosting.Sample
 
             services.AddStorage()
                     .UseInMemoryDatabase()
+                    //.UseMongoDB(options => options.Database = "AI4EHostingSampleDB")
                     .UseDomainStorage();
 
             services.AddModularity();
@@ -46,6 +47,7 @@ namespace AI4E.Modularity.Hosting.Sample
             services.AddDomainServices();
 
             services.AddScoped<IModuleSearchEngine, ModuleSearchEngine>();
+            services.AddScoped<IDependencyResolver, DependencyResolver>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

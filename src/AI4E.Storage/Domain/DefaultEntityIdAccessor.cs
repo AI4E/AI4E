@@ -1,41 +1,227 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using AI4E.Internal;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Domain
 {
-    public sealed class DefaultEntityIdAccessor<TId, TEntityBase> : IEntityIdAccessor<TId, TEntityBase>
-        where TEntityBase : class
+    //public sealed class DefaultEntityIdAccessor<TId, TEntityBase> : IEntityIdAccessor<TId, TEntityBase>
+    //    where TEntityBase : class
+    //{
+    //    private static Lazy<Func<TEntityBase, TId>> _idAccessor;
+
+    //    static DefaultEntityIdAccessor()
+    //    {
+    //        _idAccessor = new Lazy<Func<TEntityBase, TId>>(BuildIdAccessor, LazyThreadSafetyMode.PublicationOnly);
+    //    }
+
+    //    private Func<TEntityBase, TId> IdAccessor => _idAccessor.Value;
+
+    //    private static Func<TEntityBase, TId> BuildIdAccessor()
+    //    {
+    //        var idType = DataPropertyHelper.GetIdType<TEntityBase>();
+
+    //        if (idType == null)
+    //        {
+    //            throw new InvalidOperationException($"Unable to access the id on type '{ typeof(TEntityBase).FullName }'.");
+    //        }
+
+    //        if (!typeof(TId).IsAssignableFrom(idType))
+    //        {
+    //            throw new InvalidOperationException($"The id of type '{ typeof(TEntityBase).FullName }' is incompatible with the expected id type '{typeof(TId)}'.");
+    //        }
+
+    //        return DataPropertyHelper.GetIdAccessor<TId, TEntityBase>();
+    //    }
+
+    //    public TId GetId(TEntityBase entity)
+    //    {
+    //        return IdAccessor(entity);
+    //    }
+    //}
+
+    public sealed class EntityIdManager : IEntityIdManager
     {
-        private static Lazy<Func<TEntityBase, TId>> _idAccessor;
+        private readonly ConcurrentDictionary<Type, TypedEntityIdManager> _typedManagers;
 
-        static DefaultEntityIdAccessor()
+        public EntityIdManager()
         {
-            _idAccessor = new Lazy<Func<TEntityBase, TId>>(BuildIdAccessor, LazyThreadSafetyMode.PublicationOnly);
+            _typedManagers = new ConcurrentDictionary<Type, TypedEntityIdManager>();
         }
 
-        private Func<TEntityBase, TId> IdAccessor => _idAccessor.Value;
-
-        private static Func<TEntityBase, TId> BuildIdAccessor()
+        public bool TryGetId(Type entityType, object entity, out string id)
         {
-            var idType = DataPropertyHelper.GetIdType<TEntityBase>();
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
 
-            if (idType == null)
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            if (entityType.IsGenericTypeDefinition)
+                throw new ArgumentException("The argument must not be an open type definition.", nameof(entityType));
+
+            if (!entityType.IsAssignableFrom(entity.GetType()))
+                throw new ArgumentException($"The specified entity must be of type '{entityType.FullName}' or an assignable type.");
+
+            var typedManager = GetTypedManager(entityType);
+
+            if (typedManager.CanGetId)
             {
-                throw new InvalidOperationException($"Unable to access the id on type '{ typeof(TEntityBase).FullName }'.");
+                id = typedManager.GetId(entity);
+                return true;
             }
 
-            if (!typeof(TId).IsAssignableFrom(idType))
-            {
-                throw new InvalidOperationException($"The id of type '{ typeof(TEntityBase).FullName }' is incompatible with the expected id type '{typeof(TId)}'.");
-            }
-
-            return DataPropertyHelper.GetIdAccessor<TId, TEntityBase>();
+            id = default;
+            return false;
         }
 
-        public TId GetId(TEntityBase entity)
+        public bool TrySetId(Type entityType, object entity, string id)
         {
-            return IdAccessor(entity);
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            if (id == null)
+                throw new ArgumentNullException(nameof(id));
+
+            if (entityType.IsGenericTypeDefinition)
+                throw new ArgumentException("The argument must not be an open type definition.", nameof(entityType));
+
+            if (!entityType.IsAssignableFrom(entity.GetType()))
+                throw new ArgumentException($"The specified entity must be of type '{entityType.FullName}' or an assignable type.");
+
+            var typedManager = GetTypedManager(entityType);
+
+            if (typedManager.CanSetId)
+            {
+                typedManager.SetId(entity, id);
+                return true;
+            }
+
+            return false;
+        }
+
+        private TypedEntityIdManager GetTypedManager(Type entityType)
+        {
+            return _typedManagers.GetOrAdd(entityType, BuildTypedManager);
+        }
+
+        private static TypedEntityIdManager BuildTypedManager(Type entityType)
+        {
+            return new TypedEntityIdManager(entityType);
+        }
+
+        private readonly struct TypedEntityIdManager
+        {
+            private readonly Type _entityType;
+            private readonly Func<object, string> _idGetAccessor;
+            private readonly Action<object, string> _idSetAccessor;
+
+            public TypedEntityIdManager(Type entityType)
+            {
+                Assert(entityType != null);
+
+                _entityType = entityType;
+
+                var idMember = DataPropertyHelper.GetIdMember(entityType);
+
+                if (idMember == null)
+                {
+                    var idTable = new ConditionalWeakTable<object, IdTableEntry>();
+
+                    _idGetAccessor = obj => idTable.GetOrCreateValue(obj).Id;
+                    _idSetAccessor = (obj, id) => idTable.GetOrCreateValue(obj).Id = id;
+                }
+                else
+                {
+                    // We could theoretically allow setting id to an entity, 
+                    // but this will need support for transforming a stringified id back to its original representation.
+                    _idSetAccessor = null;
+
+                    var idType = DataPropertyHelper.GetIdType(entityType);
+                    var entityParameter = Expression.Parameter(typeof(object), "entity");
+                    var convertedEntity = Expression.Convert(entityParameter, entityType);
+
+                    var idAccess = default(Expression);
+
+                    if (idMember.MemberType == MemberTypes.Method)
+                    {
+                        idAccess = Expression.Call(convertedEntity, (MethodInfo)idMember);
+                    }
+                    else if (idMember.MemberType == MemberTypes.Field || idMember.MemberType == MemberTypes.Property)
+                    {
+                        idAccess = Expression.MakeMemberAccess(convertedEntity, idMember);
+                    }
+
+                    var toStringMethod = idType.GetMethod(nameof(ToString), BindingFlags.Public | BindingFlags.Instance, Type.DefaultBinder, Type.EmptyTypes, null);
+
+                    Assert(toStringMethod != null);
+
+                    if (idAccess != null)
+                    {
+                        var toStringCall = Expression.Call(idAccess, toStringMethod);
+                        _idGetAccessor = Expression.Lambda<Func<object, string>>(toStringCall, entityParameter).Compile();
+                    }
+                    else
+                    {
+                        _idGetAccessor = null;
+                    }
+                }
+            }
+
+            public bool CanGetId => _idGetAccessor != null;
+            public bool CanSetId => _idSetAccessor != null;
+
+            public string GetId(object entity)
+            {
+                Assert(_entityType != null);
+                Assert(entity != null);
+
+                if (!CanGetId)
+                {
+                    throw new NotSupportedException();
+                }
+
+                return _idGetAccessor(entity);
+            }
+
+            public void SetId(object entity, string id)
+            {
+                Assert(_entityType != null);
+                Assert(entity != null);
+                Assert(id != null);
+
+                if (!CanSetId)
+                {
+                    throw new NotSupportedException();
+                }
+
+                _idSetAccessor(entity, id);
+            }
+
+            private sealed class IdTableEntry
+            {
+#pragma warning disable IDE0032
+                private volatile string _id;
+#pragma warning restore IDE0032
+
+                public IdTableEntry()
+                {
+                    _id = null;
+                }
+
+                public string Id
+                {
+                    get => _id; // Volatile read op.
+                    set => _id = value; // Volatile write op.
+                }
+            }
         }
     }
 }

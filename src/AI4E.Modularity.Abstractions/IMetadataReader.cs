@@ -31,13 +31,6 @@ namespace AI4E.Modularity
 
         string EntryAssemblyArguments { get; }
 
-        IEnumerable<IModuleDependency> Dependencies { get; }
-    }
-
-    public interface IModuleDependency
-    {
-        ModuleIdentifier Id { get; }
-
-        ModuleVersionFilter Version { get; }
+        IEnumerable<ModuleDependency> Dependencies { get; }
     }
 }

@@ -18,7 +18,7 @@ namespace AI4E.Storage.Domain
         #region Fields
 
         private readonly IEntityStorageEngine _storageEngine;
-        private readonly IEntityIdAccessor<TId, TEntityBase> _entityIdAccessor;
+        private readonly IEntityIdManager _entityIdManager;
 
         #endregion
 
@@ -35,16 +35,16 @@ namespace AI4E.Storage.Domain
         }
 
         public EntityStore(IEntityStorageEngine storageEngine,
-                           IEntityIdAccessor<TId, TEntityBase> entityIdAccessor)
+                           IEntityIdManager entityIdManager)
         {
             if (storageEngine == null)
                 throw new ArgumentNullException(nameof(storageEngine));
 
-            if (entityIdAccessor == null)
-                throw new ArgumentNullException(nameof(entityIdAccessor));
+            if (entityIdManager == null)
+                throw new ArgumentNullException(nameof(entityIdManager));
 
             _storageEngine = storageEngine;
-            _entityIdAccessor = entityIdAccessor;
+            _entityIdManager = entityIdManager;
         }
 
         #endregion
@@ -118,13 +118,10 @@ namespace AI4E.Storage.Domain
             if (!entityType.IsAssignableFrom(entity.GetType()))
                 throw new ArgumentException($"The argument must be of type '{ entityType.FullName }' or a derived type.", nameof(entity));
 
-            var id = _entityIdAccessor.GetId(entity);
-
-            Assert(id != null); // TODO: Does this have to be a runtime check?
-
-            var stringifiedId = id.ToString();
-
-            Assert(stringifiedId != null); // TODO: Does this have to be a runtime check?
+            if (!_entityIdManager.TryGetId(entityType, entity, out var stringifiedId))
+            {
+                throw new ArgumentException("Unable to determine the id of the specifies entity.", nameof(entity));
+            }
 
             return _storageEngine.StoreAsync(entityType, entity, stringifiedId, cancellation);
         }
@@ -143,13 +140,10 @@ namespace AI4E.Storage.Domain
             if (!entityType.IsAssignableFrom(entity.GetType()))
                 throw new ArgumentException($"The argument must be of type '{ entityType.FullName }' or a derived type.", nameof(entity));
 
-            var id = _entityIdAccessor.GetId(entity);
-
-            Assert(id != null); // TODO: Does this have to be a runtime check?
-
-            var stringifiedId = id.ToString();
-
-            Assert(stringifiedId != null); // TODO: Does this have to be a runtime check?
+            if (!_entityIdManager.TryGetId(entityType, entity, out var stringifiedId))
+            {
+                throw new ArgumentException("Unable to determine the id of the specifies entity.", nameof(entity));
+            }
 
             return _storageEngine.DeleteAsync(entityType, entity, stringifiedId, cancellation);
         }

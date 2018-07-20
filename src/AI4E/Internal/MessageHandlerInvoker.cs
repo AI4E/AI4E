@@ -318,7 +318,6 @@ namespace AI4E.Internal
             {
                 Func<Task, IDispatchResult> compiledLambda;
 
-
                 var taskParameter = Expression.Parameter(typeof(Task), "task");
                 var taskParameterConversion = Expression.Convert(taskParameter, typeof(Task<>).MakeGenericType(_returnType));
                 var resultAccess = Expression.Property(taskParameterConversion, typeof(Task<>).MakeGenericType(_returnType).GetProperty("Result"));

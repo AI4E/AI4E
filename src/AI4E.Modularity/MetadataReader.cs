@@ -87,18 +87,10 @@ namespace AI4E.Modularity
             [JsonProperty("entry-arguments")]
             public string EntryAssemblyArguments { get; set; }
 
-            IEnumerable<IModuleDependency> IModuleMetadata.Dependencies => Dependencies.Select(p => new SerializedModuleDependency { Id = p.Key, Version = p.Value });
+            IEnumerable<ModuleDependency> IModuleMetadata.Dependencies => Dependencies.Select(p => new ModuleDependency(p.Key, p.Value));
 
             [JsonProperty("dependencies")]
-            public IDictionary<ModuleIdentifier, ModuleVersionFilter> Dependencies { get; } = new Dictionary<ModuleIdentifier, ModuleVersionFilter>();
-        }
-
-        [JsonDictionary("dependencies", Id = "Id")]
-        private sealed class SerializedModuleDependency : IModuleDependency
-        {
-            public ModuleIdentifier Id { get; set; }
-
-            public ModuleVersionFilter Version { get; set; }
+            public IDictionary<ModuleIdentifier, ModuleVersionRange> Dependencies { get; } = new Dictionary<ModuleIdentifier, ModuleVersionRange>();
         }
     }
 }

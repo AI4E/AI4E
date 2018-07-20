@@ -65,25 +65,55 @@ namespace AI4E.Modularity.Hosting.Sample.Controllers
         [HttpGet]
         public async Task<IActionResult> Install(ModuleReleaseIdentifier id)
         {
-            return null;
+            var queryResult = await _messageDispatcher.QueryByIdAsync<ModuleReleaseIdentifier, ModuleInstallModel>(id);
+
+            if (queryResult.IsSuccessWithResult<ModuleInstallModel>(out var model))
+            {
+                return View(model);
+            }
+
+            return GetActionResult(queryResult);
         }
 
         [HttpPost]
         public async Task<IActionResult> Install(ModuleInstallModel model)
         {
-            return null;
+            var command = new ModuleInstallCommand(model.Id.Module, model.ConcurrencyToken, model.Id.Version);
+            var commandResult = await _messageDispatcher.DispatchAsync(command);
+
+            if (commandResult.IsSuccess)
+            {
+                return RedirectToAction(nameof(Details), new { id = model.Id });
+            }
+
+            return GetActionResult(commandResult, model);
         }
 
         [HttpGet]
         public async Task<IActionResult> Uninstall(ModuleIdentifier id)
         {
-            return null;
+            var queryResult = await _messageDispatcher.QueryByIdAsync<ModuleIdentifier, ModuleUninstallModel>(id);
+
+            if (queryResult.IsSuccessWithResult<ModuleUninstallModel>(out var model))
+            {
+                return View(model);
+            }
+
+            return GetActionResult(queryResult);
         }
 
         [HttpPost]
         public async Task<IActionResult> Uninstall(ModuleUninstallModel model)
         {
-            return null;
+            var command = new ModuleUninstallCommand(model.Id, model.ConcurrencyToken);
+            var commandResult = await _messageDispatcher.DispatchAsync(command);
+
+            if (commandResult.IsSuccess)
+            {
+                return RedirectToAction(nameof(Index));
+            }
+
+            return GetActionResult(commandResult, model);
         }
 
         #region TODO: Duplicates

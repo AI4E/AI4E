@@ -173,7 +173,7 @@ namespace AI4E.Internal
             return idAccessor.DynamicInvoke(data);
         }
 
-        private static Delegate GetIdAccessor(Type type)
+        public static LambdaExpression BuildIdAccessor(Type type)
         {
             var idMember = GetIdMember(type);
             var idType = GetIdType(type);
@@ -197,7 +197,12 @@ namespace AI4E.Internal
                 return null;
             }
 
-            return Expression.Lambda(typeof(Func<,>).MakeGenericType(type, idType), idAccess, param).Compile();
+            return Expression.Lambda(typeof(Func<,>).MakeGenericType(type, idType), idAccess, param);
+        }
+
+        private static Delegate GetIdAccessor(Type type)
+        {
+            return BuildIdAccessor(type).Compile();
         }
 
         private static Expression BuildIdEqualityExpression(Type idType, Expression leftOperand, Expression rightOperand)
@@ -217,10 +222,10 @@ namespace AI4E.Internal
             }
             else
             {
-                var equalsMethod = typeof(object).GetMethod(nameof(Equals));
+                var equalsMethod = typeof(object).GetMethod(nameof(Equals), BindingFlags.Public | BindingFlags.Instance);
 
                 // TODO: Check left operand to be non-null
-                return Expression.Call(leftOperand, equalsMethod, rightOperand);
+                return Expression.Call(Expression.Convert(leftOperand, typeof(object)), equalsMethod, Expression.Convert(rightOperand, typeof(object)));
             }
         }
 

@@ -461,6 +461,7 @@ namespace AI4E.Storage.Domain
             }
         }
 
+        // TODO: There is no way to actually add an event.
         private interface IEntityMetadata
         {
             void CommitEvents();

@@ -79,14 +79,14 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
                     var metadata = await source.GetMetadataAsync(releaseId, _metadataReader, cancellation);
                     module = new Module(metadata, source);
                 }
-                else if (module.GetModuleRelease(moduleVersion) is var release && release != null)
+                else if (module.GetRelease(moduleVersion) is var release && release != null)
                 {
                     release.AddSource(source);
                 }
                 else
                 {
                     var metadata = await source.GetMetadataAsync(releaseId, _metadataReader, cancellation);
-                    module.AddModuleRelease(metadata, source);
+                    module.AddRelease(metadata, source);
                 }
             }
             while (!await TryStoreAsync(module, cancellation));

@@ -48,11 +48,11 @@ namespace AI4E.Modularity.Host
             // These services are running only once and therefore are registered as singleton instances.
             // The services are not intended to be used directly but are required for internal use.
 
-            services.TryAddSingleton<IModuleInstaller, ModuleInstaller>();
-            services.TryAddSingleton<IModuleSupervision, ModuleSupervision>();
+            //services.TryAddSingleton<IModuleInstaller, ModuleInstaller>();
+            //services.TryAddSingleton<IModuleSupervision, ModuleSupervision>();
 
-            // These services are the public api for the modular host.
-            services.TryAddScoped<IModuleManager, ModuleManager>();
+            //// These services are the public api for the modular host.
+            //services.TryAddScoped<IModuleManager, ModuleManager>();
 
             // High level messaging
             services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();

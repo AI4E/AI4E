@@ -20,7 +20,8 @@ namespace AI4E.Modularity.Hosting.Sample.Services
             return new ModuleListModel
             {
                 Id = module.Id,
-                LatestVersion = latestRelease.Version
+                LatestVersion = latestRelease.Version,
+                InstalledVersion = module.InstalledVersion
             };
         }
 
@@ -31,6 +32,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
 
         public IEnumerable<ModuleReleaseModel> ProjectToReleaseModels(Module module)
         {
+            // This cannot be done with yield as the "availableVersions" list does not contain all necessary entries then. The releases had to be evaluated twice.
             var result = new List<ModuleReleaseModel>();
             var availableVersions = new List<AvailableVersionModel>();
 
@@ -70,6 +72,41 @@ namespace AI4E.Modularity.Hosting.Sample.Services
                 Version = release.Version,
                 IsInstalled = release.IsInstalled
             };
+        }
+
+        public ModuleUninstallModel ProjectToUninstallModel(Module module)
+        {
+            // If the module is not installed, we do not need an uninstall model.
+            if (!module.IsInstalled)
+            {
+                return null;
+            }
+
+            return new ModuleUninstallModel
+            {
+                Id = module.Id,
+                ConcurrencyToken = module.ConcurrencyToken,
+                Name = module.InstalledRelease.Name
+            };
+        }
+
+        public IEnumerable<ModuleInstallModel> ProjectToInstallModels(Module module)
+        {
+            foreach (var release in module.Releases)
+            {
+                // If the release is installed, we need no install model for it.
+                if (release.IsInstalled)
+                {
+                    continue;
+                }
+
+                yield return new ModuleInstallModel
+                {
+                    Id = release.Id,
+                    ConcurrencyToken = module.ConcurrencyToken,
+                    Name = release.Name
+                };
+            }
         }
     }
 }

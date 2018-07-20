@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace AI4E.Modularity.Hosting.Sample.Models
+﻿namespace AI4E.Modularity.Hosting.Sample.Models
 {
-    public class ModuleInstallModel
+    public sealed class ModuleInstallModel
     {
+        public ModuleReleaseIdentifier Id { get; set; }
+        public string ConcurrencyToken { get; set; }
+
+        public string Name { get; set; }
+        public ModuleVersion Version => Id.Version;
     }
 }

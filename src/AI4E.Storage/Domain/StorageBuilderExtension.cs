@@ -72,7 +72,9 @@ namespace AI4E.Storage.Domain
 
             // Helpers
             services.AddSingleton<IEntityStoragePropertyManager, EntityStoragePropertyManager>();
-            services.AddSingleton(typeof(IEntityIdAccessor<,>), typeof(DefaultEntityIdAccessor<,>));
+            services.AddSingleton<IEntityIdManager, EntityIdManager>();
+
+            //services.AddSingleton(typeof(IEntityIdAccessor<,>), typeof(DefaultEntityIdAccessor<,>));
         }
 
         private static void AddProjectionEngine(IServiceCollection services)

@@ -19,10 +19,11 @@
  */
 
 using System;
+using Newtonsoft.Json;
 
 namespace AI4E.Modularity
 {
-    public struct ModuleReleaseIdentifier : IEquatable<ModuleReleaseIdentifier>
+    public readonly struct ModuleReleaseIdentifier : IEquatable<ModuleReleaseIdentifier>
     {
         public static ModuleReleaseIdentifier UnknownModuleRelease { get; } = default;
 
@@ -30,7 +31,7 @@ namespace AI4E.Modularity
         {
             if (module == ModuleIdentifier.UnknownModule || version == ModuleVersion.Unknown)
             {
-                this = default;
+                this = UnknownModuleRelease;
             }
             else
             {
@@ -39,24 +40,27 @@ namespace AI4E.Modularity
             }
         }
 
-        public ModuleReleaseIdentifier(string name, ModuleVersion version)
-        {
-            if (version == ModuleVersion.Unknown)
-            {
-                this = default;
-            }
-            else
-            {
-                Module = new ModuleIdentifier(name);
-                Version = version;
-            }
-        }
+        //public ModuleReleaseIdentifier(string name, ModuleVersion version)
+        //{
+        //    if (version == ModuleVersion.Unknown)
+        //    {
+        //        this = default;
+        //    }
+        //    else
+        //    {
+        //        Module = new ModuleIdentifier(name);
+        //        Version = version;
+        //    }
+        //}
 
         // TODO: These should be read-only. 
         //       The in-memory database and json.net have problems to recreate the object.
         //       Maybe a custom type converter can help here.
-        public ModuleIdentifier Module { get; set; }
-        public ModuleVersion Version { get; set; }
+        [JsonProperty]
+        public ModuleIdentifier Module { get; }
+
+        [JsonProperty]
+        public ModuleVersion Version { get; }
 
         public bool Equals(ModuleReleaseIdentifier other)
         {

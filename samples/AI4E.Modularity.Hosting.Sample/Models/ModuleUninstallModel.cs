@@ -1,11 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace AI4E.Modularity.Hosting.Sample.Models
+﻿namespace AI4E.Modularity.Hosting.Sample.Models
 {
-    public class ModuleUninstallModel
+    public sealed class ModuleUninstallModel
     {
+        public ModuleIdentifier Id { get; set; }
+        public string ConcurrencyToken { get; set; }
+
+        public string Name { get; set; }
     }
 }

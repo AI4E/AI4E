@@ -31,6 +31,12 @@ namespace AI4E.DispatchResults
             Id = id;
         }
 
+        public EntityNotFoundDispatchResult(Type entityType)
+           : base($"The entity of type '{(entityType ?? throw new ArgumentNullException(nameof(entityType))).FullName}' with the specified id was not found.")
+        {
+            EntityType = entityType;
+        }
+
         public Type EntityType { get; }
 
         public string Id { get; }
