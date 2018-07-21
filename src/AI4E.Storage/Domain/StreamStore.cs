@@ -361,7 +361,11 @@ namespace AI4E.Storage.Domain
                             return null;
                         }
 
+                        _logger?.LogDebug($"Commit {newToken} successfully appended to stream {StreamId}. Dispatching commit.");
+
                         await _streamStore._commitDispatcher.DispatchAsync(commit);
+
+                        _logger?.LogDebug($"Commit {newToken} of stream {StreamId} dispatched successfully.");
 
                         return newToken;
                     }
@@ -372,6 +376,7 @@ namespace AI4E.Storage.Domain
                         throw;
                     }
                 }
+
                 throw new StorageException("Gived up on unique concurrency token generation.");
             }
 

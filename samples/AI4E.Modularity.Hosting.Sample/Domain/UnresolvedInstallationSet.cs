@@ -50,14 +50,14 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
             if (dependencyResolver == null)
                 throw new ArgumentNullException(nameof(dependencyResolver));
 
-            var result = new List<ResolvedInstallationSet>();
-
             if (TryGetUnresolved(out var dependency))
             {
                 Assert(_unresolved != null);
 
                 // A conflict occured
-                return await TryResolveSingleDependencyAsync(dependency, dependencyResolver, cancellation);
+                var result = await TryResolveSingleDependencyAsync(dependency, dependencyResolver, cancellation);
+
+                return result;
             }
 
             return new ResolvedInstallationSet(ResolvedReleases).Yield();
@@ -128,9 +128,7 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
             }
 
             // TODO: Is it possible that there are duplicates?
-            var result = (await Task.WhenAll(resolveTasks)).SelectMany(_ => _);
-
-            return result;
+            return (await Task.WhenAll(resolveTasks)).SelectMany(_ => _).Concat(resolvedInstallationSets);
         }
 
         private bool TryCombine(ModuleReleaseIdentifier matchingRelease,

@@ -27,7 +27,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
         [EntityLookup]
         private Task<ModuleInstallationConfiguration> LookupConfigurationAsync()
         {
-            return _storageEngine.GetByIdAsync<ModuleInstallationConfiguration>(string.Empty).AsTask();
+            return _storageEngine.GetByIdAsync<ModuleInstallationConfiguration>(default(SingletonId).ToString()).AsTask();
         }
 
         #region InstallationConfigurationChanged
