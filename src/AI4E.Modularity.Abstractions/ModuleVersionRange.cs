@@ -31,7 +31,7 @@ namespace AI4E.Modularity
         public static ModuleVersionRange NoPreReleases { get; } = new ModuleVersionRange();
         public static ModuleVersionRange All { get; } = new ModuleVersionRange(majorVersion: null, minorVersion: null, revision: null, allowPreReleases: true);
 
-        // TODO: Rename
+        // TODO: Rename to Exact
         public static ModuleVersionRange SingleVersion(ModuleVersion version)
         {
             return new ModuleVersionRange(version.MajorVersion,
@@ -43,8 +43,7 @@ namespace AI4E.Modularity
                                           version.IsPreRelease);
         }
 
-        // TODO: Rename
-        public static ModuleVersionRange SingleVersionAndLater(ModuleVersion version)
+        public static ModuleVersionRange Minimum(ModuleVersion version)
         {
             return new ModuleVersionRange(version.MajorVersion,
                                           version.MinorVersion,

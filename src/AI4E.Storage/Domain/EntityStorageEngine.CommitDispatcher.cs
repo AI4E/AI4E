@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,7 +8,9 @@ using AI4E.Async;
 using AI4E.DispatchResults;
 using AI4E.Internal;
 using AI4E.Storage.Projection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace AI4E.Storage.Domain
 {
@@ -125,7 +129,29 @@ namespace AI4E.Storage.Domain
 
         private async Task<bool> DispatchCoreAsync(ICommit commit, CancellationToken cancellation)
         {
-            var events = commit.Events.Select(p => p.Body);
+            IEnumerable<object> events;
+
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var storageEngine = scope.ServiceProvider.GetRequiredService<IEntityStorageEngine>();
+                var settingsResolver = scope.ServiceProvider.GetRequiredService<ISerializerSettingsResolver>();
+                var jsonSerializer = JsonSerializer.Create(settingsResolver.ResolveSettings(storageEngine));
+
+                object Deserialize(byte[] data)
+                {
+                    if (data == null)
+                        return null;
+
+                    var str = CompressionHelper.Unzip(data);
+
+                    using (var textReader = new StringReader(str))
+                    {
+                        return jsonSerializer.Deserialize(textReader, typeof(object));
+                    }
+                }
+
+                events = commit.Events.Select(p => Deserialize(p.Body as byte[]));
+            }
 
             var dispatchResults = await Task.WhenAll(events.Select(p => DispatchEventAsync(p, cancellation)));
             var dispatchResult = new AggregateDispatchResult(dispatchResults);

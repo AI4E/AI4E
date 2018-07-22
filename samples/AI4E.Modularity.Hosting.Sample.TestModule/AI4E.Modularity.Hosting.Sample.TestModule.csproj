@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Modularity\AI4E.Modularity.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.MongoDB\AI4E.Storage.MongoDB.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
+    <ProjectReference Include="..\..\src\AI4E\AI4E.csproj" />
+  </ItemGroup>
+
+</Project>

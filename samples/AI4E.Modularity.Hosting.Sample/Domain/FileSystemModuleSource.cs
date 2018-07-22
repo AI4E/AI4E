@@ -107,7 +107,7 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
 
                 UpdateCacheEntry(metadata.Release, file, metadata);
 
-                if ((regex == null || regex.IsMatch(metadata.Name)) && 
+                if ((regex == null || regex.IsMatch(metadata.Name)) &&
                     (includePreReleases || !metadata.Version.IsPreRelease))
                 {
                     result.Add(metadata.Release);
@@ -196,7 +196,7 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
             {
                 var checkedFiles = files.ToArray();
 
-                files = Directory.EnumerateFiles(_location.Location, $"{module.Module}*.aep", SearchOption.AllDirectories)
+                files = Directory.EnumerateFiles(_location.Location, $"*.aep", SearchOption.AllDirectories)
                                   .Except(checkedFiles);
 
                 return (await GetMatchingMetadata(module, files, moduleMetadataReader, cancellation)).metadata;
@@ -254,13 +254,13 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
                 return null;
 
             // If we cannot find the module in the cache, chances are good that the aep source file's name is equal to the module name.
-            IEnumerable<string> files;
+            IEnumerable<string> hints;
 
             try
             {
-                files = Directory.EnumerateFiles(_location.Location, $"{module.Module}*.aep", SearchOption.AllDirectories);
+                hints = Directory.GetFiles(_location.Location, $"{module.Module}*.aep", SearchOption.AllDirectories);
 
-                if (await GetMatchingMetadata(module, files, moduleMetadataReader, cancellation) is var matching &&
+                if (await GetMatchingMetadata(module, hints, moduleMetadataReader, cancellation) is var matching &&
                     matching.metadata != null)
                 {
                     return await ExtractCoreAsync(directory, matching.metadata, matching.file, cancellation);
@@ -274,10 +274,8 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
             // We have to search for the module be opening all files (except the ones, we already looked at.
             try
             {
-                var checkedFiles = files.ToArray();
-
-                files = Directory.EnumerateFiles(_location.Location, $"{module.Module}*.aep", SearchOption.AllDirectories)
-                                  .Except(checkedFiles);
+                var files = Directory.GetFiles(_location.Location, $"*.aep", SearchOption.AllDirectories)
+                                     .Except(hints);
 
                 if (await GetMatchingMetadata(module, files, moduleMetadataReader, cancellation) is var matching &&
                                 matching.metadata != null)

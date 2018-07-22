@@ -6,7 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\src\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
     <Compile Include="..\..\src\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
+    <Compile Include="..\..\src\Common\ProcessExtension.cs" Link="Internal\ProcessExtension.cs" />
+    <Compile Include="..\..\src\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,10 +27,6 @@
     <ProjectReference Include="..\..\src\AI4E.Storage.MongoDB\AI4E.Storage.MongoDB.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\..\src\AI4E\AI4E.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal\" />
   </ItemGroup>
 
   <Target Name="PreBuild" AfterTargets="PreBuildEvent">

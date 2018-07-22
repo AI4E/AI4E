@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Hosting.Sample.Domain
@@ -14,6 +15,7 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
         private readonly ImmutableDictionary<ModuleIdentifier, ModuleVersion> _resolved;
         private readonly ImmutableDictionary<ModuleIdentifier, ModuleVersionRange> _unresolved;
 
+        [JsonConstructor]
         public UnresolvedInstallationSet(IEnumerable<ModuleReleaseIdentifier> resolved,
                                          IEnumerable<ModuleDependency> unresolved)
         {
@@ -40,10 +42,13 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
             _unresolved = unresolved;
         }
 
-        public IEnumerable<ModuleReleaseIdentifier> ResolvedReleases => _resolved?.Select(p => new ModuleReleaseIdentifier(p.Key, p.Value))
-                                                                                 ?? Enumerable.Empty<ModuleReleaseIdentifier>();
-        public IEnumerable<ModuleDependency> Unresolved => _unresolved?.Select(p => new ModuleDependency(p.Key, p.Value))
-                                                                      ?? Enumerable.Empty<ModuleDependency>();
+        [JsonProperty("Resolved")]
+        public IEnumerable<ModuleReleaseIdentifier> Resolved => (_resolved?.Select(p => new ModuleReleaseIdentifier(p.Key, p.Value))
+                                                                          ?? Enumerable.Empty<ModuleReleaseIdentifier>()).ToList();
+
+        [JsonProperty("Unresolved")]
+        public IEnumerable<ModuleDependency> Unresolved => (_unresolved?.Select(p => new ModuleDependency(p.Key, p.Value))
+                                                                       ?? Enumerable.Empty<ModuleDependency>()).ToList();
 
         public async Task<IEnumerable<ResolvedInstallationSet>> ResolveAsync(IDependencyResolver dependencyResolver, CancellationToken cancellation)
         {
@@ -60,7 +65,7 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
                 return result;
             }
 
-            return new ResolvedInstallationSet(ResolvedReleases).Yield();
+            return new ResolvedInstallationSet(Resolved).Yield();
         }
 
         private bool TryGetUnresolved(out ModuleDependency dependency)
@@ -71,14 +76,15 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
                 return false;
             }
 
-            var module = _unresolved.Keys.FirstOrDefault();
+            var modules = _unresolved.Keys;
 
-            if (module == null)
+            if (!modules.Any())
             {
                 dependency = default;
                 return false;
             }
 
+            var module = modules.First();
             var sucess = _unresolved.TryGetValue(module, out var version);
             Assert(sucess);
 
@@ -181,6 +187,44 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
 
             unresolved = builder.ToImmutable();
             return true;
+        }
+
+        public bool ContainsModule(ModuleIdentifier module)
+        {
+            if (_resolved != null && _resolved.ContainsKey(module))
+                return true;
+
+            if (_unresolved != null && _unresolved.ContainsKey(module))
+                return true;
+
+            return false;
+        }
+
+        public UnresolvedInstallationSet WithUnresolved(ModuleIdentifier module, ModuleVersionRange versionRange)
+        {
+            if (ContainsModule(module))
+                throw new InvalidOperationException();
+
+            return new UnresolvedInstallationSet(_resolved ?? ImmutableDictionary<ModuleIdentifier, ModuleVersion>.Empty,
+                                                 (_unresolved ?? ImmutableDictionary<ModuleIdentifier, ModuleVersionRange>.Empty).Add(module, versionRange));
+        }
+
+        public UnresolvedInstallationSet WithoutUnresolved(ModuleIdentifier module)
+        {
+            if (_resolved != null && _resolved.ContainsKey(module))
+                throw new InvalidOperationException();
+
+            return new UnresolvedInstallationSet(_resolved ?? ImmutableDictionary<ModuleIdentifier, ModuleVersion>.Empty,
+                                                 (_unresolved ?? ImmutableDictionary<ModuleIdentifier, ModuleVersionRange>.Empty).Remove(module));
+        }
+
+        public UnresolvedInstallationSet SetVersionRange(ModuleIdentifier module, ModuleVersionRange versionRange)
+        {
+            if (_resolved != null && _resolved.ContainsKey(module))
+                throw new InvalidOperationException();
+
+            return new UnresolvedInstallationSet(_resolved ?? ImmutableDictionary<ModuleIdentifier, ModuleVersion>.Empty,
+                                                 (_unresolved ?? ImmutableDictionary<ModuleIdentifier, ModuleVersionRange>.Empty).SetItem(module, versionRange));
         }
     }
 }

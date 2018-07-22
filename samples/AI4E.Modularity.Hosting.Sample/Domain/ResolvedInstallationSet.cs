@@ -2,13 +2,17 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using Newtonsoft.Json;
 
 namespace AI4E.Modularity.Hosting.Sample.Domain
 {
     public readonly struct ResolvedInstallationSet : IComparable<ResolvedInstallationSet>
     {
+        public static ResolvedInstallationSet EmptyInstallationSet { get; } = default;
+
         private readonly ImmutableDictionary<ModuleIdentifier, ModuleVersion> _resolved;
 
+        [JsonConstructor]
         public ResolvedInstallationSet(IEnumerable<ModuleReleaseIdentifier> resolved)
         {
             if (resolved == null)
@@ -25,8 +29,9 @@ namespace AI4E.Modularity.Hosting.Sample.Domain
             _resolved = resolved;
         }
 
-        public IEnumerable<ModuleReleaseIdentifier> ResolvedReleases => _resolved?.Select(p => new ModuleReleaseIdentifier(p.Key, p.Value))
-                                                                                 ?? Enumerable.Empty<ModuleReleaseIdentifier>();
+        [JsonProperty("Resolved")]
+        public IEnumerable<ModuleReleaseIdentifier> Resolved => (_resolved?.Select(p => new ModuleReleaseIdentifier(p.Key, p.Value))
+                                                                                 ?? Enumerable.Empty<ModuleReleaseIdentifier>()).ToList();
 
         public bool ContainsModule(ModuleIdentifier module)
         {

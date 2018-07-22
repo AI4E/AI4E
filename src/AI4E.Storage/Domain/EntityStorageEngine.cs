@@ -30,7 +30,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
@@ -226,9 +228,24 @@ namespace AI4E.Storage.Domain
         private (string concurrencyToken, IEnumerable<EventMessage> events) GetEntityProperties(object entity)
         {
             var concurrencyToken = _entityAccessor.GetConcurrencyToken(entity);
-            var events = _entityAccessor.GetUncommittedEvents(entity).Select(p => new EventMessage { Body = p });
+            var events = _entityAccessor.GetUncommittedEvents(entity).Select(p => new EventMessage { Body = Serialize(p) });
 
             return (concurrencyToken, events);
+        }
+
+        private byte[] Serialize(object obj)
+        {
+            if (obj == null)
+                return null;
+
+            var jsonBuilder = new StringBuilder();
+
+            using (var textWriter = new StringWriter(jsonBuilder))
+            {
+                _jsonSerializer.Serialize(textWriter, obj, typeof(object));
+            }
+
+            return CompressionHelper.Zip(jsonBuilder.ToString());
         }
 
         private byte[] BuildCommitBody(object entity, IStream stream)
