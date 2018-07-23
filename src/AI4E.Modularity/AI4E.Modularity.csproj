@@ -6,23 +6,28 @@
 
   <ItemGroup>
     <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
+    <Compile Include="..\Common\DictionaryExtension.cs" Link="Internal\DictionaryExtension.cs" />
     <Compile Include="..\Common\EntryPathHelper.cs" Link="Internal\EntryPathHelper.cs" />
+    <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
     <Compile Include="..\Common\EscapeHelper.cs" Link="Internal\EscapeHelper.cs" />
     <Compile Include="..\Common\FileInfoExtensions.cs" Link="Internal\FileInfoExtensions.cs" />
+    <Compile Include="..\Common\PathInternal.cs" Link="Internal\PathInternal.cs" />
+    <Compile Include="..\Common\ProcessExtension.cs" Link="Internal\ProcessExtension.cs" />
+    <Compile Include="..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
     <Compile Include="..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
     <Compile Include="..\Common\StringBuilderExtension.cs" Link="Internal\StringBuilderExtension.cs" />
     <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
+    <Compile Include="..\Common\ZipArchiveEntryExtension.cs" Link="Internal\ZipArchiveEntryExtension.cs" />
+    <Compile Include="..\Common\ZipArchiveExtension.cs" Link="Internal\ZipArchiveExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\AI4E.Domain.Services\AI4E.Domain.Services.csproj" />
+    <ProjectReference Include="..\AI4E.Domain\AI4E.Domain.csproj" />
     <ProjectReference Include="..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Proxying\AI4E.Proxying.csproj" />
     <ProjectReference Include="..\AI4E.Routing\AI4E.Routing.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal\" />
   </ItemGroup>
 
   <ItemGroup>

@@ -27,6 +27,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Internal;
+using AI4E.Modularity.Host;
 using AI4E.Processing;
 using AI4E.Proxying;
 using AI4E.Remoting;

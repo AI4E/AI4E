@@ -2,7 +2,7 @@
 
 namespace AI4E.Modularity.Hosting.Sample.Services
 {
-    using Module = Domain.Module;
+    using Module = Host.Module;
 
     public sealed class ModuleCommandHandler : MessageHandler<Module>
     {

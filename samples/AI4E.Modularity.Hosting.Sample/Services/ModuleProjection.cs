@@ -1,17 +1,17 @@
 ﻿using System.Collections.Generic;
-using AI4E.Modularity.Hosting.Sample.Domain;
+using AI4E.Modularity.Host;
 using AI4E.Modularity.Hosting.Sample.Models;
 using AI4E.Storage.Projection;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Hosting.Sample.Services
 {
-    using Module = Domain.Module;
+    using Module = Host.Module;
 
     public sealed class ModuleProjection : Projection
     {
         [NoProjectionMember]
-        public ModuleListModel ProjectToListModel(Module module, bool includePreReleases)
+        public ModuleListModel ProjectToListModel(IModule module, bool includePreReleases)
         {
             var latestRelease = module.GetLatestRelease(includePreReleases);
 

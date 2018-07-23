@@ -20,12 +20,15 @@
 
 using System;
 using System.Net;
+using System.Reflection;
 using AI4E.Coordination;
+using AI4E.Domain.Services;
+using AI4E.Internal;
 using AI4E.Modularity.Debug;
 using AI4E.Remoting;
 using AI4E.Routing;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 
@@ -40,19 +43,11 @@ namespace AI4E.Modularity.Host
 
             services.AddOptions();
 
-            services.AddSingleton<IMetadataReader, MetadataReader>();
+            // Module management
+            services.AddModuleManagement();
 
             // This is added for the implementation to know that the required services were registered properly.
             services.AddSingleton<ModularityMarkerService>();
-
-            // These services are running only once and therefore are registered as singleton instances.
-            // The services are not intended to be used directly but are required for internal use.
-
-            //services.TryAddSingleton<IModuleInstaller, ModuleInstaller>();
-            //services.TryAddSingleton<IModuleSupervision, ModuleSupervision>();
-
-            //// These services are the public api for the modular host.
-            //services.TryAddScoped<IModuleManager, ModuleManager>();
 
             // High level messaging
             services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
@@ -91,6 +86,18 @@ namespace AI4E.Modularity.Host
             });
 
             return new ModularityBuilder(services);
+        }
+
+        private static void AddModuleManagement(this IServiceCollection services)
+        {
+            services.AddScoped<IModuleSearchEngine, ModuleSearchEngine>();
+            services.AddScoped<IDependencyResolver, DependencyResolver>();
+            services.AddSingleton<IModuleInstaller, ModuleInstaller>();
+            services.AddSingleton<IModuleSupervisorFactory, ModuleSupervisorFactory>();
+            services.AddSingleton<IModuleManager, ModuleManager>();
+            services.AddSingleton<IMetadataReader, MetadataReader>();
+            services.AddDomainServices();
+            services.ConfigureApplicationParts(partManager => partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly())));
         }
 
         private static DebugPort ConfigureDebugPort(IServiceProvider serviceProvider)

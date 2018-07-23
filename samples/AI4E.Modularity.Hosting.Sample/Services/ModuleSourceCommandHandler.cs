@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using AI4E.Modularity.Host;
 using AI4E.Modularity.Hosting.Sample.Api;
-using AI4E.Modularity.Hosting.Sample.Domain;
 
 namespace AI4E.Modularity.Hosting.Sample.Services
 {

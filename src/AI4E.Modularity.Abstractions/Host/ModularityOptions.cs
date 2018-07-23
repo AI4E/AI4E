@@ -1,4 +1,4 @@
-﻿namespace AI4E.Modularity
+﻿namespace AI4E.Modularity.Host
 {
     public class ModularityOptions
     {

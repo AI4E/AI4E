@@ -71,6 +71,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\ListExtension.cs = src\Common\ListExtension.cs
 		src\Common\ObjectExtension.cs = src\Common\ObjectExtension.cs
 		src\Common\ParameterExpressionReplacer.cs = src\Common\ParameterExpressionReplacer.cs
+		src\Common\PathInternal.cs = src\Common\PathInternal.cs
+		src\Common\ProcessExtension.cs = src\Common\ProcessExtension.cs
 		src\Common\ServiceCollectionExtension.cs = src\Common\ServiceCollectionExtension.cs
 		src\Common\SGuid.cs = src\Common\SGuid.cs
 		src\Common\StreamExtension.cs = src\Common\StreamExtension.cs
@@ -78,6 +80,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\TaskExtension.cs = src\Common\TaskExtension.cs
 		src\Common\TypeExtension.cs = src\Common\TypeExtension.cs
 		src\Common\TypeLoadHelper.cs = src\Common\TypeLoadHelper.cs
+		src\Common\ZipArchiveEntryExtension.cs = src\Common\ZipArchiveEntryExtension.cs
+		src\Common\ZipArchiveExtension.cs = src\Common\ZipArchiveExtension.cs
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity", "src\AI4E.Modularity\AI4E.Modularity.csproj", "{849A3BE7-363E-482E-AAC5-2E317EBFB216}"
@@ -104,7 +108,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.Hosting.Sam
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Projection.Dependency.Test", "samples\AI4E.Storage.Projection.Dependency.Test\AI4E.Storage.Projection.Dependency.Test.csproj", "{467489CF-06C4-49A1-B4C4-8548716F8142}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Modularity.Hosting.Sample.TestModule", "samples\AI4E.Modularity.Hosting.Sample.TestModule\AI4E.Modularity.Hosting.Sample.TestModule.csproj", "{0E9DEDF0-5B0B-4CD7-A412-96493D01CB8F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.Hosting.Sample.TestModule", "samples\AI4E.Modularity.Hosting.Sample.TestModule\AI4E.Modularity.Hosting.Sample.TestModule.csproj", "{0E9DEDF0-5B0B-4CD7-A412-96493D01CB8F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,10 +1,8 @@
 using AI4E.Domain.Services;
 using AI4E.Modularity.Host;
-using AI4E.Modularity.Hosting.Sample.Domain;
 using AI4E.Routing;
 using AI4E.Storage;
 using AI4E.Storage.Domain;
-using AI4E.Storage.InMemory;
 using AI4E.Storage.MongoDB;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -47,12 +45,6 @@ namespace AI4E.Modularity.Hosting.Sample
             services.AddDomainServices();
 
             services.Configure<RemoteMessagingOptions>(options => options.LocalEndPoint = EndPointRoute.CreateRoute("AI4E.Modularity.Hosting.Sample"));
-
-            services.AddScoped<IModuleSearchEngine, ModuleSearchEngine>();
-            services.AddScoped<IDependencyResolver, DependencyResolver>();
-            services.AddSingleton<IModuleInstaller, ModuleInstaller>();
-            services.AddSingleton<IModuleSupervisorFactory, ModuleSupervisorFactory>();
-            services.AddSingleton<IModuleManager, ModuleManager>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

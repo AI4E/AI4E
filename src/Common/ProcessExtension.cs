@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 
 namespace AI4E.Internal
 {
-    public static class ProcessExtension
+    internal static class ProcessExtension
     {
-        public static Task WaitForExitAsync(this Process process, CancellationToken cancellation = default)
+        internal static Task WaitForExitAsync(this Process process, CancellationToken cancellation = default)
         {
             if (process == null)
                 throw new ArgumentNullException(nameof(process));

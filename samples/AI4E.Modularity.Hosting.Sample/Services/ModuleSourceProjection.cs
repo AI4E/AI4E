@@ -1,4 +1,4 @@
-﻿using AI4E.Modularity.Hosting.Sample.Domain;
+﻿using AI4E.Modularity.Host;
 using AI4E.Modularity.Hosting.Sample.Models;
 using AI4E.Storage.Projection;
 

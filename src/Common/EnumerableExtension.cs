@@ -154,5 +154,20 @@ namespace AI4E.Internal
                 enumerator?.Dispose();
             }
         }
+
+#if NETSTANDARD
+        public static HashSet<T> ToHashSet<T>(this IEnumerable<T> source)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            if (source is HashSet<T> hashSet)
+            {
+                return hashSet;
+            }
+
+            return new HashSet<T>(source);
+        }
+#endif
     }
 }

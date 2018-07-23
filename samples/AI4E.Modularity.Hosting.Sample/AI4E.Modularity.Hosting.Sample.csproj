@@ -6,13 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\src\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
-    <Compile Include="..\..\src\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
-    <Compile Include="..\..\src\Common\ProcessExtension.cs" Link="Internal\ProcessExtension.cs" />
-    <Compile Include="..\..\src\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.App" Version="2.1.1" />
   </ItemGroup>
 

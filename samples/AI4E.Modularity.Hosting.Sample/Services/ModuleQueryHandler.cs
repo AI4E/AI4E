@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AI4E.Modularity.Host;
 using AI4E.Modularity.Hosting.Sample.Api;
-using AI4E.Modularity.Hosting.Sample.Domain;
 using AI4E.Modularity.Hosting.Sample.Models;
 using AI4E.Storage;
 using Microsoft.AspNetCore.Mvc;
