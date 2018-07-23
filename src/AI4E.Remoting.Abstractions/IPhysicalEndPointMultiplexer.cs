@@ -32,7 +32,7 @@
 namespace AI4E.Remoting
 {
     /// <summary>
-    /// Multiplexes a single physical end point by to multiple end points each distinguished by a multiplex name.
+    /// Multiplexes a single physical end point to multiple end points, each distinguished by a multiplex name.
     /// </summary>
     /// <typeparam name="TAddress">The type of physical address used.</typeparam>
     public interface IPhysicalEndPointMultiplexer<TAddress>

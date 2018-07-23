@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 namespace AI4E.Storage.Domain
 {
+    [Obsolete("Use IEntityStorageEngine")]
     public partial interface IEntityStore<TId, TEventBase, TEntityBase> : IDisposable
         where TEventBase : class
         where TEntityBase : class

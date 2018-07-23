@@ -286,7 +286,7 @@ namespace AI4E.Storage.Domain
             await UpdateStreamHeadDispatchedRevisionAsync(streamHead, commit.StreamRevision, cancellation);
         }
 
-        public async Task DeleteStreamAsync(string bucketId, string streamId, CancellationToken cancellation)
+        public Task DeleteStreamAsync(string bucketId, string streamId, CancellationToken cancellation)
         {
             //await TryWriteOperation(() => _snapshots.DeleteManyAsync(p => p.BucketId.Equals(bucketId) && p.StreamId.Equals(streamId), cancellation));
 

@@ -79,7 +79,7 @@ namespace AI4E.Storage.Domain
         /// A task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the stream.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="bucketId"/> or <paramref name="streamId"/> is nul.</exception>
+        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="bucketId"/> or <paramref name="streamId"/> is null.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         /// <exception cref="StreamNotFoundException">Thrown if the stream cannot be found and <paramref name="throwIfNotFound"/> is true.</exception>

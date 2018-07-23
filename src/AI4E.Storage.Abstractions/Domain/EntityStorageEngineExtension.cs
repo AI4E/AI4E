@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -52,6 +51,18 @@ namespace AI4E.Storage.Domain
             return storageEngine.GetAllAsync(typeof(TEntity), cancellation).Cast<TEntity>();
         }
 
+        public static Task StoreAsync<TEntity>(this IEntityStorageEngine storageEngine, TEntity entity, CancellationToken cancellation = default)
+            where TEntity : class
+        {
+            if (storageEngine == null)
+                throw new ArgumentNullException(nameof(storageEngine));
+
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            return storageEngine.StoreAsync(typeof(TEntity), entity, cancellation);
+        }
+
         public static Task StoreAsync<TEntity>(this IEntityStorageEngine storageEngine, TEntity entity, string id, CancellationToken cancellation = default)
             where TEntity : class
         {
@@ -62,6 +73,18 @@ namespace AI4E.Storage.Domain
                 throw new ArgumentNullException(nameof(entity));
 
             return storageEngine.StoreAsync(typeof(TEntity), entity, id, cancellation);
+        }
+
+        public static Task DeleteAsync<TEntity>(this IEntityStorageEngine storageEngine, TEntity entity, CancellationToken cancellation = default)
+            where TEntity : class
+        {
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            return storageEngine.DeleteAsync(typeof(TEntity), entity, cancellation);
         }
 
         public static Task DeleteAsync<TEntity>(this IEntityStorageEngine storageEngine, TEntity entity, string id, CancellationToken cancellation = default)

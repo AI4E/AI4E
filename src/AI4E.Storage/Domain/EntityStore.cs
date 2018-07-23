@@ -9,6 +9,7 @@ using static AI4E.Internal.DebugEx;
 
 namespace AI4E.Storage.Domain
 {
+    [Obsolete("Use EntityStorageEngine")]
     public sealed partial class EntityStore<TId, TEventBase, TEntityBase> : IEntityStore<TId, TEventBase, TEntityBase>
         where TEventBase : class
         where TEntityBase : class
@@ -18,7 +19,6 @@ namespace AI4E.Storage.Domain
         #region Fields
 
         private readonly IEntityStorageEngine _storageEngine;
-        private readonly IEntityIdManager _entityIdManager;
 
         #endregion
 
@@ -34,17 +34,12 @@ namespace AI4E.Storage.Domain
             _idEqualityComparer = new Lazy<Func<TId, TId, bool>>(IdEqualityComparerFactory, LazyThreadSafetyMode.PublicationOnly);
         }
 
-        public EntityStore(IEntityStorageEngine storageEngine,
-                           IEntityIdManager entityIdManager)
+        public EntityStore(IEntityStorageEngine storageEngine)
         {
             if (storageEngine == null)
                 throw new ArgumentNullException(nameof(storageEngine));
 
-            if (entityIdManager == null)
-                throw new ArgumentNullException(nameof(entityIdManager));
-
             _storageEngine = storageEngine;
-            _entityIdManager = entityIdManager;
         }
 
         #endregion
@@ -118,12 +113,7 @@ namespace AI4E.Storage.Domain
             if (!entityType.IsAssignableFrom(entity.GetType()))
                 throw new ArgumentException($"The argument must be of type '{ entityType.FullName }' or a derived type.", nameof(entity));
 
-            if (!_entityIdManager.TryGetId(entityType, entity, out var stringifiedId))
-            {
-                throw new ArgumentException("Unable to determine the id of the specifies entity.", nameof(entity));
-            }
-
-            return _storageEngine.StoreAsync(entityType, entity, stringifiedId, cancellation);
+            return _storageEngine.StoreAsync(entityType, entity,  cancellation);
         }
 
         public Task DeleteAsync(Type entityType, TEntityBase entity, CancellationToken cancellation = default)
@@ -140,12 +130,8 @@ namespace AI4E.Storage.Domain
             if (!entityType.IsAssignableFrom(entity.GetType()))
                 throw new ArgumentException($"The argument must be of type '{ entityType.FullName }' or a derived type.", nameof(entity));
 
-            if (!_entityIdManager.TryGetId(entityType, entity, out var stringifiedId))
-            {
-                throw new ArgumentException("Unable to determine the id of the specifies entity.", nameof(entity));
-            }
 
-            return _storageEngine.DeleteAsync(entityType, entity, stringifiedId, cancellation);
+            return _storageEngine.DeleteAsync(entityType, entity, cancellation);
         }
 
         #region Disposal
