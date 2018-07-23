@@ -22,11 +22,12 @@ using System;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
+using Newtonsoft.Json;
 
 namespace AI4E.Modularity
 {
     [TypeConverter(typeof(ModuleVersionConverter))]
-    public struct ModuleVersion : IEquatable<ModuleVersion>, IComparable<ModuleVersion>
+    public readonly struct ModuleVersion : IEquatable<ModuleVersion>, IComparable<ModuleVersion>
     {
         public static ModuleVersion Unknown { get; } = new ModuleVersion();
 
@@ -47,10 +48,10 @@ namespace AI4E.Modularity
             IsPreRelease = isPreRelease;
         }
 
-        public int MajorVersion { get; }
-        public int MinorVersion { get; }
-        public int Revision { get; }
-        public bool IsPreRelease { get; }
+        [JsonProperty] public int MajorVersion { get; }
+        [JsonProperty] public int MinorVersion { get; }
+        [JsonProperty] public int Revision { get; }
+        [JsonProperty] public bool IsPreRelease { get; }
 
         public bool Equals(ModuleVersion other)
         {

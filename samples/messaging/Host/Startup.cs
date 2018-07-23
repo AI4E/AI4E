@@ -1,5 +1,6 @@
 ﻿using AI4E.Domain.Services;
 using AI4E.Modularity;
+using AI4E.Modularity.Host;
 using AI4E.Routing;
 using AI4E.Storage;
 using AI4E.Storage.MongoDB;

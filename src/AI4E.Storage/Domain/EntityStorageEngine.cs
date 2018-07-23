@@ -30,7 +30,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
@@ -48,6 +50,7 @@ namespace AI4E.Storage.Domain
 
         private readonly IStreamStore _streamStore;
         private readonly IEntityStoragePropertyManager _entityAccessor; // TODO: Rename
+        private readonly IEntityIdManager _entityIdManager;
         private readonly JsonDiffPatch _differ;
         private readonly JsonSerializer _jsonSerializer;
         private readonly Dictionary<(string bucket, string id, long requestedRevision), (object entity, long revision)> _lookup;
@@ -59,6 +62,7 @@ namespace AI4E.Storage.Domain
 
         public EntityStorageEngine(IStreamStore streamStore,
                                    IEntityStoragePropertyManager entityAccessor, // TODO: Rename
+                                   IEntityIdManager entityIdManager,
                                    ISerializerSettingsResolver serializerSettingsResolver)
         {
             if (streamStore == null)
@@ -67,11 +71,15 @@ namespace AI4E.Storage.Domain
             if (entityAccessor == null)
                 throw new ArgumentNullException(nameof(entityAccessor));
 
+            if (entityIdManager == null)
+                throw new ArgumentNullException(nameof(entityIdManager));
+
             if (serializerSettingsResolver == null)
                 throw new ArgumentNullException(nameof(serializerSettingsResolver));
 
             _streamStore = streamStore;
             _entityAccessor = entityAccessor;
+            _entityIdManager = entityIdManager;
             _differ = new JsonDiffPatch();
             _jsonSerializer = JsonSerializer.Create(serializerSettingsResolver.ResolveSettings(this));
 
@@ -100,6 +108,14 @@ namespace AI4E.Storage.Domain
 
             if (entityType.IsValueType)
                 throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
+
+            if (revision < 0)
+                throw new ArgumentOutOfRangeException(nameof(revision));
+
+            if (id == null)
+            {
+                return new ValueTask<object>(result: null);
+            }
 
             return CachedDeserializeAsync(entityType, id, revision, cancellation);
         }
@@ -130,25 +146,52 @@ namespace AI4E.Storage.Domain
 
             var bucketId = GetBucketId(entityType);
 
-            return _streamStore.OpenAllAsync(bucketId, cancellation).Select(stream => CachedDeserialize(entityType, revision: default, stream));
+            return _streamStore.OpenAllAsync(bucketId, cancellation)
+                               .Select(stream => CachedDeserialize(entityType, revision: default, stream))
+                               .Where(p => p != null); // TODO: Add a deleted marker to the stream to already filter the streams before deserializing the content and checking for null afterwards.
         }
 
         public IAsyncEnumerable<object> GetAllAsync(CancellationToken cancellation)
         {
-            return _streamStore.OpenAllAsync(cancellation).Select(stream => CachedDeserialize(GetTypeFromBucket(stream.BucketId), revision: default, stream));
+            return _streamStore.OpenAllAsync(cancellation)
+                               .Select(stream => CachedDeserialize(GetTypeFromBucket(stream.BucketId), revision: default, stream))
+                               .Where(p => p != null); // TODO: Add a deleted marker to the stream to already filter the streams before deserializing the content and checking for null afterwards.;
+        }
+
+        public async Task StoreAsync(Type entityType, object entity, CancellationToken cancellation)
+        {
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            if (!_entityIdManager.TryGetId(entityType, entity, out var id))
+            {
+                throw new ArgumentException("Unable to determine the id of the specified entity.", nameof(entity));
+            }
+
+            Assert(id != null);
+
+            await InternalStoreAsync(entityType, entity, id, cancellation);
         }
 
         public async Task StoreAsync(Type entityType, object entity, string id, CancellationToken cancellation)
         {
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
 
             if (id == null)
                 throw new ArgumentNullException(nameof(id));
 
-            if (entityType == null)
-                throw new ArgumentNullException(nameof(entityType));
+            await InternalStoreAsync(entityType, entity, id, cancellation);
+        }
 
+        private async Task InternalStoreAsync(Type entityType, object entity, string id, CancellationToken cancellation)
+        {
             if (entityType.IsValueType)
                 throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
 
@@ -177,17 +220,40 @@ namespace AI4E.Storage.Domain
             _lookup[(bucketId, streamId, requestedRevision: default)] = (entity, revision: stream.StreamRevision);
         }
 
+        public async Task DeleteAsync(Type entityType, object entity, CancellationToken cancellation)
+        {
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            if (!_entityIdManager.TryGetId(entityType, entity, out var id))
+            {
+                throw new ArgumentException("Unable to determine the id of the specified entity.", nameof(entity));
+            }
+
+            Assert(id != null);
+
+            await InternalDeleteAsync(entityType, entity, id, cancellation);
+        }
+
         public async Task DeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation)
         {
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
 
             if (id == null)
                 throw new ArgumentNullException(nameof(id));
 
-            if (entityType == null)
-                throw new ArgumentNullException(nameof(entityType));
+            await InternalDeleteAsync(entityType, entity, id, cancellation);
+        }
 
+        private async Task InternalDeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation)
+        {
             if (entityType.IsValueType)
                 throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
 
@@ -222,9 +288,24 @@ namespace AI4E.Storage.Domain
         private (string concurrencyToken, IEnumerable<EventMessage> events) GetEntityProperties(object entity)
         {
             var concurrencyToken = _entityAccessor.GetConcurrencyToken(entity);
-            var events = _entityAccessor.GetUncommittedEvents(entity).Select(p => new EventMessage { Body = p });
+            var events = _entityAccessor.GetUncommittedEvents(entity).Select(p => new EventMessage { Body = Serialize(p) });
 
             return (concurrencyToken, events);
+        }
+
+        private byte[] Serialize(object obj)
+        {
+            if (obj == null)
+                return null;
+
+            var jsonBuilder = new StringBuilder();
+
+            using (var textWriter = new StringWriter(jsonBuilder))
+            {
+                _jsonSerializer.Serialize(textWriter, obj, typeof(object));
+            }
+
+            return CompressionHelper.Zip(jsonBuilder.ToString());
         }
 
         private byte[] BuildCommitBody(object entity, IStream stream)

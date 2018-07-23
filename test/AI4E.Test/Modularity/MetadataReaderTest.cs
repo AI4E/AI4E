@@ -26,7 +26,7 @@ namespace AI4E.Test.Modularity
 
             var metadata = await metadataReader.ReadMetadataAsync(stream, cancellation: default);
 
-            Assert.AreEqual(new ModuleIdentifier("Test.Module"), metadata.Id);
+            Assert.AreEqual(new ModuleIdentifier("Test.Module"), metadata.Module);
             Assert.AreEqual(new ModuleVersion(1, 0, 1, true), metadata.Version);
             Assert.AreEqual("User descriptive name", metadata.Name);
             Assert.AreEqual("Author of the module", metadata.Author);
@@ -41,13 +41,13 @@ namespace AI4E.Test.Modularity
 
             var firstDependency = metadata.Dependencies.First();
 
-            Assert.AreEqual(new ModuleIdentifier("Test.Base.Module"), firstDependency.Id);
-            Assert.AreEqual(new ModuleVersionFilter(1, 0, 0), firstDependency.Version);
+            Assert.AreEqual(new ModuleIdentifier("Test.Base.Module"), firstDependency.Module);
+            Assert.AreEqual(new ModuleVersionRange(1, 0, 0), firstDependency.VersionRange);
 
             var secondDependency = metadata.Dependencies.Skip(1).First();
 
-            Assert.AreEqual(new ModuleIdentifier("Test.Base.Module2"), secondDependency.Id);
-            Assert.AreEqual(new ModuleVersionFilter(), secondDependency.Version);
+            Assert.AreEqual(new ModuleIdentifier("Test.Base.Module2"), secondDependency.Module);
+            Assert.AreEqual(new ModuleVersionRange(), secondDependency.VersionRange);
         }
     }
 }

@@ -25,7 +25,7 @@ namespace AI4E.Domain
 {
     public abstract class AggregateRootBase : EntityBase
     {
-        private readonly List<DomainEventBase> _uncommittedEvents = new List<DomainEventBase>();
+        private readonly List<object> _uncommittedEvents = new List<object>();
 
         protected AggregateRootBase(string id) : base(id) { }
 
@@ -47,20 +47,16 @@ namespace AI4E.Domain
         protected virtual void DoDispose() { }
 
         protected void Notify<TEvent>(TEvent evt)
-            where TEvent : DomainEventBase
         {
             ThrowIfDisposed();
 
             if (evt == null)
                 throw new ArgumentNullException(nameof(evt));
 
-            if (evt.AggregateId != Id)
-                throw new ArgumentException("The event does not belong to the stream of the aggregate.", nameof(evt));
-
             _uncommittedEvents.Add(evt);
         }
 
-        internal IEnumerable<DomainEventBase> UncommittedEvents => _uncommittedEvents;
+        internal IEnumerable<object> UncommittedEvents => _uncommittedEvents;
 
         internal void CommitEvents()
         {

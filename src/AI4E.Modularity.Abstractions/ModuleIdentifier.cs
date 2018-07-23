@@ -21,23 +21,25 @@
 using System;
 using System.ComponentModel;
 using System.Globalization;
+using Newtonsoft.Json;
 
 namespace AI4E.Modularity
 {
     // A handle for a module (f.e. AI4E.Clustering)
-    [TypeConverter(typeof(ModuleIdentfierTypeConverter))]
-    public struct ModuleIdentifier : IEquatable<ModuleIdentifier>
+    [TypeConverter(typeof(ModuleIdentifierTypeConverter))]
+    public readonly struct ModuleIdentifier : IEquatable<ModuleIdentifier>
     {
         public static ModuleIdentifier UnknownModule { get; } = new ModuleIdentifier();
 
         public ModuleIdentifier(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("The argument must neither be null nor an empty string or a string that consists of whitespace only.", nameof(name));
+                throw new ArgumentException("The argument must neither be null nor an empty string nor a string that consists of whitespace only.", nameof(name));
 
             Name = name;
         }
 
+        [JsonProperty]
         public string Name { get; }
 
         public bool Equals(ModuleIdentifier other)
@@ -74,7 +76,7 @@ namespace AI4E.Modularity
         }
     }
 
-    public sealed class ModuleIdentfierTypeConverter : TypeConverter
+    public sealed class ModuleIdentifierTypeConverter : TypeConverter
     {
         public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
         {

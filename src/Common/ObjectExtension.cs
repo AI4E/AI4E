@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using AI4E.Async;
 
@@ -33,6 +34,16 @@ namespace AI4E.Internal
             }
 
             return Task.CompletedTask;
+        }
+
+        public static IEnumerable<object> Yield(this object obj)
+        {
+            yield return obj;
+        }
+
+        public static IEnumerable<T> Yield<T>(this T t)
+        {
+            yield return t;
         }
     }
 }

@@ -601,7 +601,7 @@ namespace AI4E.Storage.Transactions
 
                     // TODO: Why does the == on the type objects does not work here?
                     /*p.EntryType == typeof(TData)*/
-                    if (!operations.Any(p => AreEqual(p.EntryType, typeof(TData)) && byIdSelector(p)))
+                    if (!operations.Any(p => AreEqual(p.EntryType, typeof(TData)) && byIdSelector(p))) // TODO: ArgumentNullException for p
                         continue;
 
                     // The transaction is either non-committed or viewed as non-committed by the current transaction.

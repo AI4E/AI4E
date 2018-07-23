@@ -1,0 +1,21 @@
+﻿@model ModuleSourceDeleteModel
+@{
+    ViewBag.Title = "Delete module source";
+}
+
+<div>
+    <form asp-action="Delete" method="post" class="container">
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="ConcurrencyToken" />
+
+        <div>
+            Are you sure to delete module source '@Model.Name'? This cannot be undone.
+        </div>
+
+        <div>
+            <br />
+            <a asp-action="Details" asp-controller="ModuleSources" asp-route-id="@Model.Id" class="btn btn-primary">Cancel</a>
+            <input type="submit" value="Delete" class="btn btn-primary" />
+        </div>
+    </form>
+</div>

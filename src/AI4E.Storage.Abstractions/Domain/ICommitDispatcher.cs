@@ -18,12 +18,13 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AI4E.Storage.Domain
 {
     public interface ICommitDispatcher
     {
-        Task DispatchAsync(ICommit commit);
+        Task DispatchAsync(ICommit commit, CancellationToken cancellation = default);
     }
 }

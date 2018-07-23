@@ -31,6 +31,12 @@ namespace AI4E.DispatchResults
             Id = id;
         }
 
+        public EntityAlreadyPresentDispatchResult(Type entityType)
+            : base($"An entity of type'{(entityType ?? throw new ArgumentNullException(nameof(entityType))).FullName}' with the specified id is already present.")
+        {
+            EntityType = entityType;
+        }
+
         public Type EntityType { get; }
 
         public string Id { get; }

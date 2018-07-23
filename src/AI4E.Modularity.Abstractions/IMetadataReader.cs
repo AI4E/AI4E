@@ -13,9 +13,11 @@ namespace AI4E.Modularity
 
     public interface IModuleMetadata
     {
-        ModuleIdentifier Id { get; }
+        ModuleIdentifier Module { get; }
 
         ModuleVersion Version { get; }
+
+        ModuleReleaseIdentifier Release { get; }
 
         DateTime ReleaseDate { get; }
 
@@ -29,13 +31,6 @@ namespace AI4E.Modularity
 
         string EntryAssemblyArguments { get; }
 
-        IEnumerable<IModuleDependency> Dependencies { get; }
-    }
-
-    public interface IModuleDependency
-    {
-        ModuleIdentifier Id { get; }
-
-        ModuleVersionFilter Version { get; }
+        IEnumerable<ModuleDependency> Dependencies { get; }
     }
 }

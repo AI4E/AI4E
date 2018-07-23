@@ -6,8 +6,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Routing.Abstractions\AI4E.Routing.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Internal\" />
   </ItemGroup>
 
 </Project>
