@@ -8,7 +8,6 @@ using AI4E.Storage.Domain;
 
 namespace AI4E.Modularity.Host
 {
-    // TODO: Add a TryStore op to entity storage engine
     public sealed class ModuleSearchEngine : IModuleSearchEngine
     {
         private readonly IMetadataReader _metadataReader;
@@ -47,7 +46,7 @@ namespace AI4E.Modularity.Host
             }
 
             // We store the sources for the case that internal state changed (like caches), but ignore any concurrency conflicts.
-            await Task.WhenAll(sources.Select(source => TryStoreAsync(source, cancellation)));
+            await Task.WhenAll(sources.Select(source => _entityStorageEngine.TryStoreAsync(source, cancellation)));
 
             return result;
         }
@@ -96,37 +95,9 @@ namespace AI4E.Modularity.Host
                     module.AddRelease(metadata, source);
                 }
             }
-            while (!await TryStoreAsync(module, cancellation));
+            while (!await _entityStorageEngine.TryStoreAsync(module, cancellation));
 
             return module;
-        }
-
-        private async Task<bool> TryStoreAsync(Module module, CancellationToken cancellation)
-        {
-            try
-            {
-                await _entityStorageEngine.StoreAsync(typeof(Module), module, module.Id.ToString(), cancellation);
-            }
-            catch (ConcurrencyException)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        private async Task<bool> TryStoreAsync(FileSystemModuleSource source, CancellationToken cancellation)
-        {
-            try
-            {
-                await _entityStorageEngine.StoreAsync(typeof(FileSystemModuleSource), source, source.Id.ToString(), cancellation);
-            }
-            catch (ConcurrencyException)
-            {
-                return false;
-            }
-
-            return true;
         }
     }
 }

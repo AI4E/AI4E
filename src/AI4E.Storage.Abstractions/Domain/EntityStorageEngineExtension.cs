@@ -98,5 +98,21 @@ namespace AI4E.Storage.Domain
 
             return storageEngine.DeleteAsync(typeof(TEntity), entity, id, cancellation);
         }
+
+        // TODO: This should have native support without throwing exceptions.
+        public static async Task<bool> TryStoreAsync<TEntity>(this IEntityStorageEngine storageEngine, TEntity entity, CancellationToken cancellation = default)
+            where TEntity : class
+        {
+            try
+            {
+                await storageEngine.StoreAsync(entity, cancellation);
+            }
+            catch (ConcurrencyException)
+            {
+                return false;
+            }
+
+            return true;
+        }
     }
 }
