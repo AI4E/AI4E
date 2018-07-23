@@ -34,7 +34,7 @@ namespace AI4E.Storage.MongoDB
             }
             catch (MongoWriteException exc) when (exc.WriteError?.Category == ServerErrorCategory.DuplicateKey)
             {
-                throw new ConcurrencyException();
+                throw new DuplicateKeyException();
             }
             catch (MongoWriteException exc) when (exc.WriteError?.Category == ServerErrorCategory.ExecutionTimeout)
             {
@@ -62,7 +62,7 @@ namespace AI4E.Storage.MongoDB
             }
             catch (MongoWriteException exc) when (exc.WriteError?.Category == ServerErrorCategory.DuplicateKey)
             {
-                throw new ConcurrencyException();
+                throw new DuplicateKeyException();
             }
             catch (MongoWriteException exc) when (exc.WriteError?.Category == ServerErrorCategory.ExecutionTimeout)
             {

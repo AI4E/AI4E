@@ -150,7 +150,7 @@ namespace AI4E.Storage.MongoDB
                 lookupEntry = new CollectionLookupEntry { CollectionKey = collectionKey, CollectionName = "data-store#" + collectionId };
                 await TryWriteOperation(() => _collectionLookupCollection.InsertOneAsync(lookupEntry, default, cancellation));
             }
-            catch (ConcurrencyException)
+            catch (DuplicateKeyException)
             {
                 lookupEntry = await _collectionLookupCollection.AsQueryable()
                                                                .FirstOrDefaultAsync(p => p.CollectionKey == collectionKey);
@@ -277,7 +277,7 @@ namespace AI4E.Storage.MongoDB
             {
                 await TryWriteOperation(() => collection.InsertOneAsync(entry, new InsertOneOptions { }, cancellation));
             }
-            catch (ConcurrencyException) // TODO: This should be a DuplicateKeyException
+            catch (DuplicateKeyException)
             {
                 return false;
             }
