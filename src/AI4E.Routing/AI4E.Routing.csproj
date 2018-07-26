@@ -10,6 +10,7 @@
     <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
     <Compile Include="..\Common\EscapeHelper.cs" Link="Internal\EscapeHelper.cs" />
     <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
+    <Compile Include="..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
     <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
   </ItemGroup>
 

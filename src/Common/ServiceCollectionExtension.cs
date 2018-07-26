@@ -55,6 +55,7 @@ namespace AI4E.Internal
 
             services.AddSingleton(typeof(IProvider<>), typeof(Provider<>));
             services.AddSingleton(typeof(IContextualProvider<>), typeof(ContextualProvider<>));
+            services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
             return services;
         }

@@ -45,22 +45,12 @@ namespace AI4E.Modularity.Module
             {
                 services.AddOptions();
                 services.AddSingleton<IServer, ModuleServer>();
-                services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
-                services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
-                services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
-                services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
-                services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
-                services.AddSingleton<IRouteStore, RouteManager>();
-                services.AddSingleton<IRouteMap<IPEndPoint>, RouteMap<IPEndPoint>>();
-
-                // Http-dispatch
-                services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
-
-                services.AddSingleton(ConfigurePhysicalEndPoint);
-                services.AddSingleton(ConfigureProxyHost);
-                services.AddSingleton(ConfigureEndPointManager);
-                services.AddSingleton(ConfigureCoordinationManager);
+                services.AddUdpEndPoint();
+                services.AddRemoteMessageDispatcher();
                 services.AddSingleton(ConfigureLogicalEndPoint);
+                services.AddSingleton(ConfigureCoordinationManager);
+                services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
+                services.AddSingleton(ConfigureProxyHost);
             });
 
             return webHostBuilder;
@@ -81,18 +71,18 @@ namespace AI4E.Modularity.Module
             return result;
         }
 
-        private static IPhysicalEndPoint<IPEndPoint> ConfigurePhysicalEndPoint(IServiceProvider serviceProvider)
-        {
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
-            var options = optionsAccessor.Value ?? new ModuleServerOptions();
+        //private static IPhysicalEndPoint<IPEndPoint> ConfigurePhysicalEndPoint(IServiceProvider serviceProvider)
+        //{
+        //    var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
+        //    var options = optionsAccessor.Value ?? new ModuleServerOptions();
 
-            if (options.UseDebugConnection)
-            {
-                return null;
-            }
+        //    if (options.UseDebugConnection)
+        //    {
+        //        return null;
+        //    }
 
-            return ActivatorUtilities.CreateInstance<UdpEndPoint>(serviceProvider);
-        }
+        //    return ActivatorUtilities.CreateInstance<UdpEndPoint>(serviceProvider);
+        //}
 
         private static ICoordinationManager ConfigureCoordinationManager(IServiceProvider serviceProvider)
         {

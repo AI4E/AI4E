@@ -21,7 +21,6 @@
 using System;
 using System.Net;
 using System.Reflection;
-using AI4E.Coordination;
 using AI4E.Domain.Services;
 using AI4E.Internal;
 using AI4E.Modularity.Debug;
@@ -42,42 +41,11 @@ namespace AI4E.Modularity.Host
                 throw new ArgumentNullException(nameof(services));
 
             services.AddOptions();
-
-            // Module management
             services.AddModuleManagement();
-
-            // This is added for the implementation to know that the required services were registered properly.
             services.AddSingleton<ModularityMarkerService>();
-
-            // High level messaging
-            services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
-            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<IRemoteMessageDispatcher>());
-            services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
-
-            // Physical messaging
-            services.AddSingleton<IPhysicalEndPoint<IPEndPoint>, UdpEndPoint>();
-            services.AddSingleton<IPhysicalEndPointMultiplexer<IPEndPoint>, PhysicalEndPointMultiplexer<IPEndPoint>>();
-            services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
-
-            // Logical messaging
-            services.AddSingleton<IEndPointManager, EndPointManager<IPEndPoint>>();
-            services.AddSingleton(ConfigureLogicalEndPoint);
-            services.AddSingleton<IMessageCoder<IPEndPoint>, MessageCoder<IPEndPoint>>();
-            services.AddSingleton<IEndPointScheduler<IPEndPoint>, RandomEndPointScheduler<IPEndPoint>>();
-            services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
-            services.AddSingleton<IRouteStore, RouteManager>();
-            services.AddSingleton<IRouteMap<IPEndPoint>, RouteMap<IPEndPoint>>();
-
-            // Coordination
-            services.AddCoordinationService<IPEndPoint>();
-
-            // Utils
-            services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
-
-            // Http-dispatch
+            services.AddRemoteMessageDispatcher();
+            services.AddUdpEndPoint();
             services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
-
-            // Debugging
             services.AddSingleton(ConfigureDebugPort);
 
             return new ModularityBuilder(services);
@@ -108,22 +76,6 @@ namespace AI4E.Modularity.Host
             }
 
             return null;
-        }
-
-        private static ILogicalEndPoint ConfigureLogicalEndPoint(IServiceProvider serviceProvider)
-        {
-            Assert(serviceProvider != null);
-
-            var endPointManager = serviceProvider.GetRequiredService<IEndPointManager>();
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<RemoteMessagingOptions>>();
-            var options = optionsAccessor.Value ?? new RemoteMessagingOptions();
-
-            if (options.LocalEndPoint == default)
-            {
-                throw new InvalidOperationException("A local end point must be specified.");
-            }
-
-            return endPointManager.GetLogicalEndPoint(options.LocalEndPoint);
         }
 
         public static IModularityBuilder AddModularity(this IServiceCollection services, Action<ModularityOptions> configuration)

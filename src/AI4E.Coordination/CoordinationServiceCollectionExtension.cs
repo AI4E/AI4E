@@ -1,4 +1,5 @@
 ﻿using System;
+using AI4E.Remoting;
 using AI4E.Storage;
 using AI4E.Storage.InMemory;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,8 +14,21 @@ namespace AI4E.Coordination
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
+            return services.AddCoordinationService(typeof(TAddress));
+        }
+
+        public static ICoordinationBuilder AddCoordinationService(this IServiceCollection services)
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            return services.AddCoordinationService(null);
+        }
+
+        private static ICoordinationBuilder AddCoordinationService(this IServiceCollection services, Type addressType)
+        {
             // Add helpers
-            services.AddSingleton<ISessionProvider, SessionProvider<TAddress>>();
+            services.AddSingleton(p => ConfigureSessionProvider(p, addressType));
 
             // Add default storage
             services.UseCoordinationStorage<CoordinationStorage>();
@@ -28,9 +42,32 @@ namespace AI4E.Coordination
 
             // Add coordination service
             services.AddSingleton(p => p.GetRequiredService<ICoordinationManagerFactory>().CreateCoordinationManager());
-            services.AddSingleton<ICoordinationManagerFactory, CoordinationManagerFactory<TAddress>>();
+
+            services.AddSingleton(p => ConfigureCoordinationManagerFactory(p, addressType));
 
             return new CoordinationBuilder(services);
+        }
+
+        private static ICoordinationManagerFactory ConfigureCoordinationManagerFactory(IServiceProvider serviceProvider, Type addressType)
+        {
+            if (addressType == null)
+                addressType = LookupAddressType(serviceProvider);
+
+            return (ICoordinationManagerFactory)serviceProvider.GetRequiredService(typeof(CoordinationManagerFactory<>).MakeGenericType(addressType));
+        }
+
+        private static ISessionProvider ConfigureSessionProvider(IServiceProvider serviceProvider, Type addressType)
+        {
+            if (addressType == null)
+                addressType = LookupAddressType(serviceProvider);
+
+            return (ISessionProvider)serviceProvider.GetRequiredService(typeof(SessionProvider<>).MakeGenericType(addressType));
+        }
+
+        private static Type LookupAddressType(IServiceProvider serviceProvider)
+        {
+            var physicalEndPointMarkerService = serviceProvider.GetRequiredService<PhysicalEndPointMarkerService>();
+            return physicalEndPointMarkerService.AddressType;
         }
 
         internal static void UseCoordinationStorage<TCoordinationStorage>(this IServiceCollection services)
