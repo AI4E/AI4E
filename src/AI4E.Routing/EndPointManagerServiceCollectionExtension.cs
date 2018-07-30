@@ -10,13 +10,14 @@ namespace AI4E.Routing
 {
     public static class EndPointManagerServiceCollectionExtension
     {
-        public static void AddEndPointManager<TAddress>(this IServiceCollection services)
-        {
-            services.ConfigureEndPointManager(typeof(TAddress), () => services.AddSingleton<IEndPointManager<TAddress>, EndPointManager<TAddress>>());
-        }
+        //public static void AddEndPointManager<TAddress>(this IServiceCollection services)
+        //{
+        //    services.ConfigureEndPointManager(typeof(TAddress), () => services.AddSingleton<IEndPointManager<TAddress>, EndPointManager<TAddress>>());
+        //}
 
         public static void AddEndPointManager(this IServiceCollection services)
         {
+            services.AddSingleton(typeof(IEndPointManager<>), typeof(EndPointManager<>));
             services.AddSingleton(ConfigureEndPointManager);
             services.AddSingleton(ConfigureLogicalEndPoint);
             services.AddHelperServices();
@@ -27,48 +28,48 @@ namespace AI4E.Routing
             var physicalEndPointMarkerService = provider.GetRequiredService<PhysicalEndPointMarkerService>();
             var addressType = physicalEndPointMarkerService.AddressType;
 
-            return (IEndPointManager)provider.GetRequiredService(typeof(IEndPointManager).MakeGenericType(addressType));
+            return (IEndPointManager)provider.GetRequiredService(typeof(IEndPointManager<>).MakeGenericType(addressType));
         }
 
-        public static void AddEndPointManager<TAddress, TEndPointManager>(this IServiceCollection services)
-            where TEndPointManager : class, IEndPointManager<TAddress>
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
+        //public static void AddEndPointManager<TAddress, TEndPointManager>(this IServiceCollection services)
+        //    where TEndPointManager : class, IEndPointManager<TAddress>
+        //{
+        //    if (services == null)
+        //        throw new ArgumentNullException(nameof(services));
 
-            services.ConfigureEndPointManager(typeof(TAddress), () => services.AddSingleton<IEndPointManager<TAddress>, TEndPointManager>());
-        }
+        //    services.ConfigureEndPointManager(typeof(TAddress), () => services.AddSingleton<IEndPointManager<TAddress>, TEndPointManager>());
+        //}
 
-        public static void AddEndPointManager<TAddress, TEndPointManager>(this IServiceCollection services, TEndPointManager endPointManager)
-            where TEndPointManager : class, IEndPointManager<TAddress>
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
+        //public static void AddEndPointManager<TAddress, TEndPointManager>(this IServiceCollection services, TEndPointManager endPointManager)
+        //    where TEndPointManager : class, IEndPointManager<TAddress>
+        //{
+        //    if (services == null)
+        //        throw new ArgumentNullException(nameof(services));
 
-            if (endPointManager == null)
-                throw new ArgumentNullException(nameof(endPointManager));
+        //    if (endPointManager == null)
+        //        throw new ArgumentNullException(nameof(endPointManager));
 
-            services.ConfigureEndPointManager(typeof(TAddress), () => services.AddSingleton<IEndPointManager<TAddress>>(endPointManager));
-        }
+        //    services.ConfigureEndPointManager(typeof(TAddress), () => services.AddSingleton<IEndPointManager<TAddress>>(endPointManager));
+        //}
 
-        public static void AddEndPointManager<TAddress, TEndPointManager>(this IServiceCollection services, Func<IServiceProvider, TEndPointManager> factory)
-            where TEndPointManager : class, IEndPointManager<TAddress>
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
+        //public static void AddEndPointManager<TAddress, TEndPointManager>(this IServiceCollection services, Func<IServiceProvider, TEndPointManager> factory)
+        //    where TEndPointManager : class, IEndPointManager<TAddress>
+        //{
+        //    if (services == null)
+        //        throw new ArgumentNullException(nameof(services));
 
-            if (factory == null)
-                throw new ArgumentNullException(nameof(factory));
+        //    if (factory == null)
+        //        throw new ArgumentNullException(nameof(factory));
 
-            services.ConfigureEndPointManager(typeof(TAddress), () => services.AddSingleton<IEndPointManager<TAddress>, TEndPointManager>(factory));
-        }
+        //    services.ConfigureEndPointManager(typeof(TAddress), () => services.AddSingleton<IEndPointManager<TAddress>, TEndPointManager>(factory));
+        //}
 
-        private static void ConfigureEndPointManager(this IServiceCollection services, Type addressType, Action configuration)
-        {
-            services.AddSingleton(provider => (IEndPointManager)provider.GetRequiredService(typeof(IEndPointManager).MakeGenericType(addressType)));
-            services.AddSingleton(ConfigureLogicalEndPoint);
-            services.AddHelperServices();
-        }
+        //private static void ConfigureEndPointManager(this IServiceCollection services, Type addressType, Action configuration)
+        //{
+        //    services.AddSingleton(provider => (IEndPointManager)provider.GetRequiredService(typeof(IEndPointManager).MakeGenericType(addressType)));
+        //    services.AddSingleton(ConfigureLogicalEndPoint);
+        //    services.AddHelperServices();
+        //}
 
         private static ILogicalEndPoint ConfigureLogicalEndPoint(IServiceProvider serviceProvider)
         {

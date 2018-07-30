@@ -42,7 +42,6 @@ namespace AI4E.Coordination
 
             // Add coordination service
             services.AddSingleton(p => p.GetRequiredService<ICoordinationManagerFactory>().CreateCoordinationManager());
-
             services.AddSingleton(p => ConfigureCoordinationManagerFactory(p, addressType));
 
             return new CoordinationBuilder(services);
@@ -53,7 +52,7 @@ namespace AI4E.Coordination
             if (addressType == null)
                 addressType = LookupAddressType(serviceProvider);
 
-            return (ICoordinationManagerFactory)serviceProvider.GetRequiredService(typeof(CoordinationManagerFactory<>).MakeGenericType(addressType));
+            return (ICoordinationManagerFactory)ActivatorUtilities.CreateInstance(serviceProvider, typeof(CoordinationManagerFactory<>).MakeGenericType(addressType));
         }
 
         private static ISessionProvider ConfigureSessionProvider(IServiceProvider serviceProvider, Type addressType)
@@ -61,7 +60,7 @@ namespace AI4E.Coordination
             if (addressType == null)
                 addressType = LookupAddressType(serviceProvider);
 
-            return (ISessionProvider)serviceProvider.GetRequiredService(typeof(SessionProvider<>).MakeGenericType(addressType));
+            return (ISessionProvider)ActivatorUtilities.CreateInstance(serviceProvider, typeof(SessionProvider<>).MakeGenericType(addressType));
         }
 
         private static Type LookupAddressType(IServiceProvider serviceProvider)

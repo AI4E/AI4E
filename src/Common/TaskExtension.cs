@@ -23,7 +23,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-
+using System.Linq;
 
 namespace AI4E.Internal
 {
@@ -64,6 +64,29 @@ namespace AI4E.Internal
                     }
                 }
             });
+        }
+
+        public static Task IgnoreCancellationAsync(this Task task)
+        {
+            if (task == null)
+                throw new ArgumentNullException(nameof(task));
+
+            var tcs = new TaskCompletionSource<object>();
+
+            task.ContinueWith(t =>
+            {
+                if (t.Exception != null &&
+                    t.Exception.InnerExceptions.Any(e => !(e is OperationCanceledException)))
+                {
+                    tcs.SetException(t.Exception);
+                }
+                else
+                {
+                    tcs.SetResult(null);
+                }
+            });
+
+            return tcs.Task;
         }
 
         public static void IgnoreCancellation(this Task task)
