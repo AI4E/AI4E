@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
+    <Compile Include="..\Common\ConcurrentDictionaryExtension.cs" Link="Internal\ConcurrentDictionaryExtension.cs" />
     <Compile Include="..\Common\EntryPathHelper.cs" Link="Internal\EntryPathHelper.cs" />
     <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
     <Compile Include="..\Common\EscapeHelper.cs" Link="Internal\EscapeHelper.cs" />
