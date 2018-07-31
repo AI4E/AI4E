@@ -101,7 +101,7 @@ namespace AI4E.Routing
         public static void AddRemoteMessageDispatcher(this IServiceCollection services)
         {
             services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
-            services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
+            services.AddSingleton<ITypeConversion, TypeSerializer>();
             services.AddSingleton<IRouteStore, RouteManager>();
             services.AddEndPointManager();
         }

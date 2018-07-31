@@ -33,7 +33,7 @@ namespace AI4E.Modularity.Hosting.Sample.TestModule
             services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
             services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
             services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
-            services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
+            services.AddSingleton<ITypeConversion, TypeSerializer>();
             services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
             services.AddSingleton<IRouteStore, RouteManager>();
             services.AddSingleton<IRouteMap<IPEndPoint>, RouteMap<IPEndPoint>>();

@@ -25,6 +25,6 @@ namespace AI4E.Routing
 {
     public interface ISerializedMessageHandler
     {
-        ValueTask<IMessage> HandleAsync(string messageType, IMessage serializedMessage, bool publish, CancellationToken cancellation = default);
+        ValueTask<IMessage> HandleAsync(string route, IMessage serializedMessage, bool publish, CancellationToken cancellation = default);
     }
 }

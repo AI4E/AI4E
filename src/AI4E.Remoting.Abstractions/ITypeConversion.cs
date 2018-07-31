@@ -1,10 +1,10 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IMessageTypeConversion.cs 
- * Types:           AI4E.Remoting.IMessageTypeConversion
+ * Filename:        ITypeConversion.cs 
+ * Types:           AI4E.Remoting.ITypeConversion
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   31.07.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -32,8 +32,10 @@ using System;
 
 namespace AI4E.Remoting
 {
-    public interface IMessageTypeConversion
+    public interface ITypeConversion
     {
-        string SerializeMessageType(Type route);
+        string SerializeType(Type type);
+
+        Type DeserializeType(string serializedType);
     }
 }

@@ -4,7 +4,7 @@
  * Types:           AI4E.Remoting.TypeSerializer
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   31.07.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -29,14 +29,20 @@
  */
 
 using System;
+using AI4E.Internal;
 
 namespace AI4E.Remoting
 {
-    public class TypeSerializer : IMessageTypeConversion
+    public class TypeSerializer : ITypeConversion
     {
-        public string SerializeMessageType(Type route)
+        public string SerializeType(Type type)
         {
-            return route.FullName;
+            return type.GetUnqualifiedTypeName();
+        }
+
+        public Type DeserializeType(string serializedType)
+        {
+            return TypeLoadHelper.LoadTypeFromUnqualifiedName(serializedType);
         }
     }
 }

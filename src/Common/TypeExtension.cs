@@ -45,5 +45,10 @@ namespace AI4E.Internal
             return type.GetProperties(BindingFlags.FlattenHierarchy
                 | BindingFlags.Public | BindingFlags.Instance);
         }
+
+        public static string GetUnqualifiedTypeName(this Type type)
+        {
+            return type.ToString();
+        }
     }
 }

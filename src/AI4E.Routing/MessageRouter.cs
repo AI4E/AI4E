@@ -374,4 +374,36 @@ namespace AI4E.Routing
             return Interlocked.Increment(ref _nextSeqNum);
         }
     }
+
+    public sealed class MessageRouterFactory : IMessageRouterFactory
+    {
+        private readonly ILogicalEndPoint _logicalEndPoint;
+        private readonly IRouteStore _routeStore;
+        private readonly ILoggerFactory _loggerFactory;
+
+        public MessageRouterFactory(ILogicalEndPoint logicalEndPoint,
+                                    IRouteStore routeStore,
+                                    ILoggerFactory loggerFactory = null)
+        {
+            if (logicalEndPoint == null)
+                throw new ArgumentNullException(nameof(logicalEndPoint));
+
+            if (routeStore == null)
+                throw new ArgumentNullException(nameof(routeStore));
+
+            _logicalEndPoint = logicalEndPoint;
+            _routeStore = routeStore;
+            _loggerFactory = loggerFactory;
+        }
+
+        public IMessageRouter CreateMessageRouter(ISerializedMessageHandler serializedMessageHandler)
+        {
+            if (serializedMessageHandler == null)
+                throw new ArgumentNullException(nameof(serializedMessageHandler));
+
+            var logger = _loggerFactory?.CreateLogger<MessageRouter>();
+
+            return new MessageRouter(serializedMessageHandler, _logicalEndPoint, _routeStore, logger);
+        }
+    }
 }
