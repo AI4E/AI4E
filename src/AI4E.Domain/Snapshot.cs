@@ -100,6 +100,11 @@ namespace AI4E.Domain
         /// <returns>A task representing the asnychronous operation.</returns>
         public ValueTask<T> ResolveAsync()
         {
+            if (_aggregate == null)
+            {
+                return new ValueTask<T>(result: null);
+            }
+
             return _aggregate.Value;
         }
 
@@ -129,11 +134,16 @@ namespace AI4E.Domain
 
         public override int GetHashCode()
         {
-            return _typeHashCode ^ Id.GetHashCode() ^ Revision.GetHashCode();
+            return _typeHashCode ^ (Id?.GetHashCode() ?? 0) ^ Revision.GetHashCode();
         }
 
         public override string ToString()
         {
+            if (Id == null)
+            {
+                return $"{typeof(T).FullName} null";
+            }
+
             return $"{typeof(T).FullName} #{Id} {Revision}";
         }
 
