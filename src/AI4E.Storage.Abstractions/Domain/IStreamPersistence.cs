@@ -142,9 +142,9 @@ namespace AI4E.Storage.Domain
         /// Writes the to-be-commited events provided to the underlying persistence mechanism.
         /// </summary>
         /// <param name="attempt">The series of events and associated metadata to be commited.</param>
-        /// <exception cref="ConcurrencyException" />
         /// <exception cref="StorageException" />
         /// <exception cref="StorageUnavailableException" />
+        /// <returns>The added commit or null if a concurrency conflict occurs.</returns>
         Task<ICommit> CommitAsync(CommitAttempt attempt, CancellationToken cancellation = default);
 
         /// <summary>

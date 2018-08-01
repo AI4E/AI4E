@@ -114,7 +114,7 @@ namespace AI4E.Storage.Domain
         ISnapshot Snapshot { get; }
 
         /// <summary>
-        /// Asynchronouly adds a commit to the sequence.
+        /// Asynchronouly tries to add a commit to the sequence.
         /// </summary>
         /// <param name="concurrencyToken">The concurrency token used to ensure consistency.</param>
         /// <param name="events">The events, the commit contains.</param>
@@ -123,18 +123,16 @@ namespace AI4E.Storage.Domain
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>
         /// A task representing the asynchronous operation. 
-        /// If evaluated, the tasks result contains the concurrency token of the generated commit.
-        /// A return value of <see cref="Guid.Empty"/> indicates that no commit was generated.
+        /// If evaluated, the tasks result contains a boolean value indicating whether the operation was successful or a concurrency conflict occurs.
         /// </returns>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="InvalidOperationException">Thrown if this is a read-only stream view.</exception>
-        /// <exception cref="ConcurrencyException">Thrown if a concurrency conflict occurs.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
-        Task<string> CommitAsync(string concurrencyToken,
-                                 IEnumerable<EventMessage> events,
-                                 object body,
-                                 Action<IDictionary<string, object>> headerGenerator,
-                                 CancellationToken cancellation = default);
+        Task<bool> TryCommitAsync(string concurrencyToken,
+                                  IEnumerable<EventMessage> events,
+                                  object body,
+                                  Action<IDictionary<string, object>> headerGenerator,
+                                  CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously updates the view of the stream to the latest version.

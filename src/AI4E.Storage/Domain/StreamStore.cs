@@ -321,7 +321,7 @@ namespace AI4E.Storage.Domain
                 _commits.Clear();
             }
 
-            public async Task<string> CommitAsync(string concurrencyToken,
+            public async Task<bool> TryCommitAsync(string concurrencyToken,
                                                   IEnumerable<EventMessage> events,
                                                   object body,
                                                   Action<IDictionary<string, object>> headerGenerator,
@@ -331,7 +331,10 @@ namespace AI4E.Storage.Domain
                     throw new InvalidOperationException("Cannot modify a read-only stream view.");
 
                 _logger?.LogDebug(Resources.AttemptingToCommitChanges, StreamId);
-                await CheckConcurrencyAsync(concurrencyToken, cancellation);
+                if (!await CheckConcurrencyAsync(concurrencyToken, cancellation))
+                {
+                    return false;
+                }
 
                 string newToken;
 
@@ -344,37 +347,30 @@ namespace AI4E.Storage.Domain
                         continue;
                     }
 
-                    try
-                    {
-                        var headers = GetHeaders();
-                        headerGenerator(headers);
+                    var headers = GetHeaders();
+                    headerGenerator(headers);
 
-                        var commit = await PersistChangesAsync(newToken,
-                                                               events,
-                                                               body,
-                                                               (headers as IReadOnlyDictionary<string, object>) ?? headers.ToImmutableDictionary(),
-                                                               cancellation);
+                    var commit = await PersistChangesAsync(newToken,
+                                                           events,
+                                                           body,
+                                                           (headers as IReadOnlyDictionary<string, object>) ?? headers.ToImmutableDictionary(),
+                                                           cancellation);
 
-                        // Commit rejected by extension
-                        if (commit == null)
-                        {
-                            return null;
-                        }
-
-                        _logger?.LogDebug($"Commit {newToken} successfully appended to stream {StreamId}. Dispatching commit.");
-
-                        await _streamStore._commitDispatcher.DispatchAsync(commit);
-
-                        _logger?.LogDebug($"Commit {newToken} of stream {StreamId} dispatched successfully.");
-
-                        return newToken;
-                    }
-                    catch (ConcurrencyException)
+                    // A concurrency conflict occured
+                    if (commit == null)
                     {
                         await UpdateAsync(cancellation);
 
-                        throw;
+                        return false;
                     }
+
+                    _logger?.LogDebug($"Commit {newToken} successfully appended to stream {StreamId}. Dispatching commit.");
+
+                    await _streamStore._commitDispatcher.DispatchAsync(commit);
+
+                    _logger?.LogDebug($"Commit {newToken} of stream {StreamId} dispatched successfully.");
+
+                    return true;
                 }
 
                 throw new StorageException("Gived up on unique concurrency token generation.");
@@ -399,26 +395,26 @@ namespace AI4E.Storage.Domain
                 return false;
             }
 
-            private async Task CheckConcurrencyAsync(string concurrencyToken, CancellationToken cancellation)
+            private async Task<bool> CheckConcurrencyAsync(string concurrencyToken, CancellationToken cancellation)
             {
                 if (StreamRevision == 0)
-                    return;
+                    return true;
 
                 if (concurrencyToken == ConcurrencyToken)
-                    return;
+                    return true;
 
                 if (Commits.TakeAllButLast().Any(p => p.ConcurrencyToken == concurrencyToken))
                 {
-                    throw new ConcurrencyException();
+                    return false;
                 }
 
                 if (await UpdateAsync(cancellation) && concurrencyToken == ConcurrencyToken)
                 {
-                    return;
+                    return true;
                 }
 
                 // Either a concurrency token of a commit that is not present because of a snapshot or an unknown token 
-                throw new ConcurrencyException();
+                return false;
             }
 
             private void ExecuteExtensions(IEnumerable<ICommit> commits)
@@ -446,24 +442,27 @@ namespace AI4E.Storage.Domain
                     if (!extension.OnCommit(attempt))
                     {
                         _logger?.LogInformation(Resources.CommitRejectedByPipelineHook, extension.GetType(), attempt.ConcurrencyToken);
-                        return null;
+                        return null; // TODO: This will cause the caller to assume a concurrency conflict.
                     }
                 }
 
                 _logger?.LogDebug(Resources.PersistingCommit, newConcurrencyToken, StreamId);
                 var commit = await _streamStore._persistence.CommitAsync(attempt, cancellation);
 
-                try
+                if (commit != null)
                 {
-                    foreach (var extension in _streamStore._extensions)
+                    try
                     {
-                        _logger?.LogDebug(Resources.InvokingPostCommitPipelineHooks, attempt.ConcurrencyToken, extension.GetType());
-                        extension.OnCommited(commit);
+                        foreach (var extension in _streamStore._extensions)
+                        {
+                            _logger?.LogDebug(Resources.InvokingPostCommitPipelineHooks, attempt.ConcurrencyToken, extension.GetType());
+                            extension.OnCommited(commit);
+                        }
                     }
-                }
-                finally
-                {
-                    _commits.Add(commit);
+                    finally
+                    {
+                        _commits.Add(commit);
+                    }
                 }
 
                 return commit;
