@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -12,7 +13,7 @@ using Nito.AsyncEx;
 
 namespace AI4E.Routing.FrontEnd
 {
-    internal sealed class ServerCallStub : Hub<ICallStub>, ICallStub
+    internal sealed class ServerCallStub : Hub<ICallStub>, IServerCallStub
     {
         private readonly ServerEndPoint _endPoint;
 
@@ -35,6 +36,12 @@ namespace AI4E.Routing.FrontEnd
 
             return Task.CompletedTask;
         }
+
+        public async Task<string> InitAsync(string previousAddress)
+        {
+            await _endPoint.InitAsync(Context.ConnectionId, previousAddress);
+            return Context.ConnectionId;
+        }
     }
 
     public sealed class ServerEndPoint : IServerEndPoint
@@ -53,6 +60,9 @@ namespace AI4E.Routing.FrontEnd
 
             _serviceProvider = serviceProvider;
             _logger = logger;
+
+            _inbox = new AsyncProducerConsumerQueue<(IMessage message, string address)>();
+            _outbox = new ConcurrentDictionary<int, (byte[] message, string address)>();
         }
 
         public Task<(IMessage message, string address)> ReceiveAsync(CancellationToken cancellation = default)
@@ -93,13 +103,24 @@ namespace AI4E.Routing.FrontEnd
             _outbox.TryRemove(seqNum, out _);
         }
 
-        internal Task ClientConnectedAsync(string address)
+        internal async Task InitAsync(string address, string previousAddress)
         {
+            if (previousAddress == null)
+                return;
+
             var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
 
             // TODO: Are HubContext, IHubClients, etc. thread-safe?
+            var entries = _outbox.ToList().Where(p => p.Value.address == previousAddress);
+            var tasks = new List<Task>();
 
-            return Task.WhenAll(_outbox.ToList().Where(p => p.Value.address == address).Select(p => hubContext.Clients.Client(address).DeliverAsync(p.Key, p.Value.message)));
+            foreach (var entry in entries)
+            {
+                _outbox.TryUpdate(entry.Key, (entry.Value.message, address), entry.Value);
+                tasks.Add(hubContext.Clients.Client(address).DeliverAsync(entry.Key, entry.Value.message));
+            }
+
+            await Task.WhenAll(tasks);
         }
 
         private Task SendAsync(byte[] bytes, string address, CancellationToken cancellation)

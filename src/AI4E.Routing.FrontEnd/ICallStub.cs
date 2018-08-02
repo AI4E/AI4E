@@ -7,4 +7,9 @@ namespace AI4E.Routing.FrontEnd
         Task DeliverAsync(int seqNum, byte[] bytes);
         Task AckAsync(int seqNum);
     }
+
+    internal interface IServerCallStub : ICallStub
+    {
+        Task<string> InitAsync(string previousAddress);
+    }
 }

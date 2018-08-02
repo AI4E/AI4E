@@ -15,7 +15,7 @@ using static System.Diagnostics.Debug;
 namespace AI4E.Routing.FrontEnd
 {
     // TODO: Logging
-    public sealed class ClientEndPoint : IClientEndPoint
+    public sealed class ClientEndPoint : IClientEndPoint, IDisposable
     {
         private readonly HubConnection _hubConnection;
         private readonly ILogger<ClientEndPoint> _logger;
@@ -129,29 +129,37 @@ namespace AI4E.Routing.FrontEnd
             await Task.WhenAll(_outbox.ToList().Select(p => _hubConnection.InvokeAsync<ICallStub>(q => q.DeliverAsync(p.Key, p.Value), cancellation: default)));
         }
 
+        private string _id = null;
+
+        private readonly AsyncLock _lock = new AsyncLock();
+
         private async Task ConnectAsync(CancellationToken cancellation)
         {
-            // We are waiting one second after the first failed attempt to connect.
-            // For each failed attempt, we increase the waited time to the next connection attempt,
-            // until we reach an upper limit of 12 seconds.
-            var timeToWait = new TimeSpan(1000 * TimeSpan.TicksPerMillisecond);
-            var timeToWaitMax = new TimeSpan(12000 * TimeSpan.TicksPerMillisecond);
-
-            while (cancellation.ThrowOrContinue())
+            using (await _lock.LockAsync())
             {
-                try
-                {
-                    await _hubConnection.StartAsync(cancellation);
-                    break;
-                }
-                catch (ObjectDisposedException) { throw; }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception)
-                {
-                    await Task.Delay(timeToWait, cancellation);
+                // We are waiting one second after the first failed attempt to connect.
+                // For each failed attempt, we increase the waited time to the next connection attempt,
+                // until we reach an upper limit of 12 seconds.
+                var timeToWait = new TimeSpan(1000 * TimeSpan.TicksPerMillisecond);
+                var timeToWaitMax = new TimeSpan(12000 * TimeSpan.TicksPerMillisecond);
 
-                    if (timeToWait < timeToWaitMax)
-                        timeToWait = new TimeSpan(timeToWait.Ticks * 2);
+                while (cancellation.ThrowOrContinue())
+                {
+                    try
+                    {
+                        await _hubConnection.StartAsync(cancellation);
+                        _id = await _hubConnection.InvokeAsync<IServerCallStub, string>(p => p.InitAsync(_id), cancellation);
+                        break;
+                    }
+                    catch (ObjectDisposedException) { throw; }
+                    catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
+                    catch (Exception)
+                    {
+                        await Task.Delay(timeToWait, cancellation);
+
+                        if (timeToWait < timeToWaitMax)
+                            timeToWait = new TimeSpan(timeToWait.Ticks * 2);
+                    }
                 }
             }
         }

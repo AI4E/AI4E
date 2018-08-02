@@ -96,6 +96,26 @@ namespace AI4E.Routing.FrontEnd
             throw new NotSupportedException();
         }
 
+        public static async Task<TResult> InvokeAsync<T, TResult>(this HubConnection hubConnection, Expression<Func<T, Task<TResult>>> expression, CancellationToken cancellation = default)
+        {
+            if (hubConnection == null)
+                throw new ArgumentNullException(nameof(hubConnection));
+
+            if (expression == null)
+                throw new ArgumentNullException(nameof(expression));
+
+            if (expression.Body is MethodCallExpression methodCallExpression)
+            {
+                var method = methodCallExpression.Method;
+                var arguments = methodCallExpression.Arguments.Select(p => GetExpressionValue(p)).ToArray();
+
+                var result = await hubConnection.InvokeCoreAsync(method.Name, method.ReturnType, arguments, cancellation);
+                return (TResult)result;
+            }
+
+            throw new NotSupportedException();
+        }
+
         // TODO: Duplicate (see ProxyHost)
         private static object GetExpressionValue(Expression expression)
         {
