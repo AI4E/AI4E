@@ -199,14 +199,12 @@ namespace AI4E.Modularity.Host
                 return null;
             }
 
-
-
-            // We have to search for the module be opening all files (except the ones, we already looked at.
+            // We have to search for the module by opening all files (except the ones, we already looked at.
             try
             {
                 var checkedFiles = files.ToArray();
 
-                files = Directory.EnumerateFiles(_location.Location, $"*.aep", SearchOption.AllDirectories)
+                files = Directory.EnumerateFiles(_location.Location, "*.aep", SearchOption.AllDirectories)
                                   .Except(checkedFiles);
 
                 return (await GetMatchingMetadata(module, files, moduleMetadataReader, cancellation)).metadata;
