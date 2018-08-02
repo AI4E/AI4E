@@ -19,9 +19,9 @@ namespace AI4E.Modularity.Host
 
         ValueTask<IEnumerable<IModuleSource>> GetSourcesAsync(CancellationToken cancellation);
 
-        void AddSource(IModuleSource source);
+        bool TryAddSource(IModuleSource source);
         void Install();
-        void RemoveSource(IModuleSource source);
+        bool TryRemoveSource(IModuleSource source);
         void Uninstall();
     }
 }

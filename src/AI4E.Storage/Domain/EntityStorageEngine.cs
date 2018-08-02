@@ -213,14 +213,20 @@ namespace AI4E.Storage.Domain
                                                       HeaderGenerator,
                                                       cancellation);
 
-            if (success)
+            if (!success)
+            {
+                // The stream did already update because of the concurrency conflict,
+                // but we need to reload the entity and put it in the cache.
+                entity = Deserialize(entityType, stream);
+            }
+            else
             {
                 _entityAccessor.SetConcurrencyToken(entity, stream.ConcurrencyToken);
                 _entityAccessor.SetRevision(entity, stream.StreamRevision);
                 _entityAccessor.CommitEvents(entity);
-
-                _lookup[(bucketId, streamId, requestedRevision: default)] = (entity, revision: stream.StreamRevision);
             }
+
+            _lookup[(bucketId, streamId, requestedRevision: default)] = (entity, revision: stream.StreamRevision);
 
             return success;
         }
@@ -280,10 +286,18 @@ namespace AI4E.Storage.Domain
                                                      HeaderGenerator,
                                                      cancellation);
 
-            if (success)
+            if (!success)
             {
-                _lookup[(bucketId, streamId, requestedRevision: default)] = (null, revision: stream.StreamRevision);
+                // The stream did already update because of the concurrency conflict,
+                // but we need to reload the entity and put it in the cache.
+                entity = Deserialize(entityType, stream);
             }
+            else
+            {
+                entity = null;
+            }
+
+            _lookup[(bucketId, streamId, requestedRevision: default)] = (entity, revision: stream.StreamRevision);
 
             return success;
         }

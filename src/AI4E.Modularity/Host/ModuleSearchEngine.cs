@@ -27,8 +27,8 @@ namespace AI4E.Modularity.Host
         }
 
         async Task<IEnumerable<IModule>> IModuleSearchEngine.SearchModulesAsync(string searchPhrase,
-                                                     bool includePreReleases,
-                                                     CancellationToken cancellation)
+                                                                                bool includePreReleases,
+                                                                                CancellationToken cancellation)
         {
             return await SearchModulesAsync(searchPhrase, includePreReleases, cancellation);
         }
@@ -78,7 +78,7 @@ namespace AI4E.Modularity.Host
 
             do
             {
-                module = (await _entityStorageEngine.GetByIdAsync(typeof(Module), moduleId.ToString(), cancellation)) as Module;
+                module = await _entityStorageEngine.GetByIdAsync<Module>(moduleId.ToString(), cancellation);
 
                 if (module == null)
                 {
@@ -87,7 +87,10 @@ namespace AI4E.Modularity.Host
                 }
                 else if (module.GetRelease(moduleVersion) is var release && release != null)
                 {
-                    release.AddSource(source);
+                    if (release.TryAddSource(source))
+                    {
+                        break;
+                    }
                 }
                 else
                 {

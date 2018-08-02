@@ -135,7 +135,7 @@ namespace AI4E.Modularity.Host
             }
 
             release = _releases[version];
-            release.AddSource(moduleSource);
+            release.TryAddSource(moduleSource);
             return release;
         }
 
