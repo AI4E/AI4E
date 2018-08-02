@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Domain;
 using AI4E.Storage.Domain;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Host
 {
@@ -38,7 +39,7 @@ namespace AI4E.Modularity.Host
                                                                   CancellationToken cancellation)
         {
             var sources = await _entityStorageEngine.GetAllAsync(typeof(FileSystemModuleSource), cancellation).Cast<FileSystemModuleSource>().ToArray();
-            var result = new HashSet<Module>();
+            var result = new Dictionary<ModuleIdentifier, Module>();
 
             foreach (var source in sources)
             {
@@ -48,13 +49,13 @@ namespace AI4E.Modularity.Host
             // We store the sources for the case that internal state changed (like caches), but ignore any concurrency conflicts.
             await Task.WhenAll(sources.Select(source => _entityStorageEngine.TryStoreAsync(source, cancellation)));
 
-            return result;
+            return result.Values;
         }
 
         private async Task ProcessSourceAsync(FileSystemModuleSource source,
                                               string searchPhrase,
                                               bool includePreReleases,
-                                              HashSet<Module> resultSet,
+                                              IDictionary<ModuleIdentifier, Module> resultSet,
                                               CancellationToken cancellation)
         {
             var available = await source.GetAvailableAsync(searchPhrase, includePreReleases, _metadataReader, cancellation);
@@ -63,7 +64,16 @@ namespace AI4E.Modularity.Host
             {
                 var module = await GetModuleAsync(source, releaseId, cancellation);
 
-                resultSet.Add(module);
+#if DEBUG
+                if (resultSet.TryGetValue(module.Id, out var existingModule))
+                {
+                    Assert(existingModule.Revision <= module.Revision);
+                }
+#endif
+
+                // We override any modules that were stored previously. 
+                // We are allowed to do this, as GetModuleAsync is guaranteed to return the same or a later version of the module entity.
+                resultSet[module.Id] = module;
             }
         }
 
