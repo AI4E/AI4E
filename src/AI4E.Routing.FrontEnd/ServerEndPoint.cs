@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing.FrontEnd
 {
@@ -44,12 +45,13 @@ namespace AI4E.Routing.FrontEnd
         }
     }
 
+    // TODO: Are HubContext, IHubClients, etc. thread-safe? (See InitAsync)
     public sealed class ServerEndPoint : IServerEndPoint
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ServerEndPoint> _logger;
-        private readonly AsyncProducerConsumerQueue<(IMessage message, string address)> _inbox;
-        private readonly ConcurrentDictionary<int, (byte[] message, string address)> _outbox;
+        private readonly AsyncProducerConsumerQueue<(IMessage message, string address)> _inboundMessages;
+        private readonly OutboundMessageLookup _outboundMessages = new OutboundMessageLookup();
 
         private int _nextSeqNum = 1;
 
@@ -61,13 +63,12 @@ namespace AI4E.Routing.FrontEnd
             _serviceProvider = serviceProvider;
             _logger = logger;
 
-            _inbox = new AsyncProducerConsumerQueue<(IMessage message, string address)>();
-            _outbox = new ConcurrentDictionary<int, (byte[] message, string address)>();
+            _inboundMessages = new AsyncProducerConsumerQueue<(IMessage message, string address)>();
         }
 
         public Task<(IMessage message, string address)> ReceiveAsync(CancellationToken cancellation = default)
         {
-            return _inbox.DequeueAsync(cancellation);
+            return _inboundMessages.DequeueAsync(cancellation);
         }
 
         public async Task SendAsync(IMessage message, string address, CancellationToken cancellation = default)
@@ -91,16 +92,21 @@ namespace AI4E.Routing.FrontEnd
                 await message.ReadAsync(stream, cancellation: default);
             }
 
-            await _inbox.EnqueueAsync((message, address));
+            await _inboundMessages.EnqueueAsync((message, address));
 
             var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
 
             await hubContext.Clients.Client(address).AckAsync(seqNum);
         }
 
+
+
         internal void Ack(int seqNum, string address)
         {
-            _outbox.TryRemove(seqNum, out _);
+            var success = _outboundMessages.TryRemove(seqNum, out var compareAddress, out _, out var ackSource) &&
+                          ackSource.TrySetResult(null);
+            Assert(success);
+            Assert(compareAddress == address);
         }
 
         internal async Task InitAsync(string address, string previousAddress)
@@ -108,33 +114,48 @@ namespace AI4E.Routing.FrontEnd
             if (previousAddress == null)
                 return;
 
-            var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
+            var messages = _outboundMessages.Update(previousAddress, address);
 
             // TODO: Are HubContext, IHubClients, etc. thread-safe?
-            var entries = _outbox.ToList().Where(p => p.Value.address == previousAddress);
-            var tasks = new List<Task>();
-
-            foreach (var entry in entries)
-            {
-                _outbox.TryUpdate(entry.Key, (entry.Value.message, address), entry.Value);
-                tasks.Add(hubContext.Clients.Client(address).DeliverAsync(entry.Key, entry.Value.message));
-            }
-
-            await Task.WhenAll(tasks);
+            var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
+            await Task.WhenAll(messages.Select(p => hubContext.Clients.Client(address).DeliverAsync(p.seqNum, p.bytes)));
         }
 
-        private Task SendAsync(byte[] bytes, string address, CancellationToken cancellation)
+        private async Task SendAsync(byte[] bytes, string address, CancellationToken cancellation)
         {
+            var ackSource = new TaskCompletionSource<object>();
             var seqNum = GetNextSeqNum();
 
-            while (!_outbox.TryAdd(seqNum, (bytes, address)))
+            while (!_outboundMessages.TryAdd(seqNum, address, bytes, ackSource))
             {
                 seqNum = GetNextSeqNum();
             }
 
-            var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
+            bool TryCancelSend()
+            {
+                return _outboundMessages.TryRemove(seqNum, out _, out _, out _) && ackSource.TrySetCanceled();
+            }
 
-            return hubContext.Clients.Client(address).DeliverAsync(seqNum, bytes);
+            void CancelSend()
+            {
+                var result = TryCancelSend();
+
+                Assert(result);
+            }
+
+            try
+            {
+                using (cancellation.Register(CancelSend))
+                {
+                    var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
+                    await Task.WhenAll(hubContext.Clients.Client(address).DeliverAsync(seqNum, bytes), ackSource.Task);
+                }
+            }
+            catch
+            {
+                TryCancelSend();
+                throw;
+            }
         }
 
         private int GetNextSeqNum()

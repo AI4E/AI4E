@@ -15,16 +15,28 @@ using static System.Diagnostics.Debug;
 namespace AI4E.Routing.FrontEnd
 {
     // TODO: Logging
+    // TODO: Does the disposal have to be thread-safe? Use AsyncDisposeHelper?
     public sealed class ClientEndPoint : IClientEndPoint, IDisposable
     {
+        #region Fields
+
         private readonly HubConnection _hubConnection;
         private readonly ILogger<ClientEndPoint> _logger;
-        private readonly AsyncProducerConsumerQueue<IMessage> _inbox;
-        private readonly ConcurrentDictionary<int, byte[]> _outbox;
+        private readonly AsyncProducerConsumerQueue<IMessage> _inboundMessages;
+        private readonly ConcurrentDictionary<int, (byte[] bytes, TaskCompletionSource<object> ackSource)> _outboundMessages;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly ClientCallStub _client;
         private readonly IDisposable _stubRegistration;
-        private int _nextSeqNum = 1;
+        private readonly AsyncLock _lock = new AsyncLock();
+        private readonly CancellationTokenSource _disposalSource = new CancellationTokenSource();
+        private readonly AsyncReaderWriterLock _disposalLock = new AsyncReaderWriterLock();
+        private bool _isDisposed;
+        private int _nextSeqNum;
+        private string _id;
+
+        #endregion
+
+        #region C'tor
 
         public ClientEndPoint(HubConnection hubConnection, ILogger<ClientEndPoint> logger = null)
         {
@@ -33,60 +45,78 @@ namespace AI4E.Routing.FrontEnd
 
             _hubConnection = hubConnection;
             _logger = logger;
-            _inbox = new AsyncProducerConsumerQueue<IMessage>();
-            _outbox = new ConcurrentDictionary<int, byte[]>();
+            _inboundMessages = new AsyncProducerConsumerQueue<IMessage>();
+            _outboundMessages = new ConcurrentDictionary<int, (byte[] bytes, TaskCompletionSource<object> ackSource)>();
             _hubConnection.Closed += UnderlyingConnectionClosedAsync;
             _client = new ClientCallStub(this);
             _stubRegistration = _hubConnection.Register(_client);
             _initializationHelper = new AsyncInitializationHelper(ConnectAsync);
         }
 
-        private sealed class ClientCallStub : ICallStub
-        {
-            private readonly ClientEndPoint _endPoint;
+        #endregion
 
-            public ClientCallStub(ClientEndPoint endPoint)
-            {
-                Assert(endPoint != null);
-                _endPoint = endPoint;
-            }
-
-            public Task DeliverAsync(int seqNum, byte[] bytes)
-            {
-                return _endPoint.ReceiveAsync(seqNum, bytes);
-            }
-
-            public Task AckAsync(int seqNum)
-            {
-                _endPoint.Ack(seqNum);
-                return Task.CompletedTask;
-            }
-        }
-
-        #region Public interface
+        #region IClientEndPoint
 
         public async Task<IMessage> ReceiveAsync(CancellationToken cancellation)
         {
-            await _initializationHelper.Initialization.WithCancellation(cancellation);
+            using (await _disposalLock.ReaderLockAsync(cancellation))
+            {
+                if (_isDisposed)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
 
-            return await _inbox.DequeueAsync(cancellation);
+                var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposalSource.Token);
+                var combinedCancellation = combinedCancellationSource.Token;
+
+                try
+                {
+                    await _initializationHelper.Initialization.WithCancellation(combinedCancellation);
+
+                    return await _inboundMessages.DequeueAsync(combinedCancellation);
+                }
+                catch (OperationCanceledException) when (_isDisposed)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
+            }
         }
 
         public async Task SendAsync(IMessage message, CancellationToken cancellation)
         {
-            await _initializationHelper.Initialization.WithCancellation(cancellation);
-
-            var bytes = new byte[message.Length];
-
-            using (var stream = new MemoryStream(bytes, writable: true))
+            using (await _disposalLock.ReaderLockAsync(cancellation))
             {
-                await message.WriteAsync(stream, cancellation);
-            }
+                if (_isDisposed)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
 
-            await SendAsync(bytes, cancellation);
+                var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposalSource.Token);
+                var combinedCancellation = combinedCancellationSource.Token;
+
+                try
+                {
+                    await _initializationHelper.Initialization.WithCancellation(combinedCancellation);
+
+                    var bytes = new byte[message.Length];
+
+                    using (var stream = new MemoryStream(bytes, writable: true))
+                    {
+                        await message.WriteAsync(stream, combinedCancellation);
+                    }
+
+                    await SendAsync(bytes, combinedCancellation);
+                }
+                catch (OperationCanceledException) when (_isDisposed)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
+            }
         }
 
         #endregion
+
+        #region Protocol implementation
 
         private async Task ReceiveAsync(int seqNum, byte[] bytes)
         {
@@ -97,25 +127,51 @@ namespace AI4E.Routing.FrontEnd
                 await message.ReadAsync(stream, cancellation: default);
             }
 
-            await _inbox.EnqueueAsync(message);
+            await _inboundMessages.EnqueueAsync(message);
             await _hubConnection.InvokeAsync<ICallStub>(p => p.AckAsync(seqNum));
         }
 
-        private Task SendAsync(byte[] bytes, CancellationToken cancellation)
+        private async Task SendAsync(byte[] bytes, CancellationToken cancellation)
         {
+            var ackSource = new TaskCompletionSource<object>();
             var seqNum = GetNextSeqNum();
 
-            while (!_outbox.TryAdd(seqNum, bytes))
+            while (!_outboundMessages.TryAdd(seqNum, (bytes, ackSource)))
             {
                 seqNum = GetNextSeqNum();
             }
 
-            return _hubConnection.InvokeAsync<ICallStub>(p => p.DeliverAsync(seqNum, bytes), cancellation);
+            bool TryCancelSend()
+            {
+                return _outboundMessages.TryRemove(seqNum, out _) && ackSource.TrySetCanceled();
+            }
+
+            void CancelSend()
+            {
+                var result = TryCancelSend();
+
+                Assert(result);
+            }
+
+            try
+            {
+                using (cancellation.Register(CancelSend))
+                {
+                    await Task.WhenAll(_hubConnection.InvokeAsync<ICallStub>(p => p.DeliverAsync(seqNum, bytes), cancellation), ackSource.Task);
+                }
+            }
+            catch
+            {
+                TryCancelSend();
+                throw;
+            }
         }
 
         private void Ack(int seqNum)
         {
-            _outbox.TryRemove(seqNum, out _);
+            var success = _outboundMessages.TryRemove(seqNum, out var entry) &&
+                          entry.ackSource.TrySetResult(null);
+            Assert(success);
         }
 
         private int GetNextSeqNum()
@@ -125,13 +181,9 @@ namespace AI4E.Routing.FrontEnd
 
         private async Task UnderlyingConnectionClosedAsync(Exception exception)
         {
-            await ConnectAsync(cancellation: default);
-            await Task.WhenAll(_outbox.ToList().Select(p => _hubConnection.InvokeAsync<ICallStub>(q => q.DeliverAsync(p.Key, p.Value), cancellation: default)));
+            await ConnectAsync(cancellation: _disposalSource.Token);
+            await Task.WhenAll(_outboundMessages.ToList().Select(p => _hubConnection.InvokeAsync<ICallStub>(q => q.DeliverAsync(p.Key, p.Value.bytes), cancellation: default)));
         }
-
-        private string _id = null;
-
-        private readonly AsyncLock _lock = new AsyncLock();
 
         private async Task ConnectAsync(CancellationToken cancellation)
         {
@@ -164,11 +216,49 @@ namespace AI4E.Routing.FrontEnd
             }
         }
 
+        #endregion
+
+        #region Disposal
+
         public void Dispose()
         {
-            _hubConnection.Closed -= UnderlyingConnectionClosedAsync;
-            _stubRegistration.Dispose();
-            _initializationHelper.Cancel();
+            _disposalSource.Cancel();
+
+            using (_disposalLock.WriterLock())
+            {
+                if (_isDisposed)
+                    return;
+
+                _isDisposed = true;
+
+                _hubConnection.Closed -= UnderlyingConnectionClosedAsync;
+                _stubRegistration.Dispose();
+                _initializationHelper.Cancel();
+            }
+        }
+
+        #endregion
+
+        private sealed class ClientCallStub : ICallStub
+        {
+            private readonly ClientEndPoint _endPoint;
+
+            public ClientCallStub(ClientEndPoint endPoint)
+            {
+                Assert(endPoint != null);
+                _endPoint = endPoint;
+            }
+
+            public Task DeliverAsync(int seqNum, byte[] bytes)
+            {
+                return _endPoint.ReceiveAsync(seqNum, bytes);
+            }
+
+            public Task AckAsync(int seqNum)
+            {
+                _endPoint.Ack(seqNum);
+                return Task.CompletedTask;
+            }
         }
     }
 }
