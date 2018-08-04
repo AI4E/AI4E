@@ -18,6 +18,8 @@ namespace AI4E.Routing.FrontEnd
     //       but the remote end may already have received the cancellation or response of the first message.
     public sealed class LogicalClientEndPoint : ILogicalClientEndPoint, IAsyncDisposable
     {
+        #region Fields
+
         private static readonly byte[] _emptyBytes = new byte[0];
 
         private readonly IClientEndPoint _endPoint;
@@ -33,6 +35,10 @@ namespace AI4E.Routing.FrontEnd
 
         private int _nextSeqNum;
 
+        #endregion
+
+        #region C'tor
+
         public LogicalClientEndPoint(IClientEndPoint endPoint, ILogger<LogicalClientEndPoint> logger = null)
         {
             if (endPoint == null)
@@ -45,6 +51,8 @@ namespace AI4E.Routing.FrontEnd
             _initializationHelper = new AsyncInitializationHelper<(EndPointRoute localEndPoint, string securityToken)>(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
+
+        #endregion
 
         #region ILogicalClientEndPoint
 
@@ -75,11 +83,11 @@ namespace AI4E.Routing.FrontEnd
                     void RequestCancellation()
                     {
                         var cancellationRequest = new Message();
-                        EncodeMessage(cancellationRequest, GetNextSeqNum(), corr: seqNum, MessageType.CancellationRequest, localEndPoint, securityToken);
+                        EncodeClientMessage(cancellationRequest, GetNextSeqNum(), corr: seqNum, MessageType.CancellationRequest, localEndPoint, securityToken);
                         SendInternalAsync(cancellationRequest, cancellation: default).HandleExceptions(_logger);
                     }
 
-                    EncodeMessage(message, seqNum, corr: default, MessageType.Request, localEndPoint, securityToken);
+                    EncodeClientMessage(message, seqNum, corr: default, MessageType.Request, localEndPoint, securityToken);
 
                     using (combinedCancellation.Register(RequestCancellation))
                     {
@@ -126,7 +134,7 @@ namespace AI4E.Routing.FrontEnd
                     {
                         var cancellationResponse = new Message();
 
-                        EncodeMessage(cancellationResponse, seqNum: GetNextSeqNum(), corr: seqNum, MessageType.CancellationResponse, localEndPoint, securityToken);
+                        EncodeClientMessage(cancellationResponse, seqNum: GetNextSeqNum(), corr: seqNum, MessageType.CancellationResponse, localEndPoint, securityToken);
 
                         await SendInternalAsync(cancellationResponse, combinedCancellation);
 
@@ -138,7 +146,7 @@ namespace AI4E.Routing.FrontEnd
                         response = new Message();
                     }
 
-                    EncodeMessage(response, seqNum: GetNextSeqNum(), corr: seqNum, MessageType.Response, localEndPoint, securityToken);
+                    EncodeClientMessage(response, seqNum: GetNextSeqNum(), corr: seqNum, MessageType.Response, localEndPoint, securityToken);
 
                     await SendInternalAsync(response, combinedCancellation);
                 }
@@ -173,7 +181,12 @@ namespace AI4E.Routing.FrontEnd
 
         #endregion
 
-        private void EncodeMessage(IMessage message, int seqNum, int corr, MessageType messageType, EndPointRoute localEndPoint, string securityToken)
+        #region Encode/Decode
+
+        // These are the counterparts of the encode/decode functions in LogicalServerEndPoint. These must be in sync.
+        // TODO: Create a base class and move the functions there.
+
+        private static void EncodeClientMessage(IMessage message, int seqNum, int corr, MessageType messageType, EndPointRoute localEndPoint, string securityToken)
         {
             var endPointBytes = localEndPoint == null ? _emptyBytes : Encoding.UTF8.GetBytes(localEndPoint.Route);
             var securityTokenBytes = securityToken == null ? _emptyBytes : Encoding.UTF8.GetBytes(securityToken);
@@ -201,7 +214,7 @@ namespace AI4E.Routing.FrontEnd
             }
         }
 
-        private (int seqNum, int corr, MessageType messageType) DecodeMessage(IMessage message)
+        private static (int seqNum, int corr, MessageType messageType) DecodeServerMessage(IMessage message)
         {
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
@@ -217,35 +230,9 @@ namespace AI4E.Routing.FrontEnd
             }
         }
 
-        private async Task<(EndPointRoute localEndPoint, string securityToken)> InitializeInternalAsync(CancellationToken cancellation)
+        // This must be in sync with LogicalServerEndPoint.EncodeInitResponse
+        private static (EndPointRoute localEndPoint, string securityToken) DecodeInitResponse(IMessage result)
         {
-            await _receiveProcess.StartAsync(cancellation);
-
-            var message = new Message();
-            var seqNum = GetNextSeqNum();
-            var responseSource = new TaskCompletionSource<IMessage>();
-
-            while (!_responseTable.TryAdd(seqNum, responseSource))
-            {
-                seqNum = GetNextSeqNum();
-            }
-
-            void RequestCancellation()
-            {
-                var cancellationRequest = new Message();
-                EncodeMessage(cancellationRequest, GetNextSeqNum(), corr: seqNum, MessageType.CancellationRequest, localEndPoint: null, securityToken: null);
-                SendInternalAsync(cancellationRequest, cancellation: default).HandleExceptions(_logger);
-            }
-
-            EncodeMessage(message, seqNum, corr: default, MessageType.Init, localEndPoint: null, securityToken: null);
-
-            using (cancellation.Register(RequestCancellation))
-            {
-                await Task.WhenAll(SendInternalAsync(message, cancellation), responseSource.Task);
-            }
-
-            var result = await responseSource.Task;
-
             using (var stream = result.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
             {
@@ -261,16 +248,19 @@ namespace AI4E.Routing.FrontEnd
             }
         }
 
-        private int GetNextSeqNum()
-        {
-            return Interlocked.Increment(ref _nextSeqNum);
-        }
+        #endregion
+
+        #region Send
 
         // The message is encoded (Our message frame is on tos)
         private Task SendInternalAsync(IMessage message, CancellationToken cancellation)
         {
             return _endPoint.SendAsync(message, cancellation);
         }
+
+        #endregion
+
+        #region Receive
 
         private async Task ReceiveProcess(CancellationToken cancellation)
         {
@@ -292,7 +282,7 @@ namespace AI4E.Routing.FrontEnd
         // The message is encoded (Our message frame is on tos)
         private Task ReceiveInternalAsync(IMessage message, CancellationToken cancellation)
         {
-            var (seqNum, corr, messageType) = DecodeMessage(message);
+            var (seqNum, corr, messageType) = DecodeServerMessage(message);
 
             if (messageType == MessageType.Request)
             {
@@ -357,6 +347,43 @@ namespace AI4E.Routing.FrontEnd
             return Task.CompletedTask;
         }
 
+        #endregion
+
+        #region Init
+
+        private async Task<(EndPointRoute localEndPoint, string securityToken)> InitializeInternalAsync(CancellationToken cancellation)
+        {
+            await _receiveProcess.StartAsync(cancellation);
+
+            var message = new Message();
+            var seqNum = GetNextSeqNum();
+            var responseSource = new TaskCompletionSource<IMessage>();
+
+            while (!_responseTable.TryAdd(seqNum, responseSource))
+            {
+                seqNum = GetNextSeqNum();
+            }
+
+            void RequestCancellation()
+            {
+                var cancellationRequest = new Message();
+                EncodeClientMessage(cancellationRequest, GetNextSeqNum(), corr: seqNum, MessageType.CancellationRequest, localEndPoint: null, securityToken: null);
+                SendInternalAsync(cancellationRequest, cancellation: default).HandleExceptions(_logger);
+            }
+
+            EncodeClientMessage(message, seqNum, corr: default, MessageType.Init, localEndPoint: null, securityToken: null);
+
+            using (cancellation.Register(RequestCancellation))
+            {
+                await Task.WhenAll(SendInternalAsync(message, cancellation), responseSource.Task);
+            }
+
+            var result = await responseSource.Task;
+            return DecodeInitResponse(result);
+        }
+
+        #endregion
+
         #region Disposal
 
         public Task Disposal => _disposeHelper.Disposal;
@@ -379,13 +406,19 @@ namespace AI4E.Routing.FrontEnd
 
         #endregion
 
+        private int GetNextSeqNum()
+        {
+            return Interlocked.Increment(ref _nextSeqNum);
+        }
+
+        // TODO: This is a duplicate from LogicalServerEndPoint
         private enum MessageType : byte
         {
-            Init,
-            Request,
-            Response,
-            CancellationRequest,
-            CancellationResponse
+            Init = 0,
+            Request = 1,
+            Response = 2,
+            CancellationRequest = 3,
+            CancellationResponse = 4
         }
     }
 }

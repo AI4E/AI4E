@@ -8,6 +8,6 @@ namespace AI4E.Routing.FrontEnd
     public interface ILogicalServerEndPoint
     {
         Task<IMessage> SendAsync(IMessage message, EndPointRoute endPoint, CancellationToken cancellation = default);
-        Task<(IMessage message, EndPointRoute endPoint)> ReceiveAsync(Func<IMessage, CancellationToken, Task<IMessage>> handler, CancellationToken cancellation = default);
+        Task ReceiveAsync(Func<IMessage, EndPointRoute, CancellationToken, Task<IMessage>> handler, CancellationToken cancellation = default);
     }
 }
