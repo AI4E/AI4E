@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
+    <Compile Include="..\..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
+    <Compile Include="..\Common\ICallStub.cs" Link="Internal\ICallStub.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Internal\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="1.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI4E.Remoting\AI4E.Remoting.csproj" />
+    <ProjectReference Include="..\..\AI4E.Routing.Abstractions\AI4E.Routing.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI4E.Routing\AI4E.Routing.csproj" />
+    <ProjectReference Include="..\..\AI4E\AI4E.csproj" />
+    <ProjectReference Include="..\AI4E.Routing.SignalR.Client.Abstractions\AI4E.Routing.SignalR.Client.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

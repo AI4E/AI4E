@@ -81,10 +81,12 @@ namespace AI4E.Routing
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            _messageRouter = messageRouterFactory.CreateMessageRouter(new SerializedMessageHandler(this));
+            
             _typeConversion = typeConversion;
             _serviceProvider = serviceProvider;
             _logger = logger;
+
+            _messageRouter = messageRouterFactory.CreateMessageRouter(new SerializedMessageHandler(this));
         }
 
         #endregion
