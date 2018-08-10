@@ -11,7 +11,11 @@ using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 
+#if BLAZOR
+namespace AI4E.Routing.Blazor
+#else
 namespace AI4E.Routing.SignalR.Client
+#endif
 {
     // TODO: If a message is received twice, due to a reconnection, 
     //       the second reception received a slot in the cancellation table 

@@ -34,18 +34,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E
 {
-    internal class MessagingBuilder : IMessagingBuilder
+    internal sealed class MessagingBuilder : IMessagingBuilder
     {
-        private readonly IServiceCollection _services;
-
         public MessagingBuilder(IServiceCollection services)
         {
             Debug.Assert(services != null);
 
-            _services = services;
+            Services = services;
         }
 
-        public IServiceCollection Services => _services;
+        public IServiceCollection Services { get; }
     }
 
     public interface IMessagingBuilder

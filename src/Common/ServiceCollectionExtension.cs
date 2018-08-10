@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using static System.Diagnostics.Debug;
+
+#if BLAZOR
+using AI4E.Blazor.ApplicationParts;
+#else
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
+#endif
 
 namespace AI4E.Internal
 {

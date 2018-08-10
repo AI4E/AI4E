@@ -12,7 +12,11 @@ using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 
+#if BLAZOR
+namespace AI4E.Routing.Blazor
+#else
 namespace AI4E.Routing.SignalR.Client
+#endif
 {
     // TODO: Logging   
     public sealed class RemoteMessageRouter : IMessageRouter, IAsyncDisposable

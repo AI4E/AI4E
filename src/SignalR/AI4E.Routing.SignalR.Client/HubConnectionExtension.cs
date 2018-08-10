@@ -5,13 +5,53 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.SignalR.Client;
 using static System.Diagnostics.Debug;
 
+#if BLAZOR
+using Blazor.Extensions;
+#else
+using Microsoft.AspNetCore.SignalR.Client;
+#endif
+
+#if BLAZOR
+namespace AI4E.Routing.Blazor
+#else
 namespace AI4E.Routing.SignalR.Client
+#endif
 {
     public static class HubConnectionExtension
     {
+#if BLAZOR
+        private static IDisposable RegisterMethod<TArg>(HubConnection hubConnection, object obj, MethodInfo method)
+        {
+            Func<TArg, Task> handler;
+
+            var arg = Expression.Parameter(typeof(TArg), "arg");
+            var objConst = Expression.Constant(obj, typeof(object));
+
+            var methodCall = Expression.Call(Expression.Convert(objConst, method.DeclaringType), method, arg);
+
+            // The method is asynchronous
+            if (method.ReturnType.IsAssignableFrom(typeof(Task)))
+            {
+                var convertedResult = Expression.Convert(methodCall, typeof(Task));
+
+                handler = Expression.Lambda<Func<TArg, Task>>(convertedResult, arg).Compile();
+            }
+            else
+            {
+                var synchronousHandler = Expression.Lambda<Action<TArg>>(methodCall, arg).Compile();
+
+                handler = p =>
+                {
+                    synchronousHandler(p);
+                    return Task.CompletedTask;
+                };
+            }
+
+            return hubConnection.On(method.Name, handler);
+        }
+#endif
         public static IDisposable Register<T>(this HubConnection hubConnection, T skeleton)
             where T : class
         {
@@ -35,7 +75,19 @@ namespace AI4E.Routing.SignalR.Client
                 // No ref, out, in, etc. parameters
                 if (parameters.Any(p => p.ParameterType.IsByRef))
                     continue;
+#if BLAZOR
+                if (parameters.Length > 1)
+                {
+                    throw new NotSupportedException("The blazor signal r client supports stub methods with a single argument only.");
+                }
 
+                var parameterType = parameters.FirstOrDefault()?.ParameterType;
+                var registerMethod = typeof(HubConnectionExtension).GetMethods().SingleOrDefault(p => p.Name == nameof(RegisterMethod) && p.IsGenericMethod)?.MakeGenericMethod(parameterType);
+
+                Assert(registerMethod != null);
+
+                var handlerRegistration = (IDisposable)registerMethod.Invoke(null, new object[] { hubConnection, skeleton, method });
+#else
                 Func<object[], object, Task> handler;
 
                 var args = Expression.Parameter(typeof(object[]), "args");
@@ -71,7 +123,9 @@ namespace AI4E.Routing.SignalR.Client
                     };
                 }
 
-                hubConnection.On(method.Name, parameters.Select(p => p.ParameterType).ToArray(), handler, state: skeleton);
+                var handlerRegistration = hubConnection.On(method.Name, parameters.Select(p => p.ParameterType).ToArray(), handler, state: skeleton);
+#endif
+                disposables.Add(handlerRegistration);
             }
 
             return new CombinedDisposable(disposables);
@@ -90,7 +144,11 @@ namespace AI4E.Routing.SignalR.Client
                 var method = methodCallExpression.Method;
                 var arguments = methodCallExpression.Arguments.Select(p => GetExpressionValue(p)).ToArray();
 
+#if BLAZOR
+                return hubConnection.InvokeAsync(method.Name, arguments);
+#else
                 return hubConnection.SendCoreAsync(method.Name, arguments, cancellation);
+#endif
             }
 
             throw new NotSupportedException();
@@ -109,18 +167,23 @@ namespace AI4E.Routing.SignalR.Client
                 var method = methodCallExpression.Method;
                 var arguments = methodCallExpression.Arguments.Select(p => GetExpressionValue(p)).ToArray();
 
-                try
+                TResult result;
+
+#if BLAZOR
+                result = await hubConnection.InvokeAsync<TResult>(method.Name, arguments);
+#else
+                var objResult = await hubConnection.InvokeCoreAsync(method.Name, typeof(TResult), arguments, cancellation);
+
+                if(objResult != null)
                 {
-                    var result = await hubConnection.InvokeCoreAsync(method.Name, typeof(TResult), arguments, cancellation);
-                    return (TResult)result;
+                    result = (TResult)objResult;
                 }
-                catch
+                else
                 {
-
-                    throw;
+                    result = default;
                 }
-
-
+#endif
+                return result;
             }
 
             throw new NotSupportedException();

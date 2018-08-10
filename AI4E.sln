@@ -71,6 +71,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\IdGenerator.cs = src\Common\IdGenerator.cs
 		src\Common\ImmutableArrayExtension.cs = src\Common\ImmutableArrayExtension.cs
 		src\Common\ListExtension.cs = src\Common\ListExtension.cs
+		src\Common\MessageDispatcherBuilder.cs = src\Common\MessageDispatcherBuilder.cs
 		src\Common\ObjectExtension.cs = src\Common\ObjectExtension.cs
 		src\Common\ParameterExpressionReplacer.cs = src\Common\ParameterExpressionReplacer.cs
 		src\Common\PathInternal.cs = src\Common\PathInternal.cs
@@ -124,16 +125,31 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SignalR", "SignalR", "{EF31
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{F251A968-746E-4891-ADA0-D26BF8C79F5D}"
 	ProjectSection(SolutionItems) = preProject
+		src\SignalR\Common\HubConnectionExtension.cs = src\SignalR\Common\HubConnectionExtension.cs
 		src\SignalR\Common\ICallStub.cs = src\SignalR\Common\ICallStub.cs
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SignalR", "SignalR", "{93F0B472-14C6-4571-8F12-10501C66A3CB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Routing.SignalR.Client.Sample", "samples\SignalR\AI4E.Routing.SignalR.Client.Sample\AI4E.Routing.SignalR.Client.Sample.csproj", "{0252A295-2BE8-4BD8-9D1F-9A68507BC908}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.SignalR.Client.Sample", "samples\SignalR\AI4E.Routing.SignalR.Client.Sample\AI4E.Routing.SignalR.Client.Sample.csproj", "{0252A295-2BE8-4BD8-9D1F-9A68507BC908}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Routing.SignalR.Server.Sample", "samples\SignalR\AI4E.Routing.SignalR.Server.Sample\AI4E.Routing.SignalR.Server.Sample.csproj", "{C59D346A-16C8-4BC4-A9D1-B91BFEC7F1CF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.SignalR.Server.Sample", "samples\SignalR\AI4E.Routing.SignalR.Server.Sample\AI4E.Routing.SignalR.Server.Sample.csproj", "{C59D346A-16C8-4BC4-A9D1-B91BFEC7F1CF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Routing.SignalR.Sample.Common", "samples\SignalR\AI4E.Routing.SignalR.Sample.Common\AI4E.Routing.SignalR.Sample.Common.csproj", "{FAFE1F6D-1D7B-48F6-B778-F0FCC37532D2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.SignalR.Sample.Common", "samples\SignalR\AI4E.Routing.SignalR.Sample.Common\AI4E.Routing.SignalR.Sample.Common.csproj", "{FAFE1F6D-1D7B-48F6-B778-F0FCC37532D2}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.SignalR.Blazor.Sample.Server", "samples\SignalR\AI4E.Routing.SignalR.Blazor.Sample.Server\AI4E.Routing.SignalR.Blazor.Sample.Server.csproj", "{AF61644D-7B1D-4D5D-AEBC-094E16AB013C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.SignalR.Blazor.Sample.Client", "samples\SignalR\AI4E.Routing.SignalR.Blazor.Sample.Client\AI4E.Routing.SignalR.Blazor.Sample.Client.csproj", "{1FBBC90D-37D5-49FC-A1E5-A31C3F2233B7}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Blazor", "Blazor", "{D7D5C0BC-316D-47A3-A2E8-E11CFC6D7486}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.Blazor", "src\Blazor\AI4E.Routing.Blazor\AI4E.Routing.Blazor.csproj", "{930CCF93-A671-4A6D-BA72-793EAE2EDD31}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.Blazor.Abstractions", "src\Blazor\AI4E.Routing.Blazor.Abstractions\AI4E.Routing.Blazor.Abstractions.csproj", "{C7D1F0FA-A4FD-4315-9787-BAE73375AA6F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore", "src\AI4E.AspNetCore\AI4E.AspNetCore.csproj", "{010A7464-8342-4908-A088-AFC034443668}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Blazor.ApplicationParts", "src\Blazor\AI4E.Blazor.ApplicationParts\AI4E.Blazor.ApplicationParts.csproj", "{F25E9327-266A-4348-846E-E17632F3515E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -281,6 +297,30 @@ Global
 		{FAFE1F6D-1D7B-48F6-B778-F0FCC37532D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FAFE1F6D-1D7B-48F6-B778-F0FCC37532D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FAFE1F6D-1D7B-48F6-B778-F0FCC37532D2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF61644D-7B1D-4D5D-AEBC-094E16AB013C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF61644D-7B1D-4D5D-AEBC-094E16AB013C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF61644D-7B1D-4D5D-AEBC-094E16AB013C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF61644D-7B1D-4D5D-AEBC-094E16AB013C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1FBBC90D-37D5-49FC-A1E5-A31C3F2233B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1FBBC90D-37D5-49FC-A1E5-A31C3F2233B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1FBBC90D-37D5-49FC-A1E5-A31C3F2233B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1FBBC90D-37D5-49FC-A1E5-A31C3F2233B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{930CCF93-A671-4A6D-BA72-793EAE2EDD31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{930CCF93-A671-4A6D-BA72-793EAE2EDD31}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{930CCF93-A671-4A6D-BA72-793EAE2EDD31}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{930CCF93-A671-4A6D-BA72-793EAE2EDD31}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C7D1F0FA-A4FD-4315-9787-BAE73375AA6F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C7D1F0FA-A4FD-4315-9787-BAE73375AA6F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C7D1F0FA-A4FD-4315-9787-BAE73375AA6F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C7D1F0FA-A4FD-4315-9787-BAE73375AA6F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{010A7464-8342-4908-A088-AFC034443668}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{010A7464-8342-4908-A088-AFC034443668}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{010A7464-8342-4908-A088-AFC034443668}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{010A7464-8342-4908-A088-AFC034443668}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F25E9327-266A-4348-846E-E17632F3515E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F25E9327-266A-4348-846E-E17632F3515E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F25E9327-266A-4348-846E-E17632F3515E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F25E9327-266A-4348-846E-E17632F3515E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -326,6 +366,13 @@ Global
 		{0252A295-2BE8-4BD8-9D1F-9A68507BC908} = {93F0B472-14C6-4571-8F12-10501C66A3CB}
 		{C59D346A-16C8-4BC4-A9D1-B91BFEC7F1CF} = {93F0B472-14C6-4571-8F12-10501C66A3CB}
 		{FAFE1F6D-1D7B-48F6-B778-F0FCC37532D2} = {93F0B472-14C6-4571-8F12-10501C66A3CB}
+		{AF61644D-7B1D-4D5D-AEBC-094E16AB013C} = {93F0B472-14C6-4571-8F12-10501C66A3CB}
+		{1FBBC90D-37D5-49FC-A1E5-A31C3F2233B7} = {93F0B472-14C6-4571-8F12-10501C66A3CB}
+		{D7D5C0BC-316D-47A3-A2E8-E11CFC6D7486} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
+		{930CCF93-A671-4A6D-BA72-793EAE2EDD31} = {D7D5C0BC-316D-47A3-A2E8-E11CFC6D7486}
+		{C7D1F0FA-A4FD-4315-9787-BAE73375AA6F} = {D7D5C0BC-316D-47A3-A2E8-E11CFC6D7486}
+		{010A7464-8342-4908-A088-AFC034443668} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
+		{F25E9327-266A-4348-846E-E17632F3515E} = {D7D5C0BC-316D-47A3-A2E8-E11CFC6D7486}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}

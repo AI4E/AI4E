@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace AI4E.Routing.SignalR
+namespace AI4E.Routing.SignalR.Client
 {
     /*internal*/
     public interface ICallStub

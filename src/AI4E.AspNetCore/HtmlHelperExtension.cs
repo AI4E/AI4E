@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E
+namespace AI4E.AspNetCore
 {
     public static class HtmlHelperExtension
     {

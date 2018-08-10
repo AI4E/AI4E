@@ -7,12 +7,23 @@ using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Internal;
 using AI4E.Remoting;
-using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 
+
+#if BLAZOR
+using Blazor.Extensions;
+using AI4E.Routing.SignalR.Client;
+#else
+using Microsoft.AspNetCore.SignalR.Client;
+#endif
+
+#if BLAZOR
+namespace AI4E.Routing.Blazor
+#else
 namespace AI4E.Routing.SignalR.Client
+#endif
 {
     // TODO: Logging
     // TODO: Does the disposal have to be thread-safe? Use AsyncDisposeHelper?
@@ -47,7 +58,13 @@ namespace AI4E.Routing.SignalR.Client
             _logger = logger;
             _inboundMessages = new AsyncProducerConsumerQueue<IMessage>();
             _outboundMessages = new ConcurrentDictionary<int, (byte[] bytes, TaskCompletionSource<object> ackSource)>();
+
+#if BLAZOR
+            _hubConnection.OnClose(UnderlyingConnectionClosedAsync);
+#else
             _hubConnection.Closed += UnderlyingConnectionClosedAsync;
+#endif
+
             _client = new ClientCallStub(this);
             _stubRegistration = _hubConnection.Register(_client);
             _initializationHelper = new AsyncInitializationHelper(ConnectAsync);
@@ -199,7 +216,11 @@ namespace AI4E.Routing.SignalR.Client
                 {
                     try
                     {
+#if BLAZOR
+                        await _hubConnection.StartAsync();
+#else
                         await _hubConnection.StartAsync(cancellation);
+#endif
                         _id = await _hubConnection.InvokeAsync<IServerCallStub, string>(p => p.InitAsync(_id), cancellation);
                         break;
                     }
@@ -231,7 +252,9 @@ namespace AI4E.Routing.SignalR.Client
 
                 _isDisposed = true;
 
+#if !BLAZOR
                 _hubConnection.Closed -= UnderlyingConnectionClosedAsync;
+#endif
                 _stubRegistration.Dispose();
                 _initializationHelper.Cancel();
             }

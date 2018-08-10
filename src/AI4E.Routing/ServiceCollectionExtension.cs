@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using AI4E.AspNetCore;
 using AI4E.Coordination;
 using AI4E.Internal;
 using AI4E.Remoting;
@@ -8,10 +9,8 @@ using Microsoft.Extensions.Options;
 
 namespace AI4E.Routing
 {
-    public static class EndPointManagerServiceCollectionExtension
+    public static class ServiceCollectionExtension
     {
-
-
         private static IEndPointManager ConfigureEndPointManager(IServiceProvider provider)
         {
             var physicalEndPointMarkerService = provider.GetRequiredService<PhysicalEndPointMarkerService>();
