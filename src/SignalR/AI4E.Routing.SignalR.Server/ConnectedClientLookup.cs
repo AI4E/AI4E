@@ -99,7 +99,7 @@ namespace AI4E.Routing.SignalR.Server
 
             using (var stream = new MemoryStream())
             {
-                using (var writer = new StreamWriter(stream))
+                using (var writer = new BinaryWriter(stream))
                 {
                     writer.Write(securityTokenBytes.Length);
                     writer.Write(securityTokenBytes);

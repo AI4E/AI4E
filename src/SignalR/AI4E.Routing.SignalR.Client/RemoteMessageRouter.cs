@@ -325,7 +325,7 @@ namespace AI4E.Routing.SignalR.Client
                     }
                     else
                     {
-                        var timeToWait =_leaseLengthHalf- timeSinceLastSend;
+                        var timeToWait = _leaseLengthHalf - timeSinceLastSend;
 
                         Assert(timeToWait > TimeSpan.Zero);
 
@@ -401,6 +401,7 @@ namespace AI4E.Routing.SignalR.Client
                             var route = Encoding.UTF8.GetString(routeBytes);
                             var publish = reader.ReadBoolean();
                             var response = await ReceiveHandleRequestAsync(message, route, publish, cancellation);
+                            Assert(response.FrameIndex == response.FrameCount - 1);
                             return response;
                         }
 

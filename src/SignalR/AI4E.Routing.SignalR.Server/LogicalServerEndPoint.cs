@@ -400,7 +400,7 @@ namespace AI4E.Routing.SignalR.Server
         private Task ReceiveResponseAsync(IMessage message, int seqNum, int corr, CancellationToken cancellation)
         {
             // We did not already receive a response for this corr-id.
-            if (!_responseTable.TryGetValue(corr, out var responseSource))
+            if (_responseTable.TryGetValue(corr, out var responseSource))
             {
                 responseSource.SetResult(message);
             }

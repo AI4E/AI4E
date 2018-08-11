@@ -180,15 +180,16 @@ namespace AI4E.Routing.SignalR.Server
 
                     EncodeHandleRequest(message, route, publish);
 
-                    return await _owner._logicalEndPoint.SendAsync(message, _endPoint, cancellation);
+                    var response = await _owner._logicalEndPoint.SendAsync(message, _endPoint, cancellation);
+                    return response;
                 }
                 finally
                 {
-                    Assert(serializedMessage.FrameIndex >= frameIdx);
+                    Assert(serializedMessage.FrameIndex <= frameIdx);
 
-                    while (serializedMessage.FrameIndex > frameIdx)
+                    while (serializedMessage.FrameIndex < frameIdx)
                     {
-                        serializedMessage.PopFrame();
+                        serializedMessage.PushFrame();
                     }
                 }
             }

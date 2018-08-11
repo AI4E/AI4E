@@ -136,17 +136,25 @@ namespace AI4E.Routing
 
             _logger?.LogDebug($"End-point '{localEndPoint}': Processing request message with seq-num '{seqNum}'.");
 
-            var frameIdx = message.FrameIndex;
+            var frameCount = message.FrameCount;
 
+            // We must push the frame that we read when received the message from the logical end point 
+            // in order for the message to look exactly the same as when the logical end point delivered the message to us.
+            var frameIdx = message.FrameIndex + 1;
             var response = await RouteToLocalAsync(route, message, publish, cancellation);
 
             var responseSeqNum = GetNextSeqNum();
             EncodeMessage(response, responseSeqNum, MessageType.Response, default, default, seqNum);
 
-            while (message.FrameIndex > frameIdx)
+            Assert(message.FrameCount == frameCount);
+            Assert(message.FrameIndex <= frameIdx);
+
+            while (message.FrameIndex < frameIdx)
             {
                 message.PushFrame();
             }
+
+            Assert(message.FrameIndex == frameIdx);
 
             await _logicalEndPoint.SendAsync(response, message, cancellation);
         }
@@ -155,7 +163,7 @@ namespace AI4E.Routing
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
 
-            _logger?.LogDebug($"End-point '{localEndPoint}': Processing response message for seq-num '{corr}'.");
+            _logger?.LogDebug($"End-point '{localEndPoint}': Processing response message for seq-num '{corr}'. [{seqNum}]");
 
             if (_responseTable.TryRemove(corr, out var tcs))
             {
@@ -165,9 +173,22 @@ namespace AI4E.Routing
 
         #endregion
 
-        private ValueTask<IMessage> RouteToLocalAsync(string route, IMessage serializedMessage, bool publish, CancellationToken cancellation)
+        private async ValueTask<IMessage> RouteToLocalAsync(string route, IMessage serializedMessage, bool publish, CancellationToken cancellation)
         {
-             return _serializedMessageHandler.HandleAsync(route, serializedMessage, publish, cancellation);
+            var frameIdx = serializedMessage.FrameIndex;
+            var frameCount = serializedMessage.FrameCount;
+
+            var response = await _serializedMessageHandler.HandleAsync(route, serializedMessage, publish, cancellation);
+
+            // Remove all frames from other protocol stacks.
+            response.Trim();
+
+            // We do not want to override frames.
+            Assert(response.FrameIndex == response.FrameCount - 1);
+            Assert(frameIdx == serializedMessage.FrameIndex);
+            Assert(frameCount == serializedMessage.FrameCount);
+
+            return response;
         }
 
         public ValueTask<IMessage> RouteAsync(string route, IMessage serializedMessage, bool publish, EndPointRoute endPoint, CancellationToken cancellation)
@@ -273,6 +294,8 @@ namespace AI4E.Routing
 
             try
             {
+                _logger?.LogDebug($"End-point '{localEndPoint}': Dispatching request message with seq-num '{seqNum}' to remote end point '{endPoint.Route}'.");
+
                 EncodeMessage(serializedMessage, seqNum, MessageType.Request, publish, route, default);
 
                 await _logicalEndPoint.SendAsync(serializedMessage, endPoint, cancellation);
@@ -285,9 +308,11 @@ namespace AI4E.Routing
             }
         }
 
+        private static readonly byte[] _emptyBytes = new byte[0];
+
         private static void EncodeMessage(IMessage message, int seqNum, MessageType messageType, bool publish, string route, int corr)
         {
-            var routeBytes = Encoding.UTF8.GetBytes(route);
+            var routeBytes = route != null ? Encoding.UTF8.GetBytes(route) : _emptyBytes;
 
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(stream))
@@ -300,7 +325,11 @@ namespace AI4E.Routing
                     writer.Write((byte)0); // 1 Byte (padding)
                     writer.Write(publish); // 1 Byte
                     writer.Write(routeBytes.Length); // 4 Bytes
-                    writer.Write(routeBytes); // Variable length
+
+                    if (routeBytes.Length > 0)
+                    {
+                        writer.Write(routeBytes); // Variable length
+                    }
                 }
                 else if (messageType == MessageType.Response || messageType == MessageType.Cancellation)
                 {
@@ -328,8 +357,11 @@ namespace AI4E.Routing
                     publish = reader.ReadBoolean();  // 1 Byte
 
                     var routeBytesLength = reader.ReadInt32(); // 4 Byte
-                    var routeBytes = reader.ReadBytes(routeBytesLength); // Variable length
-                    route = Encoding.UTF8.GetString(routeBytes);
+                    if (routeBytesLength > 0)
+                    {
+                        var routeBytes = reader.ReadBytes(routeBytesLength); // Variable length
+                        route = Encoding.UTF8.GetString(routeBytes);
+                    }
                 }
                 else if (messageType == MessageType.Response || messageType == MessageType.Cancellation)
                 {

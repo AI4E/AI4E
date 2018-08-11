@@ -44,40 +44,49 @@ namespace AI4E.Remoting
     [Serializable]
     public sealed class Message : IMessage
     {
-        private static long _headerLength = 12;
+        private static readonly long _headerLength = 12;
         private List<MessageFrame> _frames = new List<MessageFrame>();
-        private int _currentIndex = -1;
 
         public Message() { }
 
         public long Length => _frames.Aggregate(seed: 0L, (e, n) => e + n.PaddedLength) + _headerLength;
 
-        public MessageFrame CurrentFrame => _currentIndex == -1 ? null : _frames[_currentIndex];
+        public MessageFrame CurrentFrame => FrameIndex == -1 ? null : _frames[FrameIndex];
 
         public int FrameCount => _frames.Count;
-        public int FrameIndex => _currentIndex;
+        public int FrameIndex { get; private set; } = -1;
 
         public MessageFrame PushFrame()
         {
-            if (_currentIndex == _frames.Count - 1)
+            if (FrameIndex == FrameCount - 1)
             {
                 _frames.Add(new MessageFrame());
             }
 
-            _currentIndex++;
+            FrameIndex++;
             return CurrentFrame;
         }
 
         public MessageFrame PopFrame()
         {
-            if (_currentIndex == -1)
+            if (FrameIndex == -1)
             {
                 return null;
             }
 
             var result = CurrentFrame;
-            _currentIndex--;
+            FrameIndex--;
             return result;
+        }
+
+        public void Trim() // TODO: Rename?
+        {
+            if (FrameIndex == FrameCount - 1)
+            {
+                return;
+            }
+
+            _frames.RemoveRange(FrameIndex + 1, FrameCount - 1);
         }
 
         IMessageFrame IMessage.CurrentFrame => CurrentFrame;
@@ -102,7 +111,7 @@ namespace AI4E.Remoting
             using (var binaryWriter = new BinaryWriter(memStream))
             {
                 binaryWriter.Write(Length);   // 8 byte -- Packet length
-                binaryWriter.Write(_currentIndex);
+                binaryWriter.Write(FrameIndex);
             }
 
             await stream.WriteAsync(header, 0, header.Length, cancellation);
@@ -147,7 +156,7 @@ namespace AI4E.Remoting
             }
 
             _frames = new List<MessageFrame>(((IEnumerable<MessageFrame>)frames).Reverse());
-            _currentIndex = currentIndex;
+            FrameIndex = currentIndex;
         }
     }
 

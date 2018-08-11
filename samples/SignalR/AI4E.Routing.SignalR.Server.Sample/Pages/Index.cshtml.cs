@@ -33,7 +33,7 @@ namespace AI4E.Routing.SignalR.Server.Sample.Pages
 
             Result = result.ToString();
 
-            return RedirectToPage("/Index");
+            return Page();
         }
     }
 }
