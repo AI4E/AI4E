@@ -81,8 +81,10 @@ namespace AI4E.Routing.SignalR.Server
 
                 foreach (var response in routeResponse)
                 {
-                    writer.Write(message.Length);
-                    await message.WriteAsync(stream, cancellation);
+                    response.Trim();
+
+                    writer.Write(response.Length);
+                    await response.WriteAsync(stream, cancellation);
                 }
             }
         }

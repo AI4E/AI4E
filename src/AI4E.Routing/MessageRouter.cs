@@ -225,10 +225,7 @@ namespace AI4E.Routing
         private async ValueTask<IReadOnlyCollection<IMessage>> InternalRouteAsync(IEnumerable<string> routes, IMessage serializedMessage, bool publish, CancellationToken cancellation)
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
-
-            var currType = routes;
             var tasks = new List<ValueTask<IMessage>>();
-
             var handledEndPoints = new HashSet<EndPointRoute>();
 
             foreach (var route in routes)
@@ -296,11 +293,21 @@ namespace AI4E.Routing
             {
                 _logger?.LogDebug($"End-point '{localEndPoint}': Dispatching request message with seq-num '{seqNum}' to remote end point '{endPoint.Route}'.");
 
+                // Remove all frames from other protocol stacks.
+                serializedMessage.Trim();
+
+                // We do not want to override frames.
+                Assert(serializedMessage.FrameIndex == serializedMessage.FrameCount - 1);
+
                 EncodeMessage(serializedMessage, seqNum, MessageType.Request, publish, route, default);
 
                 await _logicalEndPoint.SendAsync(serializedMessage, endPoint, cancellation);
 
-                return await tcs.Task;
+                var response = await tcs.Task;
+
+                response.Trim();
+
+                return response;
             }
             finally
             {

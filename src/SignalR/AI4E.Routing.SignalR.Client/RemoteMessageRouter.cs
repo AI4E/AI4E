@@ -169,10 +169,10 @@ namespace AI4E.Routing.SignalR.Client
 
                 for (var i = 0; i < resultCount; i++)
                 {
-                    var messageLength = reader.ReadInt32();
+                    var messageLength = reader.ReadInt64();
                     var resultMessage = new Message();
 
-                    using (var messageStream = new MemoryStream(reader.ReadBytes(messageLength)))
+                    using (var messageStream = new MemoryStream(reader.ReadBytes(checked((int)messageLength))))
                     {
                         messageStream.Position = 0;
                         await resultMessage.ReadAsync(messageStream, cancellation);

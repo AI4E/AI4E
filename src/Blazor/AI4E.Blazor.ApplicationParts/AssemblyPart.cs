@@ -57,7 +57,10 @@ namespace AI4E.Blazor.ApplicationParts
         /// <param name="assembly">The backing <see cref="System.Reflection.Assembly"/>.</param>
         public AssemblyPart(Assembly assembly)
         {
-            Assembly = assembly ?? throw new ArgumentNullException(nameof(assembly));
+            if (assembly == null)
+                throw new ArgumentNullException(nameof(assembly));
+
+            Assembly = assembly;
         }
 
         /// <summary>

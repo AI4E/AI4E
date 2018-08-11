@@ -1,8 +1,13 @@
 using System;
+using System.Linq;
+using System.Reflection;
+using AI4E.Blazor.ApplicationParts;
 using Blazor.Extensions;
+using Blazor.Extensions.Logging;
 using Microsoft.AspNetCore.Blazor.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing.Blazor.Sample.App
 {
@@ -12,12 +17,30 @@ namespace AI4E.Routing.Blazor.Sample.App
         {
             services.AddLogging(builder =>
             {
-                builder.AddConsole();
+                //builder.AddConsole();
+                builder.AddBrowserConsole();
                 builder.SetMinimumLevel(LogLevel.Trace);
             });
 
             services.AddSingleton(ConfigureHubConnection);
             services.AddBlazorMessageDispatcher();
+
+            var manager = GetService<ApplicationPartManager>(services);
+
+            Assert(manager != null);
+
+            manager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
+
+        }
+
+        public static T GetService<T>(IServiceCollection services)
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            var serviceDescriptor = services.LastOrDefault(d => d.ServiceType == typeof(T));
+
+            return (T)serviceDescriptor?.ImplementationInstance;
         }
 
         private HubConnection ConfigureHubConnection(IServiceProvider serviceProvider)

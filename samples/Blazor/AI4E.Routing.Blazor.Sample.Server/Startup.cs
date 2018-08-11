@@ -19,7 +19,7 @@ namespace AI4E.Routing.Blazor.Sample.Server
         public void ConfigureServices(IServiceCollection services)
         {
             // Adds the Server-Side Blazor services, and those registered by the app project's startup.
-            services.AddServerSideBlazor<App.Startup>();
+            //services.AddServerSideBlazor<App.Startup>();
 
             services.AddResponseCompression(options =>
             {
@@ -59,7 +59,9 @@ namespace AI4E.Routing.Blazor.Sample.Server
             });
 
             // Use component registrations and static files from the app project.
-            app.UseServerSideBlazor<App.Startup>();
+            //app.UseServerSideBlazor<App.Startup>();
+
+            app.UseBlazor<App.Startup>();
         }
     }
 }

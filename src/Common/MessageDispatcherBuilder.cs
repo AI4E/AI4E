@@ -395,6 +395,11 @@ namespace AI4E.Internal
                                                      Expression.Convert(messageParameter, messageType),
                                                      serviceProviderParameter);
 
+                    if (_methodInfo.ReturnType.IsValueType)
+                    {
+                        invocation = Expression.Convert(invocation, typeof(object));
+                    }
+
                     var invoke = Expression.Lambda<Func<object, object, IServiceProvider, object>>(invocation,
                                                                                                    handlerParameter,
                                                                                                    messageParameter,
@@ -422,8 +427,8 @@ namespace AI4E.Internal
                 }
 
                 private Expression BuildInvocation(Expression handlerParameter,
-                                                               Expression messageParameter,
-                                                               Expression serviceProviderParameter)
+                                                   Expression messageParameter,
+                                                   Expression serviceProviderParameter)
                 {
                     var parameters = _methodInfo.GetParameters();
                     var arguments = new Expression[parameters.Length];

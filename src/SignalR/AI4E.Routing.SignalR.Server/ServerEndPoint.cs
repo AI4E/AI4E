@@ -26,9 +26,13 @@ namespace AI4E.Routing.SignalR.Server
             _endPoint = endPoint;
         }
 
-        public Task DeliverAsync(int seqNum, byte[] bytes)
+        // The Blazor SignalR client currently only supports handlers with a single argument.
+        // TODO: When https://github.com/BlazorExtensions/SignalR/pull/14 is merged and published, we can investigate here.
+        public Task DeliverAsync(DeliverAsyncArgs args /*int seqNum, byte[] bytes*/)
         {
-            return _endPoint.ReceiveAsync(seqNum, bytes, Context.ConnectionId);
+            var bytes = Convert.FromBase64String(args.Bytes);
+
+            return _endPoint.ReceiveAsync(args.SeqNum, bytes, Context.ConnectionId); //seqNum, bytes, Context.ConnectionId);
         }
 
         public Task AckAsync(int seqNum)
@@ -118,7 +122,7 @@ namespace AI4E.Routing.SignalR.Server
 
             // TODO: Are HubContext, IHubClients, etc. thread-safe?
             var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
-            await Task.WhenAll(messages.Select(p => hubContext.Clients.Client(address).DeliverAsync(p.seqNum, p.bytes)));
+            await Task.WhenAll(messages.Select(p => hubContext.Clients.Client(address).DeliverAsync(new DeliverAsyncArgs { SeqNum = p.seqNum, Bytes = Convert.ToBase64String(p.bytes) })));
         }
 
         private async Task SendAsync(byte[] bytes, string address, CancellationToken cancellation)
@@ -148,7 +152,7 @@ namespace AI4E.Routing.SignalR.Server
                 using (cancellation.Register(CancelSend))
                 {
                     var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
-                    await Task.WhenAll(hubContext.Clients.Client(address).DeliverAsync(seqNum, bytes), ackSource.Task);
+                    await Task.WhenAll(hubContext.Clients.Client(address).DeliverAsync(new DeliverAsyncArgs { SeqNum = seqNum, Bytes = Convert.ToBase64String(bytes) }), ackSource.Task);
                 }
             }
             catch
