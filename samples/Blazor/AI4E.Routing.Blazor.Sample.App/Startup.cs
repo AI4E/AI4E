@@ -1,12 +1,10 @@
 using System;
-using AI4E.Routing.Blazor;
 using Blazor.Extensions;
-using Blazor.Extensions.Logging;
 using Microsoft.AspNetCore.Blazor.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace AI4E.Routing.SignalR.Blazor.Sample.Client
+namespace AI4E.Routing.Blazor.Sample.App
 {
     public class Startup
     {
@@ -14,7 +12,7 @@ namespace AI4E.Routing.SignalR.Blazor.Sample.Client
         {
             services.AddLogging(builder =>
             {
-                builder.AddBrowserConsole();
+                builder.AddConsole();
                 builder.SetMinimumLevel(LogLevel.Trace);
             });
 

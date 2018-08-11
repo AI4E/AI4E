@@ -3,7 +3,7 @@
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
     "iisExpress": {
-      "applicationUrl": "http://localhost:50627/",
+      "applicationUrl": "http://localhost:51581/",
       "sslPort": 0
     }
   },
@@ -15,13 +15,13 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "AI4E.Routing.SignalR.Blazor.Sample.Client": {
+    "AI4E.Routing.Blazor.Sample.App": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "applicationUrl": "http://localhost:50628/"
+      "applicationUrl": "http://localhost:51583/"
     }
   }
 }

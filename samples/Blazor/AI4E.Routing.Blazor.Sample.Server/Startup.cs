@@ -1,5 +1,3 @@
-﻿using System.Linq;
-using System.Net.Mime;
 using AI4E.Modularity.Host;
 using AI4E.Routing.SignalR.Server;
 using AI4E.Storage;
@@ -9,8 +7,10 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.DependencyInjection;
+using System.Linq;
+using System.Net.Mime;
 
-namespace AI4E.Routing.SignalR.Blazor.Sample.Server
+namespace AI4E.Routing.Blazor.Sample.Server
 {
     public class Startup
     {
@@ -18,7 +18,8 @@ namespace AI4E.Routing.SignalR.Blazor.Sample.Server
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc();
+            // Adds the Server-Side Blazor services, and those registered by the app project's startup.
+            services.AddServerSideBlazor<App.Startup>();
 
             services.AddResponseCompression(options =>
             {
@@ -57,12 +58,8 @@ namespace AI4E.Routing.SignalR.Blazor.Sample.Server
                 routes.MapHub<ServerCallStub>("/MessageDispatcherHub");
             });
 
-            app.UseMvc(routes =>
-            {
-                routes.MapRoute(name: "default", template: "{controller}/{action}/{id?}");
-            });
-
-            app.UseBlazor<Client.Program>();
+            // Use component registrations and static files from the app project.
+            app.UseServerSideBlazor<App.Startup>();
         }
     }
 }
