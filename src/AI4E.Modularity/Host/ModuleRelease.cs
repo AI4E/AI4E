@@ -75,36 +75,38 @@ namespace AI4E.Modularity.Host
             return sources.Where(p => p != null);
         }
 
-        public void AddSource(IModuleSource source)
+        public bool TryAddSource(IModuleSource source)
         {
-            AddSource(source as FileSystemModuleSource); // TODO
+            return TryAddSource(source as FileSystemModuleSource); // TODO
         }
 
-        public void AddSource(FileSystemModuleSource source)
+        public bool TryAddSource(FileSystemModuleSource source)
         {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
 
-            _sources.Add(source);
+            return _sources.Add(source);
         }
 
-        public void RemoveSource(IModuleSource source)
+        public bool TryRemoveSource(IModuleSource source)
         {
-            RemoveSource(source as FileSystemModuleSource); // TODO
+            return TryRemoveSource(source as FileSystemModuleSource); // TODO
         }
 
-        public void RemoveSource(FileSystemModuleSource source)
+        public bool TryRemoveSource(FileSystemModuleSource source)
         {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
 
-            _sources.Remove(source);
+            var result = _sources.Remove(source);
 
             // If there are no more sources available for the release, we have to remove it.
             if (!_sources.Any())
             {
                 Module.RemoveRelease(this);
             }
+
+            return result;
         }
 
         public void Install()

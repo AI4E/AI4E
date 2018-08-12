@@ -55,7 +55,15 @@ namespace AI4E.Modularity
             using (var reader = new JsonTextReader(streamReader))
             {
                 // TODO: Validate metadata
-                return serializer.Deserialize<SerializedModuleMetadata>(reader);
+
+                try
+                {
+                    return serializer.Deserialize<SerializedModuleMetadata>(reader);
+                }
+                catch (JsonSerializationException exc)
+                {
+                    throw new ModuleMetadataFormatException("The module metadata is malformed.", exc);
+                }
             }
         }
 

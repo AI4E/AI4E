@@ -8,6 +8,50 @@ namespace AI4E.Storage.Domain
 {
     public static class EntityStorageEngineExtension
     {
+        public static async Task StoreAsync(this IEntityStorageEngine storageEngine, Type entityType, object entity, CancellationToken cancellation = default)
+        {
+            if (storageEngine == null)
+                throw new ArgumentNullException(nameof(storageEngine));
+
+            if (!await storageEngine.TryStoreAsync(entityType, entity, cancellation))
+            {
+                throw new ConcurrencyException();
+            }
+        }
+
+        public static async Task StoreAsync(this IEntityStorageEngine storageEngine, Type entityType, object entity, string id, CancellationToken cancellation = default)
+        {
+            if (storageEngine == null)
+                throw new ArgumentNullException(nameof(storageEngine));
+
+            if (!await storageEngine.TryStoreAsync(entityType, entity, id, cancellation))
+            {
+                throw new ConcurrencyException();
+            }
+        }
+
+        public static async Task DeleteAsync(this IEntityStorageEngine storageEngine, Type entityType, object entity, CancellationToken cancellation = default)
+        {
+            if (storageEngine == null)
+                throw new ArgumentNullException(nameof(storageEngine));
+
+            if (!await storageEngine.TryDeleteAsync(entityType, entity, cancellation))
+            {
+                throw new ConcurrencyException();
+            }
+        }
+
+        public static async Task DeleteAsync(this IEntityStorageEngine storageEngine, Type entityType, object entity, string id, CancellationToken cancellation = default)
+        {
+            if (storageEngine == null)
+                throw new ArgumentNullException(nameof(storageEngine));
+
+            if (!await storageEngine.TryDeleteAsync(entityType, entity, id, cancellation))
+            {
+                throw new ConcurrencyException();
+            }
+        }
+
         public static async ValueTask<TEntity> GetByIdAsync<TEntity>(this IEntityStorageEngine storageEngine, string id, CancellationToken cancellation = default)
             where TEntity : class
         {
@@ -99,20 +143,16 @@ namespace AI4E.Storage.Domain
             return storageEngine.DeleteAsync(typeof(TEntity), entity, id, cancellation);
         }
 
-        // TODO: This should have native support without throwing exceptions.
-        public static async Task<bool> TryStoreAsync<TEntity>(this IEntityStorageEngine storageEngine, TEntity entity, CancellationToken cancellation = default)
+        public static Task<bool> TryStoreAsync<TEntity>(this IEntityStorageEngine storageEngine, TEntity entity, CancellationToken cancellation = default)
             where TEntity : class
         {
-            try
-            {
-                await storageEngine.StoreAsync(entity, cancellation);
-            }
-            catch (ConcurrencyException)
-            {
-                return false;
-            }
+            return storageEngine.TryStoreAsync(typeof(TEntity), entity, cancellation);
+        }
 
-            return true;
+        public static Task<bool> TryDeleteAsync<TEntity>(this IEntityStorageEngine storageEngine, TEntity entity, CancellationToken cancellation = default)
+           where TEntity : class
+        {
+            return storageEngine.TryDeleteAsync(typeof(TEntity), entity, cancellation);
         }
     }
 }

@@ -37,13 +37,13 @@ namespace AI4E.Storage.Domain
 
         IAsyncEnumerable<object> GetAllAsync(CancellationToken cancellation = default);
 
-        Task StoreAsync(Type entityType, object entity, CancellationToken cancellation = default);
+        Task<bool> TryStoreAsync(Type entityType, object entity, CancellationToken cancellation = default);
 
-        Task StoreAsync(Type entityType, object entity, string id, CancellationToken cancellation = default);
+        Task<bool> TryStoreAsync(Type entityType, object entity, string id, CancellationToken cancellation = default);
 
-        Task DeleteAsync(Type entityType, object entity, CancellationToken cancellation = default);
+        Task<bool> TryDeleteAsync(Type entityType, object entity, CancellationToken cancellation = default);
 
-        Task DeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation = default);
+        Task<bool> TryDeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation = default);
 
         IEnumerable<(Type type, string id, long revision, object entity)> LoadedEntries { get; }
     }

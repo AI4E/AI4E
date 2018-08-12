@@ -162,7 +162,7 @@ namespace AI4E.Storage.Domain
 
             if (streamHead.HeadRevision >= attempt.StreamRevision)
             {
-                throw new ConcurrencyException();
+                return null;
             }
 
             var commit = BuildCommit(attempt);
@@ -171,7 +171,7 @@ namespace AI4E.Storage.Domain
             {
                 if (!await _database.AddAsync(commit, cancellation))
                 {
-                    throw new ConcurrencyException();
+                    return null;
                 }
             }
             catch (OperationCanceledException) when (cancellation.IsCancellationRequested && attempt.StreamRevision == 1)

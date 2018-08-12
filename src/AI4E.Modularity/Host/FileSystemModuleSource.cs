@@ -118,6 +118,7 @@ namespace AI4E.Modularity.Host
             return result;
         }
 
+        // TODO: Add a type to manage module packages.
         private async Task<IModuleMetadata> ReadMetadataAsync(string file, IMetadataReader moduleMetadataReader, CancellationToken cancellation)
         {
             var path = file;
@@ -139,7 +140,15 @@ namespace AI4E.Modularity.Host
                         return null;
                     }
 
-                    return await moduleMetadataReader.ReadMetadataAsync(manifest.Open(), cancellation);
+                    try
+                    {
+                        return await moduleMetadataReader.ReadMetadataAsync(manifest.Open(), cancellation);
+                    }
+                    catch (ModuleMetadataFormatException)
+                    {
+                        // TODO: Log
+                        return null;
+                    }
                 }
             }
             catch (FileNotFoundException) // The file was deleted concurrently.
@@ -190,14 +199,12 @@ namespace AI4E.Modularity.Host
                 return null;
             }
 
-
-
-            // We have to search for the module be opening all files (except the ones, we already looked at.
+            // We have to search for the module by opening all files (except the ones, we already looked at.
             try
             {
                 var checkedFiles = files.ToArray();
 
-                files = Directory.EnumerateFiles(_location.Location, $"*.aep", SearchOption.AllDirectories)
+                files = Directory.EnumerateFiles(_location.Location, "*.aep", SearchOption.AllDirectories)
                                   .Except(checkedFiles);
 
                 return (await GetMatchingMetadata(module, files, moduleMetadataReader, cancellation)).metadata;
@@ -292,6 +299,7 @@ namespace AI4E.Modularity.Host
             }
         }
 
+        // TODO: Add a type to manage module packages.
         private async Task<DirectoryInfo> ExtractCoreAsync(DirectoryInfo directory, IModuleMetadata metadata, string file, CancellationToken cancellation)
         {
             if (file == null)

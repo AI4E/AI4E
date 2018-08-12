@@ -158,7 +158,7 @@ namespace AI4E.Storage.Domain
                                .Where(p => p != null); // TODO: Add a deleted marker to the stream to already filter the streams before deserializing the content and checking for null afterwards.;
         }
 
-        public async Task StoreAsync(Type entityType, object entity, CancellationToken cancellation)
+        public Task<bool> TryStoreAsync(Type entityType, object entity, CancellationToken cancellation = default)
         {
             if (entityType == null)
                 throw new ArgumentNullException(nameof(entityType));
@@ -173,10 +173,10 @@ namespace AI4E.Storage.Domain
 
             Assert(id != null);
 
-            await InternalStoreAsync(entityType, entity, id, cancellation);
+            return InternalTryStoreAsync(entityType, entity, id, cancellation);
         }
 
-        public async Task StoreAsync(Type entityType, object entity, string id, CancellationToken cancellation)
+        public Task<bool> TryStoreAsync(Type entityType, object entity, string id, CancellationToken cancellation = default)
         {
             if (entityType == null)
                 throw new ArgumentNullException(nameof(entityType));
@@ -187,10 +187,10 @@ namespace AI4E.Storage.Domain
             if (id == null)
                 throw new ArgumentNullException(nameof(id));
 
-            await InternalStoreAsync(entityType, entity, id, cancellation);
+            return InternalTryStoreAsync(entityType, entity, id, cancellation);
         }
 
-        private async Task InternalStoreAsync(Type entityType, object entity, string id, CancellationToken cancellation)
+        private async Task<bool> InternalTryStoreAsync(Type entityType, object entity, string id, CancellationToken cancellation)
         {
             if (entityType.IsValueType)
                 throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
@@ -207,20 +207,31 @@ namespace AI4E.Storage.Domain
 
             void HeaderGenerator(IDictionary<string, object> headers) { }
 
-            await stream.CommitAsync(concurrencyToken,
-                                     events,
-                                     commitBody,
-                                     HeaderGenerator,
-                                     cancellation);
+            var success = await stream.TryCommitAsync(concurrencyToken,
+                                                      events,
+                                                      commitBody,
+                                                      HeaderGenerator,
+                                                      cancellation);
 
-            _entityAccessor.SetConcurrencyToken(entity, stream.ConcurrencyToken);
-            _entityAccessor.SetRevision(entity, stream.StreamRevision);
-            _entityAccessor.CommitEvents(entity);
+            if (!success)
+            {
+                // The stream did already update because of the concurrency conflict,
+                // but we need to reload the entity and put it in the cache.
+                entity = Deserialize(entityType, stream);
+            }
+            else
+            {
+                _entityAccessor.SetConcurrencyToken(entity, stream.ConcurrencyToken);
+                _entityAccessor.SetRevision(entity, stream.StreamRevision);
+                _entityAccessor.CommitEvents(entity);
+            }
 
             _lookup[(bucketId, streamId, requestedRevision: default)] = (entity, revision: stream.StreamRevision);
+
+            return success;
         }
 
-        public async Task DeleteAsync(Type entityType, object entity, CancellationToken cancellation)
+        public Task<bool> TryDeleteAsync(Type entityType, object entity, CancellationToken cancellation = default)
         {
             if (entityType == null)
                 throw new ArgumentNullException(nameof(entityType));
@@ -235,10 +246,10 @@ namespace AI4E.Storage.Domain
 
             Assert(id != null);
 
-            await InternalDeleteAsync(entityType, entity, id, cancellation);
+            return InternalTryDeleteAsync(entityType, entity, id, cancellation);
         }
 
-        public async Task DeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation)
+        public Task<bool> TryDeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation = default)
         {
             if (entityType == null)
                 throw new ArgumentNullException(nameof(entityType));
@@ -249,10 +260,10 @@ namespace AI4E.Storage.Domain
             if (id == null)
                 throw new ArgumentNullException(nameof(id));
 
-            await InternalDeleteAsync(entityType, entity, id, cancellation);
+            return InternalTryDeleteAsync(entityType, entity, id, cancellation);
         }
 
-        private async Task InternalDeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation)
+        private async Task<bool> InternalTryDeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation)
         {
             if (entityType.IsValueType)
                 throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
@@ -269,18 +280,26 @@ namespace AI4E.Storage.Domain
 
             void HeaderGenerator(IDictionary<string, object> headers) { }
 
-            await stream.CommitAsync(concurrencyToken,
-                                     events,
-                                     commitBody,
-                                     HeaderGenerator,
-                                     cancellation);
+            var success = await stream.TryCommitAsync(concurrencyToken,
+                                                     events,
+                                                     commitBody,
+                                                     HeaderGenerator,
+                                                     cancellation);
 
-            // TODO: Do we set the properties?
-            //_entityAccessor.SetConcurrencyToken(entity, stream.ConcurrencyToken);
-            //_entityAccessor.SetRevision(entity, stream.StreamRevision);
-            //_entityAccessor.CommitEvents(entity);
+            if (!success)
+            {
+                // The stream did already update because of the concurrency conflict,
+                // but we need to reload the entity and put it in the cache.
+                entity = Deserialize(entityType, stream);
+            }
+            else
+            {
+                entity = null;
+            }
 
-            _lookup[(bucketId, streamId, requestedRevision: default)] = (null, revision: stream.StreamRevision);
+            _lookup[(bucketId, streamId, requestedRevision: default)] = (entity, revision: stream.StreamRevision);
+
+            return success;
         }
 
         #endregion

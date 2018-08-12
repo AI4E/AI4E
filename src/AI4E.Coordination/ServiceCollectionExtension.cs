@@ -7,7 +7,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
 {
-    public static class CoordinationServiceCollectionExtension
+    public static class ServiceCollectionExtension
     {
         public static ICoordinationBuilder AddCoordinationService<TAddress>(this IServiceCollection services)
         {

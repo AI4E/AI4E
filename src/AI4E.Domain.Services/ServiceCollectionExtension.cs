@@ -19,7 +19,6 @@
  */
 
 using System;
-using AI4E.Storage;
 using AI4E.Storage.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
@@ -52,6 +51,7 @@ namespace AI4E.Domain.Services
             };
 
             settings.Converters.Add(new ReferenceConverter(new ReferenceResolver(entityStorageEngine)));
+            settings.Converters.Add(new DictionaryConverter());
 
             return settings;
         }

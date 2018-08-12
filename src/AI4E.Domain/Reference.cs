@@ -78,7 +78,7 @@ namespace AI4E.Domain
 
             Id = id;
 
-            if(!string.IsNullOrEmpty(id))
+            if (!string.IsNullOrEmpty(id))
             {
                 _aggregate = new Lazy<ValueTask<T>>(() => referenceResolver.ResolveAsync<T>(id, cancellation: default), isThreadSafe: true);
             }
@@ -96,6 +96,9 @@ namespace AI4E.Domain
         /// <returns>A task representing the asnychronous operation.</returns>
         public ValueTask<T> ResolveAsync() // TODO: Cancellation support?
         {
+            if (_aggregate == null)
+                return new ValueTask<T>(result: null);
+
             return _aggregate.Value;
         }
 
@@ -125,11 +128,16 @@ namespace AI4E.Domain
 
         public override int GetHashCode()
         {
-            return _typeHashCode ^ Id.GetHashCode();
+            return _typeHashCode ^ (Id?.GetHashCode() ?? 0);
         }
 
         public override string ToString()
         {
+            if (Id == null)
+            {
+                return $"{typeof(T).FullName} null";
+            }
+
             return $"{typeof(T).FullName} #{Id}";
         }
 
