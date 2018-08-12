@@ -28,21 +28,14 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using System;
 
 namespace AI4E.Routing
 {
-    public interface IRouteStore
+    [Flags]
+    public enum RouteOptions : int
     {
-        Task AddRouteAsync(EndPointRoute endPoint, string messageType, CancellationToken cancellation);
-        Task RemoveRouteAsync(EndPointRoute endPoint, string messageType, CancellationToken cancellation);
-        Task<IEnumerable<(EndPointRoute endPoint, RouteOptions options)>> GetRoutesAsync(string messageType, CancellationToken cancellation);
-    }
-
-    public interface IRouteStoreFactory
-    {
-        IRouteStore CreateRouteStore(RouteOptions options);
+        Default = 0,
+        PublishOnly = 1
     }
 }

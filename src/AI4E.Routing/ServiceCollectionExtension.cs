@@ -56,7 +56,7 @@ namespace AI4E.Routing
 
         public static void AddMessageRouter(this IServiceCollection services)
         {
-            services.AddSingleton<IRouteStore, RouteManager>();
+            services.AddSingleton<IRouteStoreFactory, RouteManagerFactory>();
             services.AddSingleton<IMessageRouterFactory, MessageRouterFactory>();
             services.AddHelperServices();
         }

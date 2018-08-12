@@ -15,6 +15,7 @@
     <Compile Include="..\..\AI4E.Routing.Abstractions\IMessageRouterFactory.cs" Link="Routing\IMessageRouterFactory.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\IRemoteMessageDispatcher.cs" Link="Routing\IRemoteMessageDispatcher.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\ISerializedMessageHandler.cs" Link="Routing\ISerializedMessageHandler.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\RouteOptions.cs" Link="Routing\RouteOptions.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client.Abstractions\IClientEndPoint.cs" Link="IClientEndPoint.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client.Abstractions\ILogicalClientEndPoint.cs" Link="ILogicalClientEndPoint.cs" />
   </ItemGroup>

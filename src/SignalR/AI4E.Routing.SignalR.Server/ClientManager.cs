@@ -145,7 +145,11 @@ namespace AI4E.Routing.SignalR.Server
 
         private IMessageRouter CreateRouter(EndPointRoute endPoint)
         {
-            var messageRouter = _messageRouterFactory.CreateMessageRouter(endPoint, new SerializedMessageHandlerProxy(this, endPoint));
+            // TODO: Get the clients route options and combine them with RouteOptions.PublishOnly. 
+            //       This is not necessary for now as there are no other options currently.
+            var messageRouter = _messageRouterFactory.CreateMessageRouter(endPoint,
+                                                                          new SerializedMessageHandlerProxy(this, endPoint),
+                                                                          RouteOptions.PublishOnly); // We allow publishing only.
             return messageRouter;
         }
 

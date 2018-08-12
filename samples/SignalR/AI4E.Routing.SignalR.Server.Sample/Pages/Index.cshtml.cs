@@ -29,7 +29,7 @@ namespace AI4E.Routing.SignalR.Server.Sample.Pages
 
         public async Task<IActionResult> OnPostAsync()
         {
-            var result = await _messageDispatcher.DispatchAsync(new TestMessage { Message = Message ?? string.Empty });
+            var result = await _messageDispatcher.DispatchAsync(new TestMessage { Message = Message ?? string.Empty }, publish: true);
 
             Result = result.ToString();
 
