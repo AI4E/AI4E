@@ -69,6 +69,8 @@ namespace AI4E.Modularity.Host
             }
         }
 
+        string IModuleSource.Id => Id.ToString();
+
         public async Task<IEnumerable<ModuleReleaseIdentifier>> GetAvailableAsync(string searchPhrase,
                                                                                   bool includePreReleases,
                                                                                   IMetadataReader moduleMetadataReader,

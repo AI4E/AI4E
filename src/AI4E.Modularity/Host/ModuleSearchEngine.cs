@@ -38,7 +38,7 @@ namespace AI4E.Modularity.Host
                                                                   bool includePreReleases,
                                                                   CancellationToken cancellation)
         {
-            var sources = await _entityStorageEngine.GetAllAsync(typeof(FileSystemModuleSource), cancellation).Cast<FileSystemModuleSource>().ToArray();
+            var sources = await _entityStorageEngine.GetAllAsync<IModuleSource>(cancellation).ToArray();
             var result = new Dictionary<ModuleIdentifier, Module>();
 
             foreach (var source in sources)
@@ -52,7 +52,7 @@ namespace AI4E.Modularity.Host
             return result.Values;
         }
 
-        private async Task ProcessSourceAsync(FileSystemModuleSource source,
+        private async Task ProcessSourceAsync(IModuleSource source,
                                               string searchPhrase,
                                               bool includePreReleases,
                                               IDictionary<ModuleIdentifier, Module> resultSet,
@@ -77,7 +77,7 @@ namespace AI4E.Modularity.Host
             }
         }
 
-        private async ValueTask<Module> GetModuleAsync(FileSystemModuleSource source,
+        private async ValueTask<Module> GetModuleAsync(IModuleSource source,
                                                        ModuleReleaseIdentifier releaseId,
                                                        CancellationToken cancellation)
         {

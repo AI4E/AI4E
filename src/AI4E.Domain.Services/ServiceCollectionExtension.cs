@@ -43,7 +43,7 @@ namespace AI4E.Domain.Services
         {
             var settings = new JsonSerializerSettings
             {
-                TypeNameHandling = TypeNameHandling.Auto,
+                TypeNameHandling = TypeNameHandling.All,
                 Formatting = Formatting.Indented,
                 PreserveReferencesHandling = PreserveReferencesHandling.Objects,
                 ReferenceLoopHandling = ReferenceLoopHandling.Serialize,

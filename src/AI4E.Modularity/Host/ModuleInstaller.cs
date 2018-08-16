@@ -54,14 +54,14 @@ namespace AI4E.Modularity.Host
 
             if (module == null)
             {
-                return Enumerable.Empty<FileSystemModuleSource>();
+                return Enumerable.Empty<IModuleSource>();
             }
 
             var release = module.GetRelease(moduleRelease.Version);
 
             if (release == null)
             {
-                return Enumerable.Empty<FileSystemModuleSource>();
+                return Enumerable.Empty<IModuleSource>();
             }
 
             return await release.GetSourcesAsync(cancellation);

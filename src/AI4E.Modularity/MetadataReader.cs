@@ -98,7 +98,7 @@ namespace AI4E.Modularity
             IEnumerable<ModuleDependency> IModuleMetadata.Dependencies => Dependencies.Select(p => new ModuleDependency(p.Key, p.Value));
 
             [JsonProperty("dependencies")]
-            public IDictionary<ModuleIdentifier, ModuleVersionRange> Dependencies { get; } = new Dictionary<ModuleIdentifier, ModuleVersionRange>();
+            public Dictionary<ModuleIdentifier, ModuleVersionRange> Dependencies { get; } = new Dictionary<ModuleIdentifier, ModuleVersionRange>();
         }
     }
 }

@@ -4,7 +4,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using AI4E.Domain;
 using AI4E.Internal;
-using AI4E.Modularity.Host;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
 
@@ -15,7 +14,7 @@ namespace AI4E.Modularity.Host
     {
         private readonly Dictionary<ModuleVersion, ModuleRelease> _releases;
 
-        public Module(IModuleMetadata metadata, FileSystemModuleSource moduleSource) : base(metadata.Module)
+        public Module(IModuleMetadata metadata, IModuleSource moduleSource) : base(metadata.Module)
         {
             if (metadata == null)
                 throw new ArgumentNullException(nameof(metadata));
@@ -79,7 +78,7 @@ namespace AI4E.Modularity.Host
 
         IModuleRelease IModule.AddRelease(IModuleMetadata metadata, IModuleSource moduleSource)
         {
-            return AddRelease(metadata, moduleSource as FileSystemModuleSource); // TODO
+            return AddRelease(metadata, moduleSource);
         }
 
         IModuleRelease IModule.GetLatestRelease(bool includePreReleases)
@@ -117,7 +116,7 @@ namespace AI4E.Modularity.Host
             return _releases.TryGetValue(version, out var result) ? result : null;
         }
 
-        public ModuleRelease AddRelease(IModuleMetadata metadata, FileSystemModuleSource moduleSource)
+        public ModuleRelease AddRelease(IModuleMetadata metadata, IModuleSource moduleSource)
         {
             if (metadata == null)
                 throw new ArgumentNullException(nameof(metadata));
