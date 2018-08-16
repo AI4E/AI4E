@@ -22,7 +22,7 @@ namespace AI4E.Storage.Sample.Services
         }
 
         public ProductDeleteModel ProjectToDeleteModel(Product product,
-                                                       [FromServices] IEntityStoragePropertyManager propertyManager)
+                                                       [FromServices] IEntityPropertyAccessor propertyManager)
         {
             if (product == null)
                 return null;

@@ -49,8 +49,7 @@ namespace AI4E.Storage.Domain
         #region Fields
 
         private readonly IStreamStore _streamStore;
-        private readonly IEntityStoragePropertyManager _entityAccessor; // TODO: Rename
-        private readonly IEntityIdManager _entityIdManager;
+        private readonly IEntityPropertyAccessor _entityPropertyAccessor;
         private readonly JsonDiffPatch _differ;
         private readonly JsonSerializer _jsonSerializer;
         private readonly Dictionary<(string bucket, string id, long requestedRevision), (object entity, long revision)> _lookup;
@@ -61,25 +60,20 @@ namespace AI4E.Storage.Domain
         #region C'tor
 
         public EntityStorageEngine(IStreamStore streamStore,
-                                   IEntityStoragePropertyManager entityAccessor, // TODO: Rename
-                                   IEntityIdManager entityIdManager,
+                                   IEntityPropertyAccessor entityPropertyAccessor,
                                    ISerializerSettingsResolver serializerSettingsResolver)
         {
             if (streamStore == null)
                 throw new ArgumentNullException(nameof(streamStore));
 
-            if (entityAccessor == null)
-                throw new ArgumentNullException(nameof(entityAccessor));
-
-            if (entityIdManager == null)
-                throw new ArgumentNullException(nameof(entityIdManager));
+            if (entityPropertyAccessor == null)
+                throw new ArgumentNullException(nameof(entityPropertyAccessor));
 
             if (serializerSettingsResolver == null)
                 throw new ArgumentNullException(nameof(serializerSettingsResolver));
 
             _streamStore = streamStore;
-            _entityAccessor = entityAccessor;
-            _entityIdManager = entityIdManager;
+            _entityPropertyAccessor = entityPropertyAccessor;
             _differ = new JsonDiffPatch();
             _jsonSerializer = JsonSerializer.Create(serializerSettingsResolver.ResolveSettings(this));
 
@@ -166,7 +160,7 @@ namespace AI4E.Storage.Domain
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
 
-            if (!_entityIdManager.TryGetId(entityType, entity, out var id))
+            if (!_entityPropertyAccessor.TryGetId(entityType, entity, out var id))
             {
                 throw new ArgumentException("Unable to determine the id of the specified entity.", nameof(entity));
             }
@@ -202,7 +196,7 @@ namespace AI4E.Storage.Domain
             var streamId = id;
             var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, throwIfNotFound: false, cancellation);
 
-            var (concurrencyToken, events) = GetEntityProperties(entity);
+            var (concurrencyToken, events) = GetEntityProperties(entityType, entity);
             var commitBody = BuildCommitBody(entity, stream);
 
             void HeaderGenerator(IDictionary<string, object> headers) { }
@@ -221,9 +215,9 @@ namespace AI4E.Storage.Domain
             }
             else
             {
-                _entityAccessor.SetConcurrencyToken(entity, stream.ConcurrencyToken);
-                _entityAccessor.SetRevision(entity, stream.StreamRevision);
-                _entityAccessor.CommitEvents(entity);
+                _entityPropertyAccessor.SetConcurrencyToken(entityType, entity, stream.ConcurrencyToken);
+                _entityPropertyAccessor.SetRevision(entityType, entity, stream.StreamRevision);
+                _entityPropertyAccessor.CommitEvents(entityType, entity);
             }
 
             _lookup[(bucketId, streamId, requestedRevision: default)] = (entity, revision: stream.StreamRevision);
@@ -239,7 +233,7 @@ namespace AI4E.Storage.Domain
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
 
-            if (!_entityIdManager.TryGetId(entityType, entity, out var id))
+            if (!_entityPropertyAccessor.TryGetId(entityType, entity, out var id))
             {
                 throw new ArgumentException("Unable to determine the id of the specified entity.", nameof(entity));
             }
@@ -275,7 +269,7 @@ namespace AI4E.Storage.Domain
             var streamId = id;
             var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, throwIfNotFound: false, cancellation);
 
-            var (concurrencyToken, events) = GetEntityProperties(entity);
+            var (concurrencyToken, events) = GetEntityProperties(entityType, entity);
             var commitBody = BuildCommitBody(entity: null, stream);
 
             void HeaderGenerator(IDictionary<string, object> headers) { }
@@ -304,10 +298,10 @@ namespace AI4E.Storage.Domain
 
         #endregion
 
-        private (string concurrencyToken, IEnumerable<EventMessage> events) GetEntityProperties(object entity)
+        private (string concurrencyToken, IEnumerable<EventMessage> events) GetEntityProperties(Type entityType, object entity)
         {
-            var concurrencyToken = _entityAccessor.GetConcurrencyToken(entity);
-            var events = _entityAccessor.GetUncommittedEvents(entity).Select(p => new EventMessage { Body = Serialize(p) });
+            var concurrencyToken = _entityPropertyAccessor.GetConcurrencyToken(entityType, entity);
+            var events = _entityPropertyAccessor.GetUncommittedEvents(entityType, entity).Select(p => new EventMessage { Body = Serialize(p) });
 
             return (concurrencyToken, events);
         }
@@ -397,9 +391,9 @@ namespace AI4E.Storage.Domain
 
             if (result != null)
             {
-                _entityAccessor.SetConcurrencyToken(result, stream.ConcurrencyToken);
-                _entityAccessor.SetRevision(result, stream.StreamRevision);
-                _entityAccessor.CommitEvents(result);
+                _entityPropertyAccessor.SetConcurrencyToken(entityType, result, stream.ConcurrencyToken);
+                _entityPropertyAccessor.SetRevision(entityType, result, stream.StreamRevision);
+                _entityPropertyAccessor.CommitEvents(entityType, result);
             }
 
             return result;

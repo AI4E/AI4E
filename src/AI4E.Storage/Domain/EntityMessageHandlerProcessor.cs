@@ -39,16 +39,14 @@ namespace AI4E.Storage.Domain
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly IEntityStorageEngine _entityStorageEngine;
-        private readonly IEntityIdManager _entityIdManager;
-        private readonly IEntityStoragePropertyManager _entityStoragePropertyManager; // TODO: Rename
+        private readonly IEntityPropertyAccessor _entityPropertyAccessor;
         private volatile IMessageAccessor _messageAccessor = null;
 
         private static readonly ConcurrentDictionary<Type, MessageHandlerDescriptor> _descriptor = new ConcurrentDictionary<Type, MessageHandlerDescriptor>();
 
         public EntityMessageHandlerProcessor(IServiceProvider serviceProvider,
                                              IEntityStorageEngine entityStorageEngine,
-                                             IEntityIdManager entityIdManager,
-                                             IEntityStoragePropertyManager entityStoragePropertyManager) // TODO: Rename
+                                             IEntityPropertyAccessor entityPropertyAccessor)
         {
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
@@ -56,16 +54,12 @@ namespace AI4E.Storage.Domain
             if (entityStorageEngine == null)
                 throw new ArgumentNullException(nameof(entityStorageEngine));
 
-            if (entityIdManager == null)
-                throw new ArgumentNullException(nameof(entityIdManager));
-
-            if (entityStoragePropertyManager == null)
-                throw new ArgumentNullException(nameof(entityStoragePropertyManager));
+            if (entityPropertyAccessor == null)
+                throw new ArgumentNullException(nameof(entityPropertyAccessor));
 
             _serviceProvider = serviceProvider;
             _entityStorageEngine = entityStorageEngine;
-            _entityIdManager = entityIdManager;
-            _entityStoragePropertyManager = entityStoragePropertyManager;
+            _entityPropertyAccessor = entityPropertyAccessor;
         }
 
         public async override Task<IDispatchResult> ProcessAsync<TMessage>(TMessage message,
@@ -106,7 +100,7 @@ namespace AI4E.Storage.Domain
                         createsEntityAttribute.CreatesEntity &&
                         !createsEntityAttribute.AllowExisingEntity)
                     {
-                        if (!_entityIdManager.TryGetId(descriptor.EntityType, entity, out var id))
+                        if (!_entityPropertyAccessor.TryGetId(descriptor.EntityType, entity, out var id))
                         {
                             return new EntityAlreadyPresentDispatchResult(descriptor.EntityType);
                         }
@@ -117,7 +111,7 @@ namespace AI4E.Storage.Domain
                     }
 
                     if (checkConcurrencyToken &&
-                        concurrencyToken != _entityStoragePropertyManager.GetConcurrencyToken(entity))
+                        concurrencyToken != _entityPropertyAccessor.GetConcurrencyToken(descriptor.EntityType, entity))
                     {
                         return new ConcurrencyIssueDispatchResult();
                     }
@@ -145,7 +139,7 @@ namespace AI4E.Storage.Domain
                         return dispatchResult;
                     }
 
-                    if (!_entityIdManager.TryGetId(descriptor.EntityType, entity ?? originalEntity, out var id))
+                    if (!_entityPropertyAccessor.TryGetId(descriptor.EntityType, entity ?? originalEntity, out var id))
                     {
                         return new FailureDispatchResult("Unable to determine the id of the specified entity.");
                     }
