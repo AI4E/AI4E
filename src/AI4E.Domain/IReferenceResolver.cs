@@ -54,7 +54,7 @@ namespace AI4E.Domain
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="revision"/> is a negative value.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         ValueTask<TEntity> ResolveAsync<TEntity>(string id, long revision, CancellationToken cancellation = default)
-                   where TEntity : AggregateRootBase;
+                   where TEntity : class;
     }
 
     /// <summary>
@@ -75,7 +75,7 @@ namespace AI4E.Domain
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="referenceResolver"/> is null.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         public static ValueTask<TEntity> ResolveAsync<TEntity>(this IReferenceResolver referenceResolver, string id, CancellationToken cancellation = default)
-            where TEntity : AggregateRootBase
+            where TEntity : class
         {
             if (referenceResolver == null)
                 throw new ArgumentNullException(nameof(referenceResolver));

@@ -38,7 +38,7 @@ namespace AI4E.Domain.Services
         }
 
         public async ValueTask<TEntity> ResolveAsync<TEntity>(string id, long revision, CancellationToken cancellation)
-            where TEntity : AggregateRootBase
+            where TEntity : class
         {
             if (id.Equals(default))
                 return null;
