@@ -39,7 +39,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 
 namespace AI4E.Blazor.ApplicationParts
 {
@@ -96,22 +95,6 @@ namespace AI4E.Blazor.ApplicationParts
             foreach (var provider in FeatureProviders.OfType<IApplicationFeatureProvider<TFeature>>())
             {
                 provider.PopulateFeature(ApplicationParts, feature);
-            }
-        }
-
-        internal void PopulateDefaultParts(string entryAssemblyName)
-        {
-            var entryAssembly = Assembly.Load(new AssemblyName(entryAssemblyName));
-            var assembliesProvider = new ApplicationAssembliesProvider();
-            var applicationAssemblies = assembliesProvider.ResolveAssemblies(entryAssembly);
-
-            foreach (var assembly in applicationAssemblies)
-            {
-                var partFactory = ApplicationPartFactory.GetApplicationPartFactory(assembly);
-                foreach (var part in partFactory.GetApplicationParts(assembly))
-                {
-                    ApplicationParts.Add(part);
-                }
             }
         }
     }
