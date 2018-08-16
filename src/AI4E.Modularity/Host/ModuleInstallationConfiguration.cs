@@ -61,13 +61,8 @@ namespace AI4E.Modularity.Host
 
             InstalledModules = InstalledModules.WithoutUnresolved(module);
 
-            //if (!_installedModules.Remove(module))
-            //    throw new InvalidOperationException("The specified module is not installed.");
-
             return ResolveDependenciesAsync(dependencyResolver, cancellation);
         }
-
-        //public IEnumerable<ModuleReleaseIdentifier> InstalledModules => _installedModules.Select(p => new ModuleReleaseIdentifier(p.Key, p.Value));
 
         public Task ReleaseAddedAsync(ModuleIdentifier module,
                                       ModuleVersion version,
@@ -77,13 +72,15 @@ namespace AI4E.Modularity.Host
             if (module == default)
                 throw new ArgumentDefaultException(nameof(module));
 
-            // TODO: Is this ok?
-            if (!ResolvedModules.ContainsModule(module))
+            // We must update if the resolved installation set contains our module
+            // -- OR --
+            // The unresolved installation set is non-epty but we were unable to get to a resolved installation set (f.e. due to missing module-releases)
+            if (ResolvedModules.ContainsModule(module) || InstalledModules.Unresolved.Any() && !ResolvedModules.Resolved.Any())
             {
-                return Task.CompletedTask;
+                return ResolveDependenciesAsync(dependencyResolver, cancellation);
             }
 
-            return ResolveDependenciesAsync(dependencyResolver, cancellation);
+            return Task.CompletedTask;
         }
 
         public Task ReleaseRemovedAsync(ModuleIdentifier module,
