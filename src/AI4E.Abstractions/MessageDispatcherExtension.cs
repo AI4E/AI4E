@@ -55,7 +55,7 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(message, new DispatchValueDictionary(), publish: true, cancellation);
         }
 
-        public static async Task<TResult> DispatchAsync<TMessage, TResult>(this IMessageDispatcher messageDispatcher, TMessage message)
+        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, CancellationToken cancellation = default)
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -63,28 +63,10 @@ namespace AI4E
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            var dispatchResult = await messageDispatcher.DispatchAsync(message);
-
-            if (dispatchResult.IsSuccess && dispatchResult is IDispatchResult<TResult> typedDispatchResult)
-            {
-                return typedDispatchResult.Result;
-            }
-
-            return default;
+            return messageDispatcher.DispatchAsync(message, publish: false, cancellation);
         }
 
-        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message)
-        {
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
-
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
-            return messageDispatcher.DispatchAsync(message, publish: false);
-        }
-
-        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher)
+        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, CancellationToken cancellation = default)
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -102,31 +84,10 @@ namespace AI4E
 
             Debug.Assert(message != null);
 
-            return messageDispatcher.DispatchAsync(message);
+            return messageDispatcher.DispatchAsync(message, cancellation);
         }
 
-        public static Task<TResult> DispatchAsync<TMessage, TResult>(this IMessageDispatcher messageDispatcher)
-        {
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
-
-            var message = default(TMessage);
-
-            try
-            {
-                message = Activator.CreateInstance<TMessage>();
-            }
-            catch (MissingMethodException exc)
-            {
-                throw new ArgumentException("The specified message must have a parameterless constructor.", exc);
-            }
-
-            Debug.Assert(message != null);
-
-            return messageDispatcher.DispatchAsync<TMessage, TResult>(message);
-        }
-
-        public static Task<IDispatchResult> DispatchAsync(this IMessageDispatcher messageDispatcher, object message, bool publish)
+        public static Task<IDispatchResult> DispatchAsync(this IMessageDispatcher messageDispatcher, object message, bool publish, CancellationToken cancellation = default)
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -134,10 +95,10 @@ namespace AI4E
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            return messageDispatcher.DispatchAsync(message.GetType(), message, new DispatchValueDictionary(), publish);
+            return messageDispatcher.DispatchAsync(message.GetType(), message, new DispatchValueDictionary(), publish, cancellation);
         }
 
-        public static Task<IDispatchResult> DispatchAsync(this IMessageDispatcher messageDispatcher, object message)
+        public static Task<IDispatchResult> DispatchAsync(this IMessageDispatcher messageDispatcher, object message, CancellationToken cancellation = default)
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -145,73 +106,10 @@ namespace AI4E
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            return messageDispatcher.DispatchAsync(message.GetType(), message, new DispatchValueDictionary(), publish: false);
+            return messageDispatcher.DispatchAsync(message.GetType(), message, new DispatchValueDictionary(), publish: false, cancellation);
         }
 
-        public static async Task<object> DispatchAsync(this IMessageDispatcher messageDispatcher, object message, Type resultType)
-        {
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
-
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
-            if (resultType == null)
-                throw new ArgumentNullException(nameof(resultType));
-
-            var dispatchResult = await messageDispatcher.DispatchAsync(message);
-
-            if (dispatchResult.IsSuccess)
-            {
-                var dispatchResultType = dispatchResult.GetType();
-
-                foreach (var iface in dispatchResultType.GetInterfaces())
-                {
-                    if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IDispatchResult<>))
-                    {
-                        var actualResultType = iface.GetGenericArguments()[0];
-
-                        if (resultType.IsAssignableFrom(actualResultType))
-                        {
-                            return typeof(IDispatchResult<>).MakeGenericType(actualResultType)
-                                                            .GetProperty("Result")
-                                                            .GetValue(dispatchResult);
-                        }
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        public static Task<object> DispatchAsync(this IMessageDispatcher messageDispatcher, Type messageType, Type resultType)
-        {
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
-
-            if (messageType == null)
-                throw new ArgumentNullException(nameof(messageType));
-
-            if (resultType == null)
-                throw new ArgumentNullException(nameof(resultType));
-
-            var message = default(object);
-
-            try
-            {
-                message = Activator.CreateInstance(messageType);
-            }
-            catch (MissingMethodException exc)
-            {
-                throw new ArgumentException("The specified message must have a parameterless constructor.", exc);
-            }
-
-            Debug.Assert(message != null);
-
-            return messageDispatcher.DispatchAsync(message, resultType);
-        }
-
-        public static Task<IDispatchResult> DispatchAsync(this IMessageDispatcher messageDispatcher, Type messageType)
+        public static Task<IDispatchResult> DispatchAsync(this IMessageDispatcher messageDispatcher, Type messageType, CancellationToken cancellation = default)
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -232,7 +130,7 @@ namespace AI4E
 
             Debug.Assert(message != null);
 
-            return messageDispatcher.DispatchAsync(message);
+            return messageDispatcher.DispatchAsync(message, cancellation);
         }
     }
 }
