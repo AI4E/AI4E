@@ -31,6 +31,7 @@
 
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace AI4E
 {
@@ -45,6 +46,7 @@ namespace AI4E
         /// <param name="member">The member whose validation failed.</param>
         /// <param name="message">A message describing the validation failure.</param>
         /// <exception cref="ArgumentNullException">Thrown if either <paramref name="member"/> or <paramref name="message"/> is null.</exception>
+        [JsonConstructor]
         public ValidationResult(string member, string message)
         {
             if (member == null)

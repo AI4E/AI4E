@@ -49,7 +49,7 @@ namespace AI4E.Modularity.Module
 
         private readonly string _prefix;
         private readonly bool _isDebuggingConnection;
-        private IHandlerRegistration _handlerRegistration;
+        private IAsyncDisposable _handlerRegistration;
 
         public ModuleServer(IRemoteMessageDispatcher messageEndPoint,
                             IHttpDispatchStore httpDispatchStore,
@@ -141,8 +141,8 @@ namespace AI4E.Modularity.Module
 
         private Task UnregisterHandlerAsync(CancellationToken cancellation)
         {
-            _handlerRegistration?.Cancel();
-            return _handlerRegistration.Cancellation.WithCancellation(cancellation);
+            _handlerRegistration?.Dispose();
+            return _handlerRegistration.Disposal.WithCancellation(cancellation);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)

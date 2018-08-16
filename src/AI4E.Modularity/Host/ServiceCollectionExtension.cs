@@ -43,6 +43,8 @@ namespace AI4E.Modularity.Host
             services.AddOptions();
             services.AddModuleManagement();
             services.AddSingleton<ModularityMarkerService>();
+            services.AddEndPointManager();
+            services.AddMessageRouter();
             services.AddRemoteMessageDispatcher();
             services.AddUdpEndPoint();
             services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();

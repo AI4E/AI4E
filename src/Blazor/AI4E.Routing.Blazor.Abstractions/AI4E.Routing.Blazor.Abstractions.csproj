@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>AI4E.Routing.Blazor</RootNamespace>
+    <DefineConstants>BLAZOR;Blazor</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\AI4E.Remoting.Abstractions\IMessage.cs" Link="Remoting\IMessage.cs" />
+    <Compile Include="..\..\AI4E.Remoting.Abstractions\IMessageFrame.cs" Link="Remoting\IMessageFrame.cs" />
+    <Compile Include="..\..\AI4E.Remoting.Abstractions\ITypeConversion.cs" Link="Remoting\ITypeConversion.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\EndPointRoute.cs" Link="Routing\EndPointRoute.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\IMessageRouter.cs" Link="Routing\IMessageRouter.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\IMessageRouterFactory.cs" Link="Routing\IMessageRouterFactory.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\IRemoteMessageDispatcher.cs" Link="Routing\IRemoteMessageDispatcher.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\ISerializedMessageHandler.cs" Link="Routing\ISerializedMessageHandler.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\RouteOptions.cs" Link="Routing\RouteOptions.cs" />
+    <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client.Abstractions\IClientEndPoint.cs" Link="IClientEndPoint.cs" />
+    <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client.Abstractions\ILogicalClientEndPoint.cs" Link="ILogicalClientEndPoint.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Routing\" />
+    <Folder Include="Remoting\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

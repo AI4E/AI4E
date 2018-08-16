@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using AI4E.AspNetCore;
 using AI4E.Coordination;
 using AI4E.Internal;
 using AI4E.Remoting;
@@ -10,14 +11,6 @@ namespace AI4E.Routing
 {
     public static class ServiceCollectionExtension
     {
-        public static void AddEndPointManager(this IServiceCollection services)
-        {
-            services.AddSingleton(typeof(IEndPointManager<>), typeof(EndPointManager<>));
-            services.AddSingleton(ConfigureEndPointManager);
-            services.AddSingleton(ConfigureLogicalEndPoint);
-            services.AddHelperServices();
-        }
-
         private static IEndPointManager ConfigureEndPointManager(IServiceProvider provider)
         {
             var physicalEndPointMarkerService = provider.GetRequiredService<PhysicalEndPointMarkerService>();
@@ -53,12 +46,26 @@ namespace AI4E.Routing
             services.AddCoordinationService();
         }
 
+        public static void AddEndPointManager(this IServiceCollection services)
+        {
+            services.AddSingleton(typeof(IEndPointManager<>), typeof(EndPointManager<>));
+            services.AddSingleton(ConfigureEndPointManager);
+            services.AddSingleton(ConfigureLogicalEndPoint);
+            services.AddHelperServices();
+        }
+
+        public static void AddMessageRouter(this IServiceCollection services)
+        {
+            services.AddSingleton<IRouteStoreFactory, RouteManagerFactory>();
+            services.AddSingleton<IMessageRouterFactory, MessageRouterFactory>();
+            services.AddHelperServices();
+        }
+
         public static void AddRemoteMessageDispatcher(this IServiceCollection services)
         {
+            services.AddCoreServices();
             services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
-            services.AddSingleton<IMessageTypeConversion, TypeSerializer>();
-            services.AddSingleton<IRouteStore, RouteManager>();
-            services.AddEndPointManager();
+            services.AddSingleton<ITypeConversion, TypeSerializer>();
         }
     }
 

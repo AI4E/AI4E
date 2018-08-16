@@ -43,14 +43,9 @@ namespace AI4E.Modularity.Module
 
             webHostBuilder.ConfigureServices(services =>
             {
-                services.AddOptions();
+                services.AddModuleServices();
+
                 services.AddSingleton<IServer, ModuleServer>();
-                services.AddUdpEndPoint();
-                services.AddRemoteMessageDispatcher();
-                services.AddSingleton(ConfigureLogicalEndPoint);
-                services.AddSingleton(ConfigureCoordinationManager);
-                services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
-                services.AddSingleton(ConfigureProxyHost);
             });
 
             return webHostBuilder;
@@ -69,93 +64,6 @@ namespace AI4E.Modularity.Module
             webHostBuilder.ConfigureServices(services => services.Configure(configuration));
 
             return result;
-        }
-
-        //private static IPhysicalEndPoint<IPEndPoint> ConfigurePhysicalEndPoint(IServiceProvider serviceProvider)
-        //{
-        //    var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
-        //    var options = optionsAccessor.Value ?? new ModuleServerOptions();
-
-        //    if (options.UseDebugConnection)
-        //    {
-        //        return null;
-        //    }
-
-        //    return ActivatorUtilities.CreateInstance<UdpEndPoint>(serviceProvider);
-        //}
-
-        private static ICoordinationManager ConfigureCoordinationManager(IServiceProvider serviceProvider)
-        {
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
-            var options = optionsAccessor.Value ?? new ModuleServerOptions();
-
-            if (options.UseDebugConnection)
-            {
-                return ActivatorUtilities.CreateInstance<DebugCoordinationManager>(serviceProvider);
-            }
-            else
-            {
-                return ActivatorUtilities.CreateInstance<CoordinationManager<IPEndPoint>>(serviceProvider);
-            }
-        }
-
-        private static IEndPointManager ConfigureEndPointManager(IServiceProvider serviceProvider)
-        {
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
-            var options = optionsAccessor.Value ?? new ModuleServerOptions();
-
-            if (options.UseDebugConnection)
-            {
-                return null;
-            }
-            else
-            {
-                return ActivatorUtilities.CreateInstance<EndPointManager<IPEndPoint>>(serviceProvider);
-            }
-        }
-
-        private static ILogicalEndPoint ConfigureLogicalEndPoint(IServiceProvider serviceProvider)
-        {
-            Assert(serviceProvider != null);
-
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
-            var options = optionsAccessor.Value ?? new ModuleServerOptions();
-            var remoteOptionsAccessor = serviceProvider.GetRequiredService<IOptions<RemoteMessagingOptions>>();
-            var remoteOptions = remoteOptionsAccessor.Value ?? new RemoteMessagingOptions();
-
-            if (remoteOptions.LocalEndPoint == default)
-            {
-                throw new InvalidOperationException("A local end point must be specified.");
-            }
-
-            if (options.UseDebugConnection)
-            {
-                var proxyHost = serviceProvider.GetRequiredService<ProxyHost>();
-                return new DebugLogicalEndPoint(proxyHost, remoteOptions.LocalEndPoint);
-            }
-            else
-            {
-                var endPointManager = serviceProvider.GetRequiredService<IEndPointManager>();
-                return endPointManager.GetLogicalEndPoint(remoteOptions.LocalEndPoint);
-            }
-        }
-
-        private static ProxyHost ConfigureProxyHost(IServiceProvider serviceProvider)
-        {
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
-            var options = optionsAccessor.Value ?? new ModuleServerOptions();
-
-            if (!options.UseDebugConnection)
-            {
-                return null;
-            }
-
-            var addressSerializer = serviceProvider.GetRequiredService<IAddressConversion<IPEndPoint>>();
-            var endPoint = addressSerializer.Parse(options.DebugConnection);
-            var tcpClient = new TcpClient(endPoint.AddressFamily);
-            tcpClient.Connect(endPoint.Address, endPoint.Port);
-            var stream = tcpClient.GetStream();
-            return new ProxyHost(stream, serviceProvider);
         }
     }
 }

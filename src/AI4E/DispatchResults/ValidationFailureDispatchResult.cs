@@ -20,6 +20,7 @@
 
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using Newtonsoft.Json;
 
 namespace AI4E.DispatchResults
 {
@@ -27,11 +28,12 @@ namespace AI4E.DispatchResults
     {
         public ValidationFailureDispatchResult() : base("Validation failure") { }
 
+        [JsonConstructor]
         public ValidationFailureDispatchResult(IEnumerable<ValidationResult> validationResults) : this()
         {
-            ValidationResults = validationResults.ToImmutableArray();
+            ValidationResults = validationResults.ToImmutableList();
         }
 
-        public ImmutableArray<ValidationResult> ValidationResults { get; }
+        public ImmutableList<ValidationResult> ValidationResults { get; }
     }
 }

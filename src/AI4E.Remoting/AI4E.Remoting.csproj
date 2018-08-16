@@ -8,6 +8,8 @@
     <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
     <Compile Include="..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
     <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
+    <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
+    <Compile Include="..\Common\TypeLoadHelper.cs" Link="Internal\TypeLoadHelper.cs" />
   </ItemGroup>
 
   <ItemGroup>

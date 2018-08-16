@@ -25,7 +25,7 @@ namespace AI4E.DispatchResults
     public sealed class DispatchFailureDispatchResult : FailureDispatchResult
     {
         public DispatchFailureDispatchResult(Type messageType)
-            : base($"The command '{(messageType ?? throw new ArgumentNullException(nameof(messageType))).FullName }'cannot be dispatched.")
+            : base($"The message of type '{(messageType ?? throw new ArgumentNullException(nameof(messageType))).FullName }' cannot be dispatched.")
         {
             MessageType = messageType;
         }

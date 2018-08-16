@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Blazor.Server" Version="0.5.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Modularity\AI4E.Modularity.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E\AI4E.csproj" />
+    <ProjectReference Include="..\..\..\src\SignalR\AI4E.Routing.SignalR.Server.Abstractions\AI4E.Routing.SignalR.Server.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\SignalR\AI4E.Routing.SignalR.Server\AI4E.Routing.SignalR.Server.csproj" />
+    <ProjectReference Include="..\AI4E.Routing.Blazor.Sample.App\AI4E.Routing.Blazor.Sample.App.csproj" />
+  </ItemGroup>
+
+</Project>

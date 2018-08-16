@@ -42,6 +42,8 @@ namespace AI4E.Remoting
         IMessageFrame PopFrame();
         IMessageFrame PushFrame();
 
+        void Trim(); // TODO: Rename?
+
         Task WriteAsync(Stream stream, CancellationToken cancellation);
         Task ReadAsync(Stream stream, CancellationToken cancellation);
 

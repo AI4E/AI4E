@@ -46,7 +46,6 @@ namespace AI4E
             _dictionary = new Dictionary<string, object>(dictionary, StringComparer.OrdinalIgnoreCase);
         }
 
-
         public int Count => _dictionary.Count;
 
         public Dictionary<string, object>.KeyCollection Keys => _dictionary.Keys;
@@ -57,8 +56,10 @@ namespace AI4E
         {
             get
             {
-                TryGetValue(key, out var value);
-                return value;
+                if (TryGetValue(key, out var value))
+                    return value;
+
+                return null;
             }
             set => _dictionary[key] = value;
         }
@@ -124,7 +125,7 @@ namespace AI4E
         {
             return ((ICollection<KeyValuePair<string, object>>)_dictionary).Contains(item);
         }
-    
+
         void ICollection<KeyValuePair<string, object>>.CopyTo(KeyValuePair<string, object>[] array, int arrayIndex)
         {
             ((ICollection<KeyValuePair<string, object>>)_dictionary).CopyTo(array, arrayIndex);
@@ -136,12 +137,12 @@ namespace AI4E
         {
             return ((ICollection<KeyValuePair<string, object>>)_dictionary).Remove(item);
         }
-     
+
         IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator()
         {
             return GetEnumerator();
         }
-       
+
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();

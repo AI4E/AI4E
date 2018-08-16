@@ -70,6 +70,9 @@ namespace AI4E.Routing
 
         Task<IDispatchResult> DispatchLocalAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation = default);
 
+        [Obsolete("Use GetLocalEndPointAsync(CancellationToken)")]
         EndPointRoute LocalEndPoint { get; }
+
+        ValueTask<EndPointRoute> GetLocalEndPointAsync(CancellationToken cancellation = default);
     }
 }

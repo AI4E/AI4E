@@ -1,10 +1,16 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using static System.Diagnostics.Debug;
+using System.Diagnostics;
+
+#if BLAZOR
+using AI4E.Blazor.ApplicationParts;
+#else
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
+#endif
 
 namespace AI4E.Internal
 {
@@ -19,7 +25,9 @@ namespace AI4E.Internal
             if (manager == null)
             {
                 manager = new ApplicationPartManager();
-                manager.ApplicationParts.Add(new AssemblyPart(Assembly.GetEntryAssembly()));
+#if !BLAZOR // Blazor cannot access the entry assembly apparently.
+                manager.ApplicationParts.Add(new AssemblyPart(Assembly.GetEntryAssembly())); 
+#endif
             }
 
             return manager;

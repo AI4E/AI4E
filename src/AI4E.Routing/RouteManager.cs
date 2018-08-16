@@ -17,48 +17,52 @@ namespace AI4E.Routing
         private const string _seperatorString = "->";
 
         private readonly ICoordinationManager _coordinationManager;
+        private readonly RouteOptions _options;
 
-        public RouteManager(ICoordinationManager coordinationManager)
+        public RouteManager(ICoordinationManager coordinationManager, RouteOptions options)
         {
             if (coordinationManager == null)
                 throw new ArgumentNullException(nameof(coordinationManager));
 
             _coordinationManager = coordinationManager;
+            _options = options;
         }
 
         #region IRouteStore
 
-        public async Task AddRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
+        public async Task AddRouteAsync(EndPointRoute endPoint, string messageType, CancellationToken cancellation)
         {
-            if (localEndPoint == null)
-                throw new ArgumentNullException(nameof(localEndPoint));
+            if (endPoint == null)
+                throw new ArgumentNullException(nameof(endPoint));
 
             if (string.IsNullOrWhiteSpace(messageType))
                 throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
 
-            var route = localEndPoint.Route;
+            var route = endPoint.Route;
             var session = await _coordinationManager.GetSessionAsync(cancellation);
             var path = GetPath(messageType, route, session);
 
-            await _coordinationManager.GetOrCreateAsync(path, _emptyPayload, EntryCreationModes.Ephemeral, cancellation);
+            var payload = BitConverter.GetBytes((int)_options);
+
+            await _coordinationManager.GetOrCreateAsync(path, payload, EntryCreationModes.Ephemeral, cancellation);
         }
 
-        public async Task RemoveRouteAsync(EndPointRoute localEndPoint, string messageType, CancellationToken cancellation)
+        public async Task RemoveRouteAsync(EndPointRoute endPoint, string messageType, CancellationToken cancellation)
         {
-            if (localEndPoint == null)
-                throw new ArgumentNullException(nameof(localEndPoint));
+            if (endPoint == null)
+                throw new ArgumentNullException(nameof(endPoint));
 
             if (string.IsNullOrWhiteSpace(messageType))
                 throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
 
-            var route = localEndPoint.Route;
+            var route = endPoint.Route;
             var session = await _coordinationManager.GetSessionAsync(cancellation);
             var path = GetPath(messageType, route, session);
 
             await _coordinationManager.DeleteAsync(path, cancellation: cancellation);
         }
 
-        public async Task<IEnumerable<EndPointRoute>> GetRoutesAsync(string messageType, CancellationToken cancellation)
+        public async Task<IEnumerable<(EndPointRoute endPoint, RouteOptions options)>> GetRoutesAsync(string messageType, CancellationToken cancellation)
         {
             if (string.IsNullOrWhiteSpace(messageType))
                 throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
@@ -68,7 +72,18 @@ namespace AI4E.Routing
 
             Assert(entry != null);
 
-            return await entry.Childs.Select(p => EndPointRoute.CreateRoute(ExtractRoute(p.Path))).Distinct().ToArray();
+            (EndPointRoute endPoint, RouteOptions options) Extract(IEntry e)
+            {
+                var endPoint = EndPointRoute.CreateRoute(ExtractRoute(e.Path));
+                var options = (RouteOptions)BitConverter.ToInt32(e.Value.ToArray(), 0);
+
+                return (endPoint, options);
+            }
+
+            return await entry.Childs
+                              .Select(p => Extract(p))
+                              .Distinct(p => p.endPoint)
+                              .ToArray();
         }
 
         #endregion
@@ -132,6 +147,25 @@ namespace AI4E.Routing
             EscapeHelper.Unescape(resultBuilder, startIndex: 0);
 
             return resultBuilder.ToString();
+        }
+    }
+
+    public sealed class RouteManagerFactory : IRouteStoreFactory
+    {
+        private readonly ICoordinationManager _coordinationManager;
+
+        public RouteManagerFactory(ICoordinationManager coordinationManager)
+        {
+            if (coordinationManager == null)
+                throw new ArgumentNullException(nameof(coordinationManager));
+            _coordinationManager = coordinationManager;
+        }
+
+        public IRouteStore CreateRouteStore(RouteOptions options)
+        {
+            // TODO: Validate options
+
+            return new RouteManager(_coordinationManager, options);
         }
     }
 }

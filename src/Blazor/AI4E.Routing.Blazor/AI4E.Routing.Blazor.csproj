@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <DefineConstants>BLAZOR;Blazor</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\AI4E.Remoting\Message.cs" Link="Remoting\Message.cs" />
+    <Compile Include="..\..\AI4E.Remoting\TypeSerializer.cs" Link="Remoting\TypeSerializer.cs" />
+    <Compile Include="..\..\AI4E.Routing\RemoteMessageDispatcher.cs" Link="Routing\RemoteMessageDispatcher.cs" />
+    <Compile Include="..\..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
+    <Compile Include="..\..\Common\CustomAttributeProviderExtension.cs" Link="Internal\CustomAttributeProviderExtension.cs" />
+    <Compile Include="..\..\Common\MessageDispatcherBuilder.cs" Link="Internal\MessageDispatcherBuilder.cs" />
+    <Compile Include="..\..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
+    <Compile Include="..\..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
+    <Compile Include="..\..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
+    <Compile Include="..\..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
+    <Compile Include="..\..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
+    <Compile Include="..\..\Common\TypeLoadHelper.cs" Link="Internal\TypeLoadHelper.cs" />
+    <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\ClientEndPoint.cs" Link="ClientEndPoint.cs" />
+    <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\HubConnectionExtension.cs" Link="HubConnectionExtension.cs" />
+    <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\LogicalClientEndPoint.cs" Link="LogicalClientEndPoint.cs" />
+    <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\RemoteMessageRouter.cs" Link="RemoteMessageRouter.cs" />
+    <Compile Include="..\..\SignalR\Common\ICallStub.cs" Link="Internal\ICallStub.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Routing\" />
+    <Folder Include="Remoting\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Blazor.Extensions.SignalR" Version="0.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI4E\AI4E.csproj" />
+    <ProjectReference Include="..\AI4E.Blazor.ApplicationParts\AI4E.Blazor.ApplicationParts.csproj" />
+    <ProjectReference Include="..\AI4E.Routing.Blazor.Abstractions\AI4E.Routing.Blazor.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

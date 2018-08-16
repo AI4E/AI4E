@@ -3,13 +3,11 @@
  * Filename:        RemoteMessageDispatcher.cs 
  * Types:           (1) AI4E.Routing.RemoteMessageDispatcher
  *                  (2) AI4E.Routing.RemoteMessageDispatcher.ITypedRemoteMessageDispatcher
- *                  (3) AI4E.Routing.RemoteMessageDispatcher.RequestMessage
- *                  (4) AI4E.Routing.RemoteMessageDispatcher.ResponseMessage
  *                  (5) AI4E.Routing.RemoteMessageDispatcher.TypedRemoteMessageDispatcher'1
  *                  (6) AI4E.Routing.RemoteMessageDispatcher.TypedRemoteMessageDispatcher'1.HandlerRegistration
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   10.05.2018 
+ * Last modified:   31.07.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -37,7 +35,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -45,227 +42,182 @@ using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.DispatchResults;
 using AI4E.Internal;
-using AI4E.Processing;
 using AI4E.Remoting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using Nito.AsyncEx;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing
 {
-    public sealed class RemoteMessageDispatcher : IRemoteMessageDispatcher, IAsyncDisposable
+    public sealed class RemoteMessageDispatcher : IRemoteMessageDispatcher
     {
         #region Fields
 
-        private readonly ILogicalEndPoint _logicalEndPoint;
-        private readonly IRouteStore _routeStore;
-        private readonly IMessageTypeConversion _messageTypeConversion;
+        private readonly IMessageRouter _messageRouter;
+        private readonly ITypeConversion _typeConversion;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<RemoteMessageDispatcher> _logger;
 
-
-        private readonly IAsyncProcess _receiveProcess;
-        private readonly AsyncInitializationHelper _initializationHelper;
-        private readonly AsyncDisposeHelper _disposeHelper;
-
         private readonly ConcurrentDictionary<Type, ITypedRemoteMessageDispatcher> _typedDispatchers = new ConcurrentDictionary<Type, ITypedRemoteMessageDispatcher>();
-        private readonly ConcurrentDictionary<int, TaskCompletionSource<IDispatchResult>> _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<IDispatchResult>>();
-        private readonly JsonSerializer _serializer = new JsonSerializer() { TypeNameHandling = TypeNameHandling.Auto };
-        private int _nextSeqNum = 1;
+        private readonly JsonSerializer _serializer;
 
         #endregion
 
         #region C'tor
 
-        public RemoteMessageDispatcher(ILogicalEndPoint logicalEndPoint,
-                                       IRouteStore routeStore,
-                                       IMessageTypeConversion messageTypeConversion,
-
+        public RemoteMessageDispatcher(IMessageRouterFactory messageRouterFactory,
+                                       ITypeConversion typeConversion,
                                        IServiceProvider serviceProvider,
                                        ILogger<RemoteMessageDispatcher> logger)
         {
-            if (logicalEndPoint == null)
-                throw new ArgumentNullException(nameof(logicalEndPoint));
+            if (messageRouterFactory == null)
+                throw new ArgumentNullException(nameof(messageRouterFactory));
 
-            if (routeStore == null)
-                throw new ArgumentNullException(nameof(routeStore));
-
-            if (messageTypeConversion == null)
-                throw new ArgumentNullException(nameof(messageTypeConversion));
-
-            //if (optionsAccessor == null)
-            //    throw new ArgumentNullException(nameof(optionsAccessor));
+            if (typeConversion == null)
+                throw new ArgumentNullException(nameof(typeConversion));
 
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            //var options = optionsAccessor.Value ?? new RemoteMessagingOptions();
-
-            //if (options.LocalEndPoint == default)
-            //{
-            //    throw new ArgumentException("A local end point must be specified to create a remote message dispatcher.");
-            //}
-
-            _logicalEndPoint = logicalEndPoint;
-            _routeStore = routeStore;
-            LocalEndPoint = _logicalEndPoint.Route; //options.LocalEndPoint;
-            _messageTypeConversion = messageTypeConversion;
+            _typeConversion = typeConversion;
             _serviceProvider = serviceProvider;
             _logger = logger;
 
-            _receiveProcess = new AsyncProcess(ReceiveProcedure);
-            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
-            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
-        }
-        #endregion
-
-        public EndPointRoute LocalEndPoint { get; }
-
-        #region Initialization
-
-        private Task InitializeInternalAsync(CancellationToken cancellation)
-        {
-            return _receiveProcess.StartAsync();
-        }
-
-        #endregion
-
-        #region Disposal
-
-        public Task Disposal => _disposeHelper.Disposal;
-
-        private async Task DisposeInternalAsync()
-        {
-            // Cancel the initialization
-            await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
-            await _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
-        }
-
-        public void Dispose()
-        {
-            _disposeHelper.Dispose();
-        }
-
-        public Task DisposeAsync()
-        {
-            return _disposeHelper.DisposeAsync();
-        }
-
-        #endregion
-
-        #region Receive Process
-
-        private async Task ReceiveProcedure(CancellationToken cancellation)
-        {
-            _logger?.LogDebug($"Started receive procedure for end-point {LocalEndPoint}");
-
-            while (cancellation.ThrowOrContinue())
+            _serializer = new JsonSerializer
             {
-                try
-                {
-                    var incoming = await _logicalEndPoint.ReceiveAsync(cancellation);
-
-                    _logger?.LogDebug($"End-point '{LocalEndPoint}': Received message.");
-
-                    var message = default(object);
-
-                    using (var stream = incoming.PopFrame().OpenStream())
-                    using (var reader = new StreamReader(stream))
-                    {
-                        message = _serializer.Deserialize(reader, typeof(object));
-                    }
-
-                    switch (message)
-                    {
-                        case RequestMessage request:
-                            Task.Run(() => ProcessRequestAsync(request, incoming)).HandleExceptions();
-                            break;
-
-                        case ResponseMessage response:
-                            Task.Run(() => ProcessResponseAsync(response)).HandleExceptions();
-                            break;
-
-                        default:
-                            _logger?.LogWarning($"End-point '{LocalEndPoint}': Received bad message that is either of an unkown type or could not be deserialized.");
-                            break;
-                    }
-                }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception exc)
-                {
-                    _logger?.LogWarning(exc, $"End-point '{LocalEndPoint}': Exception while processing incoming message.");
-                }
-            }
-        }
-
-        private async Task ProcessRequestAsync(RequestMessage request, IMessage requestMessage)
-        {
-            _logger?.LogDebug($"End-point '{LocalEndPoint}': Processing request message with seq-num '{request.SeqNum}'.");
-
-            var dispatchResult = default(IDispatchResult);
-
-            try
-            {
-                dispatchResult = await DispatchLocalAsync(request.MessageType, request.Message, request.Context, request.Publish, cancellation: default);
-            }
-            catch (Exception exc)
-            {
-                dispatchResult = new FailureDispatchResult(exc);
-            }
-
-            var response = new ResponseMessage
-            {
-                SeqNum = GetNextSeqNum(),
-                CorrNum = request.SeqNum,
-                DispatchResult = dispatchResult
+                TypeNameHandling = TypeNameHandling.Auto,
+                SerializationBinder = new SerializationBinder()
             };
 
-            var message = new Message();
+            var routeOptions = RouteOptions.Default;
+            _messageRouter = messageRouterFactory.CreateMessageRouter(new SerializedMessageHandler(this), routeOptions);
+        }
+
+        #endregion
+
+        private sealed class SerializationBinder : ISerializationBinder
+        {
+            public void BindToName(Type serializedType, out string assemblyName, out string typeName)
+            {
+                typeName = serializedType.GetUnqualifiedTypeName();
+                assemblyName = null;
+            }
+
+            public Type BindToType(string assemblyName, string typeName)
+            {
+                Console.WriteLine($"Resolving '{typeName}'...");
+
+                return TypeLoadHelper.LoadTypeFromUnqualifiedName(typeName);
+            }
+        }
+
+        [Obsolete("Use GetLocalEndPointAsync(CancellationToken)")]
+        public EndPointRoute LocalEndPoint => GetLocalEndPointAsync(cancellation: default)
+                                                .ConfigureAwait(false)
+                                                .GetAwaiter()
+                                                .GetResult();
+
+        public ValueTask<EndPointRoute> GetLocalEndPointAsync(CancellationToken cancellation)
+        {
+            return _messageRouter.GetLocalEndPointAsync(cancellation);
+        }
+
+        private sealed class SerializedMessageHandler : ISerializedMessageHandler
+        {
+            private readonly RemoteMessageDispatcher _owner;
+            private readonly ITypeConversion _typeConversion;
+
+            public SerializedMessageHandler(RemoteMessageDispatcher owner)
+            {
+                Assert(owner != null);
+
+                _owner = owner;
+                _typeConversion = _owner._typeConversion;
+            }
+
+            public async ValueTask<IMessage> HandleAsync(string route,
+                                                         IMessage serializedMessage,
+                                                         bool publish,
+                                                         CancellationToken cancellation)
+            {
+                if (route == null)
+                    throw new ArgumentNullException(nameof(route));
+
+                if (serializedMessage == null)
+                    throw new ArgumentNullException(nameof(serializedMessage));
+
+                var messageType = _typeConversion.DeserializeType(route);
+
+                Assert(messageType != null);
+
+                var (message, dispatchValues) = _owner.DeserializeDispatchValues(serializedMessage);
+
+                var dispatchResult = await _owner.DispatchLocalAsync(messageType, message, dispatchValues, publish, cancellation);
+
+                var response = new Message();
+                _owner.SerializeDispatchResult(response, dispatchResult);
+                serializedMessage.PushFrame();
+
+                return response;
+            }
+        }
+
+        private void SerializeDispatchResult(IMessage message, IDispatchResult dispatchResult)
+        {
+            Assert(message != null);
+            Assert(dispatchResult != null);
 
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new StreamWriter(stream))
+            using (var jsonWriter = new JsonTextWriter(writer))
             {
-                _serializer.Serialize(writer, response, typeof(object));
+                _serializer.Serialize(jsonWriter, dispatchResult, typeof(IDispatchResult));
             }
-
-            requestMessage.PushFrame();
-
-            await _logicalEndPoint.SendAsync(message, requestMessage, cancellation: default);
         }
 
-        private Task ProcessResponseAsync(ResponseMessage response)
+        private IDispatchResult DeserializeDispatchResult(IMessage message)
         {
-            _logger?.LogDebug($"End-point '{LocalEndPoint}': Processing response message for seq-num '{response.CorrNum}'.");
+            Assert(message != null);
 
-            if (_responseTable.TryRemove(response.CorrNum, out var tcs))
+            using (var stream = message.PopFrame().OpenStream())
+            using (var reader = new StreamReader(stream))
+            using (var jsonReader = new JsonTextReader(reader))
             {
-                tcs.TrySetResult(response.DispatchResult);
+                return _serializer.Deserialize<IDispatchResult>(jsonReader);
             }
-
-            return Task.CompletedTask;
         }
 
-        #endregion
-
-        #region Routing
-
-        private async Task RegisterRouteAsync(string messageType, CancellationToken cancellation)
+        private void SerializeDispatchValues(IMessage message, object messageX, DispatchValueDictionary dispatchValues)
         {
-            await _routeStore.AddRouteAsync(LocalEndPoint, messageType, cancellation);
+            Assert(message != null);
+            Assert(dispatchValues != null);
+
+            var tuple = new Tuple<object, DispatchValueDictionary>(messageX, dispatchValues);
+
+            using (var stream = message.PushFrame().OpenStream())
+            using (var writer = new StreamWriter(stream))
+            using (var jsonWriter = new JsonTextWriter(writer))
+            {
+                _serializer.Serialize(jsonWriter, tuple, typeof(Tuple<object, DispatchValueDictionary>));
+            }
         }
 
-        private async Task UnregisterRouteAsync(string messageType, CancellationToken cancellation)
+        private (object message, DispatchValueDictionary dispatchValues) DeserializeDispatchValues(IMessage message)
         {
-            await _routeStore.RemoveRouteAsync(LocalEndPoint, messageType, cancellation);
-        }
+            Assert(message != null);
 
-        private Task<IEnumerable<EndPointRoute>> GetRoutesAsync(string messageType, CancellationToken cancellation)
-        {
-            return _routeStore.GetRoutesAsync(messageType, cancellation);
-        }
+            using (var stream = message.PopFrame().OpenStream())
+            using (var reader = new StreamReader(stream))
+            using (var jsonReader = new JsonTextReader(reader))
+            {
+                var tuple = _serializer.Deserialize<Tuple<object, DispatchValueDictionary>>(jsonReader);
 
-        #endregion
+                return (tuple.Item1, tuple.Item2);
+            }
+        }
 
         #region Dispatch
 
@@ -276,7 +228,7 @@ namespace AI4E.Routing
 
         public Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, CancellationToken cancellation = default)
         {
-            return DispatchAsync(typeof(TMessage), message, context, publish, route: default, cancellation);
+            return DispatchAsync(typeof(TMessage), message, context, publish, endPoint: default, cancellation);
         }
 
         public Task<IDispatchResult> DispatchLocalAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, CancellationToken cancellation = default)
@@ -284,7 +236,12 @@ namespace AI4E.Routing
             return DispatchLocalAsync(typeof(TMessage), message, context, publish, cancellation);
         }
 
-        public async Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, EndPointRoute route, CancellationToken cancellation = default)
+        public Task<IDispatchResult> DispatchAsync(Type messageType,
+                                                   object message,
+                                                   DispatchValueDictionary dispatchValues,
+                                                   bool publish,
+                                                   EndPointRoute endPoint,
+                                                   CancellationToken cancellation = default)
         {
             if (messageType == null)
                 throw new ArgumentNullException(nameof(messageType));
@@ -292,88 +249,116 @@ namespace AI4E.Routing
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            if (context == null)
-                throw new ArgumentNullException(nameof(context));
+            if (dispatchValues == null)
+                throw new ArgumentNullException(nameof(dispatchValues));
 
-            if (route != null)
+            if (endPoint != null)
             {
-                return await DispatchToEndPointAsync(messageType, message, context, publish, route, cancellation);
+                return InternalDispatchAsync(messageType, message, dispatchValues, publish, endPoint, cancellation);
             }
 
-            return await DispatchAsync(messageType, message, context, publish, cancellation);
+            return InternalDispatchAsync(messageType, message, dispatchValues, publish, cancellation);
         }
 
-        public async Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation = default)
+        public Task<IDispatchResult> DispatchAsync(Type messageType,
+                                                   object message,
+                                                   DispatchValueDictionary dispatchValues,
+                                                   bool publish,
+                                                   CancellationToken cancellation = default)
         {
-            var currType = messageType;
-            var tasks = new List<Task<IDispatchResult>>();
+            if (messageType == null)
+                throw new ArgumentNullException(nameof(messageType));
 
-            var handledRoutes = new HashSet<EndPointRoute>();
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
 
-            do
+            if (dispatchValues == null)
+                throw new ArgumentNullException(nameof(dispatchValues));
+
+            return InternalDispatchAsync(messageType, message, dispatchValues, publish, cancellation);
+        }
+
+        private async Task<IDispatchResult> InternalDispatchAsync(Type messageType,
+                                                                  object message,
+                                                                  DispatchValueDictionary dispatchValues,
+                                                                  bool publish,
+                                                                  EndPointRoute endPoint,
+                                                                  CancellationToken cancellation)
+        {
+            var route = _typeConversion.SerializeType(messageType);
+            var serializedMessage = new Message();
+
+            SerializeDispatchValues(serializedMessage, message, dispatchValues);
+
+            var serializedResult = await _messageRouter.RouteAsync(route, serializedMessage, publish, endPoint, cancellation);
+            var result = DeserializeDispatchResult(serializedResult);
+
+            return result;
+        }
+
+        private async Task<IDispatchResult> InternalDispatchAsync(Type messageType,
+                                                                  object message,
+                                                                  DispatchValueDictionary dispatchValues,
+                                                                  bool publish,
+                                                                  CancellationToken cancellation)
+        {
+            var routes = GetRoutes(messageType);
+            var serializedMessage = new Message();
+            SerializeDispatchValues(serializedMessage, message, dispatchValues);
+
+            var serializedResults = await _messageRouter.RouteAsync(routes, serializedMessage, publish, cancellation);
+            var results = serializedResults.Select(p => DeserializeDispatchResult(p)).ToList();
+
+            if (results.Count == 0)
             {
-                Debug.Assert(currType != null);
-
-                var routes = new HashSet<EndPointRoute>((await GetRoutesAsync(_messageTypeConversion.SerializeMessageType(currType), cancellation)));
-                routes.ExceptWith(handledRoutes);
-                handledRoutes.UnionWith(routes);
-
-                if (routes.Any())
-                {
-                    if (!publish)
-                    {
-                        var route = routes.Last();
-
-                        if (route.Equals(LocalEndPoint))
-                        {
-                            return await DispatchLocalAsync(messageType, message, context, publish, cancellation);
-                        }
-
-                        return await DispatchToEndPointAsync(messageType, message, context, publish, routes.Last(), cancellation);
-                    }
-
-                    foreach (var route in routes)
-                    {
-                        if (route.Equals(LocalEndPoint))
-                        {
-                            tasks.Add(DispatchLocalAsync(messageType, message, context, publish, cancellation));
-                        }
-                        else
-                        {
-                            tasks.Add(DispatchToEndPointAsync(messageType, message, context, publish, route, cancellation));
-                        }
-                    }
-                }
-            }
-            while (!currType.IsInterface && (currType = currType.BaseType) != null);
-
-            if (tasks.Count == 0)
-            {
-                // When publishing a message and no handlers are available, this is a success.
                 if (publish)
                 {
                     return new SuccessDispatchResult();
                 }
 
-                // When dispatching a message and no handlers are available, this is a failure.
                 return new DispatchFailureDispatchResult(messageType);
             }
 
-            if (tasks.Count == 1)
+            if (results.Count == 1)
             {
-                return await tasks[0];
+                var result = results.First();
+
+                return result;
             }
 
-            return new AggregateDispatchResult(await Task.WhenAll(tasks));
+            return new AggregateDispatchResult(results);
         }
 
-        public async Task<IDispatchResult> DispatchLocalAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation)
+        private IEnumerable<string> GetRoutes(Type messageType)
         {
-            _logger?.LogInformation($"End-point '{LocalEndPoint}': Dispatching message of type {messageType.FullName} locally.");
+            if (messageType.IsInterface)
+            {
+                return _typeConversion.SerializeType(messageType).Yield();
+            }
+
+            var result = new List<string>();
+
+            for (; messageType != null; messageType = messageType.BaseType)
+            {
+                result.Add(_typeConversion.SerializeType(messageType));
+            }
+
+            return result;
+        }
+
+        public async Task<IDispatchResult> DispatchLocalAsync(Type messageType,
+                                                              object message,
+                                                              DispatchValueDictionary dispatchValues,
+                                                              bool publish,
+                                                              CancellationToken cancellation)
+        {
+            var localEndPoint = await GetLocalEndPointAsync(cancellation);
+
+            _logger?.LogInformation($"End-point '{localEndPoint}': Dispatching message of type {messageType.FullName} locally.");
 
             IDispatchResult Result(IDispatchResult result)
             {
-                _logger?.LogDebug($"End-point '{LocalEndPoint}': Dispatched message of type {messageType.FullName} locally.");
+                _logger?.LogDebug($"End-point '{localEndPoint}': Dispatched message of type {messageType.FullName} locally.");
 
                 return result;
             }
@@ -383,13 +368,13 @@ namespace AI4E.Routing
 
             do
             {
-                Debug.Assert(currType != null);
+                Assert(currType != null);
 
                 if (TryGetTypedDispatcher(currType, out var dispatcher))
                 {
                     if (!publish)
                     {
-                        var dispatchResult = await dispatcher.DispatchAsync(message, context, publish, cancellation);
+                        var dispatchResult = await dispatcher.DispatchAsync(message, dispatchValues, publish, cancellation);
 
                         if (!(dispatchResult is DispatchFailureDispatchResult))
                         {
@@ -398,7 +383,7 @@ namespace AI4E.Routing
                     }
                     else
                     {
-                        tasks.Add(dispatcher.DispatchAsync(message, context, publish, cancellation));
+                        tasks.Add(dispatcher.DispatchAsync(message, dispatchValues, publish, cancellation));
                     }
                 }
             }
@@ -424,65 +409,6 @@ namespace AI4E.Routing
             return Result(new AggregateDispatchResult(await Task.WhenAll(tasks)));
         }
 
-        private async Task<IDispatchResult> DispatchToEndPointAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, EndPointRoute remoteEndPoint, CancellationToken cancellation)
-        {
-            // This does short-curcuit the dispatch to the remote end-point. 
-            // Any possible replicates do not get any chance to receive the message. 
-            // => Requests are kept local to the machine.
-            if (remoteEndPoint == LocalEndPoint)
-            {
-                return await DispatchLocalAsync(messageType, message, context, publish, cancellation);
-            }
-
-            _logger?.LogInformation($"End-point '{LocalEndPoint}': Dispatching message of type {messageType.FullName} to end-point {remoteEndPoint}.");
-
-            var seqNum = GetNextSeqNum();
-            var tcs = new TaskCompletionSource<IDispatchResult>();
-
-            while (!_responseTable.TryAdd(seqNum, tcs))
-            {
-                seqNum = GetNextSeqNum();
-            }
-
-            cancellation.Register(() =>
-            {
-                tcs.TrySetResult(new CanceledDispatchResult());
-                _responseTable.TryRemove(seqNum, out _);
-            });
-
-            // The operation may be canceled in the mean time.
-            if (tcs.Task.IsCompleted)
-            {
-                _responseTable.TryRemove(seqNum, out _);
-            }
-            else
-            {
-                var request = new RequestMessage
-                {
-                    SeqNum = seqNum,
-                    MessageType = messageType,
-                    Message = message,
-                    Context = context,
-                    Publish = publish
-                };
-
-                var msg = new Message();
-
-                using (var stream = msg.PushFrame().OpenStream())
-                using (var writer = new StreamWriter(stream))
-                {
-                    _serializer.Serialize(writer, request, typeof(object));
-                }
-
-                await _logicalEndPoint.SendAsync(msg, remoteEndPoint, cancellation);
-            }
-
-            var result = await tcs.Task;
-
-            _logger?.LogDebug($"End-point '{LocalEndPoint}': Dispatched message of type {messageType.FullName} to end-point {remoteEndPoint}.");
-
-            return result;
-        }
 
         #endregion
 
@@ -493,26 +419,21 @@ namespace AI4E.Routing
 
             var typedDispatcher = GetTypedDispatcher<TMessage>();
 
-            Debug.Assert(typedDispatcher != null);
+            Assert(typedDispatcher != null);
 
             return typedDispatcher.Register(messageHandlerProvider);
-        }
-
-        private int GetNextSeqNum()
-        {
-            return Interlocked.Increment(ref _nextSeqNum);
         }
 
         #region Typed Dispatcher
 
         private bool TryGetTypedDispatcher(Type messageType, out ITypedRemoteMessageDispatcher value)
         {
-            Debug.Assert(messageType != null);
+            Assert(messageType != null);
 
             var result = _typedDispatchers.TryGetValue(messageType, out value);
 
-            Debug.Assert(!result || value != null);
-            Debug.Assert(!result || value.MessageType == messageType);
+            Assert(!result || value != null);
+            Assert(!result || value.MessageType == messageType);
             return result;
         }
 
@@ -521,7 +442,9 @@ namespace AI4E.Routing
             return (TypedRemoteMessageDispatcher<TMessage>)
                    _typedDispatchers.GetOrAdd(
                        typeof(TMessage),
-                       _ => new TypedRemoteMessageDispatcher<TMessage>(this, _serviceProvider, _messageTypeConversion));
+                       _ => new TypedRemoteMessageDispatcher<TMessage>(_messageRouter,
+                                                                       _typeConversion,
+                                                                       _serviceProvider));
         }
 
         private interface ITypedRemoteMessageDispatcher
@@ -534,41 +457,29 @@ namespace AI4E.Routing
         private sealed class TypedRemoteMessageDispatcher<TMessage> : ITypedRemoteMessageDispatcher
         {
             private readonly HandlerRegistry<IMessageHandler<TMessage>> _registry = new HandlerRegistry<IMessageHandler<TMessage>>();
-            private readonly RemoteMessageDispatcher _dispatcher;
+            private readonly IMessageRouter _messageRouter;
             private readonly IServiceProvider _serviceProvider;
-            private readonly IMessageTypeConversion _messageTypeConversion;
+            private readonly ITypeConversion _typeConversion;
             private readonly AsyncLock _lock = new AsyncLock();
             private volatile ImmutableList<Task> _registrationTasks = ImmutableList<Task>.Empty;
 
-            public TypedRemoteMessageDispatcher(RemoteMessageDispatcher dispatcher, IServiceProvider serviceProvider, IMessageTypeConversion messageTypeConversion)
+            public TypedRemoteMessageDispatcher(IMessageRouter messageRouter,
+                                                ITypeConversion typeConversion,
+                                                IServiceProvider serviceProvider)
             {
-                if (dispatcher == null)
-                    throw new ArgumentNullException(nameof(dispatcher));
+                if (messageRouter == null)
+                    throw new ArgumentNullException(nameof(messageRouter));
 
                 if (serviceProvider == null)
                     throw new ArgumentNullException(nameof(serviceProvider));
 
-                if (messageTypeConversion == null)
-                    throw new ArgumentNullException(nameof(messageTypeConversion));
+                if (typeConversion == null)
+                    throw new ArgumentNullException(nameof(typeConversion));
 
-                _dispatcher = dispatcher;
+                _messageRouter = messageRouter;
                 _serviceProvider = serviceProvider;
-                _messageTypeConversion = messageTypeConversion;
+                _typeConversion = typeConversion;
             }
-
-            #region Routing
-
-            private Task RegisterRouteAsync(string messageType, CancellationToken cancellation)
-            {
-                return _dispatcher.RegisterRouteAsync(messageType, cancellation);
-            }
-
-            private Task UnregisterRouteAsync(string messageType, CancellationToken cancellation)
-            {
-                return _dispatcher.UnregisterRouteAsync(messageType, cancellation);
-            }
-
-            #endregion
 
             public Task<IDispatchResult> DispatchAsync(object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation)
             {
@@ -626,14 +537,14 @@ namespace AI4E.Routing
             }
 
             private async Task<IDispatchResult> DispatchSingleHandlerAsync(IContextualProvider<IMessageHandler<TMessage>> handlerProvider,
-                                                                     TMessage message,
-                                                                     DispatchValueDictionary context,
-                                                                     CancellationToken cancellation)
+                                                                           TMessage message,
+                                                                           DispatchValueDictionary context,
+                                                                           CancellationToken cancellation)
             {
                 // TODO: Cancellation
 
-                Debug.Assert(message != null);
-                Debug.Assert(handlerProvider != null);
+                Assert(message != null);
+                Assert(handlerProvider != null);
 
                 using (var scope = _serviceProvider.CreateScope())
                 {
@@ -677,7 +588,7 @@ namespace AI4E.Routing
                         {
                             try
                             {
-                                await RegisterRouteAsync(SerializedMessageType, cancellation: default);
+                                await _messageRouter.RegisterRouteAsync(SerializedMessageType, cancellation: default);
                             }
                             catch
                             {
@@ -705,7 +616,7 @@ namespace AI4E.Routing
 
                         if (handlers.Count() == 1 && handlers.First() == messageHandlerProvider)
                         {
-                            await UnregisterRouteAsync(SerializedMessageType, cancellation: default);
+                            await _messageRouter.UnregisterRouteAsync(SerializedMessageType, cancellation: default);
                         }
 
                         _registry.Unregister(messageHandlerProvider);
@@ -762,9 +673,9 @@ namespace AI4E.Routing
 
             public Type MessageType => typeof(TMessage);
 
-            public string SerializedMessageType => _messageTypeConversion.SerializeMessageType(MessageType);
+            public string SerializedMessageType => _typeConversion.SerializeType(MessageType);
 
-            private sealed class HandlerRegistration : IHandlerRegistration<IMessageHandler<TMessage>>, IAsyncInitialization, IAsyncDisposable
+            private sealed class HandlerRegistration : IHandlerRegistration<IMessageHandler<TMessage>>, IAsyncInitialization
             {
                 private readonly Func<IContextualProvider<IMessageHandler<TMessage>>, Task> _unregistration;
 
@@ -772,9 +683,9 @@ namespace AI4E.Routing
                                            Func<IContextualProvider<IMessageHandler<TMessage>>, Task> registration,
                                            Func<IContextualProvider<IMessageHandler<TMessage>>, Task> unregistration)
                 {
-                    Debug.Assert(handler != null);
-                    Debug.Assert(registration != null);
-                    Debug.Assert(unregistration != null);
+                    Assert(handler != null);
+                    Assert(registration != null);
+                    Assert(unregistration != null);
 
                     Handler = handler;
                     _unregistration = unregistration;
@@ -826,39 +737,13 @@ namespace AI4E.Routing
 
                 #endregion
 
-                public Task Cancellation => Disposal;
+                Task IHandlerRegistration.Cancellation => Disposal;
 
-                public void Cancel()
+                void IHandlerRegistration.Cancel()
                 {
                     Dispose();
                 }
             }
-        }
-
-        #endregion
-
-        #region Messages
-
-        private sealed class RequestMessage
-        {
-            public int SeqNum { get; set; }
-
-            public Type MessageType { get; set; }
-
-            public object Message { get; set; }
-
-            public DispatchValueDictionary Context { get; set; }
-
-            public bool Publish { get; set; }
-        }
-
-        private sealed class ResponseMessage
-        {
-            public int SeqNum { get; set; }
-
-            public int CorrNum { get; set; }
-
-            public IDispatchResult DispatchResult { get; set; }
         }
 
         #endregion
