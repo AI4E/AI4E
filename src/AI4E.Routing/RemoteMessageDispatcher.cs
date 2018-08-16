@@ -46,6 +46,7 @@ using AI4E.Remoting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 
@@ -61,7 +62,7 @@ namespace AI4E.Routing
         private readonly ILogger<RemoteMessageDispatcher> _logger;
 
         private readonly ConcurrentDictionary<Type, ITypedRemoteMessageDispatcher> _typedDispatchers = new ConcurrentDictionary<Type, ITypedRemoteMessageDispatcher>();
-        private readonly JsonSerializer _serializer = new JsonSerializer() { TypeNameHandling = TypeNameHandling.Auto };
+        private readonly JsonSerializer _serializer;
 
         #endregion
 
@@ -85,11 +86,33 @@ namespace AI4E.Routing
             _serviceProvider = serviceProvider;
             _logger = logger;
 
+            _serializer = new JsonSerializer
+            {
+                TypeNameHandling = TypeNameHandling.Auto,
+                SerializationBinder = new SerializationBinder()
+            };
+
             var routeOptions = RouteOptions.Default;
             _messageRouter = messageRouterFactory.CreateMessageRouter(new SerializedMessageHandler(this), routeOptions);
         }
 
         #endregion
+
+        private sealed class SerializationBinder : ISerializationBinder
+        {
+            public void BindToName(Type serializedType, out string assemblyName, out string typeName)
+            {
+                typeName = serializedType.GetUnqualifiedTypeName();
+                assemblyName = null;
+            }
+
+            public Type BindToType(string assemblyName, string typeName)
+            {
+                Console.WriteLine($"Resolving '{typeName}'...");
+
+                return TypeLoadHelper.LoadTypeFromUnqualifiedName(typeName);
+            }
+        }
 
         [Obsolete("Use GetLocalEndPointAsync(CancellationToken)")]
         public EndPointRoute LocalEndPoint => GetLocalEndPointAsync(cancellation: default)
