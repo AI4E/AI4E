@@ -379,5 +379,52 @@ namespace AI4E.Internal
         {
             return BuildPredicate(comparand).Compile();
         }
+
+        // TODO: This has some duplications in EntityPropertyAccessor
+        #region Revision
+
+        internal static PropertyInfo GetRevisionProperty(Type entityType)
+        {
+            var result = entityType.GetProperty("Revision",
+                                                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+            if (result == null)
+                return null;
+
+            if (result.GetIndexParameters().Length != 0)
+            {
+                return null;
+            }
+
+            if (result.PropertyType != typeof(long))
+            {
+                return null;
+            }
+
+            if (!result.CanRead)
+            {
+                return null;
+            }
+
+            return result;
+        }
+
+        internal static long GetRevision(Type entityType, object entity)
+        {
+            var revisionProperty = GetRevisionProperty(entityType);
+
+            if (revisionProperty == null)
+            {
+                throw new NotSupportedException();
+            }
+
+            var entityParameter = Expression.Parameter(typeof(object), "entity");
+            var convertedEntity = Expression.Convert(entityParameter, entityType);
+            var revisionPropertyAccess = Expression.Property(convertedEntity, revisionProperty);
+
+            return Expression.Lambda<Func<object, long>>(revisionPropertyAccess, entityParameter).Compile()(entity);
+        }
+
+        #endregion
     }
 }

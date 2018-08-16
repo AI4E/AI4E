@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -9,13 +9,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
+    <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
+    <Compile Include="..\Common\ParameterExpressionReplacer.cs" Link="Internal\ParameterExpressionReplacer.cs" />
     <Compile Include="..\Common\SGuid.cs" Link="SGuid.cs" />
+    <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="1.0.2" />
     <PackageReference Include="System.Reflection.Extensions" Version="4.3.0" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AI4E\AI4E.csproj" />
   </ItemGroup>
 
 </Project>

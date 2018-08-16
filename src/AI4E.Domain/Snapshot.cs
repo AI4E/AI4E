@@ -33,6 +33,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using AI4E.Internal;
 
 namespace AI4E.Domain
 {
@@ -41,11 +42,41 @@ namespace AI4E.Domain
     /// </summary>
     /// <typeparam name="T">The type of aggregate root.</typeparam>
     public readonly struct Snapshot<T> : IEquatable<Snapshot<T>>
-        where T : AggregateRootBase
+        where T : class
     {
         private static readonly int _typeHashCode = typeof(T).GetHashCode();
 
         private readonly Lazy<ValueTask<T>> _aggregate;
+
+        private static string GetId(T aggregate)
+        {
+            if (typeof(T).IsAssignableFrom(typeof(AggregateRootBase)))
+            {
+                return (aggregate as AggregateRootBase)?.Id;
+            }
+
+            if (aggregate == null)
+            {
+                return null;
+            }
+
+            return DataPropertyHelper.GetId(typeof(T), aggregate).ToString();
+        }
+
+        private static long GetRevision(T aggregate)
+        {
+            if (typeof(T).IsAssignableFrom(typeof(AggregateRootBase)))
+            {
+                return (aggregate as AggregateRootBase)?.Revision ?? 0;
+            }
+
+            if (aggregate == null)
+            {
+                return 0;
+            }
+
+            return DataPropertyHelper.GetRevision(typeof(T), aggregate);
+        }
 
         public Snapshot(T aggregate)
         {
@@ -56,13 +87,15 @@ namespace AI4E.Domain
             }
             else
             {
-                if (string.IsNullOrEmpty(aggregate.Id))
+                Id = GetId(aggregate);
+
+                if (string.IsNullOrEmpty(Id))
                 {
                     throw new ArgumentException("Cannot get a reference to an aggregate without an id specified.");
                 }
 
-                Id = aggregate.Id;
-                Revision = aggregate.Revision;
+
+                Revision = GetRevision(aggregate);
             }
 
             _aggregate = new Lazy<ValueTask<T>>(() => new ValueTask<T>(aggregate), isThreadSafe: true);
@@ -161,19 +194,19 @@ namespace AI4E.Domain
     public static class SnapshotExtension
     {
         public static ValueTaskAwaiter<T> GetAwaiter<T>(in this Snapshot<T> snapshot)
-            where T : AggregateRoot
+            where T : class
         {
             return snapshot.ResolveAsync().GetAwaiter();
         }
 
         public static async Task<IEnumerable<T>> ResolveAsync<T>(this IEnumerable<Snapshot<T>> snapshots)
-             where T : AggregateRoot
+             where T : class
         {
             return await Task.WhenAll(snapshots.Select(p => p.ResolveAsync().AsTask()));
         }
 
         public static TaskAwaiter<IEnumerable<T>> GetAwaiter<T>(this IEnumerable<Snapshot<T>> snapshots)
-            where T : AggregateRoot
+            where T : class
         {
             return snapshots.ResolveAsync().GetAwaiter();
         }
