@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 
-
 #if BLAZOR
 using Blazor.Extensions;
 using AI4E.Routing.SignalR.Client;
@@ -43,7 +42,7 @@ namespace AI4E.Routing.SignalR.Client
         private readonly AsyncReaderWriterLock _disposalLock = new AsyncReaderWriterLock();
         private bool _isDisposed;
         private int _nextSeqNum;
-        private string _id;
+        private string _id = string.Empty;
 
         #endregion
 
