@@ -78,6 +78,7 @@ namespace AI4E.Routing
             // Cancel the initialization
             await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
             await _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
+            await _logicalEndPoint.DisposeAsync().HandleExceptionsAsync(_logger);
         }
 
         public void Dispose()
