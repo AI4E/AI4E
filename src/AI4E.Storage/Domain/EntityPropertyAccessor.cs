@@ -119,7 +119,7 @@ namespace AI4E.Storage.Domain
             if (entityType == null)
                 throw new ArgumentNullException(nameof(entityType));
 
-            if (!entityType.IsClass || typeof(Delegate).IsAssignableFrom(entityType))
+            if (entityType.IsValueType || entityType.IsDelegate())
                 throw new ArgumentException("The argument must be a reference type that is not a delegate.", nameof(entityType));
 
             if (entity == null)

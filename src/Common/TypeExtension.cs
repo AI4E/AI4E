@@ -50,5 +50,19 @@ namespace AI4E.Internal
         {
             return type.ToString();
         }
+
+        public static bool IsDelegate(this Type type)
+        {
+            if (type.IsValueType)
+                return false;
+
+            if (type.IsInterface)
+                return false;
+
+            if (type == typeof(Delegate) || type == typeof(MulticastDelegate))
+                return true;
+
+            return type.IsSubclassOf(typeof(Delegate));
+        }
     }
 }
