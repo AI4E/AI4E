@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
+using AI4E.Internal;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing
@@ -74,7 +75,7 @@ namespace AI4E.Routing
 
             (EndPointRoute endPoint, RouteOptions options) Extract(IEntry e)
             {
-                var endPoint = EndPointRoute.CreateRoute(ExtractRoute(e.Path));
+                var endPoint = EndPointRoute.CreateRoute(EntryPathHelper.ExtractRoute(e.Path));
                 var options = (RouteOptions)BitConverter.ToInt32(e.Value.ToArray(), 0);
 
                 return (endPoint, options);
@@ -100,53 +101,7 @@ namespace AI4E.Routing
 
         private static string GetPath(string messageType, string route, string session)
         {
-            return EntryPathHelper.GetChildPath(GetPath(messageType), GetEntryName(route, session));
-        }
-
-        // Gets the entry name that is roughly {route}->{session}
-        private static string GetEntryName(string route, string session)
-        {
-            var resultsBuilder = new StringBuilder(route.Length +
-                                                   session.Length +
-                                                   EscapeHelper.CountCharsToEscape(route) +
-                                                   EscapeHelper.CountCharsToEscape(session) +
-                                                   1);
-            resultsBuilder.Append(route);
-
-            EscapeHelper.Escape(resultsBuilder, 0);
-
-            var sepIndex = resultsBuilder.Length;
-
-            resultsBuilder.Append(' ');
-            resultsBuilder.Append(' ');
-
-            resultsBuilder.Append(session);
-
-            EscapeHelper.Escape(resultsBuilder, sepIndex + 2);
-
-            // We need to ensure that the created entry is unique.
-            resultsBuilder[sepIndex] = _seperatorString[0];
-            resultsBuilder[sepIndex + 1] = _seperatorString[1];
-
-            return resultsBuilder.ToString();
-        }
-
-        private static string ExtractRoute(string path)
-        {
-            var nameIndex = path.LastIndexOfAny(_pathSeperators);
-            var index = path.IndexOf(_seperatorString);
-
-            if (index == -1)
-            {
-                // TODO: Log warning
-                return null;
-            }
-
-            var resultBuilder = new StringBuilder(path, startIndex: nameIndex + 1, length: index - nameIndex - 1, capacity: index);
-
-            EscapeHelper.Unescape(resultBuilder, startIndex: 0);
-
-            return resultBuilder.ToString();
+            return EntryPathHelper.GetChildPath(GetPath(messageType), EntryPathHelper.GetEntryName(route, session));
         }
     }
 

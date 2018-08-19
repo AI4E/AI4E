@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
+using AI4E.Internal;
 
 namespace AI4E.Routing.SignalR.Server
 {

@@ -31,6 +31,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity
 {
+    [Obsolete("Use RunningModuleLookup")]
     public sealed class HttpDispatchStore : IHttpDispatchStore // TODO: Rename
     {
         private static readonly byte[] _emptyPayload = new byte[0];

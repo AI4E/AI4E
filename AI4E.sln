@@ -156,7 +156,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.Blazor.Sample.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.Blazor.Sample.App", "samples\Blazor\AI4E.Routing.Blazor.Sample.App\AI4E.Routing.Blazor.Sample.App.csproj", "{9E1CCC82-085A-4773-8BA8-F82E812D7472}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Blazor", "src\Blazor\AI4E.Blazor\AI4E.Blazor.csproj", "{0DE625C3-1D98-4659-92A4-7677F9F0F33D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Blazor", "src\Blazor\AI4E.Blazor\AI4E.Blazor.csproj", "{0DE625C3-1D98-4659-92A4-7677F9F0F33D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Blazor.Server", "src\Blazor\AI4E.Blazor.Server\AI4E.Blazor.Server.csproj", "{5E8684DA-70BF-43B0-96F0-ACC290483EE6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -332,6 +334,10 @@ Global
 		{0DE625C3-1D98-4659-92A4-7677F9F0F33D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0DE625C3-1D98-4659-92A4-7677F9F0F33D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0DE625C3-1D98-4659-92A4-7677F9F0F33D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E8684DA-70BF-43B0-96F0-ACC290483EE6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E8684DA-70BF-43B0-96F0-ACC290483EE6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E8684DA-70BF-43B0-96F0-ACC290483EE6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E8684DA-70BF-43B0-96F0-ACC290483EE6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -386,6 +392,7 @@ Global
 		{09DA5180-DB8C-4EB4-8A35-1AAF39470B0C} = {5FA02E7D-6DAF-47EE-A24A-B01621C01326}
 		{9E1CCC82-085A-4773-8BA8-F82E812D7472} = {5FA02E7D-6DAF-47EE-A24A-B01621C01326}
 		{0DE625C3-1D98-4659-92A4-7677F9F0F33D} = {D7D5C0BC-316D-47A3-A2E8-E11CFC6D7486}
+		{5E8684DA-70BF-43B0-96F0-ACC290483EE6} = {D7D5C0BC-316D-47A3-A2E8-E11CFC6D7486}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}
