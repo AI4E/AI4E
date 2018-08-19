@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Modularity;
+using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Blazor.Modularity
@@ -11,13 +12,15 @@ namespace AI4E.Blazor.Modularity
     {
         private readonly ConcurrentDictionary<ModuleIdentifier, string> _cache;
         private readonly IMessageDispatcher _messageDispatcher;
+        private readonly ILogger<RemoteModulePrefixLookup> _logger;
 
-        public RemoteModulePrefixLookup(IMessageDispatcher messageDispatcher)
+        public RemoteModulePrefixLookup(IMessageDispatcher messageDispatcher, ILogger<RemoteModulePrefixLookup> logger = null)
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
             _messageDispatcher = messageDispatcher;
+            _logger = logger;
             _cache = new ConcurrentDictionary<ModuleIdentifier, string>();
         }
 
@@ -54,7 +57,7 @@ namespace AI4E.Blazor.Modularity
 
                 if (!queryResult.IsNotFound())
                 {
-                    // TODO: Log failure
+                    _logger?.LogError($"Unable to lookup prefix for module '{module.Name}' for reason: {queryResult.ToString()}.");
                     break;
                 }
 

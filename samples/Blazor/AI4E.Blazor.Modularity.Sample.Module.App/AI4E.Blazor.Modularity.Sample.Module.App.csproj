@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <LangVersion>7.3</LangVersion>
+
+    <!-- The linker is not beneficial for server-side execution. Re-enable this if you switch to WebAssembly execution. -->
+    <BlazorLinkOnBuild>false</BlazorLinkOnBuild>
+    <ApplicationIcon />
+    <StartupObject />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Blazor.Browser" Version="0.6.0-preview1-20180811.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="0.6.0-preview1-20180811.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AI4E.Blazor.Sample.Shared\AI4E.Blazor.Sample.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

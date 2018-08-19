@@ -2,6 +2,7 @@
 using System.Linq;
 using AI4E.Blazor.ApplicationParts;
 using AI4E.Blazor.Components;
+using AI4E.Blazor.Modularity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -13,6 +14,8 @@ namespace AI4E.Blazor
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
+
+            services.AddSingleton<IModulePrefixLookup, RemoteModulePrefixLookup>();
 
             var partManager = GetApplicationPartManager(services, entryAssemblyName);
             services.TryAddSingleton(partManager);

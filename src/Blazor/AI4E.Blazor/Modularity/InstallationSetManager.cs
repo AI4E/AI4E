@@ -21,10 +21,13 @@ namespace AI4E.Blazor.Modularity
 
         private readonly HttpClient _httpClient;
         private readonly ApplicationPartManager _partManager;
+        private readonly IModulePrefixLookup _modulePrefixLookup;
         private readonly AsyncLock _lock = new AsyncLock();
         private ResolvedInstallationSet _installationSet;
 
-        public InstallationSetManager(HttpClient httpClient, ApplicationPartManager partManager)
+        public InstallationSetManager(HttpClient httpClient,
+                                      ApplicationPartManager partManager,
+                                      IModulePrefixLookup modulePrefixLookup)
         {
             if (httpClient == null)
                 throw new ArgumentNullException(nameof(httpClient));
@@ -32,8 +35,12 @@ namespace AI4E.Blazor.Modularity
             if (partManager == null)
                 throw new ArgumentNullException(nameof(partManager));
 
+            if (modulePrefixLookup == null)
+                throw new ArgumentNullException(nameof(modulePrefixLookup));
+
             _httpClient = httpClient;
             _partManager = partManager;
+            _modulePrefixLookup = modulePrefixLookup;
         }
 
         public async Task UpdateInstallationSetAsync(ResolvedInstallationSet installationSet, CancellationToken cancellation)
@@ -140,9 +147,11 @@ namespace AI4E.Blazor.Modularity
             return prefix;
         }
 
-        private Task<string> GetPrefixAsync(ModuleReleaseIdentifier moduleRelease, CancellationToken cancellation)
+        private ValueTask<string> GetPrefixAsync(ModuleReleaseIdentifier moduleRelease, CancellationToken cancellation)
         {
-            return Task.FromResult("/module"); // TODO: Implement prefix lookup
+            return _modulePrefixLookup.LookupPrefixAsync(moduleRelease.Module, cancellation);
+
+            //return Task.FromResult("/module"); // TODO: Implement prefix lookup
         }
 
         private sealed class BlazorModuleManifest

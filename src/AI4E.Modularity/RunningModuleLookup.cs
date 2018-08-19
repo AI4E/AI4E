@@ -176,37 +176,41 @@ namespace AI4E.Modularity
             if (module == default)
                 throw new ArgumentDefaultException(nameof(module));
 
-            var session = await _coordinationManager.GetSessionAsync(cancellation);
-            var runningModulePath = GetRunningModulePath(module, session);
+            var runningModulePath = GetRunningModulePath(module);
 
             var entry = await _coordinationManager.GetAsync(runningModulePath, cancellation);
 
             if (entry == null)
                 return Enumerable.Empty<string>();
 
-            string[] result;
-
-            using (var stream = new MemoryStream(entry.Value.ToArray()))
-            using (var reader = new BinaryReader(stream))
+            IEnumerable<string> GetPrefixes(IEntry sessionEntry)
             {
-                var bytesToSkip = reader.ReadInt32();
-                for (var i = 0; i < bytesToSkip; i++)
+                string[] result;
+
+                using (var stream = new MemoryStream(sessionEntry.Value.ToArray()))
+                using (var reader = new BinaryReader(stream))
                 {
-                    reader.ReadByte();
+                    var bytesToSkip = reader.ReadInt32();
+                    for (var i = 0; i < bytesToSkip; i++)
+                    {
+                        reader.ReadByte();
+                    }
+
+                    var prefixesCount = reader.ReadInt32();
+                    result = new string[prefixesCount];
+
+                    for (var i = 0; i < prefixesCount; i++)
+                    {
+                        var prefixBytesLength = reader.ReadInt32();
+                        var prefixBytes = reader.ReadBytes(prefixBytesLength);
+                        result[i] = Encoding.UTF8.GetString(prefixBytes);
+                    }
                 }
 
-                var prefixesCount = reader.ReadInt32();
-                result = new string[prefixesCount];
-
-                for (var i = 0; i < prefixesCount; i++)
-                {
-                    var prefixBytesLength = reader.ReadInt32();
-                    var prefixBytes = reader.ReadBytes(prefixBytesLength);
-                    result[i] = Encoding.UTF8.GetString(prefixBytes);
-                }
+                return result;
             }
 
-            return result;
+            return await entry.Childs.SelectMany(p => GetPrefixes(p).ToAsyncEnumerable()).ToList();
         }
 
         #endregion

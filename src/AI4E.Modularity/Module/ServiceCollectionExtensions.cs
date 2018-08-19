@@ -28,6 +28,9 @@ namespace AI4E.Modularity.Module
             services.AddSingleton(ConfigureCoordinationManager);
             services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
             services.AddSingleton(ConfigureProxyHost);
+            services.AddSingleton<IMetadataAccessor, MetadataAccessor>();
+            services.AddSingleton<IRunningModuleLookup, RunningModuleLookup>();
+            services.AddSingleton<IMetadataReader, MetadataReader>();
 
             return services;
         }
