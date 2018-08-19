@@ -210,7 +210,7 @@ namespace AI4E.Modularity
                 return result;
             }
 
-            return await entry.Childs.SelectMany(p => GetPrefixes(p).ToAsyncEnumerable()).ToList();
+            return await entry.Childs.SelectMany(p => GetPrefixes(p).ToAsyncEnumerable()).Distinct().ToList();
         }
 
         #endregion
