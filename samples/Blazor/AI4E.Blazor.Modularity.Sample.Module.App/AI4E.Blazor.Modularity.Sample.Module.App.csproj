@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Blazor\AI4E.Blazor.Server\AI4E.Blazor.Server.csproj" />
     <ProjectReference Include="..\AI4E.Blazor.Sample.Shared\AI4E.Blazor.Sample.Shared.csproj" />
   </ItemGroup>
 
