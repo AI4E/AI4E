@@ -92,7 +92,7 @@ namespace AI4E.Storage.Domain
 
             // The commit is not in our scope.
             // TODO: Remove the dependency on EntityStorageEngine. Add a type for bucket-id to type and type to bucket-id translation.
-            if (!EntityStorageEngine.IsInScope(bucket, _options.Scope, out _))
+            if (!EntityStorageEngine.IsInScope(bucket, _options.Scope, out var typeName))
             {
                 return;
             }
@@ -112,7 +112,7 @@ namespace AI4E.Storage.Domain
                         _logger.LogDebug($"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}' ({attempt}. attempt).");
                     }
 
-                    var projection = ProjectAsync(commit.BucketId, commit.StreamId, tcs, cancellation);
+                    var projection = ProjectAsync(typeName, commit.StreamId, tcs, cancellation);
                     var dispatch = DispatchCoreAsync(commit, cancellation);
 
                     await Task.WhenAll(projection, dispatch);
