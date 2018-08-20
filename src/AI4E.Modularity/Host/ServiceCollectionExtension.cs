@@ -50,6 +50,12 @@ namespace AI4E.Modularity.Host
             services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
             services.AddSingleton(ConfigureDebugPort);
 
+            services.ConfigureApplicationServices(appServiceManager =>
+            {
+                appServiceManager.AddService<IMessageDispatcher>();
+                // TODO: Add Debug port conditionally.
+            });
+
             services.AddSingleton<IRunningModuleLookup, RunningModuleLookup>();
 
             return new ModularityBuilder(services);

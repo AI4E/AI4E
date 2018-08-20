@@ -32,6 +32,12 @@ namespace AI4E.Modularity.Module
             services.AddSingleton<IRunningModuleLookup, RunningModuleLookup>();
             services.AddSingleton<IMetadataReader, MetadataReader>();
 
+            services.ConfigureApplicationServices(appServiceManager =>
+            {
+                appServiceManager.AddService<IMessageDispatcher>();
+                // TODO: Add ProxyHost conditionally.
+            });
+
             return services;
         }
 

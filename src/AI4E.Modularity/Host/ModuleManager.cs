@@ -149,7 +149,7 @@ namespace AI4E.Modularity.Host
                 {
                     moduleInstallationDirectory.Delete(recursive: true);
                 }
-                catch(DirectoryNotFoundException) { }
+                catch (DirectoryNotFoundException) { }
                 catch
                 {
                     // TODO: Log warning

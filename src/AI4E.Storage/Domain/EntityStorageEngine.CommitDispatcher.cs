@@ -10,6 +10,7 @@ using AI4E.Internal;
 using AI4E.Storage.Projection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace AI4E.Storage.Domain
@@ -23,7 +24,7 @@ namespace AI4E.Storage.Domain
         private readonly IProjectionEngine _projectionEngine;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<CommitDispatcher> _logger;
-
+        private readonly DomainStorageOptions _options;
         private readonly AsyncInitializationHelper _initializationHelper;
 
         #endregion
@@ -34,6 +35,7 @@ namespace AI4E.Storage.Domain
                                 IMessageDispatcher eventDispatcher,
                                 IProjectionEngine projectionEngine,
                                 IServiceProvider serviceProvider,
+                                IOptions<DomainStorageOptions> optionsAccessor,
                                 ILogger<CommitDispatcher> logger = null)
         {
             if (persistence == null)
@@ -48,11 +50,16 @@ namespace AI4E.Storage.Domain
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
+            if (optionsAccessor == null)
+                throw new ArgumentNullException(nameof(optionsAccessor));
+
             _persistence = persistence;
             _eventDispatcher = eventDispatcher;
             _projectionEngine = projectionEngine;
             _serviceProvider = serviceProvider;
             _logger = logger;
+            _options = optionsAccessor.Value ?? new DomainStorageOptions();
+
             _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
         }
 
@@ -81,6 +88,15 @@ namespace AI4E.Storage.Domain
 
         private async Task DispatchInternalAsync(ICommit commit, TaskCompletionSource<object> tcs, CancellationToken cancellation)
         {
+            var bucket = commit.BucketId;
+
+            // The commit is not in our scope.
+            // TODO: Remove the dependency on EntityStorageEngine. Add a type for bucket-id to type and type to bucket-id translation.
+            if (!EntityStorageEngine.IsInScope(bucket, _options.Scope, out var typeName))
+            {
+                return;
+            }
+
             var maxNumberOfCommitAttempts = int.MaxValue;
 
             for (var attempt = 1; attempt <= maxNumberOfCommitAttempts; attempt++)
@@ -96,7 +112,7 @@ namespace AI4E.Storage.Domain
                         _logger.LogDebug($"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}' ({attempt}. attempt).");
                     }
 
-                    var projection = ProjectAsync(commit.BucketId, commit.StreamId, tcs, cancellation);
+                    var projection = ProjectAsync(typeName, commit.StreamId, tcs, cancellation);
                     var dispatch = DispatchCoreAsync(commit, cancellation);
 
                     await Task.WhenAll(projection, dispatch);

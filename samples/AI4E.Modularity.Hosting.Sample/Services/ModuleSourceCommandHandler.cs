@@ -6,7 +6,7 @@ using AI4E.Modularity.Hosting.Sample.Api;
 
 namespace AI4E.Modularity.Hosting.Sample.Services
 {
-    public sealed class ModuleSourceCommandHandler : MessageHandler<FileSystemModuleSource>
+    public sealed class ModuleSourceCommandHandler : MessageHandler<IModuleSource>
     {
         [CreatesEntity(AllowExisingEntity = false)]
         public IDispatchResult Handle(ModuleSourceAddCommand command)
@@ -35,8 +35,13 @@ namespace AI4E.Modularity.Hosting.Sample.Services
                 return ValidationFailure(validationResults);
             }
 
-            Entity.Location = (FileSystemModuleSourceLocation)command.Location;
-            return Success();
+            if (Entity is FileSystemModuleSource fileSystemModuleSource)
+            {
+                fileSystemModuleSource.Location = (FileSystemModuleSourceLocation)command.Location;
+                return Success();
+            }
+
+            return Failure();
         }
 
         public IDispatchResult Handle(ModuleSourceRenameCommand command)
@@ -48,13 +53,18 @@ namespace AI4E.Modularity.Hosting.Sample.Services
                 return ValidationFailure(validationResults);
             }
 
-            Entity.Name = (ModuleSourceName)command.Name;
-            return Success();
+            if (Entity is FileSystemModuleSource fileSystemModuleSource)
+            {
+                fileSystemModuleSource.Name = (ModuleSourceName)command.Name;
+                return Success();
+            }
+
+            return Failure();
         }
 
         public void Handle(ModuleSourceRemoveCommand command)
         {
-            Entity.Dispose();
+            (Entity as FileSystemModuleSource)?.Dispose();
             MarkAsDeleted();
         }
 

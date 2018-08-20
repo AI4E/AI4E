@@ -17,6 +17,7 @@
     <Compile Include="..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
     <Compile Include="..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
     <Compile Include="..\Common\StringBuilderExtension.cs" Link="Internal\StringBuilderExtension.cs" />
+    <Compile Include="..\Common\StringExtension.cs" Link="Internal\StringExtension.cs" />
     <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
     <Compile Include="..\Common\ZipArchiveEntryExtension.cs" Link="Internal\ZipArchiveEntryExtension.cs" />
     <Compile Include="..\Common\ZipArchiveExtension.cs" Link="Internal\ZipArchiveExtension.cs" />

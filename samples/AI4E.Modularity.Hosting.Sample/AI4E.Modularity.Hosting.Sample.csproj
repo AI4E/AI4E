@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Domain.Services\AI4E.Domain.Services.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Domain\AI4E.Domain.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
@@ -23,7 +24,7 @@
   </ItemGroup>
 
   <Target Name="PreBuild" AfterTargets="PreBuildEvent">
-    <Copy SourceFiles="..\lib\bootstrap\dist\css\bootstrap.min.css" DestinationFolder=".\wwwroot\css" />
-    <Copy SourceFiles="..\lib\bootstrap\dist\js\bootstrap.min.js" DestinationFolder=".\wwwroot\js" />
+    <!--<Copy SourceFiles="..\lib\bootstrap\dist\css\bootstrap.min.css" DestinationFolder=".\wwwroot\css" />
+    <Copy SourceFiles="..\lib\bootstrap\dist\js\bootstrap.min.js" DestinationFolder=".\wwwroot\js" />-->
   </Target>
 </Project>

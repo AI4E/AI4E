@@ -27,8 +27,8 @@ namespace AI4E.Modularity.Host
         private volatile ModuleSupervisorState _state;
 #pragma warning restore IDE0032
 
-        public ModuleSupervisor(DirectoryInfo directory, 
-                                IMetadataReader metadataReader, 
+        public ModuleSupervisor(DirectoryInfo directory,
+                                IMetadataReader metadataReader,
                                 ILogger<ModuleSupervisor> logger = null)
         {
             if (directory == null)
@@ -112,6 +112,17 @@ namespace AI4E.Modularity.Host
 
             SetState(ModuleSupervisorState.NotRunning);
 
+            // This is a meta-module and cannot be started.
+            if (string.IsNullOrWhiteSpace(metadata.EntryAssemblyCommand))
+            {
+#pragma warning disable CS4014
+                _supervisorProcess.TerminateAsync();
+#pragma warning restore CS4014
+                Assert(cancellation.IsCancellationRequested);
+
+                return;
+            }
+
             while (cancellation.ThrowOrContinue())
             {
                 try
@@ -141,7 +152,7 @@ namespace AI4E.Modularity.Host
                     // TODO: Log
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception exc)
+                catch (Exception)
                 {
                     // TODO: Log exception
                 }

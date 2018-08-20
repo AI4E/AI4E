@@ -11,7 +11,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
 {
     public sealed class ModuleQueryHandler : MessageHandler
     {
-        public async Task<IEnumerable<ModuleListModel>> HandleAsync(ModuleSearchQuery query, [FromServices] IModuleSearchEngine searchEngine)
+        public async Task<IEnumerable<ModuleListModel>> HandleAsync(ModuleSearchQuery query, [FromServices][Inject] IModuleSearchEngine searchEngine)
         {
             var modules = await searchEngine.SearchModulesAsync(query.SearchPhrase, query.IncludePreReleases, cancellation: default);
             var projection = new ModuleProjection();
@@ -19,17 +19,17 @@ namespace AI4E.Modularity.Hosting.Sample.Services
             return modules.Select(p => projection.ProjectToListModel(p, query.IncludePreReleases));
         }
 
-        public Task<ModuleReleaseModel> HandleAsync(ByIdQuery<ModuleReleaseIdentifier, ModuleReleaseModel> query, [FromServices] IDataStore dataStore)
+        public Task<ModuleReleaseModel> HandleAsync(ByIdQuery<ModuleReleaseIdentifier, ModuleReleaseModel> query, [FromServices][Inject] IDataStore dataStore)
         {
             return dataStore.FindOneAsync<ModuleReleaseModel>(p => p.Id == query.Id).AsTask();
         }
 
-        public Task<ModuleInstallModel> HandleAsync(ByIdQuery<ModuleReleaseIdentifier, ModuleInstallModel> query, [FromServices] IDataStore dataStore)
+        public Task<ModuleInstallModel> HandleAsync(ByIdQuery<ModuleReleaseIdentifier, ModuleInstallModel> query, [FromServices][Inject] IDataStore dataStore)
         {
             return dataStore.FindOneAsync<ModuleInstallModel>(p => p.Id == query.Id).AsTask();
         }
 
-        public Task<ModuleUninstallModel> HandleAsync(ByIdQuery<ModuleIdentifier, ModuleUninstallModel> query, [FromServices] IDataStore dataStore)
+        public Task<ModuleUninstallModel> HandleAsync(ByIdQuery<ModuleIdentifier, ModuleUninstallModel> query, [FromServices][Inject] IDataStore dataStore)
         {
             return dataStore.FindOneAsync<ModuleUninstallModel>(p => p.Id == query.Id).AsTask();
         }

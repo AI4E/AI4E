@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Threading.Tasks;
+using AI4E.AspNetCore;
 using AI4E.Coordination;
 using AI4E.Remoting;
 using AI4E.Routing;

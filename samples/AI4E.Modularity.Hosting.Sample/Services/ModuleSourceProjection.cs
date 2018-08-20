@@ -6,75 +6,80 @@ namespace AI4E.Modularity.Hosting.Sample.Services
 {
     public sealed class ModuleSourceProjection : Projection
     {
-        public ModuleSourceModel Project(FileSystemModuleSource moduleSource)
+        public ModuleSourceModel Project(IModuleSource moduleSource)
         {
-            // TODO: This should be the default with a way to override it (via an attribute??)
-            if (moduleSource == null)
-                return null;
-
-            return new ModuleSourceModel
+            if (moduleSource is FileSystemModuleSource fileSystemModuleSource)
             {
-                Id = moduleSource.Id,
-                ConcurrencyToken = moduleSource.ConcurrencyToken,
-                Location = moduleSource.Location.Location,
-                Name = moduleSource.Name.Value
-            };
+                return new ModuleSourceModel
+                {
+                    Id = fileSystemModuleSource.Id,
+                    ConcurrencyToken = fileSystemModuleSource.ConcurrencyToken,
+                    Location = fileSystemModuleSource.Location.Location,
+                    Name = fileSystemModuleSource.Name.Value
+                };
+            }
+
+            return null;
         }
 
-        public ModuleSourceListModel ProjectToListModel(FileSystemModuleSource moduleSource)
+        public ModuleSourceListModel ProjectToListModel(IModuleSource moduleSource)
         {
-            // TODO: This should be the default with a way to override it (via an attribute??)
-            if (moduleSource == null)
-                return null;
-
-            return new ModuleSourceListModel
+            if (moduleSource is FileSystemModuleSource fileSystemModuleSource)
             {
-                Id = moduleSource.Id,
-                Location = moduleSource.Location.Location,
-                Name = moduleSource.Name.Value
-            };
+                return new ModuleSourceListModel
+                {
+                    Id = fileSystemModuleSource.Id,
+                    Location = fileSystemModuleSource.Location.Location,
+                    Name = fileSystemModuleSource.Name.Value
+                };
+            }
+
+            return null;
         }
 
-        public ModuleSourceDeleteModel ProjectToDeleteModel(FileSystemModuleSource moduleSource)
+        public ModuleSourceDeleteModel ProjectToDeleteModel(IModuleSource moduleSource)
         {
-            // TODO: This should be the default with a way to override it (via an attribute??)
-            if (moduleSource == null)
-                return null;
-
-            return new ModuleSourceDeleteModel
+            if (moduleSource is FileSystemModuleSource fileSystemModuleSource)
             {
-                Id = moduleSource.Id,
-                ConcurrencyToken = moduleSource.ConcurrencyToken,
-                Name = moduleSource.Name.Value
-            };
+                return new ModuleSourceDeleteModel
+                {
+                    Id = fileSystemModuleSource.Id,
+                    ConcurrencyToken = fileSystemModuleSource.ConcurrencyToken,
+                    Name = fileSystemModuleSource.Name.Value
+                };
+            }
+
+            return null;
         }
 
-        public ModuleSourceRenameModel ProjectToRenameModel(FileSystemModuleSource moduleSource)
+        public ModuleSourceRenameModel ProjectToRenameModel(IModuleSource moduleSource)
         {
-            // TODO: This should be the default with a way to override it (via an attribute??)
-            if (moduleSource == null)
-                return null;
-
-            return new ModuleSourceRenameModel
+            if (moduleSource is FileSystemModuleSource fileSystemModuleSource)
             {
-                Id = moduleSource.Id,
-                ConcurrencyToken = moduleSource.ConcurrencyToken,
-                Name = moduleSource.Name.Value
-            };
+                return new ModuleSourceRenameModel
+                {
+                    Id = fileSystemModuleSource.Id,
+                    ConcurrencyToken = fileSystemModuleSource.ConcurrencyToken,
+                    Name = fileSystemModuleSource.Name.Value
+                };
+            }
+
+            return null;
         }
 
-        public ModuleSourceUpdateLocationModel ProjectToUpdateLocationModel(FileSystemModuleSource moduleSource)
+        public ModuleSourceUpdateLocationModel ProjectToUpdateLocationModel(IModuleSource moduleSource)
         {
-            // TODO: This should be the default with a way to override it (via an attribute??)
-            if (moduleSource == null)
-                return null;
-
-            return new ModuleSourceUpdateLocationModel
+            if (moduleSource is FileSystemModuleSource fileSystemModuleSource)
             {
-                Id = moduleSource.Id,
-                ConcurrencyToken = moduleSource.ConcurrencyToken,
-                Location = moduleSource.Location.Location
-            };
+                return new ModuleSourceUpdateLocationModel
+                {
+                    Id = fileSystemModuleSource.Id,
+                    ConcurrencyToken = fileSystemModuleSource.ConcurrencyToken,
+                    Location = fileSystemModuleSource.Location.Location
+                };
+            }
+
+            return null;
         }
     }
 }
