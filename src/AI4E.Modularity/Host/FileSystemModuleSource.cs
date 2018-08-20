@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -79,7 +80,7 @@ namespace AI4E.Modularity.Host
             if (moduleMetadataReader == null)
                 throw new ArgumentNullException(nameof(moduleMetadataReader));
 
-            var regex = searchPhrase != null ? new Regex(searchPhrase, RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled) : null;
+            var regex = ProcessSearchPhrase(searchPhrase);
 
             if (!Directory.Exists(_location.Location))
             {
@@ -118,6 +119,82 @@ namespace AI4E.Modularity.Host
             }
 
             return result;
+        }
+
+        private static Regex ProcessSearchPhrase(string searchPhrase)
+        {
+            if (searchPhrase == null)
+                return null;
+
+            var parts = searchPhrase.Split(default(char[]), StringSplitOptions.RemoveEmptyEntries);
+
+            if (!parts.Any())
+                return null;
+
+            Assert(!parts.Any(p => p.ContainsWhitespace()));
+
+            string PreprocessSearchPhrasePart(string part)
+            {
+                var resultBuilder = new StringBuilder(part);
+
+                for (var i = 0; i < part.Length; i++)
+                {
+                    switch (part[i])
+                    {
+                        case '*':
+                            resultBuilder.Append('.');
+                            resultBuilder.Append('*');
+                            break;
+
+                        case '+':
+                            resultBuilder.Append('.');
+                            break;
+
+                        // Unescape everything
+                        case '.':
+                        case '\\':
+                        case '?':
+                        case '^':
+                        case '|':
+                        case '{':
+                        case '}':
+                        case '[':
+                        case ']':
+                        case '<':
+                        case '>':
+                        case ':':
+                            resultBuilder.Append('\\');
+                            resultBuilder.Append(part[i]);
+                            break;
+
+                        default:
+                            resultBuilder.Append(part[i]);
+                            break;
+                    }
+                }
+
+                return resultBuilder.ToString();
+            }
+
+            StringBuilder AppendPattern(StringBuilder regexBuilder, string subPattern)
+            {
+                if (regexBuilder.Length == 0)
+                {
+                    regexBuilder.Append('|');
+                }
+
+                regexBuilder.Append('(');
+                regexBuilder.Append('?');
+                regexBuilder.Append(':');
+                regexBuilder.Append(subPattern);
+                regexBuilder.Append('(');
+
+                return regexBuilder;
+            }
+
+            var pattern = parts.Select(PreprocessSearchPhrasePart).Aggregate(new StringBuilder(), AppendPattern).ToString();
+
+            return new Regex(pattern, RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled | RegexOptions.IgnoreCase);
         }
 
         // TODO: Add a type to manage module packages.

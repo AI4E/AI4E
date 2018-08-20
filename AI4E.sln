@@ -80,6 +80,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\SGuid.cs = src\Common\SGuid.cs
 		src\Common\StreamExtension.cs = src\Common\StreamExtension.cs
 		src\Common\StringBuilderExtension.cs = src\Common\StringBuilderExtension.cs
+		src\Common\StringExtension.cs = src\Common\StringExtension.cs
 		src\Common\TaskExtension.cs = src\Common\TaskExtension.cs
 		src\Common\TypeExtension.cs = src\Common\TypeExtension.cs
 		src\Common\TypeLoadHelper.cs = src\Common\TypeLoadHelper.cs
@@ -152,9 +153,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Blazor", "Blazor", "{5FA02E
 		samples\Blazor\global.json = samples\Blazor\global.json
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Routing.Blazor.Sample.Server", "samples\Blazor\AI4E.Routing.Blazor.Sample.Server\AI4E.Routing.Blazor.Sample.Server.csproj", "{09DA5180-DB8C-4EB4-8A35-1AAF39470B0C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.Blazor.Sample.Server", "samples\Blazor\AI4E.Routing.Blazor.Sample.Server\AI4E.Routing.Blazor.Sample.Server.csproj", "{09DA5180-DB8C-4EB4-8A35-1AAF39470B0C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Routing.Blazor.Sample.App", "samples\Blazor\AI4E.Routing.Blazor.Sample.App\AI4E.Routing.Blazor.Sample.App.csproj", "{9E1CCC82-085A-4773-8BA8-F82E812D7472}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.Blazor.Sample.App", "samples\Blazor\AI4E.Routing.Blazor.Sample.App\AI4E.Routing.Blazor.Sample.App.csproj", "{9E1CCC82-085A-4773-8BA8-F82E812D7472}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
