@@ -29,6 +29,12 @@ namespace AI4E.Modularity.Module
             services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
             services.AddSingleton(ConfigureProxyHost);
 
+            services.ConfigureApplicationServices(appServiceManager =>
+            {
+                appServiceManager.AddService<IMessageDispatcher>();
+                // TODO: Add ProxyHost conditionally.
+            });
+
             return services;
         }
 
