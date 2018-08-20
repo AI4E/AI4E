@@ -36,7 +36,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using AI4E.Routing;
 using JsonDiffPatchDotNet;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using static System.Diagnostics.Debug;
@@ -46,10 +49,12 @@ namespace AI4E.Storage.Domain
 {
     public sealed partial class EntityStorageEngine : IEntityStorageEngine
     {
+        private readonly DomainStorageOptions _options;
         #region Fields
 
         private readonly IStreamStore _streamStore;
         private readonly IEntityPropertyAccessor _entityPropertyAccessor;
+        private readonly ILogger<EntityStorageEngine> _logger;
         private readonly JsonDiffPatch _differ;
         private readonly JsonSerializer _jsonSerializer;
         private readonly Dictionary<(string bucket, string id, long requestedRevision), (object entity, long revision)> _lookup;
@@ -61,7 +66,9 @@ namespace AI4E.Storage.Domain
 
         public EntityStorageEngine(IStreamStore streamStore,
                                    IEntityPropertyAccessor entityPropertyAccessor,
-                                   ISerializerSettingsResolver serializerSettingsResolver)
+                                   ISerializerSettingsResolver serializerSettingsResolver,
+                                   IOptions<DomainStorageOptions> optionsAccessor,
+                                   ILogger<EntityStorageEngine> logger = null)
         {
             if (streamStore == null)
                 throw new ArgumentNullException(nameof(streamStore));
@@ -72,8 +79,14 @@ namespace AI4E.Storage.Domain
             if (serializerSettingsResolver == null)
                 throw new ArgumentNullException(nameof(serializerSettingsResolver));
 
+            if (optionsAccessor == null)
+                throw new ArgumentNullException(nameof(optionsAccessor));
+
             _streamStore = streamStore;
             _entityPropertyAccessor = entityPropertyAccessor;
+            _logger = logger;
+            _options = optionsAccessor.Value ?? new DomainStorageOptions();
+
             _differ = new JsonDiffPatch();
             _jsonSerializer = JsonSerializer.Create(serializerSettingsResolver.ResolveSettings(this));
 
@@ -116,7 +129,7 @@ namespace AI4E.Storage.Domain
 
         public async ValueTask<(object entity, long revision)> LoadEntityAsync(Type entityType, string id, CancellationToken cancellation = default)
         {
-            var bucketId = GetBucketId(entityType);
+            var bucketId = GetBucket(entityType);
 
             if (!_lookup.TryGetValue((bucketId, id, requestedRevision: default), out var result))
             {
@@ -138,7 +151,7 @@ namespace AI4E.Storage.Domain
             if (entityType.IsValueType)
                 throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
 
-            var bucketId = GetBucketId(entityType);
+            var bucketId = GetBucket(entityType);
 
             return _streamStore.OpenAllAsync(bucketId, cancellation)
                                .Select(stream => CachedDeserialize(entityType, revision: default, stream))
@@ -192,7 +205,7 @@ namespace AI4E.Storage.Domain
             if (!entityType.IsAssignableFrom(entity.GetType()))
                 throw new ArgumentException($"The specified entity must be of type '{entityType.FullName}' or a derived type.", nameof(entity));
 
-            var bucketId = GetBucketId(entityType);
+            var bucketId = GetBucket(entityType);
             var streamId = id;
             var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, throwIfNotFound: false, cancellation);
 
@@ -265,7 +278,7 @@ namespace AI4E.Storage.Domain
             if (!entityType.IsAssignableFrom(entity.GetType()))
                 throw new ArgumentException($"The specified entity must be of type '{entityType.FullName}' or a derived type.", nameof(entity));
 
-            var bucketId = GetBucketId(entityType);
+            var bucketId = GetBucket(entityType);
             var streamId = id;
             var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, throwIfNotFound: false, cancellation);
 
@@ -401,7 +414,7 @@ namespace AI4E.Storage.Domain
 
         private object CachedDeserialize(Type entityType, long revision, IStream stream)
         {
-            var bucketId = GetBucketId(entityType);
+            var bucketId = GetBucket(entityType);
 
             if (_lookup.TryGetValue((bucketId, stream.StreamId, revision), out var cachedResult))
             {
@@ -421,7 +434,7 @@ namespace AI4E.Storage.Domain
                                                                long revision,
                                                                CancellationToken cancellation)
         {
-            var bucketId = GetBucketId(entityType);
+            var bucketId = GetBucket(entityType);
 
             if (_lookup.TryGetValue((bucketId, id, revision), out var cachedResult))
             {
@@ -438,14 +451,79 @@ namespace AI4E.Storage.Domain
             return entity;
         }
 
-        private static string GetBucketId(Type entityType)
+        private const string _seperatorString = "->";
+
+        private string GetBucket(Type entityType)
         {
-            return entityType.ToString();
+            var stringifiedType = entityType.ToString();
+
+            if (string.IsNullOrWhiteSpace(_options.Scope))
+            {
+                return stringifiedType;
+            }
+
+            var resultsBuilder = new StringBuilder(stringifiedType.Length +
+                                                   _options.Scope.Length +
+                                                   EscapeHelper.CountCharsToEscape(stringifiedType) +
+                                                   EscapeHelper.CountCharsToEscape(_options.Scope) +
+                                                   2);
+
+            resultsBuilder.Append(stringifiedType);
+            EscapeHelper.Escape(resultsBuilder, 0);
+            var sepIndex = resultsBuilder.Length;
+            resultsBuilder.Append(' ');
+            resultsBuilder.Append(' ');
+            resultsBuilder.Append(_options.Scope);
+            EscapeHelper.Escape(resultsBuilder, sepIndex + 2);
+            // We need to ensure that the created entry is unique.
+            resultsBuilder[sepIndex] = _seperatorString[0];
+            resultsBuilder[sepIndex + 1] = _seperatorString[1];
+            return resultsBuilder.ToString();
         }
 
-        private static Type GetTypeFromBucket(string bucketId)
+        internal static bool IsInScope(string bucket, string scope, out string typeName)
         {
-            return TypeLoadHelper.LoadTypeFromUnqualifiedName(bucketId);
+            var index = bucket.IndexOf(_seperatorString);
+
+            if (string.IsNullOrWhiteSpace(scope))
+            {
+                if (index == -1)
+                {
+                    typeName = bucket;
+                    return true;
+                }
+                else
+                {
+                    typeName = null;
+                    return false;
+                }
+            }
+
+            if (index == -1)
+            {
+                typeName = null;
+                return false;
+            }
+
+            var scopeBuilder = new StringBuilder(bucket, index + 2, bucket.Length - index - 2, bucket.Length - index - 2);
+            EscapeHelper.Unescape(scopeBuilder, 0);
+
+            if (!scope.Equals(scopeBuilder.ToString()))
+            {
+                typeName = null;
+                return false;
+            }
+
+            var typeNameBuilder = new StringBuilder(bucket, 0, index, index);
+            EscapeHelper.Unescape(typeNameBuilder, 0);
+
+            typeName = typeNameBuilder.ToString();
+            return true;
+        }
+
+        private Type GetTypeFromBucket(string bucketId)
+        {
+            return IsInScope(bucketId, _options.Scope, out var typeName) ? TypeLoadHelper.LoadTypeFromUnqualifiedName(typeName) : null;
         }
 
         public void Dispose()

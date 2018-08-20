@@ -110,7 +110,7 @@ namespace AI4E.Routing
                                                    session.Length +
                                                    EscapeHelper.CountCharsToEscape(route) +
                                                    EscapeHelper.CountCharsToEscape(session) +
-                                                   1);
+                                                   2);
             resultsBuilder.Append(route);
 
             EscapeHelper.Escape(resultsBuilder, 0);
