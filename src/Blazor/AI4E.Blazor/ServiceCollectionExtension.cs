@@ -1,10 +1,10 @@
 ﻿using System;
-using System.Linq;
+using System.Reflection;
 using AI4E.Blazor.ApplicationParts;
 using AI4E.Blazor.Components;
 using AI4E.Blazor.Modularity;
+using AI4E.Internal;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AI4E.Blazor
 {
@@ -16,37 +16,38 @@ namespace AI4E.Blazor
                 throw new ArgumentNullException(nameof(services));
 
             services.AddSingleton<IModulePrefixLookup, RemoteModulePrefixLookup>();
+            services.AddSingleton<IInstallationSetManager, InstallationSetManager>();
 
-            var partManager = GetApplicationPartManager(services, entryAssemblyName);
-            services.TryAddSingleton(partManager);
+            services.ConfigureApplicationParts(ConfigureApplicationParts);
+            //services.ConfigureApplicationServices(ConfigureApplicationServices);
 
+
+        }
+
+        //private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
+        //{
+        //    serviceManager.AddService<IInstallationSetManager>(InitializeInstallationSetManagerAsync);
+        //}
+
+        //private static async Task InitializeInstallationSetManagerAsync(IInstallationSetManager installationSetManager, IServiceProvider serviceProvider)
+        //{
+        //    var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
+
+        //    var queryResult = await messageDispatcher.QueryAsync<ResolvedInstallationSet>(cancellation: default);
+
+        //    if (!queryResult.IsSuccessWithResult<ResolvedInstallationSet>(out var installationSet))
+        //    {
+        //        throw new Exception("Unable to query installation set."); // TODO: Exception type
+        //    }
+
+        //    await installationSetManager.UpdateInstallationSetAsync(installationSet.Resolved.Select(p => p.Module), cancellation: default);
+        //}
+
+        private static void ConfigureApplicationParts(ApplicationPartManager partManager)
+        {
             partManager.FeatureProviders.Add(new ComponentFeatureProvider());
             partManager.FeatureProviders.Add(new ViewExtensionFeatureProvider());
-        }
-
-        private static ApplicationPartManager GetApplicationPartManager(IServiceCollection services, string entryAssemblyName)
-        {
-            var manager = GetServiceFromCollection<ApplicationPartManager>(services);
-            if (manager == null)
-            {
-                manager = new ApplicationPartManager();
-
-                if (string.IsNullOrEmpty(entryAssemblyName))
-                {
-                    return manager;
-                }
-
-                manager.PopulateDefaultParts(entryAssemblyName);
-            }
-
-            return manager;
-        }
-
-        private static T GetServiceFromCollection<T>(IServiceCollection services)
-        {
-            return (T)services
-                .LastOrDefault(d => d.ServiceType == typeof(T))
-                ?.ImplementationInstance;
+            partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
         }
     }
 }
