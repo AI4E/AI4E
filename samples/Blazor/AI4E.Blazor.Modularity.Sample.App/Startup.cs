@@ -34,8 +34,6 @@ namespace AI4E.Blazor.Modularity.Sample.App
             manager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
 
             services.AddBlazorModularity(typeof(Startup).Assembly.FullName);
-
-            services.AddSingleton<IInstallationSetManager, InstallationSetManager>();
         }
 
         public static T GetService<T>(IServiceCollection services)
