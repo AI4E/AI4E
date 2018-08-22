@@ -17,6 +17,7 @@ namespace AI4E.Blazor
 
             services.AddSingleton<IModulePrefixLookup, RemoteModulePrefixLookup>();
             services.AddSingleton<IInstallationSetManager, InstallationSetManager>();
+            services.AddSingleton<ViewExtensionRenderer>();
 
             services.ConfigureApplicationParts(ConfigureApplicationParts);
             //services.ConfigureApplicationServices(ConfigureApplicationServices);

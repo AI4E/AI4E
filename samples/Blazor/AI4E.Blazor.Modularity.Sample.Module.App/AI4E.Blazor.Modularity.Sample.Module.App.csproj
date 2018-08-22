@@ -21,4 +21,10 @@
     <ProjectReference Include="..\AI4E.Blazor.Sample.Shared\AI4E.Blazor.Sample.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="ViewExtensions\MenuViewExtension.cshtml">
+      <Pack>$(IncludeRazorContentInPack)</Pack>
+    </Content>
+  </ItemGroup>
+
 </Project>

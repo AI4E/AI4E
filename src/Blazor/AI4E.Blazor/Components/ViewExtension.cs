@@ -18,59 +18,157 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+
 using System;
+using System.Collections.Generic;
 using AI4E.Blazor.ApplicationParts;
+using Microsoft.AspNetCore.Blazor;
 using Microsoft.AspNetCore.Blazor.Components;
 using Microsoft.AspNetCore.Blazor.RenderTree;
 using BlazorInject = Microsoft.AspNetCore.Blazor.Components.InjectAttribute;
 
 namespace AI4E.Blazor.Components
 {
-    public sealed class ViewExtension : IComponent, IDisposable
+    internal sealed class ViewExtension<TViewExtension> : IComponent, IDisposable
     {
-        private RenderHandle _renderHandle;
+        internal static readonly string ConfigurationName = nameof(Configuration);
 
+        private readonly List<Type> _viewExtensions = new List<Type>();
+        private readonly RenderFragment _renderFragment;
+        private RenderHandle _renderHandle;
+        private bool _hasCalledInit;
+
+        /// <summary>
+        /// Constructs an instance of <see cref="BlazorComponent"/>.
+        /// </summary>
+        public ViewExtension()
+        {
+            _renderFragment = BuildRenderTree;
+        }
+
+        [Parameter] private Action<TViewExtension> Configuration { get; set; }
         [BlazorInject] private ApplicationPartManager PartManager { get; set; }
-        [Parameter] private Type Type { get; set; }
 
         public void Init(RenderHandle renderHandle)
         {
+            // This implicitly means a BlazorComponent can only be associated with a single
+            // renderer. That's the only use case we have right now. If there was ever a need,
+            // a component could hold a collection of render handles.
+            if (_renderHandle.IsInitialized)
+            {
+                throw new InvalidOperationException($"The render handle is already set. Cannot initialize a {nameof(BlazorComponent)} more than once.");
+            }
+
             _renderHandle = renderHandle;
-            PartManager.ApplicationPartsChanged += OnApplicationPartsChanged;
+        }
+
+        /// <summary>
+        /// Method invoked to apply initial or updated parameters to the component.
+        /// </summary>
+        /// <param name="parameters">The parameters to apply.</param>
+        public void SetParameters(ParameterCollection parameters)
+        {
+            parameters.AssignToProperties(this);
+
+            if (!_hasCalledInit)
+            {
+                _hasCalledInit = true;
+                PartManager.ApplicationPartsChanged += ApplicationPartsChanged;
+                UpdateViewExtensions();
+            }
+
+            StateHasChanged();
+        }
+
+        private void ApplicationPartsChanged(object sender, EventArgs e)
+        {
+            UpdateViewExtensions();
+            StateHasChanged();
+        }
+
+        private void UpdateViewExtensions()
+        {
+            var feature = new ViewExtensionFeature(typeof(TViewExtension));
+            PartManager.PopulateFeature(feature);
+
+            _viewExtensions.Clear();
+            _viewExtensions.AddRange(feature.ViewExtensions);
+        }
+
+        /// <summary>
+        /// Notifies the component that its state has changed. When applicable, this will
+        /// cause the component to be re-rendered.
+        /// </summary>
+        private void StateHasChanged()
+        {
+            _renderHandle.Render(_renderFragment);
+        }
+
+        /// <summary>
+        /// Renders the component to the supplied <see cref="RenderTreeBuilder"/>.
+        /// </summary>
+        /// <param name="builder">A <see cref="RenderTreeBuilder"/> that will receive the render output.</param>
+        private void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            var components = _viewExtensions;
+            foreach (var component in components)
+            {
+                builder.OpenComponent(0, typeof(ViewExtensionWrapper<>).MakeGenericType(component));
+                builder.AddAttribute(0, ConfigurationName, Configuration);
+                builder.CloseComponent();
+            }
+        }
+
+        public void Dispose()
+        {
+            if (PartManager != null)
+            {
+                PartManager.ApplicationPartsChanged -= ApplicationPartsChanged;
+            }
+        }
+    }
+
+    internal sealed class ViewExtensionWrapper<TViewExtension> : IComponent
+        where TViewExtension : IComponent
+    {
+        private RenderHandle _renderHandle;
+        private bool _hasCalledInit;
+        private TViewExtension _component;
+
+        [BlazorInject] private IServiceProvider ServiceProvider { get; set; }
+        [Parameter] private Action<TViewExtension> Configuration { get; set; }
+
+        public void Init(RenderHandle renderHandle)
+        {
+            // This implicitly means a BlazorComponent can only be associated with a single
+            // renderer. That's the only use case we have right now. If there was ever a need,
+            // a component could hold a collection of render handles.
+            if (_renderHandle.IsInitialized)
+            {
+                throw new InvalidOperationException($"The render handle is already set. Cannot initialize a {nameof(BlazorComponent)} more than once.");
+            }
+
+            _renderHandle = renderHandle;
         }
 
         public void SetParameters(ParameterCollection parameters)
         {
             parameters.AssignToProperties(this);
 
-            _renderHandle.Render(builder => Render(builder));
-        }
-
-
-        public void Dispose()
-        {
-            PartManager.ApplicationPartsChanged -= OnApplicationPartsChanged;
-        }
-
-        private void OnApplicationPartsChanged(object sender, EventArgs e)
-        {
-            _renderHandle.Render(builder => Render(builder));
-        }
-
-        private void Render(RenderTreeBuilder builder)
-        {
-            if (Type == null)
-                return; // TODO: throw
-
-            var feature = new ViewExtensionFeature(Type);
-            PartManager.PopulateFeature(feature);
-
-            foreach (var viewExtension in feature.ViewExtensions)
+            if (!_hasCalledInit)
             {
-                builder.OpenComponent(0, viewExtension);
-                // TODO: Arguments
-                builder.CloseComponent();
+                _hasCalledInit = true;
+                var componentFactory = new ComponentFactory(ServiceProvider);
+
+                Console.WriteLine("view-extension-type: " + typeof(TViewExtension));
+
+                _component = (TViewExtension)componentFactory.InstantiateComponent(typeof(TViewExtension));
+
+                //Configuration?.Invoke(_component);
+                _component.Init(_renderHandle);
             }
+
+            _component.SetParameters(ParameterCollection.Empty);
         }
     }
 }
