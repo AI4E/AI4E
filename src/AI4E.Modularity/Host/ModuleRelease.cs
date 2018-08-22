@@ -166,7 +166,7 @@ namespace AI4E.Modularity.Host
             IEnumerable<ModuleDependency> IModuleMetadata.Dependencies => Dependencies.Select(p => new ModuleDependency(p.Key, p.Value));
 
             [JsonProperty("dependencies")]
-            public Dictionary<ModuleIdentifier, ModuleVersionRange> Dependencies { get; } = new Dictionary<ModuleIdentifier, ModuleVersionRange>();
+            public Dictionary<ModuleIdentifier, ModuleVersionRange> Dependencies { get; set; } = new Dictionary<ModuleIdentifier, ModuleVersionRange>();
         }
     }
 }
