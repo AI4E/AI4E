@@ -24,7 +24,7 @@ namespace AI4E.Blazor.Modularity
         private readonly AsyncLock _lock = new AsyncLock();
 
         private ISet<ModuleIdentifier> _running = new HashSet<ModuleIdentifier>();
-        private IEnumerable<ModuleIdentifier> _installationSet;
+        private IEnumerable<ModuleIdentifier> _installationSet = Enumerable.Empty<ModuleIdentifier>();
         private readonly ISet<ModuleIdentifier> _inclusiveModules = new HashSet<ModuleIdentifier>();
         private readonly ISet<ModuleIdentifier> _exclusiveModules = new HashSet<ModuleIdentifier>();
 
