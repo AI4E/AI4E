@@ -1,0 +1,13 @@
+﻿@page "/module/AdditionalPage"
+@using Microsoft.AspNetCore.Blazor.Services
+@inject IUriHelper uriHelper
+<h1>Additional page</h1>
+
+<button onclick="@Back">Back</button>
+
+@functions{
+    public void Back()
+    {
+        uriHelper.NavigateTo("/counter");
+    }
+}

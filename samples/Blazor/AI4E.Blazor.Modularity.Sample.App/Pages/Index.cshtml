@@ -1,0 +1,20 @@
+﻿@page "/"
+@using AI4E.Modularity
+@inject IInstallationSetManager installationSetManager
+@functions{
+    private async Task InstallAsync()
+    {
+        var module = new ModuleIdentifier("sample-module");
+        var installationSet = new[] { module };
+        await installationSetManager.UpdateInstallationSetAsync(installationSet, cancellation: default);
+    }
+}
+
+<h1>Hello, world!</h1>
+
+Welcome to your new app.
+
+<SurveyPrompt Title="How is Blazor working for you?" />
+
+<input type="button" onclick="@InstallAsync" value="Installieren" />
+<a href="/module/AdditionalPage">AdditionalPage</a>

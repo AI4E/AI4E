@@ -20,7 +20,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -41,8 +40,10 @@ namespace AI4E.Modularity.Module
 {
     public sealed class ModuleServer : IServer
     {
-        private readonly IRemoteMessageDispatcher _messageEndPoint;
+        private readonly IRemoteMessageDispatcher _messageDispatcher;
         private readonly IHttpDispatchStore _httpDispatchStore;
+        private readonly IMetadataAccessor _metadataAccessor;
+        private readonly IRunningModuleLookup _runningModules;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ModuleServer> _logger;
         private readonly AsyncDisposeHelper _disposeHelper;
@@ -51,17 +52,25 @@ namespace AI4E.Modularity.Module
         private readonly bool _isDebuggingConnection;
         private IAsyncDisposable _handlerRegistration;
 
-        public ModuleServer(IRemoteMessageDispatcher messageEndPoint,
+        public ModuleServer(IRemoteMessageDispatcher messageDispatcher,
                             IHttpDispatchStore httpDispatchStore,
+                            IMetadataAccessor metadataAccessor,
+                            IRunningModuleLookup runningModules,
                             IServiceProvider serviceProvider,
                             IOptions<ModuleServerOptions> optionsAccessor,
                             ILogger<ModuleServer> logger)
         {
-            if (messageEndPoint == null)
-                throw new ArgumentNullException(nameof(messageEndPoint));
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
 
             if (httpDispatchStore == null)
                 throw new ArgumentNullException(nameof(httpDispatchStore));
+
+            if (metadataAccessor == null)
+                throw new ArgumentNullException(nameof(metadataAccessor));
+
+            if (runningModules == null)
+                throw new ArgumentNullException(nameof(runningModules));
 
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
@@ -76,8 +85,10 @@ namespace AI4E.Modularity.Module
                 throw new ArgumentException("A url prefix must be specified.");
             }
 
-            _messageEndPoint = messageEndPoint;
+            _messageDispatcher = messageDispatcher;
             _httpDispatchStore = httpDispatchStore;
+            _metadataAccessor = metadataAccessor;
+            _runningModules = runningModules;
             _serviceProvider = serviceProvider;
             _logger = logger;
             _prefix = options.Prefix;
@@ -107,42 +118,49 @@ namespace AI4E.Modularity.Module
                     tasks.Add(coordinationManager.Initialization.WithCancellation(cancellationToken));
                 }
 
+
                 await Task.WhenAll(tasks);
             }
 
-            try
+            async Task DispatchDebugModuleConnected()
             {
-                await Task.WhenAll(RegisterHandlerAsync(application, cancellationToken),
-                                   _httpDispatchStore.AddRouteAsync(_messageEndPoint.LocalEndPoint, _prefix, cancellationToken));
+                var endPoint = await _messageDispatcher.GetLocalEndPointAsync(cancellationToken);
+                var metadata = await _metadataAccessor.GetMetadataAsync(cancellationToken);
+
+                await _messageDispatcher.PublishAsync(new DebugModuleConnected(endPoint, metadata.Module, metadata.Version), cancellationToken);
             }
-            catch
+
+            async Task RegisterModuleAsync()
             {
-                try
+                var endPoint = await _messageDispatcher.GetLocalEndPointAsync(cancellationToken);
+                var metadata = await _metadataAccessor.GetMetadataAsync(cancellationToken);
+                var module = metadata.Module;
+
+                var moduleRegistrationOperation = _runningModules.AddModuleAsync(module, endPoint, _prefix.Yield(), cancellationToken);
+
+                // TODO: This is obsolete and should be removed as the running-modules manager is the replacement for the http-dispatch-store.
+                var httpDispatchStoreRegistration = _httpDispatchStore.AddRouteAsync(endPoint, _prefix, cancellationToken);
+
+                await Task.WhenAll(moduleRegistrationOperation, httpDispatchStoreRegistration);
+            }
+
+            async Task RegisterHandlerAsync()
+            {
+                var handler = Provider.Create(() => new HttpRequestForwardingHandler<TContext>(application, _logger));
+                _handlerRegistration = _messageDispatcher.Register(handler);
+
+                if (_handlerRegistration is IAsyncInitialization asyncInitialization)
                 {
-                    await Task.WhenAll(UnregisterHandlerAsync(cancellation: default).HandleExceptionsAsync(_logger),
-                                       _httpDispatchStore.RemoveRouteAsync(_messageEndPoint.LocalEndPoint, _prefix, cancellation: default).HandleExceptionsAsync(_logger));
+                    await asyncInitialization.Initialization.WithCancellation(cancellationToken);
                 }
-                catch { }
-
-                throw;
             }
-        }
 
-        private async Task RegisterHandlerAsync<TContext>(IHttpApplication<TContext> application, CancellationToken cancellation)
-        {
-            var handler = Provider.Create(() => new HttpRequestForwardingHandler<TContext>(application, _logger));
-            _handlerRegistration = _messageEndPoint.Register(handler);
+            await Task.WhenAll(RegisterHandlerAsync(), RegisterModuleAsync());
 
-            if (_handlerRegistration is IAsyncInitialization asyncInitialization)
+            if (_isDebuggingConnection)
             {
-                await asyncInitialization.Initialization.WithCancellation(cancellation);
+                DispatchDebugModuleConnected().HandleExceptions(_logger);
             }
-        }
-
-        private Task UnregisterHandlerAsync(CancellationToken cancellation)
-        {
-            _handlerRegistration?.Dispose();
-            return _handlerRegistration.Disposal.WithCancellation(cancellation);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -159,8 +177,27 @@ namespace AI4E.Modularity.Module
 
         private async Task DiposeInternalAsync()
         {
-            await Task.WhenAll(UnregisterHandlerAsync(cancellation: default).HandleExceptionsAsync(_logger),
-                               _httpDispatchStore.RemoveRouteAsync(_messageEndPoint.LocalEndPoint, _prefix, cancellation: default).HandleExceptionsAsync(_logger));
+            async Task UnregisterModuleAsync()
+            {
+                var endPoint = await _messageDispatcher.GetLocalEndPointAsync(cancellation: default);
+                var metadata = await _metadataAccessor.GetMetadataAsync(cancellation: default);
+                var module = metadata.Module;
+
+                var moduleUnregistrationOperation = _runningModules.RemoveModuleAsync(module, cancellation: default);
+
+                // TODO: This is obsolete and should be removed as the running-modules manager is the replacement for the http-dispatch-store.
+                var httpDispatchStoreUnregistration = _httpDispatchStore.RemoveRouteAsync(endPoint, _prefix, cancellation: default);
+
+                await Task.WhenAll(moduleUnregistrationOperation, httpDispatchStoreUnregistration);
+            }
+
+            Task UnregisterHandlerAsync()
+            {
+                return _handlerRegistration?.DisposeAsync() ?? Task.CompletedTask;
+            }
+
+            await Task.WhenAll(UnregisterHandlerAsync().HandleExceptionsAsync(_logger),
+                               UnregisterModuleAsync().HandleExceptionsAsync(_logger));
         }
 
         #endregion

@@ -37,7 +37,7 @@ namespace AI4E.Routing
     /// Represents the route to a virtual end point. (I.e. its name)
     /// </summary>
     [Serializable]
-    public sealed class EndPointRoute : IEquatable<EndPointRoute>
+    public sealed class EndPointRoute : IEquatable<EndPointRoute> // TODO: Rename to "EndPoint"
     {
         private static readonly ConcurrentDictionary<string, EndPointRoute> _routes = new ConcurrentDictionary<string, EndPointRoute>();
 
@@ -52,7 +52,7 @@ namespace AI4E.Routing
         /// <summary>
         /// Gets a stringified version of route.
         /// </summary>
-        public string Route => _route;
+        public string Route => _route; // TODO: Rename to LogicalAddress
 
         /// <summary>
         /// Creates a new route from the specified string.

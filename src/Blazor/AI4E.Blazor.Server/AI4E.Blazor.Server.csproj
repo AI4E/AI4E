@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <DefineConstants>BLAZOR_SERVER</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI4E\AI4E.csproj" />
+    <ProjectReference Include="..\AI4E.Blazor\AI4E.Blazor.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Internal\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Blazor.Server" Version="0.5.1" />
+    <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.1.1" />
+  </ItemGroup>
+
+</Project>

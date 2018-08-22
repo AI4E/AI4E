@@ -69,5 +69,29 @@ namespace AI4E.Internal
                 return memoryStream.ToArray();
             }
         }
+
+        public static async ValueTask<MemoryStream> ReadToMemoryAsync(this Stream stream, CancellationToken cancellation)
+        {
+            if (stream is MemoryStream result)
+            {
+                return result;
+            }
+
+            if (stream.CanSeek)
+            {
+                if (stream.Length > int.MaxValue)
+                    throw new InvalidOperationException("The streams size exceeds the readable limit.");
+
+                result = new MemoryStream(checked((int)stream.Length));
+            }
+            else
+            {
+                result = new MemoryStream();
+            }
+
+            await stream.CopyToAsync(result, bufferSize: 1024, cancellation);
+            result.Position = 0;
+            return result;
+        }
     }
 }

@@ -14,8 +14,13 @@ namespace AI4E.AspNetCore
                 throw new ArgumentNullException(nameof(webhost));
 
             var serviceProvider = webhost.Services;
-            var applicationServiceManager = serviceProvider.GetRequiredService<ApplicationServiceManager>();
-            await applicationServiceManager.InitializeApplicationServicesAsync(serviceProvider, cancellation);
+            var applicationServiceManager = serviceProvider.GetService<ApplicationServiceManager>();
+
+            if (applicationServiceManager != null)
+            {
+                await applicationServiceManager.InitializeApplicationServicesAsync(serviceProvider, cancellation);
+            }
+
             return webhost;
         }
     }

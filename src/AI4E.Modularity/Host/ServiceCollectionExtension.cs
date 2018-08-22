@@ -56,6 +56,8 @@ namespace AI4E.Modularity.Host
                 // TODO: Add Debug port conditionally.
             });
 
+            services.AddSingleton<IRunningModuleLookup, RunningModuleLookup>();
+
             return new ModularityBuilder(services);
         }
 

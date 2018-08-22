@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Internal;
 using Newtonsoft.Json;
 
 namespace AI4E.Modularity
@@ -17,34 +18,10 @@ namespace AI4E.Modularity
 
             using (stream)
             {
-                var readableStream = await GetReadableStreamAsync(stream, cancellation);
+                var readableStream = await stream.ReadToMemoryAsync(cancellation);
 
                 return ReadMetadataInternal(readableStream);
             }
-        }
-
-        private async ValueTask<MemoryStream> GetReadableStreamAsync(Stream stream, CancellationToken cancellation)
-        {
-            if (stream is MemoryStream result)
-            {
-                return result;
-            }
-
-            if (stream.CanSeek)
-            {
-                if (stream.Length > int.MaxValue)
-                    throw new InvalidOperationException("Unable to read module metadata. The streams size exceeds the readable limit.");
-
-                result = new MemoryStream(checked((int)stream.Length));
-            }
-            else
-            {
-                result = new MemoryStream();
-            }
-
-            await stream.CopyToAsync(result, bufferSize: 1024, cancellation);
-            result.Position = 0;
-            return result;
         }
 
         private IModuleMetadata ReadMetadataInternal(MemoryStream stream)

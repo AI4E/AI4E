@@ -3,12 +3,13 @@ using System.Linq;
 using System.Text;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Coordination
+namespace AI4E.Internal
 {
     internal static class EntryPathHelper
     {
         private const char _seperatorChar = '/';
         private const string _seperatorString = "/";
+        private const string _sessionSeperatorString = "->";
         private static readonly char[] _pathSeperators = { _seperatorChar, '\\' };
 
         public static string NormalizePath(string path)
@@ -95,6 +96,71 @@ namespace AI4E.Coordination
             }
 
             return result;
+        }
+
+        // Gets the entry name that is roughly {path}->{session}
+        public static string GetEntryName(string path, string session)
+        {
+            var resultsBuilder = new StringBuilder(path.Length +
+                                                   session.Length +
+                                                   EscapeHelper.CountCharsToEscape(path) +
+                                                   EscapeHelper.CountCharsToEscape(session) +
+                                                   1);
+            resultsBuilder.Append(path);
+
+            EscapeHelper.Escape(resultsBuilder, 0);
+
+            var sepIndex = resultsBuilder.Length;
+
+            resultsBuilder.Append(' ');
+            resultsBuilder.Append(' ');
+
+            resultsBuilder.Append(session);
+
+            EscapeHelper.Escape(resultsBuilder, sepIndex + 2);
+
+            // We need to ensure that the created entry is unique.
+            resultsBuilder[sepIndex] = _sessionSeperatorString[0];
+            resultsBuilder[sepIndex + 1] = _sessionSeperatorString[1];
+
+            return resultsBuilder.ToString();
+        }
+
+        // TODO: Rename
+        public static string ExtractRoute(string path)
+        {
+            var nameIndex = path.LastIndexOfAny(_pathSeperators);
+            var index = path.IndexOf(_sessionSeperatorString);
+
+            if (index == -1)
+            {
+                // TODO: Log warning
+                return null;
+            }
+
+            var resultBuilder = new StringBuilder(path, startIndex: nameIndex + 1, length: index - nameIndex - 1, capacity: index);
+
+            EscapeHelper.Unescape(resultBuilder, startIndex: 0);
+
+            return resultBuilder.ToString();
+        }
+
+        // TODO: Rename
+        public static string ExtractSession(string path)
+        {
+            var index = path.IndexOf(_sessionSeperatorString);
+
+            if (index == -1)
+            {
+                // TODO: Log warning
+                return null;
+            }
+
+            var resultBuilder = new StringBuilder(path, startIndex: index+2, length: path.Length - index - 2, capacity: path.Length - index - 2);
+
+            EscapeHelper.Unescape(resultBuilder, startIndex: 0);
+
+            return resultBuilder.ToString();
         }
 
         // Inclusive segment start

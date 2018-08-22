@@ -168,11 +168,18 @@ namespace AI4E
         }
 
         public static bool IsSuccess<TResult>(this IDispatchResult dispatchResult, out TResult result)
-            where TResult : class
         {
             if (dispatchResult.IsSuccess)
             {
-                result = (dispatchResult as IDispatchResult<TResult>)?.Result;
+                if (dispatchResult is IDispatchResult<TResult> typedDispatchResult)
+                {
+                    result = typedDispatchResult.Result;
+                }
+                else
+                {
+                    result = default;
+                }
+
                 return true;
             }
 
@@ -186,7 +193,6 @@ namespace AI4E
         }
 
         public static bool IsSuccessWithResult<TResult>(this IDispatchResult dispatchResult, out TResult result)
-            where TResult : class
         {
             if (dispatchResult.IsSuccess && dispatchResult is IDispatchResult<TResult> typedDispatchResult)
             {
@@ -199,7 +205,6 @@ namespace AI4E
         }
 
         public static IEnumerable<TResult> GetResults<TResult>(this IDispatchResult dispatchResult, bool throwOnFailure)
-            where TResult : class
         {
             if (dispatchResult.IsAggregateResult(out var aggregateDispatchResult))
             {
