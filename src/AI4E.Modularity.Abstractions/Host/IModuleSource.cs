@@ -25,15 +25,16 @@ namespace AI4E.Modularity.Host
         Task<IEnumerable<ModuleReleaseIdentifier>> GetAvailableAsync(string searchPhrase,
                                                                      bool includePreReleases,
                                                                      IMetadataReader moduleMetadataReader,
-                                                                     CancellationToken cancellation);
+                                                                     CancellationToken cancellation = default);
 
-        ValueTask<IModuleMetadata> GetMetadataAsync(ModuleReleaseIdentifier module,
+        ValueTask<IModuleMetadata> GetMetadataAsync(ModuleIdentifier module,
+                                                    ModuleVersion version,
                                                     IMetadataReader moduleMetadataReader,
-                                                    CancellationToken cancellation);
+                                                    CancellationToken cancellation = default);
 
         ValueTask<DirectoryInfo> ExtractAsync(DirectoryInfo directory,
                                               ModuleReleaseIdentifier module,
                                               IMetadataReader moduleMetadataReader,
-                                              CancellationToken cancellation);
+                                              CancellationToken cancellation = default);
     }
 }

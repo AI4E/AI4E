@@ -242,17 +242,23 @@ namespace AI4E.Modularity.Host
             }
         }
 
-        public async ValueTask<IModuleMetadata> GetMetadataAsync(ModuleReleaseIdentifier module,
+        public async ValueTask<IModuleMetadata> GetMetadataAsync(ModuleIdentifier module,
+                                                                 ModuleVersion version,
                                                                  IMetadataReader moduleMetadataReader,
                                                                  CancellationToken cancellation)
         {
             if (module == default)
                 throw new ArgumentDefaultException(nameof(module));
 
+            if (version == default)
+                throw new ArgumentDefaultException(nameof(version));
+
+            var moduleRelease = new ModuleReleaseIdentifier(module, version);
+
             if (moduleMetadataReader == null)
                 throw new ArgumentNullException(nameof(moduleMetadataReader));
 
-            if (TryGetCacheEntry(module, out var cacheEntry))
+            if (TryGetCacheEntry(moduleRelease, out var cacheEntry))
             {
                 return cacheEntry.Metadata;
             }
@@ -265,9 +271,9 @@ namespace AI4E.Modularity.Host
 
             try
             {
-                files = Directory.EnumerateFiles(_location.Location, $"{module.Module}*.aep", SearchOption.AllDirectories);
+                files = Directory.EnumerateFiles(_location.Location, $"{module}*.aep", SearchOption.AllDirectories);
 
-                if (await GetMatchingMetadata(module, files, moduleMetadataReader, cancellation) is var matching &&
+                if (await GetMatchingMetadata(moduleRelease, files, moduleMetadataReader, cancellation) is var matching &&
                     matching.metadata != null)
                 {
                     return matching.metadata;
@@ -286,7 +292,7 @@ namespace AI4E.Modularity.Host
                 files = Directory.EnumerateFiles(_location.Location, "*.aep", SearchOption.AllDirectories)
                                   .Except(checkedFiles);
 
-                return (await GetMatchingMetadata(module, files, moduleMetadataReader, cancellation)).metadata;
+                return (await GetMatchingMetadata(moduleRelease, files, moduleMetadataReader, cancellation)).metadata;
             }
             catch (DirectoryNotFoundException) // The directory was deleted concurrently.
             {
