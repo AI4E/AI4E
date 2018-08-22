@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
     <Compile Include="..\..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
     <Compile Include="..\AI4E.Blazor.ApplicationParts\ApplicationAssembliesProvider.cs" Link="ApplicationParts\ApplicationAssembliesProvider.cs" />
     <Compile Include="..\AI4E.Blazor.ApplicationParts\ApplicationPartManagerExtension.cs" Link="ApplicationParts\ApplicationPartManagerExtension.cs" />
