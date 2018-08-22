@@ -135,7 +135,7 @@ namespace AI4E.Modularity.Host
 
             string PreprocessSearchPhrasePart(string part)
             {
-                var resultBuilder = new StringBuilder(part);
+                var resultBuilder = new StringBuilder();
 
                 for (var i = 0; i < part.Length; i++)
                 {
@@ -178,7 +178,7 @@ namespace AI4E.Modularity.Host
 
             StringBuilder AppendPattern(StringBuilder regexBuilder, string subPattern)
             {
-                if (regexBuilder.Length == 0)
+                if (regexBuilder.Length != 0)
                 {
                     regexBuilder.Append('|');
                 }
@@ -187,7 +187,7 @@ namespace AI4E.Modularity.Host
                 regexBuilder.Append('?');
                 regexBuilder.Append(':');
                 regexBuilder.Append(subPattern);
-                regexBuilder.Append('(');
+                regexBuilder.Append(')');
 
                 return regexBuilder;
             }
