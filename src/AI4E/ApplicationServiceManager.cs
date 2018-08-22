@@ -27,7 +27,7 @@ namespace AI4E
 
                 foreach (var descriptor in descriptors)
                 {
-                    tasks.Add(descriptor.ServiceInitialization(service));
+                    tasks.Add(descriptor.ServiceInitialization(service, serviceProvider));
                 }
             }
 
@@ -37,7 +37,7 @@ namespace AI4E
 
     public sealed class ApplicationServiceDescriptor
     {
-        public ApplicationServiceDescriptor(Type serviceType, Func<object, Task> serviceInitialization)
+        public ApplicationServiceDescriptor(Type serviceType, Func<object, IServiceProvider, Task> serviceInitialization)
         {
             if (serviceType == null)
                 throw new ArgumentNullException(nameof(serviceType));
@@ -50,12 +50,12 @@ namespace AI4E
         }
 
         public Type ServiceType { get; }
-        public Func<object, Task> ServiceInitialization { get; }
+        public Func<object, IServiceProvider, Task> ServiceInitialization { get; }
     }
 
     public static class ApplicationServiceManagerExtension
     {
-        public static void AddService(this ApplicationServiceManager applicationServiceManager, Type serviceType, Func<object, Task> serviceInitialization)
+        public static void AddService(this ApplicationServiceManager applicationServiceManager, Type serviceType, Func<object, IServiceProvider, Task> serviceInitialization)
         {
             if (applicationServiceManager == null)
                 throw new ArgumentNullException(nameof(applicationServiceManager));
@@ -69,7 +69,7 @@ namespace AI4E
             applicationServiceManager.ApplicationServiceDescriptors.Add(new ApplicationServiceDescriptor(serviceType, serviceInitialization));
         }
 
-        public static void AddService(this ApplicationServiceManager applicationServiceManager, Type serviceType, Action<object> serviceInitialization)
+        public static void AddService(this ApplicationServiceManager applicationServiceManager, Type serviceType, Action<object, IServiceProvider> serviceInitialization)
         {
             if (applicationServiceManager == null)
                 throw new ArgumentNullException(nameof(applicationServiceManager));
@@ -80,9 +80,9 @@ namespace AI4E
             if (serviceInitialization == null)
                 throw new ArgumentNullException(nameof(serviceInitialization));
 
-            Task ServiceInitialization(object service)
+            Task ServiceInitialization(object service, IServiceProvider serviceProvider)
             {
-                serviceInitialization(service);
+                serviceInitialization(service, serviceProvider);
 
                 return Task.CompletedTask;
             }
@@ -98,7 +98,7 @@ namespace AI4E
             if (serviceType == null)
                 throw new ArgumentNullException(nameof(serviceType));
 
-            Task ServiceInitialization(object service)
+            Task ServiceInitialization(object service, IServiceProvider serviceProvider)
             {
                 if (service is IAsyncInitialization asyncInitialization)
                 {
@@ -111,7 +111,7 @@ namespace AI4E
             applicationServiceManager.ApplicationServiceDescriptors.Add(new ApplicationServiceDescriptor(serviceType, ServiceInitialization));
         }
 
-        public static void AddService<TService>(this ApplicationServiceManager applicationServiceManager, Func<TService, Task> serviceInitialization)
+        public static void AddService<TService>(this ApplicationServiceManager applicationServiceManager, Func<TService, IServiceProvider, Task> serviceInitialization)
         {
             if (applicationServiceManager == null)
                 throw new ArgumentNullException(nameof(applicationServiceManager));
@@ -119,15 +119,15 @@ namespace AI4E
             if (serviceInitialization == null)
                 throw new ArgumentNullException(nameof(serviceInitialization));
 
-            Task ServiceInitialization(object service)
+            Task ServiceInitialization(object service, IServiceProvider serviceProvider)
             {
-                return serviceInitialization((TService)service);
+                return serviceInitialization((TService)service, serviceProvider);
             }
 
             applicationServiceManager.ApplicationServiceDescriptors.Add(new ApplicationServiceDescriptor(typeof(TService), ServiceInitialization));
         }
 
-        public static void AddService<TService>(this ApplicationServiceManager applicationServiceManager, Action<TService> serviceInitialization)
+        public static void AddService<TService>(this ApplicationServiceManager applicationServiceManager, Action<TService, IServiceProvider> serviceInitialization)
         {
             if (applicationServiceManager == null)
                 throw new ArgumentNullException(nameof(applicationServiceManager));
@@ -135,9 +135,9 @@ namespace AI4E
             if (serviceInitialization == null)
                 throw new ArgumentNullException(nameof(serviceInitialization));
 
-            Task ServiceInitialization(object service)
+            Task ServiceInitialization(object service, IServiceProvider serviceProvider)
             {
-                serviceInitialization((TService)service);
+                serviceInitialization((TService)service, serviceProvider);
                 return Task.CompletedTask;
             }
 
@@ -149,7 +149,7 @@ namespace AI4E
             if (applicationServiceManager == null)
                 throw new ArgumentNullException(nameof(applicationServiceManager));
 
-            Task ServiceInitialization(object service)
+            Task ServiceInitialization(object service, IServiceProvider serviceProvider)
             {
                 var s = ((TService)service);
 
