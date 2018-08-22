@@ -40,7 +40,7 @@ namespace AI4E.Modularity.Module
 {
     public sealed class ModuleServer : IServer
     {
-        private readonly IRemoteMessageDispatcher _messageEndPoint;
+        private readonly IRemoteMessageDispatcher _messageDispatcher;
         private readonly IHttpDispatchStore _httpDispatchStore;
         private readonly IMetadataAccessor _metadataAccessor;
         private readonly IRunningModuleLookup _runningModules;
@@ -52,7 +52,7 @@ namespace AI4E.Modularity.Module
         private readonly bool _isDebuggingConnection;
         private IAsyncDisposable _handlerRegistration;
 
-        public ModuleServer(IRemoteMessageDispatcher messageEndPoint,
+        public ModuleServer(IRemoteMessageDispatcher messageDispatcher,
                             IHttpDispatchStore httpDispatchStore,
                             IMetadataAccessor metadataAccessor,
                             IRunningModuleLookup runningModules,
@@ -60,8 +60,8 @@ namespace AI4E.Modularity.Module
                             IOptions<ModuleServerOptions> optionsAccessor,
                             ILogger<ModuleServer> logger)
         {
-            if (messageEndPoint == null)
-                throw new ArgumentNullException(nameof(messageEndPoint));
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
 
             if (httpDispatchStore == null)
                 throw new ArgumentNullException(nameof(httpDispatchStore));
@@ -85,7 +85,7 @@ namespace AI4E.Modularity.Module
                 throw new ArgumentException("A url prefix must be specified.");
             }
 
-            _messageEndPoint = messageEndPoint;
+            _messageDispatcher = messageDispatcher;
             _httpDispatchStore = httpDispatchStore;
             _metadataAccessor = metadataAccessor;
             _runningModules = runningModules;
@@ -118,12 +118,21 @@ namespace AI4E.Modularity.Module
                     tasks.Add(coordinationManager.Initialization.WithCancellation(cancellationToken));
                 }
 
+
                 await Task.WhenAll(tasks);
+            }
+
+            async Task DispatchDebugModuleConnected()
+            {
+                var endPoint = await _messageDispatcher.GetLocalEndPointAsync(cancellationToken);
+                var metadata = await _metadataAccessor.GetMetadataAsync(cancellationToken);
+
+                await _messageDispatcher.PublishAsync(new DebugModuleConnected(endPoint, metadata.Module, metadata.Version), cancellationToken);
             }
 
             async Task RegisterModuleAsync()
             {
-                var endPoint = await _messageEndPoint.GetLocalEndPointAsync(cancellationToken);
+                var endPoint = await _messageDispatcher.GetLocalEndPointAsync(cancellationToken);
                 var metadata = await _metadataAccessor.GetMetadataAsync(cancellationToken);
                 var module = metadata.Module;
 
@@ -138,7 +147,7 @@ namespace AI4E.Modularity.Module
             async Task RegisterHandlerAsync()
             {
                 var handler = Provider.Create(() => new HttpRequestForwardingHandler<TContext>(application, _logger));
-                _handlerRegistration = _messageEndPoint.Register(handler);
+                _handlerRegistration = _messageDispatcher.Register(handler);
 
                 if (_handlerRegistration is IAsyncInitialization asyncInitialization)
                 {
@@ -147,6 +156,11 @@ namespace AI4E.Modularity.Module
             }
 
             await Task.WhenAll(RegisterHandlerAsync(), RegisterModuleAsync());
+
+            if (_isDebuggingConnection)
+            {
+                DispatchDebugModuleConnected().HandleExceptions(_logger);
+            }
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -165,7 +179,7 @@ namespace AI4E.Modularity.Module
         {
             async Task UnregisterModuleAsync()
             {
-                var endPoint = await _messageEndPoint.GetLocalEndPointAsync(cancellation: default);
+                var endPoint = await _messageDispatcher.GetLocalEndPointAsync(cancellation: default);
                 var metadata = await _metadataAccessor.GetMetadataAsync(cancellation: default);
                 var module = metadata.Module;
 
