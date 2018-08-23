@@ -37,6 +37,8 @@ namespace AI4E.Routing
 {
     public sealed class MessageCoder<TAddress> : IMessageCoder<TAddress>
     {
+        private static readonly byte[] _emptyByteArray = new byte[0];
+
         private readonly IRouteSerializer _routeSerializer;
         private readonly IAddressConversion<TAddress> _addressSerializer;
 
@@ -106,10 +108,10 @@ namespace AI4E.Routing
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            var serializedLocalAddress = localAddress == null || localAddress.Equals(default) ? new byte[0] : _addressSerializer.SerializeAddress(localAddress);
-            var serializedLocalRoute = localEndPoint == null ? new byte[0] : _routeSerializer.SerializeRoute(localEndPoint);
-            var serializedRemoteAddress = remoteAddress == null || remoteAddress.Equals(default) ? new byte[0] : _addressSerializer.SerializeAddress(remoteAddress);
-            var serializedRemoteRoute = remoteEndPoint == null ? new byte[0] : _routeSerializer.SerializeRoute(remoteEndPoint);
+            var serializedLocalAddress = localAddress == null || localAddress.Equals(default) ? _emptyByteArray : _addressSerializer.SerializeAddress(localAddress);
+            var serializedLocalRoute = localEndPoint == null ? _emptyByteArray : _routeSerializer.SerializeRoute(localEndPoint);
+            var serializedRemoteAddress = remoteAddress == null || remoteAddress.Equals(default) ? _emptyByteArray : _addressSerializer.SerializeAddress(remoteAddress);
+            var serializedRemoteRoute = remoteEndPoint == null ? _emptyByteArray : _routeSerializer.SerializeRoute(remoteEndPoint);
             var frameIdx = message.FrameIndex;
 
             try

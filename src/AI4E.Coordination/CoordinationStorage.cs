@@ -153,7 +153,7 @@ namespace AI4E.Coordination
             public string[] Childs { get; set; }
             public string EphemeralOwner { get; set; }
 
-            ImmutableArray<byte> IStoredEntry.Value => Value.ToImmutableArray();
+            ReadOnlyMemory<byte> IStoredEntry.Value => Value;
             ImmutableArray<string> IStoredEntry.ReadLocks => ReadLocks.ToImmutableArray();
             ImmutableArray<string> IStoredEntry.Childs => Childs.ToImmutableArray();
 

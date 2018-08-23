@@ -132,7 +132,7 @@ namespace AI4E.Modularity
             Assert(entry != null);
 
             // We take the entry that was registered first. This is done in order that a vitual end-point cannot override a route for an already existing end-point.
-            var e = await entry.Childs.OrderBy(p => p.CreationTime).FirstOrDefault(cancellation);
+            var e = await entry.GetChildrenEntries().OrderBy(p => p.CreationTime).FirstOrDefault(cancellation);
 
             if (e != null)
             {

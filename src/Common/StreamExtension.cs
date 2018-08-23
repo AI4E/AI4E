@@ -28,6 +28,8 @@ namespace AI4E.Internal
 {
     internal static class StreamExtension
     {
+        private static readonly byte[] _emptyArray = new byte[0];
+
         public static async Task ReadExactAsync(this Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellation)
         {
             if (stream == null)
@@ -54,7 +56,7 @@ namespace AI4E.Internal
 
             if (stream == Stream.Null)
             {
-                return new byte[0];
+                return _emptyArray;
             }
 
             if (stream is MemoryStream memoryStream)

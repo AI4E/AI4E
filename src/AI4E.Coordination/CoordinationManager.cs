@@ -436,7 +436,7 @@ namespace AI4E.Coordination
 
         #region Initialization
 
-        public async Task<string> GetSessionAsync(CancellationToken cancellation = default)
+        public async ValueTask<string> GetSessionAsync(CancellationToken cancellation = default)
         {
             var (session, _) = await _initializationHelper.Initialization.WithCancellation(cancellation);
 
@@ -536,8 +536,7 @@ namespace AI4E.Coordination
 
         #region Read entry
 
-        // TODO: Return ValueTask
-        public async Task<IEntry> GetAsync(string path, CancellationToken cancellation = default)
+        public async ValueTask<IEntry> GetAsync(string path, CancellationToken cancellation = default)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -604,13 +603,10 @@ namespace AI4E.Coordination
 
         #region Create entry
 
-        public async Task<IEntry> CreateAsync(string path, byte[] value, EntryCreationModes modes = default, CancellationToken cancellation = default)
+        public async ValueTask<IEntry> CreateAsync(string path, ReadOnlyMemory<byte> value, EntryCreationModes modes = default, CancellationToken cancellation = default)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
-
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
 
             if (modes < 0 || modes > EntryCreationModes.Ephemeral)
                 throw new ArgumentOutOfRangeException(nameof(modes), $"The argument must be one or a combination of the values defined in '{nameof(EntryCreationModes)}'.");
@@ -657,14 +653,10 @@ namespace AI4E.Coordination
             }
         }
 
-        // TODO: Return ValueTask
-        public async Task<IEntry> GetOrCreateAsync(string path, byte[] value, EntryCreationModes modes = default, CancellationToken cancellation = default)
+        public async ValueTask<IEntry> GetOrCreateAsync(string path, ReadOnlyMemory<byte> value, EntryCreationModes modes = default, CancellationToken cancellation = default)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
-
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
 
             if (modes < 0 || modes > EntryCreationModes.Ephemeral)
                 throw new ArgumentOutOfRangeException(nameof(modes), $"The argument must be one or a combination of the values defined in '{nameof(EntryCreationModes)}'.");
@@ -703,8 +695,6 @@ namespace AI4E.Coordination
 
                 Assert(entry != null);
 
-                // TODO: Throw if the entry did already exists but with other creation-modes than specified?
-
                 await AddToCacheAsync(entry,
                                       comparandVersion: default,
                                       cancellation);
@@ -713,22 +703,21 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task<(IStoredEntry entry, bool created)> CreateInternalAsync(string normalizedPath,
-                                                             string parentPath,
-                                                             string name,
-                                                             byte[] value,
-                                                             string session,
-                                                             EntryCreationModes modes,
-                                                             bool releaseLock,
-                                                             CancellationToken cancellation)
+        private async ValueTask<(IStoredEntry entry, bool created)> CreateInternalAsync(string normalizedPath,
+                                                                                        string parentPath,
+                                                                                        string name,
+                                                                                        ReadOnlyMemory<byte> value,
+                                                                                        string session,
+                                                                                        EntryCreationModes modes,
+                                                                                        bool releaseLock,
+                                                                                        CancellationToken cancellation)
         {
             Assert(normalizedPath != null);
             Assert(name != null);
-            Assert(value != null);
 
             Assert(modes >= 0 && modes <= EntryCreationModes.Ephemeral);
 
-            var entry = _storedEntryManager.Create(normalizedPath, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.ToImmutableArray());
+            var entry = _storedEntryManager.Create(normalizedPath, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.Span);
             var parent = (parentPath != null) ? await _storage.GetEntryAsync(parentPath, cancellation) : null;
 
             Assert(entry != null);
@@ -816,7 +805,7 @@ namespace AI4E.Coordination
                     var parentPath = EntryPathHelper.GetParentPath(normalizedPath, out var name, normalize: false);
                     bool created;
 
-                    (parent, created) = await CreateInternalAsync(normalizedPath, parentPath, name, new byte[0], session, EntryCreationModes.Default, releaseLock: false, cancellation);
+                    (parent, created) = await CreateInternalAsync(normalizedPath, parentPath, name, ReadOnlyMemory<byte>.Empty, session, EntryCreationModes.Default, releaseLock: false, cancellation);
 
                     // The parent does already exist.
                     if (!created)
@@ -907,7 +896,7 @@ namespace AI4E.Coordination
 
         #region Delete entry
 
-        public async Task<int> DeleteAsync(string path, int version, bool recursive, CancellationToken cancellation = default)
+        public async ValueTask<int> DeleteAsync(string path, int version, bool recursive, CancellationToken cancellation = default)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -1033,13 +1022,10 @@ namespace AI4E.Coordination
 
         #region Set entry value
 
-        public async Task<int> SetValueAsync(string path, byte[] value, int version, CancellationToken cancellation = default)
+        public async ValueTask<int> SetValueAsync(string path, ReadOnlyMemory<byte> value, int version, CancellationToken cancellation = default)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
-
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
 
             if (version < 0)
                 throw new ArgumentOutOfRangeException(nameof(version));
@@ -1075,7 +1061,7 @@ namespace AI4E.Coordination
                         return entry.Version;
                     }
 
-                    var result = await _storage.UpdateEntryAsync(entry, _storedEntryManager.SetValue(entry, value.ToImmutableArray()), combinedCancellationSource.Token);
+                    var result = await _storage.UpdateEntryAsync(entry, _storedEntryManager.SetValue(entry, value.Span), combinedCancellationSource.Token);
 
                     // We are holding the exclusive lock => No one else can alter the entry.
                     // The only exception is that out session terminates.
@@ -1644,16 +1630,16 @@ namespace AI4E.Coordination
 
         private sealed class Entry : IEntry
         {
-            private readonly CoordinationManager<TAddress> _coordinationManager;
+            // TODO: This gets boxed every time, it gets accessed via ChildNames
             private readonly ImmutableArray<string> _children;
             private readonly Lazy<(string parentPath, string name)> _pathProperties;
 
-            public Entry(CoordinationManager<TAddress> coordinationManager, IStoredEntry entry)
+            public Entry(ICoordinationManager coordinationManager, IStoredEntry entry)
             {
                 Assert(coordinationManager != null);
                 Assert(entry != null);
 
-                _coordinationManager = coordinationManager;
+                CoordinationManager = coordinationManager;
 
                 Path = entry.Path;
                 Version = entry.Version;
@@ -1662,7 +1648,6 @@ namespace AI4E.Coordination
                 Value = entry.Value;
                 _children = entry.Childs;
 
-                Childs = new ChildrenEnumerable(this);
                 _pathProperties = new Lazy<(string parentPath, string name)>(() =>
                 {
                     var parentPath = EntryPathHelper.GetParentPath(Path, out var name, normalize: false);
@@ -1681,87 +1666,13 @@ namespace AI4E.Coordination
 
             public DateTime LastWriteTime { get; }
 
-            public IReadOnlyList<byte> Value { get; }
+            public ReadOnlyMemory<byte> Value { get; }
 
-            // This is needed for proxying (see CoordinationManagerSkeleton)
-            public IReadOnlyList<string> ChildNames => _children;
-
-            public IAsyncEnumerable<IEntry> Childs { get; }
-
-            public Task<IEntry> GetParentAsync(CancellationToken cancellation)
-            {
-                return _coordinationManager.GetAsync(ParentPath, cancellation);
-            }
+            public IReadOnlyList<string> Children { get; }
 
             public string ParentPath => _pathProperties.Value.parentPath;
 
-            private sealed class ChildrenEnumerable : IAsyncEnumerable<IEntry>
-            {
-                private readonly Entry _entry;
-
-                public ChildrenEnumerable(Entry entry)
-                {
-                    Assert(entry != null);
-
-                    _entry = entry;
-                }
-
-                public IAsyncEnumerator<IEntry> GetEnumerator()
-                {
-                    return new ChildrenEnumerator(_entry);
-                }
-            }
-
-            private sealed class ChildrenEnumerator : IAsyncEnumerator<IEntry>
-            {
-                private readonly Entry _entry;
-
-                private IEntry _current = default;
-                private int _currentIndex = -1;
-
-                public ChildrenEnumerator(Entry entry)
-                {
-                    Assert(entry != null);
-
-                    _entry = entry;
-                }
-
-                public async Task<bool> MoveNext(CancellationToken cancellationToken)
-                {
-                    IEntry next;
-
-                    do
-                    {
-                        string child;
-
-                        do
-                        {
-                            var index = ++_currentIndex;
-
-                            if (index >= _entry._children.Length)
-                            {
-                                _current = default;
-                                return false;
-                            }
-
-                            child = _entry._children[index];
-                        }
-                        while (child == null);
-
-                        var childFullName = EntryPathHelper.GetChildPath(_entry.Path, child, normalize: false);
-
-                        next = await _entry._coordinationManager.GetAsync(childFullName, cancellationToken);
-                    }
-                    while (next == null);
-
-                    _current = next;
-                    return true;
-                }
-
-                public IEntry Current => _current;
-
-                public void Dispose() { }
-            }
+            public ICoordinationManager CoordinationManager { get; }
         }
 
         private sealed class CacheEntry

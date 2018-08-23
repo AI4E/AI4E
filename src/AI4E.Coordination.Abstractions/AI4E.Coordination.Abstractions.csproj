@@ -6,8 +6,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\Common\EntryPathHelper.cs" Link="Internal\EntryPathHelper.cs" />
+    <Compile Include="..\Common\EscapeHelper.cs" Link="Internal\EscapeHelper.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
     <PackageReference Include="System.Interactive.Async" Version="3.2.0" />
+    <PackageReference Include="System.Memory" Version="4.5.1" />
   </ItemGroup>
 
   <ItemGroup>

@@ -66,7 +66,7 @@ namespace AI4E.Modularity.Debug
 
         #endregion
 
-        public async Task<IEntry> CreateAsync(string path, byte[] value, EntryCreationModes modes = EntryCreationModes.Default, CancellationToken cancellation = default)
+        public async ValueTask<IEntry> CreateAsync(string path, ReadOnlyMemory<byte> value, EntryCreationModes modes = EntryCreationModes.Default, CancellationToken cancellation = default)
         {
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
@@ -75,16 +75,16 @@ namespace AI4E.Modularity.Debug
                 var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
                 var proxy = await GetProxyAsync(cancelledOrDisposed);
 
-                if (!((await proxy.ExecuteAsync(p => p.CreateAsync(path, value, modes, cancelledOrDisposed))) is CoordinationManagerSkeleton.Entry entry))
+                if (!((await proxy.ExecuteAsync(p => p.CreateAsync(path, value.ToArray(), modes, cancelledOrDisposed))) is CoordinationManagerSkeleton.Entry entry))
                     return null;
 
-                entry.SetProxy(proxy);
+                entry.SetCoordinationManagerStub(this, proxy);
 
                 return entry;
             }
         }
 
-        public async Task<IEntry> GetOrCreateAsync(string path, byte[] value, EntryCreationModes modes = EntryCreationModes.Default, CancellationToken cancellation = default)
+        public async ValueTask<IEntry> GetOrCreateAsync(string path, ReadOnlyMemory<byte> value, EntryCreationModes modes = EntryCreationModes.Default, CancellationToken cancellation = default)
         {
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
@@ -93,16 +93,16 @@ namespace AI4E.Modularity.Debug
                 var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
                 var proxy = await GetProxyAsync(cancelledOrDisposed);
 
-                if (!((await proxy.ExecuteAsync(p => p.GetOrCreateAsync(path, value, modes, cancelledOrDisposed))) is CoordinationManagerSkeleton.Entry entry))
+                if (!((await proxy.ExecuteAsync(p => p.GetOrCreateAsync(path, value.ToArray(), modes, cancelledOrDisposed))) is CoordinationManagerSkeleton.Entry entry))
                     return null;
 
-                entry.SetProxy(proxy);
+                entry.SetCoordinationManagerStub(this, proxy);
 
                 return entry;
             }
         }
 
-        public async Task<IEntry> GetAsync(string path, CancellationToken cancellation = default)
+        public async ValueTask<IEntry> GetAsync(string path, CancellationToken cancellation = default)
         {
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
@@ -114,13 +114,13 @@ namespace AI4E.Modularity.Debug
                 if (!((await proxy.ExecuteAsync(p => p.GetAsync(path, cancelledOrDisposed))) is CoordinationManagerSkeleton.Entry entry))
                     return null;
 
-                entry.SetProxy(proxy);
+                entry.SetCoordinationManagerStub(this, proxy);
 
                 return entry;
             }
         }
 
-        public async Task<int> SetValueAsync(string path, byte[] value, int version = 0, CancellationToken cancellation = default)
+        public async ValueTask<int> SetValueAsync(string path, ReadOnlyMemory<byte> value, int version = 0, CancellationToken cancellation = default)
         {
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
@@ -129,11 +129,11 @@ namespace AI4E.Modularity.Debug
                 var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
                 var proxy = await GetProxyAsync(cancelledOrDisposed);
 
-                return await proxy.ExecuteAsync(p => p.SetValueAsync(path, value, version, cancelledOrDisposed));
+                return await proxy.ExecuteAsync(p => p.SetValueAsync(path, value.ToArray(), version, cancelledOrDisposed));
             }
         }
 
-        public async Task<int> DeleteAsync(string path, int version = 0, bool recursive = false, CancellationToken cancellation = default)
+        public async ValueTask<int> DeleteAsync(string path, int version = 0, bool recursive = false, CancellationToken cancellation = default)
         {
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
@@ -146,7 +146,7 @@ namespace AI4E.Modularity.Debug
             }
         }
 
-        public async Task<string> GetSessionAsync(CancellationToken cancellation = default)
+        public async ValueTask<string> GetSessionAsync(CancellationToken cancellation = default)
         {
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {

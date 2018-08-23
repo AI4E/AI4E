@@ -168,7 +168,7 @@ namespace AI4E.Modularity
 
             Assert(entry != null);
 
-            return await entry.Childs.OrderBy(p => p.CreationTime).Select(p => EndPointRoute.CreateRoute(EntryPathHelper.ExtractRoute(p.Path))).ToList();
+            return await entry.GetChildrenEntries().OrderBy(p => p.CreationTime).Select(p => EndPointRoute.CreateRoute(EntryPathHelper.ExtractRoute(p.Path))).ToList();
         }
 
         public async ValueTask<IEnumerable<string>> GetPrefixesAsync(ModuleIdentifier module, CancellationToken cancellation)
@@ -210,7 +210,7 @@ namespace AI4E.Modularity
                 return result;
             }
 
-            return await entry.Childs.SelectMany(p => GetPrefixes(p).ToAsyncEnumerable()).Distinct().ToList();
+            return await entry.GetChildrenEntries().SelectMany(p => GetPrefixes(p).ToAsyncEnumerable()).Distinct().ToList();
         }
 
         #endregion

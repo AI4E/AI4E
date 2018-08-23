@@ -20,25 +20,170 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Internal;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
 {
+    /// <summary>
+    /// Represents an entry of the coordination service.
+    /// </summary>
     public interface IEntry
     {
+        /// <summary>
+        /// Gets the entry's name.
+        /// </summary>
         string Name { get; }
+
+        /// <summary>
+        /// Gets the entry's path.
+        /// </summary>
         string Path { get; }
+
+        /// <summary>
+        /// Gets the entry's version.
+        /// </summary>
         int Version { get; }
+
+        /// <summary>
+        /// Gets the timestamp when the entry was created.
+        /// </summary>
         DateTime CreationTime { get; }
+
+        /// <summary>
+        /// Gets the timestamp when the entry was last written to.
+        /// </summary>
         DateTime LastWriteTime { get; }
 
-        IReadOnlyList<byte> Value { get; }
+        /// <summary>
+        /// Gets the value of the entry.
+        /// </summary>
+        ReadOnlyMemory<byte> Value { get; } // TODO: Rename?
 
-        Task<IEntry> GetParentAsync(CancellationToken cancellation);
+        /// <summary>
+        /// Gets the path of the entry's parent entry.
+        /// </summary>
         string ParentPath { get; }
 
-        IAsyncEnumerable<IEntry> Childs { get; }
-        IReadOnlyList<string> ChildNames { get; }
+        /// <summary>
+        /// Gets a collection of entry's names that are children of the entry.
+        /// </summary>
+        IReadOnlyList<string> Children { get; }
+
+        /// <summary>
+        /// Gets the coordination manager that this entry is managed by.
+        /// </summary>
+        ICoordinationManager CoordinationManager { get; }
+    }
+
+    public static class EntryExtension
+    {
+        public static IAsyncEnumerable<IEntry> GetChildrenEntries(this IEntry entry)
+        {
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
+
+            return new ChildrenEnumerable(entry);
+        }
+
+        public static async ValueTask<IEnumerable<IEntry>> GetChildrenEntriesAsync(this IEntry entry, CancellationToken cancellation)
+        {
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
+
+            var result = new IEntry[entry.Children.Count];
+
+            for (var i = 0; i < result.Length; i++)
+            {
+                var child = entry.Children[i];
+                var childFullName = EntryPathHelper.GetChildPath(entry.Path, child, normalize: false);
+
+                result[i] = await entry.CoordinationManager.GetAsync(childFullName, cancellation);
+            }
+
+            return result;
+        }
+
+        public static ValueTask<IEntry> GetParentAsync(this IEntry entry, CancellationToken cancellation)
+        {
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
+
+            return entry.CoordinationManager.GetAsync(entry.ParentPath, cancellation);
+        }
+
+        public static Stream OpenStream(this IEntry entry)
+        {
+            return new ReadOnlyStream(entry.Value);
+        }
+
+        private sealed class ChildrenEnumerable : IAsyncEnumerable<IEntry>
+        {
+            private readonly IEntry _entry;
+
+            public ChildrenEnumerable(IEntry entry)
+            {
+                Assert(entry != null);
+
+                _entry = entry;
+            }
+
+            public IAsyncEnumerator<IEntry> GetEnumerator()
+            {
+                return new ChildrenEnumerator(_entry);
+            }
+        }
+
+        private sealed class ChildrenEnumerator : IAsyncEnumerator<IEntry>
+        {
+            private readonly IEntry _entry;
+            private int _currentIndex = -1;
+
+            public ChildrenEnumerator(IEntry entry)
+            {
+                Assert(entry != null);
+
+                _entry = entry;
+            }
+
+            public async Task<bool> MoveNext(CancellationToken cancellationToken)
+            {
+                IEntry next;
+
+                do
+                {
+                    string child;
+
+                    do
+                    {
+                        var index = ++_currentIndex;
+
+                        if (index >= _entry.Children.Count)
+                        {
+                            Current = default;
+                            return false;
+                        }
+
+                        child = _entry.Children[index];
+                    }
+                    while (child == null);
+
+                    var childFullName = EntryPathHelper.GetChildPath(_entry.Path, child, normalize: false);
+
+                    next = await _entry.CoordinationManager.GetAsync(childFullName, cancellationToken);
+                }
+                while (next == null);
+
+                Current = next;
+                return true;
+            }
+
+            public IEntry Current { get; private set; } = default;
+
+            public void Dispose() { }
+        }
     }
 }

@@ -17,6 +17,8 @@ namespace AI4E.Routing
 {
     public sealed class MessageRouter : IMessageRouter, IAsyncDisposable
     {
+        private static readonly byte[] _emptyBytes = new byte[0];
+
         private readonly ISerializedMessageHandler _serializedMessageHandler;
         private readonly ILogicalEndPoint _logicalEndPoint;
         private readonly IRouteStore _routeStore;
@@ -337,8 +339,6 @@ namespace AI4E.Routing
                 _responseTable.TryRemove(seqNum, tcs);
             }
         }
-
-        private static readonly byte[] _emptyBytes = new byte[0];
 
         private static void EncodeMessage(IMessage message, int seqNum, MessageType messageType, bool publish, string route, int corr)
         {

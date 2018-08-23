@@ -33,7 +33,7 @@ namespace AI4E.Coordination
         /// <summary>
         /// Gets the value of the entry.
         /// </summary>
-        ImmutableArray<byte> Value { get; }
+        ReadOnlyMemory<byte> Value { get; }
 
         /// <summary>
         /// Gets a collection of session that read locks are held for.
@@ -68,80 +68,5 @@ namespace AI4E.Coordination
         ImmutableArray<string> Childs { get; }
 
         string EphemeralOwner { get; }
-
-        ///// <summary>
-        ///// Acquires a write lock for the specified session and returns an entry with the lock aquired.
-        ///// </summary>
-        ///// <param name="session">The session that requests the lock.</param>
-        ///// <returns>An entry with the lock aquired.</returns>
-        ///// <exception cref="ArgumentNullException">Thrown if <paramref name="session"/> is null.</exception>
-        ///// <exception cref="InvalidOperationException">Thrown if a write lock is present for another session.</exception>
-        //IStoredEntry AcquireWriteLock(string session);
-
-        ///// <summary>
-        ///// Releases a write lock and returns an entry with the lock released.
-        ///// </summary>
-        ///// <returns>An entry with the lock released.</returns>
-        ///// <exception cref="InvalidOperationException">Thrown if a read lock is present for an arbitrary session.</exception>
-        //IStoredEntry ReleaseWriteLock();
-
-        ///// <summary>
-        ///// Acquires a read lock for the specified session and returns an entry with the lock aquired.
-        ///// </summary>
-        ///// <param name="session">The session that requests the lock.</param>
-        ///// <returns>An entry with the lock aquired.</returns>
-        ///// <exception cref="ArgumentNullException">Thrown if <paramref name="session"/> is null.</exception>
-        ///// <exception cref="InvalidOperationException">Thrown if a write lock is present for an arbitrary session.</exception>
-        ///// <remarks>
-        ///// If the read lock is already taken by the specified session, the lock is not taken twice but only once.
-        ///// Even if taken multiple times, the lock is released with a single call.
-        ///// </remarks>
-        //IStoredEntry AcquireReadLock(string session);
-
-        ///// <summary>
-        ///// Releases a read lock and returns an entry with the lock released.
-        ///// </summary>
-        ///// <param name="session">The session that the read lock is held for.</param>
-        ///// <returns>An entry with the lock released.</returns>
-        ///// <exception cref="ArgumentNullException">Thrown if <paramref name="session"/> is null.</exception>
-        //IStoredEntry ReleaseReadLock(string session);
-
-        ///// <summary>
-        ///// Removes the entry and returns an entry that represents the removal of the entry.
-        ///// </summary>
-        ///// <returns>An entry that represents the removal of the entry or null.</returns>
-        ///// <exception cref="InvalidOperationException">
-        ///// Thrown if either a read lock is held by an arbitrary session or 
-        ///// no write lock is held or
-        ///// the entry contains childs.
-        ///// </exception>
-        ///// <remarks>
-        ///// The return value may be null. This is implementation dependent.
-        ///// </remarks>
-        //IStoredEntry Remove();
-
-        ///// <summary>
-        ///// Sets the value of the entry and increment its version counter.
-        ///// </summary>
-        ///// <param name="value">The value to set.</param>
-        ///// <returns>An entry with the specified value set.</returns>
-        ///// <exception cref="InvalidOperationException">Thrown if a read lock is held by an arbitrary session or no write lock is held.</exception>
-        //IStoredEntry SetValue(ImmutableArray<byte> value);
-
-        ///// <summary>
-        ///// Adds a child to the entry and returns an entry with the child added.
-        ///// </summary>
-        ///// <param name="name">The name of the child entry.</param>
-        ///// <returns>An entry with the child added.</returns>
-        ///// <exception cref="ArgumentNullException">Thrown if <paramref name="name"/> is null.</exception>
-        //IStoredEntry AddChild(string name);
-
-        ///// <summary>
-        ///// Removes a child from the entry and returns an entry with the child removed.
-        ///// </summary>
-        ///// <param name="name">The name of the child entry.</param>
-        ///// <returns>An entry with the child removed.</returns>
-        ///// <exception cref="ArgumentNullException">Thrown if <paramref name="name"/> is null.</exception>
-        //IStoredEntry RemoveChild(string name);
     }
 }

@@ -14,10 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Internal\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Coordination.Abstractions\AI4E.Coordination.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Remoting\AI4E.Remoting.csproj" />

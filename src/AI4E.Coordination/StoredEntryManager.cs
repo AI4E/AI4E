@@ -27,7 +27,7 @@ namespace AI4E.Coordination
             return storedEntry as StoredEntry ?? new StoredEntry(storedEntry);
         }
 
-        public IStoredEntry Create(string key, string session, bool isEphemeral, ImmutableArray<byte> value)
+        public IStoredEntry Create(string key, string session, bool isEphemeral, ReadOnlySpan<byte> value)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -38,7 +38,7 @@ namespace AI4E.Coordination
             var currentTime = _dateTimeProvider.GetCurrentTime();
 
             return new StoredEntry(key,
-                                   value,
+                                   value.ToArray(), // We need to copy here in order to guarantee immutability.
                                    _noReadLocks,
                                    writeLock: session,
                                    _noChilds,
@@ -164,7 +164,7 @@ namespace AI4E.Coordination
             return null;
         }
 
-        public IStoredEntry SetValue(IStoredEntry storedEntry, ImmutableArray<byte> value)
+        public IStoredEntry SetValue(IStoredEntry storedEntry, ReadOnlySpan<byte> value)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
@@ -183,7 +183,7 @@ namespace AI4E.Coordination
             }
 
             return new StoredEntry(storedEntry.Path,
-                                   value,
+                                   value.ToArray(), // We need to copy here in order to guarantee immutability.
                                    _noReadLocks,
                                    storedEntry.WriteLock,
                                    storedEntry.Childs,
@@ -269,7 +269,7 @@ namespace AI4E.Coordination
             }
 
             public StoredEntry(string key,
-                          ImmutableArray<byte> value,
+                          ReadOnlyMemory<byte> value,
                           ImmutableArray<string> readLocks,
                           string writeLock,
                           ImmutableArray<string> childs,
@@ -293,7 +293,7 @@ namespace AI4E.Coordination
 
             public string Path { get; }
 
-            public ImmutableArray<byte> Value { get; }
+            public ReadOnlyMemory<byte> Value { get; }
 
             public ImmutableArray<string> ReadLocks { get; }
 

@@ -36,7 +36,7 @@ namespace AI4E.Routing
 {
     public interface IRouteMap<TAddress>
     {
-        Task<IEnumerable<TAddress>> GetMapsAsync(EndPointRoute endPoint, CancellationToken cancellation);
+        ValueTask<IEnumerable<TAddress>> GetMapsAsync(EndPointRoute endPoint, CancellationToken cancellation);
         Task MapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation);
         Task UnmapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation);
         Task UnmapRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation);

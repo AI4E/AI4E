@@ -34,6 +34,8 @@ namespace AI4E.Modularity.Host
 {
     public static class ApplicationBuilderExtension
     {
+        private static readonly byte[] _emptyArray = new byte[0];
+
         public static void UseModularity(this IApplicationBuilder applicationBuilder)
         {
             if (applicationBuilder == null)
@@ -79,7 +81,7 @@ namespace AI4E.Modularity.Host
                         QueryString = requestFeature.QueryString,
                         RawTarget = requestFeature.RawTarget,
                         Scheme = requestFeature.Scheme,
-                        Body = requestFeature.Body == null ? new byte[0] : await requestFeature.Body.ToArrayAsync(),
+                        Body = requestFeature.Body == null ? _emptyArray : await requestFeature.Body.ToArrayAsync(),
                         Headers = new Dictionary<string, string[]>()
                     };
 

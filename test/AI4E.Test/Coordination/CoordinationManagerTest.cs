@@ -38,24 +38,24 @@ namespace AI4E.Test.Coordination
             var entryY = await coordinationManagerY.GetAsync("/");
 
             Assert.IsNotNull(entryX);
-            Assert.AreEqual(1, entryX.Value[0]);
-            Assert.AreEqual(2, entryX.Value[1]);
-            Assert.AreEqual(3, entryX.Value[2]);
+            Assert.AreEqual(1, entryX.Value.Span[0]);
+            Assert.AreEqual(2, entryX.Value.Span[1]);
+            Assert.AreEqual(3, entryX.Value.Span[2]);
 
             Assert.AreEqual("/", entryX.Path);
             Assert.AreEqual(1, entryX.Version);
-            Assert.IsNotNull(entryX.Childs);
-            Assert.AreEqual(0, await entryX.Childs.Count());
+            Assert.IsNotNull(entryX.GetChildrenEntries());
+            Assert.AreEqual(0, await entryX.GetChildrenEntries().Count());
 
             Assert.IsNotNull(entryY);
-            Assert.AreEqual(1, entryY.Value[0]);
-            Assert.AreEqual(2, entryY.Value[1]);
-            Assert.AreEqual(3, entryY.Value[2]);
+            Assert.AreEqual(1, entryY.Value.Span[0]);
+            Assert.AreEqual(2, entryY.Value.Span[1]);
+            Assert.AreEqual(3, entryY.Value.Span[2]);
 
             Assert.AreEqual("/", entryY.Path);
             Assert.AreEqual(1, entryY.Version);
-            Assert.IsNotNull(entryY.Childs);
-            Assert.AreEqual(0, await entryY.Childs.Count());
+            Assert.IsNotNull(entryY.GetChildrenEntries());
+            Assert.AreEqual(0, await entryY.GetChildrenEntries().Count());
         }
 
         [TestMethod]
@@ -80,24 +80,24 @@ namespace AI4E.Test.Coordination
             var entryY = await coordinationManagerY.GetAsync("/");
 
             Assert.IsNotNull(entryX);
-            Assert.AreEqual(4, entryX.Value[0]);
-            Assert.AreEqual(5, entryX.Value[1]);
-            Assert.AreEqual(6, entryX.Value[2]);
+            Assert.AreEqual(4, entryX.Value.Span[0]);
+            Assert.AreEqual(5, entryX.Value.Span[1]);
+            Assert.AreEqual(6, entryX.Value.Span[2]);
 
             Assert.AreEqual("/", entryX.Path);
             Assert.AreEqual(2, entryX.Version);
-            Assert.IsNotNull(entryX.Childs);
-            Assert.AreEqual(0, await entryX.Childs.Count());
+            Assert.IsNotNull(entryX.GetChildrenEntries());
+            Assert.AreEqual(0, await entryX.GetChildrenEntries().Count());
 
             Assert.IsNotNull(entryY);
-            Assert.AreEqual(4, entryY.Value[0]);
-            Assert.AreEqual(5, entryY.Value[1]);
-            Assert.AreEqual(6, entryY.Value[2]);
+            Assert.AreEqual(4, entryY.Value.Span[0]);
+            Assert.AreEqual(5, entryY.Value.Span[1]);
+            Assert.AreEqual(6, entryY.Value.Span[2]);
 
             Assert.AreEqual("/", entryY.Path);
             Assert.AreEqual(2, entryY.Version);
-            Assert.IsNotNull(entryY.Childs);
-            Assert.AreEqual(0, await entryY.Childs.Count());
+            Assert.IsNotNull(entryY.GetChildrenEntries());
+            Assert.AreEqual(0, await entryY.GetChildrenEntries().Count());
         }
 
         [TestMethod]
@@ -116,66 +116,66 @@ namespace AI4E.Test.Coordination
             var entryY = await coordinationManagerY.GetAsync(path);
 
             Assert.IsNotNull(entryX);
-            Assert.AreEqual(1, entryX.Value[0]);
-            Assert.AreEqual(2, entryX.Value[1]);
-            Assert.AreEqual(3, entryX.Value[2]);
+            Assert.AreEqual(1, entryX.Value.Span[0]);
+            Assert.AreEqual(2, entryX.Value.Span[1]);
+            Assert.AreEqual(3, entryX.Value.Span[2]);
 
             Assert.AreEqual(path, entryX.Path);
             Assert.AreEqual(1, entryX.Version);
-            Assert.IsNotNull(entryX.Childs);
-            Assert.AreEqual(0, await entryX.Childs.Count());
+            Assert.IsNotNull(entryX.GetChildrenEntries());
+            Assert.AreEqual(0, await entryX.GetChildrenEntries().Count());
 
             Assert.IsNotNull(entryY);
-            Assert.AreEqual(1, entryY.Value[0]);
-            Assert.AreEqual(2, entryY.Value[1]);
-            Assert.AreEqual(3, entryY.Value[2]);
+            Assert.AreEqual(1, entryY.Value.Span[0]);
+            Assert.AreEqual(2, entryY.Value.Span[1]);
+            Assert.AreEqual(3, entryY.Value.Span[2]);
 
             Assert.AreEqual(path, entryY.Path);
             Assert.AreEqual(1, entryY.Version);
-            Assert.IsNotNull(entryY.Childs);
-            Assert.AreEqual(0, await entryY.Childs.Count());
+            Assert.IsNotNull(entryY.GetChildrenEntries());
+            Assert.AreEqual(0, await entryY.GetChildrenEntries().Count());
 
             entryX = await coordinationManagerX.GetAsync(parent);
             entryY = await coordinationManagerY.GetAsync(parent);
 
             Assert.IsNotNull(entryX);
-            Assert.AreEqual(0, entryX.Value.Count);
+            Assert.AreEqual(0, entryX.Value.Span.Length);
 
             Assert.AreEqual(parent, entryX.Path);
             Assert.AreEqual(1, entryX.Version);
-            Assert.IsNotNull(entryX.Childs);
-            Assert.AreEqual(1, await entryX.Childs.Count());
-            Assert.AreEqual(path, await entryX.Childs.Select(p => p.Path).First());
+            Assert.IsNotNull(entryX.GetChildrenEntries());
+            Assert.AreEqual(1, await entryX.GetChildrenEntries().Count());
+            Assert.AreEqual(path, await entryX.GetChildrenEntries().Select(p => p.Path).First());
 
             Assert.IsNotNull(entryY);
-            Assert.AreEqual(0, entryY.Value.Count);
+            Assert.AreEqual(0, entryY.Value.Span.Length);
 
             Assert.AreEqual(parent, entryY.Path);
             Assert.AreEqual(1, entryY.Version);
-            Assert.IsNotNull(entryY.Childs);
-            Assert.AreEqual(1, await entryY.Childs.Count());
-            Assert.AreEqual(path, await entryX.Childs.Select(p => p.Path).First());
+            Assert.IsNotNull(entryY.GetChildrenEntries());
+            Assert.AreEqual(1, await entryY.GetChildrenEntries().Count());
+            Assert.AreEqual(path, await entryX.GetChildrenEntries().Select(p => p.Path).First());
 
             entryX = await coordinationManagerX.GetAsync(root);
             entryY = await coordinationManagerY.GetAsync(root);
 
             Assert.IsNotNull(entryX);
-            Assert.AreEqual(0, entryX.Value.Count);
+            Assert.AreEqual(0, entryX.Value.Span.Length);
 
             Assert.AreEqual(root, entryX.Path);
             Assert.AreEqual(1, entryX.Version);
-            Assert.IsNotNull(entryX.Childs);
-            Assert.AreEqual(1, await entryX.Childs.Count());
-            Assert.AreEqual(parent, await entryX.Childs.Select(p => p.Path).First());
+            Assert.IsNotNull(entryX.GetChildrenEntries());
+            Assert.AreEqual(1, await entryX.GetChildrenEntries().Count());
+            Assert.AreEqual(parent, await entryX.GetChildrenEntries().Select(p => p.Path).First());
 
             Assert.IsNotNull(entryY);
-            Assert.AreEqual(0, entryY.Value.Count);
+            Assert.AreEqual(0, entryY.Value.Span.Length);
 
             Assert.AreEqual(root, entryY.Path);
             Assert.AreEqual(1, entryY.Version);
-            Assert.IsNotNull(entryY.Childs);
-            Assert.AreEqual(1, await entryY.Childs.Count());
-            Assert.AreEqual(parent, await entryX.Childs.Select(p => p.Path).First());
+            Assert.IsNotNull(entryY.GetChildrenEntries());
+            Assert.AreEqual(1, await entryY.GetChildrenEntries().Count());
+            Assert.AreEqual(parent, await entryX.GetChildrenEntries().Select(p => p.Path).First());
         }
 
         [TestMethod]
@@ -191,24 +191,24 @@ namespace AI4E.Test.Coordination
             var entryY = await coordinationManagerY.GetAsync("/");
 
             Assert.IsNotNull(entryX);
-            Assert.AreEqual(1, entryX.Value[0]);
-            Assert.AreEqual(2, entryX.Value[1]);
-            Assert.AreEqual(3, entryX.Value[2]);
+            Assert.AreEqual(1, entryX.Value.Span[0]);
+            Assert.AreEqual(2, entryX.Value.Span[1]);
+            Assert.AreEqual(3, entryX.Value.Span[2]);
 
             Assert.AreEqual("/", entryX.Path);
             Assert.AreEqual(1, entryX.Version);
-            Assert.IsNotNull(entryX.Childs);
-            Assert.AreEqual(0, await entryX.Childs.Count());
+            Assert.IsNotNull(entryX.GetChildrenEntries());
+            Assert.AreEqual(0, await entryX.GetChildrenEntries().Count());
 
             Assert.IsNotNull(entryY);
-            Assert.AreEqual(1, entryY.Value[0]);
-            Assert.AreEqual(2, entryY.Value[1]);
-            Assert.AreEqual(3, entryY.Value[2]);
+            Assert.AreEqual(1, entryY.Value.Span[0]);
+            Assert.AreEqual(2, entryY.Value.Span[1]);
+            Assert.AreEqual(3, entryY.Value.Span[2]);
 
             Assert.AreEqual("/", entryY.Path);
             Assert.AreEqual(1, entryY.Version);
-            Assert.IsNotNull(entryY.Childs);
-            Assert.AreEqual(0, await entryY.Childs.Count());
+            Assert.IsNotNull(entryY.GetChildrenEntries());
+            Assert.AreEqual(0, await entryY.GetChildrenEntries().Count());
 
             (coordinationManagerX as IDisposable).Dispose();
 

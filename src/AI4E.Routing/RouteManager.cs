@@ -69,7 +69,7 @@ namespace AI4E.Routing
                 throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
 
             var path = GetPath(messageType);
-            var entry = await _coordinationManager.GetOrCreateAsync(path, new byte[0], EntryCreationModes.Default, cancellation);
+            var entry = await _coordinationManager.GetOrCreateAsync(path, _emptyPayload, EntryCreationModes.Default, cancellation);
 
             Assert(entry != null);
 
@@ -81,7 +81,7 @@ namespace AI4E.Routing
                 return (endPoint, options);
             }
 
-            return await entry.Childs
+            return await entry.GetChildrenEntries()
                               .Select(p => Extract(p))
                               .Distinct(p => p.endPoint)
                               .ToArray();

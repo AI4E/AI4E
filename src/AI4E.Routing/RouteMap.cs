@@ -80,7 +80,7 @@ namespace AI4E.Routing
             await _coordinationManager.DeleteAsync(path, recursive: true, cancellation: cancellation);
         }
 
-        public async Task<IEnumerable<TAddress>> GetMapsAsync(EndPointRoute endPoint, CancellationToken cancellation)
+        public async ValueTask<IEnumerable<TAddress>> GetMapsAsync(EndPointRoute endPoint, CancellationToken cancellation)
         {
             if (endPoint == null)
                 throw new ArgumentNullException(nameof(endPoint));
@@ -90,17 +90,17 @@ namespace AI4E.Routing
 
             Assert(routeEntry != null);
 
-            var entries = await routeEntry.Childs.ToArray(cancellation);
+            var entries = await routeEntry.GetChildrenEntries().ToArray(cancellation);
 
             return entries.Select(p => _addressConversion.DeserializeAddress(p.Value.ToArray()));
         }
 
         #endregion
 
-        private Task<IEntry> GetRouteEntryAsync(string route, CancellationToken cancellation)
+        private ValueTask<IEntry> GetRouteEntryAsync(string route, CancellationToken cancellation)
         {
             var path = GetPath(route);
-            return _coordinationManager.GetOrCreateAsync(path, new byte[0], EntryCreationModes.Default, cancellation);
+            return _coordinationManager.GetOrCreateAsync(path, ReadOnlyMemory<byte>.Empty, EntryCreationModes.Default, cancellation);
         }
 
         private static string GetPath(string route)

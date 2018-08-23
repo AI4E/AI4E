@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
-using AI4E.Internal;
 using AI4E.Proxying;
 using static System.Diagnostics.Debug;
 
@@ -56,17 +55,17 @@ namespace AI4E.Modularity.Debug
 
         public Task<int> SetValueAsync(string path, byte[] value, int version = 0, CancellationToken cancellation = default)
         {
-            return _coordinationManager.SetValueAsync(path, value, version, cancellation);
+            return _coordinationManager.SetValueAsync(path, value, version, cancellation).AsTask();
         }
 
         public Task<int> DeleteAsync(string path, int version = 0, bool recursive = false, CancellationToken cancellation = default)
         {
-            return _coordinationManager.DeleteAsync(path, version, recursive, cancellation);
+            return _coordinationManager.DeleteAsync(path, version, recursive, cancellation).AsTask();
         }
 
         public Task<string> GetSessionAsync(CancellationToken cancellation = default)
         {
-            return _coordinationManager.GetSessionAsync(cancellation);
+            return _coordinationManager.GetSessionAsync(cancellation).AsTask();
         }
 
         #region Disposal
@@ -81,14 +80,19 @@ namespace AI4E.Modularity.Debug
         [Serializable]
         internal /*private*/ sealed class Entry : IEntry
         {
-            [NonSerialized] // TODO: Proxy is currently not serializable. This is a bug in the proying infrastructure
+            [NonSerialized] // TODO: Proxy is currently not serializable. This is a bug in the proxying infrastructure
             private /*readonly*/ IProxy<CoordinationManagerSkeleton> _proxy;
 
-            internal void SetProxy(IProxy<CoordinationManagerSkeleton> proxy)
+            [NonSerialized]
+            private ICoordinationManager _coordinationManager;
+
+            public ICoordinationManager CoordinationManager => _coordinationManager;
+
+            internal void SetCoordinationManagerStub(ICoordinationManager coordinationManager, IProxy<CoordinationManagerSkeleton> proxy)
             {
+                _coordinationManager = coordinationManager;
                 _proxy = proxy;
             }
-
 
             private readonly string[] _childNames;
             private readonly byte[] _value;
@@ -105,7 +109,7 @@ namespace AI4E.Modularity.Debug
                 CreationTime = entry.CreationTime;
                 LastWriteTime = entry.LastWriteTime;
                 _value = entry.Value.ToArray();
-                _childNames = entry.ChildNames.ToArray();
+                _childNames = entry.Children.ToArray();
                 Name = entry.Name;
                 ParentPath = entry.ParentPath;
             }
@@ -118,88 +122,88 @@ namespace AI4E.Modularity.Debug
 
             public DateTime LastWriteTime { get; }
 
-            public IReadOnlyList<byte> Value => _value;
+            public ReadOnlyMemory<byte> Value => _value;
 
-            public IAsyncEnumerable<IEntry> Childs => new ChildrenEnumerable(this);
+            //public IAsyncEnumerable<IEntry> Childs => new ChildrenEnumerable(this);
 
-            public IReadOnlyList<string> ChildNames => _childNames;
+            public IReadOnlyList<string> Children => _childNames;
 
             public string Name { get; }
 
-            public Task<IEntry> GetParentAsync(CancellationToken cancellation)
-            {
-                return _proxy.ExecuteAsync(p => p.GetAsync(ParentPath, cancellation));
-            }
+            ////public Task<IEntry> GetParentAsync(CancellationToken cancellation)
+            ////{
+            ////    return _proxy.ExecuteAsync(p => p.GetAsync(ParentPath, cancellation));
+            ////}
 
             public string ParentPath { get; }
 
-            private sealed class ChildrenEnumerable : IAsyncEnumerable<IEntry>
-            {
-                private readonly Entry _entry;
+            //private sealed class ChildrenEnumerable : IAsyncEnumerable<IEntry>
+            //{
+            //    private readonly Entry _entry;
 
-                public ChildrenEnumerable(Entry entry)
-                {
-                    Assert(entry != null);
+            //    public ChildrenEnumerable(Entry entry)
+            //    {
+            //        Assert(entry != null);
 
-                    _entry = entry;
-                }
+            //        _entry = entry;
+            //    }
 
-                public IAsyncEnumerator<IEntry> GetEnumerator()
-                {
-                    return new ChildrenEnumerator(_entry);
-                }
-            }
+            //    public IAsyncEnumerator<IEntry> GetEnumerator()
+            //    {
+            //        return new ChildrenEnumerator(_entry);
+            //    }
+            //}
 
-            private sealed class ChildrenEnumerator : IAsyncEnumerator<IEntry>
-            {
-                private readonly Entry _entry;
+            //private sealed class ChildrenEnumerator : IAsyncEnumerator<IEntry>
+            //{
+            //    private readonly Entry _entry;
 
-                private IEntry _current = default;
-                private int _currentIndex = -1;
+            //    private IEntry _current = default;
+            //    private int _currentIndex = -1;
 
-                public ChildrenEnumerator(Entry entry)
-                {
-                    Assert(entry != null);
+            //    public ChildrenEnumerator(Entry entry)
+            //    {
+            //        Assert(entry != null);
 
-                    _entry = entry;
-                }
+            //        _entry = entry;
+            //    }
 
-                public async Task<bool> MoveNext(CancellationToken cancellationToken)
-                {
-                    IEntry next;
+            //    public async Task<bool> MoveNext(CancellationToken cancellationToken)
+            //    {
+            //        IEntry next;
 
-                    do
-                    {
-                        string child;
+            //        do
+            //        {
+            //            string child;
 
-                        do
-                        {
-                            var index = ++_currentIndex;
+            //            do
+            //            {
+            //                var index = ++_currentIndex;
 
-                            if (index >= _entry._childNames.Length)
-                            {
-                                _current = default;
-                                return false;
-                            }
+            //                if (index >= _entry._childNames.Length)
+            //                {
+            //                    _current = default;
+            //                    return false;
+            //                }
 
-                            child = _entry._childNames[index];
-                        }
-                        while (child == null);
+            //                child = _entry._childNames[index];
+            //            }
+            //            while (child == null);
 
-                        var childFullName = EntryPathHelper.GetChildPath(_entry.Path, child, normalize: false);
+            //            var childFullName = EntryPathHelper.GetChildPath(_entry.Path, child, normalize: false);
 
-                        next = await _entry._proxy.ExecuteAsync(p => p.GetAsync(childFullName, cancellationToken));
-                    }
-                    while (next == null);
+            //            next = await _entry._proxy.ExecuteAsync(p => p.GetAsync(childFullName, cancellationToken));
+            //        }
+            //        while (next == null);
 
-                    _current = next;
-                    return true;
-                }
+            //        _current = next;
+            //        return true;
+            //    }
 
-                public IEntry Current => _current;
+            //    public IEntry Current => _current;
 
-                public void Dispose() { }
-            }
+            //    public void Dispose() { }
+            //}
         }
     }
 }
