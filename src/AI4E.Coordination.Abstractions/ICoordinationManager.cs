@@ -26,7 +26,7 @@ using AI4E.Async;
 namespace AI4E.Coordination
 {
     /// <summary>
-    /// Represents a coordionation service.
+    /// Represents a coordination service.
     /// </summary>
     public interface ICoordinationManager : IAsyncDisposable
     {
