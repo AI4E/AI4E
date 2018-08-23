@@ -130,7 +130,7 @@ namespace AI4E.Domain
         /// <summary>
         /// Asynchronously resolves the reference and provides an instance of the referenced aggregate.
         /// </summary>
-        /// <returns>A task representing the asnychronous operation.</returns>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public ValueTask<T> ResolveAsync()
         {
             if (_aggregate == null)

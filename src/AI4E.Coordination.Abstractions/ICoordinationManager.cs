@@ -25,12 +25,58 @@ using AI4E.Async;
 
 namespace AI4E.Coordination
 {
+    /// <summary>
+    /// Represents a coordionation service.
+    /// </summary>
     public interface ICoordinationManager : IAsyncDisposable
     {
+        /// <summary>
+        /// Asynchronously creates a coordination entry with the specified path.
+        /// </summary>
+        /// <param name="path">The path of the coordination entry.</param>
+        /// <param name="value">The value of the coordionation entry.</param>
+        /// <param name="modes">The creation mode to use.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operatio or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the created entry.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="path"/> or <paramref name="value"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="modes"/> is not a combination of the values defined in <see cref="EntryCreationModes"/>.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
+        /// <exception cref="DuplicateEntryException">Thrown if the coordination service contains an entry with the specified path.</exception>
+        /// <exception cref="SessionTerminatedException">Thrown if the session is terminated.</exception>
         Task<IEntry> CreateAsync(string path, byte[] value, EntryCreationModes modes = default, CancellationToken cancellation = default);
 
+        /// <summary>
+        /// Asynchronously creates a coordination entry with the specified path if no entry with the path does already exist, or returns the existing entry.
+        /// </summary>
+        /// <param name="path">The path of the coordination entry.</param>
+        /// <param name="value">The value of the coordionation entry.</param>
+        /// <param name="modes">The creation mode to use.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operatio or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the coordination entry.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="path"/> or <paramref name="value"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="modes"/> is not a combination of the values defined in <see cref="EntryCreationModes"/>.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
+        /// <exception cref="SessionTerminatedException">Thrown if the session is terminated.</exception>
         Task<IEntry> GetOrCreateAsync(string path, byte[] value, EntryCreationModes modes = default, CancellationToken cancellation = default);
 
+        /// <summary>
+        /// Asynchronously returns the entry with the specified path.
+        /// </summary>
+        /// <param name="path">The path of the coordination entry.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operatio or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the coordination entry or null if no matching entry exists.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="path"/>.</exception>    
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
+        /// <exception cref="SessionTerminatedException">Thrown if the session is terminated.</exception>
         Task<IEntry> GetAsync(string path, CancellationToken cancellation = default);
 
         /// <summary>
@@ -48,6 +94,7 @@ namespace AI4E.Coordination
         /// <exception cref="ArgumentNullException">Thrown if either <paramref name="path"/> or <paramref name="value"/> is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="version"/> is negative.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
+        /// <exception cref="SessionTerminatedException">Thrown if the session is terminated.</exception>
         Task<int> SetValueAsync(string path, byte[] value, int version = default, CancellationToken cancellation = default);
 
         /// <summary>
@@ -57,7 +104,7 @@ namespace AI4E.Coordination
         /// <param name="recursive">A boolean value specifying whether child entries shall be deleted recursively.</param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operatio or <see cref="CancellationToken.None"/>.</param>
         /// <returns>
-        /// A task representing the asnychronous operation.
+        /// A task representing the asynchronous operation.
         /// When evaluated, the tasks result contains a version number that is equal to <paramref name="version"/> 
         /// if the operation suceeded 
         /// or the version of the current entry if <paramref name="version"/> is not equal to zero and the current entry's version is not equal to <paramref name="version"/>.
@@ -65,20 +112,51 @@ namespace AI4E.Coordination
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="path"/> is null.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="InvalidOperationException">Thrown if <paramref name="recursive"/> is false and the entry specified by <paramref name="path"/> contains child entries.</exception>
+        /// <exception cref="SessionTerminatedException">Thrown if the session is terminated.</exception>
         Task<int> DeleteAsync(string path, int version = default, bool recursive = false, CancellationToken cancellation = default);
 
+        /// <summary>
+        /// Asynchronously retrieves the current session.
+        /// </summary>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operatio or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the current session.
+        /// </returns>
+        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         Task<string> GetSessionAsync(CancellationToken cancellation = default);
     }
 
+    /// <summary>
+    /// Represents a factory for coordination managers.
+    /// </summary>
     public interface ICoordinationManagerFactory
     {
+        /// <summary>
+        /// Creates a new coordination manager.
+        /// </summary>
+        /// <returns>The created coordination manager.</returns>
         ICoordinationManager CreateCoordinationManager();
     }
 
+    /// <summary>
+    /// Defines creation modes for coordination entries.
+    /// </summary>
     [Flags]
     public enum EntryCreationModes
     {
+        /// <summary>
+        /// The default creation mode.
+        /// </summary>
         Default = 0,
+
+        /// <summary>
+        /// Specifies that a coordination entry is ephemeral.
+        /// </summary>
+        /// <remarks>
+        /// The coordination entry's lifetime is bound to the lifetime of the session in that's scope the entry is created.
+        /// Ephemeral nodes cannot have child nodes.
+        /// </remarks>
         Ephemeral = 1
     }
 }
