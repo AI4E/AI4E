@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -13,9 +14,7 @@ namespace AI4E.Routing
     public sealed class RouteManager : IRouteStore
     {
         private static readonly byte[] _emptyPayload = new byte[0];
-        private static readonly char[] _pathSeperators = { '/', '\\' };
-        private const string _routesRootPath = "/routes";
-        private const string _seperatorString = "->";
+        private static readonly CoordinationEntryPath _routesRootPath = new CoordinationEntryPath("routes");
 
         private readonly ICoordinationManager _coordinationManager;
         private readonly RouteOptions _options;
@@ -43,9 +42,19 @@ namespace AI4E.Routing
             var session = await _coordinationManager.GetSessionAsync(cancellation);
             var path = GetPath(messageType, route, session);
 
-            var payload = BitConverter.GetBytes((int)_options);
+            var routeBytes = Encoding.UTF8.GetBytes(route);
 
-            await _coordinationManager.GetOrCreateAsync(path, payload, EntryCreationModes.Ephemeral, cancellation);
+            using (var stream = new MemoryStream(capacity: 4 + 4 + routeBytes.Length))
+            {
+                using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+                {
+                    writer.Write((int)_options);
+                    writer.Write(routeBytes.Length);
+                    writer.Write(routeBytes);
+                }
+                var payload = stream.ToArray();
+                await _coordinationManager.GetOrCreateAsync(path, payload, EntryCreationModes.Ephemeral, cancellation);
+            }
         }
 
         public async Task RemoveRouteAsync(EndPointRoute endPoint, string messageType, CancellationToken cancellation)
@@ -75,10 +84,16 @@ namespace AI4E.Routing
 
             (EndPointRoute endPoint, RouteOptions options) Extract(IEntry e)
             {
-                var endPoint = EndPointRoute.CreateRoute(EntryPathHelper.ExtractRoute(e.Path));
-                var options = (RouteOptions)BitConverter.ToInt32(e.Value.ToArray(), 0);
+                using (var stream = e.OpenStream())
+                using (var reader = new BinaryReader(stream))
+                {
+                    var options = (RouteOptions)reader.ReadInt32();
+                    var endPointBytesLength = reader.ReadInt32();
+                    var endPointBytes = reader.ReadBytes(endPointBytesLength);
+                    var endPoint = EndPointRoute.CreateRoute(Encoding.UTF8.GetString(endPointBytes));
 
-                return (endPoint, options);
+                    return (endPoint, options);
+                }
             }
 
             return await entry.GetChildrenEntries()
@@ -89,19 +104,15 @@ namespace AI4E.Routing
 
         #endregion
 
-        private static string GetPath(string messageType)
+        private static CoordinationEntryPath GetPath(string messageType)
         {
-            var escapedMessageTypeBuilder = new StringBuilder(messageType.Length + EscapeHelper.CountCharsToEscape(messageType));
-            escapedMessageTypeBuilder.Append(messageType);
-            EscapeHelper.Escape(escapedMessageTypeBuilder, startIndex: 0);
-            var escapedMessageType = escapedMessageTypeBuilder.ToString();
-
-            return EntryPathHelper.GetChildPath(_routesRootPath, escapedMessageType, normalize: false);
+            return _routesRootPath.GetChildPath(messageType);
         }
 
-        private static string GetPath(string messageType, string route, string session)
+        private static CoordinationEntryPath GetPath(string messageType, string route, string session)
         {
-            return EntryPathHelper.GetChildPath(GetPath(messageType), EntryPathHelper.GetEntryName(route, session));
+            var uniqueEntryName = IdGenerator.GenerateId(route, session);
+            return _routesRootPath.GetChildPath(messageType, uniqueEntryName);
         }
     }
 

@@ -47,7 +47,6 @@ namespace AI4E.Modularity.Host
             services.AddMessageRouter();
             services.AddRemoteMessageDispatcher();
             services.AddUdpEndPoint();
-            services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
             services.AddSingleton(ConfigureDebugPort);
 
             services.ConfigureApplicationServices(appServiceManager =>

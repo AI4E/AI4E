@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
@@ -13,7 +12,46 @@ namespace AI4E.Coordination
         public const char AltPathDelimiter = '\\';
         private const string _pathDelimiterString = "/";
 
-        private readonly ImmutableArray<CoordinationEntryPathSegment> _segments;
+        private readonly ImmutableList<CoordinationEntryPathSegment> _segments;
+
+        public CoordinationEntryPath(CoordinationEntryPathSegment segment)
+        {
+            if (segment == default)
+                throw new ArgumentDefaultException(nameof(segment));
+
+            _segments = ImmutableList<CoordinationEntryPathSegment>.Empty.Add(segment);
+        }
+
+        public CoordinationEntryPath(params string[] segments) : this((IEnumerable<string>)segments) { }
+
+        public CoordinationEntryPath(IEnumerable<string> segments)
+        {
+            if (segments == null)
+                throw new ArgumentNullException(nameof(segments));
+
+            var segmentsBuilder = ImmutableList.CreateBuilder<CoordinationEntryPathSegment>();
+
+            foreach (var segment in segments)
+            {
+                if (segment == null)
+                    throw new ArgumentException("The collection must not contain default entries.", nameof(segments));
+
+                CoordinationEntryPathSegment segmentX;
+
+                try
+                {
+                    segmentX = new CoordinationEntryPathSegment(segment.AsMemory());
+                }
+                catch (ArgumentException exc)
+                {
+                    throw new ArgumentException("The collection must not contain emtpy entries or entries that contain whitespace only.", nameof(segments), exc);
+                }
+
+                segmentsBuilder.Add(segmentX);
+            }
+
+            _segments = segmentsBuilder.ToImmutable();
+        }
 
         public CoordinationEntryPath(params CoordinationEntryPathSegment[] segments)
         {
@@ -23,7 +61,7 @@ namespace AI4E.Coordination
             if (segments.Any(p => p == default))
                 throw new ArgumentException("The collection must not contain default entries.", nameof(segments));
 
-            _segments = segments.ToImmutableArray();
+            _segments = segments.ToImmutableList();
         }
 
         public CoordinationEntryPath(IEnumerable<CoordinationEntryPathSegment> segments)
@@ -34,47 +72,51 @@ namespace AI4E.Coordination
             if (segments.Any(p => p == default))
                 throw new ArgumentException("The collection must not contain default entries.", nameof(segments));
 
-            _segments = segments.ToImmutableArray();
+            _segments = segments.ToImmutableList();
         }
 
-        public ImmutableArray<CoordinationEntryPathSegment> Segments => _segments.IsDefault ? ImmutableArray<CoordinationEntryPathSegment>.Empty : _segments;
+        public IReadOnlyList<CoordinationEntryPathSegment> Segments => _segments ?? ImmutableList<CoordinationEntryPathSegment>.Empty;
 
-        public string Path
+        public bool IsRoot => Segments.Count == 0;
+
+        public ReadOnlyMemory<char> EscapedPath
         {
             get
             {
-                if (!_segments.Any())
+                if (_segments == null || !_segments.Any())
                 {
-                    return _pathDelimiterString;
+                    return _pathDelimiterString.AsMemory();
                 }
 
                 var capacity = 1;
 
-                for (var i = 0; i < _segments.Length; i++)
+                for (var i = 0; i < _segments.Count; i++)
                 {
                     capacity += _segments[i].EscapedSegment.Length + 1;
                 }
 
-                var resultsBuilder = new StringBuilder(capacity);
+                var result = new char[capacity];
+                var resultsWriter = new MemoryWriter<char>(result);
+                resultsWriter.Append(PathDelimiter);
 
-                resultsBuilder.Append(PathDelimiter);
-
-                for (var i = 0; i < _segments.Length; i++)
+                for (var i = 0; i < _segments.Count; i++)
                 {
-                    resultsBuilder.Append(_segments[i].EscapedSegment);
-                    resultsBuilder.Append(PathDelimiter);
+                    resultsWriter.Append(_segments[i].EscapedSegment.Span);
+                    resultsWriter.Append(PathDelimiter);
                 }
 
-                return resultsBuilder.ToString();
+                var memory = resultsWriter.GetMemory();
+                Assert(memory.Length == result.Length);
+                return memory;
             }
         }
 
         public bool Equals(CoordinationEntryPath other)
         {
-            if (Segments.Length != other.Segments.Length)
+            if (Segments.Count != other.Segments.Count)
                 return false;
 
-            for (var i = 0; i < Segments.Length; i++)
+            for (var i = 0; i < Segments.Count; i++)
             {
                 if (Segments[i] != other.Segments[i])
                     return false;
@@ -95,29 +137,7 @@ namespace AI4E.Coordination
 
         public override string ToString()
         {
-            if (!_segments.Any())
-            {
-                return "/";
-            }
-
-            var capacity = 1;
-
-            for (var i = 0; i < _segments.Length; i++)
-            {
-                capacity += _segments[i].Segment.Length + 1;
-            }
-
-            var resultsBuilder = new StringBuilder(capacity);
-
-            resultsBuilder.Append(PathDelimiter);
-
-            for (var i = 0; i < _segments.Length; i++)
-            {
-                resultsBuilder.Append(_segments[i]);
-                resultsBuilder.Append(PathDelimiter);
-            }
-
-            return resultsBuilder.ToString();
+            return EscapedPath.ConvertToString();
         }
 
         public static bool operator ==(CoordinationEntryPath left, CoordinationEntryPath right)
@@ -136,20 +156,13 @@ namespace AI4E.Coordination
             var segmentStart = 0;
             var segments = new List<CoordinationEntryPathSegment>();
 
-            void ProcessSegment(int end)
+            void ProcessSegment(int exclusiveEnd)
             {
-                var spanX = path.Span;
-                var whitespaceOnly = true;
+                var slice = path.Slice(segmentStart, exclusiveEnd: exclusiveEnd);
 
-                for (var j = segmentStart; j < end; j++)
+                if (!slice.IsEmptyOrWhiteSpace())
                 {
-                    if (!char.IsWhiteSpace(spanX[j]))
-                        whitespaceOnly = false;
-                }
-
-                if (!whitespaceOnly)
-                {
-                    var segment = CoordinationEntryPathSegment.FromEscapedSegment(path.Slice(segmentStart, end - segmentStart));
+                    var segment = CoordinationEntryPathSegment.FromEscapedSegment(slice);
                     Assert(segment != default);
                     segments.Add(segment);
                 }
@@ -175,6 +188,60 @@ namespace AI4E.Coordination
 
             return new CoordinationEntryPath(segments);
         }
+
+        public CoordinationEntryPath GetParentPath()
+        {
+            if (_segments == null || !_segments.Any())
+            {
+                return this;
+            }
+
+            if (_segments.Count == 1)
+            {
+                return default;
+            }
+
+            return new CoordinationEntryPath(_segments.RemoveAt(_segments.Count - 1));
+        }
+
+        public CoordinationEntryPath GetChildPath(CoordinationEntryPathSegment segment)
+        {
+            if (_segments == null || !_segments.Any())
+                return new CoordinationEntryPath(segment);
+
+            return new CoordinationEntryPath(_segments.Add(segment));
+        }
+
+        public CoordinationEntryPath GetChildPath(params CoordinationEntryPathSegment[] segments)
+        {
+            return GetChildPath((IEnumerable<CoordinationEntryPathSegment>)segments);
+        }
+
+        public CoordinationEntryPath GetChildPath(IEnumerable<CoordinationEntryPathSegment> segments)
+        {
+            return new CoordinationEntryPath((_segments ?? ImmutableList<CoordinationEntryPathSegment>.Empty).AddRange(segments));
+        }
+    }
+
+    public static class CoordinationEntryPathExtension
+    {
+        public static CoordinationEntryPath GetChildPath(this CoordinationEntryPath path, IEnumerable<string> segments)
+        {
+            if (segments == null)
+                throw new ArgumentNullException(nameof(segments));
+
+            return path.GetChildPath(segments.Select(p => new CoordinationEntryPathSegment(p)));
+        }
+
+        public static CoordinationEntryPath GetChildPath(this CoordinationEntryPath path, params string[] segments)
+        {
+            return path.GetChildPath(segments as IEnumerable<string>);
+        }
+
+        public static CoordinationEntryPath GetChildPath(this CoordinationEntryPath path, string segment)
+        {
+            return path.GetChildPath(new CoordinationEntryPathSegment(segment));
+        }
     }
 
     public readonly struct CoordinationEntryPathSegment : IEquatable<CoordinationEntryPathSegment>
@@ -182,6 +249,22 @@ namespace AI4E.Coordination
         public const char EscapeChar = '-';
         public const char PathDelimiterReplacement = 'X';
         public const char AltPathDelimiterReplacement = 'Y';
+
+        public CoordinationEntryPathSegment(string segment)
+        {
+            if (segment == null)
+                throw new ArgumentNullException(nameof(segment));
+
+            var memorySegment = Trim(segment.AsMemory());
+
+            if (memorySegment.IsEmpty)
+            {
+                throw new ArgumentException("The argument must neither be empty nor consist of whitespace only.", nameof(segment));
+            }
+
+            Segment = memorySegment;
+            EscapedSegment = Escape(memorySegment);
+        }
 
         public CoordinationEntryPathSegment(ReadOnlyMemory<char> segment)
         {
@@ -397,8 +480,15 @@ namespace AI4E.Coordination
                         }
                         break;
 
+                    case CoordinationEntryPath.PathDelimiter:
+                    case CoordinationEntryPath.AltPathDelimiter:
+                        throw new ArgumentException("An escaped segment must not contain a path delimiter.", nameof(escapedSegment));
+
                     default:
-                        Assert(!escapedCharHit);
+                        if (escapedCharHit)
+                        {
+                            throw new ArgumentException($"Unknown escape character '{span[i]}' in escaped segment.", nameof(escapedSegment));
+                        }
                         break;
                 }
             }
@@ -427,27 +517,7 @@ namespace AI4E.Coordination
 
         public bool Equals(CoordinationEntryPathSegment other)
         {
-            var span = Segment.Span;
-            var otherSpan = other.Segment.Span;
-
-            if (span.IsEmpty)
-            {
-                return otherSpan.IsEmpty;
-            }
-
-            if (otherSpan.IsEmpty)
-                return false;
-
-            if (span.Length != otherSpan.Length)
-                return false;
-
-            for (var i = 0; i < span.Length; i++)
-            {
-                if (span[i] != otherSpan[i])
-                    return false;
-            }
-
-            return true;
+            return Segment.SequenceEquals(other.Segment);
         }
 
         public override bool Equals(object obj)
@@ -462,7 +532,7 @@ namespace AI4E.Coordination
 
         public override string ToString()
         {
-            return Segment.Span.ToString(); // TODO: Is this correct?
+            return Segment.ConvertToString();
         }
 
         public static bool operator ==(CoordinationEntryPathSegment left, CoordinationEntryPathSegment right)
@@ -478,45 +548,8 @@ namespace AI4E.Coordination
         public static CoordinationEntryPathSegment FromEscapedSegment(ReadOnlyMemory<char> escapedSegment)
         {
             escapedSegment = Trim(escapedSegment);
-
             var unescapedSegment = Unescape(escapedSegment);
-
             return new CoordinationEntryPathSegment(unescapedSegment, escapedSegment);
-        }
-    }
-
-    internal struct MemoryWriter<T>
-    {
-        private readonly Memory<T> _memory;
-        private int _position;
-
-        public MemoryWriter(Memory<T> memory)
-        {
-            _memory = memory;
-            _position = 0;
-        }
-
-        public void Append(ReadOnlySpan<T> span)
-        {
-            var spanX = _memory.Span;
-
-            Assert(_position + span.Length <= _memory.Length);
-            span.CopyTo(spanX.Slice(_position));
-            _position += span.Length;
-        }
-
-        public void Append(T c)
-        {
-            var span = _memory.Span;
-
-            Assert(_position + 1 <= _memory.Length);
-            span[_position] = c;
-            _position += 1;
-        }
-
-        public Memory<T> GetMemory()
-        {
-            return _memory.Slice(0, _position);
         }
     }
 }

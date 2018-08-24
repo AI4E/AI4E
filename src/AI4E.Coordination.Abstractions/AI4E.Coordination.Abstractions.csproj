@@ -5,15 +5,21 @@
     <RootNamespace>AI4E.Coordination</RootNamespace>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+
   <ItemGroup>
-    <Compile Include="..\Common\EntryPathHelper.cs" Link="Internal\EntryPathHelper.cs" />
-    <Compile Include="..\Common\EscapeHelper.cs" Link="Internal\EscapeHelper.cs" />
+    <Compile Include="..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />
+    <Compile Include="..\Common\MemoryWriter.cs" Link="Internal\MemoryWriter.cs" />
+    <Compile Include="..\Common\ReadOnlyStream.cs" Link="Internal\ReadOnlyStream.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
     <PackageReference Include="System.Interactive.Async" Version="3.2.0" />
     <PackageReference Include="System.Memory" Version="4.5.1" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.5.1" />
   </ItemGroup>
 
   <ItemGroup>

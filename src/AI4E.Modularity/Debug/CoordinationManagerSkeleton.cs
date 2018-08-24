@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,7 +26,7 @@ namespace AI4E.Modularity.Debug
 
         public async Task<IEntry> CreateAsync(string path, byte[] value, EntryCreationModes modes = EntryCreationModes.Default, CancellationToken cancellation = default)
         {
-            var result = await _coordinationManager.CreateAsync(path, value, modes, cancellation);
+            var result = await _coordinationManager.CreateAsync(CoordinationEntryPath.FromEscapedPath(path.AsMemory()), value, modes, cancellation);
 
             if (result == null)
                 return null;
@@ -35,7 +36,7 @@ namespace AI4E.Modularity.Debug
 
         public async Task<IEntry> GetOrCreateAsync(string path, byte[] value, EntryCreationModes modes = EntryCreationModes.Default, CancellationToken cancellation = default)
         {
-            var result = await _coordinationManager.GetOrCreateAsync(path, value, modes, cancellation);
+            var result = await _coordinationManager.GetOrCreateAsync(CoordinationEntryPath.FromEscapedPath(path.AsMemory()), value, modes, cancellation);
 
             if (result == null)
                 return null;
@@ -45,7 +46,7 @@ namespace AI4E.Modularity.Debug
 
         public async Task<IEntry> GetAsync(string path, CancellationToken cancellation = default)
         {
-            var result = await _coordinationManager.GetAsync(path, cancellation);
+            var result = await _coordinationManager.GetAsync(CoordinationEntryPath.FromEscapedPath(path.AsMemory()), cancellation);
 
             if (result == null)
                 return null;
@@ -55,12 +56,12 @@ namespace AI4E.Modularity.Debug
 
         public Task<int> SetValueAsync(string path, byte[] value, int version = 0, CancellationToken cancellation = default)
         {
-            return _coordinationManager.SetValueAsync(path, value, version, cancellation).AsTask();
+            return _coordinationManager.SetValueAsync(CoordinationEntryPath.FromEscapedPath(path.AsMemory()), value, version, cancellation).AsTask();
         }
 
         public Task<int> DeleteAsync(string path, int version = 0, bool recursive = false, CancellationToken cancellation = default)
         {
-            return _coordinationManager.DeleteAsync(path, version, recursive, cancellation).AsTask();
+            return _coordinationManager.DeleteAsync(CoordinationEntryPath.FromEscapedPath(path.AsMemory()), version, recursive, cancellation).AsTask();
         }
 
         public Task<string> GetSessionAsync(CancellationToken cancellation = default)
@@ -94,8 +95,9 @@ namespace AI4E.Modularity.Debug
                 _proxy = proxy;
             }
 
-            private readonly string[] _childNames;
+            private readonly string[] _children; // Escaped child names
             private readonly byte[] _value;
+            private readonly string _path; // Escaped path
 
             public Entry(IProxy<CoordinationManagerSkeleton> proxy, IEntry entry)
             {
@@ -103,18 +105,16 @@ namespace AI4E.Modularity.Debug
                 Assert(entry != null);
 
                 _proxy = proxy;
+                _path = entry.Path.EscapedPath.ConvertToString();
+                _value = entry.Value.ToArray();
+                _children = entry.Children.Select(p => p.EscapedSegment.ConvertToString()).ToArray();
 
-                Path = entry.Path;
                 Version = entry.Version;
                 CreationTime = entry.CreationTime;
                 LastWriteTime = entry.LastWriteTime;
-                _value = entry.Value.ToArray();
-                _childNames = entry.Children.ToArray();
-                Name = entry.Name;
-                ParentPath = entry.ParentPath;
             }
 
-            public string Path { get; }
+            public CoordinationEntryPath Path => CoordinationEntryPath.FromEscapedPath(_path.AsMemory());
 
             public int Version { get; }
 
@@ -124,86 +124,11 @@ namespace AI4E.Modularity.Debug
 
             public ReadOnlyMemory<byte> Value => _value;
 
-            //public IAsyncEnumerable<IEntry> Childs => new ChildrenEnumerable(this);
+            public IReadOnlyList<CoordinationEntryPathSegment> Children => _children.Select(p => CoordinationEntryPathSegment.FromEscapedSegment(p.AsMemory())).ToImmutableList();
 
-            public IReadOnlyList<string> Children => _childNames;
+            public CoordinationEntryPathSegment Name => Path.Segments.LastOrDefault();
 
-            public string Name { get; }
-
-            ////public Task<IEntry> GetParentAsync(CancellationToken cancellation)
-            ////{
-            ////    return _proxy.ExecuteAsync(p => p.GetAsync(ParentPath, cancellation));
-            ////}
-
-            public string ParentPath { get; }
-
-            //private sealed class ChildrenEnumerable : IAsyncEnumerable<IEntry>
-            //{
-            //    private readonly Entry _entry;
-
-            //    public ChildrenEnumerable(Entry entry)
-            //    {
-            //        Assert(entry != null);
-
-            //        _entry = entry;
-            //    }
-
-            //    public IAsyncEnumerator<IEntry> GetEnumerator()
-            //    {
-            //        return new ChildrenEnumerator(_entry);
-            //    }
-            //}
-
-            //private sealed class ChildrenEnumerator : IAsyncEnumerator<IEntry>
-            //{
-            //    private readonly Entry _entry;
-
-            //    private IEntry _current = default;
-            //    private int _currentIndex = -1;
-
-            //    public ChildrenEnumerator(Entry entry)
-            //    {
-            //        Assert(entry != null);
-
-            //        _entry = entry;
-            //    }
-
-            //    public async Task<bool> MoveNext(CancellationToken cancellationToken)
-            //    {
-            //        IEntry next;
-
-            //        do
-            //        {
-            //            string child;
-
-            //            do
-            //            {
-            //                var index = ++_currentIndex;
-
-            //                if (index >= _entry._childNames.Length)
-            //                {
-            //                    _current = default;
-            //                    return false;
-            //                }
-
-            //                child = _entry._childNames[index];
-            //            }
-            //            while (child == null);
-
-            //            var childFullName = EntryPathHelper.GetChildPath(_entry.Path, child, normalize: false);
-
-            //            next = await _entry._proxy.ExecuteAsync(p => p.GetAsync(childFullName, cancellationToken));
-            //        }
-            //        while (next == null);
-
-            //        _current = next;
-            //        return true;
-            //    }
-
-            //    public IEntry Current => _current;
-
-            //    public void Dispose() { }
-            //}
+            public CoordinationEntryPath ParentPath => Path.GetParentPath();
         }
     }
 }

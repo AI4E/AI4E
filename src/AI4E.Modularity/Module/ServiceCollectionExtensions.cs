@@ -26,7 +26,6 @@ namespace AI4E.Modularity.Module
             services.AddRemoteMessageDispatcher();
             services.AddSingleton(ConfigureLogicalEndPoint);
             services.AddSingleton(ConfigureCoordinationManager);
-            services.AddSingleton<IHttpDispatchStore, HttpDispatchStore>();
             services.AddSingleton(ConfigureProxyHost);
             services.AddSingleton<IMetadataAccessor, MetadataAccessor>();
             services.AddSingleton<IRunningModuleLookup, RunningModuleLookup>();

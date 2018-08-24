@@ -41,12 +41,11 @@ namespace AI4E.Coordination
         /// A task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the created entry.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="path"/> or <paramref name="value"/> is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="modes"/> is not a combination of the values defined in <see cref="EntryCreationModes"/>.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="DuplicateEntryException">Thrown if the coordination service contains an entry with the specified path.</exception>
         /// <exception cref="SessionTerminatedException">Thrown if the session is terminated.</exception>
-        ValueTask<IEntry> CreateAsync(string path, ReadOnlyMemory<byte> value, EntryCreationModes modes = default, CancellationToken cancellation = default);
+        ValueTask<IEntry> CreateAsync(CoordinationEntryPath path, ReadOnlyMemory<byte> value, EntryCreationModes modes = default, CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously creates a coordination entry with the specified path if no entry with the path does already exist, or returns the existing entry.
@@ -59,11 +58,10 @@ namespace AI4E.Coordination
         /// A task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the coordination entry.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="path"/> or <paramref name="value"/> is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="modes"/> is not a combination of the values defined in <see cref="EntryCreationModes"/>.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="SessionTerminatedException">Thrown if the session is terminated.</exception>
-        ValueTask<IEntry> GetOrCreateAsync(string path, ReadOnlyMemory<byte> value, EntryCreationModes modes = default, CancellationToken cancellation = default);
+        ValueTask<IEntry> GetOrCreateAsync(CoordinationEntryPath path, ReadOnlyMemory<byte> value, EntryCreationModes modes = default, CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously returns the entry with the specified path.
@@ -74,10 +72,9 @@ namespace AI4E.Coordination
         /// A task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the coordination entry or null if no matching entry exists.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="path"/>.</exception>    
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="SessionTerminatedException">Thrown if the session is terminated.</exception>
-        ValueTask<IEntry> GetAsync(string path, CancellationToken cancellation = default);
+        ValueTask<IEntry> GetAsync(CoordinationEntryPath path, CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously sets the value with the specified path.
@@ -91,11 +88,10 @@ namespace AI4E.Coordination
         /// When evaluated, the tasks result contains the version of the entry before it was modified or zero if <paramref name="version"/> is zero.
         /// If the value is equal to <paramref name="version"/> the operation was executed, otherwise a version conflict occured.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="path"/> or <paramref name="value"/> is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="version"/> is negative.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="SessionTerminatedException">Thrown if the session is terminated.</exception>
-        ValueTask<int> SetValueAsync(string path, ReadOnlyMemory<byte> value, int version = default, CancellationToken cancellation = default);
+        ValueTask<int> SetValueAsync(CoordinationEntryPath path, ReadOnlyMemory<byte> value, int version = default, CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously deleted the entry with the specified path.
@@ -109,11 +105,10 @@ namespace AI4E.Coordination
         /// if the operation suceeded 
         /// or the version of the current entry if <paramref name="version"/> is not equal to zero and the current entry's version is not equal to <paramref name="version"/>.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="path"/> is null.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="InvalidOperationException">Thrown if <paramref name="recursive"/> is false and the entry specified by <paramref name="path"/> contains child entries.</exception>
         /// <exception cref="SessionTerminatedException">Thrown if the session is terminated.</exception>
-        ValueTask<int> DeleteAsync(string path, int version = default, bool recursive = false, CancellationToken cancellation = default);
+        ValueTask<int> DeleteAsync(CoordinationEntryPath path, int version = default, bool recursive = false, CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously retrieves the current session.

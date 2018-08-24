@@ -41,7 +41,6 @@ namespace AI4E.Modularity.Module
     public sealed class ModuleServer : IServer
     {
         private readonly IRemoteMessageDispatcher _messageDispatcher;
-        private readonly IHttpDispatchStore _httpDispatchStore;
         private readonly IMetadataAccessor _metadataAccessor;
         private readonly IRunningModuleLookup _runningModules;
         private readonly IServiceProvider _serviceProvider;
@@ -53,7 +52,6 @@ namespace AI4E.Modularity.Module
         private IAsyncDisposable _handlerRegistration;
 
         public ModuleServer(IRemoteMessageDispatcher messageDispatcher,
-                            IHttpDispatchStore httpDispatchStore,
                             IMetadataAccessor metadataAccessor,
                             IRunningModuleLookup runningModules,
                             IServiceProvider serviceProvider,
@@ -62,9 +60,6 @@ namespace AI4E.Modularity.Module
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
-
-            if (httpDispatchStore == null)
-                throw new ArgumentNullException(nameof(httpDispatchStore));
 
             if (metadataAccessor == null)
                 throw new ArgumentNullException(nameof(metadataAccessor));
@@ -86,7 +81,6 @@ namespace AI4E.Modularity.Module
             }
 
             _messageDispatcher = messageDispatcher;
-            _httpDispatchStore = httpDispatchStore;
             _metadataAccessor = metadataAccessor;
             _runningModules = runningModules;
             _serviceProvider = serviceProvider;
@@ -138,10 +132,7 @@ namespace AI4E.Modularity.Module
 
                 var moduleRegistrationOperation = _runningModules.AddModuleAsync(module, endPoint, _prefix.Yield(), cancellationToken);
 
-                // TODO: This is obsolete and should be removed as the running-modules manager is the replacement for the http-dispatch-store.
-                var httpDispatchStoreRegistration = _httpDispatchStore.AddRouteAsync(endPoint, _prefix, cancellationToken);
-
-                await Task.WhenAll(moduleRegistrationOperation, httpDispatchStoreRegistration);
+                await moduleRegistrationOperation;
             }
 
             async Task RegisterHandlerAsync()
@@ -182,13 +173,9 @@ namespace AI4E.Modularity.Module
                 var endPoint = await _messageDispatcher.GetLocalEndPointAsync(cancellation: default);
                 var metadata = await _metadataAccessor.GetMetadataAsync(cancellation: default);
                 var module = metadata.Module;
-
                 var moduleUnregistrationOperation = _runningModules.RemoveModuleAsync(module, cancellation: default);
 
-                // TODO: This is obsolete and should be removed as the running-modules manager is the replacement for the http-dispatch-store.
-                var httpDispatchStoreUnregistration = _httpDispatchStore.RemoveRouteAsync(endPoint, _prefix, cancellation: default);
-
-                await Task.WhenAll(moduleUnregistrationOperation, httpDispatchStoreUnregistration);
+                await moduleUnregistrationOperation;
             }
 
             Task UnregisterHandlerAsync()

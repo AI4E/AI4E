@@ -13,7 +13,7 @@ namespace AI4E.Routing.SignalR.Server
     //       (2) Forcing an override in ValidateClientAsync may override a later lease end with an earlier lease end.
     public sealed class ConnectedClientLookup : IConnectedClientLookup
     {
-        private const string _basePath = "/connectedClients/";
+        private static readonly CoordinationEntryPath _basePath = new CoordinationEntryPath("connectedClients");
         private static readonly TimeSpan _leaseLength = TimeSpan.FromMinutes(10); // TODO: This should be configurable.
 
         private readonly ICoordinationManager _coordinationManager;
@@ -56,7 +56,7 @@ namespace AI4E.Routing.SignalR.Server
             {
                 try
                 {
-                    await _coordinationManager.CreateAsync(EntryPathHelper.GetChildPath(_basePath, endPoint.Route), bytes, cancellation: cancellation);
+                    await _coordinationManager.CreateAsync(_basePath.GetChildPath(endPoint.Route), bytes, cancellation: cancellation);
 
                     return (endPoint, securityToken);
                 }
@@ -70,7 +70,7 @@ namespace AI4E.Routing.SignalR.Server
 
         public async Task<bool> ValidateClientAsync(EndPointRoute endPoint, string securityToken, CancellationToken cancellation)
         {
-            var path = EntryPathHelper.GetChildPath(_basePath, endPoint.Route);
+            var path = _basePath.GetChildPath(endPoint.Route);
             var entry = await _coordinationManager.GetAsync(path, cancellation: cancellation);
 
             if (entry == null)

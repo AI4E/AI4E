@@ -176,7 +176,8 @@ namespace AI4E.Coordination
                     }
                     else
                     {
-                        await InvalidateCacheEntryAsync(entry, cancellation);
+                        var path = CoordinationEntryPath.FromEscapedPath(entry.AsMemory()); // TODO: https://github.com/AI4E/AI4E/issues/15
+                        await InvalidateCacheEntryAsync(path, cancellation);
                     }
                     break;
 
@@ -208,7 +209,8 @@ namespace AI4E.Coordination
         {
             if (session == await GetSessionAsync(cancellation))
             {
-                await InvalidateCacheEntryAsync(entry, cancellation);
+                var path = CoordinationEntryPath.FromEscapedPath(entry.AsMemory()); // TODO: https://github.com/AI4E/AI4E/issues/15
+                await InvalidateCacheEntryAsync(path, cancellation);
             }
             else
             {
@@ -536,13 +538,9 @@ namespace AI4E.Coordination
 
         #region Read entry
 
-        public async ValueTask<IEntry> GetAsync(string path, CancellationToken cancellation = default)
+        public async ValueTask<IEntry> GetAsync(CoordinationEntryPath path, CancellationToken cancellation = default)
         {
-            if (path == null)
-                throw new ArgumentNullException(nameof(path));
-
-            var normalizedPath = EntryPathHelper.NormalizePath(path);
-            var entry = await GetEntryAsync(normalizedPath, cancellation);
+            var entry = await GetEntryInternalAsync(path, cancellation);
 
             if (entry == null)
             {
@@ -552,10 +550,8 @@ namespace AI4E.Coordination
             return new Entry(this, entry);
         }
 
-        private async ValueTask<IStoredEntry> GetEntryAsync(string normalizedPath, CancellationToken cancellation = default)
+        private async ValueTask<IStoredEntry> GetEntryInternalAsync(CoordinationEntryPath path, CancellationToken cancellation = default)
         {
-            Assert(normalizedPath != null);
-
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
                 if (_disposeHelper.IsDisposed)
@@ -564,14 +560,16 @@ namespace AI4E.Coordination
                 var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
                 await _initializationHelper.Initialization.WithCancellation(combinedCancellationSource.Token);
-                return await InternalGetEntryAsync(normalizedPath, combinedCancellationSource.Token);
+                return await GetEntryCoreAsync(path, combinedCancellationSource.Token);
             }
         }
 
-        private async ValueTask<IStoredEntry> InternalGetEntryAsync(string normalizedPath, CancellationToken cancellation)
+        private async ValueTask<IStoredEntry> GetEntryCoreAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
+            var escapedPath = path.EscapedPath.ConvertToString(); // TODO: https://github.com/AI4E/AI4E/issues/15
+
             var comparandVersion = 0;
-            if (TryGetCacheEntry(normalizedPath, out var cacheEntry))
+            if (TryGetCacheEntry(escapedPath, out var cacheEntry))
             {
                 if (cacheEntry.IsValid)
                 {
@@ -583,12 +581,14 @@ namespace AI4E.Coordination
                 comparandVersion = cacheEntry.Version;
             }
 
-            return await LoadEntryAsync(normalizedPath, comparandVersion, cancellation);
+            return await LoadEntryAsync(path, comparandVersion, cancellation);
         }
 
-        private async Task<IStoredEntry> LoadEntryAsync(string normalizedPath, int comparandVersion, CancellationToken cancellation)
+        private async Task<IStoredEntry> LoadEntryAsync(CoordinationEntryPath path, int comparandVersion, CancellationToken cancellation)
         {
-            var entry = await _storage.GetEntryAsync(normalizedPath, cancellation);
+            var escapedPath = path.EscapedPath.ConvertToString(); // TODO: https://github.com/AI4E/AI4E/issues/15
+
+            var entry = await _storage.GetEntryAsync(escapedPath, cancellation);
 
             // We cannot cache a non existing entry.
             if (entry is null)
@@ -603,11 +603,8 @@ namespace AI4E.Coordination
 
         #region Create entry
 
-        public async ValueTask<IEntry> CreateAsync(string path, ReadOnlyMemory<byte> value, EntryCreationModes modes = default, CancellationToken cancellation = default)
+        public async ValueTask<IEntry> CreateAsync(CoordinationEntryPath path, ReadOnlyMemory<byte> value, EntryCreationModes modes = default, CancellationToken cancellation = default)
         {
-            if (path == null)
-                throw new ArgumentNullException(nameof(path));
-
             if (modes < 0 || modes > EntryCreationModes.Ephemeral)
                 throw new ArgumentOutOfRangeException(nameof(modes), $"The argument must be one or a combination of the values defined in '{nameof(EntryCreationModes)}'.");
 
@@ -616,8 +613,6 @@ namespace AI4E.Coordination
             if (!await _sessionManager.IsAliveAsync(session))
                 throw new SessionTerminatedException();
 
-            var normalizedPath = EntryPathHelper.NormalizePath(path);
-            var parentPath = EntryPathHelper.GetParentPath(normalizedPath, out var name, normalize: false);
             var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
@@ -628,19 +623,17 @@ namespace AI4E.Coordination
                 await _initializationHelper.Initialization.WithCancellation(combinedCancellationSource.Token);
 
 
-                var (entry, created) = await CreateInternalAsync(normalizedPath,
-                                                      parentPath,
-                                                      name,
-                                                      value,
-                                                      session,
-                                                      modes,
-                                                      releaseLock: true,
-                                                      combinedCancellationSource.Token);
+                var (entry, created) = await CreateInternalAsync(path,
+                                                                 value,
+                                                                 session,
+                                                                 modes,
+                                                                 releaseLock: true,
+                                                                 combinedCancellationSource.Token);
 
                 // There is already an entry present.
                 if (!created)
                 {
-                    throw new DuplicateEntryException(normalizedPath);
+                    throw new DuplicateEntryException(path.EscapedPath.ConvertToString());
                 }
 
                 Assert(entry != null);
@@ -653,7 +646,7 @@ namespace AI4E.Coordination
             }
         }
 
-        public async ValueTask<IEntry> GetOrCreateAsync(string path, ReadOnlyMemory<byte> value, EntryCreationModes modes = default, CancellationToken cancellation = default)
+        public async ValueTask<IEntry> GetOrCreateAsync(CoordinationEntryPath path, ReadOnlyMemory<byte> value, EntryCreationModes modes = default, CancellationToken cancellation = default)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -666,8 +659,6 @@ namespace AI4E.Coordination
             if (!await _sessionManager.IsAliveAsync(session))
                 throw new SessionTerminatedException();
 
-            var normalizedPath = EntryPathHelper.NormalizePath(path);
-            var parentPath = EntryPathHelper.GetParentPath(normalizedPath, out var name, normalize: false);
             var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
@@ -677,16 +668,14 @@ namespace AI4E.Coordination
 
                 await _initializationHelper.Initialization.WithCancellation(combinedCancellationSource.Token);
 
-                var cachedEntry = await InternalGetEntryAsync(normalizedPath, combinedCancellationSource.Token);
+                var cachedEntry = await GetEntryCoreAsync(path, combinedCancellationSource.Token);
 
                 if (cachedEntry != null)
                 {
                     return new Entry(this, cachedEntry);
                 }
 
-                var (entry, _) = await CreateInternalAsync(normalizedPath,
-                                                           parentPath,
-                                                           name,
+                var (entry, _) = await CreateInternalAsync(path,
                                                            value,
                                                            session,
                                                            modes,
@@ -703,22 +692,18 @@ namespace AI4E.Coordination
             }
         }
 
-        private async ValueTask<(IStoredEntry entry, bool created)> CreateInternalAsync(string normalizedPath,
-                                                                                        string parentPath,
-                                                                                        string name,
+        private async ValueTask<(IStoredEntry entry, bool created)> CreateInternalAsync(CoordinationEntryPath path,
                                                                                         ReadOnlyMemory<byte> value,
                                                                                         string session,
                                                                                         EntryCreationModes modes,
                                                                                         bool releaseLock,
                                                                                         CancellationToken cancellation)
         {
-            Assert(normalizedPath != null);
-            Assert(name != null);
-
             Assert(modes >= 0 && modes <= EntryCreationModes.Ephemeral);
 
-            var entry = _storedEntryManager.Create(normalizedPath, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.Span);
-            var parent = (parentPath != null) ? await _storage.GetEntryAsync(parentPath, cancellation) : null;
+            var escapedPath = path.EscapedPath.ConvertToString(); // TODO: https://github.com/AI4E/AI4E/issues/15
+            var entry = _storedEntryManager.Create(escapedPath, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.Span);
+            var parent = !path.IsRoot ? await _storage.GetEntryAsync(path.GetParentPath(), cancellation) : null;
 
             Assert(entry != null);
 
@@ -726,15 +711,15 @@ namespace AI4E.Coordination
             {
                 if ((modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral)
                 {
-                    await _sessionManager.AddSessionEntryAsync(session, normalizedPath, cancellation);
+                    await _sessionManager.AddSessionEntryAsync(session, escapedPath, cancellation);
                 }
 
                 try
                 {
                     // This is not the root node.
-                    if (parentPath != null)
+                    if (!path.IsRoot)
                     {
-                        parent = await EnsureOwningParentWriteLock(parent, parentPath, session, cancellation);
+                        parent = await EnsureOwningParentWriteLock(parent, path.GetParentPath(), session, cancellation);
 
                         Assert(parent != null);
 
@@ -743,6 +728,7 @@ namespace AI4E.Coordination
                             throw new InvalidOperationException($"Unable to create the entry. The parent entry is an ephemeral node and is not allowed to have child entries.");
                         }
 
+                        var name = path.Segments.Last().EscapedSegment.ConvertToString(); // TODO: https://github.com/AI4E/AI4E/issues/15
                         var result = await _storage.UpdateEntryAsync(parent, _storedEntryManager.AddChild(parent, name), cancellation);
 
                         // We are holding the exclusive lock => No one else can alter the entry.
@@ -767,9 +753,9 @@ namespace AI4E.Coordination
                 {
                     // This is not the root node and the parent node was found. 
                     // We did not successfully create the entry.
-                    if (parentPath != null && entry != null)
+                    if (!path.IsRoot && entry != null)
                     {
-                        await RemoveChildEntryAsync(parent, name, cancellation: default);
+                        await RemoveChildEntryAsync(parent, path.Segments.Last(), cancellation: default);
                     }
 
                     throw;
@@ -785,14 +771,14 @@ namespace AI4E.Coordination
             {
                 if ((modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral)
                 {
-                    await _sessionManager.RemoveSessionEntryAsync(session, normalizedPath, cancellation);
+                    await _sessionManager.RemoveSessionEntryAsync(session, escapedPath, cancellation);
                 }
 
                 throw;
             }
         }
 
-        private async Task<IStoredEntry> EnsureOwningParentWriteLock(IStoredEntry parent, string normalizedPath, string session, CancellationToken cancellation)
+        private async Task<IStoredEntry> EnsureOwningParentWriteLock(IStoredEntry parent, CoordinationEntryPath parentPath, string session, CancellationToken cancellation)
         {
             while (true)
             {
@@ -802,10 +788,9 @@ namespace AI4E.Coordination
                 // Unable to acquire write lock. Parent does not exist.
                 if (parent == null)
                 {
-                    var parentPath = EntryPathHelper.GetParentPath(normalizedPath, out var name, normalize: false);
                     bool created;
 
-                    (parent, created) = await CreateInternalAsync(normalizedPath, parentPath, name, ReadOnlyMemory<byte>.Empty, session, EntryCreationModes.Default, releaseLock: false, cancellation);
+                    (parent, created) = await CreateInternalAsync(parentPath, ReadOnlyMemory<byte>.Empty, session, EntryCreationModes.Default, releaseLock: false, cancellation);
 
                     // The parent does already exist.
                     if (!created)
@@ -856,7 +841,7 @@ namespace AI4E.Coordination
             return (result, created);
         }
 
-        private async Task<IStoredEntry> RemoveChildEntryAsync(IStoredEntry entry, string child, CancellationToken cancellation)
+        private async Task<IStoredEntry> RemoveChildEntryAsync(IStoredEntry entry, CoordinationEntryPathSegment child, CancellationToken cancellation)
         {
             Assert(child != null);
 
@@ -869,11 +854,13 @@ namespace AI4E.Coordination
                     return null;
                 }
 
-                var childEntry = await _storage.GetEntryAsync(EntryPathHelper.GetChildPath(entry.Path, child, normalize: true), cancellation);
+                var childPath = CoordinationEntryPath.FromEscapedPath(entry.Path.AsMemory()).GetChildPath(child); // TODO: https://github.com/AI4E/AI4E/issues/15
+                var childEntry = await _storage.GetEntryAsync(childPath, cancellation);
 
                 if (childEntry == null)
                 {
-                    var result = await _storage.UpdateEntryAsync(entry, _storedEntryManager.RemoveChild(entry, child), cancellation);
+                    var childName = child.EscapedSegment.ConvertToString(); // TODO: https://github.com/AI4E/AI4E/issues/15
+                    var result = await _storage.UpdateEntryAsync(entry, _storedEntryManager.RemoveChild(entry, childName), cancellation);
 
                     // We are holding the exclusive lock => No one else can alter the entry.
                     // The only exception is that out session terminates.
@@ -896,7 +883,7 @@ namespace AI4E.Coordination
 
         #region Delete entry
 
-        public async ValueTask<int> DeleteAsync(string path, int version, bool recursive, CancellationToken cancellation = default)
+        public async ValueTask<int> DeleteAsync(CoordinationEntryPath path, int version, bool recursive, CancellationToken cancellation = default)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -909,11 +896,10 @@ namespace AI4E.Coordination
             if (!await _sessionManager.IsAliveAsync(session, cancellation))
                 throw new SessionTerminatedException();
 
-            var normalizedPath = EntryPathHelper.NormalizePath(path);
-            var parentPath = EntryPathHelper.GetParentPath(normalizedPath, out var name, normalize: false);
+            var escapedPath = path.EscapedPath.ConvertToString(); // TODO: https://github.com/AI4E/AI4E/issues/15
             var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
-            _logger?.LogTrace($"[{await GetSessionAsync()}] Deleting entry '{normalizedPath}'.");
+            _logger?.LogTrace($"[{await GetSessionAsync()}] Deleting entry '{escapedPath}'.");
 
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
@@ -922,11 +908,12 @@ namespace AI4E.Coordination
 
                 await _initializationHelper.Initialization.WithCancellation(combinedCancellationSource.Token);
 
-                var entry = await _storage.GetEntryAsync(normalizedPath, combinedCancellationSource.Token);
+                var entry = await _storage.GetEntryAsync(escapedPath, combinedCancellationSource.Token);
                 var parent = default(IStoredEntry);
 
-                if (parentPath != null)
+                if (!path.IsRoot)
                 {
+                    var parentPath = path.GetParentPath().EscapedPath.ConvertToString(); // TODO: https://github.com/AI4E/AI4E/issues/15
                     parent = await _storage.GetEntryAsync(parentPath, combinedCancellationSource.Token);
 
                     // The parent does not exist. The parent may only be deleted if all childs were deleted => Our entry does not exist any more.
@@ -985,6 +972,7 @@ namespace AI4E.Coordination
                             // Remove the entry from its parent
                             if (parent != null)
                             {
+                                var name = path.Segments.Last().EscapedSegment.ConvertToString(); // TODO: https://github.com/AI4E/AI4E/issues/15
                                 var result = await _storage.UpdateEntryAsync(parent, _storedEntryManager.RemoveChild(parent, name), combinedCancellationSource.Token);
 
                                 // We are holding the exclusive lock => No one else can alter the parent.
@@ -999,7 +987,7 @@ namespace AI4E.Coordination
                         {
                             if (isEphemeral)
                             {
-                                await _sessionManager.RemoveSessionEntryAsync(session, normalizedPath, combinedCancellationSource.Token);
+                                await _sessionManager.RemoveSessionEntryAsync(session, escapedPath, combinedCancellationSource.Token);
                             }
                         }
 
@@ -1022,11 +1010,8 @@ namespace AI4E.Coordination
 
         #region Set entry value
 
-        public async ValueTask<int> SetValueAsync(string path, ReadOnlyMemory<byte> value, int version, CancellationToken cancellation = default)
+        public async ValueTask<int> SetValueAsync(CoordinationEntryPath path, ReadOnlyMemory<byte> value, int version, CancellationToken cancellation = default)
         {
-            if (path == null)
-                throw new ArgumentNullException(nameof(path));
-
             if (version < 0)
                 throw new ArgumentOutOfRangeException(nameof(version));
 
@@ -1035,7 +1020,7 @@ namespace AI4E.Coordination
             if (!await _sessionManager.IsAliveAsync(session, cancellation))
                 throw new SessionTerminatedException();
 
-            var normalizedPath = EntryPathHelper.NormalizePath(path);
+            var escapedPath = path.EscapedPath.ConvertToString(); // TODO: https://github.com/AI4E/AI4E/issues/15
             var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
@@ -1045,7 +1030,7 @@ namespace AI4E.Coordination
 
                 await _initializationHelper.Initialization.WithCancellation(combinedCancellationSource.Token);
 
-                var entry = await _storage.GetEntryAsync(normalizedPath, combinedCancellationSource.Token);
+                var entry = await _storage.GetEntryAsync(escapedPath, combinedCancellationSource.Token);
 
                 try
                 {
@@ -1053,7 +1038,7 @@ namespace AI4E.Coordination
 
                     if (entry == null)
                     {
-                        throw new EntryNotFoundException(normalizedPath);
+                        throw new EntryNotFoundException(escapedPath);
                     }
 
                     if (version != default && entry.Version != version)
@@ -1142,13 +1127,20 @@ namespace AI4E.Coordination
 
                 if (entry == null)
                 {
-                    var parentPath = EntryPathHelper.GetParentPath(normalizedPath, out var name, normalize: false);
+                    var entryPath = CoordinationEntryPath.FromEscapedPath(entry.Path.AsMemory()); // TODO: https://github.com/AI4E/AI4E/issues/15
 
-                    var parent = await _storage.GetEntryAsync(parentPath, cancellation);
-
-                    if (parent != null && parent.Childs.Contains(name))
+                    if (!entryPath.IsRoot)
                     {
-                        await RemoveChildEntryAsync(parent, name, cancellation);
+                        var parentPath = entryPath.GetParentPath();
+                        var child = entryPath.Segments.Last();
+                        var childName = child.EscapedSegment.ConvertToString(); // TODO: https://github.com/AI4E/AI4E/issues/15
+
+                        var parent = await _storage.GetEntryAsync(parentPath, cancellation);
+
+                        if (parent != null && parent.Childs.Contains(childName))
+                        {
+                            await RemoveChildEntryAsync(parent, child, cancellation);
+                        }
                     }
                 }
 
@@ -1164,21 +1156,21 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task InvalidateCacheEntryAsync(string path, CancellationToken cancellation)
+        private async Task InvalidateCacheEntryAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
 
-            var normalizedPath = EntryPathHelper.NormalizePath(path);
+            var escapedPath = path.EscapedPath.ConvertToString(); // TODO: https://github.com/AI4E/AI4E/issues/15
             var session = await GetSessionAsync(cancellation);
 
-            UpdateCacheEntry(normalizedPath,
-                            createFunc: () => new CacheEntry(path),
+            UpdateCacheEntry(escapedPath,
+                            createFunc: () => new CacheEntry(escapedPath),
                             updateFunc: currentEntry => currentEntry.Invalidate());
 
             var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
-            _logger?.LogTrace($"[{await GetSessionAsync()}] Invalidating cache entry '{normalizedPath}'.");
+            _logger?.LogTrace($"[{await GetSessionAsync()}] Invalidating cache entry '{escapedPath}'.");
 
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
@@ -1187,7 +1179,7 @@ namespace AI4E.Coordination
 
                 await _initializationHelper.Initialization.WithCancellation(combinedCancellationSource.Token);
 
-                var entry = await _storage.GetEntryAsync(normalizedPath, combinedCancellationSource.Token);
+                var entry = await _storage.GetEntryAsync(escapedPath, combinedCancellationSource.Token);
 
                 await ReleaseReadLockAsync(entry);
             }
@@ -1518,7 +1510,7 @@ namespace AI4E.Coordination
 
             await Task.WhenAll(entries.Select(async entry =>
             {
-                await DeleteAsync(entry, version: default, recursive: false, cancellation);
+                await DeleteAsync(CoordinationEntryPath.FromEscapedPath(entry.AsMemory()), version: default, recursive: false, cancellation); // TODO: https://github.com/AI4E/AI4E/issues/15
                 await _sessionManager.RemoveSessionEntryAsync(session, entry, cancellation);
             }));
 
@@ -1630,10 +1622,6 @@ namespace AI4E.Coordination
 
         private sealed class Entry : IEntry
         {
-            // TODO: This gets boxed every time, it gets accessed via ChildNames
-            private readonly ImmutableArray<string> _children;
-            private readonly Lazy<(string parentPath, string name)> _pathProperties;
-
             public Entry(ICoordinationManager coordinationManager, IStoredEntry entry)
             {
                 Assert(coordinationManager != null);
@@ -1641,24 +1629,17 @@ namespace AI4E.Coordination
 
                 CoordinationManager = coordinationManager;
 
-                Path = entry.Path;
+                Path = CoordinationEntryPath.FromEscapedPath(entry.Path.AsMemory()); // TODO: https://github.com/AI4E/AI4E/issues/15
                 Version = entry.Version;
                 CreationTime = entry.CreationTime;
                 LastWriteTime = entry.LastWriteTime;
                 Value = entry.Value;
-                _children = entry.Childs;
-
-                _pathProperties = new Lazy<(string parentPath, string name)>(() =>
-                {
-                    var parentPath = EntryPathHelper.GetParentPath(Path, out var name, normalize: false);
-
-                    return (parentPath, name);
-                }, isThreadSafe: true);
+                Children = entry.Childs.Select(p => CoordinationEntryPathSegment.FromEscapedSegment(p.AsMemory())).ToImmutableList(); // TODO: https://github.com/AI4E/AI4E/issues/15
             }
 
-            public string Name => _pathProperties.Value.name;
+            public CoordinationEntryPathSegment Name => Path.Segments.LastOrDefault();
 
-            public string Path { get; }
+            public CoordinationEntryPath Path { get; }
 
             public int Version { get; }
 
@@ -1668,9 +1649,9 @@ namespace AI4E.Coordination
 
             public ReadOnlyMemory<byte> Value { get; }
 
-            public IReadOnlyList<string> Children { get; }
+            public IReadOnlyList<CoordinationEntryPathSegment> Children { get; }
 
-            public string ParentPath => _pathProperties.Value.parentPath;
+            public CoordinationEntryPath ParentPath => Path.GetParentPath();
 
             public ICoordinationManager CoordinationManager { get; }
         }

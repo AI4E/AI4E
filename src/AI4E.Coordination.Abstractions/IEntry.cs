@@ -36,12 +36,12 @@ namespace AI4E.Coordination
         /// <summary>
         /// Gets the entry's name.
         /// </summary>
-        string Name { get; }
+        CoordinationEntryPathSegment Name { get; }
 
         /// <summary>
         /// Gets the entry's path.
         /// </summary>
-        string Path { get; }
+        CoordinationEntryPath Path { get; }
 
         /// <summary>
         /// Gets the entry's version.
@@ -61,17 +61,17 @@ namespace AI4E.Coordination
         /// <summary>
         /// Gets the value of the entry.
         /// </summary>
-        ReadOnlyMemory<byte> Value { get; } // TODO: Rename?
+        ReadOnlyMemory<byte> Value { get; }
 
         /// <summary>
         /// Gets the path of the entry's parent entry.
         /// </summary>
-        string ParentPath { get; }
+        CoordinationEntryPath ParentPath { get; }
 
         /// <summary>
         /// Gets a collection of entry's names that are children of the entry.
         /// </summary>
-        IReadOnlyList<string> Children { get; }
+        IReadOnlyList<CoordinationEntryPathSegment> Children { get; }
 
         /// <summary>
         /// Gets the coordination manager that this entry is managed by.
@@ -99,7 +99,7 @@ namespace AI4E.Coordination
             for (var i = 0; i < result.Length; i++)
             {
                 var child = entry.Children[i];
-                var childFullName = EntryPathHelper.GetChildPath(entry.Path, child, normalize: false);
+                var childFullName = entry.Path.GetChildPath(child);
 
                 result[i] = await entry.CoordinationManager.GetAsync(childFullName, cancellation);
             }
@@ -155,7 +155,7 @@ namespace AI4E.Coordination
 
                 do
                 {
-                    string child;
+                    CoordinationEntryPathSegment child;
 
                     do
                     {
@@ -169,9 +169,9 @@ namespace AI4E.Coordination
 
                         child = _entry.Children[index];
                     }
-                    while (child == null);
+                    while (child == null); // TODO: This is always false
 
-                    var childFullName = EntryPathHelper.GetChildPath(_entry.Path, child, normalize: false);
+                    var childFullName = _entry.Path.GetChildPath(child);
 
                     next = await _entry.CoordinationManager.GetAsync(childFullName, cancellationToken);
                 }

@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
-using AI4E.Internal;
 using AI4E.Remoting;
 using static System.Diagnostics.Debug;
 
@@ -13,7 +11,7 @@ namespace AI4E.Routing
 {
     public sealed class RouteMap<TAddress> : IRouteMap<TAddress>
     {
-        private const string _mapsRootPath = "/maps";
+        private static readonly CoordinationEntryPath _mapsRootPath = new CoordinationEntryPath("maps");
 
         private readonly ICoordinationManager _coordinationManager;
         private readonly IAddressConversion<TAddress> _addressConversion;
@@ -103,24 +101,14 @@ namespace AI4E.Routing
             return _coordinationManager.GetOrCreateAsync(path, ReadOnlyMemory<byte>.Empty, EntryCreationModes.Default, cancellation);
         }
 
-        private static string GetPath(string route)
+        private static CoordinationEntryPath GetPath(string route)
         {
-            var escapedRouteBuilder = new StringBuilder(EscapeHelper.CountCharsToEscape(route) + route.Length);
-            escapedRouteBuilder.Append(route);
-            EscapeHelper.Escape(escapedRouteBuilder, 0);
-
-            var escapedRoute = escapedRouteBuilder.ToString();
-            return EntryPathHelper.GetChildPath(_mapsRootPath, escapedRoute, normalize: false);
+            return _mapsRootPath.GetChildPath(route);
         }
 
-        private static string GetPath(string route, string session)
+        private static CoordinationEntryPath GetPath(string route, string session)
         {
-            var escapedSessionBuilder = new StringBuilder(EscapeHelper.CountCharsToEscape(session) + session.Length);
-            escapedSessionBuilder.Append(session);
-            EscapeHelper.Escape(escapedSessionBuilder, 0);
-
-            var escapedSession = escapedSessionBuilder.ToString();
-            return EntryPathHelper.GetChildPath(GetPath(route), escapedSession, normalize: false);
+            return _mapsRootPath.GetChildPath(route, session);
         }
     }
 }

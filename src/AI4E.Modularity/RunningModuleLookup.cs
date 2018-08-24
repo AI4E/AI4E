@@ -41,9 +41,12 @@ namespace AI4E.Modularity
                                                                                             RegexOptions.Singleline |
                                                                                             RegexOptions.IgnoreCase |
                                                                                             RegexOptions.Compiled);
-        private const string _rootPath = "/modules";
-        private const string _rootPrefixesPath = _rootPath + "/prefixes"; // prefix => end-point
-        private const string _rootRunningPath = _rootPath + "/running"; // module => (prefixes, end-point)
+
+
+
+        private static readonly CoordinationEntryPath _rootPath = new CoordinationEntryPath("modules");
+        private static readonly CoordinationEntryPath _rootPrefixesPath = _rootPath.GetChildPath("prefixes"); // prefix => end-point
+        private static readonly CoordinationEntryPath _rootRunningPath = _rootPath.GetChildPath("running"); // module => (prefixes, end-point)
 
         private readonly ICoordinationManager _coordinationManager;
 
@@ -102,7 +105,21 @@ namespace AI4E.Modularity
                         writer.Write(normalizedPrefixBytes.Length);
                         writer.Write(normalizedPrefixBytes);
 
-                        await _coordinationManager.GetOrCreateAsync(prefixPath, _emptyPayload, EntryCreationModes.Ephemeral, cancellation);
+                        var routeBytes = Encoding.UTF8.GetBytes(endPoint.Route);
+
+                        using (var stream = new MemoryStream(capacity: 4 + routeBytes.Length))
+                        {
+                            using (var writer2 = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+                            {
+                                writer2.Write(routeBytes.Length);
+                                writer2.Write(routeBytes);
+                            }
+
+                            var payload = stream.ToArray();
+                            var entry = await _coordinationManager.GetOrCreateAsync(prefixPath, payload, EntryCreationModes.Ephemeral, cancellation);
+
+                            Assert(entry.Value.SequenceEquals(payload));
+                        }
                     }
                 }
 
@@ -168,7 +185,22 @@ namespace AI4E.Modularity
 
             Assert(entry != null);
 
-            return await entry.GetChildrenEntries().OrderBy(p => p.CreationTime).Select(p => EndPointRoute.CreateRoute(EntryPathHelper.ExtractRoute(p.Path))).ToList();
+            var result = new List<EndPointRoute>(capacity: entry.Children.Count);
+
+            var childEntries = (await entry.GetChildrenEntriesAsync(cancellation)).OrderBy(p => p.CreationTime);
+
+            foreach (var childEntry in childEntries)
+            {
+                using (var stream = childEntry.OpenStream())
+                using (var reader = new BinaryReader(stream))
+                {
+                    var routeBytesLength = reader.ReadInt32();
+                    var routeBytes = reader.ReadBytes(routeBytesLength);
+                    result.Add(new EndPointRoute(Encoding.UTF8.GetString(routeBytes)));
+                }
+            }
+
+            return result;
         }
 
         public async ValueTask<IEnumerable<string>> GetPrefixesAsync(ModuleIdentifier module, CancellationToken cancellation)
@@ -227,41 +259,31 @@ namespace AI4E.Modularity
             return prefix;
         }
 
-        private static string GetPrefixPath(string prefix, bool normalize = true)
+        private static CoordinationEntryPath GetPrefixPath(string prefix, bool normalize = true)
         {
             if (normalize)
                 prefix = NormalizePrefix(prefix);
 
-            var escapedPrefix = Escape(prefix);
-
-            return EntryPathHelper.GetChildPath(_rootPrefixesPath, escapedPrefix, normalize: false);
+            return _rootPrefixesPath.GetChildPath(prefix);
         }
 
-        private static string GetPrefixPath(string prefix, EndPointRoute endPoint, string session, bool normalize = true)
+        private static CoordinationEntryPath GetPrefixPath(string prefix, EndPointRoute endPoint, string session, bool normalize = true)
         {
-            return EntryPathHelper.GetChildPath(GetPrefixPath(prefix, normalize), EntryPathHelper.GetEntryName(endPoint.Route, session));
+            if (normalize)
+                prefix = NormalizePrefix(prefix);
+
+            var uniqueEntryName = IdGenerator.GenerateId(endPoint.Route, session);
+            return _rootPrefixesPath.GetChildPath(prefix, uniqueEntryName);
         }
 
-        private static string GetRunningModulePath(ModuleIdentifier module)
+        private static CoordinationEntryPath GetRunningModulePath(ModuleIdentifier module)
         {
-            var moduleName = module.Name;
-            var escapedModuleName = Escape(moduleName);
-
-            return EntryPathHelper.GetChildPath(_rootRunningPath, escapedModuleName, normalize: false);
+            return _rootRunningPath.GetChildPath(module.Name);
         }
 
-        private static string GetRunningModulePath(ModuleIdentifier module, string session)
+        private static CoordinationEntryPath GetRunningModulePath(ModuleIdentifier module, string session)
         {
-            return EntryPathHelper.GetChildPath(GetRunningModulePath(module), session);
-        }
-
-        private static string Escape(string str)
-        {
-            var escapedResultBuilder = new StringBuilder(str.Length + EscapeHelper.CountCharsToEscape(str));
-            escapedResultBuilder.Append(str);
-            EscapeHelper.Escape(escapedResultBuilder, startIndex: 0);
-            var result = escapedResultBuilder.ToString();
-            return result;
+            return _rootRunningPath.GetChildPath(module.Name, session);
         }
     }
 }

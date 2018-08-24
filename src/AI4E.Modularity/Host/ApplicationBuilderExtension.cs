@@ -50,7 +50,7 @@ namespace AI4E.Modularity.Host
 
             // Initialize the module-host.
             var dispatcher = serviceProvider.GetRequiredService<IRemoteMessageDispatcher>();
-            var dispatchStore = serviceProvider.GetRequiredService<IHttpDispatchStore>();
+            var runningModuleLookup = serviceProvider.GetRequiredService<IRunningModuleLookup>();
             var debugPort = serviceProvider.GetService<DebugPort>();
 
             applicationBuilder.Use(async (context, next) =>
@@ -60,7 +60,7 @@ namespace AI4E.Modularity.Host
                 var watch = new Stopwatch();
                 watch.Start();
 
-                var endPoint = await dispatchStore.GetRouteAsync(context.Features.Get<IHttpRequestFeature>().Path, cancellation);
+                var endPoint = await runningModuleLookup.MapHttpPathAsync(context.Features.Get<IHttpRequestFeature>().Path, cancellation);
 
                 watch.Stop();
 
