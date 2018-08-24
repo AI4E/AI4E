@@ -146,7 +146,7 @@ namespace AI4E.Modularity
 
             await _coordinationManager.DeleteAsync(runningModulePath, cancellation: cancellation);
 
-            using (var stream = new MemoryStream(entry.Value.ToArray()))
+            using (var stream = entry.OpenStream())
             using (var reader = new BinaryReader(stream))
             {
                 var endPointAddressBytesLength = reader.ReadInt32();
@@ -219,7 +219,7 @@ namespace AI4E.Modularity
             {
                 string[] result;
 
-                using (var stream = new MemoryStream(sessionEntry.Value.ToArray()))
+                using (var stream = sessionEntry.OpenStream())
                 using (var reader = new BinaryReader(stream))
                 {
                     var bytesToSkip = reader.ReadInt32();
