@@ -6,16 +6,12 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
+using AI4E.ApplicationParts;
 using AI4E.DispatchResults;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 
-#if BLAZOR
-using AI4E.Blazor.ApplicationParts;
-#else
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
-#endif
 
 namespace AI4E.Internal
 {

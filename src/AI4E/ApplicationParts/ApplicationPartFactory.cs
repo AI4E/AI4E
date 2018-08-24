@@ -40,40 +40,58 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace AI4E.Blazor.ApplicationParts
+namespace AI4E.ApplicationParts
 {
     /// <summary>
-    /// Default <see cref="ApplicationPartFactory"/>.
+    /// Specifies a contract for synthesizing one or more <see cref="ApplicationPart"/> instances
+    /// from an <see cref="Assembly"/>.
+    /// <para>
+    /// By default, Mvc registers each application assembly that it discovers as an <see cref="AssemblyPart"/>.
+    /// Assemblies can optionally specify an <see cref="ApplicationPartFactory"/> to configure parts for the assembly
+    /// by using <see cref="ProvideApplicationPartFactoryAttribute"/>.
+    /// </para>
     /// </summary>
-    public class DefaultApplicationPartFactory : ApplicationPartFactory
+    public abstract class ApplicationPartFactory
     {
         /// <summary>
-        /// Gets an instance of <see cref="DefaultApplicationPartFactory"/>.
+        /// Gets one or more <see cref="ApplicationPart"/> instances for the specified <paramref name="assembly"/>.
         /// </summary>
-        public static DefaultApplicationPartFactory Instance { get; } = new DefaultApplicationPartFactory();
+        /// <param name="assembly">The <see cref="Assembly"/>.</param>
+        public abstract IEnumerable<ApplicationPart> GetApplicationParts(Assembly assembly);
 
         /// <summary>
-        /// Gets the sequence of <see cref="ApplicationPart"/> instances that are created by this instance of <see cref="DefaultApplicationPartFactory"/>.
+        /// Gets the <see cref="ApplicationPartFactory"/> for the specified assembly.
         /// <para>
-        /// Applications may use this method to get the same behavior as this factory produces during MVC's default part discovery.
+        /// An assembly may specify an <see cref="ApplicationPartFactory"/> using <see cref="ProvideApplicationPartFactoryAttribute"/>.
+        /// Otherwise, <see cref="DefaultApplicationPartFactory"/> is used.
         /// </para>
         /// </summary>
         /// <param name="assembly">The <see cref="Assembly"/>.</param>
-        /// <returns>The sequence of <see cref="ApplicationPart"/> instances.</returns>
-        public static IEnumerable<ApplicationPart> GetDefaultApplicationParts(Assembly assembly)
+        /// <returns>An instance of <see cref="ApplicationPartFactory"/>.</returns>
+        public static ApplicationPartFactory GetApplicationPartFactory(Assembly assembly)
         {
             if (assembly == null)
             {
                 throw new ArgumentNullException(nameof(assembly));
             }
 
-            yield return new AssemblyPart(assembly);
-        }
+            var provideAttribute = assembly.GetCustomAttribute<ProvideApplicationPartFactoryAttribute>();
+            if (provideAttribute == null)
+            {
+                return DefaultApplicationPartFactory.Instance;
+            }
 
-        /// <inheritdoc />
-        public override IEnumerable<ApplicationPart> GetApplicationParts(Assembly assembly)
-        {
-            return GetDefaultApplicationParts(assembly);
+            var type = provideAttribute.GetFactoryType();
+            if (!typeof(ApplicationPartFactory).IsAssignableFrom(type))
+            {
+                throw new InvalidOperationException(string.Format(
+                    "Type {0} specified by {1} is invalid. Type specified by {1} must derive from {2}.",
+                    type,
+                    nameof(ProvideApplicationPartFactoryAttribute),
+                    typeof(ApplicationPartFactory)));
+            }
+
+            return (ApplicationPartFactory)Activator.CreateInstance(type);
         }
     }
 }

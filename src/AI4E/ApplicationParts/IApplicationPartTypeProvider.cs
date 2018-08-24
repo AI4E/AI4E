@@ -35,17 +35,19 @@
 * specific language governing permissions and limitations under the License.
 * --------------------------------------------------------------------------------------------------------------------
 */
+using System.Collections.Generic;
+using System.Reflection;
 
-namespace AI4E.Blazor.ApplicationParts
+namespace AI4E.ApplicationParts
 {
     /// <summary>
-    /// A part of an MVC application.
+    /// Exposes a set of types from an <see cref="ApplicationPart"/>.
     /// </summary>
-    public abstract class ApplicationPart
+    public interface IApplicationPartTypeProvider
     {
         /// <summary>
-        /// Gets the <see cref="ApplicationPart"/> name.
+        /// Gets the list of available types in the <see cref="ApplicationPart"/>.
         /// </summary>
-        public abstract string Name { get; }
+        IEnumerable<TypeInfo> Types { get; }
     }
 }

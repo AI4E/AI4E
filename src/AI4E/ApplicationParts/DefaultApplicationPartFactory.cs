@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -36,27 +36,44 @@
 * --------------------------------------------------------------------------------------------------------------------
 */
 
+using System;
 using System.Collections.Generic;
+using System.Reflection;
 
-namespace AI4E.Blazor.ApplicationParts
+namespace AI4E.ApplicationParts
 {
     /// <summary>
-    /// A provider for a given <typeparamref name="TFeature"/> feature.
+    /// Default <see cref="ApplicationPartFactory"/>.
     /// </summary>
-    /// <typeparam name="TFeature">The type of the feature.</typeparam>
-    public interface IApplicationFeatureProvider<TFeature> : IApplicationFeatureProvider
+    public class DefaultApplicationPartFactory : ApplicationPartFactory
     {
         /// <summary>
-        /// Updates the <paramref name="feature"/> instance.
+        /// Gets an instance of <see cref="DefaultApplicationPartFactory"/>.
         /// </summary>
-        /// <param name="parts">The list of <see cref="ApplicationPart"/> instances in the application.
-        /// </param>
-        /// <param name="feature">The feature instance to populate.</param>
-        /// <remarks>
-        /// <see cref="ApplicationPart"/> instances in <paramref name="parts"/> appear in the same ordered sequence they
-        /// are stored in <see cref="ApplicationPartManager.ApplicationParts"/>. This ordering may be used by the feature
-        /// provider to make precedence decisions.
-        /// </remarks>
-        void PopulateFeature(IEnumerable<ApplicationPart> parts, TFeature feature);
+        public static DefaultApplicationPartFactory Instance { get; } = new DefaultApplicationPartFactory();
+
+        /// <summary>
+        /// Gets the sequence of <see cref="ApplicationPart"/> instances that are created by this instance of <see cref="DefaultApplicationPartFactory"/>.
+        /// <para>
+        /// Applications may use this method to get the same behavior as this factory produces during MVC's default part discovery.
+        /// </para>
+        /// </summary>
+        /// <param name="assembly">The <see cref="Assembly"/>.</param>
+        /// <returns>The sequence of <see cref="ApplicationPart"/> instances.</returns>
+        public static IEnumerable<ApplicationPart> GetDefaultApplicationParts(Assembly assembly)
+        {
+            if (assembly == null)
+            {
+                throw new ArgumentNullException(nameof(assembly));
+            }
+
+            yield return new AssemblyPart(assembly);
+        }
+
+        /// <inheritdoc />
+        public override IEnumerable<ApplicationPart> GetApplicationParts(Assembly assembly)
+        {
+            return GetDefaultApplicationParts(assembly);
+        }
     }
 }

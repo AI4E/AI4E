@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E\AI4E.csproj" />
     <ProjectReference Include="..\Shared\Shared.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Modularity.Host\AI4E.Modularity.Host.csproj" />
   </ItemGroup>
 
 </Project>

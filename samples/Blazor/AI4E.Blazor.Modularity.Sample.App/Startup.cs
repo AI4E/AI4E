@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using AI4E.Blazor.ApplicationParts;
+using AI4E.ApplicationParts;
 using AI4E.Blazor.Routing;
 using AI4E.Routing.Blazor;
 using Blazor.Extensions;

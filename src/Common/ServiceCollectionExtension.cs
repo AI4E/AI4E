@@ -1,17 +1,10 @@
 ﻿using System;
 using System.Linq;
-using Microsoft.Extensions.DependencyInjection;
-using static System.Diagnostics.Debug;
-
-#if !USE_CORE_SERVICES_ONLY
 using System.Reflection;
+using AI4E.ApplicationParts;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-#if BLAZOR
-using AI4E.Blazor.ApplicationParts;
-#else
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
-#endif
-#endif
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Internal
 {
@@ -67,7 +60,7 @@ namespace AI4E.Internal
                 return serviceProvider.GetRequiredService<T>();
             }
         }
-#if !USE_CORE_SERVICES_ONLY
+
         public static ApplicationPartManager GetApplicationPartManager(this IServiceCollection services)
         {
             if (services == null)
@@ -97,6 +90,5 @@ namespace AI4E.Internal
             configuration(partManager);
             services.TryAddSingleton(partManager);
         }
-#endif
     }
 }

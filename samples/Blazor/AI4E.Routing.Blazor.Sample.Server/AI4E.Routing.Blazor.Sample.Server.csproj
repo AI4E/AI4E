@@ -13,6 +13,7 @@
     <ProjectReference Include="..\..\..\src\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Modularity.Host\AI4E.Modularity.Host.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.Modularity\AI4E.Modularity.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj" />

@@ -6,7 +6,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Blazor.ApplicationParts;
+using AI4E.ApplicationParts;
 using AI4E.Internal;
 using AI4E.Modularity;
 using Newtonsoft.Json;

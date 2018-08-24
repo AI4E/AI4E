@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Linq;
+using AI4E.ApplicationParts;
 using AI4E.Internal;
 using AI4E.Storage.Projection;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 

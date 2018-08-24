@@ -8,15 +8,14 @@
   <ItemGroup>
     <Compile Include="..\..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
     <Compile Include="..\..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
-    <Compile Include="..\AI4E.Blazor.ApplicationParts\ApplicationAssembliesProvider.cs" Link="ApplicationParts\ApplicationAssembliesProvider.cs" />
-    <Compile Include="..\AI4E.Blazor.ApplicationParts\ApplicationPartManagerExtension.cs" Link="ApplicationParts\ApplicationPartManagerExtension.cs" />
+    <Compile Include="..\..\AI4E\ApplicationParts\ApplicationAssembliesProvider.cs" Link="ApplicationParts\ApplicationAssembliesProvider.cs" />
+    <Compile Include="..\..\AI4E\ApplicationParts\ApplicationPartManagerExtension.cs" Link="ApplicationParts\ApplicationPartManagerExtension.cs" />
   </ItemGroup>
   
   <ItemGroup>
     <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
     <ProjectReference Include="..\..\AI4E\AI4E.csproj" />
-    <ProjectReference Include="..\AI4E.Blazor.ApplicationParts\AI4E.Blazor.ApplicationParts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

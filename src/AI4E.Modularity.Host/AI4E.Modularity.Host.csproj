@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
+    <Compile Include="..\Common\DictionaryExtension.cs" Link="Internal\DictionaryExtension.cs" />
+    <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
+    <Compile Include="..\Common\PathInternal.cs" Link="Internal\PathInternal.cs" />
+    <Compile Include="..\Common\ProcessExtension.cs" Link="Internal\ProcessExtension.cs" />
+    <Compile Include="..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
+    <Compile Include="..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
+    <Compile Include="..\Common\StringExtension.cs" Link="Internal\StringExtension.cs" />
+    <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
+    <Compile Include="..\Common\ZipArchiveEntryExtension.cs" Link="Internal\ZipArchiveEntryExtension.cs" />
+    <Compile Include="..\Common\ZipArchiveExtension.cs" Link="Internal\ZipArchiveExtension.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AI4E.Modularity\AI4E.Modularity.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Internal\" />
+  </ItemGroup>
+
+</Project>

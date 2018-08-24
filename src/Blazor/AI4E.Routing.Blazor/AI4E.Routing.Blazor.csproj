@@ -37,7 +37,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\..\AI4E\AI4E.csproj" />
-    <ProjectReference Include="..\AI4E.Blazor.ApplicationParts\AI4E.Blazor.ApplicationParts.csproj" />
     <ProjectReference Include="..\AI4E.Routing.Blazor.Abstractions\AI4E.Routing.Blazor.Abstractions.csproj" />
   </ItemGroup>
 

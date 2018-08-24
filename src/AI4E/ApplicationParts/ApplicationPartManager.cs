@@ -40,7 +40,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace AI4E.Blazor.ApplicationParts
+// TODO: Check whether we are running on Asp.Net Core and replace the implementation with the implementation provided by Asp.Net Core
+
+namespace AI4E.ApplicationParts
 {
     /// <summary>
     /// Manages the parts and features of an MVC application.
@@ -71,7 +73,7 @@ namespace AI4E.Blazor.ApplicationParts
         /// </summary>
         public IList<ApplicationPart> ApplicationParts => _applicationParts;
 
-        public event EventHandler ApplicationPartsChanged;
+        public event System.EventHandler ApplicationPartsChanged;
 
         private void OnApplicationPartsChanged()
         {

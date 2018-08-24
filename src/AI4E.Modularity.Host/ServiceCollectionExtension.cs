@@ -21,12 +21,12 @@
 using System;
 using System.Net;
 using System.Reflection;
+using AI4E.ApplicationParts;
 using AI4E.Domain.Services;
 using AI4E.Internal;
 using AI4E.Modularity.Debug;
 using AI4E.Remoting;
 using AI4E.Routing;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;

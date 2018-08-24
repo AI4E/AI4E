@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -36,50 +36,17 @@
 * --------------------------------------------------------------------------------------------------------------------
 */
 
-using System;
+namespace AI4E.ApplicationParts
 
-namespace AI4E.Blazor.ApplicationParts
 {
     /// <summary>
-    /// Provides a <see cref="ApplicationPartFactory"/> type.
+    /// A part of an MVC application.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = false)]
-    public sealed class ProvideApplicationPartFactoryAttribute : Attribute
+    public abstract class ApplicationPart
     {
-        private readonly Type _applicationPartFactoryType;
-        private readonly string _applicationPartFactoryTypeName;
-
         /// <summary>
-        /// Creates a new instance of <see cref="ProvideApplicationPartFactoryAttribute"/> with the specified type.
+        /// Gets the <see cref="ApplicationPart"/> name.
         /// </summary>
-        /// <param name="factoryType">The factory type.</param>
-        public ProvideApplicationPartFactoryAttribute(Type factoryType)
-        {
-            _applicationPartFactoryType = factoryType ?? throw new ArgumentNullException(nameof(factoryType));
-        }
-
-        /// <summary>
-        /// Creates a new instance of <see cref="ProvideApplicationPartFactoryAttribute"/> with the specified type name.
-        /// </summary>
-        /// <param name="factoryTypeName">The assembly qualified type name.</param>
-        public ProvideApplicationPartFactoryAttribute(string factoryTypeName)
-        {
-            if (string.IsNullOrEmpty(factoryTypeName))
-            {
-                throw new ArgumentException("Value cannot be null or empty.", nameof(factoryTypeName));
-            }
-
-            _applicationPartFactoryTypeName = factoryTypeName;
-        }
-
-        /// <summary>
-        /// Gets the factory type.
-        /// </summary>
-        /// <returns></returns>
-        public Type GetFactoryType()
-        {
-            return _applicationPartFactoryType ??
-                Type.GetType(_applicationPartFactoryTypeName, throwOnError: true);
-        }
+        public abstract string Name { get; }
     }
 }

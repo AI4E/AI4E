@@ -42,7 +42,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 
-namespace AI4E.Blazor.ApplicationParts
+namespace AI4E.ApplicationParts
 {
     /// <summary>
     /// Specifies a assembly to load as part of MVC's assembly discovery mechanism.

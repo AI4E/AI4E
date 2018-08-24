@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -36,13 +36,18 @@
 * --------------------------------------------------------------------------------------------------------------------
 */
 
-namespace AI4E.Blazor.ApplicationParts
+using System.Collections.Generic;
+
+namespace AI4E.ApplicationParts
 {
     /// <summary>
-    /// Marker interface for <see cref="IApplicationFeatureProvider"/>
-    /// implementations.
+    /// Exposes one or more reference paths from an <see cref="ApplicationPart"/>.
     /// </summary>
-    public interface IApplicationFeatureProvider
+    public interface ICompilationReferencesProvider
     {
+        /// <summary>
+        /// Gets reference paths used to perform runtime compilation.
+        /// </summary>
+        IEnumerable<string> GetReferencePaths();
     }
 }

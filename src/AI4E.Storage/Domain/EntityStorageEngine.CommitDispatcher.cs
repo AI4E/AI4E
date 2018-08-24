@@ -105,11 +105,11 @@ namespace AI4E.Storage.Domain
                 {
                     if (attempt == 1)
                     {
-                        _logger.LogDebug($"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}'.");
+                        _logger?.LogDebug($"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}'.");
                     }
                     else
                     {
-                        _logger.LogDebug($"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}' ({attempt}. attempt).");
+                        _logger?.LogDebug($"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}' ({attempt}. attempt).");
                     }
 
                     var projection = ProjectAsync(typeName, commit.StreamId, tcs, cancellation);
@@ -129,7 +129,7 @@ namespace AI4E.Storage.Domain
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
                 {
-                    _logger.LogWarning(exc, $"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}' failed.");
+                    _logger?.LogWarning(exc, $"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}' failed.");
 
                     Task.Run(() => tcs?.TrySetException(exc)).HandleExceptions();
                 }
@@ -140,7 +140,7 @@ namespace AI4E.Storage.Domain
                 await Task.Delay(timeToWait);
             }
 
-            _logger.LogError($"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}' finally failed.");
+            _logger?.LogError($"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}' finally failed.");
         }
 
         private async Task<bool> DispatchCoreAsync(ICommit commit, CancellationToken cancellation)
@@ -174,7 +174,7 @@ namespace AI4E.Storage.Domain
 
             if (!dispatchResult.IsSuccess)
             {
-                _logger.LogWarning($"Dispatching commit {commit.ConcurrencyToken} of stream {commit.StreamId} failed for reason: {dispatchResult.Message}.");
+                _logger?.LogWarning($"Dispatching commit {commit.ConcurrencyToken} of stream {commit.StreamId} failed for reason: {dispatchResult.Message}.");
             }
 
             return dispatchResult.IsSuccess;

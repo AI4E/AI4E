@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -36,30 +36,27 @@
 * --------------------------------------------------------------------------------------------------------------------
 */
 
-using System;
-using System.Reflection;
+using System.Collections.Generic;
 
-namespace AI4E.Blazor.ApplicationParts
+namespace AI4E.ApplicationParts
 {
-    internal static class ApplicationPartManagerExtension
+    /// <summary>
+    /// A provider for a given <typeparamref name="TFeature"/> feature.
+    /// </summary>
+    /// <typeparam name="TFeature">The type of the feature.</typeparam>
+    public interface IApplicationFeatureProvider<TFeature> : IApplicationFeatureProvider
     {
-        public static void PopulateDefaultParts(this ApplicationPartManager partManager, string entryAssemblyName)
-        {
-            if (partManager == null)
-                throw new ArgumentNullException(nameof(partManager));
-
-            var entryAssembly = Assembly.Load(new AssemblyName(entryAssemblyName));
-            var assembliesProvider = new ApplicationAssembliesProvider();
-            var applicationAssemblies = assembliesProvider.ResolveAssemblies(entryAssembly);
-
-            foreach (var assembly in applicationAssemblies)
-            {
-                var partFactory = ApplicationPartFactory.GetApplicationPartFactory(assembly);
-                foreach (var part in partFactory.GetApplicationParts(assembly))
-                {
-                    partManager.ApplicationParts.Add(part);
-                }
-            }
-        }
+        /// <summary>
+        /// Updates the <paramref name="feature"/> instance.
+        /// </summary>
+        /// <param name="parts">The list of <see cref="ApplicationPart"/> instances in the application.
+        /// </param>
+        /// <param name="feature">The feature instance to populate.</param>
+        /// <remarks>
+        /// <see cref="ApplicationPart"/> instances in <paramref name="parts"/> appear in the same ordered sequence they
+        /// are stored in <see cref="ApplicationPartManager.ApplicationParts"/>. This ordering may be used by the feature
+        /// provider to make precedence decisions.
+        /// </remarks>
+        void PopulateFeature(IEnumerable<ApplicationPart> parts, TFeature feature);
     }
 }

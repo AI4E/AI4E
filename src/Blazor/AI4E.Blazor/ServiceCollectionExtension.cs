@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Reflection;
-using AI4E.Blazor.ApplicationParts;
+using AI4E.ApplicationParts;
 using AI4E.Blazor.Components;
 using AI4E.Blazor.Modularity;
 using AI4E.Internal;

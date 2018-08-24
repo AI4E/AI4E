@@ -42,7 +42,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.DependencyModel;
 
-namespace AI4E.Blazor.ApplicationParts
+namespace AI4E.ApplicationParts
 {
     /// <summary>
     /// An <see cref="ApplicationPart"/> backed by an <see cref="System.Reflection.Assembly"/>.

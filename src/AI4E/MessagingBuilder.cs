@@ -32,7 +32,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.AspNetCore
+namespace AI4E
 {
     internal sealed class MessagingBuilder : IMessagingBuilder
     {

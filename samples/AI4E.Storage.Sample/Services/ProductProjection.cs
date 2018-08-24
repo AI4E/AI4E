@@ -1,8 +1,6 @@
-﻿using System.Threading.Tasks;
-using AI4E.Storage.Domain;
+﻿using AI4E.Storage.Domain;
 using AI4E.Storage.Sample.Domain;
 using AI4E.Storage.Sample.Models;
-using Microsoft.AspNetCore.Mvc;
 
 namespace AI4E.Storage.Sample.Services
 {
@@ -22,12 +20,12 @@ namespace AI4E.Storage.Sample.Services
         }
 
         public ProductDeleteModel ProjectToDeleteModel(Product product,
-                                                       [FromServices] IEntityPropertyAccessor propertyManager)
+                                                       [Inject] IEntityPropertyAccessor propertyManager)
         {
             if (product == null)
                 return null;
 
-            var concurrencyToken = propertyManager.GetConcurrencyToken(product);
+            var concurrencyToken = propertyManager.GetConcurrencyToken(typeof(Product), product);
 
             return new ProductDeleteModel
             {

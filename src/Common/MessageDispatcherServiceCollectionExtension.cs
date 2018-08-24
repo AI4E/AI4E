@@ -53,9 +53,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 using static AI4E.Internal.MessageDispatcherBuilder;
 
-namespace AI4E.AspNetCore
+namespace AI4E
 {
-    public static class ServiceCollectionExtension
+    public static class MessageDispatcherServiceCollectionExtension
     {
         public static IMessagingBuilder AddInMemoryMessaging(this IServiceCollection services)
         {

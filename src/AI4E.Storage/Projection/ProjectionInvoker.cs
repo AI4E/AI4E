@@ -25,7 +25,6 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using AI4E.Internal;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Projection
@@ -68,7 +67,7 @@ namespace AI4E.Storage.Projection
 
                 object arg;
 
-                if (parameterType.IsDefined<FromServicesAttribute>())
+                if (parameterType.IsDefined<InjectAttribute>())
                 {
                     arg = _serviceProvider.GetRequiredService(parameterType);
                 }
@@ -163,7 +162,7 @@ namespace AI4E.Storage.Projection
 
                 object arg;
 
-                if (parameterType.IsDefined<FromServicesAttribute>())
+                if (parameterType.IsDefined<InjectAttribute>())
                 {
                     arg = _serviceProvider.GetRequiredService(parameterType);
                 }

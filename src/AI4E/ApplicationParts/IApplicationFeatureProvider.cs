@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -36,24 +36,13 @@
 * --------------------------------------------------------------------------------------------------------------------
 */
 
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-
-namespace AI4E.Blazor.ApplicationParts
+namespace AI4E.ApplicationParts
 {
     /// <summary>
-    /// An <see cref="ApplicationPartFactory"/> that produces no parts.
-    /// <para>
-    /// This factory may be used to to preempt Mvc's default part discovery allowing for custom configuration at a later stage.
-    /// </para>
+    /// Marker interface for <see cref="IApplicationFeatureProvider"/>
+    /// implementations.
     /// </summary>
-    public class NullApplicationPartFactory : ApplicationPartFactory
+    public interface IApplicationFeatureProvider
     {
-        /// <inheritdoc />
-        public override IEnumerable<ApplicationPart> GetApplicationParts(Assembly assembly)
-        {
-            return Enumerable.Empty<ApplicationPart>();
-        }
     }
 }

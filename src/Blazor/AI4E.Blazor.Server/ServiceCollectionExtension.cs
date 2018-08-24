@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Reflection;
+using AI4E.ApplicationParts;
 using AI4E.Internal;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Blazor.Server
@@ -16,7 +16,7 @@ namespace AI4E.Blazor.Server
             services.ConfigureApplicationParts(ConfigureApplicationParts);
         }
 
-        private static void ConfigureApplicationParts(ApplicationPartManager partManager)
+        private static void ConfigureApplicationParts(ApplicationParts.ApplicationPartManager partManager)
         {
             partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
         }

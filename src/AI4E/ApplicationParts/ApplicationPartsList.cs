@@ -25,7 +25,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 
-namespace AI4E.Blazor.ApplicationParts
+namespace AI4E.ApplicationParts
 {
     internal sealed class ApplicationPartsList : IList<ApplicationPart>
     {
@@ -156,7 +156,7 @@ namespace AI4E.Blazor.ApplicationParts
             return _inner.GetEnumerator();
         }
 
-        public event EventHandler CollectionChanged;
+        public event System.EventHandler CollectionChanged;
 
         private void OnCollectionChanged()
         {
