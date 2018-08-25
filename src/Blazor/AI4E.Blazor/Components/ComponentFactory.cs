@@ -42,6 +42,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using BlazorInject = Microsoft.AspNetCore.Blazor.Components.InjectAttribute;
 
 namespace AI4E.Blazor.Components
 {
@@ -93,7 +94,7 @@ namespace AI4E.Blazor.Components
             // Do all the reflection up front
             var injectableProperties =
                 MemberAssignment.GetPropertiesIncludingInherited(type, _injectablePropertyBindingFlags)
-                .Where(p => p.GetCustomAttribute<InjectAttribute>() != null);
+                .Where(p => p.GetCustomAttribute<BlazorInject>() != null);
             var injectables = injectableProperties.Select(property =>
             (
                 propertyName: property.Name,
