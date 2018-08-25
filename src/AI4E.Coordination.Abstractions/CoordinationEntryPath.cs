@@ -255,7 +255,7 @@ namespace AI4E.Coordination
             if (segment == null)
                 throw new ArgumentNullException(nameof(segment));
 
-            var memorySegment = Trim(segment.AsMemory());
+            var memorySegment = segment.AsMemory().Trim();
 
             if (memorySegment.IsEmpty)
             {
@@ -268,7 +268,7 @@ namespace AI4E.Coordination
 
         public CoordinationEntryPathSegment(ReadOnlyMemory<char> segment)
         {
-            segment = Trim(segment);
+            segment = segment.Trim();
 
             if (segment.IsEmpty)
             {
@@ -277,40 +277,6 @@ namespace AI4E.Coordination
 
             Segment = segment;
             EscapedSegment = Escape(segment);
-        }
-
-        private static ReadOnlyMemory<char> Trim(ReadOnlyMemory<char> s)
-        {
-            if (s.IsEmpty)
-                return s;
-
-            var span = s.Span;
-            var start = 0;
-
-            for (; start < s.Length; start++)
-            {
-                if (!char.IsWhiteSpace(span[start]))
-                {
-                    break;
-                }
-            }
-
-            if (start == s.Length)
-            {
-                return ReadOnlyMemory<char>.Empty;
-            }
-
-            var count = 1;
-
-            for (; count + start < s.Length; count++)
-            {
-                if (char.IsWhiteSpace(span[count]))
-                {
-                    break;
-                }
-            }
-
-            return s.Slice(start, count);
         }
 
         private CoordinationEntryPathSegment(ReadOnlyMemory<char> segment, ReadOnlyMemory<char> escapedSegment)
@@ -548,7 +514,7 @@ namespace AI4E.Coordination
 
         public static CoordinationEntryPathSegment FromEscapedSegment(ReadOnlyMemory<char> escapedSegment)
         {
-            escapedSegment = Trim(escapedSegment);
+            escapedSegment = escapedSegment.Trim();
             var unescapedSegment = Unescape(escapedSegment);
             return new CoordinationEntryPathSegment(unescapedSegment, escapedSegment);
         }
