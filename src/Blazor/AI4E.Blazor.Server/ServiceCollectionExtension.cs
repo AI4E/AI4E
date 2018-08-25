@@ -16,7 +16,7 @@ namespace AI4E.Blazor.Server
             services.ConfigureApplicationParts(ConfigureApplicationParts);
         }
 
-        private static void ConfigureApplicationParts(ApplicationParts.ApplicationPartManager partManager)
+        private static void ConfigureApplicationParts(ApplicationPartManager partManager)
         {
             partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
         }

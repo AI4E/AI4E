@@ -40,6 +40,7 @@ namespace AI4E.Blazor.Modularity.Sample.Server
             services.AddSingleton<ILogicalServerEndPoint, LogicalServerEndPoint>();
             services.AddSingleton<ClientManager>();
             services.AddSingleton<IConnectedClientLookup, ConnectedClientLookup>();
+            services.ConfigureApplicationServices(serviceManager => serviceManager.AddService<ClientManager>());
 
             services.AddMvc();
 

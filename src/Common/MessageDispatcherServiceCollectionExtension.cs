@@ -50,7 +50,6 @@ using System;
 using AI4E;
 using AI4E.Internal;
 using Microsoft.Extensions.DependencyInjection;
-
 using static AI4E.Internal.MessageDispatcherBuilder;
 
 namespace AI4E

@@ -23,5 +23,11 @@ namespace AI4E.Blazor
 
             return webhost;
         }
+
+        public static IWebAssemblyHost InitializeApplicationServices(this IWebAssemblyHost webhost)
+        {
+            InitializeApplicationServicesAsync(webhost).ConfigureAwait(false).GetAwaiter().GetResult();
+            return webhost;
+        }
     }
 }

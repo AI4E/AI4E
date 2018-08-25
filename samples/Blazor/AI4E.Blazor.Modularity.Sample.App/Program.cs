@@ -6,11 +6,15 @@ namespace AI4E.Blazor.Modularity.Sample.App
     {
         public static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            var wasmHost = CreateHostBuilder(args).Build();
+            wasmHost.Run();
+            wasmHost.InitializeApplicationServices();
         }
 
-        public static IWebAssemblyHostBuilder CreateHostBuilder(string[] args) =>
-            BlazorWebAssemblyHost.CreateDefaultBuilder()
-                .UseBlazorStartup<Startup>();
+        public static IWebAssemblyHostBuilder CreateHostBuilder(string[] args)
+        {
+            return BlazorWebAssemblyHost.CreateDefaultBuilder()
+                                        .UseBlazorStartup<Startup>();
+        }
     }
 }

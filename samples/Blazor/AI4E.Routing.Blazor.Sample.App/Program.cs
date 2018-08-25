@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Blazor.Hosting;
-using Microsoft.Extensions.DependencyInjection;
+﻿using AI4E.Blazor;
+using Microsoft.AspNetCore.Blazor.Hosting;
 
 namespace AI4E.Routing.Blazor.Sample.App
 {
@@ -7,11 +7,10 @@ namespace AI4E.Routing.Blazor.Sample.App
     {
         public static void Main(string[] args)
         {
-            var host = CreateHostBuilder(args).Build();
+            var wasmHost = CreateHostBuilder(args).Build();
 
-            //host.Services.GetRequiredService<IMessageDispatcher>();
-
-            host.Run();
+            wasmHost.Run();
+            wasmHost.InitializeApplicationServices();
         }
 
         public static IWebAssemblyHostBuilder CreateHostBuilder(string[] args)

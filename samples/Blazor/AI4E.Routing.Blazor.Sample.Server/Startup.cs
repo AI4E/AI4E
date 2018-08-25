@@ -1,3 +1,5 @@
+using System.Linq;
+using System.Net.Mime;
 using AI4E.Modularity.Host;
 using AI4E.Routing.SignalR.Server;
 using AI4E.Storage;
@@ -7,8 +9,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.DependencyInjection;
-using System.Linq;
-using System.Net.Mime;
 
 namespace AI4E.Routing.Blazor.Sample.Server
 {
@@ -41,6 +41,7 @@ namespace AI4E.Routing.Blazor.Sample.Server
             services.AddSingleton<ILogicalServerEndPoint, LogicalServerEndPoint>();
             services.AddSingleton<ClientManager>();
             services.AddSingleton<IConnectedClientLookup, ConnectedClientLookup>();
+            services.ConfigureApplicationServices(serviceManager => serviceManager.AddService<ClientManager>());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

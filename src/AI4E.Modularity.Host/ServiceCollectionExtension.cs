@@ -25,6 +25,7 @@ using AI4E.ApplicationParts;
 using AI4E.Domain.Services;
 using AI4E.Internal;
 using AI4E.Modularity.Debug;
+using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -69,7 +70,20 @@ namespace AI4E.Modularity.Host
             services.AddSingleton<IModuleManager, ModuleManager>();
             services.AddSingleton<IMetadataReader, MetadataReader>();
             services.AddDomainServices();
-            services.ConfigureApplicationParts(partManager => partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly())));
+            services.ConfigureApplicationParts(ConfigureApplicationParts);
+            services.ConfigureApplicationServices(ConfigureApplicationServices);
+        }
+
+        private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
+        {
+            serviceManager.AddService<IMessageDispatcher>();
+            serviceManager.AddService<ProxyHost>(isRequiredService: false);
+            serviceManager.AddService<DebugPort>(isRequiredService: false);
+        }
+
+        private static void ConfigureApplicationParts(ApplicationPartManager partManager)
+        {
+            partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
         }
 
         private static DebugPort ConfigureDebugPort(IServiceProvider serviceProvider)

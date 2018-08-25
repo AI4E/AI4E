@@ -437,16 +437,16 @@ namespace AI4E.Coordination
                             break;
                         }
 
+                        if (result == null)
+                        {
+                            result = new char[escapedSegment.Length];
+                            resultWriter = new MemoryWriter<char>(result);
+                        }
+
                         var numberOfCharsToCopy = i - copySegmentStart;
                         Assert(numberOfCharsToCopy >= 0);
                         if (numberOfCharsToCopy > 0)
                         {
-                            if (result == null)
-                            {
-                                result = new char[escapedSegment.Length];
-                                resultWriter = new MemoryWriter<char>(result);
-                            }
-
                             // Copy from escapedSegment string all chars from (including) copySegmentStart to i (excluding)
                             resultWriter.Append(escapedSegment.Slice(copySegmentStart, numberOfCharsToCopy).Span);
                         }
@@ -502,6 +502,7 @@ namespace AI4E.Coordination
                     return escapedSegment;
                 }
 
+                Assert(result != null);
                 var numberOfCharsToCopy = escapedSegment.Length - copySegmentStart;
                 Assert(numberOfCharsToCopy >= 0);
                 if (numberOfCharsToCopy > 0)

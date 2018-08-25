@@ -31,13 +31,15 @@ namespace AI4E.Modularity.Module
             services.AddSingleton<IRunningModuleLookup, RunningModuleLookup>();
             services.AddSingleton<IMetadataReader, MetadataReader>();
 
-            services.ConfigureApplicationServices(appServiceManager =>
-            {
-                appServiceManager.AddService<IMessageDispatcher>();
-                // TODO: Add ProxyHost conditionally.
-            });
+            services.ConfigureApplicationServices(ConfigureApplicationServices);
 
             return services;
+        }
+
+        private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
+        {
+            serviceManager.AddService<IMessageDispatcher>();
+            serviceManager.AddService<ProxyHost>(isRequiredService: false);
         }
 
         private static ICoordinationManager ConfigureCoordinationManager(IServiceProvider serviceProvider)

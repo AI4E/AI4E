@@ -1,24 +1,19 @@
-﻿using AI4E.Routing.SignalR.Server;
+﻿using System.Threading.Tasks;
+using AI4E.AspNetCore;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace AI4E.Routing.Blazor.Sample.Server
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
-            var webHost = BuildWebHost(args);
-
-            // Read the message dispatcher from the services in order to register all available handlers.
-            webHost.Services.GetRequiredService<IMessageDispatcher>();
-
-            webHost.Services.GetRequiredService<ClientManager>();
-
-            webHost.Run();
+            var webhost = BuildWebHost(args);
+            await webhost.InitializeApplicationServicesAsync();
+            await webhost.RunAsync();
         }
 
         public static IWebHost BuildWebHost(string[] args)

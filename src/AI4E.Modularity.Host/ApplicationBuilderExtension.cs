@@ -23,7 +23,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using AI4E.Internal;
-using AI4E.Modularity.Debug;
 using AI4E.Routing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Features;
@@ -51,7 +50,6 @@ namespace AI4E.Modularity.Host
             // Initialize the module-host.
             var dispatcher = serviceProvider.GetRequiredService<IRemoteMessageDispatcher>();
             var runningModuleLookup = serviceProvider.GetRequiredService<IRunningModuleLookup>();
-            var debugPort = serviceProvider.GetService<DebugPort>();
 
             applicationBuilder.Use(async (context, next) =>
             {

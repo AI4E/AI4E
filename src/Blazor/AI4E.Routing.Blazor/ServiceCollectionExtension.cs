@@ -1,8 +1,8 @@
 ﻿using System;
 using AI4E.Internal;
 using AI4E.Remoting;
+using Blazor.Extensions;
 using Microsoft.Extensions.DependencyInjection;
-using static AI4E.Internal.MessageDispatcherBuilder;
 
 namespace AI4E.Routing.Blazor
 {
@@ -13,6 +13,17 @@ namespace AI4E.Routing.Blazor
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
+            AddBlazorMessageDispatcher(services, ConfigureHubConnection);
+        }
+
+        public static void AddBlazorMessageDispatcher(this IServiceCollection services, Func<IServiceProvider, HubConnection> configureHubConnection)
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            if (configureHubConnection == null)
+                throw new ArgumentNullException(nameof(configureHubConnection));
+
             services.AddCoreServices();
             services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
             services.AddSingleton<ITypeConversion, TypeSerializer>();
@@ -20,19 +31,20 @@ namespace AI4E.Routing.Blazor
             services.AddSingleton<IClientEndPoint, ClientEndPoint>();
             services.AddSingleton<ILogicalClientEndPoint, LogicalClientEndPoint>();
             services.AddSingleton<IMessageRouterFactory, RemoteMessageRouterFactory>();
+            services.AddSingleton(configureHubConnection);
         }
 
-        private static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(this IServiceCollection services)
-            where TMessageDispatcher : class, IMessageDispatcher
-            where TMessageDispatcherImpl : class, TMessageDispatcher
+        private static HubConnection ConfigureHubConnection(IServiceProvider serviceProvider)
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
+            var connection = new HubConnectionBuilder()
+                                .WithUrl("/MessageDispatcherHub", opt =>
+                                {
+                                    opt.LogLevel = SignalRLogLevel.Trace;
+                                    opt.Transport = HttpTransportType.WebSockets;
+                                })
+                                .Build();
 
-            services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
-            services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, ActivatorUtilities.CreateInstance<TMessageDispatcherImpl>(serviceProvider)));
-            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
+            return connection;
         }
     }
 }

@@ -70,9 +70,14 @@ namespace AI4E.Internal
             if (manager == null)
             {
                 manager = new ApplicationPartManager();
-#if !BLAZOR // Blazor cannot access the entry assembly apparently.
-                manager.ApplicationParts.Add(new AssemblyPart(Assembly.GetEntryAssembly()));
-#endif
+
+                var entryAssembly = Assembly.GetEntryAssembly();
+
+                // Blazor cannot access the entry assembly apparently.
+                if (entryAssembly != null)
+                {
+                    manager.ApplicationParts.Add(new AssemblyPart(entryAssembly));
+                }
             }
 
             return manager;
