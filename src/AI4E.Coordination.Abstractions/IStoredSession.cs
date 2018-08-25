@@ -28,7 +28,7 @@ namespace AI4E.Coordination
         string Key { get; }
         bool IsEnded { get; }
         DateTime LeaseEnd { get; }
-        ImmutableArray<string> Entries { get; }
+        ImmutableArray<CoordinationEntryPath> EntryPaths { get; }
         int StorageVersion { get; }
     }
 }

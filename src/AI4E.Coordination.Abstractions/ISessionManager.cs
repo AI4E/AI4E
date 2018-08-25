@@ -31,9 +31,9 @@ namespace AI4E.Coordination
 
         Task UpdateSessionAsync(string session, DateTime leaseEnd, CancellationToken cancellation = default);
 
-        Task AddSessionEntryAsync(string session, string entry, CancellationToken cancellation = default);
-        Task RemoveSessionEntryAsync(string session, string entry, CancellationToken cancellation = default);
-        Task<IEnumerable<string>> GetEntriesAsync(string session, CancellationToken cancellation = default);
+        Task AddSessionEntryAsync(string session, CoordinationEntryPath entryPath, CancellationToken cancellation = default);
+        Task RemoveSessionEntryAsync(string session, CoordinationEntryPath entryPath, CancellationToken cancellation = default);
+        Task<IEnumerable<CoordinationEntryPath>> GetEntriesAsync(string session, CancellationToken cancellation = default);
 
         Task EndSessionAsync(string session, CancellationToken cancellation = default);
 

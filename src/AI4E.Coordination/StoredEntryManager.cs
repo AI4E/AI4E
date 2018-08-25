@@ -7,7 +7,7 @@ namespace AI4E.Coordination
     public sealed class StoredEntryManager : IStoredEntryManager
     {
         private static readonly ImmutableArray<string> _noReadLocks = ImmutableArray<string>.Empty;
-        private static readonly ImmutableArray<string> _noChilds = ImmutableArray<string>.Empty;
+        private static readonly ImmutableList<CoordinationEntryPathSegment> _noChilds = ImmutableList<CoordinationEntryPathSegment>.Empty;
 
         private readonly IDateTimeProvider _dateTimeProvider;
 
@@ -27,17 +27,17 @@ namespace AI4E.Coordination
             return storedEntry as StoredEntry ?? new StoredEntry(storedEntry);
         }
 
-        public IStoredEntry Create(string key, string session, bool isEphemeral, ReadOnlySpan<byte> value)
+        public IStoredEntry Create(CoordinationEntryPath path, string session, bool isEphemeral, ReadOnlySpan<byte> value)
         {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
+            if (path == null)
+                throw new ArgumentNullException(nameof(path));
 
             if (session == null)
                 throw new ArgumentNullException(nameof(session));
 
             var currentTime = _dateTimeProvider.GetCurrentTime();
 
-            return new StoredEntry(key,
+            return new StoredEntry(path,
                                    value.ToArray(), // We need to copy here in order to guarantee immutability.
                                    _noReadLocks,
                                    writeLock: session,
@@ -67,7 +67,7 @@ namespace AI4E.Coordination
                                    storedEntry.Value,
                                    storedEntry.ReadLocks,
                                    writeLock: session,
-                                   storedEntry.Childs,
+                                   storedEntry.Children,
                                    storedEntry.Version,
                                    storedEntry.StorageVersion + 1,
                                    storedEntry.EphemeralOwner,
@@ -90,7 +90,7 @@ namespace AI4E.Coordination
                                    storedEntry.Value,
                                    _noReadLocks,
                                    writeLock: null,
-                                   storedEntry.Childs,
+                                   storedEntry.Children,
                                    storedEntry.Version,
                                    storedEntry.StorageVersion + 1,
                                    storedEntry.EphemeralOwner,
@@ -116,7 +116,7 @@ namespace AI4E.Coordination
                                    storedEntry.Value,
                                    storedEntry.ReadLocks.Add(session),
                                    writeLock: null,
-                                   storedEntry.Childs,
+                                   storedEntry.Children,
                                    storedEntry.Version,
                                    storedEntry.StorageVersion + 1,
                                    storedEntry.EphemeralOwner,
@@ -139,7 +139,7 @@ namespace AI4E.Coordination
                                    storedEntry.Value,
                                    storedEntry.ReadLocks.Remove(session),
                                    storedEntry.WriteLock,
-                                   storedEntry.Childs,
+                                   storedEntry.Children,
                                    storedEntry.Version,
                                    storedEntry.StorageVersion + 1,
                                    storedEntry.EphemeralOwner,
@@ -158,7 +158,7 @@ namespace AI4E.Coordination
             if (storedEntry.WriteLock == null)
                 throw new InvalidOperationException();
 
-            if (storedEntry.Childs.Any())
+            if (storedEntry.Children.Any())
                 throw new InvalidOperationException();
 
             return null;
@@ -186,7 +186,7 @@ namespace AI4E.Coordination
                                    value.ToArray(), // We need to copy here in order to guarantee immutability.
                                    _noReadLocks,
                                    storedEntry.WriteLock,
-                                   storedEntry.Childs,
+                                   storedEntry.Children,
                                    storedEntry.Version + 1,
                                    storedEntry.StorageVersion + 1,
                                    storedEntry.EphemeralOwner,
@@ -194,13 +194,13 @@ namespace AI4E.Coordination
                                    writeTime);
         }
 
-        public IStoredEntry AddChild(IStoredEntry storedEntry, string name)
+        public IStoredEntry AddChild(IStoredEntry storedEntry, CoordinationEntryPathSegment child)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
 
-            if (name == null)
-                throw new ArgumentNullException(nameof(name));
+            if (child == default)
+                throw new ArgumentDefaultException(nameof(child));
 
             if (storedEntry.ReadLocks.Length > 0)
                 throw new InvalidOperationException();
@@ -208,14 +208,14 @@ namespace AI4E.Coordination
             if (storedEntry.WriteLock == null)
                 throw new InvalidOperationException();
 
-            if (storedEntry.Childs.Contains(name))
+            if (storedEntry.Children.Contains(child))
                 return storedEntry;
 
             return new StoredEntry(storedEntry.Path,
                                    storedEntry.Value,
                                    storedEntry.ReadLocks,
                                    storedEntry.WriteLock,
-                                   storedEntry.Childs.Add(name),
+                                   storedEntry.Children.Add(child),
                                    storedEntry.Version,
                                    storedEntry.StorageVersion + 1,
                                    storedEntry.EphemeralOwner,
@@ -223,13 +223,13 @@ namespace AI4E.Coordination
                                    storedEntry.LastWriteTime);
         }
 
-        public IStoredEntry RemoveChild(IStoredEntry storedEntry, string name)
+        public IStoredEntry RemoveChild(IStoredEntry storedEntry, CoordinationEntryPathSegment child)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
 
-            if (name == null)
-                throw new ArgumentNullException(nameof(name));
+            if (child == default)
+                throw new ArgumentDefaultException(nameof(child));
 
             if (storedEntry.ReadLocks.Length > 0)
                 throw new InvalidOperationException();
@@ -237,14 +237,14 @@ namespace AI4E.Coordination
             if (storedEntry.WriteLock == null)
                 throw new InvalidOperationException();
 
-            if (!storedEntry.Childs.Contains(name))
+            if (!storedEntry.Children.Contains(child))
                 return storedEntry;
 
             return new StoredEntry(storedEntry.Path,
                                    storedEntry.Value,
                                    storedEntry.ReadLocks,
                                    storedEntry.WriteLock,
-                                   storedEntry.Childs.Remove(name),
+                                   storedEntry.Children.Remove(child),
                                    storedEntry.Version,
                                    storedEntry.StorageVersion + 1,
                                    storedEntry.EphemeralOwner,
@@ -260,7 +260,7 @@ namespace AI4E.Coordination
                 Value = entry.Value;
                 ReadLocks = entry.ReadLocks;
                 WriteLock = entry.WriteLock;
-                Childs = entry.Childs;
+                Children = entry.Children;
                 CreationTime = entry.CreationTime;
                 LastWriteTime = entry.LastWriteTime;
                 Version = entry.Version;
@@ -268,22 +268,22 @@ namespace AI4E.Coordination
                 EphemeralOwner = entry.EphemeralOwner;
             }
 
-            public StoredEntry(string key,
-                          ReadOnlyMemory<byte> value,
-                          ImmutableArray<string> readLocks,
-                          string writeLock,
-                          ImmutableArray<string> childs,
-                          int version,
-                          int storageVersion,
-                          string ephemeralOwner,
-                          DateTime creationTime,
-                          DateTime lastWriteTime)
+            public StoredEntry(CoordinationEntryPath path,
+                               ReadOnlyMemory<byte> value,
+                               ImmutableArray<string> readLocks,
+                               string writeLock,
+                               ImmutableList<CoordinationEntryPathSegment> children,
+                               int version,
+                               int storageVersion,
+                               string ephemeralOwner,
+                               DateTime creationTime,
+                               DateTime lastWriteTime)
             {
-                Path = key;
+                Path = path;
                 Value = value;
                 ReadLocks = readLocks;
                 WriteLock = writeLock;
-                Childs = childs;
+                Children = children;
                 Version = version;
                 StorageVersion = storageVersion;
                 EphemeralOwner = ephemeralOwner;
@@ -291,7 +291,7 @@ namespace AI4E.Coordination
                 LastWriteTime = lastWriteTime;
             }
 
-            public string Path { get; }
+            public CoordinationEntryPath Path { get; }
 
             public ReadOnlyMemory<byte> Value { get; }
 
@@ -303,7 +303,7 @@ namespace AI4E.Coordination
 
             public DateTime LastWriteTime { get; }
 
-            public ImmutableArray<string> Childs { get; }
+            public ImmutableList<CoordinationEntryPathSegment> Children { get; }
 
             public int Version { get; }
 

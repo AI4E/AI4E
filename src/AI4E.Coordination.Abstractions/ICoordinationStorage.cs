@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,18 +26,19 @@ namespace AI4E.Coordination
 {
     public interface ICoordinationStorage
     {
-        Task<IStoredEntry> GetEntryAsync(string path, CancellationToken cancellation);
-        Task<IStoredEntry> UpdateEntryAsync(IStoredEntry comparand, IStoredEntry value, CancellationToken cancellation);
+        Task<IStoredEntry> GetEntryAsync(CoordinationEntryPath path, CancellationToken cancellation);
+        Task<IStoredEntry> UpdateEntryAsync(IStoredEntry value, IStoredEntry comparand, CancellationToken cancellation);
     }
 
     public static class CoordinationStorageExtension
     {
-        public static Task<IStoredEntry> GetEntryAsync(this ICoordinationStorage coordinationStorage, CoordinationEntryPath path, CancellationToken cancellation)
+        [Obsolete("Use GetEntryAsync(CoordinationEntryPath, CancellationToken)")]
+        public static Task<IStoredEntry> GetEntryAsync(this ICoordinationStorage coordinationStorage, string path, CancellationToken cancellation)
         {
             if (coordinationStorage == null)
-                throw new System.ArgumentNullException(nameof(coordinationStorage));
+                throw new ArgumentNullException(nameof(coordinationStorage));
 
-            return coordinationStorage.GetEntryAsync(path.EscapedPath.ConvertToString(), // TODO: https://github.com/AI4E/AI4E/issues/15
+            return coordinationStorage.GetEntryAsync(CoordinationEntryPath.FromEscapedPath( path.AsMemory()),
                                                      cancellation);
         }
     }

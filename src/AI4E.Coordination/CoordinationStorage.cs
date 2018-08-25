@@ -15,7 +15,9 @@ namespace AI4E.Coordination
         private readonly IStoredSessionManager _storedSessionManager;
         private readonly IStoredEntryManager _storedEntryManager;
 
-        public CoordinationStorage(IFilterableDatabase database, IStoredSessionManager storedSessionManager, IStoredEntryManager storedEntryManager)
+        public CoordinationStorage(IFilterableDatabase database,
+                                   IStoredSessionManager storedSessionManager,
+                                   IStoredEntryManager storedEntryManager)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -33,18 +35,15 @@ namespace AI4E.Coordination
 
         #region Entry
 
-        public async Task<IStoredEntry> GetEntryAsync(string path, CancellationToken cancellation)
+        public async Task<IStoredEntry> GetEntryAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
-            if (path == null)
-                throw new ArgumentNullException(nameof(path));
-
-            var storedEntry = await _database.GetOneAsync<StoredEntry>(p => p.Id == path, cancellation);
+            var escapedPath = path.EscapedPath.ConvertToString();
+            var storedEntry = await _database.GetOneAsync<StoredEntry>(p => p.Id == escapedPath, cancellation);
 
             return _storedEntryManager.Copy(storedEntry);
         }
 
-        // TODO: comparand and value are reversed when compared to IDatabase.CompareExchangeAsync
-        public async Task<IStoredEntry> UpdateEntryAsync(IStoredEntry comparand, IStoredEntry value, CancellationToken cancellation)
+        public async Task<IStoredEntry> UpdateEntryAsync(IStoredEntry value, IStoredEntry comparand, CancellationToken cancellation)
         {
             var convertedValue = ConvertValue(value);
             var convertedComparand = ConvertValue(comparand);
@@ -66,7 +65,7 @@ namespace AI4E.Coordination
                 convertedValue = value as StoredEntry ?? new StoredEntry(value);
 
                 Assert(convertedValue != null);
-                Assert(convertedValue.Id == value.Path);
+                Assert(convertedValue.Id == value.Path.EscapedPath.ConvertToString());
             }
 
             return convertedValue;
@@ -92,8 +91,7 @@ namespace AI4E.Coordination
             return await _database.GetAsync<StoredSession>(cancellation).Select(p => _storedSessionManager.Copy(p)).ToList(cancellation);
         }
 
-        // TODO: comparand and value are reversed when compared to IDatabase.CompareExchangeAsync
-        public async Task<IStoredSession> UpdateSessionAsync(IStoredSession comparand, IStoredSession value, CancellationToken cancellation)
+        public async Task<IStoredSession> UpdateSessionAsync(IStoredSession value, IStoredSession comparand, CancellationToken cancellation)
         {
             var convertedValue = ConvertValue(value);
             var convertedComparand = ConvertValue(comparand);
@@ -129,11 +127,11 @@ namespace AI4E.Coordination
 
             public StoredEntry(IStoredEntry entry)
             {
-                Id = entry.Path;
+                Id = entry.Path.EscapedPath.ConvertToString();
                 Value = entry.Value.ToArray();
                 ReadLocks = entry.ReadLocks.ToArray();
                 WriteLock = entry.WriteLock;
-                Childs = entry.Childs.ToArray();
+                Children = entry.Children.Select(p => p.EscapedSegment.ConvertToString()).ToArray();
                 CreationTime = entry.CreationTime;
                 LastWriteTime = entry.LastWriteTime;
                 Version = entry.Version;
@@ -142,7 +140,7 @@ namespace AI4E.Coordination
             }
 
             public string Id { get; set; }
-            string IStoredEntry.Path => Id;
+            CoordinationEntryPath IStoredEntry.Path => CoordinationEntryPath.FromEscapedPath(Id.AsMemory());
             public byte[] Value { get; set; }
             public string[] ReadLocks { get; set; }
             public string WriteLock { get; set; }
@@ -150,12 +148,12 @@ namespace AI4E.Coordination
             public int StorageVersion { get; set; }
             public DateTime CreationTime { get; set; }
             public DateTime LastWriteTime { get; set; }
-            public string[] Childs { get; set; }
+            public string[] Children { get; set; }
             public string EphemeralOwner { get; set; }
 
             ReadOnlyMemory<byte> IStoredEntry.Value => Value;
             ImmutableArray<string> IStoredEntry.ReadLocks => ReadLocks.ToImmutableArray();
-            ImmutableArray<string> IStoredEntry.Childs => Childs.ToImmutableArray();
+            ImmutableList<CoordinationEntryPathSegment> IStoredEntry.Children => Children.Select(p => CoordinationEntryPathSegment.FromEscapedSegment(p.AsMemory())).ToImmutableList();
 
         }
 
@@ -168,7 +166,7 @@ namespace AI4E.Coordination
                 Id = session.Key;
                 IsEnded = session.IsEnded;
                 LeaseEnd = session.LeaseEnd;
-                Entries = session.Entries.ToArray();
+                EntryPaths = session.EntryPaths.Select(p => p.EscapedPath.ConvertToString()).ToArray();
                 StorageVersion = session.StorageVersion;
             }
 
@@ -176,10 +174,10 @@ namespace AI4E.Coordination
             string IStoredSession.Key => Id;
             public bool IsEnded { get; set; }
             public DateTime LeaseEnd { get; set; }
-            public string[] Entries { get; set; }
+            public string[] EntryPaths { get; set; }
             public int StorageVersion { get; set; }
 
-            ImmutableArray<string> IStoredSession.Entries => Entries.ToImmutableArray();
+            ImmutableArray<CoordinationEntryPath> IStoredSession.EntryPaths => EntryPaths.Select(p => CoordinationEntryPath.FromEscapedPath(p.AsMemory())).ToImmutableArray();
         }
     }
 }

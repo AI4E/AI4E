@@ -28,7 +28,7 @@ namespace AI4E.Coordination
         /// <summary>
         /// Gets the path of the entry.
         /// </summary>
-        string Path { get; }
+        CoordinationEntryPath Path { get; }
 
         /// <summary>
         /// Gets the value of the entry.
@@ -65,7 +65,7 @@ namespace AI4E.Coordination
         /// <summary>
         /// Get a collection of names that represents the child entries of the entry.
         /// </summary>
-        ImmutableArray<string> Childs { get; }
+        ImmutableList<CoordinationEntryPathSegment> Children { get; }
 
         string EphemeralOwner { get; }
     }

@@ -6,7 +6,7 @@ namespace AI4E.Coordination
 {
     public sealed class StoredSessionManager : IStoredSessionManager
     {
-        private static readonly ImmutableArray<string> _noEntries = ImmutableArray<string>.Empty;
+        private static readonly ImmutableArray<CoordinationEntryPath> _noEntries = ImmutableArray<CoordinationEntryPath>.Empty;
 
         private readonly IDateTimeProvider _dateTimeProvider;
 
@@ -54,7 +54,7 @@ namespace AI4E.Coordination
             if (IsEnded(storedSession))
                 return storedSession;
 
-            return new StoredSession(storedSession.Key, isEnded: true, storedSession.LeaseEnd, storedSession.Entries, storedSession.StorageVersion + 1);
+            return new StoredSession(storedSession.Key, isEnded: true, storedSession.LeaseEnd, storedSession.EntryPaths, storedSession.StorageVersion + 1);
         }
 
         public IStoredSession UpdateLease(IStoredSession storedSession, DateTime leaseEnd)
@@ -71,38 +71,32 @@ namespace AI4E.Coordination
             if (leaseEnd <= storedSession.LeaseEnd)
                 return storedSession;
 
-            return new StoredSession(storedSession.Key, isEnded: false, leaseEnd, storedSession.Entries, storedSession.StorageVersion + 1);
+            return new StoredSession(storedSession.Key, isEnded: false, leaseEnd, storedSession.EntryPaths, storedSession.StorageVersion + 1);
         }
 
-        public IStoredSession AddEntry(IStoredSession storedSession, string entry)
+        public IStoredSession AddEntry(IStoredSession storedSession, CoordinationEntryPath entryPath)
         {
             if (storedSession == null)
                 throw new ArgumentNullException(nameof(storedSession));
-
-            if (entry == null)
-                throw new ArgumentNullException(nameof(entry));
 
             if (IsEnded(storedSession))
                 throw new InvalidOperationException();
 
-            if (storedSession.Entries.Contains(entry))
+            if (storedSession.EntryPaths.Contains(entryPath))
                 return storedSession;
 
-            return new StoredSession(storedSession.Key, storedSession.IsEnded, storedSession.LeaseEnd, storedSession.Entries.Add(entry), storedSession.StorageVersion + 1);
+            return new StoredSession(storedSession.Key, storedSession.IsEnded, storedSession.LeaseEnd, storedSession.EntryPaths.Add(entryPath), storedSession.StorageVersion + 1);
         }
 
-        public IStoredSession RemoveEntry(IStoredSession storedSession, string entry)
+        public IStoredSession RemoveEntry(IStoredSession storedSession, CoordinationEntryPath entryPath)
         {
             if (storedSession == null)
                 throw new ArgumentNullException(nameof(storedSession));
 
-            if (entry == null)
-                throw new ArgumentNullException(nameof(entry));
-
-            if (!storedSession.Entries.Contains(entry))
+            if (!storedSession.EntryPaths.Contains(entryPath))
                 return storedSession;
 
-            return new StoredSession(storedSession.Key, storedSession.IsEnded, storedSession.LeaseEnd, storedSession.Entries.Remove(entry), storedSession.StorageVersion + 1);
+            return new StoredSession(storedSession.Key, storedSession.IsEnded, storedSession.LeaseEnd, storedSession.EntryPaths.Remove(entryPath), storedSession.StorageVersion + 1);
         }
 
         private sealed class StoredSession : IStoredSession
@@ -112,18 +106,18 @@ namespace AI4E.Coordination
                 Key = session.Key;
                 IsEnded = session.IsEnded;
                 LeaseEnd = session.LeaseEnd;
-                Entries = session.Entries;
+                EntryPaths = session.EntryPaths;
                 StorageVersion = session.StorageVersion;
             }
 
-            public StoredSession(string key, bool isEnded, DateTime leaseEnd, ImmutableArray<string> entries, int storageVersion)
+            public StoredSession(string key, bool isEnded, DateTime leaseEnd, ImmutableArray<CoordinationEntryPath> entryPaths, int storageVersion)
             {
                 Assert(key != null);
 
                 Key = key;
                 IsEnded = isEnded;
                 LeaseEnd = leaseEnd;
-                Entries = entries;
+                EntryPaths = entryPaths;
                 StorageVersion = storageVersion;
             }
 
@@ -133,7 +127,7 @@ namespace AI4E.Coordination
 
             public DateTime LeaseEnd { get; }
 
-            public ImmutableArray<string> Entries { get; }
+            public ImmutableArray<CoordinationEntryPath> EntryPaths { get; }
 
             public int StorageVersion { get; }
         }

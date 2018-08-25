@@ -27,8 +27,8 @@ namespace AI4E.Test.Coordination
             Assert.AreEqual(key, storedSession.Key);
             Assert.AreEqual(leaseEnd, storedSession.LeaseEnd);
             Assert.AreEqual(1, storedSession.StorageVersion);
-            Assert.IsNotNull(storedSession.Entries);
-            Assert.AreEqual(0, storedSession.Entries.Count());
+            Assert.IsNotNull(storedSession.EntryPaths);
+            Assert.AreEqual(0, storedSession.EntryPaths.Count());
             Assert.IsFalse(storedSessionManager.IsEnded(storedSession));
 
             dateTimeProvider.CurrentTime = leaseEnd;
@@ -51,8 +51,8 @@ namespace AI4E.Test.Coordination
             Assert.AreEqual(key, storedSession.Key);
             Assert.AreEqual(leaseEnd, storedSession.LeaseEnd);
             Assert.AreEqual(2, storedSession.StorageVersion);
-            Assert.IsNotNull(storedSession.Entries);
-            Assert.AreEqual(0, storedSession.Entries.Count());
+            Assert.IsNotNull(storedSession.EntryPaths);
+            Assert.AreEqual(0, storedSession.EntryPaths.Count());
             Assert.IsTrue(storedSessionManager.IsEnded(storedSession));
         }
 
