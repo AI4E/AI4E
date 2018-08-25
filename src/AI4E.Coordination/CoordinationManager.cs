@@ -715,7 +715,7 @@ namespace AI4E.Coordination
                         }
 
                         var name = path.Segments.Last();
-                        var result = await _storage.UpdateEntryAsync(_storedEntryManager.AddChild(parent, name), parent, cancellation);
+                        var result = await _storage.UpdateEntryAsync(_storedEntryManager.AddChild(parent, name, session), parent, cancellation);
 
                         // We are holding the exclusive lock => No one else can alter the entry.
                         // The only exception is that out session terminates.
@@ -831,6 +831,8 @@ namespace AI4E.Coordination
         {
             Assert(child != null);
 
+            var session = await GetSessionAsync(cancellation);
+
             try
             {
                 entry = await AcquireWriteLockAsync(entry, cancellation);
@@ -845,7 +847,7 @@ namespace AI4E.Coordination
 
                 if (childEntry == null)
                 {
-                    var result = await _storage.UpdateEntryAsync(_storedEntryManager.RemoveChild(entry, child), entry, cancellation);
+                    var result = await _storage.UpdateEntryAsync(_storedEntryManager.RemoveChild(entry, child, session), entry, cancellation);
 
                     // We are holding the exclusive lock => No one else can alter the entry.
                     // The only exception is that out session terminates.
@@ -941,12 +943,13 @@ namespace AI4E.Coordination
                             var result = await _storage.UpdateEntryAsync(_storedEntryManager.Remove(entry), entry, combinedCancellationSource.Token);
 
                             // We are holding the exclusive lock => No one else can alter the entry.
-                            // The only exception is that out session terminates.
+                            // The only exception is that our session terminates.
                             if (!AreVersionEqual(result, entry))
                             {
                                 throw new SessionTerminatedException();
                             }
 
+                            _cache.TryRemove(entry.Path, out _);
                             entry = null;
                         }
 
@@ -956,7 +959,7 @@ namespace AI4E.Coordination
                             if (parent != null)
                             {
                                 var name = path.Segments.Last();
-                                var result = await _storage.UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, name), parent, combinedCancellationSource.Token);
+                                var result = await _storage.UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, name, session), parent, combinedCancellationSource.Token);
 
                                 // We are holding the exclusive lock => No one else can alter the parent.
                                 // The only exception is that out session terminates.
@@ -1028,7 +1031,7 @@ namespace AI4E.Coordination
                         return entry.Version;
                     }
 
-                    var result = await _storage.UpdateEntryAsync(_storedEntryManager.SetValue(entry, value.Span), entry, combinedCancellationSource.Token);
+                    var result = await _storage.UpdateEntryAsync(_storedEntryManager.SetValue(entry, value.Span, session), entry, combinedCancellationSource.Token);
 
                     // We are holding the exclusive lock => No one else can alter the entry.
                     // The only exception is that out session terminates.
@@ -1091,17 +1094,16 @@ namespace AI4E.Coordination
             while (!writeOk);
         }
 
-        private void UpdateCacheEntry(CoordinationEntryPath path, int comparandVersion, IStoredEntry entry)
+        private void UpdateCacheEntry(IStoredEntry entry, int comparandVersion)
         {
-            UpdateCacheEntry(path,
-                             createFunc: () => new CacheEntry(path, entry),
+            UpdateCacheEntry(entry.Path,
+                             createFunc: () => new CacheEntry(entry.Path, entry),
                              updateFunc: currentEntry => currentEntry.Update(entry, comparandVersion));
         }
 
         private async Task<IStoredEntry> AddToCacheAsync(IStoredEntry entry, int comparandVersion, CancellationToken cancellation)
         {
             Assert(entry != null);
-            var normalizedPath = entry.Path;
 
             try
             {
@@ -1123,7 +1125,7 @@ namespace AI4E.Coordination
                     }
                 }
 
-                UpdateCacheEntry(normalizedPath, comparandVersion, entry);
+                UpdateCacheEntry(entry, comparandVersion);
 
                 return entry;
             }
@@ -1180,7 +1182,7 @@ namespace AI4E.Coordination
 
             do
             {
-                start = await WaitForWriteLockReleaseAsync(entry, cancellation);
+                start = await WaitForWriteLockReleaseAsync(entry, allowWriteLock: true, cancellation);
 
                 // The entry was deleted (concurrently).
                 if (start == null)
@@ -1188,7 +1190,7 @@ namespace AI4E.Coordination
                     return null;
                 }
 
-                Assert(start.WriteLock == null);
+                Assert(start.WriteLock == null || start.WriteLock == session);
 
                 desired = _storedEntryManager.AcquireReadLock(start, session);
 
@@ -1252,7 +1254,7 @@ namespace AI4E.Coordination
             do
             {
                 // WaitForLockableAsync updates the session in order that there is enough time to complete the write operation, without the session to terminate.
-                start = await WaitForWriteLockReleaseAsync(entry, cancellation);
+                start = await WaitForWriteLockReleaseAsync(entry, allowWriteLock: false, cancellation);
 
                 // The entry was deleted (concurrently).
                 if (start == null)
@@ -1303,6 +1305,8 @@ namespace AI4E.Coordination
                 _logger?.LogTrace($"[{await GetSessionAsync()}] Releasing write-lock for entry '{entry.Path}'.");
             }
 
+            var cacheVersion = 0;
+
             do
             {
                 start = entry;
@@ -1313,11 +1317,24 @@ namespace AI4E.Coordination
                     return start;
                 }
 
+                // As we did not invalidate the cache entry on write-lock acquirement, we have to update the cache.
+                // We must not update the cache, before we released the write lock, because it is not guaranteed, 
+                // that the write lock release is successful on the first attempt.
+                // We read the cache-entry before we release the write lock, to get the cache entry version and
+                // afterwards try to update the cache if no other session invalidated our cache entry in the meantime.
+
+                if (TryGetCacheEntry(entry.Path, out var cacheEntry))
+                {
+                    cacheVersion = cacheEntry.Version;
+                }
+
                 desired = _storedEntryManager.ReleaseWriteLock(start);
 
                 entry = await _storage.UpdateEntryAsync(desired, start, cancellation: _disposeHelper.DisposalRequested);
             }
             while (entry != start);
+
+            UpdateCacheEntry(start, cacheVersion);
 
             if (entry != null)
             {
@@ -1328,27 +1345,35 @@ namespace AI4E.Coordination
             return desired;
         }
 
-        private async Task<IStoredEntry> WaitForWriteLockReleaseAsync(IStoredEntry entry, CancellationToken cancellation)
+        private async Task<IStoredEntry> WaitForWriteLockReleaseAsync(IStoredEntry entry, bool allowWriteLock, CancellationToken cancellation)
         {
             if (entry != null)
             {
                 _logger?.LogTrace($"[{await GetSessionAsync()}] Waiting for write-lock release for entry '{entry.Path}'.");
             }
 
+            var session = await GetSessionAsync(cancellation);
+
             // The entry was deleted (concurrently).
             while (entry != null)
             {
                 var writeLock = entry.WriteLock;
 
-                // If (entry.WriteLock == session) we MUST wait till the lock is released
-                // and acquired again in order that no concurrency conflicts may occur.
                 if (writeLock == null)
                 {
                     return entry;
                 }
 
-                var path = entry.Path;
+                // If (entry.WriteLock == session) we MUST wait till the lock is released
+                // and acquired again in order that no concurrency conflicts may occur.
+                // Because of the case that we may keep a write and read lock at the same time, this does hold true only if we aquire a write lock.
+                // In this case, we could also allow this but had to synchronize the write operations locally.
+                if (allowWriteLock && writeLock == session)
+                {
+                    return entry;
+                }
 
+                var path = entry.Path;
 
                 async Task<bool> Predicate(CancellationToken c)
                 {
@@ -1394,16 +1419,20 @@ namespace AI4E.Coordination
                 _logger?.LogTrace($"[{await GetSessionAsync()}] Waiting for read-locks release for entry '{entry.Path}'.");
             }
 
-            var readLocks = entry.ReadLocks;
+            IEnumerable<string> readLocks = entry.ReadLocks;
+
+            // Exclude our own read-lock (if present)
+            var session = await GetSessionAsync(cancellation);
+            readLocks = readLocks.Where(readLock => readLock != session);
 
             // Send a message to each of 'readLocks' to ask for lock release and await the end of the session or the lock release, whichever occurs first.
-            await Task.WhenAll(readLocks.Select(session => WaitForReadLockRelease(entry.Path, session, cancellation)));
+            await Task.WhenAll(readLocks.Select(readLock => WaitForReadLockRelease(entry.Path, readLock, cancellation)));
 
             // The unlock of the 'readLocks' will alter the db, so we have to read the entry again.
             entry = await _storage.GetEntryAsync(entry.Path, cancellation);
 
             // We are holding the write-lock => The entry must not be deleted concurrently.
-            if (entry == null || entry.ReadLocks.Length != 0)
+            if (entry == null || entry.ReadLocks.Length != 0 && (entry.ReadLocks.Length > 1 || entry.ReadLocks.First() != session))
             {
                 throw new SessionTerminatedException();
             }
@@ -1479,14 +1508,6 @@ namespace AI4E.Coordination
             await _sessionManager.EndSessionAsync(session, cancellation);
         }
 
-        /// <summary>
-        /// Asynchronously waits for a single read lock to be released.
-        /// </summary>
-        /// <param name="path">The path to the entry that the specified session holds a read lock of.</param>
-        /// <param name="session">The session that holds the read lock.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         private async Task WaitForReadLockRelease(CoordinationEntryPath path, string session, CancellationToken cancellation)
         {
             var entry = await _storage.GetEntryAsync(path, cancellation);
@@ -1658,6 +1679,12 @@ namespace AI4E.Coordination
 
             public IStoredEntry Entry { get; }
 
+            // The cache entry version's purpose is to prevent a situation that
+            // 1) a read operation tries to update the cache and
+            // 2) another session concurrently writes to the entry, invalidating our cache entry
+            // Without the version, the cache update of operation (1) and the cache invalidation of operation (2)
+            // may be performed in the wrong order, leaving the cache with a non-invalidated entry but no read-lock aquired.
+            // For this reason, each invalidation increments the version by one, each update operation checks the version.
             public int Version { get; }
 
             public CacheEntry Invalidate()

@@ -11,7 +11,7 @@ namespace AI4E.Blazor.Modularity.Sample.Module.Server
             var webHost = ModuleWebHost.CreateModuleBuilder(args)
                  .ConfigureLogging((hostingContext, logging) =>
                  {
-                     logging.SetMinimumLevel(LogLevel.Trace);
+                     logging.SetMinimumLevel(LogLevel.Information);
                      logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
                      logging.AddConsole();
                      logging.AddDebug();

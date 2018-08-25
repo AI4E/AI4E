@@ -83,8 +83,8 @@ namespace AI4E.Coordination
             if (storedEntry.WriteLock == null)
                 return null;
 
-            //if (storedEntry.ReadLocks.Length > 0)
-            //    throw new InvalidOperationException();
+            if (storedEntry.ReadLocks.Length != 0 && (storedEntry.ReadLocks.Length > 1 || storedEntry.ReadLocks.First() != storedEntry.WriteLock))       
+                throw new InvalidOperationException();
 
             return new StoredEntry(storedEntry.Path,
                                    storedEntry.Value,
@@ -106,7 +106,7 @@ namespace AI4E.Coordination
             if (session == null)
                 throw new ArgumentNullException(nameof(session));
 
-            if (storedEntry.WriteLock != null)
+            if (storedEntry.WriteLock != null && storedEntry.WriteLock != session)
                 throw new InvalidOperationException();
 
             if (storedEntry.ReadLocks.Contains(session))
@@ -164,12 +164,15 @@ namespace AI4E.Coordination
             return null;
         }
 
-        public IStoredEntry SetValue(IStoredEntry storedEntry, ReadOnlySpan<byte> value)
+        public IStoredEntry SetValue(IStoredEntry storedEntry, ReadOnlySpan<byte> value, string session)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
 
-            if (storedEntry.ReadLocks.Length > 0)
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+
+            if (storedEntry.ReadLocks.Length != 0 && (storedEntry.ReadLocks.Length > 1 || storedEntry.ReadLocks.First() != session))
                 throw new InvalidOperationException();
 
             if (storedEntry.WriteLock == null)
@@ -194,7 +197,7 @@ namespace AI4E.Coordination
                                    writeTime);
         }
 
-        public IStoredEntry AddChild(IStoredEntry storedEntry, CoordinationEntryPathSegment child)
+        public IStoredEntry AddChild(IStoredEntry storedEntry, CoordinationEntryPathSegment child, string session)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
@@ -202,7 +205,10 @@ namespace AI4E.Coordination
             if (child == default)
                 throw new ArgumentDefaultException(nameof(child));
 
-            if (storedEntry.ReadLocks.Length > 0)
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+
+            if (storedEntry.ReadLocks.Length != 0 && (storedEntry.ReadLocks.Length > 1 || storedEntry.ReadLocks.First() != session))
                 throw new InvalidOperationException();
 
             if (storedEntry.WriteLock == null)
@@ -223,7 +229,7 @@ namespace AI4E.Coordination
                                    storedEntry.LastWriteTime);
         }
 
-        public IStoredEntry RemoveChild(IStoredEntry storedEntry, CoordinationEntryPathSegment child)
+        public IStoredEntry RemoveChild(IStoredEntry storedEntry, CoordinationEntryPathSegment child, string session)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
@@ -231,7 +237,10 @@ namespace AI4E.Coordination
             if (child == default)
                 throw new ArgumentDefaultException(nameof(child));
 
-            if (storedEntry.ReadLocks.Length > 0)
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+
+            if (storedEntry.ReadLocks.Length != 0 && (storedEntry.ReadLocks.Length > 1 || storedEntry.ReadLocks.First() != session))
                 throw new InvalidOperationException();
 
             if (storedEntry.WriteLock == null)
