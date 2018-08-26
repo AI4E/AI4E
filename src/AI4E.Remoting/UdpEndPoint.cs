@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
@@ -31,20 +32,25 @@ namespace AI4E.Remoting
             _logger = logger;
 
             // We generate an IPv4 end-point for now.
+            // TODO: https://github.com/AI4E/AI4E/issues/30
             _udpClient = new UdpClient(port: 0);
 
-            // TODO: Does this thing work in linux/unix too?
-            // See: https://stackoverflow.com/questions/7201862/an-existing-connection-was-forcibly-closed-by-the-remote-host
-            //uint IOC_IN = 0x80000000,
-            //     IOC_VENDOR = 0x18000000,
-            //     SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
-            //_udpClient.Client.IOControl(unchecked((int)SIO_UDP_CONNRESET), new byte[] { Convert.ToByte(false) }, null);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                // TODO: Does this thing work in linux/unix too?
+                //       https://github.com/AI4E/AI4E/issues/29
+                // See: https://stackoverflow.com/questions/7201862/an-existing-connection-was-forcibly-closed-by-the-remote-host
+                uint IOC_IN = 0x80000000,
+                     IOC_VENDOR = 0x18000000,
+                     SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
+                _udpClient.Client.IOControl(unchecked((int)SIO_UDP_CONNRESET), new byte[] { Convert.ToByte(false) }, null);
+            }
 
             LocalAddress = GetLocalAddress();
 
             if (LocalAddress == null)
             {
-                throw new Exception("Cannot evaluate local address."); // TODO
+                throw new Exception("Cannot evaluate local address."); // TODO: https://github.com/AI4E/AI4E/issues/32
             }
 
             _receiveProcess = new AsyncProcess(ReceiveProcedure);
@@ -57,6 +63,8 @@ namespace AI4E.Remoting
             var host = Dns.GetHostEntry(Dns.GetHostName());
             foreach (var ip in host.AddressList)
             {
+                // TODO: https://github.com/AI4E/AI4E/issues/31
+                // TODO: https://github.com/AI4E/AI4E/issues/30
                 if (ip.AddressFamily == AddressFamily.InterNetwork)
                 {
                     return new IPEndPoint(ip, ((IPEndPoint)_udpClient.Client.LocalEndPoint).Port);
@@ -95,9 +103,15 @@ namespace AI4E.Remoting
 
         private async Task DisposeInternalAsync()
         {
-            await _initializationHelper.CancelAsync().HandleExceptionsAsync();
-
-            await _receiveProcess.TerminateAsync().HandleExceptionsAsync();
+            try
+            {
+                _udpClient.Close();
+            }
+            finally
+            {
+                await _initializationHelper.CancelAsync().HandleExceptionsAsync();
+                await _receiveProcess.TerminateAsync().HandleExceptionsAsync();
+            }
         }
 
         #endregion
@@ -122,6 +136,7 @@ namespace AI4E.Remoting
                     {
                         continue;
                     }
+                    catch (ObjectDisposedException) when (cancellation.IsCancellationRequested) { return; }
 
                     var message = new Message();
 
@@ -132,8 +147,11 @@ namespace AI4E.Remoting
 
                     await _rxQueue.EnqueueAsync(message, cancellation);
                 }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
-                catch (Exception exc) // TODO: This can end in an infinite loop, f.e. if the socket is down.
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
+
+                // TODO: https://github.com/AI4E/AI4E/issues/33
+                //       This can end in an infinite loop, f.e. if the socket is down.
+                catch (Exception exc)
                 {
                     _logger?.LogWarning(exc, $"Physical-end-point {LocalAddress}: Failure on receiving incoming message.");
                 }
@@ -147,6 +165,12 @@ namespace AI4E.Remoting
 
             if (address == null)
                 throw new ArgumentNullException(nameof(address));
+
+            if (address.Equals(LocalAddress))
+            {
+                await _rxQueue.EnqueueAsync(message, cancellation);
+                return;
+            }
 
             var buffer = new byte[message.Length];
             using (var memoryStream = new MemoryStream(buffer, writable: true))
