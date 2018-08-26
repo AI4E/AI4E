@@ -31,6 +31,7 @@ using AI4E.Modularity.Host;
 using AI4E.Processing;
 using AI4E.Proxying;
 using AI4E.Remoting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 
@@ -43,6 +44,7 @@ namespace AI4E.Modularity.Debug
         private readonly TcpListener _tcpHost;
         private readonly IAsyncProcess _connectionProcess;
         private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<DebugPort> _logger;
         private readonly AsyncDisposeHelper _disposeHelper;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly ConcurrentDictionary<DebugSession, byte> _debugSessions = new ConcurrentDictionary<DebugSession, byte>();
@@ -53,7 +55,8 @@ namespace AI4E.Modularity.Debug
 
         public DebugPort(IServiceProvider serviceProvider,
                          IAddressConversion<IPEndPoint> addressConversion,
-                         IOptions<ModularityOptions> optionsAccessor)
+                         IOptions<ModularityOptions> optionsAccessor,
+                         ILogger<DebugPort> logger = null)
         {
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
@@ -67,7 +70,7 @@ namespace AI4E.Modularity.Debug
             var options = optionsAccessor.Value ?? new ModularityOptions();
 
             _serviceProvider = serviceProvider;
-
+            _logger = logger;
             var endPoint = addressConversion.Parse(options.DebugConnection);
 
             _tcpHost = new TcpListener(endPoint);
@@ -109,9 +112,15 @@ namespace AI4E.Modularity.Debug
 
         private async Task DisposeInternalAsync()
         {
-            await _initializationHelper.CancelAsync();
-
-            await _connectionProcess.TerminateAsync();
+            try
+            {
+                _tcpHost.Stop();
+            }
+            finally
+            {
+                await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
+                await _connectionProcess.TerminateAsync().HandleExceptionsAsync(_logger);
+            }
         }
 
         #endregion
@@ -127,7 +136,8 @@ namespace AI4E.Modularity.Debug
 
                     _debugSessions.TryAdd(new DebugSession(this, stream, _serviceProvider), 0);
                 }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+                catch (ObjectDisposedException) when (cancellation.IsCancellationRequested) { return; }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
                 catch (Exception)
                 {
                     // TODO: Log exception
