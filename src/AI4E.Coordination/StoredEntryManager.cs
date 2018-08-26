@@ -83,8 +83,10 @@ namespace AI4E.Coordination
             if (storedEntry.WriteLock == null)
                 return null;
 
-            if (storedEntry.ReadLocks.Length != 0 && (storedEntry.ReadLocks.Length > 1 || storedEntry.ReadLocks.First() != storedEntry.WriteLock))       
-                throw new InvalidOperationException();
+            // We cannot check this here, as this is called when the session that holds write-lock is terminates too.
+            // In this case, there may be read-locks present.
+            //if (storedEntry.ReadLocks.Length != 0 && (storedEntry.ReadLocks.Length > 1 || storedEntry.ReadLocks.First() != storedEntry.WriteLock))       
+            //    throw new InvalidOperationException();
 
             return new StoredEntry(storedEntry.Path,
                                    storedEntry.Value,
