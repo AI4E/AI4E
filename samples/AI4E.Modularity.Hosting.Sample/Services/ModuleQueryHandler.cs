@@ -16,7 +16,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
             var modules = await searchEngine.SearchModulesAsync(query.SearchPhrase, query.IncludePreReleases, cancellation: default);
             var projection = new ModuleProjection();
 
-            return modules.Select(p => projection.ProjectToListModel(p, query.IncludePreReleases));
+            return modules.Select(p => projection.ProjectToListModel(p, query.IncludePreReleases)).ToList();
         }
 
         public Task<ModuleReleaseModel> HandleAsync(ByIdQuery<ModuleReleaseIdentifier, ModuleReleaseModel> query, [FromServices][Inject] IDataStore dataStore)
