@@ -6,7 +6,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Async
 {
-    public struct AsyncDisposeHelper : IAsyncDisposable
+    public sealed class AsyncDisposeHelper : IAsyncDisposable
     {
         private Task _disposal;
         private readonly TaskCompletionSource<byte> _disposalSource;
