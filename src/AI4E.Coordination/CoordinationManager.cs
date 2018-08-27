@@ -63,7 +63,7 @@ namespace AI4E.Coordination
         private static readonly ImmutableArray<byte> _emptyValue = ImmutableArray<byte>.Empty;
         private static readonly TimeSpan _leaseLength =
 #if DEBUG
-        TimeSpan.FromSeconds(300);
+        TimeSpan.FromSeconds(30);
 #else
         TimeSpan.FromSeconds(30);
 #endif
@@ -381,7 +381,11 @@ namespace AI4E.Coordination
                         await CleanupSessionAsync(terminated, cancellation);
                     }
                 }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
+                catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+                {
+                    return; // TODO: https://github.com/AI4E/AI4E/issues/37
+                }
                 catch (Exception exc)
                 {
                     _logger?.LogWarning(exc, $"[{await GetSessionAsync()}] Failure while cleaning up terminated sessions.");
@@ -940,7 +944,7 @@ namespace AI4E.Coordination
 
                         // Delete the entry
                         {
-                            var result = await _storage.UpdateEntryAsync(_storedEntryManager.Remove(entry), entry, combinedCancellationSource.Token);
+                            var result = await _storage.UpdateEntryAsync(_storedEntryManager.Remove(entry, session), entry, combinedCancellationSource.Token);
 
                             // We are holding the exclusive lock => No one else can alter the entry.
                             // The only exception is that our session terminates.
@@ -1171,6 +1175,9 @@ namespace AI4E.Coordination
 
         private async Task<IStoredEntry> AcquireReadLockAsync(IStoredEntry entry, CancellationToken cancellation)
         {
+            var watch = new Stopwatch();
+            watch.Start();
+
             IStoredEntry start, desired;
 
             var session = await GetSessionAsync(cancellation);
@@ -1199,6 +1206,11 @@ namespace AI4E.Coordination
             while (start != entry);
 
             Assert(entry != null);
+
+            watch.Stop();
+
+            //TODO: https://github.com/AI4E/AI4E/issues/38
+            Console.WriteLine($"[{await GetSessionAsync()}] Acquired read-lock for entry '{entry.Path}' in {watch.Elapsed.TotalSeconds}sec.");
 
             _logger?.LogTrace($"[{await GetSessionAsync()}] Acquired read-lock for entry '{entry.Path}'.");
 
@@ -1242,6 +1254,7 @@ namespace AI4E.Coordination
 
         private async Task<IStoredEntry> AcquireWriteLockAsync(IStoredEntry entry, CancellationToken cancellation)
         {
+            var watch = new Stopwatch();
             IStoredEntry start, desired;
 
             var session = await GetSessionAsync(cancellation);
@@ -1283,6 +1296,9 @@ namespace AI4E.Coordination
                 // We hold the write lock. No-one can alter the entry except our session is terminated. But this will cause WaitForReadLocksReleaseAsync to throw.
                 Assert(entry != null);
 
+                watch.Stop();
+                //TODO: https://github.com/AI4E/AI4E/issues/38
+                Console.WriteLine($"[{await GetSessionAsync()}] Acquired write-lock for entry '{entry.Path}' in {watch.Elapsed.TotalSeconds}sec.");
                 _logger?.LogTrace($"[{await GetSessionAsync()}] Acquired write-lock for entry '{entry.Path}'.");
 
                 return entry;

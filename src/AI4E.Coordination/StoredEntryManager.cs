@@ -149,12 +149,12 @@ namespace AI4E.Coordination
                                    storedEntry.LastWriteTime);
         }
 
-        public IStoredEntry Remove(IStoredEntry storedEntry)
+        public IStoredEntry Remove(IStoredEntry storedEntry, string session)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
 
-            if (storedEntry.ReadLocks.Length > 0)
+            if (storedEntry.ReadLocks.Length != 0 && (storedEntry.ReadLocks.Length > 1 || storedEntry.ReadLocks.First() != session))
                 throw new InvalidOperationException();
 
             if (storedEntry.WriteLock == null)

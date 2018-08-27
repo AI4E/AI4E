@@ -11,7 +11,7 @@ namespace AI4E.Coordination
         IStoredEntry Create(CoordinationEntryPath path, string session, bool isEphemeral, ReadOnlySpan<byte> value);
         IStoredEntry ReleaseReadLock(IStoredEntry storedEntry, string session);
         IStoredEntry ReleaseWriteLock(IStoredEntry storedEntry);
-        IStoredEntry Remove(IStoredEntry storedEntry);
+        IStoredEntry Remove(IStoredEntry storedEntry, string session);
         IStoredEntry RemoveChild(IStoredEntry storedEntry, CoordinationEntryPathSegment child, string session);
         IStoredEntry SetValue(IStoredEntry storedEntry, ReadOnlySpan<byte> value, string session);
     }
