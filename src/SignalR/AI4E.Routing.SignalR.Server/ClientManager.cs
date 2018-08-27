@@ -32,8 +32,8 @@ namespace AI4E.Routing.SignalR.Server
         private readonly LinkedList<(DateTime leaseEnd, IMessageRouter router, EndPointRoute endPoint)> _sortedRouters;
         private readonly object _routersLock = new object();
 
-        private readonly AsyncProcess _receiveProcess;
-        private readonly AsyncProcess _garbageCollectionProcess;
+        private readonly IAsyncProcess _receiveProcess;
+        private readonly IAsyncProcess _garbageCollectionProcess;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 

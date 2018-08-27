@@ -60,7 +60,7 @@ namespace AI4E.Routing
 
         private readonly WeakDictionary<EndPointRoute, LogicalEndPoint> _endPoints;
 
-        private readonly AsyncProcess _sendProcess;
+        private readonly IAsyncProcess _sendProcess;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
@@ -410,7 +410,7 @@ namespace AI4E.Routing
             private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
             private readonly AsyncInitializationHelper _initializationHelper;
             private readonly AsyncDisposeHelper _disposeHelper;
-            private readonly AsyncProcess _receiveProcess;
+            private readonly IAsyncProcess _receiveProcess;
 
             public LogicalEndPoint(EndPointManager<TAddress> endPointManager,
                                  IPhysicalEndPoint<TAddress> physicalEndPoint,

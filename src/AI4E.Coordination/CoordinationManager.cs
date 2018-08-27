@@ -82,9 +82,9 @@ namespace AI4E.Coordination
         private readonly WaitDirectory<(string session, CoordinationEntryPath path)> _readLockWaitDirectory;
         private readonly WaitDirectory<(string session, CoordinationEntryPath path)> _writeLockWaitDirectory;
 
-        private readonly AsyncProcess _updateSessionProcess;
-        private readonly AsyncProcess _sessionCleanupProcess;
-        private readonly AsyncProcess _receiveProcess;
+        private readonly IAsyncProcess _updateSessionProcess;
+        private readonly IAsyncProcess _sessionCleanupProcess;
+        private readonly IAsyncProcess _receiveProcess;
         private readonly AsyncInitializationHelper<(string session, IPhysicalEndPoint<TAddress> physicalEndPoint)> _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 

@@ -33,7 +33,7 @@ namespace AI4E.Routing.SignalR.Client
         private readonly ConcurrentDictionary<int, TaskCompletionSource<IMessage>> _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<IMessage>>();
         private readonly ConcurrentDictionary<int, CancellationTokenSource> _cancellationTable = new ConcurrentDictionary<int, CancellationTokenSource>();
 
-        private readonly AsyncProcess _receiveProcess;
+        private readonly IAsyncProcess _receiveProcess;
         private readonly AsyncInitializationHelper<(EndPointRoute localEndPoint, string securityToken)> _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 

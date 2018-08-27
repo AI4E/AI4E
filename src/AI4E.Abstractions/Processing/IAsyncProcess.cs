@@ -29,7 +29,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AI4E.Processing
@@ -39,37 +39,28 @@ namespace AI4E.Processing
     /// </summary>
     public interface IAsyncProcess
     {
-        [Obsolete]
-        Task Execution { get; }
-
         /// <summary>
         /// Gets the state of the process.
         /// </summary>
         AsyncProcessState State { get; }
 
-        [Obsolete]
-        Task Initialization { get; }
-
-        [Obsolete]
+        Task Startup { get; }
         Task Termination { get; }
 
-        [Obsolete("Use StartAsync()")]
         void Start();
-
-        [Obsolete("Use TerminateAsync()")]
         void Terminate();
 
         /// <summary>
         /// Asynchronously starts the process.
         /// </summary>
         /// <returns>A task representing the asynchronous operation.</returns>
-        Task StartAsync(); // TODO: This should receive a cancellation token.
+        Task StartAsync(CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously terminates the process.
         /// </summary>
         /// <returns>A task representing the asynchronous operation.</returns>
-        Task TerminateAsync(); // TODO: This should receive a cancellation token.
+        Task TerminateAsync(CancellationToken cancellation = default);
     }
 
     /// <summary>

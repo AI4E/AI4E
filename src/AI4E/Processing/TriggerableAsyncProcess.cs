@@ -51,16 +51,7 @@ namespace AI4E.Processing
 
         #region Properties
 
-        /// <summary>
-        /// Gets a task representing the process execution operation.
-        /// </summary>
-        [Obsolete]
-        public Task Execution => _dynamicProcess.Execution;
-
-        [Obsolete]
-        public Task Initialization => _dynamicProcess.Initialization;
-
-        [Obsolete]
+        public Task Startup => _dynamicProcess.Startup;
         public Task Termination => _dynamicProcess.Termination;
 
         /// <summary>
@@ -75,31 +66,29 @@ namespace AI4E.Processing
         /// <summary>
         /// Starts the dynamic process operation.
         /// </summary>
-        [Obsolete]
         public void Start()
         {
             _dynamicProcess.Start();
         }
 
-        public Task StartAsync()
+        public Task StartAsync(CancellationToken cancellation)
         {
-            return _dynamicProcess.StartAsync();
+            return _dynamicProcess.StartAsync(cancellation);
         }
 
         /// <summary>
         /// Terminates the dynamic process operation.
         /// </summary>
-        [Obsolete]
         public void Terminate()
         {
             _dynamicProcess.Terminate();
         }
 
-        public Task TerminateAsync()
+        public Task TerminateAsync(CancellationToken cancellation)
         {
-            return _dynamicProcess.TerminateAsync();
+            return _dynamicProcess.TerminateAsync(cancellation);
         }
-     
+
         public void TriggerExecution()
         {
             _scheduler.Trigger();

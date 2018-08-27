@@ -29,8 +29,8 @@ namespace AI4E.Routing.SignalR.Client
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILogger<RemoteMessageRouter> _logger;
 
-        private readonly AsyncProcess _receiveProcess;
-        private readonly AsyncProcess _pingProcess;
+        private readonly IAsyncProcess _receiveProcess;
+        private readonly IAsyncProcess _pingProcess;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 

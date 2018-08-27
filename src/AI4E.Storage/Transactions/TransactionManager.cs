@@ -22,7 +22,7 @@ namespace AI4E.Storage.Transactions
         private readonly ILoggerFactory _loggerFactory;
 
         private readonly ILogger<TransactionManager> _logger;
-        private readonly AsyncProcess _transactionGarbageCollector;
+        private readonly IAsyncProcess _transactionGarbageCollector;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 

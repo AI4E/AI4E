@@ -21,7 +21,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
 using AI4E.Internal;
 
 namespace AI4E.Processing
@@ -45,16 +44,8 @@ namespace AI4E.Processing
             _operation = operation;
         }
 
-        [Obsolete]
-        public Task Execution => _execution;
-
-        [Obsolete]
-        public Task Initialization => _startNotificationSource.Task;
-
-        [Obsolete]
+        public Task Startup => _startNotificationSource.Task;
         public Task Termination => _terminationNotificationSource.Task;
-
-        public Func<CancellationToken, Task> Operation => _operation;
 
         public AsyncProcessState State
         {
@@ -70,7 +61,7 @@ namespace AI4E.Processing
             }
         }
 
-        private void Start()
+        public void Start()
         {
             lock (_lock)
             {
@@ -84,20 +75,21 @@ namespace AI4E.Processing
             }
         }
 
-        [Obsolete("Use StartAsync()")]
-        void IAsyncProcess.Start()
-        {
-            Start();
-        }
-
-        public Task StartAsync()
+        public Task StartAsync(CancellationToken cancellation)
         {
             Start();
 
-            return _startNotificationSource.Task;
+            var result = _startNotificationSource.Task;
+
+            if (cancellation.CanBeCanceled)
+            {
+                result = result.WithCancellation(cancellation);
+            }
+
+            return result;
         }
 
-        private void Terminate()
+        public void Terminate()
         {
             lock (_lock)
             {
@@ -108,17 +100,19 @@ namespace AI4E.Processing
             }
         }
 
-        [Obsolete("Use TerminateAsync()")]
-        void IAsyncProcess.Terminate()
-        {
-            Terminate();
-        }
-
-        public Task TerminateAsync()
+        public Task TerminateAsync(CancellationToken cancellation)
         {
             Terminate();
 
-            return _terminationNotificationSource.Task;
+            // TODO: https://github.com/AI4E/AI4E/issues/36
+            var result = _terminationNotificationSource.Task;
+
+            if (cancellation.CanBeCanceled)
+            {
+                result = result.WithCancellation(cancellation);
+            }
+
+            return result;
         }
 
         private async Task Execute()
@@ -131,7 +125,7 @@ namespace AI4E.Processing
 
                 try
                 {
-                    _startNotificationSource.TrySetResult(null);
+                    _startNotificationSource.SetResult(null);
 
                     await _operation(cancellation).ConfigureAwait(false);
 
@@ -140,12 +134,10 @@ namespace AI4E.Processing
                         throw new UnexpectedProcessTerminationException();
                     }
                 }
-                catch (TaskCanceledException)
+                catch (TaskCanceledException) when (_cancellationSource.IsCancellationRequested) { }
+                catch (Exception exc)
                 {
-                    if (!_cancellationSource.IsCancellationRequested)
-                    {
-                        throw new UnexpectedProcessTerminationException();
-                    }
+                    _terminationNotificationSource.SetException(exc);
                 }
             }
             finally

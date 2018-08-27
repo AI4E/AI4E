@@ -58,7 +58,7 @@ namespace AI4E.Remoting
         private readonly ILogger<PhysicalEndPointMultiplexer<TAddress>> _logger;
 
         private readonly WeakDictionary<string, AsyncProducerConsumerQueue<IMessage>> _rxQueues = new WeakDictionary<string, AsyncProducerConsumerQueue<IMessage>>();
-        private readonly AsyncProcess _receiveProcess;
+        private readonly IAsyncProcess _receiveProcess;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
