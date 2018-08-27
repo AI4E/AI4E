@@ -38,6 +38,7 @@ namespace AI4E.Routing
     {
         Task AddRouteAsync(EndPointRoute endPoint, string messageType, CancellationToken cancellation);
         Task RemoveRouteAsync(EndPointRoute endPoint, string messageType, CancellationToken cancellation);
+        Task RemoveRoutesAsync(EndPointRoute endPoint, CancellationToken cancellation);
         Task<IEnumerable<(EndPointRoute endPoint, RouteOptions options)>> GetRoutesAsync(string messageType, CancellationToken cancellation);
     }
 

@@ -20,7 +20,7 @@ namespace AI4E.Routing.SignalR.Server
     //       (4) Lease length shall be configurable and synced with the client.
     public sealed class ClientManager : IAsyncDisposable
     {
-        private readonly TimeSpan _leaseLength = TimeSpan.FromMinutes(5); // TODO: This should be configurable.
+        private readonly TimeSpan _leaseLength = TimeSpan.FromSeconds(30); // TODO: This should be configurable.
 
         private readonly ILogicalServerEndPoint _logicalEndPoint;
         private readonly IMessageRouterFactory _messageRouterFactory;
@@ -246,6 +246,9 @@ namespace AI4E.Routing.SignalR.Server
                     {
                         _sortedRouters.RemoveLast();
                         _routers.Remove(node.Value.endPoint);
+
+                        var router = node.Value.router;
+                        router.Dispose();
                     }
 
                     if (_sortedRouters.Count == 0)

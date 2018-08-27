@@ -17,6 +17,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  * --------------------------------------------------------------------------------------------------------------------
  */
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,7 +25,7 @@ using AI4E.Remoting;
 
 namespace AI4E.Routing
 {
-    public interface IMessageRouter
+    public interface IMessageRouter : IDisposable
     {
         ValueTask<EndPointRoute> GetLocalEndPointAsync(CancellationToken cancellation = default);
         ValueTask<IReadOnlyCollection<IMessage>> RouteAsync(IEnumerable<string> routes, IMessage serializedMessage, bool publish, CancellationToken cancellation = default);

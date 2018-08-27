@@ -11,10 +11,13 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing
 {
+    // TODO: This thing is currently not thread safe in regards to the consistency of the coordination service's memory.
+    //       We can only ensure consistency within a single session here, but do we have to do?
     public sealed class RouteManager : IRouteStore
     {
         private static readonly byte[] _emptyPayload = new byte[0];
         private static readonly CoordinationEntryPath _routesRootPath = new CoordinationEntryPath("routes");
+        private static readonly CoordinationEntryPath _reverseRoutesRootPath = new CoordinationEntryPath("reverse-routes");
 
         private readonly ICoordinationManager _coordinationManager;
         private readonly RouteOptions _options;
@@ -30,45 +33,75 @@ namespace AI4E.Routing
 
         #region IRouteStore
 
-        public async Task AddRouteAsync(EndPointRoute endPoint, string messageType, CancellationToken cancellation)
+        public async Task AddRouteAsync(EndPointRoute endPoint, string route, CancellationToken cancellation)
         {
             if (endPoint == null)
                 throw new ArgumentNullException(nameof(endPoint));
 
-            if (string.IsNullOrWhiteSpace(messageType))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
+            if (string.IsNullOrWhiteSpace(route))
+                throw new ArgumentNullOrWhiteSpaceException(nameof(route));
 
-            var route = endPoint.Route;
             var session = await _coordinationManager.GetSessionAsync(cancellation);
-            var path = GetPath(messageType, route, session);
+            var reversePath = GetReversePath(session, endPoint.Route, route);
+            await _coordinationManager.CreateAsync(reversePath, ReadOnlyMemory<byte>.Empty, EntryCreationModes.Ephemeral, cancellation);
 
-            var routeBytes = Encoding.UTF8.GetBytes(route);
+            var path = GetPath(route, endPoint.Route, session);
+            var endPointBytes = Encoding.UTF8.GetBytes(endPoint.Route);
 
-            using (var stream = new MemoryStream(capacity: 4 + 4 + routeBytes.Length))
+            using (var stream = new MemoryStream(capacity: 4 + 4 + endPointBytes.Length))
             {
                 using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
                 {
                     writer.Write((int)_options);
-                    writer.Write(routeBytes.Length);
-                    writer.Write(routeBytes);
+                    writer.Write(endPointBytes.Length);
+                    writer.Write(endPointBytes);
                 }
                 var payload = stream.ToArray();
                 await _coordinationManager.GetOrCreateAsync(path, payload, EntryCreationModes.Ephemeral, cancellation);
             }
         }
 
-        public async Task RemoveRouteAsync(EndPointRoute endPoint, string messageType, CancellationToken cancellation)
+        public async Task RemoveRouteAsync(EndPointRoute endPoint, string route, CancellationToken cancellation)
         {
             if (endPoint == null)
                 throw new ArgumentNullException(nameof(endPoint));
 
-            if (string.IsNullOrWhiteSpace(messageType))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
+            if (string.IsNullOrWhiteSpace(route))
+                throw new ArgumentNullOrWhiteSpaceException(nameof(route));
 
-            var route = endPoint.Route;
             var session = await _coordinationManager.GetSessionAsync(cancellation);
-            var path = GetPath(messageType, route, session);
+            var path = GetPath(route, endPoint.Route, session);
+            await _coordinationManager.DeleteAsync(path, cancellation: cancellation);
 
+            var reversePath = GetReversePath(session, endPoint.Route, endPoint.Route);
+            await _coordinationManager.DeleteAsync(reversePath, cancellation: cancellation);
+        }
+
+        public async Task RemoveRoutesAsync(EndPointRoute endPoint, CancellationToken cancellation)
+        {
+            if (endPoint == null)
+                throw new ArgumentNullException(nameof(endPoint));
+
+            var session = await _coordinationManager.GetSessionAsync(cancellation);
+            var path = GetReversePath(session, endPoint.Route);
+            var entry = await _coordinationManager.GetAsync(path, cancellation);
+
+            if (entry == null)
+                return;
+
+            var tasks = new List<Task>(capacity: entry.Children.Count);
+
+            foreach (var routeEntry in await entry.GetChildrenEntriesAsync(cancellation))
+            {
+                var route = routeEntry.Name.Segment.ConvertToString();
+                var routePath = GetPath(route, endPoint.Route, session);
+
+                var deletion = _coordinationManager.DeleteAsync(routePath, cancellation: cancellation);
+
+                tasks.Add(deletion.AsTask());
+            }
+
+            await Task.WhenAll(tasks);
             await _coordinationManager.DeleteAsync(path, cancellation: cancellation);
         }
 
@@ -104,15 +137,25 @@ namespace AI4E.Routing
 
         #endregion
 
-        private static CoordinationEntryPath GetPath(string messageType)
+        private static CoordinationEntryPath GetPath(string route)
         {
-            return _routesRootPath.GetChildPath(messageType);
+            return _routesRootPath.GetChildPath(route);
         }
 
-        private static CoordinationEntryPath GetPath(string messageType, string route, string session)
+        private static CoordinationEntryPath GetPath(string route, string endPoint, string session)
         {
-            var uniqueEntryName = IdGenerator.GenerateId(route, session);
-            return _routesRootPath.GetChildPath(messageType, uniqueEntryName);
+            var uniqueEntryName = IdGenerator.GenerateId(endPoint, session);
+            return _routesRootPath.GetChildPath(route, uniqueEntryName);
+        }
+
+        private static CoordinationEntryPath GetReversePath(string session, string endPoint)
+        {
+            return _reverseRoutesRootPath.GetChildPath(session, endPoint);
+        }
+
+        private static CoordinationEntryPath GetReversePath(string session, string endPoint, string route)
+        {
+            return _reverseRoutesRootPath.GetChildPath(session, endPoint, route);
         }
     }
 
