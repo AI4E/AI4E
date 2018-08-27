@@ -21,14 +21,16 @@
 using System;
 using System.Net;
 using System.Reflection;
+using System.Threading.Tasks;
 using AI4E.ApplicationParts;
 using AI4E.Domain.Services;
 using AI4E.Internal;
 using AI4E.Modularity.Debug;
-using AI4E.Proxying;
+using AI4E.Modularity.Module;
 using AI4E.Remoting;
 using AI4E.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 
@@ -49,12 +51,7 @@ namespace AI4E.Modularity.Host
             services.AddRemoteMessageDispatcher();
             services.AddUdpEndPoint();
             services.AddSingleton(ConfigureDebugPort);
-
-            services.ConfigureApplicationServices(appServiceManager =>
-            {
-                appServiceManager.AddService<IMessageDispatcher>();
-                // TODO: Add Debug port conditionally.
-            });
+            services.ConfigureApplicationServices(ConfigureApplicationServices);
 
             services.AddSingleton<IRunningModuleLookup, RunningModuleLookup>();
 
@@ -77,7 +74,6 @@ namespace AI4E.Modularity.Host
         private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
         {
             serviceManager.AddService<IMessageDispatcher>();
-            serviceManager.AddService<ProxyHost>(isRequiredService: false);
             serviceManager.AddService<DebugPort>(isRequiredService: false);
         }
 
@@ -93,9 +89,13 @@ namespace AI4E.Modularity.Host
             var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModularityOptions>>();
             var options = optionsAccessor.Value ?? new ModularityOptions();
 
+
+
             if (options.EnableDebugging)
             {
-                return new DebugPort(serviceProvider, serviceProvider.GetRequiredService<IAddressConversion<IPEndPoint>>(), optionsAccessor);
+                var dateTimeProvider = serviceProvider.GetRequiredService<IDateTimeProvider>();
+                var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+                return new DebugPort(serviceProvider, serviceProvider.GetRequiredService<IAddressConversion<IPEndPoint>>(), optionsAccessor, dateTimeProvider, loggerFactory);
             }
 
             return null;
@@ -128,4 +128,14 @@ namespace AI4E.Modularity.Host
     }
 
     internal class ModularityMarkerService { }
+
+    public sealed class DebugModuleConnectedHandler
+    {
+        public Task HandleAsync(DebugModuleConnected mesage)
+        {
+            Console.WriteLine($"Debug module connected: {mesage.Module.Name}");
+
+            return Task.CompletedTask;
+        }
+    }
 }

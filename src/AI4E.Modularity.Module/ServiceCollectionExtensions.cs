@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using AI4E.Coordination;
+using AI4E.Internal;
 using AI4E.Modularity.Debug;
 using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 
@@ -95,10 +98,16 @@ namespace AI4E.Modularity.Module
             }
 
             var addressSerializer = serviceProvider.GetRequiredService<IAddressConversion<IPEndPoint>>();
+            var logger = serviceProvider.GetService<ILogger<DisposeAwareStream>>();
             var endPoint = addressSerializer.Parse(options.DebugConnection);
+
+            var dateTimeProvider = serviceProvider.GetRequiredService<IDateTimeProvider>();
             var tcpClient = new TcpClient(endPoint.AddressFamily);
-            tcpClient.Connect(endPoint.Address, endPoint.Port);
-            var stream = tcpClient.GetStream();
+
+            // TODO: Logging
+            tcpClient.Connect(endPoint.Address, endPoint.Port); // TODO: This is a blocking call
+            var stream = new DisposeAwareStream(tcpClient.GetStream(), dateTimeProvider, () => { Environment.FailFast(""); return Task.CompletedTask; }, logger); // TODO: Graceful shutdown
+
             return new ProxyHost(stream, serviceProvider);
         }
     }

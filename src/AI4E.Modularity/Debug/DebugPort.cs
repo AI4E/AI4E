@@ -20,7 +20,6 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -44,6 +43,8 @@ namespace AI4E.Modularity.Debug
         private readonly TcpListener _tcpHost;
         private readonly IAsyncProcess _connectionProcess;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<DebugPort> _logger;
         private readonly AsyncDisposeHelper _disposeHelper;
         private readonly AsyncInitializationHelper _initializationHelper;
@@ -56,7 +57,8 @@ namespace AI4E.Modularity.Debug
         public DebugPort(IServiceProvider serviceProvider,
                          IAddressConversion<IPEndPoint> addressConversion,
                          IOptions<ModularityOptions> optionsAccessor,
-                         ILogger<DebugPort> logger = null)
+                         IDateTimeProvider dateTimeProvider,
+                         ILoggerFactory loggerFactory = null)
         {
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
@@ -64,13 +66,19 @@ namespace AI4E.Modularity.Debug
             if (addressConversion == null)
                 throw new ArgumentNullException(nameof(addressConversion));
 
+
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
+
+            if (dateTimeProvider == null)
+                throw new ArgumentNullException(nameof(dateTimeProvider));
 
             var options = optionsAccessor.Value ?? new ModularityOptions();
 
             _serviceProvider = serviceProvider;
-            _logger = logger;
+            _dateTimeProvider = dateTimeProvider;
+            _loggerFactory = loggerFactory;
+            _logger = _loggerFactory?.CreateLogger<DebugPort>();
             var endPoint = addressConversion.Parse(options.DebugConnection);
 
             _tcpHost = new TcpListener(endPoint);
@@ -127,54 +135,77 @@ namespace AI4E.Modularity.Debug
 
         private async Task ConnectProcedure(CancellationToken cancellation)
         {
+            _logger?.LogTrace("Started listening for debug connections.");
+
             while (cancellation.ThrowOrContinue())
             {
                 try
                 {
                     var client = await _tcpHost.AcceptTcpClientAsync().WithCancellation(cancellation);
-                    var stream = client.GetStream();
+                    _logger?.LogInformation($"Debug connection established for ip end-point '{(client.Client.RemoteEndPoint as IPEndPoint).ToString()}'.");
 
-                    _debugSessions.TryAdd(new DebugSession(this, stream, _serviceProvider), 0);
+                    _debugSessions.TryAdd(new DebugSession(this, client, _dateTimeProvider, _serviceProvider, _loggerFactory), 0);
                 }
                 catch (ObjectDisposedException) when (cancellation.IsCancellationRequested) { return; }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
-                catch (Exception)
+                catch (Exception exc)
                 {
-                    // TODO: Log exception
+                    _logger?.LogWarning(exc, "An exception occured while handling a debug connection attempt.");
                 }
             }
         }
 
         private sealed class DebugSession : IDisposable
         {
-            private readonly DebugPort _debugPort;
-            private readonly Stream _stream;
+            private readonly DebugPort _debugServer;
+            private readonly TcpClient _tcpClient;
+            private readonly IDateTimeProvider _dateTimeProvider;
             private readonly IServiceProvider _serviceProvider;
+            private readonly ILoggerFactory _loggerFactory;
+            private readonly DisposeAwareStream _stream;
             private readonly ProxyHost _rpcHost;
 
-            public DebugSession(DebugPort debugPort,
-                                Stream stream,
-                                IServiceProvider serviceProvider)
+            public DebugSession(DebugPort debugServer,
+                                TcpClient tcpClient,
+                                IDateTimeProvider dateTimeProvider,
+                                IServiceProvider serviceProvider,
+                                ILoggerFactory loggerFactory)
             {
-                if (debugPort == null)
-                    throw new ArgumentNullException(nameof(debugPort));
+                if (debugServer == null)
+                    throw new ArgumentNullException(nameof(debugServer));
 
-                if (stream == null)
-                    throw new ArgumentNullException(nameof(stream));
+                if (tcpClient == null)
+                    throw new ArgumentNullException(nameof(tcpClient));
+
+                if (dateTimeProvider == null)
+                    throw new ArgumentNullException(nameof(dateTimeProvider));
 
                 if (serviceProvider == null)
                     throw new ArgumentNullException(nameof(serviceProvider));
 
-                _debugPort = debugPort;
-                _stream = stream;
+                _debugServer = debugServer;
+                _tcpClient = tcpClient;
+                _dateTimeProvider = dateTimeProvider;
                 _serviceProvider = serviceProvider;
-                _rpcHost = new ProxyHost(stream, serviceProvider);
+                _loggerFactory = loggerFactory;
+
+                var streamLogger = _loggerFactory?.CreateLogger<DisposeAwareStream>();
+                _stream = new DisposeAwareStream(_tcpClient.GetStream(), _dateTimeProvider, OnDebugStreamsCloses, streamLogger);
+                _rpcHost = new ProxyHost(_stream, serviceProvider);
+            }
+
+            private Task OnDebugStreamsCloses()
+            {
+                Dispose();
+                return Task.CompletedTask;
             }
 
             public void Dispose()
             {
+                _stream.Dispose();
                 _rpcHost.Dispose();
-                _debugPort._debugSessions.TryRemove(this, out _);
+                _rpcHost.Dispose();
+                _debugServer._debugSessions.TryRemove(this, out _);
             }
         }
     }

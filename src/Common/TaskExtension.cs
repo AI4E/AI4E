@@ -19,11 +19,11 @@
  */
 
 using System;
-using System.Threading.Tasks;
-using System.Threading;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace AI4E.Internal
 {
@@ -107,11 +107,11 @@ namespace AI4E.Internal
                 {
                     if (logger != null)
                     {
-                        logger.LogError(t.Exception.InnerException, "An exception occured in the task.");
+                        logger.LogError(t.Exception.InnerException, "An exception occured unexpectedly.");
                     }
                     else
                     {
-                        Debug.WriteLine("An exception occured in the task.");
+                        Debug.WriteLine("An exception occured unexpectedly.");
                         Debug.WriteLine(t.Exception.InnerException.ToString());
                     }
                 }
@@ -123,27 +123,12 @@ namespace AI4E.Internal
             HandleExceptions(task, logger: null);
         }
 
-        public static async Task HandleExceptionsAsync(this Task task, ILogger logger)
+        public static Task HandleExceptionsAsync(this Task task, ILogger logger)
         {
             if (task == null)
                 throw new ArgumentNullException(nameof(task));
 
-            try
-            {
-                await task;
-            }
-            catch (Exception exc)
-            {
-                if (logger != null)
-                {
-                    logger.LogError(exc, "An exception occured in the task.");
-                }
-                else
-                {
-                    Debug.WriteLine("An exception occured in the task.");
-                    Debug.WriteLine(exc.ToString());
-                }
-            }
+            return ExceptionHelper.HandleExceptions(async () => await task, logger, Task.CompletedTask);
         }
 
         public static Task HandleExceptionsAsync(this Task task)
@@ -151,46 +136,27 @@ namespace AI4E.Internal
             return HandleExceptionsAsync(task, logger: null);
         }
 
-        public static async Task<T> HandleExceptionsAsync<T>(this Task<T> task, ILogger logger, T placeholder)
+        public static Task<T> HandleExceptionsAsync<T>(this Task<T> task, ILogger logger, T defaultValue)
         {
             if (task == null)
                 throw new ArgumentNullException(nameof(task));
 
-            var result = placeholder;
-
-            try
-            {
-                result = await task;
-            }
-            catch (Exception exc)
-            {
-                if (logger != null)
-                {
-                    logger.LogError(exc, "An exception occured in the task.");
-                }
-                else
-                {
-                    Debug.WriteLine("An exception occured in the task.");
-                    Debug.WriteLine(exc.ToString());
-                }
-            }
-
-            return result;
+            return ExceptionHelper.HandleExceptions(async () => await task, logger, Task.FromResult(defaultValue));
         }
 
-        public static Task<T> HandleExceptionsAsync<T>(this Task<T> task, T placeholder)
+        public static Task<T> HandleExceptionsAsync<T>(this Task<T> task, T defaultValue)
         {
-            return HandleExceptionsAsync(task, logger: default, placeholder);
+            return HandleExceptionsAsync(task, logger: default, defaultValue);
         }
 
         public static Task<T> HandleExceptionsAsync<T>(this Task<T> task, ILogger logger)
         {
-            return HandleExceptionsAsync(task, logger, placeholder: default);
+            return HandleExceptionsAsync(task, logger, defaultValue: default);
         }
 
         public static Task<T> HandleExceptionsAsync<T>(this Task<T> task)
         {
-            return HandleExceptionsAsync(task, logger: null, placeholder: default);
+            return HandleExceptionsAsync(task, logger: null, defaultValue: default);
         }
 
         public static async Task WithCancellation(this Task task, CancellationToken cancellation)
@@ -244,6 +210,51 @@ namespace AI4E.Internal
             }
 
             return t.GetType().GetProperty("Result").GetValue(t);
+        }
+    }
+
+    internal static class ExceptionHelper
+    {
+        public static void HandleExceptions(Action action, ILogger logger)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception exc)
+            {
+                if (logger != null)
+                {
+                    logger.LogError(exc, "An exception occured unexpectedly.");
+                }
+                else
+                {
+                    Debug.WriteLine("An exception occured unexpectedly.");
+                    Debug.WriteLine(exc.ToString());
+                }
+            }
+        }
+
+        public static T HandleExceptions<T>(Func<T> func, ILogger logger, T defaultValue = default)
+        {
+            try
+            {
+                return func();
+            }
+            catch (Exception exc)
+            {
+                if (logger != null)
+                {
+                    logger.LogError(exc, "An exception occured unexpectedly");
+                }
+                else
+                {
+                    Debug.WriteLine("An exception occured unexpectedly.");
+                    Debug.WriteLine(exc.ToString());
+                }
+            }
+
+            return defaultValue;
         }
     }
 }

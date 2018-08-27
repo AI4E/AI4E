@@ -85,6 +85,8 @@ namespace AI4E.Modularity.Module
             _runningModules = runningModules;
             _serviceProvider = serviceProvider;
             _logger = logger;
+
+            _disposeHelper = new AsyncDisposeHelper(DiposeInternalAsync);
             _prefix = options.Prefix;
             _isDebuggingConnection = options.UseDebugConnection;
             Features.Set<IHttpRequestFeature>(new HttpRequestFeature());

@@ -63,6 +63,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\DebugEx.cs = src\Common\DebugEx.cs
 		src\Common\DeepCopyByExpressionTrees.cs = src\Common\DeepCopyByExpressionTrees.cs
 		src\Common\DictionaryExtension.cs = src\Common\DictionaryExtension.cs
+		src\Common\DisposeAwareStream.cs = src\Common\DisposeAwareStream.cs
 		src\Common\EnumerableExtension.cs = src\Common\EnumerableExtension.cs
 		src\Common\EscapeHelper.cs = src\Common\EscapeHelper.cs
 		src\Common\FileInfoExtensions.cs = src\Common\FileInfoExtensions.cs
@@ -172,11 +173,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Blazor.Modularity.Samp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Blazor.Sample.Shared", "samples\Blazor\AI4E.Blazor.Sample.Shared\AI4E.Blazor.Sample.Shared.csproj", "{8E621EE9-CE4D-420B-91D7-0DB8DF0812AC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Storage.Test", "test\AI4E.Storage.Test\AI4E.Storage.Test.csproj", "{2D40A62F-C5AD-4CF1-AD51-76B4C74D38CE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Test", "test\AI4E.Storage.Test\AI4E.Storage.Test.csproj", "{2D40A62F-C5AD-4CF1-AD51-76B4C74D38CE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Modularity.Host", "src\AI4E.Modularity.Host\AI4E.Modularity.Host.csproj", "{32321136-FE8A-4331-A0D2-CE1712BFBC9C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.Host", "src\AI4E.Modularity.Host\AI4E.Modularity.Host.csproj", "{32321136-FE8A-4331-A0D2-CE1712BFBC9C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Modularity.Module", "src\AI4E.Modularity.Module\AI4E.Modularity.Module.csproj", "{7AA16B8A-A2CC-4E40-BCDD-812FC91200B0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.Module", "src\AI4E.Modularity.Module\AI4E.Modularity.Module.csproj", "{7AA16B8A-A2CC-4E40-BCDD-812FC91200B0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
