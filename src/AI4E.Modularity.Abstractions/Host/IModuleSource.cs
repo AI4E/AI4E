@@ -16,7 +16,8 @@ namespace AI4E.Modularity.Host
         // from the respective entities as the domain storage engine uses the statically known type for property access.
 
         string Id { get; }
-        long Revision { get; }
+        long Revision { get; set; }
+        string ConcurrencyToken { get; set; }
 
         #endregion
 

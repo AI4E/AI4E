@@ -19,6 +19,18 @@ namespace AI4E.Modularity.Host
         private ModuleSourceName _name;
         private FileSystemModuleSourceLocation _location;
 
+        long IModuleSource.Revision
+        {
+            get => Revision;
+            set => Revision = value;
+        }
+
+        string IModuleSource.ConcurrencyToken
+        {
+            get => ConcurrencyToken;
+            set => ConcurrencyToken = value;
+        }
+
         // The cache's key type should be ModuleReleaseIdentifier actually but JSON.NET is unable to deserialize it.
         [JsonProperty("Cache")]
         private readonly Dictionary<string, CacheEntry> _cache = new Dictionary<string, CacheEntry>();
