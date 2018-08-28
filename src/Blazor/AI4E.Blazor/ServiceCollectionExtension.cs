@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using AI4E.ApplicationParts;
 using AI4E.Blazor.Components;
 using AI4E.Blazor.Modularity;
 using AI4E.Internal;
+using AI4E.Modularity.Debug;
 using AI4E.Routing.Blazor;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -33,22 +36,43 @@ namespace AI4E.Blazor
         private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
         {
             serviceManager.AddService<IMessageDispatcher>();
-            //serviceManager.AddService<IInstallationSetManager>(InitializeInstallationSetManagerAsync);
+            serviceManager.AddService<IInstallationSetManager>(InitializeInstallationSetManagerAsync);
         }
 
-        //private static async Task InitializeInstallationSetManagerAsync(IInstallationSetManager installationSetManager, IServiceProvider serviceProvider)
-        //{
-        //    var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
+        private static Task InitializeInstallationSetManagerAsync(IInstallationSetManager installationSetManager, IServiceProvider serviceProvider)
+        {
+            // TODO: https://github.com/AI4E/AI4E/issues/39
+            //       There seems to be a dead-lock with the initialization of the messaging infrastructure if this is not off-loaded.
+            Task.Run(async () =>
+            {
+                var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
 
-        //    var queryResult = await messageDispatcher.QueryAsync<ResolvedInstallationSet>(cancellation: default);
+                Console.WriteLine("Performing query for running debug modules.");
+                var queryResult = await messageDispatcher.QueryAsync<IEnumerable<DebugModule>>(cancellation: default);
 
-        //    if (!queryResult.IsSuccessWithResult<ResolvedInstallationSet>(out var installationSet))
-        //    {
-        //        throw new Exception("Unable to query installation set."); // TODO: Exception type
-        //    }
+                if (!queryResult.IsSuccessWithResult<IEnumerable<DebugModule>>(out var debugModules))
+                {
+                    throw new Exception("Unable to query installation set."); // TODO: Exception type
+                }
 
-        //    await installationSetManager.UpdateInstallationSetAsync(installationSet.Resolved.Select(p => p.Module), cancellation: default);
-        //}
+                foreach (var debugModule in debugModules)
+                {
+                    await installationSetManager.InstallAsync(debugModule.Module, cancellation: default);
+                }
+            });
+
+            return Task.CompletedTask;
+
+
+            //var queryResult = await messageDispatcher.QueryAsync<ResolvedInstallationSet>(cancellation: default);
+
+            //if (!queryResult.IsSuccessWithResult<ResolvedInstallationSet>(out var installationSet))
+            //{
+            //    throw new Exception("Unable to query installation set."); // TODO: Exception type
+            //}
+
+            //await installationSetManager.UpdateInstallationSetAsync(installationSet.Resolved.Select(p => p.Module), cancellation: default);
+        }
 
         private static void ConfigureApplicationParts(ApplicationPartManager partManager, Assembly entryAssembly)
         {

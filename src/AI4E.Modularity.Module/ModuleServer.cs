@@ -21,12 +21,15 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Coordination;
 using AI4E.DispatchResults;
 using AI4E.Internal;
+using AI4E.Modularity.Debug;
+using AI4E.Remoting;
 using AI4E.Routing;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
@@ -114,7 +117,6 @@ namespace AI4E.Modularity.Module
                     tasks.Add(coordinationManager.Initialization.WithCancellation(cancellationToken));
                 }
 
-
                 await Task.WhenAll(tasks);
             }
 
@@ -122,8 +124,13 @@ namespace AI4E.Modularity.Module
             {
                 var endPoint = await _messageDispatcher.GetLocalEndPointAsync(cancellationToken);
                 var metadata = await _metadataAccessor.GetMetadataAsync(cancellationToken);
+                var debugConnection = _serviceProvider.GetRequiredService<DebugConnection>();
+                var address = await debugConnection.GetLocalAddressAync(cancellationToken);
+                var addressConversion = _serviceProvider.GetRequiredService<IAddressConversion<IPEndPoint>>();
+                var addressBytes = addressConversion.SerializeAddress(address);
+                var message = new DebugModuleConnected(addressBytes, endPoint, metadata.Module, metadata.Version);
 
-                await _messageDispatcher.PublishAsync(new DebugModuleConnected(endPoint, metadata.Module, metadata.Version), cancellationToken);
+                await _messageDispatcher.PublishAsync(message, cancellationToken);
             }
 
             async Task RegisterModuleAsync()

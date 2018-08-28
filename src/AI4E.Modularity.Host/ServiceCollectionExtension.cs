@@ -80,6 +80,7 @@ namespace AI4E.Modularity.Host
         private static void ConfigureApplicationParts(ApplicationPartManager partManager)
         {
             partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
+            partManager.ApplicationParts.Add(new AssemblyPart(typeof(DebugPort).Assembly));
         }
 
         private static DebugPort ConfigureDebugPort(IServiceProvider serviceProvider)
@@ -128,14 +129,4 @@ namespace AI4E.Modularity.Host
     }
 
     internal class ModularityMarkerService { }
-
-    public sealed class DebugModuleConnectedHandler
-    {
-        public Task HandleAsync(DebugModuleConnected mesage)
-        {
-            Console.WriteLine($"Debug module connected: {mesage.Module.Name}");
-
-            return Task.CompletedTask;
-        }
-    }
 }

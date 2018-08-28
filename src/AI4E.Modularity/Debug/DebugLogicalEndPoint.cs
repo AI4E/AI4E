@@ -7,38 +7,64 @@ using AI4E.Internal;
 using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
+using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Debug
 {
     public sealed class DebugLogicalEndPoint : ILogicalEndPoint
     {
-        private readonly ProxyHost _proxyHost;
-        private readonly AsyncInitializationHelper<IProxy<LogicalEndPointSkeleton>> _initializationHelper;
+        private readonly AsyncInitializationHelper<(ProxyHost proxyHost, IProxy<LogicalEndPointSkeleton> proxy)> _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
+        private readonly DebugConnection _debugConnection;
+        private readonly ILogger<DebugLogicalEndPoint> _logger;
 
-        public DebugLogicalEndPoint(ProxyHost proxyHost, EndPointRoute route)
+        public DebugLogicalEndPoint(DebugConnection debugConnection, EndPointRoute endPoint, ILogger<DebugLogicalEndPoint> logger = null)
         {
-            if (proxyHost == null)
-                throw new ArgumentNullException(nameof(proxyHost));
+            if (debugConnection == null)
+                throw new ArgumentNullException(nameof(debugConnection));
 
-            if (route == null)
-                throw new ArgumentNullException(nameof(route));
+            if (endPoint == null)
+                throw new ArgumentNullException(nameof(endPoint));
 
-            _proxyHost = proxyHost;
-            Route = route;
-
-            _initializationHelper = new AsyncInitializationHelper<IProxy<LogicalEndPointSkeleton>>(
-                async cancellation => await proxyHost.CreateAsync<LogicalEndPointSkeleton>(new object[] { route }, cancellation));
+            _debugConnection = debugConnection;
+            EndPoint = endPoint;
+            _logger = logger;
+            _initializationHelper = new AsyncInitializationHelper<(ProxyHost proxyHost, IProxy<LogicalEndPointSkeleton> proxy)>(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
-        private Task<IProxy<LogicalEndPointSkeleton>> GetProxyAsync(CancellationToken cancellation)
+        private async Task<(ProxyHost proxyHost, IProxy<LogicalEndPointSkeleton> proxy)> InitializeInternalAsync(CancellationToken cancellation)
         {
-            return _initializationHelper.Initialization.WithCancellation(cancellation);
+            ProxyHost proxyHost = null;
+            IProxy<LogicalEndPointSkeleton> proxy;
+            try
+            {
+                proxyHost = await _debugConnection.GetProxyHostAsync(cancellation);
+                proxy = await proxyHost.CreateAsync<LogicalEndPointSkeleton>(new object[] { EndPoint }, cancellation);
+            }
+            catch (OperationCanceledException)
+            {
+                proxyHost?.Dispose();
+                throw;
+            }
+
+            return (proxyHost, proxy);
         }
 
-        public EndPointRoute Route { get; }
+        private async ValueTask<ProxyHost> GetProxyHostAsync(CancellationToken cancellation)
+        {
+            var (proxyHost, _) = await _initializationHelper.Initialization.WithCancellation(cancellation);
+            return proxyHost;
+        }
+
+        private async ValueTask<IProxy<LogicalEndPointSkeleton>> GetProxyAsync(CancellationToken cancellation)
+        {
+            var (_, proxy) = await _initializationHelper.Initialization.WithCancellation(cancellation);
+            return proxy;
+        }
+
+        public EndPointRoute EndPoint { get; }
 
         public async Task<IMessage> ReceiveAsync(CancellationToken cancellation = default)
         {
@@ -152,7 +178,7 @@ namespace AI4E.Modularity.Debug
 
         private async Task DisposeInternalAsync()
         {
-            var (success, proxy) = await _initializationHelper.CancelAsync().HandleExceptionsAsync();
+            var (success, (_, proxy)) = await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
 
             if (success)
             {

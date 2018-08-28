@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Net;
-using System.Net.Sockets;
-using System.Threading.Tasks;
 using AI4E.Coordination;
 using AI4E.Internal;
 using AI4E.Modularity.Debug;
-using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,7 +26,8 @@ namespace AI4E.Modularity.Module
             services.AddRemoteMessageDispatcher();
             services.AddSingleton(ConfigureLogicalEndPoint);
             services.AddSingleton(ConfigureCoordinationManager);
-            services.AddSingleton(ConfigureProxyHost);
+            //services.AddSingleton(ConfigureProxyHost);
+            services.AddSingleton(ConfigureDebugConnection);
             services.AddSingleton<IMetadataAccessor, MetadataAccessor>();
             services.AddSingleton<IRunningModuleLookup, RunningModuleLookup>();
             services.AddSingleton<IMetadataReader, MetadataReader>();
@@ -42,7 +40,8 @@ namespace AI4E.Modularity.Module
         private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
         {
             serviceManager.AddService<IMessageDispatcher>();
-            serviceManager.AddService<ProxyHost>(isRequiredService: false);
+            //serviceManager.AddService<ProxyHost>(isRequiredService: false);
+            serviceManager.AddService<DebugConnection>();
         }
 
         private static ICoordinationManager ConfigureCoordinationManager(IServiceProvider serviceProvider)
@@ -77,8 +76,9 @@ namespace AI4E.Modularity.Module
 
             if (options.UseDebugConnection)
             {
-                var proxyHost = serviceProvider.GetRequiredService<ProxyHost>();
-                return new DebugLogicalEndPoint(proxyHost, remoteOptions.LocalEndPoint);
+                var debugConnection = serviceProvider.GetRequiredService<DebugConnection>();
+                var logger = serviceProvider.GetService<ILogger<DebugLogicalEndPoint>>();
+                return new DebugLogicalEndPoint(debugConnection, remoteOptions.LocalEndPoint, logger);
             }
             else
             {
@@ -87,7 +87,7 @@ namespace AI4E.Modularity.Module
             }
         }
 
-        private static ProxyHost ConfigureProxyHost(IServiceProvider serviceProvider)
+        private static DebugConnection ConfigureDebugConnection(IServiceProvider serviceProvider)
         {
             var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
             var options = optionsAccessor.Value ?? new ModuleServerOptions();
@@ -98,17 +98,41 @@ namespace AI4E.Modularity.Module
             }
 
             var addressSerializer = serviceProvider.GetRequiredService<IAddressConversion<IPEndPoint>>();
-            var logger = serviceProvider.GetService<ILogger<DisposeAwareStream>>();
-            var endPoint = addressSerializer.Parse(options.DebugConnection);
-
             var dateTimeProvider = serviceProvider.GetRequiredService<IDateTimeProvider>();
-            var tcpClient = new TcpClient(endPoint.AddressFamily);
+            var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+            var debugAddress = addressSerializer.Parse(options.DebugConnection);
 
-            // TODO: Logging
-            tcpClient.Connect(endPoint.Address, endPoint.Port); // TODO: This is a blocking call
-            var stream = new DisposeAwareStream(tcpClient.GetStream(), dateTimeProvider, () => { Environment.FailFast(""); return Task.CompletedTask; }, logger); // TODO: Graceful shutdown
+            return new DebugConnection(debugAddress, dateTimeProvider, serviceProvider, loggerFactory);
+        }
+    }
 
-            return new ProxyHost(stream, serviceProvider);
+    internal static class ServiceCollectionHelper
+    {
+        private static IServiceCollection AddSingletonConditional<TService, TInstance, TOptions>(this IServiceCollection services, Func<TOptions, bool> condition)
+           where TService : class
+           where TInstance : class, TService
+           where TOptions : class, new()
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            if (condition == null)
+                throw new ArgumentNullException(nameof(condition));
+
+            services.AddSingleton<TService, TInstance>(serviceProvider =>
+            {
+                var optionsAccessor = serviceProvider.GetService<IOptions<TOptions>>();
+                var options = optionsAccessor?.Value ?? new TOptions();
+
+                if (!condition(options))
+                {
+                    return null;
+                }
+
+                return ActivatorUtilities.CreateInstance<TInstance>(serviceProvider);
+            });
+
+            return services;
         }
     }
 }

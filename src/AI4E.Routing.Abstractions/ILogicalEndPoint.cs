@@ -38,7 +38,7 @@ namespace AI4E.Routing
 {
     public interface ILogicalEndPoint : IAsyncInitialization, IAsyncDisposable
     {
-        EndPointRoute Route { get; }
+        EndPointRoute EndPoint { get; }
 
         Task<IMessage> ReceiveAsync(CancellationToken cancellation = default);
         Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, CancellationToken cancellation = default);

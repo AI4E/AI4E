@@ -19,18 +19,9 @@
  */
 
 using System;
-using System.Net;
-using System.Net.Sockets;
-using AI4E.Coordination;
-using AI4E.Modularity.Debug;
-using AI4E.Proxying;
-using AI4E.Remoting;
-using AI4E.Routing;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Module
 {

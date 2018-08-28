@@ -436,7 +436,7 @@ namespace AI4E.Routing
 
                 _endPointManager = endPointManager;
                 PhysicalEndPoint = physicalEndPoint;
-                Route = route;
+                EndPoint = route;
                 _messageCoder = messageCoder;
                 _routeManager = routeManager;
                 _logger = logger;
@@ -445,7 +445,7 @@ namespace AI4E.Routing
                 _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
             }
 
-            public EndPointRoute Route { get; }
+            public EndPointRoute EndPoint { get; }
             public TAddress LocalAddress => PhysicalEndPoint.LocalAddress;
             public IPhysicalEndPoint<TAddress> PhysicalEndPoint { get; }
 
@@ -455,16 +455,16 @@ namespace AI4E.Routing
 
             private async Task InitializeInternalAsync(CancellationToken cancellation)
             {
-                _logger?.LogDebug($"Map local end-point '{Route}' to physical end-point {LocalAddress}.");
+                _logger?.LogDebug($"Map local end-point '{EndPoint}' to physical end-point {LocalAddress}.");
 
                 try
                 {
-                    await _routeManager.MapRouteAsync(Route, LocalAddress, cancellation);
+                    await _routeManager.MapRouteAsync(EndPoint, LocalAddress, cancellation);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
                 {
-                    _logger?.LogWarning(exc, $"Failure in map process for local end-point '{Route}'.");
+                    _logger?.LogWarning(exc, $"Failure in map process for local end-point '{EndPoint}'.");
 
                     throw;
                 }
@@ -496,9 +496,9 @@ namespace AI4E.Routing
 
                 async Task UnmapAsync()
                 {
-                    _logger?.LogDebug($"Unmap local end-point '{Route}' from physical end-point {LocalAddress}.");
+                    _logger?.LogDebug($"Unmap local end-point '{EndPoint}' from physical end-point {LocalAddress}.");
 
-                    await _routeManager.UnmapRouteAsync(Route, LocalAddress, cancellation: default).HandleExceptionsAsync(_logger);
+                    await _routeManager.UnmapRouteAsync(EndPoint, LocalAddress, cancellation: default).HandleExceptionsAsync(_logger);
                 }
 
                 async Task TerminateReception()
@@ -509,7 +509,7 @@ namespace AI4E.Routing
 
                 await Task.WhenAll(UnmapAsync(), TerminateReception());
 
-                _endPointManager._endPoints.TryRemove(Route, this);
+                _endPointManager._endPoints.TryRemove(EndPoint, this);
             }
 
             #endregion
@@ -532,14 +532,14 @@ namespace AI4E.Routing
                     catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                     catch (Exception exc)
                     {
-                        _logger?.LogWarning(exc, $"Failure in receive process for local end-point '{Route}'.");
+                        _logger?.LogWarning(exc, $"Failure in receive process for local end-point '{EndPoint}'.");
                     }
                 }
             }
 
             private async Task HandleMessageAsync(IMessage message, TAddress localAddress, TAddress remoteAddress, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, MessageType messageType, CancellationToken cancellation)
             {
-                if (!localAddress.Equals(LocalAddress) || !Route.Equals(localEndPoint))
+                if (!localAddress.Equals(LocalAddress) || !EndPoint.Equals(localEndPoint))
                 {
                     await SendMisroutedAsync(remoteAddress, remoteEndPoint, localEndPoint, cancellation);
                     return;
@@ -648,7 +648,7 @@ namespace AI4E.Routing
 
                             try
                             {
-                                await _endPointManager.SendAsync(message, Route, remoteEndPoint, combinedCancellation);
+                                await _endPointManager.SendAsync(message, EndPoint, remoteEndPoint, combinedCancellation);
                             }
                             catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
                             {
@@ -750,7 +750,7 @@ namespace AI4E.Routing
                     throw;
                 }
 
-                if (localEndPoint != Route)
+                if (localEndPoint != EndPoint)
                 {
                     throw new InvalidOperationException("Cannot send a response from another end point than the request was received from.");
                 }
@@ -795,21 +795,21 @@ namespace AI4E.Routing
                 //If we are the sender, we can short-circuit
                 if (remoteAddress.Equals(LocalAddress))
                 {
-                    if (Route.Equals(remoteEndPoint))
+                    if (EndPoint.Equals(remoteEndPoint))
                     {
-                        return OnReceivedAsync(message, LocalAddress, Route, cancellation);
+                        return OnReceivedAsync(message, LocalAddress, EndPoint, cancellation);
                     }
 
                     if (_endPointManager._endPoints.TryGetValue(remoteEndPoint, out var endPoint))
                     {
-                        return endPoint.OnReceivedAsync(message, LocalAddress, Route, cancellation);
+                        return endPoint.OnReceivedAsync(message, LocalAddress, EndPoint, cancellation);
                     }
 
                     _logger?.LogWarning($"Received message for end-point {remoteEndPoint} that is unavailable.");
                     return Task.CompletedTask;
                 }
 
-                return _endPointManager.SendAsync(message, Route, remoteEndPoint, remoteAddress, cancellation);
+                return _endPointManager.SendAsync(message, EndPoint, remoteEndPoint, remoteAddress, cancellation);
             }
         }
     }

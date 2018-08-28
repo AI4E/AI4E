@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
+    <Compile Include="..\Common\DictionaryExtension.cs" Link="Internal\DictionaryExtension.cs" />
     <Compile Include="..\Common\DisposeAwareStream.cs" Link="Internal\DisposeAwareStream.cs" />
     <Compile Include="..\Common\IdGenerator.cs" Link="Internal\IdGenerator.cs" />
     <Compile Include="..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />

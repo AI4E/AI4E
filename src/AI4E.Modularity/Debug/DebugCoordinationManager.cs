@@ -5,31 +5,58 @@ using AI4E.Async;
 using AI4E.Coordination;
 using AI4E.Internal;
 using AI4E.Proxying;
+using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Debug
 {
     public sealed class DebugCoordinationManager : ICoordinationManager, IAsyncDisposable
     {
-        private readonly ProxyHost _proxyHost;
-        private readonly AsyncInitializationHelper<IProxy<CoordinationManagerSkeleton>> _initializationHelper;
+        private readonly AsyncInitializationHelper<(ProxyHost proxyHost, IProxy<CoordinationManagerSkeleton> proxy)> _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
+        private readonly DebugConnection _debugConnection;
+        private readonly ILogger<DebugCoordinationManager> _logger;
         private volatile string _session = null;
 
-        public DebugCoordinationManager(ProxyHost proxyHost)
+        public DebugCoordinationManager(DebugConnection debugConnection, ILogger<DebugCoordinationManager> logger = null)
         {
-            if (proxyHost == null)
-                throw new ArgumentNullException(nameof(proxyHost));
+            if (debugConnection == null)
+                throw new ArgumentNullException(nameof(debugConnection));
 
-            _proxyHost = proxyHost;
-            _initializationHelper = new AsyncInitializationHelper<IProxy<CoordinationManagerSkeleton>>(
-                async cancellation => await proxyHost.CreateAsync<CoordinationManagerSkeleton>(cancellation));
+            _initializationHelper = new AsyncInitializationHelper<(ProxyHost proxyHost, IProxy<CoordinationManagerSkeleton> proxy)>(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+            _debugConnection = debugConnection;
+            _logger = logger;
         }
 
-        private Task<IProxy<CoordinationManagerSkeleton>> GetProxyAsync(CancellationToken cancellation)
+        private async Task<(ProxyHost proxyHost, IProxy<CoordinationManagerSkeleton> proxy)> InitializeInternalAsync(CancellationToken cancellation)
         {
-            return _initializationHelper.Initialization.WithCancellation(cancellation);
+            ProxyHost proxyHost = null;
+            IProxy<CoordinationManagerSkeleton> proxy;
+            try
+            {
+                proxyHost = await _debugConnection.GetProxyHostAsync(cancellation);
+                proxy = await proxyHost.CreateAsync<CoordinationManagerSkeleton>(cancellation);
+            }
+            catch (OperationCanceledException)
+            {
+                proxyHost?.Dispose();
+                throw;
+            }
+
+            return (proxyHost, proxy);
+        }
+
+        private async ValueTask<IProxy<CoordinationManagerSkeleton>> GetProxyAsync(CancellationToken cancellation)
+        {
+            var (_, proxy) = await _initializationHelper.Initialization.WithCancellation(cancellation);
+            return proxy;
+        }
+
+        private async ValueTask<ProxyHost> GetProxyHostAsync(CancellationToken cancellation)
+        {
+            var (proxyHost, _) = await _initializationHelper.Initialization.WithCancellation(cancellation);
+            return proxyHost;
         }
 
         #region Disposal
@@ -48,7 +75,7 @@ namespace AI4E.Modularity.Debug
 
         private async Task DisposeInternalAsync()
         {
-            var (success, proxy) = await _initializationHelper.CancelAsync().HandleExceptionsAsync();
+            var (success, (proxyHost, proxy)) = await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
 
             if (success)
             {

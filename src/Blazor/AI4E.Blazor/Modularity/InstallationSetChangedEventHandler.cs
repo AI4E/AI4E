@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using AI4E.Modularity.Debug;
 using AI4E.Modularity.Host;
-using AI4E.Modularity.Module;
 
 namespace AI4E.Blazor.Modularity
 {

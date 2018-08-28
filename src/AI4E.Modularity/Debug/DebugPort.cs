@@ -20,6 +20,8 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -30,6 +32,7 @@ using AI4E.Modularity.Host;
 using AI4E.Processing;
 using AI4E.Proxying;
 using AI4E.Remoting;
+using AI4E.Routing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
@@ -48,7 +51,7 @@ namespace AI4E.Modularity.Debug
         private readonly ILogger<DebugPort> _logger;
         private readonly AsyncDisposeHelper _disposeHelper;
         private readonly AsyncInitializationHelper _initializationHelper;
-        private readonly ConcurrentDictionary<DebugSession, byte> _debugSessions = new ConcurrentDictionary<DebugSession, byte>();
+        private readonly ConcurrentDictionary<IPEndPoint, DebugSession> _debugSessions = new ConcurrentDictionary<IPEndPoint, DebugSession>(new IPEndPointEqualityComparer());
 
         #endregion
 
@@ -133,6 +136,32 @@ namespace AI4E.Modularity.Debug
 
         #endregion
 
+        public IReadOnlyCollection<IDebugSession> DebugSessions => _debugSessions.Values.Where(p => p.IsMetadataSet).ToList();
+
+        public void DebugSessionConnected(IPEndPoint address,
+                                          EndPointRoute endPoint,
+                                          ModuleIdentifier module,
+                                          ModuleVersion moduleVersion)
+        {
+            if (address == null)
+                throw new ArgumentNullException(nameof(address));
+
+            if (endPoint == null)
+                throw new ArgumentNullException(nameof(endPoint));
+
+            if (module == default)
+                throw new ArgumentDefaultException(nameof(module));
+
+            if (!_debugSessions.TryGetValue(address, out var session))
+            {
+                return; // TODO: Do we throw here?
+            }
+
+            // TODO: There is a race condition if this is hte metadata for an older debug session that had the same address coincidentally.
+            session.SetMetadata(endPoint, module, moduleVersion);
+            Console.WriteLine("Debug session metadata set.");
+        }
+
         private async Task ConnectProcedure(CancellationToken cancellation)
         {
             _logger?.LogTrace("Started listening for debug connections.");
@@ -144,7 +173,14 @@ namespace AI4E.Modularity.Debug
                     var client = await _tcpHost.AcceptTcpClientAsync().WithCancellation(cancellation);
                     _logger?.LogInformation($"Debug connection established for ip end-point '{(client.Client.RemoteEndPoint as IPEndPoint).ToString()}'.");
 
-                    _debugSessions.TryAdd(new DebugSession(this, client, _dateTimeProvider, _serviceProvider, _loggerFactory), 0);
+                    var debugSession = new DebugSession(this, client, _dateTimeProvider, _serviceProvider, _loggerFactory);
+
+                    if (!_debugSessions.TryAdd(debugSession.Address, debugSession))
+                    {
+                        // TODO: Log failure
+
+                        debugSession.Dispose();
+                    }
                 }
                 catch (ObjectDisposedException) when (cancellation.IsCancellationRequested) { return; }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
@@ -155,13 +191,14 @@ namespace AI4E.Modularity.Debug
             }
         }
 
-        private sealed class DebugSession : IDisposable
+        private sealed class DebugSession : IDebugSession, IDisposable
         {
             private readonly DebugPort _debugServer;
             private readonly TcpClient _tcpClient;
             private readonly IDateTimeProvider _dateTimeProvider;
             private readonly IServiceProvider _serviceProvider;
             private readonly ILoggerFactory _loggerFactory;
+            private readonly ILogger<DebugSession> _logger;
             private readonly DisposeAwareStream _stream;
             private readonly ProxyHost _rpcHost;
 
@@ -189,10 +226,13 @@ namespace AI4E.Modularity.Debug
                 _serviceProvider = serviceProvider;
                 _loggerFactory = loggerFactory;
 
+                _logger = _loggerFactory?.CreateLogger<DebugSession>();
                 var streamLogger = _loggerFactory?.CreateLogger<DisposeAwareStream>();
                 _stream = new DisposeAwareStream(_tcpClient.GetStream(), _dateTimeProvider, OnDebugStreamsCloses, streamLogger);
                 _rpcHost = new ProxyHost(_stream, serviceProvider);
             }
+
+            public IPEndPoint Address => _tcpClient.Client.RemoteEndPoint as IPEndPoint;
 
             private Task OnDebugStreamsCloses()
             {
@@ -202,10 +242,61 @@ namespace AI4E.Modularity.Debug
 
             public void Dispose()
             {
-                _stream.Dispose();
-                _rpcHost.Dispose();
-                _rpcHost.Dispose();
-                _debugServer._debugSessions.TryRemove(this, out _);
+                ExceptionHelper.HandleExceptions(() => _stream.Dispose(), _logger);
+                ExceptionHelper.HandleExceptions(() => _rpcHost.Dispose(), _logger);
+                ExceptionHelper.HandleExceptions(() =>
+                {
+                    if (!_debugServer._debugSessions.Remove(Address, this))
+                    {
+                        // TODO: Log failure. This should never be the case.
+                    }
+                }, _logger);
+            }
+
+            private readonly object _lock = new object();
+            private volatile bool _isMetadataSet = false;
+
+            public void SetMetadata(EndPointRoute endPoint, ModuleIdentifier module, ModuleVersion moduleVersion)
+            {
+                // Volatile read op.
+                if (_isMetadataSet)
+                    return;
+
+                lock (_lock)
+                {
+                    // Volatile read op.
+                    if (_isMetadataSet)
+                        return;
+
+                    EndPoint = endPoint;
+                    Module = module;
+                    ModuleVersion = moduleVersion;
+
+                    // This must be set AFTER the actual metadata, because is is read from outside unsynchronized.
+                    // Volatile protects us from the compiler, the runtime or the cpu reordering this operation with the operations above.
+                    // Volatile write op.
+                    _isMetadataSet = true;
+                }
+            }
+
+            // Reading any of these props before MetadataSet returns true is UNSAFE and vulnerable to threading issues.
+            public EndPointRoute EndPoint { get; private set; }
+            public ModuleIdentifier Module { get; private set; }
+            public ModuleVersion ModuleVersion { get; private set; }
+
+            public bool IsMetadataSet => _isMetadataSet; // Volatile read op.
+        }
+
+        private sealed class IPEndPointEqualityComparer : IEqualityComparer<IPEndPoint>
+        {
+            public bool Equals(IPEndPoint x, IPEndPoint y)
+            {
+                return x.Equals(y);
+            }
+
+            public int GetHashCode(IPEndPoint obj)
+            {
+                return obj.GetHashCode();
             }
         }
     }

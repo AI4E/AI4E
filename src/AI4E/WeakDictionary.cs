@@ -95,7 +95,7 @@ namespace AI4E
                     return false;
                 }
             }
-            while (!_entries.TryRemove(key, weakReference));
+            while (!_entries.Remove(key, weakReference));
 
             return true;
         }
@@ -172,7 +172,7 @@ namespace AI4E
         {
             while (_cleanupQueue.TryDequeue(out var key))
             {
-                while (_entries.TryGetValue(key, out var weakReference) && !weakReference.TryGetTarget(out _) && !_entries.TryRemove(key, weakReference)) ;
+                while (_entries.TryGetValue(key, out var weakReference) && !weakReference.TryGetTarget(out _) && !_entries.Remove(key, weakReference)) ;
             }
         }
 

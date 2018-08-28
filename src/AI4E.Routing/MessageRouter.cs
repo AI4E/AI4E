@@ -59,7 +59,7 @@ namespace AI4E.Routing
 
         public ValueTask<EndPointRoute> GetLocalEndPointAsync(CancellationToken cancellation)
         {
-            return new ValueTask<EndPointRoute>(_logicalEndPoint.Route);
+            return new ValueTask<EndPointRoute>(_logicalEndPoint.EndPoint);
         }
 
         #region Initialization
@@ -81,7 +81,7 @@ namespace AI4E.Routing
             await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
             await _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
             await _logicalEndPoint.DisposeAsync().HandleExceptionsAsync(_logger);
-            await _routeStore.RemoveRoutesAsync(_logicalEndPoint.Route, cancellation: default).HandleExceptionsAsync(_logger);
+            await _routeStore.RemoveRoutesAsync(_logicalEndPoint.EndPoint, cancellation: default).HandleExceptionsAsync(_logger);
         }
 
         public void Dispose()
@@ -509,7 +509,7 @@ namespace AI4E.Routing
             if (serializedMessageHandler == null)
                 throw new ArgumentNullException(nameof(serializedMessageHandler));
 
-            if (_logicalEndPoint.Route == endPoint)
+            if (_logicalEndPoint.EndPoint == endPoint)
             {
                 return CreateMessageRouterInternal(_logicalEndPoint, serializedMessageHandler, options);
             }

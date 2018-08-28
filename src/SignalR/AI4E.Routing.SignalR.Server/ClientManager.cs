@@ -311,6 +311,7 @@ namespace AI4E.Routing.SignalR.Server
 
                 switch (messageType)
                 {
+                    // TODO: If a message cannot be routed, there seems to be no answer to the client sent.
                     case MessageType.Route:
                         {
                             var routesCount = reader.ReadInt32();
