@@ -1,26 +1,34 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.Serialization;
-using System.Text;
 
 namespace AI4E.Coordination
 {
+    [Serializable]
     public class SessionTerminatedException : Exception
     {
-        public SessionTerminatedException()
+        public SessionTerminatedException() { }
+
+        public SessionTerminatedException(string message) : base(message) { }
+
+        public SessionTerminatedException(string message, Exception innerException) : base(message, innerException) { }
+
+        protected SessionTerminatedException(SerializationInfo info, StreamingContext context) : base(info, context) { }
+
+        public SessionTerminatedException(Session session) : base(FormatMessage(session))
         {
+            Session = session;
         }
 
-        public SessionTerminatedException(string message) : base(message)
+        public SessionTerminatedException(Session session, Exception innerException) : base(FormatMessage(session), innerException)
         {
+            Session = session;
         }
 
-        public SessionTerminatedException(string message, Exception innerException) : base(message, innerException)
-        {
-        }
+        public Session Session { get; }
 
-        protected SessionTerminatedException(SerializationInfo info, StreamingContext context) : base(info, context)
+        private static string FormatMessage(Session session)
         {
+            return $"The session '{session.ToCompactString()}' is terminated.";
         }
     }
 }

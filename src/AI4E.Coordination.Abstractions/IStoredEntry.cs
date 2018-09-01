@@ -38,12 +38,12 @@ namespace AI4E.Coordination
         /// <summary>
         /// Gets a collection of session that read locks are held for.
         /// </summary>
-        ImmutableArray<string> ReadLocks { get; }
+        ImmutableArray<Session> ReadLocks { get; }
 
         /// <summary>
         /// Gets the session that a write lock is held for.
         /// </summary>
-        string WriteLock { get; }
+        Session? WriteLock { get; }
 
         /// <summary>
         /// Gets the version of the entry.
@@ -67,6 +67,6 @@ namespace AI4E.Coordination
         /// </summary>
         ImmutableList<CoordinationEntryPathSegment> Children { get; }
 
-        string EphemeralOwner { get; }
+        Session? EphemeralOwner { get; }
     }
 }

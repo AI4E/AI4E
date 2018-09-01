@@ -25,7 +25,7 @@ namespace AI4E.Coordination
 {
     public interface IStoredSession
     {
-        string Key { get; }
+        Session Session { get; }
         bool IsEnded { get; }
         DateTime LeaseEnd { get; }
         ImmutableArray<CoordinationEntryPath> EntryPaths { get; }

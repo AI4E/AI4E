@@ -173,7 +173,7 @@ namespace AI4E.Modularity.Debug
             }
         }
 
-        public async ValueTask<string> GetSessionAsync(CancellationToken cancellation = default)
+        public async ValueTask<Session> GetSessionAsync(CancellationToken cancellation = default)
         {
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
@@ -186,7 +186,7 @@ namespace AI4E.Modularity.Debug
                 var session = _session; // Volatile read op.
 
                 if (session != null)
-                    return session;
+                    return Session.FromCompactString(session.AsSpan());
 
                 var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
                 var proxy = await GetProxyAsync(cancelledOrDisposed);
@@ -195,7 +195,7 @@ namespace AI4E.Modularity.Debug
 
                 Interlocked.CompareExchange(ref _session, session, null);
 
-                return session;
+                return Session.FromCompactString(session.AsSpan());
             }
         }
     }

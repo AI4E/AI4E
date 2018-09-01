@@ -38,7 +38,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -60,7 +59,6 @@ namespace AI4E.Coordination
     {
         #region Fields
 
-        private static readonly ImmutableArray<byte> _emptyValue = ImmutableArray<byte>.Empty;
         private static readonly TimeSpan _leaseLength =
 #if DEBUG
         TimeSpan.FromSeconds(30);
@@ -79,13 +77,13 @@ namespace AI4E.Coordination
         private readonly ILogger<CoordinationManager<TAddress>> _logger;
 
         private readonly ConcurrentDictionary<CoordinationEntryPath, CacheEntry> _cache;
-        private readonly WaitDirectory<(string session, CoordinationEntryPath path)> _readLockWaitDirectory;
-        private readonly WaitDirectory<(string session, CoordinationEntryPath path)> _writeLockWaitDirectory;
+        private readonly WaitDirectory<(Session session, CoordinationEntryPath path)> _readLockWaitDirectory;
+        private readonly WaitDirectory<(Session session, CoordinationEntryPath path)> _writeLockWaitDirectory;
 
         private readonly IAsyncProcess _updateSessionProcess;
         private readonly IAsyncProcess _sessionCleanupProcess;
         private readonly IAsyncProcess _receiveProcess;
-        private readonly AsyncInitializationHelper<(string session, IPhysicalEndPoint<TAddress> physicalEndPoint)> _initializationHelper;
+        private readonly AsyncInitializationHelper<(Session session, IPhysicalEndPoint<TAddress> physicalEndPoint)> _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
         #endregion
@@ -132,13 +130,13 @@ namespace AI4E.Coordination
             _logger = logger;
 
             _cache = new ConcurrentDictionary<CoordinationEntryPath, CacheEntry>();
-            _readLockWaitDirectory = new WaitDirectory<(string session, CoordinationEntryPath path)>();
-            _writeLockWaitDirectory = new WaitDirectory<(string session, CoordinationEntryPath path)>();
+            _readLockWaitDirectory = new WaitDirectory<(Session session, CoordinationEntryPath path)>();
+            _writeLockWaitDirectory = new WaitDirectory<(Session session, CoordinationEntryPath path)>();
 
             _updateSessionProcess = new AsyncProcess(UpdateSessionProcess);
             _sessionCleanupProcess = new AsyncProcess(SessionCleanupProcess);
             _receiveProcess = new AsyncProcess(ReceiveProcess);
-            _initializationHelper = new AsyncInitializationHelper<(string session, IPhysicalEndPoint<TAddress> physicalEndPoint)>(InitializeInternalAsync);
+            _initializationHelper = new AsyncInitializationHelper<(Session session, IPhysicalEndPoint<TAddress> physicalEndPoint)>(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
@@ -165,7 +163,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task HandleMessageAsync(IMessage message, MessageType messageType, CoordinationEntryPath path, string session, CancellationToken cancellation)
+        private async Task HandleMessageAsync(IMessage message, MessageType messageType, CoordinationEntryPath path, Session session, CancellationToken cancellation)
         {
             switch (messageType)
             {
@@ -204,7 +202,7 @@ namespace AI4E.Coordination
             return await physicalEndPoint.ReceiveAsync(cancellation);
         }
 
-        private async Task InvalidateCacheEntryAsync(CoordinationEntryPath path, string session, CancellationToken cancellation)
+        private async Task InvalidateCacheEntryAsync(CoordinationEntryPath path, Session session, CancellationToken cancellation)
         {
             if (session == await GetSessionAsync(cancellation))
             {
@@ -261,9 +259,9 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task SendMessageAsync(string session, Message message, CancellationToken cancellation)
+        private async Task SendMessageAsync(Session session, Message message, CancellationToken cancellation)
         {
-            var remoteAddress = SessionHelper.GetAddressFromSession(session, _addressConversion);
+            var remoteAddress = _addressConversion.DeserializeAddress(session.PhysicalAddress.ToArray()); // TODO: This will copy everything to a new aray
 
             Assert(remoteAddress != null);
 
@@ -278,7 +276,7 @@ namespace AI4E.Coordination
 
         }
 
-        private IPhysicalEndPoint<TAddress> GetSessionEndPoint(string session)
+        private IPhysicalEndPoint<TAddress> GetSessionEndPoint(Session session)
         {
             Assert(session != null);
 
@@ -291,12 +289,12 @@ namespace AI4E.Coordination
             return result;
         }
 
-        private static string GetMultiplexEndPointName(string session)
+        private static string GetMultiplexEndPointName(Session session)
         {
-            return "coord/" + session;
+            return "coord/" + session.ToCompactString();
         }
 
-        private (MessageType messageType, CoordinationEntryPath path, string session) DecodeMessage(IMessage message)
+        private (MessageType messageType, CoordinationEntryPath path, Session session) DecodeMessage(IMessage message)
         {
             Assert(message != null);
 
@@ -310,13 +308,13 @@ namespace AI4E.Coordination
 
                 var sessionLength = binaryReader.ReadInt32();
                 var sessionBytes = binaryReader.ReadBytes(sessionLength);
-                var session = Encoding.UTF8.GetString(sessionBytes);
+                var session = Session.FromCompactString(Encoding.UTF8.GetString(sessionBytes).AsSpan());
 
                 return (messageType, path, session);
             }
         }
 
-        private Message EncodeMessage(MessageType messageType, CoordinationEntryPath path, string session)
+        private Message EncodeMessage(MessageType messageType, CoordinationEntryPath path, Session session)
         {
             var message = new Message();
 
@@ -325,7 +323,7 @@ namespace AI4E.Coordination
             return message;
         }
 
-        private void EncodeMessage(IMessage message, MessageType messageType, CoordinationEntryPath path, string session)
+        private void EncodeMessage(IMessage message, MessageType messageType, CoordinationEntryPath path, Session session)
         {
             Assert(message != null);
             // Modify if other message types are added
@@ -338,7 +336,7 @@ namespace AI4E.Coordination
 
                 binaryWriter.WriteUtf8(path.EscapedPath.Span);
 
-                var sessionBytes = Encoding.UTF8.GetBytes(session);
+                var sessionBytes = Encoding.UTF8.GetBytes(session.ToCompactString());
                 binaryWriter.Write(sessionBytes.Length);
                 binaryWriter.Write(sessionBytes);
             }
@@ -411,7 +409,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task UpdateSessionAsync(string session, CancellationToken cancellation)
+        private async Task UpdateSessionAsync(Session session, CancellationToken cancellation)
         {
             Assert(session != null);
 
@@ -433,7 +431,7 @@ namespace AI4E.Coordination
 
         #region Initialization
 
-        public async ValueTask<string> GetSessionAsync(CancellationToken cancellation = default)
+        public async ValueTask<Session> GetSessionAsync(CancellationToken cancellation = default)
         {
             var (session, _) = await _initializationHelper.Initialization.WithCancellation(cancellation);
 
@@ -447,9 +445,9 @@ namespace AI4E.Coordination
             return physicalEndPoint;
         }
 
-        private async Task<(string session, IPhysicalEndPoint<TAddress> physicalEndPoint)> InitializeInternalAsync(CancellationToken cancellation)
+        private async Task<(Session session, IPhysicalEndPoint<TAddress> physicalEndPoint)> InitializeInternalAsync(CancellationToken cancellation)
         {
-            string session;
+            Session session;
 
             do
             {
@@ -685,7 +683,7 @@ namespace AI4E.Coordination
 
         private async ValueTask<(IStoredEntry entry, bool created)> CreateInternalAsync(CoordinationEntryPath path,
                                                                                         ReadOnlyMemory<byte> value,
-                                                                                        string session,
+                                                                                        Session session,
                                                                                         EntryCreationModes modes,
                                                                                         bool releaseLock,
                                                                                         CancellationToken cancellation)
@@ -768,7 +766,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task<IStoredEntry> EnsureOwningParentWriteLock(IStoredEntry parent, CoordinationEntryPath parentPath, string session, CancellationToken cancellation)
+        private async Task<IStoredEntry> EnsureOwningParentWriteLock(IStoredEntry parent, CoordinationEntryPath parentPath, Session session, CancellationToken cancellation)
         {
             while (true)
             {
@@ -1344,7 +1342,7 @@ namespace AI4E.Coordination
                     cacheVersion = cacheEntry.Version;
                 }
 
-                desired = _storedEntryManager.ReleaseWriteLock(start);
+                desired = _storedEntryManager.ReleaseWriteLock(start, session);
 
                 entry = await _storage.UpdateEntryAsync(desired, start, cancellation: _disposeHelper.DisposalRequested);
             }
@@ -1399,7 +1397,7 @@ namespace AI4E.Coordination
 
                 Task Release(CancellationToken c)
                 {
-                    return _writeLockWaitDirectory.WaitForNotification((writeLock, path), c);
+                    return _writeLockWaitDirectory.WaitForNotification(((Session)writeLock, path), c);
                 }
 
                 var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
@@ -1408,12 +1406,12 @@ namespace AI4E.Coordination
 
                 {
                     var lockRelease = SpinWaitAsync(Predicate, Release, combinedCancellationSource.Token);
-                    var sessionTermination = _sessionManager.WaitForTerminationAsync(writeLock);
+                    var sessionTermination = _sessionManager.WaitForTerminationAsync((Session)writeLock);
                     var completed = await (Task.WhenAny(sessionTermination, lockRelease).WithCancellation(cancellation));
 
                     if (completed == sessionTermination)
                     {
-                        await CleanupLocksOnSessionTermination(path, writeLock, cancellation);
+                        await CleanupLocksOnSessionTermination(path, (Session)writeLock, cancellation);
                         entry = await _storage.GetEntryAsync(path, cancellation);
                     }
                 }
@@ -1435,7 +1433,7 @@ namespace AI4E.Coordination
                 _logger?.LogTrace($"[{await GetSessionAsync()}] Waiting for read-locks release for entry '{entry.Path}'.");
             }
 
-            IEnumerable<string> readLocks = entry.ReadLocks;
+            IEnumerable<Session> readLocks = entry.ReadLocks;
 
             // Exclude our own read-lock (if present)
             var session = await GetSessionAsync(cancellation);
@@ -1456,7 +1454,7 @@ namespace AI4E.Coordination
             return entry;
         }
 
-        private async Task CleanupLocksOnSessionTermination(CoordinationEntryPath path, string session, CancellationToken cancellation)
+        private async Task CleanupLocksOnSessionTermination(CoordinationEntryPath path, Session session, CancellationToken cancellation)
         {
 #if DEBUG
             var isTerminated = !await _sessionManager.IsAliveAsync(session, cancellation);
@@ -1491,7 +1489,7 @@ namespace AI4E.Coordination
 
                 if (entry.WriteLock == session)
                 {
-                    desired = _storedEntryManager.ReleaseWriteLock(desired);
+                    desired = _storedEntryManager.ReleaseWriteLock(desired, session);
                 }
 
                 if (entry.ReadLocks.Contains(session))
@@ -1509,7 +1507,7 @@ namespace AI4E.Coordination
             while (start != entry);
         }
 
-        private async Task CleanupSessionAsync(string session, CancellationToken cancellation)
+        private async Task CleanupSessionAsync(Session session, CancellationToken cancellation)
         {
             _logger?.LogInformation($"[{await GetSessionAsync()}] Cleaning up session '{session}'.");
 
@@ -1524,7 +1522,7 @@ namespace AI4E.Coordination
             await _sessionManager.EndSessionAsync(session, cancellation);
         }
 
-        private async Task WaitForReadLockRelease(CoordinationEntryPath path, string session, CancellationToken cancellation)
+        private async Task WaitForReadLockRelease(CoordinationEntryPath path, Session session, CancellationToken cancellation)
         {
             var entry = await _storage.GetEntryAsync(path, cancellation);
 

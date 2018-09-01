@@ -39,7 +39,6 @@ namespace AI4E.Coordination
 
             return s.Slice(start, count);
         }
-
         public static bool SequenceEquals<T>(this ReadOnlyMemory<T> left, ReadOnlyMemory<T> right, IEqualityComparer<T> comparer)
         {
             if (comparer == null)
@@ -68,6 +67,7 @@ namespace AI4E.Coordination
             return true;
         }
 
+        [Obsolete("Use left.Span.SequenceEquals(right.Span)")]
         public static bool SequenceEquals<T>(this ReadOnlyMemory<T> left, ReadOnlyMemory<T> right)
         {
             return SequenceEquals(left, right, EqualityComparer<T>.Default);
