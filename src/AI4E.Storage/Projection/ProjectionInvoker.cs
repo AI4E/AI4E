@@ -22,21 +22,25 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.Serialization;
-using System.Threading.Tasks;
+using System.Reflection;
+using System.Threading;
+using AI4E.Handler;
 using AI4E.Internal;
 using Microsoft.Extensions.DependencyInjection;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Projection
 {
-    internal class ProjectionInvoker<TSource, TProjection> : IProjection<TSource, TProjection>
+    public sealed class ProjectionInvoker<TSource, TProjection> : IProjection<TSource, TProjection>
+        where TSource : class
+        where TProjection : class
     {
         private readonly object _handler;
         private ProjectionDescriptor _projectionDescriptor;
         private IServiceProvider _serviceProvider;
 
-        private ProjectionInvoker(object handler, 
-                                  ProjectionDescriptor projectionDescriptor, 
+        private ProjectionInvoker(object handler,
+                                  ProjectionDescriptor projectionDescriptor,
                                   IServiceProvider serviceProvider)
         {
             _handler = handler;
@@ -44,167 +48,67 @@ namespace AI4E.Storage.Projection
             _serviceProvider = serviceProvider;
         }
 
-        //public bool MultipleResults => _projectionDescriptor.MultipleResults;
-
-        //public ValueTask<TProjection> ProjectAsync(TSource source)
-        //{
-        //    if (source == null && !_projectionDescriptor.ProjectNonExisting)
-        //    {
-        //        return new ValueTask<TProjection>(default(TProjection));
-        //    }
-
-        //    var member = _projectionDescriptor.Member;
-
-        //    Debug.Assert(member != null);
-
-        //    var parameters = member.GetParameters();
-
-        //    var callingArgs = new object[parameters.Length];
-
-        //    callingArgs[0] = source;
-
-        //    for (var i = 1; i < callingArgs.Length; i++)
-        //    {
-        //        var parameterType = parameters[i].ParameterType;
-
-        //        object arg;
-
-        //        if (parameterType.IsDefined<InjectAttribute>())
-        //        {
-        //            arg = _serviceProvider.GetRequiredService(parameterType);
-        //        }
-        //        else
-        //        {
-        //            arg = _serviceProvider.GetService(parameterType);
-
-        //            if (arg == null && parameterType.IsValueType)
-        //            {
-        //                arg = FormatterServices.GetUninitializedObject(parameterType);
-        //            }
-        //        }
-
-        //        callingArgs[i] = arg;
-        //    }
-
-        //    var result = member.Invoke(_handler, callingArgs);
-
-        //    if (result is Task task)
-        //    {
-        //        if (_projectionDescriptor.MultipleResults)
-        //        {
-        //            if (!(result is Task<IEnumerable<TProjection>> multProjTask))
-        //            {
-        //                throw new InvalidOperationException();
-        //            }
-
-        //            async ValueTask<TProjection> GetFirstOrDefault()
-        //            {
-        //                return (await multProjTask).FirstOrDefault();
-        //            }
-
-        //            return GetFirstOrDefault();
-        //        }
-
-        //        if (!(result is Task<TProjection> projTask))
-        //        {
-        //            throw new InvalidOperationException();
-        //        }
-
-        //        return new ValueTask<TProjection>(projTask);
-        //    }
-
-        //    if (result == null)
-        //    {
-        //        return new ValueTask<TProjection>(default(TProjection));
-        //    }
-
-        //    if (_projectionDescriptor.MultipleResults)
-        //    {
-        //        if (!(result is IEnumerable<TProjection> multProj))
-        //        {
-        //            throw new InvalidOperationException();
-        //        }
-
-        //        return new ValueTask<TProjection>(multProj.FirstOrDefault());
-        //    }
-
-        //    if (!(result is TProjection proj))
-        //    {
-        //        throw new InvalidOperationException();
-        //    }
-
-        //    return new ValueTask<TProjection>(proj);
-        //}
-
-        public IAsyncEnumerable<TProjection> ProjectMultipleAsync(TSource source)
+        public IAsyncEnumerable<TProjection> ProjectAsync(TSource source, CancellationToken cancellation)
         {
             if (source == null && !_projectionDescriptor.ProjectNonExisting)
             {
                 return AsyncEnumerable.Empty<TProjection>();
             }
 
-            //if (!_projectionDescriptor.MultipleResults)
-            //{
-            //    return ProjectAsync(source).ToAsyncEnumerable();
-            //}
-
             var member = _projectionDescriptor.Member;
+            Assert(member != null);
+            var invoker = HandlerActionInvoker.GetInvoker(member);
 
-            Debug.Assert(member != null);
-
-            var parameters = member.GetParameters();
-
-            var callingArgs = new object[parameters.Length];
-
-            callingArgs[0] = source;
-
-            for (var i = 1; i < callingArgs.Length; i++)
+            object ResolveParameter(ParameterInfo parameter)
             {
-                var parameterType = parameters[i].ParameterType;
-
-                object arg;
-
-                if (parameterType.IsDefined<InjectAttribute>())
+                if (parameter.ParameterType == typeof(IServiceProvider))
                 {
-                    arg = _serviceProvider.GetRequiredService(parameterType);
+                    return _serviceProvider;
+                }
+                else if (parameter.ParameterType == typeof(CancellationToken))
+                {
+                    return cancellation;
+                }
+                else if (parameter.IsDefined<InjectAttribute>())
+                {
+                    return _serviceProvider.GetRequiredService(parameter.ParameterType);
                 }
                 else
                 {
-                    arg = _serviceProvider.GetService(parameterType);
-
-                    if (arg == null && parameterType.IsValueType)
-                    {
-                        arg = FormatterServices.GetUninitializedObject(parameterType);
-                    }
+                    return _serviceProvider.GetService(parameter.ParameterType);
                 }
-
-                callingArgs[i] = arg;
             }
 
-            var result = member.Invoke(_handler, callingArgs);
+            object result;
 
-            if (result is Task task)
-            {
+            //try
+            //{
+                result = invoker.InvokeAsync(_handler, source, ResolveParameter);
+            //}
+            //catch (Exception exc)
+            //{
+            //    // TODO: What can we do here?
+            //    // TODO: Log this and rethrow
 
-                if (!(result is Task<IEnumerable<TProjection>> multProjTask))
-                {
-                    throw new InvalidOperationException();
-                }
-
-                return multProjTask.ToAsyncEnumerable();
-            }
+            //    throw;
+            //}
 
             if (result == null)
             {
                 return AsyncEnumerable.Empty<TProjection>();
             }
 
-            if (!(result is IEnumerable<TProjection> multProj))
+            if (_projectionDescriptor.MultipleResults)
             {
-                throw new InvalidOperationException();
+                var enumerable = result as IEnumerable<TProjection>;
+                Assert(enumerable != null);
+                return enumerable.ToAsyncEnumerable();
             }
 
-            return multProj.ToAsyncEnumerable();
+            var projectionResult = result as TProjection;
+
+            Assert(projectionResult != null);
+            return AsyncEnumerable.Repeat(projectionResult, 1);
         }
 
         internal sealed class Provider : IContextualProvider<IProjection<TSource, TProjection>>

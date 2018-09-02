@@ -79,15 +79,8 @@ namespace AI4E.Handler
 
             var returnTypeDescriptor = TypeIntrospector.GetTypeDescriptor(member.ReturnType);
 
-            // Synchronous handler
-            if ((member.Name == "Handle" || actionAttribute != null) && !returnTypeDescriptor.IsAsyncType)
-            {
-                descriptor = new MessageHandlerActionDescriptor(messageType, member);
-                return true;
-            }
-
-            // Asynchronous handler
-            if ((member.Name == "HandleAsync" || actionAttribute != null) && returnTypeDescriptor.IsAsyncType)
+            if (IsSychronousHandler(member, actionAttribute, returnTypeDescriptor) || 
+                IsAsynchronousHandler(member, actionAttribute, returnTypeDescriptor))
             {
                 descriptor = new MessageHandlerActionDescriptor(messageType, member);
                 return true;
@@ -95,6 +88,16 @@ namespace AI4E.Handler
 
             descriptor = default;
             return false;
+        }
+
+        private static bool IsAsynchronousHandler(MethodInfo member, ActionAttribute actionAttribute, TypeDescriptor returnTypeDescriptor)
+        {
+            return (member.Name == "HandleAsync" || actionAttribute != null) && returnTypeDescriptor.IsAsyncType;
+        }
+
+        private static bool IsSychronousHandler(MethodInfo member, ActionAttribute actionAttribute, TypeDescriptor returnTypeDescriptor)
+        {
+            return (member.Name == "Handle" || actionAttribute != null) && !returnTypeDescriptor.IsAsyncType;
         }
     }
 }

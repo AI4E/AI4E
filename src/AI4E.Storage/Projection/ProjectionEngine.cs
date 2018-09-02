@@ -88,12 +88,6 @@ namespace AI4E.Storage.Projection
             }
         }
 
-        [Obsolete("Use TypeExtension.GetUnqualifiedTypeName()")]
-        private static string StringifyType(Type type)
-        {
-            return type.GetUnqualifiedTypeName();
-        }
-
         #region Scoped engines
 
         private readonly struct SourceScopedProjectionEngine

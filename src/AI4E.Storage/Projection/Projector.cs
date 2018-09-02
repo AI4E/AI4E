@@ -110,7 +110,7 @@ namespace AI4E.Storage.Projection
                 {
                     var projection = projectionProvider.ProvideInstance(serviceProvider);
 
-                    return projection.ProjectMultipleAsync(source)
+                    return projection.ProjectAsync(source, cancellation)
                                      .Where(p => p != null)
                                      .Select(p => new ProjectionResult<TProjectionId, TProjection>(p));
                 }
