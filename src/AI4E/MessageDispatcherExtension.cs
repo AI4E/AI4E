@@ -61,20 +61,42 @@ namespace AI4E
             return messageDispatcher.Register(ContextualProvider.Create(eventHandler));
         }
 
-        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher, Func<TMessage, DispatchValueDictionary, Task<IDispatchResult>> eventHandler)
+        [Obsolete]
+        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher,
+                                                                                         Func<TMessage, DispatchValueDictionary, Task<IDispatchResult>> messageHandler)
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
-            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>(eventHandler));
+            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((message, dispatchValues, cancellation) => new ValueTask<IDispatchResult>(messageHandler(message, dispatchValues))));
         }
 
-        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher, Func<TMessage, Task<IDispatchResult>> eventHandler)
+        [Obsolete]
+        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher,
+                                                                                         Func<TMessage, Task<IDispatchResult>> messageHandler)
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
-            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((message, values) => eventHandler(message)));
+            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((message, dispatchValues, cancellation) => new ValueTask<IDispatchResult>(messageHandler(message))));
+        }
+
+        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher,
+                                                                                         Func<TMessage, DispatchValueDictionary, CancellationToken, ValueTask<IDispatchResult>> messageHandler)
+        {
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+
+            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>(messageHandler));
+        }
+
+        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher,
+                                                                                         Func<TMessage, CancellationToken, ValueTask<IDispatchResult>> messageHandler)
+        {
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+
+            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((message, dispatchValues, cancellation) => messageHandler(message, cancellation)));
         }
 
         public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(
@@ -92,19 +114,19 @@ namespace AI4E
 
         private sealed class AnonymousMessageHandler<TMessage> : IMessageHandler<TMessage>
         {
-            private readonly Func<TMessage, DispatchValueDictionary, Task<IDispatchResult>> _eventHandler;
+            private readonly Func<TMessage, DispatchValueDictionary, CancellationToken, ValueTask<IDispatchResult>> _messageHandler;
 
-            public AnonymousMessageHandler(Func<TMessage, DispatchValueDictionary, Task<IDispatchResult>> eventHandler)
+            public AnonymousMessageHandler(Func<TMessage, DispatchValueDictionary, CancellationToken, ValueTask<IDispatchResult>> messageHandler)
             {
-                if (eventHandler == null)
-                    throw new ArgumentNullException(nameof(eventHandler));
+                if (messageHandler == null)
+                    throw new ArgumentNullException(nameof(messageHandler));
 
-                _eventHandler = eventHandler;
+                _messageHandler = messageHandler;
             }
 
-            public Task<IDispatchResult> HandleAsync(TMessage message, DispatchValueDictionary values)
+            public ValueTask<IDispatchResult> HandleAsync(TMessage message, DispatchValueDictionary values, CancellationToken cancellation)
             {
-                return _eventHandler(message, values);
+                return _messageHandler(message, values, cancellation);
             }
         }
     }

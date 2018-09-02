@@ -211,7 +211,9 @@ namespace AI4E.Modularity.Module
                 _logger = logger;
             }
 
-            public async Task<IDispatchResult> HandleAsync(ModuleHttpRequest message, DispatchValueDictionary ctx)
+            public async ValueTask<IDispatchResult> HandleAsync(ModuleHttpRequest message, 
+                                                                DispatchValueDictionary dispatchValues, 
+                                                                CancellationToken cancellation)
             {
                 if (message == null)
                     throw new ArgumentNullException(nameof(message));

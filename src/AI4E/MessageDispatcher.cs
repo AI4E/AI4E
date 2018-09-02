@@ -109,7 +109,7 @@ namespace AI4E
                     var dispatchOperation = dispatcher.DispatchAsync(message, context, publish, _serviceProvider, cancellation);
 
                     if (publish)
-                    {                 
+                    {
                         tasks.Add(dispatchOperation);
                     }
                     else
@@ -196,7 +196,8 @@ namespace AI4E
 
                 if (handlers.Any())
                 {
-                    var dispatchResults = await Task.WhenAll(handlers.Select(p => DispatchSingleHandlerAsync(p, message, context, serviceProvider, cancellation)));
+                    // TODO: Use ValueTaskExtensions.WhenAll
+                    var dispatchResults = await Task.WhenAll(handlers.Select(p => DispatchSingleHandlerAsync(p, message, context, serviceProvider, cancellation)).Select(p => p.AsTask()));
 
                     return (result: new AggregateDispatchResult(dispatchResults), handlersFound: true);
                 }
@@ -214,10 +215,8 @@ namespace AI4E
             }
         }
 
-        private Task<IDispatchResult> DispatchSingleHandlerAsync(IContextualProvider<IMessageHandler<TMessage>> handler, TMessage message, DispatchValueDictionary context, IServiceProvider serviceProvider, CancellationToken cancellation)
+        private ValueTask<IDispatchResult> DispatchSingleHandlerAsync(IContextualProvider<IMessageHandler<TMessage>> handler, TMessage message, DispatchValueDictionary context, IServiceProvider serviceProvider, CancellationToken cancellation)
         {
-            // TODO: Cancellation
-
             Debug.Assert(message != null);
             Debug.Assert(handler != null);
             Debug.Assert(serviceProvider != null);
@@ -226,15 +225,15 @@ namespace AI4E
             {
                 try
                 {
-                    return handler.ProvideInstance(scope.ServiceProvider).HandleAsync(message, context);
+                    return handler.ProvideInstance(scope.ServiceProvider).HandleAsync(message, context, cancellation);
                 }
                 catch (ConcurrencyException)
                 {
-                    return Task.FromResult<IDispatchResult>(new ConcurrencyIssueDispatchResult());
+                    return new ValueTask<IDispatchResult>(new ConcurrencyIssueDispatchResult());
                 }
                 catch (Exception exc)
                 {
-                    return Task.FromResult<IDispatchResult>(new FailureDispatchResult(exc));
+                    return new ValueTask<IDispatchResult>(new FailureDispatchResult(exc));
                 }
             }
         }

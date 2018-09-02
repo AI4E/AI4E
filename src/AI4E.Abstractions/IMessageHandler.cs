@@ -45,6 +45,6 @@ namespace AI4E
         /// <param name="message">The message to be handled.</param>
         /// <param name="context">The message context.</param>
         /// <returns>A task representing the asynchronous operation. The task contains the dispatch result on evaluation.</returns>
-        Task<IDispatchResult> HandleAsync(TMessage message, DispatchValueDictionary context);
+        ValueTask<IDispatchResult> HandleAsync(TMessage message, DispatchValueDictionary context, CancellationToken cancellation);
     }
 }

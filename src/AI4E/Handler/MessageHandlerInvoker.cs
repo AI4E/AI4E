@@ -34,11 +34,6 @@ namespace AI4E.Handler
             _serviceProvider = serviceProvider;
         }
 
-        Task<IDispatchResult> IMessageHandler<TMessage>.HandleAsync(TMessage message, DispatchValueDictionary dispatchValues)
-        {
-            return HandleAsync(message, dispatchValues, cancellation: default).AsTask();
-        }
-
         public ValueTask<IDispatchResult> HandleAsync(TMessage message, DispatchValueDictionary dispatchValues, CancellationToken cancellation)
         {
             Func<TMessage, ValueTask<IDispatchResult>> next = (alteredMessage => InvokeHandlerCore(alteredMessage, dispatchValues, cancellation));
