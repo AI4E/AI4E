@@ -27,9 +27,9 @@ namespace AI4E.Storage.Projection
 {
     public interface IProjector
     {
-        Task<IEnumerable<IProjectionResult>> ProjectAsync(Type sourceType, object source, IServiceProvider serviceProvider, CancellationToken cancellation);
-        Task<IEnumerable<IProjectionResult>> ProjectAsync<TSource>(TSource source, IServiceProvider serviceProvider, CancellationToken cancellation)
-            where TSource : class;
+        IAsyncEnumerable<IProjectionResult> ProjectAsync(Type sourceType, object source, IServiceProvider serviceProvider, CancellationToken cancellation);
+        //Task<IEnumerable<IProjectionResult>> ProjectAsync<TSource>(TSource source, IServiceProvider serviceProvider, CancellationToken cancellation)
+        //    where TSource : class;
 
         IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection<TSource, TProjection>(
             IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
@@ -50,5 +50,20 @@ namespace AI4E.Storage.Projection
     {
         new TProjectionId ResultId { get; }
         new TProjection Result { get; }
+    }
+
+    public static class ProjectorExtension
+    {
+        public static IAsyncEnumerable<IProjectionResult> ProjectAsync<TSource>(this IProjector projector,
+                                                                                 TSource source,
+                                                                                 IServiceProvider serviceProvider,
+                                                                                 CancellationToken cancellation)
+            where TSource : class
+        {
+            if (projector == null)
+                throw new ArgumentNullException(nameof(projector));
+
+            return projector.ProjectAsync(typeof(TSource), source, serviceProvider, cancellation);
+        }
     }
 }

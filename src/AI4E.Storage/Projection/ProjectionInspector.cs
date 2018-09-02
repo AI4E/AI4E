@@ -27,7 +27,7 @@ using AI4E.Internal;
 
 namespace AI4E.Storage.Projection
 {
-    internal sealed class ProjectionInspector
+    public sealed class ProjectionInspector
     {
         private readonly Type _type;
 
@@ -111,6 +111,7 @@ namespace AI4E.Storage.Projection
             var multipleResults = false;
             Type multipleResultsType = null;
 
+            // TODO: Do we allow types that are assignable to IEnumerable? What about IAsyncEnumerable?
             if (projectionType.IsGenericType && projectionType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
             {
                 multipleResultsType = projectionType;

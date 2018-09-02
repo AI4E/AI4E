@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
-using AI4E.Async;
 using static System.Diagnostics.Debug;
 using static AI4E.Internal.DebugEx;
 
@@ -32,10 +31,10 @@ namespace AI4E.Storage.Projection
                                    .RegisterProjection(projectionProvider);
         }
 
-        public async Task<IEnumerable<IProjectionResult>> ProjectAsync(Type sourceType,
-                                                                       object source, // May be null
-                                                                       IServiceProvider serviceProvider,
-                                                                       CancellationToken cancellation)
+        public IAsyncEnumerable<IProjectionResult> ProjectAsync(Type sourceType,
+                                                                object source, // May be null
+                                                                IServiceProvider serviceProvider,
+                                                                CancellationToken cancellation)
         {
             if (sourceType == null)
                 throw new ArgumentNullException(nameof(sourceType));
@@ -43,52 +42,36 @@ namespace AI4E.Storage.Projection
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            if (sourceType.IsValueType)
+            if (sourceType.IsValueType || sourceType.IsDelegate())
                 throw new ArgumentException("The argument must be a reference type.", nameof(sourceType));
 
             if (source != null && !sourceType.IsAssignableFrom(source.GetType()))
                 throw new ArgumentException($"The argument '{nameof(source)}' must be of the type specified by '{nameof(sourceType)}' or a derived type.");
 
             var typedProjectors = _typedProjectors.GetProjectors(sourceType);
-            var result = new List<IProjectionResult>();
 
             // There is no parallelism (with Task.WhenAll(projectors.Select(...)) used because we cannot guarantee that it is allowed to access 'source' concurrently.
-            // TODO: But it is possible to change the return type to IAsyncEnumerable<IProjectionResult> and process each batch on access. 
-            //       This allows to remove the up-front evaluation and storage of the results.
-            foreach (var typedProjector in typedProjectors)
-            {
-                result.AddRange(await typedProjector.ProjectAsync(source, serviceProvider, cancellation));
-            }
-
-            return result;
-        }
-
-        public Task<IEnumerable<IProjectionResult>> ProjectAsync<TSource>(TSource source, // May be null
-                                                                          IServiceProvider serviceProvider,
-                                                                          CancellationToken cancellation)
-            where TSource : class
-        {
-
-            return ProjectAsync(typeof(TSource), source, serviceProvider, cancellation);
+            // But it is possible to change the return type to IAsyncEnumerable<IProjectionResult> and process each batch on access. 
+            // This allows to remove the up-front evaluation and storage of the results.
+            return typedProjectors.ToAsyncEnumerable().SelectMany(projector => projector.ProjectAsync(source, serviceProvider, cancellation));
         }
 
         private interface ITypedProjector
         {
-            Task<IEnumerable<IProjectionResult>> ProjectAsync(object source,
-                                                              IServiceProvider serviceProvider,
-                                                              CancellationToken cancellation);
+            IAsyncEnumerable<IProjectionResult> ProjectAsync(object source,
+                                                             IServiceProvider serviceProvider,
+                                                             CancellationToken cancellation);
 
             Type SourceType { get; }
-
             Type ProjectionType { get; }
         }
 
         private interface ITypedProjector<TSource> : ITypedProjector
             where TSource : class
         {
-            Task<IEnumerable<IProjectionResult>> ProjectAsync(TSource source,
-                                                              IServiceProvider serviceProvider,
-                                                              CancellationToken cancellation);
+            IAsyncEnumerable<IProjectionResult> ProjectAsync(TSource source,
+                                                             IServiceProvider serviceProvider,
+                                                             CancellationToken cancellation);
         }
 
         private interface ITypedProjector<TSource, TProjection> : ITypedProjector<TSource>
@@ -115,48 +98,30 @@ namespace AI4E.Storage.Projection
             public Type ProjectionType => typeof(TProjection);
 
             // There is no parallelism (with Task.WhenAll(projections.Select(...)) used because we cannot guarantee that it is allowed to access 'source' concurrently.
-            // TODO: But it is possible to change the return type to IAsyncEnumerable<IProjectionResult> and process each batch on access. 
-            //       This allows to remove the up-front evaluation and storage of the results.
-            public async Task<IEnumerable<IProjectionResult>> ProjectAsync(TSource source,
+            // But it is possible to change the return type to IAsyncEnumerable<IProjectionResult> and process each batch on access. 
+            // This allows to remove the up-front evaluation and storage of the results.
+            public IAsyncEnumerable<IProjectionResult> ProjectAsync(TSource source,
                                                                            IServiceProvider serviceProvider,
                                                                            CancellationToken cancellation)
             {
-                //Assert(source != null);
                 Assert(serviceProvider != null);
 
-                var result = new List<IProjectionResult<TProjectionId, TProjection>>();
-
-                foreach (var projectionProvider in _projections.Handlers)
+                IAsyncEnumerable<ProjectionResult<TProjectionId, TProjection>> ExecuteProjection(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
                 {
                     var projection = projectionProvider.ProvideInstance(serviceProvider);
 
-                    Assert(projection != null);
-
-                    if (projection.MultipleResults)
-                    {
-                        result.AddRange(await projection.ProjectMultipleAsync(source)
-                                                        .Where(p => p != null)
-                                                        .Select(p => new ProjectionResult<TProjectionId, TProjection>(p)));
-                    }
-                    else
-                    {
-                        var res = await projection.ProjectAsync(source);
-
-                        if (res != null)
-                        {
-                            result.Add(new ProjectionResult<TProjectionId, TProjection>(res));
-                        }
-                    }
+                    return projection.ProjectMultipleAsync(source)
+                                     .Where(p => p != null)
+                                     .Select(p => new ProjectionResult<TProjectionId, TProjection>(p));
                 }
 
-                return result;
+                return _projections.Handlers.ToAsyncEnumerable().SelectMany(ExecuteProjection);
             }
 
-            public Task<IEnumerable<IProjectionResult>> ProjectAsync(object source,
-                                                                     IServiceProvider serviceProvider,
-                                                                     CancellationToken cancellation)
+            public IAsyncEnumerable<IProjectionResult> ProjectAsync(object source,
+                                                                    IServiceProvider serviceProvider,
+                                                                    CancellationToken cancellation)
             {
-                //Assert(source != null);
                 Assert(source != null, source is TSource);
 
                 Assert(serviceProvider != null);
@@ -337,4 +302,6 @@ namespace AI4E.Storage.Projection
             }
         }
     }
+
+
 }
