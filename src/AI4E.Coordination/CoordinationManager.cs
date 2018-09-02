@@ -688,12 +688,22 @@ namespace AI4E.Coordination
                                                                                         bool releaseLock,
                                                                                         CancellationToken cancellation)
         {
+            Stopwatch watch = null;
+
+            if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+            {
+                watch = new Stopwatch();
+                watch.Start();
+            }
+
             Assert(modes >= 0 && modes <= EntryCreationModes.Ephemeral);
 
             var entry = _storedEntryManager.Create(path, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.Span);
             var parent = !path.IsRoot ? await _storage.GetEntryAsync(path.GetParentPath(), cancellation) : null;
 
             Assert(entry != null);
+
+            (IStoredEntry entry, bool created) createResult;
 
             try
             {
@@ -717,24 +727,17 @@ namespace AI4E.Coordination
                         }
 
                         var name = path.Segments.Last();
-                        var result = await _storage.UpdateEntryAsync(_storedEntryManager.AddChild(parent, name, session), parent, cancellation);
+                        var parentUpdateResult = await _storage.UpdateEntryAsync(_storedEntryManager.AddChild(parent, name, session), parent, cancellation);
 
                         // We are holding the exclusive lock => No one else can alter the entry.
                         // The only exception is that out session terminates.
-                        if (!AreVersionEqual(result, parent))
+                        if (!AreVersionEqual(parentUpdateResult, parent))
                         {
                             throw new SessionTerminatedException();
                         }
                     }
 
-                    var watch = new Stopwatch();
-                    watch.Start();
-                    var x = await CreateCoreAsync(entry, releaseLock, cancellation);
-                    watch.Stop();
-
-                    Console.WriteLine($"---> CreateCoreAsync took {watch.ElapsedMilliseconds}ms");
-
-                    return x;
+                    createResult = await CreateCoreAsync(entry, releaseLock, cancellation);
                 }
                 catch (SessionTerminatedException) { throw; }
                 catch
@@ -764,6 +767,22 @@ namespace AI4E.Coordination
 
                 throw;
             }
+
+            if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+            {
+                Assert(watch != null);
+                watch.Stop();
+
+                if (createResult.created)
+                {
+                    _logger.LogTrace($"Creating the entry '{path.EscapedPath}' in {watch.ElapsedMilliseconds}ms.");
+                }
+                else
+                {
+                    _logger.LogTrace($"Creating the entry '{path.EscapedPath}' failed. The path was already present. Operation took {watch.ElapsedMilliseconds}ms.");
+                }
+            }
+            return createResult;
         }
 
         private async Task<IStoredEntry> EnsureOwningParentWriteLock(IStoredEntry parent, CoordinationEntryPath parentPath, Session session, CancellationToken cancellation)
@@ -1173,8 +1192,12 @@ namespace AI4E.Coordination
 
         private async Task<IStoredEntry> AcquireReadLockAsync(IStoredEntry entry, CancellationToken cancellation)
         {
-            var watch = new Stopwatch();
-            watch.Start();
+            Stopwatch watch = null;
+            if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+            {
+                watch = new Stopwatch();
+                watch.Start();
+            }
 
             IStoredEntry start, desired;
 
@@ -1205,12 +1228,13 @@ namespace AI4E.Coordination
 
             Assert(entry != null);
 
-            watch.Stop();
+            if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+            {
+                Assert(watch != null);
+                watch.Stop();
 
-            //TODO: https://github.com/AI4E/AI4E/issues/38
-            Console.WriteLine($"[{await GetSessionAsync()}] Acquired read-lock for entry '{entry.Path}' in {watch.Elapsed.TotalSeconds}sec.");
-
-            _logger?.LogTrace($"[{await GetSessionAsync()}] Acquired read-lock for entry '{entry.Path}'.");
+                _logger?.LogTrace($"[{await GetSessionAsync()}] Acquired read-lock for entry '{entry.Path.EscapedPath}' in {watch.ElapsedMilliseconds}ms.");
+            }
 
             return desired;
         }
@@ -1252,7 +1276,13 @@ namespace AI4E.Coordination
 
         private async Task<IStoredEntry> AcquireWriteLockAsync(IStoredEntry entry, CancellationToken cancellation)
         {
-            var watch = new Stopwatch();
+            Stopwatch watch = null;
+            if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+            {
+                watch = new Stopwatch();
+                watch.Start();
+            }
+
             IStoredEntry start, desired;
 
             var session = await GetSessionAsync(cancellation);
@@ -1294,10 +1324,13 @@ namespace AI4E.Coordination
                 // We hold the write lock. No-one can alter the entry except our session is terminated. But this will cause WaitForReadLocksReleaseAsync to throw.
                 Assert(entry != null);
 
-                watch.Stop();
-                //TODO: https://github.com/AI4E/AI4E/issues/38
-                Console.WriteLine($"[{await GetSessionAsync()}] Acquired write-lock for entry '{entry.Path}' in {watch.Elapsed.TotalSeconds}sec.");
-                _logger?.LogTrace($"[{await GetSessionAsync()}] Acquired write-lock for entry '{entry.Path}'.");
+                if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+                {
+                    Assert(watch != null);
+                    watch.Stop();
+
+                    _logger?.LogTrace($"[{await GetSessionAsync()}] Acquired write-lock for entry '{entry.Path}' in {watch.Elapsed.TotalSeconds}sec.");
+                }
 
                 return entry;
             }
