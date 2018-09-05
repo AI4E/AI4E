@@ -28,36 +28,8 @@ namespace AI4E.Coordination
             _bytes = bytes;
         }
 
-        public ReadOnlyMemory<byte> Prefix
-        {
-            get
-            {
-                try
-                {
-                    return _bytes.Slice(start: 0, length: ReadInt32(_bytes.Span));
-                }
-                catch (Exception)
-                {
-                    throw;
-                }
-            }
-        }
-        public ReadOnlyMemory<byte> PhysicalAddress
-        {
-            get
-            {
-                try
-                {
-                    return _bytes.Slice(start: ReadInt32(_bytes.Span));
-
-                }
-                catch (Exception)
-                {
-                    throw;
-                }
-
-            }
-        }
+        public ReadOnlyMemory<byte> Prefix => _bytes.Slice(start: 4, length: ReadInt32(_bytes.Span));
+        public ReadOnlyMemory<byte> PhysicalAddress => _bytes.Slice(start: 4 + ReadInt32(_bytes.Span));
 
         public bool Equals(Session other)
         {
