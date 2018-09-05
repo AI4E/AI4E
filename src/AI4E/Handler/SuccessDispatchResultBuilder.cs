@@ -31,7 +31,7 @@ namespace AI4E.Handler
                 throw new ArgumentException("The argument must not be a generic type definition.", nameof(resultType));
 
             var type = _successDispatchResultTypeDefinition.MakeGenericType(resultType);
-            var ctor = _successDispatchResultTypeDefinition.GetConstructor(new Type[] { resultType });
+            var ctor = type.GetConstructor(new Type[] { resultType });
 
             Debug.Assert(ctor != null);
 

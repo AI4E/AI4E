@@ -5,21 +5,36 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Handler
 {
     public static class TypeIntrospector
     {
+        private static readonly Type[] _singleActionParameter = new[] { typeof(Action) };
         private static readonly ParameterModifier[] _emptyParameterModifiers = new ParameterModifier[0];
-        private static readonly ConcurrentDictionary<Type, TypeDescriptor> _cache
-            = new ConcurrentDictionary<Type, TypeDescriptor>();
+        private static readonly ConcurrentDictionary<Type, TypeDescriptor> _cache;
+        private static readonly MethodInfo _notifyCompletionOnCompletedMethod;
+
+        static TypeIntrospector()
+        {
+            _notifyCompletionOnCompletedMethod = typeof(INotifyCompletion).GetMethod(nameof(INotifyCompletion.OnCompleted),
+                                                                                     BindingFlags.Instance | BindingFlags.Public,
+                                                                                     Type.DefaultBinder,
+                                                                                     _singleActionParameter,
+                                                                                     _emptyParameterModifiers);
+
+            _cache = new ConcurrentDictionary<Type, TypeDescriptor>();
+        }
 
         public static TypeDescriptor GetTypeDescriptor(Type type)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            return _cache.GetOrAdd(type, BuildTypeDescriptor);
+            var result = _cache.GetOrAdd(type, BuildTypeDescriptor);
+            Assert(result != null);
+            return result;
         }
 
         private static TypeDescriptor BuildTypeDescriptor(Type type)
@@ -34,19 +49,19 @@ namespace AI4E.Handler
 
             if (awaiterMethod == null)
             {
-                return default;
+                return new TypeDescriptor(type);
             }
 
             var awaiterType = awaiterMethod.ReturnType;
 
             if (awaiterType == typeof(void))
             {
-                return default;
+                return new TypeDescriptor(type); ;
             }
 
             if (!awaiterType.GetInterfaces().Any(p => p == typeof(INotifyCompletion)))
             {
-                return default;
+                return new TypeDescriptor(type); ;
             }
 
             var isCompletedProperty = awaiterType.GetProperty(nameof(TaskAwaiter.IsCompleted),
@@ -58,7 +73,7 @@ namespace AI4E.Handler
 
             if (isCompletedProperty == null)
             {
-                return default;
+                return new TypeDescriptor(type); ;
             }
 
             var getResultMethod = awaiterType.GetMethod(nameof(TaskAwaiter.GetResult),
@@ -69,7 +84,7 @@ namespace AI4E.Handler
 
             if (getResultMethod == null)
             {
-                return default;
+                return new TypeDescriptor(type); ;
             }
 
             var resultType = getResultMethod.ReturnType;
@@ -77,7 +92,7 @@ namespace AI4E.Handler
             var instance = Expression.Parameter(typeof(object), "instance");
             var convertedInstance = Expression.Convert(instance, type);
             var getAwaiterCall = Expression.Call(convertedInstance, awaiterMethod);
-            var compiledGetAwaiterCall = Expression.Lambda<Func<object, object>>(getAwaiterCall, instance).Compile();
+            var compiledGetAwaiterCall = Expression.Lambda<Func<object, object>>(Expression.Convert(getAwaiterCall, typeof(object)), instance).Compile();
 
             var awaiter = Expression.Parameter(typeof(object), "awaiter");
             var convertedAwaiter = Expression.Convert(awaiter, awaiterType);
@@ -94,14 +109,14 @@ namespace AI4E.Handler
             }
             else
             {
-                compiledGetResultCall = Expression.Lambda<Func<object, object>>(getResultCall, awaiter).Compile();
+                compiledGetResultCall = Expression.Lambda<Func<object, object>>(Expression.Convert(getResultCall, typeof(object)), awaiter).Compile();
             }
 
             // We search for an implicit interface implementation to prevent boxing for the case the type is a value type.
             var onCompletedMethod = awaiterType.GetMethod(nameof(INotifyCompletion.OnCompleted),
                                                           BindingFlags.Instance | BindingFlags.Public,
                                                           Type.DefaultBinder,
-                                                          Type.EmptyTypes,
+                                                          _singleActionParameter,
                                                           _emptyParameterModifiers);
 
             Action<object, Action> compiledOnCompletedCall;
@@ -109,19 +124,17 @@ namespace AI4E.Handler
 
             if (onCompletedMethod == null)
             {
-                onCompletedMethod = typeof(INotifyCompletion).GetMethod(nameof(INotifyCompletion.OnCompleted),
-                                                                        BindingFlags.Instance | BindingFlags.Public,
-                                                                        Type.DefaultBinder,
-                                                                        Type.EmptyTypes,
-                                                                        _emptyParameterModifiers);
+                onCompletedMethod = _notifyCompletionOnCompletedMethod;
+
+                Assert(onCompletedMethod != null);
 
                 var convertedToInterfaceAwaiter = Expression.Convert(awaiter, typeof(INotifyCompletion));
-                var onCompletedMethodCall = Expression.Call(convertedToInterfaceAwaiter, onCompletedMethod);
+                var onCompletedMethodCall = Expression.Call(convertedToInterfaceAwaiter, onCompletedMethod, continuationParameter);
                 compiledOnCompletedCall = Expression.Lambda<Action<object, Action>>(onCompletedMethodCall, awaiter, continuationParameter).Compile();
             }
             else
             {
-                var onCompletedMethodCall = Expression.Call(convertedAwaiter, onCompletedMethod);
+                var onCompletedMethodCall = Expression.Call(convertedAwaiter, onCompletedMethod, continuationParameter);
                 compiledOnCompletedCall = Expression.Lambda<Action<object, Action>>(onCompletedMethodCall, awaiter, continuationParameter).Compile();
             }
 

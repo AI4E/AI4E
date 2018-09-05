@@ -42,7 +42,8 @@ namespace AI4E.Handler
             {
                 var processor = _processors[i].ProvideInstance(_serviceProvider);
                 Assert(processor != null);
-                next = (alteredMessage => InvokeProcessorAsync(processor, alteredMessage, dispatchValues, next, cancellation));
+                var nextCopy = next; // This is needed because of the way, the variable values are captured in the lambda expression.
+                next = (alteredMessage => InvokeProcessorAsync(processor, alteredMessage, dispatchValues, nextCopy, cancellation));
             }
 
             return next(message);

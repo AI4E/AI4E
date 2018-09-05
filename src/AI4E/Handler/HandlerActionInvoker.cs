@@ -108,7 +108,7 @@ namespace AI4E.Handler
                 }
                 else
                 {
-                    var expression = Expression.Lambda<Func<object, object>>(methodCall, instance);
+                    var expression = Expression.Lambda<Func<object, object>>(Expression.Convert(methodCall, typeof(object)), instance);
                     var compiledExpression = expression.Compile();
 
                     return (instace, firstArg, paramResolver) => compiledExpression(instance);
@@ -124,7 +124,7 @@ namespace AI4E.Handler
                 var parameterResolver = Expression.Parameter(typeof(Func<ParameterInfo, object>), "parameterResolver");
 
                 var arguments = new Expression[parameters.Length];
-                arguments[0] = firstArgument;
+                arguments[0] = convertedFirstArgument;
 
                 for (var i = 1; i < arguments.Length; i++)
                 {
@@ -145,7 +145,7 @@ namespace AI4E.Handler
                 }
                 else
                 {
-                    var expression = Expression.Lambda<Func<object, object, Func<ParameterInfo, object>, object>>(methodCall, instance);
+                    var expression = Expression.Lambda<Func<object, object, Func<ParameterInfo, object>, object>>(Expression.Convert(methodCall, typeof(object)), instance, firstArgument, parameterResolver);
                     return expression.Compile();
                 }
             }
