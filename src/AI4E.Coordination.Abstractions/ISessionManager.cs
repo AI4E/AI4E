@@ -27,17 +27,17 @@ namespace AI4E.Coordination
 {
     public interface ISessionManager
     {
-        Task<bool> TryBeginSessionAsync(string session, DateTime leaseEnd, CancellationToken cancellation = default);
+        Task<bool> TryBeginSessionAsync(Session session, DateTime leaseEnd, CancellationToken cancellation = default);
 
-        Task UpdateSessionAsync(string session, DateTime leaseEnd, CancellationToken cancellation = default);
+        Task UpdateSessionAsync(Session session, DateTime leaseEnd, CancellationToken cancellation = default);
 
-        Task AddSessionEntryAsync(string session, CoordinationEntryPath entryPath, CancellationToken cancellation = default);
-        Task RemoveSessionEntryAsync(string session, CoordinationEntryPath entryPath, CancellationToken cancellation = default);
-        Task<IEnumerable<CoordinationEntryPath>> GetEntriesAsync(string session, CancellationToken cancellation = default);
+        Task AddSessionEntryAsync(Session session, CoordinationEntryPath entryPath, CancellationToken cancellation = default);
+        Task RemoveSessionEntryAsync(Session session, CoordinationEntryPath entryPath, CancellationToken cancellation = default);
+        Task<IEnumerable<CoordinationEntryPath>> GetEntriesAsync(Session session, CancellationToken cancellation = default);
 
-        Task EndSessionAsync(string session, CancellationToken cancellation = default);
+        Task EndSessionAsync(Session session, CancellationToken cancellation = default);
 
-        Task WaitForTerminationAsync(string session, CancellationToken cancellation = default);
+        Task WaitForTerminationAsync(Session session, CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously await a session to terminate and provides the terminated sessions identifier.
@@ -48,10 +48,10 @@ namespace AI4E.Coordination
         /// When evaluated, the tasks result contains the identifier of the the terminated session.
         /// </returns>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
-        Task<string> WaitForTerminationAsync(CancellationToken cancellation = default);
+        Task<Session> WaitForTerminationAsync(CancellationToken cancellation = default);
 
-        Task<bool> IsAliveAsync(string session, CancellationToken cancellation = default);
+        Task<bool> IsAliveAsync(Session session, CancellationToken cancellation = default);
 
-        Task<IEnumerable<string>> GetSessionsAsync(CancellationToken cancellation = default);
+        Task<IEnumerable<Session>> GetSessionsAsync(CancellationToken cancellation = default);
     }
 }

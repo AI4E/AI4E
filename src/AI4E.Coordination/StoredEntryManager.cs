@@ -6,7 +6,7 @@ namespace AI4E.Coordination
 {
     public sealed class StoredEntryManager : IStoredEntryManager
     {
-        private static readonly ImmutableArray<string> _noReadLocks = ImmutableArray<string>.Empty;
+        private static readonly ImmutableArray<Session> _noReadLocks = ImmutableArray<Session>.Empty;
         private static readonly ImmutableList<CoordinationEntryPathSegment> _noChilds = ImmutableList<CoordinationEntryPathSegment>.Empty;
 
         private readonly IDateTimeProvider _dateTimeProvider;
@@ -27,7 +27,7 @@ namespace AI4E.Coordination
             return storedEntry as StoredEntry ?? new StoredEntry(storedEntry);
         }
 
-        public IStoredEntry Create(CoordinationEntryPath path, string session, bool isEphemeral, ReadOnlySpan<byte> value)
+        public IStoredEntry Create(CoordinationEntryPath path, Session session, bool isEphemeral, ReadOnlySpan<byte> value)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -44,12 +44,12 @@ namespace AI4E.Coordination
                                    _noChilds,
                                    version: 1,
                                    storageVersion: 1,
-                                   ephemeralOwner: isEphemeral ? session : null,
+                                   ephemeralOwner: isEphemeral ? session : default(Session?),
                                    currentTime,
                                    currentTime);
         }
 
-        public IStoredEntry AcquireWriteLock(IStoredEntry storedEntry, string session)
+        public IStoredEntry AcquireWriteLock(IStoredEntry storedEntry, Session session)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
@@ -75,13 +75,16 @@ namespace AI4E.Coordination
                                    storedEntry.LastWriteTime);
         }
 
-        public IStoredEntry ReleaseWriteLock(IStoredEntry storedEntry)
+        public IStoredEntry ReleaseWriteLock(IStoredEntry storedEntry, Session session)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
 
             if (storedEntry.WriteLock == null)
                 return null;
+
+            if (storedEntry.WriteLock != session)
+                throw new InvalidOperationException();
 
             // We cannot check this here, as this is called when the session that holds write-lock is terminates too.
             // In this case, there may be read-locks present.
@@ -100,7 +103,7 @@ namespace AI4E.Coordination
                                    storedEntry.LastWriteTime);
         }
 
-        public IStoredEntry AcquireReadLock(IStoredEntry storedEntry, string session)
+        public IStoredEntry AcquireReadLock(IStoredEntry storedEntry, Session session)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
@@ -126,7 +129,7 @@ namespace AI4E.Coordination
                                    storedEntry.LastWriteTime);
         }
 
-        public IStoredEntry ReleaseReadLock(IStoredEntry storedEntry, string session)
+        public IStoredEntry ReleaseReadLock(IStoredEntry storedEntry, Session session)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
@@ -149,7 +152,7 @@ namespace AI4E.Coordination
                                    storedEntry.LastWriteTime);
         }
 
-        public IStoredEntry Remove(IStoredEntry storedEntry, string session)
+        public IStoredEntry Remove(IStoredEntry storedEntry, Session session)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
@@ -166,7 +169,7 @@ namespace AI4E.Coordination
             return null;
         }
 
-        public IStoredEntry SetValue(IStoredEntry storedEntry, ReadOnlySpan<byte> value, string session)
+        public IStoredEntry SetValue(IStoredEntry storedEntry, ReadOnlySpan<byte> value, Session session)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
@@ -199,7 +202,7 @@ namespace AI4E.Coordination
                                    writeTime);
         }
 
-        public IStoredEntry AddChild(IStoredEntry storedEntry, CoordinationEntryPathSegment child, string session)
+        public IStoredEntry AddChild(IStoredEntry storedEntry, CoordinationEntryPathSegment child, Session session)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
@@ -231,7 +234,7 @@ namespace AI4E.Coordination
                                    storedEntry.LastWriteTime);
         }
 
-        public IStoredEntry RemoveChild(IStoredEntry storedEntry, CoordinationEntryPathSegment child, string session)
+        public IStoredEntry RemoveChild(IStoredEntry storedEntry, CoordinationEntryPathSegment child, Session session)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));
@@ -281,12 +284,12 @@ namespace AI4E.Coordination
 
             public StoredEntry(CoordinationEntryPath path,
                                ReadOnlyMemory<byte> value,
-                               ImmutableArray<string> readLocks,
-                               string writeLock,
+                               ImmutableArray<Session> readLocks,
+                               Session? writeLock,
                                ImmutableList<CoordinationEntryPathSegment> children,
                                int version,
                                int storageVersion,
-                               string ephemeralOwner,
+                               Session? ephemeralOwner,
                                DateTime creationTime,
                                DateTime lastWriteTime)
             {
@@ -306,9 +309,9 @@ namespace AI4E.Coordination
 
             public ReadOnlyMemory<byte> Value { get; }
 
-            public ImmutableArray<string> ReadLocks { get; }
+            public ImmutableArray<Session> ReadLocks { get; }
 
-            public string WriteLock { get; }
+            public Session? WriteLock { get; }
 
             public DateTime CreationTime { get; }
 
@@ -318,7 +321,7 @@ namespace AI4E.Coordination
 
             public int Version { get; }
 
-            public string EphemeralOwner { get; }
+            public Session? EphemeralOwner { get; }
 
             public int StorageVersion { get; }
         }

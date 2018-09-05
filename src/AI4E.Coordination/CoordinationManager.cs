@@ -38,7 +38,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -60,7 +59,6 @@ namespace AI4E.Coordination
     {
         #region Fields
 
-        private static readonly ImmutableArray<byte> _emptyValue = ImmutableArray<byte>.Empty;
         private static readonly TimeSpan _leaseLength =
 #if DEBUG
         TimeSpan.FromSeconds(30);
@@ -79,13 +77,13 @@ namespace AI4E.Coordination
         private readonly ILogger<CoordinationManager<TAddress>> _logger;
 
         private readonly ConcurrentDictionary<CoordinationEntryPath, CacheEntry> _cache;
-        private readonly WaitDirectory<(string session, CoordinationEntryPath path)> _readLockWaitDirectory;
-        private readonly WaitDirectory<(string session, CoordinationEntryPath path)> _writeLockWaitDirectory;
+        private readonly WaitDirectory<(Session session, CoordinationEntryPath path)> _readLockWaitDirectory;
+        private readonly WaitDirectory<(Session session, CoordinationEntryPath path)> _writeLockWaitDirectory;
 
         private readonly IAsyncProcess _updateSessionProcess;
         private readonly IAsyncProcess _sessionCleanupProcess;
         private readonly IAsyncProcess _receiveProcess;
-        private readonly AsyncInitializationHelper<(string session, IPhysicalEndPoint<TAddress> physicalEndPoint)> _initializationHelper;
+        private readonly AsyncInitializationHelper<(Session session, IPhysicalEndPoint<TAddress> physicalEndPoint)> _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
         #endregion
@@ -132,13 +130,13 @@ namespace AI4E.Coordination
             _logger = logger;
 
             _cache = new ConcurrentDictionary<CoordinationEntryPath, CacheEntry>();
-            _readLockWaitDirectory = new WaitDirectory<(string session, CoordinationEntryPath path)>();
-            _writeLockWaitDirectory = new WaitDirectory<(string session, CoordinationEntryPath path)>();
+            _readLockWaitDirectory = new WaitDirectory<(Session session, CoordinationEntryPath path)>();
+            _writeLockWaitDirectory = new WaitDirectory<(Session session, CoordinationEntryPath path)>();
 
             _updateSessionProcess = new AsyncProcess(UpdateSessionProcess);
             _sessionCleanupProcess = new AsyncProcess(SessionCleanupProcess);
             _receiveProcess = new AsyncProcess(ReceiveProcess);
-            _initializationHelper = new AsyncInitializationHelper<(string session, IPhysicalEndPoint<TAddress> physicalEndPoint)>(InitializeInternalAsync);
+            _initializationHelper = new AsyncInitializationHelper<(Session session, IPhysicalEndPoint<TAddress> physicalEndPoint)>(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
@@ -165,7 +163,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task HandleMessageAsync(IMessage message, MessageType messageType, CoordinationEntryPath path, string session, CancellationToken cancellation)
+        private async Task HandleMessageAsync(IMessage message, MessageType messageType, CoordinationEntryPath path, Session session, CancellationToken cancellation)
         {
             switch (messageType)
             {
@@ -204,7 +202,7 @@ namespace AI4E.Coordination
             return await physicalEndPoint.ReceiveAsync(cancellation);
         }
 
-        private async Task InvalidateCacheEntryAsync(CoordinationEntryPath path, string session, CancellationToken cancellation)
+        private async Task InvalidateCacheEntryAsync(CoordinationEntryPath path, Session session, CancellationToken cancellation)
         {
             if (session == await GetSessionAsync(cancellation))
             {
@@ -261,9 +259,9 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task SendMessageAsync(string session, Message message, CancellationToken cancellation)
+        private async Task SendMessageAsync(Session session, Message message, CancellationToken cancellation)
         {
-            var remoteAddress = SessionHelper.GetAddressFromSession(session, _addressConversion);
+            var remoteAddress = _addressConversion.DeserializeAddress(session.PhysicalAddress.ToArray()); // TODO: This will copy everything to a new aray
 
             Assert(remoteAddress != null);
 
@@ -278,7 +276,7 @@ namespace AI4E.Coordination
 
         }
 
-        private IPhysicalEndPoint<TAddress> GetSessionEndPoint(string session)
+        private IPhysicalEndPoint<TAddress> GetSessionEndPoint(Session session)
         {
             Assert(session != null);
 
@@ -291,12 +289,12 @@ namespace AI4E.Coordination
             return result;
         }
 
-        private static string GetMultiplexEndPointName(string session)
+        private static string GetMultiplexEndPointName(Session session)
         {
-            return "coord/" + session;
+            return "coord/" + session.ToCompactString();
         }
 
-        private (MessageType messageType, CoordinationEntryPath path, string session) DecodeMessage(IMessage message)
+        private (MessageType messageType, CoordinationEntryPath path, Session session) DecodeMessage(IMessage message)
         {
             Assert(message != null);
 
@@ -310,13 +308,13 @@ namespace AI4E.Coordination
 
                 var sessionLength = binaryReader.ReadInt32();
                 var sessionBytes = binaryReader.ReadBytes(sessionLength);
-                var session = Encoding.UTF8.GetString(sessionBytes);
+                var session = Session.FromChars(Encoding.UTF8.GetString(sessionBytes).AsSpan());
 
                 return (messageType, path, session);
             }
         }
 
-        private Message EncodeMessage(MessageType messageType, CoordinationEntryPath path, string session)
+        private Message EncodeMessage(MessageType messageType, CoordinationEntryPath path, Session session)
         {
             var message = new Message();
 
@@ -325,7 +323,7 @@ namespace AI4E.Coordination
             return message;
         }
 
-        private void EncodeMessage(IMessage message, MessageType messageType, CoordinationEntryPath path, string session)
+        private void EncodeMessage(IMessage message, MessageType messageType, CoordinationEntryPath path, Session session)
         {
             Assert(message != null);
             // Modify if other message types are added
@@ -338,7 +336,7 @@ namespace AI4E.Coordination
 
                 binaryWriter.WriteUtf8(path.EscapedPath.Span);
 
-                var sessionBytes = Encoding.UTF8.GetBytes(session);
+                var sessionBytes = Encoding.UTF8.GetBytes(session.ToCompactString());
                 binaryWriter.Write(sessionBytes.Length);
                 binaryWriter.Write(sessionBytes);
             }
@@ -411,7 +409,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task UpdateSessionAsync(string session, CancellationToken cancellation)
+        private async Task UpdateSessionAsync(Session session, CancellationToken cancellation)
         {
             Assert(session != null);
 
@@ -433,7 +431,7 @@ namespace AI4E.Coordination
 
         #region Initialization
 
-        public async ValueTask<string> GetSessionAsync(CancellationToken cancellation = default)
+        public async ValueTask<Session> GetSessionAsync(CancellationToken cancellation = default)
         {
             var (session, _) = await _initializationHelper.Initialization.WithCancellation(cancellation);
 
@@ -447,9 +445,9 @@ namespace AI4E.Coordination
             return physicalEndPoint;
         }
 
-        private async Task<(string session, IPhysicalEndPoint<TAddress> physicalEndPoint)> InitializeInternalAsync(CancellationToken cancellation)
+        private async Task<(Session session, IPhysicalEndPoint<TAddress> physicalEndPoint)> InitializeInternalAsync(CancellationToken cancellation)
         {
-            string session;
+            Session session;
 
             do
             {
@@ -685,17 +683,27 @@ namespace AI4E.Coordination
 
         private async ValueTask<(IStoredEntry entry, bool created)> CreateInternalAsync(CoordinationEntryPath path,
                                                                                         ReadOnlyMemory<byte> value,
-                                                                                        string session,
+                                                                                        Session session,
                                                                                         EntryCreationModes modes,
                                                                                         bool releaseLock,
                                                                                         CancellationToken cancellation)
         {
+            Stopwatch watch = null;
+
+            if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+            {
+                watch = new Stopwatch();
+                watch.Start();
+            }
+
             Assert(modes >= 0 && modes <= EntryCreationModes.Ephemeral);
 
             var entry = _storedEntryManager.Create(path, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.Span);
             var parent = !path.IsRoot ? await _storage.GetEntryAsync(path.GetParentPath(), cancellation) : null;
 
             Assert(entry != null);
+
+            (IStoredEntry entry, bool created) createResult;
 
             try
             {
@@ -719,24 +727,17 @@ namespace AI4E.Coordination
                         }
 
                         var name = path.Segments.Last();
-                        var result = await _storage.UpdateEntryAsync(_storedEntryManager.AddChild(parent, name, session), parent, cancellation);
+                        var parentUpdateResult = await _storage.UpdateEntryAsync(_storedEntryManager.AddChild(parent, name, session), parent, cancellation);
 
                         // We are holding the exclusive lock => No one else can alter the entry.
                         // The only exception is that out session terminates.
-                        if (!AreVersionEqual(result, parent))
+                        if (!AreVersionEqual(parentUpdateResult, parent))
                         {
                             throw new SessionTerminatedException();
                         }
                     }
 
-                    var watch = new Stopwatch();
-                    watch.Start();
-                    var x = await CreateCoreAsync(entry, releaseLock, cancellation);
-                    watch.Stop();
-
-                    Console.WriteLine($"---> CreateCoreAsync took {watch.ElapsedMilliseconds}ms");
-
-                    return x;
+                    createResult = await CreateCoreAsync(entry, releaseLock, cancellation);
                 }
                 catch (SessionTerminatedException) { throw; }
                 catch
@@ -766,9 +767,25 @@ namespace AI4E.Coordination
 
                 throw;
             }
+
+            if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+            {
+                Assert(watch != null);
+                watch.Stop();
+
+                if (createResult.created)
+                {
+                    _logger.LogTrace($"Creating the entry '{path.EscapedPath}' in {watch.ElapsedMilliseconds}ms.");
+                }
+                else
+                {
+                    _logger.LogTrace($"Creating the entry '{path.EscapedPath}' failed. The path was already present. Operation took {watch.ElapsedMilliseconds}ms.");
+                }
+            }
+            return createResult;
         }
 
-        private async Task<IStoredEntry> EnsureOwningParentWriteLock(IStoredEntry parent, CoordinationEntryPath parentPath, string session, CancellationToken cancellation)
+        private async Task<IStoredEntry> EnsureOwningParentWriteLock(IStoredEntry parent, CoordinationEntryPath parentPath, Session session, CancellationToken cancellation)
         {
             while (true)
             {
@@ -929,7 +946,14 @@ namespace AI4E.Coordination
 
                     try
                     {
-                        entry = await AcquireWriteLockAsync(entry, combinedCancellationSource.Token);
+                        bool deleted;
+
+                        (entry, deleted) = await DeleteCoreAsync(entry, session, version, recursive, cancellation);
+
+                        // If we did not specify a version, there are two possible cases:
+                        // * The call must succeeded
+                        // * The entry was not present (already deleted)
+                        Assert(version != 0 || deleted || entry == null);
 
                         // The entry is not existing.
                         if (entry == null)
@@ -937,24 +961,9 @@ namespace AI4E.Coordination
                             return 0;
                         }
 
-                        if (version != default && entry.Version != version)
+                        if (!deleted)
                         {
                             return entry.Version;
-                        }
-
-                        // Delete the entry
-                        {
-                            var result = await _storage.UpdateEntryAsync(_storedEntryManager.Remove(entry, session), entry, combinedCancellationSource.Token);
-
-                            // We are holding the exclusive lock => No one else can alter the entry.
-                            // The only exception is that our session terminates.
-                            if (!AreVersionEqual(result, entry))
-                            {
-                                throw new SessionTerminatedException();
-                            }
-
-                            _cache.TryRemove(entry.Path, out _);
-                            entry = null;
                         }
 
                         try
@@ -994,6 +1003,82 @@ namespace AI4E.Coordination
                     await ReleaseWriteLockAsync(parent);
                 }
             }
+        }
+
+        // Deleted an entry without checking the input params and without locking the dispose lock.
+        // The operation performs a recursive operation if the recursive parameter is true, throws an exception otherwise if there are child entries present.
+        // The operation ensured consistency by locking the entry.
+        // Return values:
+        // entry: null if the delete operation succeeded or if the entry is not present
+        // deleted: true, if the operation succeeded, false otherwise. Check the entry result in this case.
+        private async Task<(IStoredEntry entry, bool deleted)> DeleteCoreAsync(IStoredEntry entry, Session session, int version, bool recursive, CancellationToken cancellation)
+        {
+            entry = await AcquireWriteLockAsync(entry, cancellation);
+
+            // The entry is not existing.
+            if (entry == null)
+            {
+                return default;
+            }
+
+            if (version != default && entry.Version != version)
+            {
+                return (entry, deleted: false);
+            }
+
+            // Check whether there are child entries
+            // It is important that all coordination manager instances handle the recursive operation in the same oder
+            // (they must process all children in the exact same order) to prevent dead-lock situations.
+            foreach (var childName in entry.Children)
+            {
+                // Recursively delete all child entries. 
+                // The delete operation is not required to remove the child name entry in the parent entry, as the parent entry is  to be deleted anyway.
+                // In the case that we cannot proceed (our session terminates f.e.), we do not guarantee that the child names collection is strongly consistent anyway.
+
+                // First load the child entry.
+                var childPath = entry.Path.GetChildPath(childName);
+                var child = await _storage.GetEntryAsync(childPath, cancellation);
+
+                // The child-names collection is not guaranteed to be strongly consistent.
+                if (child == null)
+                {
+                    continue;
+                }
+
+                // Check whether we allow recursive delete operation.
+                // This cannot be done upfront, 
+                // as the child-names collection is not guaranteed to be strongly consistent.
+                // The child names collection may contain child names but the childs are not present actually.
+                // => We check for the recursive option if we find any child that is present actually.
+                if (!recursive)
+                {
+                    throw new InvalidOperationException("An entry that contains child entries cannot be deleted.");
+                }
+
+                bool deleted;
+                (child, deleted) = await DeleteCoreAsync(child, session, version: default, recursive: true, cancellation);
+
+                // As we did not specify a version, the call must succeed.
+                Assert(deleted);
+                Assert(child == null);
+            }
+
+            // Delete the entry
+            var result = await _storage.UpdateEntryAsync(_storedEntryManager.Remove(entry, session), entry, cancellation);
+
+            // We are holding the exclusive lock => No one else can alter the entry.
+            // The only exception is that our session terminates.
+            if (!AreVersionEqual(result, entry))
+            {
+                throw new SessionTerminatedException();
+            }
+
+            // We must remove the entry from the cache by ourselves here, 
+            // as we do allow the session to hold a read-lock and a write-lock at the same time 
+            // and hence do not wipe the entry from the cache on write lock acquirement.
+            _cache.TryRemove(entry.Path, out _);
+
+            return (entry: null, deleted: true);
         }
 
         #endregion
@@ -1175,8 +1260,12 @@ namespace AI4E.Coordination
 
         private async Task<IStoredEntry> AcquireReadLockAsync(IStoredEntry entry, CancellationToken cancellation)
         {
-            var watch = new Stopwatch();
-            watch.Start();
+            Stopwatch watch = null;
+            if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+            {
+                watch = new Stopwatch();
+                watch.Start();
+            }
 
             IStoredEntry start, desired;
 
@@ -1207,12 +1296,13 @@ namespace AI4E.Coordination
 
             Assert(entry != null);
 
-            watch.Stop();
+            if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+            {
+                Assert(watch != null);
+                watch.Stop();
 
-            //TODO: https://github.com/AI4E/AI4E/issues/38
-            Console.WriteLine($"[{await GetSessionAsync()}] Acquired read-lock for entry '{entry.Path}' in {watch.Elapsed.TotalSeconds}sec.");
-
-            _logger?.LogTrace($"[{await GetSessionAsync()}] Acquired read-lock for entry '{entry.Path}'.");
+                _logger?.LogTrace($"[{await GetSessionAsync()}] Acquired read-lock for entry '{entry.Path.EscapedPath}' in {watch.ElapsedMilliseconds}ms.");
+            }
 
             return desired;
         }
@@ -1254,7 +1344,13 @@ namespace AI4E.Coordination
 
         private async Task<IStoredEntry> AcquireWriteLockAsync(IStoredEntry entry, CancellationToken cancellation)
         {
-            var watch = new Stopwatch();
+            Stopwatch watch = null;
+            if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+            {
+                watch = new Stopwatch();
+                watch.Start();
+            }
+
             IStoredEntry start, desired;
 
             var session = await GetSessionAsync(cancellation);
@@ -1296,10 +1392,13 @@ namespace AI4E.Coordination
                 // We hold the write lock. No-one can alter the entry except our session is terminated. But this will cause WaitForReadLocksReleaseAsync to throw.
                 Assert(entry != null);
 
-                watch.Stop();
-                //TODO: https://github.com/AI4E/AI4E/issues/38
-                Console.WriteLine($"[{await GetSessionAsync()}] Acquired write-lock for entry '{entry.Path}' in {watch.Elapsed.TotalSeconds}sec.");
-                _logger?.LogTrace($"[{await GetSessionAsync()}] Acquired write-lock for entry '{entry.Path}'.");
+                if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+                {
+                    Assert(watch != null);
+                    watch.Stop();
+
+                    _logger?.LogTrace($"[{await GetSessionAsync()}] Acquired write-lock for entry '{entry.Path}' in {watch.Elapsed.TotalSeconds}sec.");
+                }
 
                 return entry;
             }
@@ -1344,7 +1443,7 @@ namespace AI4E.Coordination
                     cacheVersion = cacheEntry.Version;
                 }
 
-                desired = _storedEntryManager.ReleaseWriteLock(start);
+                desired = _storedEntryManager.ReleaseWriteLock(start, session);
 
                 entry = await _storage.UpdateEntryAsync(desired, start, cancellation: _disposeHelper.DisposalRequested);
             }
@@ -1399,7 +1498,7 @@ namespace AI4E.Coordination
 
                 Task Release(CancellationToken c)
                 {
-                    return _writeLockWaitDirectory.WaitForNotification((writeLock, path), c);
+                    return _writeLockWaitDirectory.WaitForNotification(((Session)writeLock, path), c);
                 }
 
                 var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
@@ -1408,12 +1507,12 @@ namespace AI4E.Coordination
 
                 {
                     var lockRelease = SpinWaitAsync(Predicate, Release, combinedCancellationSource.Token);
-                    var sessionTermination = _sessionManager.WaitForTerminationAsync(writeLock);
+                    var sessionTermination = _sessionManager.WaitForTerminationAsync((Session)writeLock);
                     var completed = await (Task.WhenAny(sessionTermination, lockRelease).WithCancellation(cancellation));
 
                     if (completed == sessionTermination)
                     {
-                        await CleanupLocksOnSessionTermination(path, writeLock, cancellation);
+                        await CleanupLocksOnSessionTermination(path, (Session)writeLock, cancellation);
                         entry = await _storage.GetEntryAsync(path, cancellation);
                     }
                 }
@@ -1435,7 +1534,7 @@ namespace AI4E.Coordination
                 _logger?.LogTrace($"[{await GetSessionAsync()}] Waiting for read-locks release for entry '{entry.Path}'.");
             }
 
-            IEnumerable<string> readLocks = entry.ReadLocks;
+            IEnumerable<Session> readLocks = entry.ReadLocks;
 
             // Exclude our own read-lock (if present)
             var session = await GetSessionAsync(cancellation);
@@ -1456,7 +1555,7 @@ namespace AI4E.Coordination
             return entry;
         }
 
-        private async Task CleanupLocksOnSessionTermination(CoordinationEntryPath path, string session, CancellationToken cancellation)
+        private async Task CleanupLocksOnSessionTermination(CoordinationEntryPath path, Session session, CancellationToken cancellation)
         {
 #if DEBUG
             var isTerminated = !await _sessionManager.IsAliveAsync(session, cancellation);
@@ -1491,7 +1590,7 @@ namespace AI4E.Coordination
 
                 if (entry.WriteLock == session)
                 {
-                    desired = _storedEntryManager.ReleaseWriteLock(desired);
+                    desired = _storedEntryManager.ReleaseWriteLock(desired, session);
                 }
 
                 if (entry.ReadLocks.Contains(session))
@@ -1509,22 +1608,29 @@ namespace AI4E.Coordination
             while (start != entry);
         }
 
-        private async Task CleanupSessionAsync(string session, CancellationToken cancellation)
+        private async Task CleanupSessionAsync(Session session, CancellationToken cancellation)
         {
             _logger?.LogInformation($"[{await GetSessionAsync()}] Cleaning up session '{session}'.");
 
             var entries = await _sessionManager.GetEntriesAsync(session, cancellation);
 
-            await Task.WhenAll(entries.Select(async entry =>
+            try
             {
-                await DeleteAsync(entry, version: default, recursive: false, cancellation);
-                await _sessionManager.RemoveSessionEntryAsync(session, entry, cancellation);
-            }));
+                await Task.WhenAll(entries.Select(async entry =>
+                          {
+                              await DeleteAsync(entry, version: default, recursive: false, cancellation);
+                              await _sessionManager.RemoveSessionEntryAsync(session, entry, cancellation);
+                          }));
+            }
+            catch (Exception exc)
+            {
+
+            }
 
             await _sessionManager.EndSessionAsync(session, cancellation);
         }
 
-        private async Task WaitForReadLockRelease(CoordinationEntryPath path, string session, CancellationToken cancellation)
+        private async Task WaitForReadLockRelease(CoordinationEntryPath path, Session session, CancellationToken cancellation)
         {
             var entry = await _storage.GetEntryAsync(path, cancellation);
 

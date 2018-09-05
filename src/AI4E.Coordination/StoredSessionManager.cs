@@ -26,12 +26,12 @@ namespace AI4E.Coordination
             return storedSession as StoredSession ?? new StoredSession(storedSession);
         }
 
-        public IStoredSession Begin(string key, DateTime leaseEnd)
+        public IStoredSession Begin(Session session, DateTime leaseEnd)
         {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
+            if (session == default)
+                throw new ArgumentDefaultException(nameof(session));
 
-            return new StoredSession(key,
+            return new StoredSession(session,
                                      isEnded: false,
                                      leaseEnd,
                                      _noEntries,
@@ -54,7 +54,7 @@ namespace AI4E.Coordination
             if (IsEnded(storedSession))
                 return storedSession;
 
-            return new StoredSession(storedSession.Key, isEnded: true, storedSession.LeaseEnd, storedSession.EntryPaths, storedSession.StorageVersion + 1);
+            return new StoredSession(storedSession.Session, isEnded: true, storedSession.LeaseEnd, storedSession.EntryPaths, storedSession.StorageVersion + 1);
         }
 
         public IStoredSession UpdateLease(IStoredSession storedSession, DateTime leaseEnd)
@@ -71,7 +71,7 @@ namespace AI4E.Coordination
             if (leaseEnd <= storedSession.LeaseEnd)
                 return storedSession;
 
-            return new StoredSession(storedSession.Key, isEnded: false, leaseEnd, storedSession.EntryPaths, storedSession.StorageVersion + 1);
+            return new StoredSession(storedSession.Session, isEnded: false, leaseEnd, storedSession.EntryPaths, storedSession.StorageVersion + 1);
         }
 
         public IStoredSession AddEntry(IStoredSession storedSession, CoordinationEntryPath entryPath)
@@ -85,7 +85,7 @@ namespace AI4E.Coordination
             if (storedSession.EntryPaths.Contains(entryPath))
                 return storedSession;
 
-            return new StoredSession(storedSession.Key, storedSession.IsEnded, storedSession.LeaseEnd, storedSession.EntryPaths.Add(entryPath), storedSession.StorageVersion + 1);
+            return new StoredSession(storedSession.Session, storedSession.IsEnded, storedSession.LeaseEnd, storedSession.EntryPaths.Add(entryPath), storedSession.StorageVersion + 1);
         }
 
         public IStoredSession RemoveEntry(IStoredSession storedSession, CoordinationEntryPath entryPath)
@@ -96,32 +96,32 @@ namespace AI4E.Coordination
             if (!storedSession.EntryPaths.Contains(entryPath))
                 return storedSession;
 
-            return new StoredSession(storedSession.Key, storedSession.IsEnded, storedSession.LeaseEnd, storedSession.EntryPaths.Remove(entryPath), storedSession.StorageVersion + 1);
+            return new StoredSession(storedSession.Session, storedSession.IsEnded, storedSession.LeaseEnd, storedSession.EntryPaths.Remove(entryPath), storedSession.StorageVersion + 1);
         }
 
         private sealed class StoredSession : IStoredSession
         {
-            public StoredSession(IStoredSession session)
+            public StoredSession(IStoredSession storedSession)
             {
-                Key = session.Key;
-                IsEnded = session.IsEnded;
-                LeaseEnd = session.LeaseEnd;
-                EntryPaths = session.EntryPaths;
-                StorageVersion = session.StorageVersion;
+                Session = storedSession.Session;
+                IsEnded = storedSession.IsEnded;
+                LeaseEnd = storedSession.LeaseEnd;
+                EntryPaths = storedSession.EntryPaths;
+                StorageVersion = storedSession.StorageVersion;
             }
 
-            public StoredSession(string key, bool isEnded, DateTime leaseEnd, ImmutableArray<CoordinationEntryPath> entryPaths, int storageVersion)
+            public StoredSession(Session session, bool isEnded, DateTime leaseEnd, ImmutableArray<CoordinationEntryPath> entryPaths, int storageVersion)
             {
-                Assert(key != null);
+                Assert(session != default);
 
-                Key = key;
+                Session = session;
                 IsEnded = isEnded;
                 LeaseEnd = leaseEnd;
                 EntryPaths = entryPaths;
                 StorageVersion = storageVersion;
             }
 
-            public string Key { get; }
+            public Session Session { get; }
 
             public bool IsEnded { get; }
 
