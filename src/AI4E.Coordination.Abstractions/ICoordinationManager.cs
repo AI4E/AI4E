@@ -119,7 +119,7 @@ namespace AI4E.Coordination
         /// When evaluated, the tasks result contains the current session.
         /// </returns>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
-        ValueTask<string> GetSessionAsync(CancellationToken cancellation = default);
+        ValueTask<Session> GetSessionAsync(CancellationToken cancellation = default);
     }
 
     /// <summary>

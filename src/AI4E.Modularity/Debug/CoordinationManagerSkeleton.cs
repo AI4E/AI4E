@@ -64,9 +64,9 @@ namespace AI4E.Modularity.Debug
             return _coordinationManager.DeleteAsync(CoordinationEntryPath.FromEscapedPath(path.AsMemory()), version, recursive, cancellation).AsTask();
         }
 
-        public Task<string> GetSessionAsync(CancellationToken cancellation = default)
+        public async Task<string> GetSessionAsync(CancellationToken cancellation = default)
         {
-            return _coordinationManager.GetSessionAsync(cancellation).AsTask();
+            return (await _coordinationManager.GetSessionAsync(cancellation)).ToCompactString();
         }
 
         #region Disposal

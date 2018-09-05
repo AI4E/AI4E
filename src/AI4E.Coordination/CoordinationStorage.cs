@@ -75,12 +75,16 @@ namespace AI4E.Coordination
 
         #region Session
 
-        public async Task<IStoredSession> GetSessionAsync(string key, CancellationToken cancellation)
+        public async Task<IStoredSession> GetSessionAsync(Session session, CancellationToken cancellation)
         {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
 
-            var storedSession = await _database.GetOneAsync<StoredSession>(p => p.Id == key, cancellation);
+            var compactStringSession = session.ToCompactString();
+
+            var storedSession = await _database.GetOneAsync<StoredSession>(p => p.Id == compactStringSession, cancellation);
+
+            Assert(storedSession == null || (storedSession as IStoredSession).Session == session);
 
             return _storedSessionManager.Copy(storedSession);
         }
@@ -101,7 +105,7 @@ namespace AI4E.Coordination
                 return comparand;
             }
 
-            return await GetSessionAsync((comparand ?? value).Key, cancellation);
+            return await GetSessionAsync((comparand ?? value).Session, cancellation);
         }
 
         private StoredSession ConvertValue(IStoredSession value)
@@ -113,7 +117,7 @@ namespace AI4E.Coordination
                 convertedValue = value as StoredSession ?? new StoredSession(value);
 
                 Assert(convertedValue != null);
-                Assert(convertedValue.Id == value.Key);
+                Assert((convertedValue as IStoredSession).Session == value.Session);
             }
 
             return convertedValue;
@@ -129,14 +133,14 @@ namespace AI4E.Coordination
             {
                 Id = entry.Path.EscapedPath.ConvertToString();
                 Value = entry.Value.ToArray();
-                ReadLocks = entry.ReadLocks.ToArray();
-                WriteLock = entry.WriteLock;
+                ReadLocks = entry.ReadLocks.Select(p => p.ToCompactString()).ToArray();
+                WriteLock = entry.WriteLock?.ToCompactString();
                 Children = entry.Children.Select(p => p.EscapedSegment.ConvertToString()).ToArray();
                 CreationTime = entry.CreationTime;
                 LastWriteTime = entry.LastWriteTime;
                 Version = entry.Version;
                 StorageVersion = entry.StorageVersion;
-                EphemeralOwner = entry.EphemeralOwner;
+                EphemeralOwner = entry.EphemeralOwner?.ToCompactString();
             }
 
             public string Id { get; set; }
@@ -144,15 +148,18 @@ namespace AI4E.Coordination
             public byte[] Value { get; set; }
             public string[] ReadLocks { get; set; }
             public string WriteLock { get; set; }
+            Session? IStoredEntry.WriteLock => WriteLock == null ? default(Session?) : Session.FromChars(WriteLock.AsSpan());
+
             public int Version { get; set; }
             public int StorageVersion { get; set; }
             public DateTime CreationTime { get; set; }
             public DateTime LastWriteTime { get; set; }
             public string[] Children { get; set; }
             public string EphemeralOwner { get; set; }
+            Session? IStoredEntry.EphemeralOwner => EphemeralOwner == null ? default(Session?) : Session.FromChars(EphemeralOwner.AsSpan());
 
             ReadOnlyMemory<byte> IStoredEntry.Value => Value;
-            ImmutableArray<string> IStoredEntry.ReadLocks => ReadLocks.ToImmutableArray();
+            ImmutableArray<Session> IStoredEntry.ReadLocks => ReadLocks.Select(p => Session.FromChars(p.AsSpan())).ToImmutableArray();
             ImmutableList<CoordinationEntryPathSegment> IStoredEntry.Children => Children.Select(p => CoordinationEntryPathSegment.FromEscapedSegment(p.AsMemory())).ToImmutableList();
 
         }
@@ -163,7 +170,7 @@ namespace AI4E.Coordination
 
             public StoredSession(IStoredSession session)
             {
-                Id = session.Key;
+                Id = session.Session.ToCompactString();
                 IsEnded = session.IsEnded;
                 LeaseEnd = session.LeaseEnd;
                 EntryPaths = session.EntryPaths.Select(p => p.EscapedPath.ConvertToString()).ToArray();
@@ -171,7 +178,7 @@ namespace AI4E.Coordination
             }
 
             public string Id { get; set; }
-            string IStoredSession.Key => Id;
+            Session IStoredSession.Session => Session.FromChars(Id.AsSpan());
             public bool IsEnded { get; set; }
             public DateTime LeaseEnd { get; set; }
             public string[] EntryPaths { get; set; }

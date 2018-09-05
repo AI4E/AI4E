@@ -38,12 +38,12 @@ namespace AI4E.Coordination
         /// <summary>
         /// Gets a collection of session that read locks are held for.
         /// </summary>
-        ImmutableArray<string> ReadLocks { get; }
+        ImmutableArray<Session> ReadLocks { get; }
 
         /// <summary>
         /// Gets the session that a write lock is held for.
         /// </summary>
-        string WriteLock { get; }
+        Session? WriteLock { get; }
 
         /// <summary>
         /// Gets the version of the entry.
@@ -63,10 +63,12 @@ namespace AI4E.Coordination
         DateTime LastWriteTime { get; }
 
         /// <summary>
-        /// Get a collection of names that represents the child entries of the entry.
+        /// Get an ordered collection of names that represents the child entries of the entry.
         /// </summary>
         ImmutableList<CoordinationEntryPathSegment> Children { get; }
+        // The child names MUST be ordered (that means, the order of children is the same for all instances of the coordination manager)
+        // in order to prevent dead-lock situations in recursive operations.
 
-        string EphemeralOwner { get; }
+        Session? EphemeralOwner { get; }
     }
 }
