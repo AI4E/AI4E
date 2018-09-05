@@ -84,7 +84,7 @@ namespace AI4E.Coordination
 
             var storedSession = await _database.GetOneAsync<StoredSession>(p => p.Id == compactStringSession, cancellation);
 
-            Assert((storedSession as IStoredSession).Session == session);
+            Assert(storedSession == null || (storedSession as IStoredSession).Session == session);
 
             return _storedSessionManager.Copy(storedSession);
         }
