@@ -946,32 +946,22 @@ namespace AI4E.Coordination
 
                     try
                     {
-                        entry = await AcquireWriteLockAsync(entry, combinedCancellationSource.Token);
+                        bool deleted;
+
+                        (entry, deleted) = await DeleteCoreAsync(entry, session, version, recursive, cancellation);
+
+                        // Id we did not specify a version, the call must succeed.
+                        Assert(version != 0 || deleted);
+
+                        if (!deleted)
+                        {
+                            return entry.Version;
+                        }
 
                         // The entry is not existing.
                         if (entry == null)
                         {
                             return 0;
-                        }
-
-                        if (version != default && entry.Version != version)
-                        {
-                            return entry.Version;
-                        }
-
-                        // Delete the entry
-                        {
-                            var result = await _storage.UpdateEntryAsync(_storedEntryManager.Remove(entry, session), entry, combinedCancellationSource.Token);
-
-                            // We are holding the exclusive lock => No one else can alter the entry.
-                            // The only exception is that our session terminates.
-                            if (!AreVersionEqual(result, entry))
-                            {
-                                throw new SessionTerminatedException();
-                            }
-
-                            _cache.TryRemove(entry.Path, out _);
-                            entry = null;
                         }
 
                         try
@@ -1011,6 +1001,82 @@ namespace AI4E.Coordination
                     await ReleaseWriteLockAsync(parent);
                 }
             }
+        }
+
+        // Deleted an entry without checking the input params and without locking the dispose lock.
+        // The operation performs a recursive operation if the recursive parameter is true, throws an exception otherwise if there are child entries present.
+        // The operation ensured consistency by locking the entry.
+        // Return values:
+        // entry: null if the delete operation succeeded or if the entry is not present
+        // deleted: true, if the operation succeeded, false otherwise. Check the entry result in this case.
+        private async Task<(IStoredEntry entry, bool deleted)> DeleteCoreAsync(IStoredEntry entry, Session session, int version, bool recursive, CancellationToken cancellation)
+        {
+            entry = await AcquireWriteLockAsync(entry, cancellation);
+
+            // The entry is not existing.
+            if (entry == null)
+            {
+                return default;
+            }
+
+            if (version != default && entry.Version != version)
+            {
+                return (entry, deleted: false);
+            }
+
+            // Check whether there are child entries
+            // It is important that all coordination manager instances handle the recursive operation in the same oder
+            // (they must process all children in the exact same order) to prevent dead-lock situations.
+            foreach (var childName in entry.Children)
+            {
+                // Recursively delete all child entries. 
+                // The delete operation is not required to remove the child name entry in the parent entry, as the parent entry is  to be deleted anyway.
+                // In the case that we cannot proceed (our session terminates f.e.), we do not guarantee that the child names collection is strongly consistent anyway.
+
+                // First load the child entry.
+                var childPath = entry.Path.GetChildPath(childName);
+                var child = await _storage.GetEntryAsync(childPath, cancellation);
+
+                // The child-names collection is not guaranteed to be strongly consistent.
+                if (child == null)
+                {
+                    continue;
+                }
+
+                // Check whether we allow recursive delete operation.
+                // This cannot be done upfront, 
+                // as the child-names collection is not guaranteed to be strongly consistent.
+                // The child names collection may contain child names but the childs are not present actually.
+                // => We check for the recursive option if we find any child that is present actually.
+                if (!recursive)
+                {
+                    throw new InvalidOperationException("An entry that contains child entries cannot be deleted.");
+                }
+
+                bool deleted;
+                (child, deleted) = await DeleteCoreAsync(child, session, version: default, recursive: true, cancellation);
+
+                // As we did not specify a version, the call must succeed.
+                Assert(deleted);
+                Assert(child == null);
+            }
+
+            // Delete the entry
+            var result = await _storage.UpdateEntryAsync(_storedEntryManager.Remove(entry, session), entry, cancellation);
+
+            // We are holding the exclusive lock => No one else can alter the entry.
+            // The only exception is that our session terminates.
+            if (!AreVersionEqual(result, entry))
+            {
+                throw new SessionTerminatedException();
+            }
+
+            // We must remove the entry from the cache by ourselves here, 
+            // as we do allow the session to hold a read-lock and a write-lock at the same time 
+            // and hence do not wipe the entry from the cache on write lock acquirement.
+            _cache.TryRemove(entry.Path, out _);
+
+            return (entry: null, deleted: true);
         }
 
         #endregion
