@@ -186,7 +186,7 @@ namespace AI4E.Modularity.Debug
                 var session = _session; // Volatile read op.
 
                 if (session != null)
-                    return Session.FromCompactString(session.AsSpan());
+                    return Session.FromChars(session.AsSpan());
 
                 var cancelledOrDisposed = _disposeHelper.CancelledOrDisposed(cancellation);
                 var proxy = await GetProxyAsync(cancelledOrDisposed);
@@ -195,7 +195,7 @@ namespace AI4E.Modularity.Debug
 
                 Interlocked.CompareExchange(ref _session, session, null);
 
-                return Session.FromCompactString(session.AsSpan());
+                return Session.FromChars(session.AsSpan());
             }
         }
     }

@@ -35,8 +35,8 @@ namespace AI4E.Coordination
 
         public async Task<bool> TryBeginSessionAsync(Session session, DateTime leaseEnd, CancellationToken cancellation = default)
         {
-            if (session == null)
-                throw new ArgumentNullException(nameof(session));
+            if (session == default)
+                throw new ArgumentDefaultException(nameof(session));
 
             var newSession = _storedSessionManager.Begin(session, leaseEnd);
 
@@ -47,8 +47,8 @@ namespace AI4E.Coordination
 
         public async Task UpdateSessionAsync(Session session, DateTime leaseEnd, CancellationToken cancellation)
         {
-            if (session == null)
-                throw new ArgumentNullException(nameof(session));
+            if (session == default)
+                throw new ArgumentDefaultException(nameof(session));
 
             IStoredSession current = await _storage.GetSessionAsync(session, cancellation),
                      start,
@@ -72,8 +72,8 @@ namespace AI4E.Coordination
 
         public async Task EndSessionAsync(Session session, CancellationToken cancellation)
         {
-            if (session == null)
-                throw new ArgumentNullException(nameof(session));
+            if (session == default)
+                throw new ArgumentDefaultException(nameof(session));
 
             IStoredSession current = await _storage.GetSessionAsync(session, cancellation),
                      start,
@@ -96,8 +96,8 @@ namespace AI4E.Coordination
 
         public Task WaitForTerminationAsync(Session session, CancellationToken cancellation)
         {
-            if (session == null)
-                throw new ArgumentNullException(nameof(session));
+            if (session == default)
+                throw new ArgumentDefaultException(nameof(session));
 
             lock (_sessionTerminationCache)
             {
@@ -145,8 +145,8 @@ namespace AI4E.Coordination
 
         private async Task InternalWaitForTerminationAsync(Session session, CancellationToken cancellation)
         {
-            if (session == null)
-                throw new ArgumentNullException(nameof(session));
+            if (session == default)
+                throw new ArgumentDefaultException(nameof(session));
 
             var start = await _storage.GetSessionAsync(session, cancellation);
 
@@ -206,8 +206,8 @@ namespace AI4E.Coordination
 
         public async Task<bool> IsAliveAsync(Session session, CancellationToken cancellation = default)
         {
-            if (session == null)
-                throw new ArgumentNullException(nameof(session));
+            if (session == default)
+                throw new ArgumentDefaultException(nameof(session));
 
             var s = await _storage.GetSessionAsync(session, cancellation);
 
@@ -216,8 +216,8 @@ namespace AI4E.Coordination
 
         public async Task AddSessionEntryAsync(Session session, CoordinationEntryPath entryPath, CancellationToken cancellation = default)
         {
-            if (session == null)
-                throw new ArgumentNullException(nameof(session));
+            if (session == default)
+                throw new ArgumentDefaultException(nameof(session));
 
             IStoredSession current = await _storage.GetSessionAsync(session, cancellation),
                            start,
@@ -241,8 +241,8 @@ namespace AI4E.Coordination
 
         public async Task RemoveSessionEntryAsync(Session session, CoordinationEntryPath entryPath, CancellationToken cancellation = default)
         {
-            if (session == null)
-                throw new ArgumentNullException(nameof(session));
+            if (session == default)
+                throw new ArgumentDefaultException(nameof(session));
 
             IStoredSession current = await _storage.GetSessionAsync(session, cancellation),
                      start,
@@ -271,8 +271,8 @@ namespace AI4E.Coordination
 
         public async Task<IEnumerable<CoordinationEntryPath>> GetEntriesAsync(Session session, CancellationToken cancellation = default)
         {
-            if (session == null)
-                throw new ArgumentNullException(nameof(session));
+            if (session == default)
+                throw new ArgumentDefaultException(nameof(session));
 
             var current = await _storage.GetSessionAsync(session, cancellation);
 

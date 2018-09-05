@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
@@ -12,10 +13,10 @@ namespace AI4E.Coordination
             if (physicalAddress.IsEmpty)
                 throw new ArgumentException("The argument must not be an empty span.", nameof(physicalAddress));
 
-            var bytes = new byte[4 + prefix.Length + physicalAddress.Length];
-            Write(bytes, prefix.Length);
-            prefix.CopyTo(bytes);
-            physicalAddress.CopyTo(bytes);
+            var bytes = (new byte[4 + prefix.Length + physicalAddress.Length]).AsMemory();
+            Write(bytes.Span, prefix.Length);
+            prefix.CopyTo(bytes.Span.Slice(start: 4));
+            physicalAddress.CopyTo(bytes.Span.Slice(start: 4 + prefix.Length));
 
             _bytes = bytes;
         }
@@ -27,8 +28,36 @@ namespace AI4E.Coordination
             _bytes = bytes;
         }
 
-        public ReadOnlyMemory<byte> Prefix => _bytes.Slice(start: 0, length: ReadInt32(_bytes.Span));
-        public ReadOnlyMemory<byte> PhysicalAddress => _bytes.Slice(start: ReadInt32(_bytes.Span));
+        public ReadOnlyMemory<byte> Prefix
+        {
+            get
+            {
+                try
+                {
+                    return _bytes.Slice(start: 0, length: ReadInt32(_bytes.Span));
+                }
+                catch (Exception)
+                {
+                    throw;
+                }
+            }
+        }
+        public ReadOnlyMemory<byte> PhysicalAddress
+        {
+            get
+            {
+                try
+                {
+                    return _bytes.Slice(start: ReadInt32(_bytes.Span));
+
+                }
+                catch (Exception)
+                {
+                    throw;
+                }
+
+            }
+        }
 
         public bool Equals(Session other)
         {
@@ -45,6 +74,24 @@ namespace AI4E.Coordination
             return _bytes.GetHashCode();
         }
 
+        public override string ToString()
+        {
+            if (_bytes.IsEmpty)
+                return string.Empty;
+
+            var resultLenght = Base64Coder.ComputeBase64EncodedLength(_bytes.Span);
+            var result = new string('\0', resultLenght);
+            var memory = MemoryMarshal.AsMemory(result.AsMemory());
+
+            var writtenMemory = Base64Coder.ToBase64Chars(_bytes.Span, memory.Span);
+            Assert(writtenMemory.Length == resultLenght);
+
+            return result;
+
+            //// TODO: This will copy everything to a new aray
+            // return Convert.ToBase64String(_bytes.ToArray());
+        }
+
         public static bool operator ==(Session left, Session right)
         {
             return left.Equals(right);
@@ -55,24 +102,29 @@ namespace AI4E.Coordination
             return !left.Equals(right);
         }
 
+        [Obsolete("Use ToString()")]
         public string ToCompactString()
         {
-            if (_bytes.IsEmpty)
-                return string.Empty;
-
-            // TODO: This will copy everything to a new aray
-            return Convert.ToBase64String(_bytes.ToArray());
+            return ToString();
         }
 
-        public static Session FromCompactString(ReadOnlySpan<char> str)
+        public static Session FromChars(ReadOnlySpan<char> chars)
         {
-            if (str.IsEmpty)
+            if (chars.IsEmpty)
                 return default;
 
-            // TODO: This will copy everything to a new aray
-            var bytes = Convert.FromBase64CharArray(str.ToArray(), 0, str.Length);
+            var bytes = new byte[Base64Coder.ComputeBase64DecodedLength(chars)];
+            var bytesLength = Base64Coder.FromBase64Chars(chars, bytes).Length;
 
-            return new Session(bytes);
+            //// TODO: This will copy everything to a new aray
+            //var bytes = Convert.FromBase64CharArray(chars.ToArray(), 0, chars.Length);
+
+            return new Session(bytes.AsMemory().Slice(start: 0, length: bytesLength));
+        }
+
+        public static Session FromString(string str)
+        {
+            return FromChars(str.AsSpan());
         }
 
         private static void Write(Span<byte> span, int value)

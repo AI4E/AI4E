@@ -148,7 +148,7 @@ namespace AI4E.Coordination
             public byte[] Value { get; set; }
             public string[] ReadLocks { get; set; }
             public string WriteLock { get; set; }
-            Session? IStoredEntry.WriteLock => WriteLock == null ? default(Session?) : Session.FromCompactString(WriteLock.AsSpan());
+            Session? IStoredEntry.WriteLock => WriteLock == null ? default(Session?) : Session.FromChars(WriteLock.AsSpan());
 
             public int Version { get; set; }
             public int StorageVersion { get; set; }
@@ -156,10 +156,10 @@ namespace AI4E.Coordination
             public DateTime LastWriteTime { get; set; }
             public string[] Children { get; set; }
             public string EphemeralOwner { get; set; }
-            Session? IStoredEntry.EphemeralOwner => EphemeralOwner == null ? default(Session?) : Session.FromCompactString(EphemeralOwner.AsSpan());
+            Session? IStoredEntry.EphemeralOwner => EphemeralOwner == null ? default(Session?) : Session.FromChars(EphemeralOwner.AsSpan());
 
             ReadOnlyMemory<byte> IStoredEntry.Value => Value;
-            ImmutableArray<Session> IStoredEntry.ReadLocks => ReadLocks.Select(p => Session.FromCompactString(p.AsSpan())).ToImmutableArray();
+            ImmutableArray<Session> IStoredEntry.ReadLocks => ReadLocks.Select(p => Session.FromChars(p.AsSpan())).ToImmutableArray();
             ImmutableList<CoordinationEntryPathSegment> IStoredEntry.Children => Children.Select(p => CoordinationEntryPathSegment.FromEscapedSegment(p.AsMemory())).ToImmutableList();
 
         }
@@ -178,7 +178,7 @@ namespace AI4E.Coordination
             }
 
             public string Id { get; set; }
-            Session IStoredSession.Session => Session.FromCompactString(Id.AsSpan());
+            Session IStoredSession.Session => Session.FromChars(Id.AsSpan());
             public bool IsEnded { get; set; }
             public DateTime LeaseEnd { get; set; }
             public string[] EntryPaths { get; set; }

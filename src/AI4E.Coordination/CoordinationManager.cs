@@ -308,7 +308,7 @@ namespace AI4E.Coordination
 
                 var sessionLength = binaryReader.ReadInt32();
                 var sessionBytes = binaryReader.ReadBytes(sessionLength);
-                var session = Session.FromCompactString(Encoding.UTF8.GetString(sessionBytes).AsSpan());
+                var session = Session.FromChars(Encoding.UTF8.GetString(sessionBytes).AsSpan());
 
                 return (messageType, path, session);
             }
@@ -950,18 +950,20 @@ namespace AI4E.Coordination
 
                         (entry, deleted) = await DeleteCoreAsync(entry, session, version, recursive, cancellation);
 
-                        // Id we did not specify a version, the call must succeed.
-                        Assert(version != 0 || deleted);
-
-                        if (!deleted)
-                        {
-                            return entry.Version;
-                        }
+                        // If we did not specify a version, there are two possible cases:
+                        // * The call must succeeded
+                        // * The entry was not present (already deleted)
+                        Assert(version != 0 || deleted || entry == null);
 
                         // The entry is not existing.
                         if (entry == null)
                         {
                             return 0;
+                        }
+
+                        if (!deleted)
+                        {
+                            return entry.Version;
                         }
 
                         try
@@ -1612,11 +1614,18 @@ namespace AI4E.Coordination
 
             var entries = await _sessionManager.GetEntriesAsync(session, cancellation);
 
-            await Task.WhenAll(entries.Select(async entry =>
+            try
             {
-                await DeleteAsync(entry, version: default, recursive: false, cancellation);
-                await _sessionManager.RemoveSessionEntryAsync(session, entry, cancellation);
-            }));
+                await Task.WhenAll(entries.Select(async entry =>
+                          {
+                              await DeleteAsync(entry, version: default, recursive: false, cancellation);
+                              await _sessionManager.RemoveSessionEntryAsync(session, entry, cancellation);
+                          }));
+            }
+            catch (Exception exc)
+            {
+
+            }
 
             await _sessionManager.EndSessionAsync(session, cancellation);
         }
