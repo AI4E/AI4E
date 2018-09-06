@@ -36,4 +36,7 @@ namespace AI4E
 
         DispatchValueDictionary DispatchValues { get; }
     }
+
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+    public sealed class MessageProcessorContextAttribute : Attribute { }
 }

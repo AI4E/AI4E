@@ -33,7 +33,4 @@ namespace AI4E
             return next(message);
         }
     }
-
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-    public sealed class MessageProcessorContextAttribute : Attribute { }
 }
