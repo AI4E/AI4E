@@ -1,0 +1,178 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+<#
+	var underlyingTypes = new Dictionary<Type, string>
+	{
+		[typeof(byte)] = "byte",
+		[typeof(sbyte)] = "sbyte",
+		[typeof(ushort)] = "ushort",
+		[typeof(short)] = "short",
+		[typeof(uint)] = "uint",
+		[typeof(int)] = "int",
+		[typeof(ulong)] = "ulong",
+		[typeof(long)] = "long"
+	};
+#>
+/*
+ * This file is auto-generated and should not be modified directly.
+ */
+
+using System;
+using System.CodeDom.Compiler;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using static System.Diagnostics.Debug;
+
+namespace AI4E
+{
+	[GeneratedCodeAttribute("", "")]
+    public static class EnumHelper
+    {
+        private static ConcurrentDictionary<Type, bool> _isFlagsEnumLookup = new ConcurrentDictionary<Type, bool>();
+        private static ConcurrentDictionary<Type, object> _isFlagLookup = new ConcurrentDictionary<Type, object>();
+        private static ConcurrentDictionary<Type, object> _isEnumValueLookup = new ConcurrentDictionary<Type, object>();
+
+        public static bool IsFlagsEnum<TEnum>()
+            where TEnum : Enum
+        {
+            var type = typeof(TEnum);
+
+            return _isFlagsEnumLookup.GetOrAdd(type, IsFlagsEnumInternal);
+        }
+
+        public static bool IsFlag<TEnum>(this TEnum value)
+            where TEnum : Enum
+        {
+            var enumType = typeof(TEnum);
+            var evaluator = _isFlagLookup.GetOrAdd(enumType, _ => GetFlagEvaluator<TEnum>()) as Func<TEnum, bool>;
+            Assert(evaluator != null);
+            return evaluator(value);
+        }
+
+        public static bool IsEnumValue<TEnum>(this TEnum value)
+            where TEnum : Enum
+        {
+            var enumType = typeof(TEnum);
+            var evaluator = _isEnumValueLookup.GetOrAdd(enumType, _ => GetEnumValueEvaluator<TEnum>()) as Func<TEnum, bool>;
+            Assert(evaluator != null);
+            return evaluator(value);
+        }
+
+        public static bool IsValid<TEnum>(this TEnum value)
+            where TEnum : Enum
+        {
+            if (IsFlagsEnum<TEnum>())
+            {
+                return IsFlag(value);
+            }
+            return IsEnumValue(value);
+        }
+
+        private static bool IsFlagsEnumInternal(Type type)
+        {
+            Assert(type != null);
+            Assert(type.IsEnum);
+
+            return type.GetCustomAttribute<FlagsAttribute>() != null;
+        }
+
+        private static Func<TEnum, bool> GetFlagEvaluator<TEnum>()
+            where TEnum : Enum
+        {
+            var enumType = typeof(TEnum);
+            Assert(enumType != null);
+            Assert(enumType.IsEnum);
+
+            var underlyingType = Enum.GetUnderlyingType(enumType);
+
+<#
+bool first = true;
+foreach(var underlyingType in underlyingTypes.Keys)
+{
+	if(!first) 
+	{ 
+#>
+			else if <# 
+	} 
+	else
+	{
+#>
+			if <#
+	}
+#>(underlyingType == typeof(<#= underlyingTypes[underlyingType] #>))
+            {
+                var values = (TEnum[])Enum.GetValues(enumType);
+                var comparand = values.Select(p => (<#= underlyingTypes[underlyingType] #>)(object)p).Aggregate(seed: (<#= underlyingTypes[underlyingType] #>)0, (e, c) => (<#= underlyingTypes[underlyingType] #>)(e | c));
+
+                return value => (((<#= underlyingTypes[underlyingType] #>)(object)value) & ~comparand) == 0;
+            }
+<#
+	first = false;
+}
+#>
+            else
+            {
+                throw new InvalidOperationException("Only enums with primitive numeric underlying types are supported.");
+            }
+        }
+
+        private static Func<TEnum, bool> GetEnumValueEvaluator<TEnum>()
+            where TEnum : Enum
+        {
+            var enumType = typeof(TEnum);
+            Assert(enumType != null);
+            Assert(enumType.IsEnum);
+
+            var underlyingType = Enum.GetUnderlyingType(enumType);
+<#
+foreach(var underlyingType in underlyingTypes.Keys)
+{
+#>
+
+			if (underlyingType == typeof(<#= underlyingTypes[underlyingType] #>))
+            {
+                var values = new HashSet<<#= underlyingTypes[underlyingType] #>>(((TEnum[])Enum.GetValues(enumType)).Select(p => (<#= underlyingTypes[underlyingType] #>)(object)p));
+
+                if (values.Count == 0)
+                {
+                    return _ => false;
+                }
+
+                if (values.Count == 1)
+                {
+                    return value => values.First() == (<#= underlyingTypes[underlyingType] #>)(object)value;
+                }
+
+                var min = values.Min();
+                var max = values.Max();
+
+                Assert(min < max);
+
+                for (var i = (<#= underlyingTypes[underlyingType] #>)(min + 1); i < max; i++)
+                {
+                    if (!values.Contains(i))
+                    {
+                        return value => values.Contains((<#= underlyingTypes[underlyingType] #>)(object)value);
+                    }
+                }
+
+                return value =>
+                {
+                    var v = (<#= underlyingTypes[underlyingType] #>)(object)value;
+                    return v >= min && v <= max;
+                };
+            }
+<#
+}
+#>
+
+            throw new InvalidOperationException("Only enums with primitive numeric underlying types are supported.");
+        }
+    }
+}

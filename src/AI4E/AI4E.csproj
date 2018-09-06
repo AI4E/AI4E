@@ -22,9 +22,9 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.1.1" />   
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />   
-    <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.1" />  
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.1.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+    <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.1" />
     <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
     <PackageReference Include="System.Interactive.Async" Version="3.2.0" />
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="1.0.2" />
@@ -32,6 +32,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <DotNetCliToolReference Include="T5.TextTransform.Tool" Version="1.1.0-*" />
   </ItemGroup>
 
   <ItemGroup>
@@ -49,4 +53,11 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
+  <Target Name="AfterRestore" AfterTargets="Restore;CollectPackageReferences">
+    <Exec Command="dotnet tt $(ProjectDir)EnumHelper.tt" />
+  </Target>
 </Project>
