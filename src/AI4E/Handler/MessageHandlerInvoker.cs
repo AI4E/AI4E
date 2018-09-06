@@ -64,7 +64,7 @@ namespace AI4E.Handler
                 contextDescriptor.SetContext(processor, messageProcessorContext);
             }
 
-            return new ValueTask<IDispatchResult>(processor.ProcessAsync(message, m => next(m).AsTask())); // TODO: Cancellation
+            return processor.ProcessAsync(message, next, cancellation);
         }
 
         private async ValueTask<IDispatchResult> InvokeHandlerCore(TMessage message, DispatchValueDictionary dispatchValues, CancellationToken cancellation)

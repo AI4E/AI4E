@@ -19,6 +19,7 @@
  */
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AI4E
@@ -28,7 +29,7 @@ namespace AI4E
         [MessageProcessorContext]
         public IMessageProcessorContext Context { get; internal set; }
 
-        public virtual Task<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, Task<IDispatchResult>> next)
+        public virtual ValueTask<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, ValueTask<IDispatchResult>> next, CancellationToken cancellation)
         {
             return next(message);
         }
