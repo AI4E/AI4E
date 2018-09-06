@@ -159,7 +159,7 @@ namespace AI4E.Modularity.Debug
 
             // TODO: There is a race condition if this is hte metadata for an older debug session that had the same address coincidentally.
             session.SetMetadata(endPoint, module, moduleVersion);
-            Console.WriteLine("Debug session metadata set.");
+            _logger?.LogTrace($"The metadata for debug session '{endPoint.Route}' were set.");
         }
 
         private async Task ConnectProcedure(CancellationToken cancellation)

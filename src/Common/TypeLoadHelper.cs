@@ -11,11 +11,7 @@ namespace AI4E.Internal
         {
             if (unqualifiedTypeName.IndexOf('`') >= 0)
             {
-                var type = LoadGenericType(unqualifiedTypeName);
-
-                Console.WriteLine($"Resolving '{unqualifiedTypeName}' as '{type.FullName}'");
-
-                return type;
+                return LoadGenericType(unqualifiedTypeName);
             }
             else
             {
@@ -96,7 +92,7 @@ namespace AI4E.Internal
 
                     type = genericTypeDef.MakeGenericType(genericTypeArguments.ToArray());
 
-                    // TODO
+                    // https://github.com/AI4E/AI4E/issues/50
                     if (i < endIndex)
                     {
                         if (unqualifiedTypeName[i + 1] == '[' && unqualifiedTypeName[i + 2] == ']')

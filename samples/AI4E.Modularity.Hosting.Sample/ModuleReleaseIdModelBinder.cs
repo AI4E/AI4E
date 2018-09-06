@@ -23,17 +23,17 @@ namespace AI4E.Modularity.Hosting.Sample
             if (bindingContext == null)
                 throw new ArgumentNullException(nameof(bindingContext));
 
-            // _logger.AttemptingToBindModel(bindingContext);
+            // _logger?.AttemptingToBindModel(bindingContext);
 
             var modelName = bindingContext.ModelName;
             var valueProviderResult = bindingContext.ValueProvider.GetValue(modelName);
 
             if (valueProviderResult == ValueProviderResult.None)
             {
-                //_logger.FoundNoValueInRequest(bindingContext);
+                //_logger?.FoundNoValueInRequest(bindingContext);
 
                 // no entry
-                //_logger.DoneAttemptingToBindModel(bindingContext);
+                //_logger?.DoneAttemptingToBindModel(bindingContext);
                 return Task.CompletedTask;
             }
 
@@ -92,7 +92,7 @@ namespace AI4E.Modularity.Hosting.Sample
                 modelState.TryAddModelError(modelName, exception, metadata);
             }
 
-            //_logger.DoneAttemptingToBindModel(bindingContext);
+            //_logger?.DoneAttemptingToBindModel(bindingContext);
             return Task.CompletedTask;
         }
     }

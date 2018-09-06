@@ -54,17 +54,7 @@ namespace AI4E.Modularity.Host
             applicationBuilder.Use(async (context, next) =>
             {
                 var cancellation = context?.RequestAborted ?? default;
-
-                var watch = new Stopwatch();
-                watch.Start();
-
                 var endPoint = await runningModuleLookup.MapHttpPathAsync(context.Features.Get<IHttpRequestFeature>().Path, cancellation);
-
-                watch.Stop();
-
-                Console.WriteLine($"---> end-point lookup took: {watch.ElapsedMilliseconds}ms");
-
-                watch.Restart();
 
                 if (endPoint != null)
                 {
@@ -89,21 +79,7 @@ namespace AI4E.Modularity.Host
                     }
 
                     var message = moduleHttpRequest;
-
-                    watch.Stop();
-
-                    Console.WriteLine($"---> request message building took: {watch.ElapsedMilliseconds}ms");
-
-                    watch.Restart();
-
                     var dispatchResult = await dispatcher.DispatchAsync(message, new DispatchValueDictionary(), publish: false, endPoint, cancellation);
-
-                    watch.Stop();
-
-                    Console.WriteLine($"---> message dispatch building took: {watch.ElapsedMilliseconds}ms");
-
-                    watch.Restart();
-
                     var response = default(ModuleHttpResponse);
 
                     if (dispatchResult.IsSuccess)
@@ -132,10 +108,6 @@ namespace AI4E.Modularity.Host
                     {
                         await responseFeature.Body.WriteAsync(response.Body, 0, response.Body.Length);
                     }
-
-                    watch.Stop();
-
-                    Console.WriteLine($"---> message response extraction took: {watch.ElapsedMilliseconds}ms");
                 }
                 else
                 {
