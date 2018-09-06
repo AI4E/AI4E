@@ -80,7 +80,7 @@ namespace AI4E.Storage.Transactions
 
             private static void ValidateArgs(OperationType operationType, Type entryType, object entry, int? expectedVersion)
             {
-                if (operationType < OperationType.Store || operationType > OperationType.Delete)
+                if (!operationType.IsValid())
                     throw new ArgumentException($"The argument must be one of the values defined in {typeof(OperationType).FullName}.", nameof(operationType));
 
                 if (entryType == null)
@@ -300,7 +300,7 @@ namespace AI4E.Storage.Transactions
             ValidateEntry(convertedState);
 #endif
 
-            if (operationType < OperationType.Store || operationType > OperationType.Delete)
+            if (!operationType.IsValid())
                 throw new ArgumentException($"The argument must be one of the values defined in { typeof(OperationType).FullName }.", nameof(operationType));
 
             if (expectedVersion < 0)
@@ -434,7 +434,7 @@ namespace AI4E.Storage.Transactions
         {
             Assert(state != null);
             Assert(state.Version >= 1);
-            Assert(state.Status >= TransactionStatus.Initial && state.Status <= TransactionStatus.Aborted);
+            Assert(state.Status.IsValid());
             Assert(state.Operations != null);
             Assert(state.Id != 0);
 
@@ -444,7 +444,7 @@ namespace AI4E.Storage.Transactions
             {
                 var operation = state.Operations[i];
 
-                Assert(operation.OperationType >= OperationType.Store && operation.OperationType <= OperationType.Delete);
+                Assert(operation.OperationType.IsValid());
                 Assert(operation.EntryType != null);
                 Assert(operation.ExpectedVersion != null, operation.ExpectedVersion >= 0);
                 Assert(state.Status == TransactionStatus.Prepare, operation.State == OperationState.Unapplied);
