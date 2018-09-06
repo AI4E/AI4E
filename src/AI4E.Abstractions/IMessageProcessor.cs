@@ -19,13 +19,14 @@
  */
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AI4E
 {
     public interface IMessageProcessor
     {
-        Task<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, Task<IDispatchResult>> next);
+        ValueTask<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, ValueTask<IDispatchResult>> next, CancellationToken cancellation);
     }
 
     public interface IMessageProcessorContext
@@ -36,4 +37,7 @@ namespace AI4E
 
         DispatchValueDictionary DispatchValues { get; }
     }
+
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+    public sealed class MessageProcessorContextAttribute : Attribute { }
 }

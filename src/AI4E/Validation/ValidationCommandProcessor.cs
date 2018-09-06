@@ -21,6 +21,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
 
@@ -28,7 +29,7 @@ namespace AI4E.Validation
 {
     public class ValidationCommandProcessor : MessageProcessor
     {
-        public override Task<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, Task<IDispatchResult>> next)
+        public override ValueTask<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, ValueTask<IDispatchResult>> next, CancellationToken cancellation)
         {
             var validationResultsBuilder = new ValidationResultsBuilder();
             var properties = typeof(TMessage).GetProperties().Where(p => p.CanRead && p.GetIndexParameters().Length == 0);
@@ -52,7 +53,7 @@ namespace AI4E.Validation
 
             if (validationResults.Any())
             {
-                return Task.FromResult<IDispatchResult>(new ValidationFailureDispatchResult(validationResults));
+                return new ValueTask<IDispatchResult>(new ValidationFailureDispatchResult(validationResults));
             }
 
             return next(message);

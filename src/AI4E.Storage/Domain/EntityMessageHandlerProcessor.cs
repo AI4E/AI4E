@@ -62,8 +62,9 @@ namespace AI4E.Storage.Domain
             _entityPropertyAccessor = entityPropertyAccessor;
         }
 
-        public async override Task<IDispatchResult> ProcessAsync<TMessage>(TMessage message,
-                                                                           Func<TMessage, Task<IDispatchResult>> next)
+        public async override ValueTask<IDispatchResult> ProcessAsync<TMessage>(TMessage message,
+                                                                                Func<TMessage, ValueTask<IDispatchResult>> next,
+                                                                                CancellationToken cancellation)
         {
             var handler = Context.MessageHandler;
             var descriptor = _descriptor.GetOrAdd(handler.GetType(), handlerType => new MessageHandlerDescriptor(handlerType));

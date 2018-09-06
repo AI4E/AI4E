@@ -22,12 +22,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Threading.Tasks;
+using AI4E.Handler;
 using AI4E.Internal;
 
 namespace AI4E.Storage.Projection
 {
-    internal sealed class ProjectionInspector
+    public sealed class ProjectionInspector
     {
         private readonly Type _type;
 
@@ -88,18 +88,12 @@ namespace AI4E.Storage.Projection
 
             var projectionType = default(Type);
 
-            // Synchronous handler
-            if ((member.Name.StartsWith("Project") && !member.Name.EndsWith("Async") || memberAttribute != null) &&
-                (member.ReturnType == typeof(void) || !typeof(Task).IsAssignableFrom(member.ReturnType)))
-            {
-                projectionType = member.ReturnType;
-            }
+            var returnTypeDescriptor = TypeIntrospector.GetTypeDescriptor(member.ReturnType);
 
-            // Asynchronous handler
-            else if ((member.Name.StartsWith("Project") || memberAttribute != null) &&
-                (typeof(Task).IsAssignableFrom(member.ReturnType)))
+            if (IsSynchronousHandler(member, memberAttribute, returnTypeDescriptor) || 
+                IsAsynchronousHandler(member, memberAttribute, returnTypeDescriptor))
             {
-                projectionType = member.ReturnType == typeof(Task) ? typeof(void) : member.ReturnType.GetGenericArguments()[0];
+                projectionType = returnTypeDescriptor.ResultType;
             }
             else
             {
@@ -111,6 +105,7 @@ namespace AI4E.Storage.Projection
             var multipleResults = false;
             Type multipleResultsType = null;
 
+            // TODO: Do we allow types that are assignable to IEnumerable? What about IAsyncEnumerable?
             if (projectionType.IsGenericType && projectionType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
             {
                 multipleResultsType = projectionType;
@@ -159,6 +154,16 @@ namespace AI4E.Storage.Projection
 
             descriptor = new ProjectionDescriptor(sourceType, projectionType, multipleResults, projectNonExisting, member);
             return true;
+        }
+
+        private static bool IsAsynchronousHandler(MethodInfo member, ProjectionMemberAttribute memberAttribute, TypeDescriptor returnTypeDescriptor)
+        {
+            return (member.Name.StartsWith("Project") || memberAttribute != null) && returnTypeDescriptor.IsAsyncType;
+        }
+
+        private static bool IsSynchronousHandler(MethodInfo member, ProjectionMemberAttribute memberAttribute, TypeDescriptor returnTypeDescriptor)
+        {
+            return (member.Name.StartsWith("Project") && !member.Name.EndsWith("Async") || memberAttribute != null) && !returnTypeDescriptor.IsAsyncType;
         }
     }
 }

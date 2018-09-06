@@ -16,8 +16,6 @@
     <Compile Include="..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
     <Compile Include="..\Common\StringBuilderExtension.cs" Link="Internal\StringBuilderExtension.cs" />
     <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
-    <Compile Include="..\Common\MessageDispatcherBuilder.cs" Link="Internal\MessageDispatcherBuilder.cs" />
-    <Compile Include="..\Common\MessageDispatcherServiceCollectionExtension.cs" Link="MessageDispatcherServiceCollectionExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>

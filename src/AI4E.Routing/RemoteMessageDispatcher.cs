@@ -513,7 +513,8 @@ namespace AI4E.Routing
                         handlers = _registry.Handlers;
                     }
 
-                    var dispatchResults = await Task.WhenAll(handlers.Select(p => DispatchSingleHandlerAsync(p, message, context, cancellation)));
+                    // TODO: Use ValueTaskExtensions.WhenAll
+                    var dispatchResults = await Task.WhenAll(handlers.Select(p => DispatchSingleHandlerAsync(p, message, context, cancellation).AsTask()));
 
                     return new AggregateDispatchResult(dispatchResults);
                 }
@@ -536,13 +537,11 @@ namespace AI4E.Routing
                 }
             }
 
-            private async Task<IDispatchResult> DispatchSingleHandlerAsync(IContextualProvider<IMessageHandler<TMessage>> handlerProvider,
-                                                                           TMessage message,
-                                                                           DispatchValueDictionary context,
-                                                                           CancellationToken cancellation)
+            private async ValueTask<IDispatchResult> DispatchSingleHandlerAsync(IContextualProvider<IMessageHandler<TMessage>> handlerProvider,
+                                                                                TMessage message,
+                                                                                DispatchValueDictionary context,
+                                                                                CancellationToken cancellation)
             {
-                // TODO: Cancellation
-
                 Assert(message != null);
                 Assert(handlerProvider != null);
 
@@ -557,7 +556,7 @@ namespace AI4E.Routing
                         if (handler == null)
                             return new FailureDispatchResult();
 
-                        return await handler.HandleAsync(message, context);
+                        return await handler.HandleAsync(message, context, cancellation);
                     }
                     catch (ConcurrencyException)
                     {

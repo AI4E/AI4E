@@ -47,10 +47,15 @@
  */
 
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 using AI4E;
+using AI4E.ApplicationParts;
+using AI4E.Handler;
 using AI4E.Internal;
 using Microsoft.Extensions.DependencyInjection;
-using static AI4E.Internal.MessageDispatcherBuilder;
+using Microsoft.Extensions.Options;
 
 namespace AI4E
 {
@@ -161,6 +166,68 @@ namespace AI4E
 
             services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, factory(serviceProvider)));
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
+        }
+
+        public static TMessageDispatcher BuildMessageDispatcher<TMessageDispatcher>(IServiceProvider serviceProvider, TMessageDispatcher messageDispatcher)
+            where TMessageDispatcher : class, IMessageDispatcher
+        {
+            if (serviceProvider == null)
+                throw new ArgumentNullException(nameof(serviceProvider));
+
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+
+            var options = serviceProvider.GetService<IOptions<MessagingOptions>>()?.Value ?? new MessagingOptions();
+            var processors = options.MessageProcessors.ToImmutableArray();
+            var partManager = serviceProvider.GetRequiredService<ApplicationPartManager>();
+            var messageHandlerFeature = new MessageHandlerFeature();
+
+            partManager.PopulateFeature(messageHandlerFeature);
+            RegisterMessageHandlerTypes(messageDispatcher, processors, messageHandlerFeature.MessageHandlers);
+
+            return messageDispatcher;
+        }
+
+        private static void RegisterMessageHandlerTypes(IMessageDispatcher messageDispatcher,
+                                                        ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+                                                        IEnumerable<Type> types)
+        {
+            foreach (var type in types)
+            {
+                RegisterMessageHandlerType(messageDispatcher, processors, type);
+            }
+        }
+
+        private static void RegisterMessageHandlerType(IMessageDispatcher messageDispatcher,
+                                                       ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+                                                       Type type)
+        {
+            var inspector = new MessageHandlerInspector(type);
+            var descriptors = inspector.GetHandlerDescriptors();
+
+            foreach (var descriptor in descriptors)
+            {
+                var messageType = descriptor.MessageType;
+                var provider = Activator.CreateInstance(typeof(MessageHandlerProvider<>).MakeGenericType(messageType),
+                                                        type,
+                                                        descriptor,
+                                                        processors);
+
+                var registerMethodDefinition = typeof(IMessageDispatcher).GetMethods()
+                    .Single(p => p.Name == "Register" && p.IsGenericMethodDefinition && p.GetGenericArguments().Length == 1);
+
+                var registerMethod = registerMethodDefinition.MakeGenericMethod(messageType);
+
+                registerMethod.Invoke(messageDispatcher, new object[] { provider });
+            }
+        }
+
+        private static void ConfigureFeatureProviders(ApplicationPartManager partManager)
+        {
+            if (!partManager.FeatureProviders.OfType<MessageHandlerFeatureProvider>().Any())
+            {
+                partManager.FeatureProviders.Add(new MessageHandlerFeatureProvider());
+            }
         }
     }
 }

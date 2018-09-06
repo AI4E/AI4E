@@ -88,12 +88,6 @@ namespace AI4E.Storage.Projection
             }
         }
 
-        [Obsolete("Use TypeExtension.GetUnqualifiedTypeName()")]
-        private static string StringifyType(Type type)
-        {
-            return type.GetUnqualifiedTypeName();
-        }
-
         #region Scoped engines
 
         private readonly struct SourceScopedProjectionEngine
@@ -286,7 +280,7 @@ namespace AI4E.Storage.Projection
                     return new Dependency
                     {
                         Id = p.dependency.SourceId,
-                        Type = StringifyType(p.dependency.SourceType),
+                        Type = p.dependency.SourceType.GetUnqualifiedTypeName(),
                         ProjectionRevision = p.revision
                     };
                 }
@@ -307,7 +301,7 @@ namespace AI4E.Storage.Projection
                 var dependent = new Dependent
                 {
                     Id = _sourceDescriptor.SourceId,
-                    Type = StringifyType(_sourceDescriptor.SourceType)
+                    Type = _sourceDescriptor.SourceType.GetUnqualifiedTypeName()
                 };
 
                 metadata.Dependents.Add(dependent);
@@ -324,7 +318,7 @@ namespace AI4E.Storage.Projection
 
                 var (originalMetadata, metadata) = await GetMetadataAsync(dependency, createIfNonExistent: true, cancellation);
                 var removed = metadata.Dependents.RemoveFirstWhere(p => p.Id.Equals(entityDescriptor.SourceId) &&
-                                                                        p.Type == StringifyType(entityDescriptor.SourceType));
+                                                                        p.Type == entityDescriptor.SourceType.GetUnqualifiedTypeName());
 
                 Assert(removed != null);
 
@@ -346,24 +340,39 @@ namespace AI4E.Storage.Projection
             private async Task<bool> ProjectCoreAsync(object entity, IServiceProvider serviceProvider, CancellationToken cancellation)
             {
                 var entityType = _sourceDescriptor.SourceType;
-                var projectionResults = await _projector.ProjectAsync(entityType, entity, serviceProvider, cancellation);
+                var projectionResults = _projector.ProjectAsync(entityType, entity, serviceProvider, cancellation);
                 var appliedProjections = new HashSet<ProjectionTargetDescriptor>(await GetAppliedProjectionsAsync(cancellation));
                 var projections = new List<ProjectionTargetDescriptor>();
 
+
                 // TODO: Ensure that there are no two projection results with the same type and id. 
                 //       Otherwise bad things happen.
-                foreach (var projectionResult in projectionResults)
+                var projectionsPresent = false;
+                IAsyncEnumerator<IProjectionResult> projectionResultsEnumerator = null;
+
+                try
                 {
-                    var projection = new ProjectionTargetDescriptor(projectionResult.ResultType,
-                                                                    projectionResult.ResultId.ToString());
-                    projections.Add(projection);
+                    projectionResultsEnumerator = projectionResults.GetEnumerator();
 
-                    if (!appliedProjections.Remove(projection))
+                    while (await projectionResultsEnumerator.MoveNext(cancellation))
                     {
-                        await AddEntityToProjectionAsync(projectionResult, cancellation);
-                    }
+                        projectionsPresent = true;
+                        var projectionResult = projectionResultsEnumerator.Current;
+                        var projection = new ProjectionTargetDescriptor(projectionResult.ResultType,
+                                                                                            projectionResult.ResultId.ToString());
+                        projections.Add(projection);
 
-                    await _database.StoreAsync(projectionResult.ResultType, projectionResult.Result, cancellation);
+                        if (!appliedProjections.Remove(projection))
+                        {
+                            await AddEntityToProjectionAsync(projectionResult, cancellation);
+                        }
+
+                        await _database.StoreAsync(projectionResult.ResultType, projectionResult.Result, cancellation);
+                    }
+                }
+                finally
+                {
+                    projectionResultsEnumerator?.Dispose();
                 }
 
                 // We removed all current projections from applied projections. 
@@ -376,7 +385,7 @@ namespace AI4E.Storage.Projection
                 // Update the projections metadata in the database
                 await UpdateAppliedProjectionsAsync(projections, cancellation);
 
-                return projectionResults.Any();
+                return projectionsPresent;
             }
 
             private ITargetScopedProjectionEngine GetTargetScopedProjectionEngine(Type targetType)
@@ -438,7 +447,7 @@ namespace AI4E.Storage.Projection
                 }
 
                 metadata.ProjectionTargets.Clear();
-                metadata.ProjectionTargets.AddRange(projections.Select(p => new ProjectionTarget { Type = StringifyType(p.TargetType), Id = p.TargetId }));
+                metadata.ProjectionTargets.AddRange(projections.Select(p => new ProjectionTarget { Type = p.TargetType.GetUnqualifiedTypeName(), Id = p.TargetId }));
                 _sourceMetadataCache[_sourceDescriptor] = new ProjectionSourceMetadataCacheEntry(originalMetadata, metadata, touched: true);
             }
 
@@ -455,7 +464,7 @@ namespace AI4E.Storage.Projection
             {
                 if (!_sourceMetadataCache.TryGetValue(sourceDescriptor, out var entry))
                 {
-                    var entryId = ProjectionSourceMetadata.GenerateId(sourceDescriptor.SourceId, StringifyType(sourceDescriptor.SourceType));
+                    var entryId = ProjectionSourceMetadata.GenerateId(sourceDescriptor.SourceId, sourceDescriptor.SourceType.GetUnqualifiedTypeName());
                     var metadata = await _database.GetAsync<ProjectionSourceMetadata>(p => p.Id == entryId, cancellation).FirstOrDefault();
                     var originalMetadata = metadata;
                     var touched = false;
@@ -465,7 +474,7 @@ namespace AI4E.Storage.Projection
                         metadata = new ProjectionSourceMetadata
                         {
                             SourceId = sourceDescriptor.SourceId,
-                            SourceType = StringifyType(sourceDescriptor.SourceType)
+                            SourceType = sourceDescriptor.SourceType.GetUnqualifiedTypeName()
                         };
 
                         touched = true;
@@ -479,7 +488,7 @@ namespace AI4E.Storage.Projection
                     var metadata = new ProjectionSourceMetadata
                     {
                         SourceId = sourceDescriptor.SourceId,
-                        SourceType = StringifyType(sourceDescriptor.SourceType)
+                        SourceType = sourceDescriptor.SourceType.GetUnqualifiedTypeName()
                     };
 
                     entry = new ProjectionSourceMetadataCacheEntry(entry.OriginalMetadata, metadata, touched: true);
@@ -614,12 +623,12 @@ namespace AI4E.Storage.Projection
                 var (originalMetadata, metadata) = await GetMetadataAsync(addedProjection, cancellation);
 
                 Assert(!metadata.ProjectionSources.Any(p => p.Id == projectionSource.SourceId &&
-                                                            p.Type == StringifyType(projectionSource.SourceType)));
+                                                            p.Type == projectionSource.SourceType.GetUnqualifiedTypeName()));
 
                 var storedProjectionSource = new ProjectionSource
                 {
                     Id = projectionSource.SourceId,
-                    Type = StringifyType(projectionSource.SourceType)
+                    Type = projectionSource.SourceType.GetUnqualifiedTypeName()
                 };
 
                 metadata.ProjectionSources.Add(storedProjectionSource);
@@ -645,7 +654,7 @@ namespace AI4E.Storage.Projection
 
                 var removed = metadata.ProjectionSources
                                       .RemoveFirstWhere(p => p.Id == projectionSource.SourceId &&
-                                                             p.Type == StringifyType(projectionSource.SourceType));
+                                                             p.Type == projectionSource.SourceType.GetUnqualifiedTypeName());
 
                 Assert(removed != null);
 
@@ -723,7 +732,7 @@ namespace AI4E.Storage.Projection
             {
                 if (!_targetMetadataCache.TryGetValue(target, out var entry))
                 {
-                    var entryId = ProjectionTargetMetadata.GenerateId(target.TargetId.ToString(), StringifyType(target.TargetType));
+                    var entryId = ProjectionTargetMetadata.GenerateId(target.TargetId.ToString(), target.TargetType.GetUnqualifiedTypeName());
                     var metadata = await _database.GetAsync<ProjectionTargetMetadata>(p => p.Id == entryId, cancellation).FirstOrDefault();
                     var originalMetadata = metadata;
                     var touched = false;
@@ -733,7 +742,7 @@ namespace AI4E.Storage.Projection
                         metadata = new ProjectionTargetMetadata
                         {
                             TargetId = target.TargetId,
-                            TargetType = StringifyType(target.TargetType)
+                            TargetType = target.TargetType.GetUnqualifiedTypeName()
                         };
 
                         touched = true;
@@ -751,7 +760,7 @@ namespace AI4E.Storage.Projection
             {
                 if (!_targetMetadataCache.TryGetValue(target, out var entry))
                 {
-                    var entryId = ProjectionTargetMetadata.GenerateId(target.TargetId, StringifyType(target.TargetType));
+                    var entryId = ProjectionTargetMetadata.GenerateId(target.TargetId, target.TargetType.GetUnqualifiedTypeName());
                     var metadata = await _database.GetAsync<ProjectionTargetMetadata>(p => p.Id == entryId, cancellation).FirstOrDefault();
 
                     entry = new ProjectionTargetMetadataCacheEntry(metadata, metadata, touched: false);

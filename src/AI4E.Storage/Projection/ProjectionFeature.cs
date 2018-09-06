@@ -26,12 +26,12 @@ using AI4E.Internal;
 
 namespace AI4E.Storage.Projection
 {
-    internal class ProjectionFeature
+    public class ProjectionFeature
     {
         public IList<Type> Projections { get; } = new List<Type>();
     }
 
-    internal class ProjectionFeatureProvider : IApplicationFeatureProvider<ProjectionFeature>
+    public sealed class ProjectionFeatureProvider : IApplicationFeatureProvider<ProjectionFeature>
     {
         public void PopulateFeature(IEnumerable<ApplicationPart> parts, ProjectionFeature feature)
         {
@@ -47,7 +47,7 @@ namespace AI4E.Storage.Projection
             }
         }
 
-        protected virtual bool IsProjection(Type type)
+        private bool IsProjection(Type type)
         {
             return (type.IsClass || type.IsValueType && !type.IsEnum) &&
                    !type.IsAbstract &&
