@@ -73,7 +73,8 @@ namespace AI4E.Handler
         private void AssertLegalResult(object result)
         {
             var returnType = ReturnTypeDescriptor.ResultType;
-            Assert(result == null && IsNullable(returnType) || result != null && returnType.IsAssignableFrom(result.GetType()));
+            Assert(result == null && (IsNullable(returnType) || returnType == typeof(void)) || 
+                   result != null && returnType.IsAssignableFrom(result.GetType()));
         }
 
         private static bool IsNullable(Type type)
@@ -129,7 +130,7 @@ namespace AI4E.Handler
                 for (var i = 1; i < arguments.Length; i++)
                 {
                     var parameter = Expression.Constant(parameters[i], typeof(ParameterInfo));
-                    var argument = Expression.Call(resolveParameterMethod, parameterResolver, parameter);
+                    var argument = Expression.Convert(Expression.Call(resolveParameterMethod, parameterResolver, parameter), parameters[i].ParameterType);
 
                     arguments[i] = argument;
                 }
@@ -149,7 +150,6 @@ namespace AI4E.Handler
                     return expression.Compile();
                 }
             }
-
         }
     }
 }
