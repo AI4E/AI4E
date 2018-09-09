@@ -30,7 +30,7 @@ namespace AI4E
     // This is inspired by the ViewDataDictionary, Asp.Net Core MVC uses to pass the view data from the controller to the view.
     // We have to use an immutable type however, to ensure consistency, as our messaging solution is not guaranteed to be used
     // by a single thread only.
-    public class DispatchDataDictionary : IReadOnlyDictionary<string, object>
+    public abstract class DispatchDataDictionary : IReadOnlyDictionary<string, object>
     {
         private readonly ImmutableDictionary<string, object> _data;
 
