@@ -28,32 +28,33 @@ namespace AI4E
     {
         public static Task<IDispatchResult> QueryAsync<TResult>(this IMessageDispatcher messageDispatcher, CancellationToken cancellation = default)
         {
-            return messageDispatcher.DispatchAsync(new Query<TResult>(), new DispatchValueDictionary(), publish: false, cancellation);
+            return messageDispatcher.DispatchAsync(new Query<TResult>(), cancellation);
         }
 
         public static Task<IDispatchResult> QueryByIdAsync<TId, TResult>(this IMessageDispatcher messageDispatcher, TId id, CancellationToken cancellation = default)
             where TId : struct, IEquatable<TId>
         {
-            return messageDispatcher.DispatchAsync(new ByIdQuery<TId, TResult>(id), new DispatchValueDictionary(), publish: false, cancellation);
+            return messageDispatcher.DispatchAsync(new ByIdQuery<TId, TResult>(id), cancellation);
         }
 
         public static Task<IDispatchResult> QueryByIdAsync<TResult>(this IMessageDispatcher messageDispatcher, Guid id, CancellationToken cancellation = default)
         {
-            return messageDispatcher.DispatchAsync(new ByIdQuery<TResult>(id), new DispatchValueDictionary(), publish: false, cancellation);
+            return messageDispatcher.DispatchAsync(new ByIdQuery<TResult>(id), cancellation);
         }
 
         public static Task<IDispatchResult> QueryByParentAsync<TId, TResult>(this IMessageDispatcher messageDispatcher, TId parentId, CancellationToken cancellation = default)
             where TId : struct, IEquatable<TId>
         {
-            return messageDispatcher.DispatchAsync(new ByParentQuery<TId, TResult>(parentId), new DispatchValueDictionary(), publish: false, cancellation);
+            return messageDispatcher.DispatchAsync(new ByParentQuery<TId, TResult>(parentId), cancellation);
         }
 
         public static Task<IDispatchResult> QueryByParentAsync<TResult>(this IMessageDispatcher messageDispatcher, Guid parentId, CancellationToken cancellation = default)
         {
-            return messageDispatcher.DispatchAsync(new ByParentQuery<TResult>(parentId), new DispatchValueDictionary(), publish: false, cancellation);
+            return messageDispatcher.DispatchAsync(new ByParentQuery<TResult>(parentId), cancellation);
         }
 
         public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher, IMessageHandler<TMessage> eventHandler)
+            where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -63,26 +64,29 @@ namespace AI4E
 
         [Obsolete]
         public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher,
-                                                                                         Func<TMessage, DispatchValueDictionary, Task<IDispatchResult>> messageHandler)
+                                                                                         Func<DispatchDataDictionary<TMessage>, Task<IDispatchResult>> messageHandler)
+            where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
-            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((message, dispatchValues, cancellation) => new ValueTask<IDispatchResult>(messageHandler(message, dispatchValues))));
+            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((dispatchData, cancellation) => new ValueTask<IDispatchResult>(messageHandler(dispatchData))));
         }
 
         [Obsolete]
         public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher,
                                                                                          Func<TMessage, Task<IDispatchResult>> messageHandler)
+            where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
-            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((message, dispatchValues, cancellation) => new ValueTask<IDispatchResult>(messageHandler(message))));
+            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((dispatchData, cancellation) => new ValueTask<IDispatchResult>(messageHandler(dispatchData.Message))));
         }
 
         public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher,
-                                                                                         Func<TMessage, DispatchValueDictionary, CancellationToken, ValueTask<IDispatchResult>> messageHandler)
+                                                                                         Func<DispatchDataDictionary<TMessage>, CancellationToken, ValueTask<IDispatchResult>> messageHandler)
+              where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -92,16 +96,18 @@ namespace AI4E
 
         public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher,
                                                                                          Func<TMessage, CancellationToken, ValueTask<IDispatchResult>> messageHandler)
+              where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
-            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((message, dispatchValues, cancellation) => messageHandler(message, cancellation)));
+            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((dispatchData, cancellation) => messageHandler(dispatchData.Message, cancellation)));
         }
 
         public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(
             this IMessageDispatcher messageDispatcher,
             IProvider<IMessageHandler<TMessage>> messageHandlerProvider)
+            where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -113,10 +119,11 @@ namespace AI4E
         }
 
         private sealed class AnonymousMessageHandler<TMessage> : IMessageHandler<TMessage>
+            where TMessage : class
         {
-            private readonly Func<TMessage, DispatchValueDictionary, CancellationToken, ValueTask<IDispatchResult>> _messageHandler;
+            private readonly Func<DispatchDataDictionary<TMessage>, CancellationToken, ValueTask<IDispatchResult>> _messageHandler;
 
-            public AnonymousMessageHandler(Func<TMessage, DispatchValueDictionary, CancellationToken, ValueTask<IDispatchResult>> messageHandler)
+            public AnonymousMessageHandler(Func<DispatchDataDictionary<TMessage>, CancellationToken, ValueTask<IDispatchResult>> messageHandler)
             {
                 if (messageHandler == null)
                     throw new ArgumentNullException(nameof(messageHandler));
@@ -124,9 +131,9 @@ namespace AI4E
                 _messageHandler = messageHandler;
             }
 
-            public ValueTask<IDispatchResult> HandleAsync(TMessage message, DispatchValueDictionary values, CancellationToken cancellation)
+            public ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, CancellationToken cancellation)
             {
-                return _messageHandler(message, values, cancellation);
+                return _messageHandler(dispatchData, cancellation);
             }
         }
     }

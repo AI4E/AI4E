@@ -11,6 +11,7 @@ using static System.Diagnostics.Debug;
 namespace AI4E.Handler
 {
     public sealed class MessageHandlerInvoker<TMessage> : IMessageHandler<TMessage>
+        where TMessage : class
     {
         private readonly object _handler;
         private readonly MessageHandlerActionDescriptor _memberDescriptor;
@@ -34,47 +35,46 @@ namespace AI4E.Handler
             _serviceProvider = serviceProvider;
         }
 
-        public ValueTask<IDispatchResult> HandleAsync(TMessage message, DispatchValueDictionary dispatchValues, CancellationToken cancellation)
+        public ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, CancellationToken cancellation)
         {
-            Func<TMessage, ValueTask<IDispatchResult>> next = (alteredMessage => InvokeHandlerCore(alteredMessage, dispatchValues, cancellation));
+            Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next = (nextDispatchData => InvokeHandlerCore(nextDispatchData, cancellation));
 
             for (var i = _processors.Length - 1; i >= 0; i--)
             {
                 var processor = _processors[i].ProvideInstance(_serviceProvider);
                 Assert(processor != null);
                 var nextCopy = next; // This is needed because of the way, the variable values are captured in the lambda expression.
-                next = (alteredMessage => InvokeProcessorAsync(processor, alteredMessage, dispatchValues, nextCopy, cancellation));
+                next = (nextDispatchData => InvokeProcessorAsync(processor, nextDispatchData, nextCopy, cancellation));
             }
 
-            return next(message);
+            return next(dispatchData);
         }
 
         private ValueTask<IDispatchResult> InvokeProcessorAsync(IMessageProcessor processor,
-                                                                TMessage message,
-                                                                DispatchValueDictionary dispatchValue,
-                                                                Func<TMessage, ValueTask<IDispatchResult>> next,
+                                                                DispatchDataDictionary<TMessage> dispatchData,
+                                                                Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
                                                                 CancellationToken cancellation)
         {
             var contextDescriptor = MessageProcessorContextDescriptor.GetDescriptor(processor.GetType());
 
             if (contextDescriptor.CanSetContext)
             {
-                IMessageProcessorContext messageProcessorContext = new MessageProcessorContext(typeof(TMessage), _handler, _memberDescriptor, dispatchValue);
+                IMessageProcessorContext messageProcessorContext = new MessageProcessorContext(_handler, _memberDescriptor);
 
                 contextDescriptor.SetContext(processor, messageProcessorContext);
             }
 
-            return processor.ProcessAsync(message, next, cancellation);
+            return processor.ProcessAsync(dispatchData, next, cancellation);
         }
 
-        private async ValueTask<IDispatchResult> InvokeHandlerCore(TMessage message, DispatchValueDictionary dispatchValues, CancellationToken cancellation)
+        private async ValueTask<IDispatchResult> InvokeHandlerCore(DispatchDataDictionary<TMessage> dispatchData, CancellationToken cancellation)
         {
             IMessageDispatchContext context = null;
             var contextDescriptor = MessageHandlerContext.GetDescriptor(_handler.GetType());
 
             if (contextDescriptor.CanSetContext)
             {
-                context = new MessageDispatchContext(_serviceProvider, dispatchValues);
+                context = new MessageDispatchContext(_serviceProvider, dispatchData);
                 contextDescriptor.SetContext(_handler, context);
             }
 
@@ -90,7 +90,7 @@ namespace AI4E.Handler
 
             IMessageDispatchContext BuildContext()
             {
-                return new MessageDispatchContext(_serviceProvider, dispatchValues);
+                return new MessageDispatchContext(_serviceProvider, dispatchData);
             }
 
             object ResolveParameter(ParameterInfo parameter)
@@ -112,9 +112,9 @@ namespace AI4E.Handler
 
                     return context;
                 }
-                else if (parameter.ParameterType == typeof(DispatchValueDictionary))
+                else if (parameter.ParameterType == typeof(DispatchDataDictionary) || parameter.ParameterType == typeof(DispatchDataDictionary<TMessage>))
                 {
-                    return dispatchValues;
+                    return dispatchData;
                 }
                 else if (parameter.IsDefined<InjectAttribute>())
                 {
@@ -130,7 +130,7 @@ namespace AI4E.Handler
 
             try
             {
-                result = await invoker.InvokeAsync(_handler, message, ResolveParameter);
+                result = await invoker.InvokeAsync(_handler, dispatchData.Message, ResolveParameter);
             }
             catch (Exception exc)
             {
@@ -153,46 +153,36 @@ namespace AI4E.Handler
 
         private sealed class MessageDispatchContext : IMessageDispatchContext
         {
-            public MessageDispatchContext(IServiceProvider dispatchServices, DispatchValueDictionary dispatchValues)
+            public MessageDispatchContext(IServiceProvider dispatchServices, DispatchDataDictionary dispatchData)
             {
                 if (dispatchServices == null)
                     throw new ArgumentNullException(nameof(dispatchServices));
 
-                if (dispatchValues == null)
-                    throw new ArgumentNullException(nameof(dispatchValues));
+                if (dispatchData == null)
+                    throw new ArgumentNullException(nameof(dispatchData));
 
                 DispatchServices = dispatchServices;
-                DispatchValues = dispatchValues;
+                DispatchData = dispatchData;
             }
 
             public IServiceProvider DispatchServices { get; }
 
-            public DispatchValueDictionary DispatchValues { get; }
+            public DispatchDataDictionary DispatchData { get; }
         }
 
         private sealed class MessageProcessorContext : IMessageProcessorContext
         {
-            public MessageProcessorContext(Type messageType, object messageHandler, MessageHandlerActionDescriptor messageHandlerAction, DispatchValueDictionary dispatchValues)
+            public MessageProcessorContext(object messageHandler, MessageHandlerActionDescriptor messageHandlerAction)
             {
                 if (messageHandler == null)
                     throw new ArgumentNullException(nameof(messageHandler));
 
-                if (messageType == null)
-                    throw new ArgumentNullException(nameof(messageType));
-
-                if (dispatchValues == null)
-                    throw new ArgumentNullException(nameof(dispatchValues));
-
                 MessageHandler = messageHandler;
                 MessageHandlerAction = messageHandlerAction;
-                MessageType = messageType;
-                DispatchValues = dispatchValues;
             }
 
             public object MessageHandler { get; }
             public MessageHandlerActionDescriptor MessageHandlerAction { get; }
-            public Type MessageType { get; }
-            public DispatchValueDictionary DispatchValues { get; }
         }
     }
 }

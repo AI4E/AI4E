@@ -62,21 +62,22 @@ namespace AI4E.Storage.Domain
             _entityPropertyAccessor = entityPropertyAccessor;
         }
 
-        public async override ValueTask<IDispatchResult> ProcessAsync<TMessage>(TMessage message,
-                                                                                Func<TMessage, ValueTask<IDispatchResult>> next,
+        public override async ValueTask<IDispatchResult> ProcessAsync<TMessage>(DispatchDataDictionary<TMessage> dispatchData,
+                                                                                Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
                                                                                 CancellationToken cancellation)
         {
+            var message = dispatchData.Message;
             var handler = Context.MessageHandler;
             var descriptor = _descriptor.GetOrAdd(handler.GetType(), handlerType => new MessageHandlerDescriptor(handlerType));
 
             if (!descriptor.IsEntityMessageHandler)
             {
-                return await next(message);
+                return await next(dispatchData);
             }
 
             if (!TryGetEntityLookup(message, descriptor, out var entityLookup))
             {
-                return await next(message);
+                return await next(dispatchData);
             }
 
             var messageAccessor = GetMessageAccessor();
@@ -121,7 +122,7 @@ namespace AI4E.Storage.Domain
                 }
 
                 var originalEntity = entity;
-                var dispatchResult = await next(message);
+                var dispatchResult = await next(dispatchData);
 
                 if (!dispatchResult.IsSuccess)
                 {

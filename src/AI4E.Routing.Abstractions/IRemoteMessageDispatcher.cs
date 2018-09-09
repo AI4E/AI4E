@@ -36,21 +36,6 @@ namespace AI4E.Routing
     public interface IRemoteMessageDispatcher : IMessageDispatcher
     {
         /// <summary>
-        /// Asynchronously dispatches a message.
-        /// </summary>
-        /// <param name="message">The message to dispatch.</param>
-        /// <param name="publish">A boolean value specifying whether the message shall be published to all handlers.</param>
-        /// <param name="receiver">The reveiver, the message shall be dispatched to.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <typeparam name="TMessage">The type of message.</typeparam>
-        /// <returns>
-        /// A task representing the asynchronous operation.
-        /// The tasks result contains an <see cref="IDispatchResult"/> indicating the message handling state.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is null.</exception>
-        Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, EndPointRoute endPoint, CancellationToken cancellation = default);
-
-        /// <summary>
         /// Asynchronously dispatches a message of the specified message type.
         /// </summary>
         /// <param name="messageType">The type of message.</param>
@@ -64,11 +49,9 @@ namespace AI4E.Routing
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if either <paramref name="messageType"/> or <paramref name="message"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown if <paramref name="message"/> is not of type <paramref name="messageType"/> or a derived type.</exception>
-        Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, EndPointRoute endPoint, CancellationToken cancellation = default);
+        Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, EndPointRoute endPoint, CancellationToken cancellation = default); // TODO: Return ValueTask<IDispatchResult>
 
-        Task<IDispatchResult> DispatchLocalAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, CancellationToken cancellation = default);
-
-        Task<IDispatchResult> DispatchLocalAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation = default);
+        Task<IDispatchResult> DispatchLocalAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation = default); // TODO: Return ValueTask<IDispatchResult>
 
         [Obsolete("Use GetLocalEndPointAsync(CancellationToken)")]
         EndPointRoute LocalEndPoint { get; }

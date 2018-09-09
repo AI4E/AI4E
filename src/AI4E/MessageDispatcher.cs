@@ -2,11 +2,11 @@
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        MessageDispatcher.cs
  * Types:           (1) AI4E.MessageDispatcher
- *                  (2) AI4E.ITypedMessageDispatcher
- *                  (3) AI4E.MessageDispatcher'1
+ *                  (2) AI4E.MessageDispatcher.ITypedMessageDispatcher
+ *                  (3) AI4E.MessageDispatcher.TypedMessageDispatcher'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   25.02.2018 
+ * Last modified:   09.09.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -33,21 +33,25 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
 using Microsoft.Extensions.DependencyInjection;
+using static System.Diagnostics.Debug;
 
 namespace AI4E
 {
     public sealed class MessageDispatcher : IMessageDispatcher
     {
-        private static readonly Type _typedDispatcherType = typeof(MessageDispatcher<>);
+        #region Fields
 
         private readonly IServiceProvider _serviceProvider;
         private readonly ConcurrentDictionary<Type, ITypedMessageDispatcher> _typedDispatchers;
+
+        #endregion
+
+        #region C'tor
 
         public MessageDispatcher(IServiceProvider serviceProvider)
         {
@@ -58,12 +62,12 @@ namespace AI4E
             _serviceProvider = serviceProvider;
         }
 
-        private MessageDispatcher<TMessage> GetTypedDispatcher<TMessage>()
-        {
-            return (MessageDispatcher<TMessage>)_typedDispatchers.GetOrAdd(typeof(TMessage), _ => new MessageDispatcher<TMessage>());
-        }
+        #endregion
+
+        #region IMessageDispatcher
 
         public IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
+            where TMessage : class
         {
             if (messageHandlerProvider == null)
                 throw new ArgumentNullException(nameof(messageHandlerProvider));
@@ -71,42 +75,21 @@ namespace AI4E
             return GetTypedDispatcher<TMessage>().Register(messageHandlerProvider);
         }
 
-        public Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, CancellationToken cancellation)
+        public async Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation)
         {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
+            if (dispatchData == null)
+                throw new ArgumentNullException(nameof(dispatchData));
 
-            return DispatchAsync(typeof(TMessage), message, context, publish, cancellation);
-        }
-
-        private ITypedMessageDispatcher GetTypedDispatcher(Type messageType)
-        {
-            if (messageType == null)
-                throw new ArgumentNullException(nameof(messageType));
-
-            return _typedDispatchers.GetOrAdd(
-                messageType,
-                valueFactory: _ => (ITypedMessageDispatcher)Activator.CreateInstance(_typedDispatcherType.MakeGenericType(messageType)));
-        }
-
-        public async Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation)
-        {
-            if (messageType == null)
-                throw new ArgumentNullException(nameof(messageType));
-
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
-            var currType = messageType;
+            var currType = dispatchData.MessageType;
             var tasks = new List<Task<(IDispatchResult result, bool handlersFound)>>();
 
             do
             {
-                Debug.Assert(currType != null);
+                Assert(currType != null);
 
                 if (TryGetTypedDispatcher(currType, out var dispatcher))
                 {
-                    var dispatchOperation = dispatcher.DispatchAsync(message, context, publish, _serviceProvider, cancellation);
+                    var dispatchOperation = dispatcher.DispatchAsync(dispatchData, publish, cancellation);
 
                     if (publish)
                     {
@@ -132,7 +115,7 @@ namespace AI4E
             // When dispatching a message and no handlers are available, this is a failure.
             if (!publish)
             {
-                return new DispatchFailureDispatchResult(messageType);
+                return new DispatchFailureDispatchResult(dispatchData.MessageType);
             }
 
             var filteredResult = (await Task.WhenAll(tasks)).Where(p => p.handlersFound).ToList();
@@ -151,109 +134,119 @@ namespace AI4E
             return new AggregateDispatchResult(filteredResult.Select(p => p.result));
         }
 
+        #endregion
+
+        #region Typed Dispatcher
+
         private bool TryGetTypedDispatcher(Type type, out ITypedMessageDispatcher typedDispatcher)
         {
-            Debug.Assert(type != null);
+            Assert(type != null);
 
             var result = _typedDispatchers.TryGetValue(type, out typedDispatcher);
 
-            Debug.Assert(!result || typedDispatcher != null);
-            Debug.Assert(!result || typedDispatcher.MessageType == type);
+            Assert(!result || typedDispatcher != null);
+            Assert(!result || typedDispatcher.MessageType == type);
             return result;
         }
-    }
 
-    internal interface ITypedMessageDispatcher
-    {
-        Task<(IDispatchResult result, bool handlersFound)> DispatchAsync(object message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProviders, CancellationToken cancellation);
-
-        Type MessageType { get; }
-    }
-
-    internal sealed class MessageDispatcher<TMessage> : ITypedMessageDispatcher
-    {
-        private readonly HandlerRegistry<IMessageHandler<TMessage>> _registry = new HandlerRegistry<IMessageHandler<TMessage>>();
-
-        public IHandlerRegistration<IMessageHandler<TMessage>> Register(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
+        private TypedMessageDispatcher<TMessage> GetTypedDispatcher<TMessage>()
+           where TMessage : class
         {
-            if (messageHandlerProvider == null)
-                throw new ArgumentNullException(nameof(messageHandlerProvider));
-
-            return _registry.CreateRegistration(messageHandlerProvider);
+            return (TypedMessageDispatcher<TMessage>)_typedDispatchers.GetOrAdd(typeof(TMessage), _ => new TypedMessageDispatcher<TMessage>(_serviceProvider));
         }
 
-        public async Task<(IDispatchResult result, bool handlersFound)> DispatchAsync(TMessage message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProvider, CancellationToken cancellation)
+        private interface ITypedMessageDispatcher
         {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
+            Task<(IDispatchResult result, bool handlersFound)> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation);
 
-            if (serviceProvider == null)
-                throw new ArgumentNullException(nameof(serviceProvider));
-
-            if (publish)
-            {
-                var handlers = _registry.Handlers;
-
-                if (handlers.Any())
-                {
-                    // TODO: Use ValueTaskExtensions.WhenAll
-                    var dispatchResults = await Task.WhenAll(handlers.Select(p => DispatchSingleHandlerAsync(p, message, context, serviceProvider, cancellation)).Select(p => p.AsTask()));
-
-                    return (result: new AggregateDispatchResult(dispatchResults), handlersFound: true);
-                }
-
-                return (result: default, handlersFound: false);
-            }
-            else
-            {
-                if (_registry.TryGetHandler(out var handler))
-                {
-                    return (result: await DispatchSingleHandlerAsync(handler, message, context, serviceProvider, cancellation), handlersFound: true);
-                }
-
-                return (result: default, handlersFound: false);
-            }
+            Type MessageType { get; }
         }
 
-        private ValueTask<IDispatchResult> DispatchSingleHandlerAsync(IContextualProvider<IMessageHandler<TMessage>> handler, TMessage message, DispatchValueDictionary context, IServiceProvider serviceProvider, CancellationToken cancellation)
+        private sealed class TypedMessageDispatcher<TMessage> : ITypedMessageDispatcher
+            where TMessage : class
         {
-            Debug.Assert(message != null);
-            Debug.Assert(handler != null);
-            Debug.Assert(serviceProvider != null);
+            private readonly HandlerRegistry<IMessageHandler<TMessage>> _registry = new HandlerRegistry<IMessageHandler<TMessage>>();
+            private readonly IServiceProvider _serviceProvider;
 
-            using (var scope = serviceProvider.CreateScope())
+            public TypedMessageDispatcher(IServiceProvider serviceProvider)
             {
-                try
-                {
-                    return handler.ProvideInstance(scope.ServiceProvider).HandleAsync(message, context, cancellation);
-                }
-                catch (ConcurrencyException)
-                {
-                    return new ValueTask<IDispatchResult>(new ConcurrencyIssueDispatchResult());
-                }
-                catch (Exception exc)
-                {
-                    return new ValueTask<IDispatchResult>(new FailureDispatchResult(exc));
-                }
-            }
-        }
-
-        public Task<(IDispatchResult result, bool handlersFound)> DispatchAsync(object message, DispatchValueDictionary context, bool publish, IServiceProvider serviceProvider, CancellationToken cancellation)
-        {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
-            if (serviceProvider == null)
-                throw new ArgumentNullException(nameof(serviceProvider));
-
-            if (!(message is TMessage typedMessage))
-            {
-                throw new ArgumentException($"The argument must be of type '{ typeof(TMessage).FullName }' or a derived type.", nameof(message));
+                Assert(serviceProvider != null);
+                _serviceProvider = serviceProvider;
             }
 
-            return DispatchAsync(typedMessage, context, publish, serviceProvider, cancellation);
+            public IHandlerRegistration<IMessageHandler<TMessage>> Register(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
+            {
+                if (messageHandlerProvider == null)
+                    throw new ArgumentNullException(nameof(messageHandlerProvider));
+
+                return _registry.CreateRegistration(messageHandlerProvider);
+            }
+
+            public async Task<(IDispatchResult result, bool handlersFound)> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation)
+            {
+                Assert(dispatchData != null);
+
+                // We cannot assume that dispatchData is of type DispatchDataDictionary<TMessage>
+                if (!(dispatchData is DispatchDataDictionary<TMessage> typedDispatchData))
+                {
+                    Assert(dispatchData.Message is TMessage, $"The argument must be of type '{ typeof(TMessage).FullName }' or a derived type.");
+
+                    var message = (TMessage)dispatchData.Message;
+                    typedDispatchData = new DispatchDataDictionary<TMessage>(message, dispatchData);
+                }
+
+                if (publish)
+                {
+                    var handlers = _registry.Handlers;
+
+                    if (handlers.Any())
+                    {
+                        // TODO: Use ValueTaskExtensions.WhenAll
+                        var dispatchResults = await Task.WhenAll(handlers.Select(p => DispatchSingleHandlerAsync(p, typedDispatchData, cancellation)).Select(p => p.AsTask()));
+
+                        return (result: new AggregateDispatchResult(dispatchResults), handlersFound: true);
+                    }
+
+                    return (result: default, handlersFound: false);
+                }
+                else
+                {
+                    if (_registry.TryGetHandler(out var handler))
+                    {
+                        return (result: await DispatchSingleHandlerAsync(handler, typedDispatchData, cancellation), handlersFound: true);
+                    }
+
+                    return (result: default, handlersFound: false);
+                }
+            }
+
+            private ValueTask<IDispatchResult> DispatchSingleHandlerAsync(IContextualProvider<IMessageHandler<TMessage>> handler,
+                                                                          DispatchDataDictionary<TMessage> dispatchData,
+                                                                          CancellationToken cancellation)
+            {
+                Assert(handler != null);
+                Assert(dispatchData != null);
+
+                using (var scope = _serviceProvider.CreateScope())
+                {
+                    try
+                    {
+                        return handler.ProvideInstance(scope.ServiceProvider).HandleAsync(dispatchData, cancellation);
+                    }
+                    catch (ConcurrencyException)
+                    {
+                        return new ValueTask<IDispatchResult>(new ConcurrencyIssueDispatchResult());
+                    }
+                    catch (Exception exc)
+                    {
+                        return new ValueTask<IDispatchResult>(new FailureDispatchResult(exc));
+                    }
+                }
+            }
+
+            public Type MessageType => typeof(TMessage);
         }
 
-        public Type MessageType => typeof(TMessage);
+        #endregion
     }
 }

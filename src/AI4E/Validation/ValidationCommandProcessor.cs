@@ -29,8 +29,11 @@ namespace AI4E.Validation
 {
     public class ValidationCommandProcessor : MessageProcessor
     {
-        public override ValueTask<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, ValueTask<IDispatchResult>> next, CancellationToken cancellation)
+        public override ValueTask<IDispatchResult> ProcessAsync<TMessage>(DispatchDataDictionary<TMessage> dispatchData,
+                                                                          Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
+                                                                          CancellationToken cancellation)
         {
+            var message = dispatchData.Message;
             var validationResultsBuilder = new ValidationResultsBuilder();
             var properties = typeof(TMessage).GetProperties().Where(p => p.CanRead && p.GetIndexParameters().Length == 0);
 
@@ -56,7 +59,7 @@ namespace AI4E.Validation
                 return new ValueTask<IDispatchResult>(new ValidationFailureDispatchResult(validationResults));
             }
 
-            return next(message);
+            return next(dispatchData);
         }
 
         private static void ValidateMember(ValidationResultsBuilder validationResultsBuilder, MemberInfo member, object value)

@@ -96,7 +96,7 @@ namespace AI4E.Modularity.Host
 
                     watch.Restart();
 
-                    var dispatchResult = await dispatcher.DispatchAsync(message, new DispatchValueDictionary(), publish: false, endPoint, cancellation);
+                    var dispatchResult = await dispatcher.DispatchAsync(new DispatchDataDictionary<ModuleHttpRequest>(message), publish: false, endPoint, cancellation);
 
                     watch.Stop();
 

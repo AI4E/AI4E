@@ -115,7 +115,7 @@ namespace AI4E.Routing
         }
 
         [Obsolete("Use GetLocalEndPointAsync(CancellationToken)")]
-        public EndPointRoute LocalEndPoint => GetLocalEndPointAsync(cancellation: default)
+        EndPointRoute IRemoteMessageDispatcher.LocalEndPoint => GetLocalEndPointAsync(cancellation: default)
                                                 .ConfigureAwait(false)
                                                 .GetAwaiter()
                                                 .GetResult();
@@ -127,15 +127,15 @@ namespace AI4E.Routing
 
         private sealed class SerializedMessageHandler : ISerializedMessageHandler
         {
-            private readonly RemoteMessageDispatcher _owner;
+            private readonly RemoteMessageDispatcher _remoteMessageDispatcher;
             private readonly ITypeConversion _typeConversion;
 
-            public SerializedMessageHandler(RemoteMessageDispatcher owner)
+            public SerializedMessageHandler(RemoteMessageDispatcher remoteMessageDispatcher)
             {
-                Assert(owner != null);
+                Assert(remoteMessageDispatcher != null);
 
-                _owner = owner;
-                _typeConversion = _owner._typeConversion;
+                _remoteMessageDispatcher = remoteMessageDispatcher;
+                _typeConversion = _remoteMessageDispatcher._typeConversion;
             }
 
             public async ValueTask<IMessage> HandleAsync(string route,
@@ -153,12 +153,11 @@ namespace AI4E.Routing
 
                 Assert(messageType != null);
 
-                var (message, dispatchValues) = _owner.DeserializeDispatchValues(serializedMessage);
-
-                var dispatchResult = await _owner.DispatchLocalAsync(messageType, message, dispatchValues, publish, cancellation);
+                var dispatchData = _remoteMessageDispatcher.DeserializeDispatchValues(serializedMessage);
+                var dispatchResult = await _remoteMessageDispatcher.DispatchLocalAsync(dispatchData, publish, cancellation);
 
                 var response = new Message();
-                _owner.SerializeDispatchResult(response, dispatchResult);
+                _remoteMessageDispatcher.SerializeDispatchResult(response, dispatchResult);
                 serializedMessage.PushFrame();
 
                 return response;
@@ -190,22 +189,20 @@ namespace AI4E.Routing
             }
         }
 
-        private void SerializeDispatchValues(IMessage message, object messageX, DispatchValueDictionary dispatchValues)
+        private void SerializeDispatchValues(IMessage message, DispatchDataDictionary dispatchData)
         {
             Assert(message != null);
-            Assert(dispatchValues != null);
-
-            var tuple = new Tuple<object, DispatchValueDictionary>(messageX, dispatchValues);
+            Assert(dispatchData != null);
 
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new StreamWriter(stream))
             using (var jsonWriter = new JsonTextWriter(writer))
             {
-                _serializer.Serialize(jsonWriter, tuple, typeof(Tuple<object, DispatchValueDictionary>));
+                _serializer.Serialize(jsonWriter, dispatchData, typeof(DispatchDataDictionary));
             }
         }
 
-        private (object message, DispatchValueDictionary dispatchValues) DeserializeDispatchValues(IMessage message)
+        private DispatchDataDictionary DeserializeDispatchValues(IMessage message)
         {
             Assert(message != null);
 
@@ -213,82 +210,47 @@ namespace AI4E.Routing
             using (var reader = new StreamReader(stream))
             using (var jsonReader = new JsonTextReader(reader))
             {
-                var tuple = _serializer.Deserialize<Tuple<object, DispatchValueDictionary>>(jsonReader);
-
-                return (tuple.Item1, tuple.Item2);
+                return _serializer.Deserialize<DispatchDataDictionary>(jsonReader);
             }
         }
 
         #region Dispatch
 
-        public Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, EndPointRoute route, CancellationToken cancellation = default)
-        {
-            return DispatchAsync(typeof(TMessage), message, context, publish, route, cancellation);
-        }
-
-        public Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, CancellationToken cancellation = default)
-        {
-            return DispatchAsync(typeof(TMessage), message, context, publish, endPoint: default, cancellation);
-        }
-
-        public Task<IDispatchResult> DispatchLocalAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, CancellationToken cancellation = default)
-        {
-            return DispatchLocalAsync(typeof(TMessage), message, context, publish, cancellation);
-        }
-
-        public Task<IDispatchResult> DispatchAsync(Type messageType,
-                                                   object message,
-                                                   DispatchValueDictionary dispatchValues,
+        public Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData,
                                                    bool publish,
                                                    EndPointRoute endPoint,
                                                    CancellationToken cancellation = default)
         {
-            if (messageType == null)
-                throw new ArgumentNullException(nameof(messageType));
-
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
-            if (dispatchValues == null)
-                throw new ArgumentNullException(nameof(dispatchValues));
+            if (dispatchData == null)
+                throw new ArgumentNullException(nameof(dispatchData));
 
             if (endPoint != null)
             {
-                return InternalDispatchAsync(messageType, message, dispatchValues, publish, endPoint, cancellation);
+                return InternalDispatchAsync(dispatchData, publish, endPoint, cancellation);
             }
 
-            return InternalDispatchAsync(messageType, message, dispatchValues, publish, cancellation);
+            return InternalDispatchAsync(dispatchData, publish, cancellation);
         }
 
-        public Task<IDispatchResult> DispatchAsync(Type messageType,
-                                                   object message,
-                                                   DispatchValueDictionary dispatchValues,
+        public Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData,
                                                    bool publish,
                                                    CancellationToken cancellation = default)
         {
-            if (messageType == null)
-                throw new ArgumentNullException(nameof(messageType));
+            if (dispatchData == null)
+                throw new ArgumentNullException(nameof(dispatchData));
 
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
-            if (dispatchValues == null)
-                throw new ArgumentNullException(nameof(dispatchValues));
-
-            return InternalDispatchAsync(messageType, message, dispatchValues, publish, cancellation);
+            return InternalDispatchAsync(dispatchData, publish, cancellation);
         }
 
-        private async Task<IDispatchResult> InternalDispatchAsync(Type messageType,
-                                                                  object message,
-                                                                  DispatchValueDictionary dispatchValues,
+        private async Task<IDispatchResult> InternalDispatchAsync(DispatchDataDictionary dispatchData,
                                                                   bool publish,
                                                                   EndPointRoute endPoint,
                                                                   CancellationToken cancellation)
         {
-            var route = _typeConversion.SerializeType(messageType);
+            var route = _typeConversion.SerializeType(dispatchData.MessageType);
             var serializedMessage = new Message();
 
-            SerializeDispatchValues(serializedMessage, message, dispatchValues);
+            SerializeDispatchValues(serializedMessage, dispatchData);
 
             var serializedResult = await _messageRouter.RouteAsync(route, serializedMessage, publish, endPoint, cancellation);
             var result = DeserializeDispatchResult(serializedResult);
@@ -296,15 +258,13 @@ namespace AI4E.Routing
             return result;
         }
 
-        private async Task<IDispatchResult> InternalDispatchAsync(Type messageType,
-                                                                  object message,
-                                                                  DispatchValueDictionary dispatchValues,
+        private async Task<IDispatchResult> InternalDispatchAsync(DispatchDataDictionary dispatchData,
                                                                   bool publish,
                                                                   CancellationToken cancellation)
         {
-            var routes = GetRoutes(messageType);
+            var routes = GetRoutes(dispatchData.MessageType);
             var serializedMessage = new Message();
-            SerializeDispatchValues(serializedMessage, message, dispatchValues);
+            SerializeDispatchValues(serializedMessage, dispatchData);
 
             var serializedResults = await _messageRouter.RouteAsync(routes, serializedMessage, publish, cancellation);
             var results = serializedResults.Select(p => DeserializeDispatchResult(p)).ToList();
@@ -316,7 +276,7 @@ namespace AI4E.Routing
                     return new SuccessDispatchResult();
                 }
 
-                return new DispatchFailureDispatchResult(messageType);
+                return new DispatchFailureDispatchResult(dispatchData.MessageType);
             }
 
             if (results.Count == 1)
@@ -346,24 +306,25 @@ namespace AI4E.Routing
             return result;
         }
 
-        public async Task<IDispatchResult> DispatchLocalAsync(Type messageType,
-                                                              object message,
-                                                              DispatchValueDictionary dispatchValues,
+        public async Task<IDispatchResult> DispatchLocalAsync(DispatchDataDictionary dispatchData,
                                                               bool publish,
                                                               CancellationToken cancellation)
         {
+            if (dispatchData == null)
+                throw new ArgumentNullException(nameof(dispatchData));
+
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
 
-            _logger?.LogInformation($"End-point '{localEndPoint}': Dispatching message of type {messageType.FullName} locally.");
+            _logger?.LogInformation($"End-point '{localEndPoint}': Dispatching message of type {dispatchData.MessageType} locally.");
 
             IDispatchResult Result(IDispatchResult result)
             {
-                _logger?.LogDebug($"End-point '{localEndPoint}': Dispatched message of type {messageType.FullName} locally.");
+                _logger?.LogDebug($"End-point '{localEndPoint}': Dispatched message of type {dispatchData.MessageType} locally.");
 
                 return result;
             }
 
-            var currType = messageType;
+            var currType = dispatchData.MessageType;
             var tasks = new List<Task<IDispatchResult>>();
 
             do
@@ -374,7 +335,7 @@ namespace AI4E.Routing
                 {
                     if (!publish)
                     {
-                        var dispatchResult = await dispatcher.DispatchAsync(message, dispatchValues, publish, cancellation);
+                        var dispatchResult = await dispatcher.DispatchAsync(dispatchData, publish, cancellation);
 
                         if (!(dispatchResult is DispatchFailureDispatchResult))
                         {
@@ -383,7 +344,7 @@ namespace AI4E.Routing
                     }
                     else
                     {
-                        tasks.Add(dispatcher.DispatchAsync(message, dispatchValues, publish, cancellation));
+                        tasks.Add(dispatcher.DispatchAsync(dispatchData, publish, cancellation));
                     }
                 }
             }
@@ -398,7 +359,7 @@ namespace AI4E.Routing
                 }
 
                 // When dispatching a message and no handlers are available, this is a failure.
-                return Result(new DispatchFailureDispatchResult(messageType));
+                return Result(new DispatchFailureDispatchResult(dispatchData.MessageType));
             }
 
             if (tasks.Count == 1)
@@ -413,6 +374,7 @@ namespace AI4E.Routing
         #endregion
 
         public IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
+            where TMessage : class
         {
             if (messageHandlerProvider == null)
                 throw new ArgumentNullException(nameof(messageHandlerProvider));
@@ -438,6 +400,7 @@ namespace AI4E.Routing
         }
 
         private TypedRemoteMessageDispatcher<TMessage> GetTypedDispatcher<TMessage>()
+            where TMessage : class
         {
             return (TypedRemoteMessageDispatcher<TMessage>)
                    _typedDispatchers.GetOrAdd(
@@ -451,10 +414,11 @@ namespace AI4E.Routing
         {
             Type MessageType { get; }
 
-            Task<IDispatchResult> DispatchAsync(object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation);
+            Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation);
         }
 
         private sealed class TypedRemoteMessageDispatcher<TMessage> : ITypedRemoteMessageDispatcher
+            where TMessage : class
         {
             private readonly HandlerRegistry<IMessageHandler<TMessage>> _registry = new HandlerRegistry<IMessageHandler<TMessage>>();
             private readonly IMessageRouter _messageRouter;
@@ -467,40 +431,27 @@ namespace AI4E.Routing
                                                 ITypeConversion typeConversion,
                                                 IServiceProvider serviceProvider)
             {
-                if (messageRouter == null)
-                    throw new ArgumentNullException(nameof(messageRouter));
-
-                if (serviceProvider == null)
-                    throw new ArgumentNullException(nameof(serviceProvider));
-
-                if (typeConversion == null)
-                    throw new ArgumentNullException(nameof(typeConversion));
+                Assert(messageRouter != null);
+                Assert(serviceProvider != null);
+                Assert(typeConversion != null);
 
                 _messageRouter = messageRouter;
                 _serviceProvider = serviceProvider;
                 _typeConversion = typeConversion;
             }
 
-            public Task<IDispatchResult> DispatchAsync(object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation)
+            public async Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation)
             {
-                if (message == null)
-                    throw new ArgumentNullException(nameof(message));
+                Assert(dispatchData != null);
 
-                if (!(message is TMessage typedMessage))
+                // We cannot assume that dispatchData is of type DispatchDataDictionary<TMessage>
+                if (!(dispatchData is DispatchDataDictionary<TMessage> typedDispatchData))
                 {
-                    throw new ArgumentException($"The argument must be of type '{ typeof(TMessage).FullName }' or a derived type.");
+                    Assert(dispatchData.Message is TMessage, $"The argument must be of type '{ typeof(TMessage) }' or a derived type.");
+
+                    var message = (TMessage)dispatchData.Message;
+                    typedDispatchData = new DispatchDataDictionary<TMessage>(message, dispatchData);
                 }
-
-                return DispatchAsync(typedMessage, context, publish, cancellation);
-            }
-
-            public async Task<IDispatchResult> DispatchAsync(TMessage message, DispatchValueDictionary context, bool publish, CancellationToken cancellation)
-            {
-                if (message == null)
-                    throw new ArgumentNullException(nameof(message));
-
-                if (context == null)
-                    throw new ArgumentNullException(nameof(context));
 
                 var tasksToWait = _registrationTasks; // Volatile read op
                 await Task.WhenAll(tasksToWait);
@@ -514,7 +465,7 @@ namespace AI4E.Routing
                     }
 
                     // TODO: Use ValueTaskExtensions.WhenAll
-                    var dispatchResults = await Task.WhenAll(handlers.Select(p => DispatchSingleHandlerAsync(p, message, context, cancellation).AsTask()));
+                    var dispatchResults = await Task.WhenAll(handlers.Select(p => DispatchSingleHandlerAsync(p, typedDispatchData, cancellation).AsTask()));
 
                     return new AggregateDispatchResult(dispatchResults);
                 }
@@ -530,7 +481,7 @@ namespace AI4E.Routing
 
                     if (result)
                     {
-                        return await DispatchSingleHandlerAsync(handler, message, context, cancellation);
+                        return await DispatchSingleHandlerAsync(handler, typedDispatchData, cancellation);
                     }
 
                     return new DispatchFailureDispatchResult(typeof(TMessage));
@@ -538,12 +489,11 @@ namespace AI4E.Routing
             }
 
             private async ValueTask<IDispatchResult> DispatchSingleHandlerAsync(IContextualProvider<IMessageHandler<TMessage>> handlerProvider,
-                                                                                TMessage message,
-                                                                                DispatchValueDictionary context,
+                                                                                DispatchDataDictionary<TMessage> dispatchData,
                                                                                 CancellationToken cancellation)
             {
-                Assert(message != null);
                 Assert(handlerProvider != null);
+                Assert(dispatchData != null);
 
                 using (var scope = _serviceProvider.CreateScope())
                 {
@@ -556,7 +506,7 @@ namespace AI4E.Routing
                         if (handler == null)
                             return new FailureDispatchResult();
 
-                        return await handler.HandleAsync(message, context, cancellation);
+                        return await handler.HandleAsync(dispatchData, cancellation);
                     }
                     catch (ConcurrencyException)
                     {
