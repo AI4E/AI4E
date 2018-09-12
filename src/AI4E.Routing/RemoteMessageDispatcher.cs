@@ -108,8 +108,6 @@ namespace AI4E.Routing
 
             public Type BindToType(string assemblyName, string typeName)
             {
-                Console.WriteLine($"Resolving '{typeName}'...");
-
                 return TypeLoadHelper.LoadTypeFromUnqualifiedName(typeName);
             }
         }

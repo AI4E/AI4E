@@ -113,6 +113,7 @@ namespace AI4E.Modularity.Host
             {
                 Notify(new InstallationSetConflict());
 
+                // TODO: Replace with logging. We cannot access the logger in the domain currently, as we do not have DI in the domain.
                 Console.WriteLine("---> InstallationSetConflict");
             }
             else
@@ -121,6 +122,7 @@ namespace AI4E.Modularity.Host
                 ResolvedModules = resolvedInstallationSets.First();
                 Notify(new InstallationSetChanged(ResolvedModules));
 
+                // TODO: Replace with logging. We cannot access the logger in the domain currently, as we do not have DI in the domain.
                 Console.WriteLine("---> InstallationSetChanged: ");
 
                 foreach (var release in ResolvedModules.Resolved)
