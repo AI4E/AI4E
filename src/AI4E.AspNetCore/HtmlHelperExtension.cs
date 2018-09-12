@@ -31,13 +31,25 @@ namespace AI4E.AspNetCore
             }
             else if (dispatchResult.IsAggregateResult(out var aggregateResult))
             {
-                aggregateResult = aggregateResult.Flatten();
-
+                var flattenedDispatchResult = aggregateResult.Flatten();
                 var contentBuilder = new StringBuilder();
 
-                foreach (var r in aggregateResult.DispatchResults)
+                if (flattenedDispatchResult is IAggregateDispatchResult adr)
                 {
-                    var result = (r as IDispatchResult<string>)?.Result;
+
+                    foreach (var r in adr.DispatchResults)
+                    {
+                        var result = (r as IDispatchResult<string>)?.Result;
+
+                        if (result != null)
+                        {
+                            contentBuilder.Append(result);
+                        }
+                    }
+                }
+                else
+                {
+                    var result = (flattenedDispatchResult as IDispatchResult<string>)?.Result;
 
                     if (result != null)
                     {
@@ -75,13 +87,25 @@ namespace AI4E.AspNetCore
             }
             else if (dispatchResult.IsAggregateResult(out var aggregateResult))
             {
-                aggregateResult = aggregateResult.Flatten();
-
+                var flattenedDispatchResult = aggregateResult.Flatten();
                 var contentBuilder = new StringBuilder();
 
-                foreach (var r in aggregateResult.DispatchResults)
+                if (flattenedDispatchResult is IAggregateDispatchResult adr)
                 {
-                    var result = (r as IDispatchResult<string>)?.Result;
+
+                    foreach (var r in adr.DispatchResults)
+                    {
+                        var result = (r as IDispatchResult<string>)?.Result;
+
+                        if (result != null)
+                        {
+                            contentBuilder.Append(result);
+                        }
+                    }
+                }
+                else
+                {
+                    var result = (flattenedDispatchResult as IDispatchResult<string>)?.Result;
 
                     if (result != null)
                     {
@@ -148,13 +172,25 @@ namespace AI4E.AspNetCore
             }
             else if (dispatchResult.IsAggregateResult(out var aggregateResult))
             {
-                aggregateResult = aggregateResult.Flatten();
-
+                var flattenedDispatchResult = aggregateResult.Flatten();
                 var contentBuilder = new StringBuilder();
 
-                foreach (var r in aggregateResult.DispatchResults)
+                if (flattenedDispatchResult is IAggregateDispatchResult adr)
                 {
-                    var result = (r as IDispatchResult<string>)?.Result;
+
+                    foreach (var r in adr.DispatchResults)
+                    {
+                        var result = (r as IDispatchResult<string>)?.Result;
+
+                        if (result != null)
+                        {
+                            contentBuilder.Append(result);
+                        }
+                    }
+                }
+                else
+                {
+                    var result = (flattenedDispatchResult as IDispatchResult<string>)?.Result;
 
                     if (result != null)
                     {

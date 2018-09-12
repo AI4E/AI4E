@@ -200,7 +200,7 @@ namespace AI4E
             return false;
         }
 
-        public static IAggregateDispatchResult Flatten(this IAggregateDispatchResult aggregateDispatchResult)
+        public static IDispatchResult Flatten(this IAggregateDispatchResult aggregateDispatchResult)
         {
             if (aggregateDispatchResult == null)
                 throw new ArgumentNullException(nameof(aggregateDispatchResult));
@@ -241,7 +241,9 @@ namespace AI4E
 
                 if (resultDataBuilder.Any())
                 {
-                    return new AggregateDispatchResultDictionary(new AggregateDispatchResult(results), resultDataBuilder.ToImmutable());
+                    return new DispatchResultDictionary<AggregateDispatchResult>(
+                        new AggregateDispatchResult(results),
+                        resultDataBuilder.ToImmutable());
                 }
             }
 
@@ -252,10 +254,10 @@ namespace AI4E
                                             List<IDispatchResult> results,
                                             List<IReadOnlyDictionary<string, object>> resultsData)
         {
-            if (aggregateDispatchResult is AggregateDispatchResultDictionary aggregateResultData)
-            {
-                resultsData.Add(aggregateResultData);
-            }
+            //if (aggregateDispatchResult is AggregateDispatchResultDictionary aggregateResultData)
+            //{
+            //    resultsData.Add(aggregateResultData);
+            //}
 
             foreach (var dispatchResult in aggregateDispatchResult.DispatchResults)
             {
@@ -356,23 +358,50 @@ namespace AI4E
 
             if (dispatchResult.IsAggregateResult(out var aggregateDispatchResult))
             {
-                aggregateDispatchResult = aggregateDispatchResult.Flatten();
+                var flattenedDispatchResult = aggregateDispatchResult.Flatten();
+                return GetResultsFromFlattened<TResult>(flattenedDispatchResult, throwOnFailure);
+            }
 
+            if (dispatchResult.IsSuccessWithResult<TResult>(out var result))
+            {
+                return Enumerable.Repeat(result, count: 1);
+            }
+
+            if (throwOnFailure)
+            {
+                throw new FailureOrTypeMismatchException();
+            }
+
+            return Enumerable.Empty<TResult>();
+        }
+
+        private static IEnumerable<TResult> GetResultsFromFlattened<TResult>(IDispatchResult dispatchResult,
+                                                                             bool throwOnFailure)
+        {
+            var results = new List<TResult>();
+
+            if (dispatchResult is IAggregateDispatchResult aggregateDispatchResult)
+            {
                 foreach (var singleDispatchResult in aggregateDispatchResult.DispatchResults)
                 {
-                    if (singleDispatchResult.IsSuccessWithResult<TResult>(out var singleResult))
-                    {
-                        yield return singleResult;
-                    }
-                    else if (throwOnFailure)
-                    {
-                        throw new FailureOrTypeMismatchException();
-                    }
+                    GetResultFromNonAggregate(singleDispatchResult, throwOnFailure, results);
                 }
             }
-            else if (dispatchResult.IsSuccessWithResult<TResult>(out var result))
+            else
             {
-                yield return result;
+                GetResultFromNonAggregate(dispatchResult, throwOnFailure, results);
+            }
+
+            return results;
+        }
+
+        private static void GetResultFromNonAggregate<TResult>(IDispatchResult dispatchResult,
+                                                               bool throwOnFailure,
+                                                               ICollection<TResult> results)
+        {
+            if (dispatchResult.IsSuccessWithResult<TResult>(out var singleResult))
+            {
+                results.Add(singleResult);
             }
             else if (throwOnFailure)
             {
