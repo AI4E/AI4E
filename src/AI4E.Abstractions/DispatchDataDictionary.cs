@@ -24,12 +24,14 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using AI4E.Internal;
+using Newtonsoft.Json;
 
 namespace AI4E
 {
     // This is inspired by the ViewDataDictionary, Asp.Net Core MVC uses to pass the view data from the controller to the view.
     // We have to use an immutable type however, to ensure consistency, as our messaging solution is not guaranteed to be used
     // by a single thread only.
+    [JsonConverter(typeof(DispatchDataDictionaryConverter))]
     public abstract class DispatchDataDictionary : IReadOnlyDictionary<string, object>
     {
         private readonly ImmutableDictionary<string, object> _data;
@@ -151,6 +153,7 @@ namespace AI4E
         #endregion
     }
 
+    [JsonConverter(typeof(DispatchDataDictionaryConverter))]
     public sealed class DispatchDataDictionary<TMessage> : DispatchDataDictionary
         where TMessage : class
     {
@@ -163,5 +166,144 @@ namespace AI4E
         { }
 
         public new TMessage Message => (TMessage)base.Message;
+    }
+
+    public sealed class DispatchDataDictionaryConverter : JsonConverter
+    {
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            if (!(value is DispatchDataDictionary dispatchData))
+            {
+                writer.WriteNull();
+                return;
+            }
+
+            writer.WriteStartObject();
+
+            // Write message type
+            writer.WritePropertyName("message-type");
+            serializer.Serialize(writer, dispatchData.MessageType, typeof(Type));
+
+            // Write message
+            writer.WritePropertyName("message");
+            serializer.Serialize(writer, dispatchData.Message, typeof(object));
+
+            // Write data
+            if (dispatchData.Any())
+            {
+                writer.WritePropertyName("data");
+                writer.WriteStartObject();
+
+                foreach (var kvp in dispatchData)
+                {
+                    writer.WritePropertyName(kvp.Key);
+                    serializer.Serialize(writer, kvp.Value, typeof(object));
+                }
+
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndObject();
+        }
+
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            if (!CanConvert(objectType))
+                throw new InvalidOperationException();
+
+            if (reader.TokenType == JsonToken.Null)
+                return null;
+
+            if (reader.TokenType != JsonToken.StartObject)
+                throw new InvalidOperationException();
+
+
+            var messageType = objectType.IsGenericTypeDefinition ? objectType.GetGenericArguments().First() : null;
+            object message = null;
+            ImmutableDictionary<string, object>.Builder data = null;
+
+            while (reader.Read())
+            {
+                if (reader.TokenType == JsonToken.EndObject)
+                {
+                    break;
+                }
+
+                else if (reader.TokenType == JsonToken.PropertyName)
+                {
+                    if ((string)reader.Value == "message-type")
+                    {
+                        reader.Read();
+                        var deserializedMessageType = (Type)serializer.Deserialize(reader, typeof(Type));
+
+                        if (messageType != null && messageType != deserializedMessageType)
+                        {
+                            throw new InvalidOperationException();
+                        }
+
+                        messageType = deserializedMessageType;
+                    }
+                    else if ((string)reader.Value == "message")
+                    {
+                        reader.Read();
+                        message = serializer.Deserialize(reader, typeof(object));
+                    }
+                    else if ((string)reader.Value == "data")
+                    {
+                        data = ReadData(reader, serializer);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException();
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException();
+                }
+            }
+
+            if (messageType == null || message == null)
+                throw new InvalidOperationException();
+
+            var resultType = typeof(DispatchDataDictionary<>).MakeGenericType(messageType);
+
+            return Activator.CreateInstance(resultType, message, data?.ToImmutable() ?? ImmutableDictionary<string, object>.Empty);
+        }
+
+        private ImmutableDictionary<string, object>.Builder ReadData(JsonReader reader, JsonSerializer serializer)
+        {
+            var result = ImmutableDictionary.CreateBuilder<string, object>();
+
+            if (!reader.Read() || reader.TokenType != JsonToken.StartObject)
+                return null;
+
+            while (reader.Read())
+            {
+                if (reader.TokenType == JsonToken.EndObject)
+                {
+                    return result;
+                }
+                else if (reader.TokenType == JsonToken.PropertyName)
+                {
+                    var key = (string)reader.Value;
+                    reader.Read();
+                    var value = serializer.Deserialize(reader, typeof(object));
+                }
+                else
+                {
+                    throw new InvalidOperationException();
+                }
+            }
+
+            return result;
+        }
+
+        public override bool CanConvert(Type objectType)
+        {
+            return objectType == typeof(DispatchDataDictionary) ||
+                   objectType.IsGenericType &&
+                   objectType.GetGenericTypeDefinition() == typeof(DispatchDataDictionary<>);
+        }
     }
 }
