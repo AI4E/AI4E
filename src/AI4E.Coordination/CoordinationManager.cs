@@ -77,8 +77,8 @@ namespace AI4E.Coordination
         private readonly ILogger<CoordinationManager<TAddress>> _logger;
 
         private readonly ConcurrentDictionary<CoordinationEntryPath, CacheEntry> _cache;
-        private readonly WaitDirectory<(Session session, CoordinationEntryPath path)> _readLockWaitDirectory;
-        private readonly WaitDirectory<(Session session, CoordinationEntryPath path)> _writeLockWaitDirectory;
+        private readonly AsyncWaitDirectory<(Session session, CoordinationEntryPath path)> _readLockWaitDirectory;
+        private readonly AsyncWaitDirectory<(Session session, CoordinationEntryPath path)> _writeLockWaitDirectory;
 
         private readonly IAsyncProcess _updateSessionProcess;
         private readonly IAsyncProcess _sessionCleanupProcess;
@@ -130,8 +130,8 @@ namespace AI4E.Coordination
             _logger = logger;
 
             _cache = new ConcurrentDictionary<CoordinationEntryPath, CacheEntry>();
-            _readLockWaitDirectory = new WaitDirectory<(Session session, CoordinationEntryPath path)>();
-            _writeLockWaitDirectory = new WaitDirectory<(Session session, CoordinationEntryPath path)>();
+            _readLockWaitDirectory = new AsyncWaitDirectory<(Session session, CoordinationEntryPath path)>();
+            _writeLockWaitDirectory = new AsyncWaitDirectory<(Session session, CoordinationEntryPath path)>();
 
             _updateSessionProcess = new AsyncProcess(UpdateSessionProcess);
             _sessionCleanupProcess = new AsyncProcess(SessionCleanupProcess);
@@ -1498,7 +1498,7 @@ namespace AI4E.Coordination
 
                 Task Release(CancellationToken c)
                 {
-                    return _writeLockWaitDirectory.WaitForNotification(((Session)writeLock, path), c);
+                    return _writeLockWaitDirectory.WaitForNotificationAsync(((Session)writeLock, path), c);
                 }
 
                 var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
@@ -1660,7 +1660,7 @@ namespace AI4E.Coordination
 
             Task Release(CancellationToken c)
             {
-                return _readLockWaitDirectory.WaitForNotification((session, path), c);
+                return _readLockWaitDirectory.WaitForNotificationAsync((session, path), c);
             }
 
             var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
@@ -1824,92 +1824,6 @@ namespace AI4E.Coordination
                 }
 
                 return new CacheEntry(Path, entry, isValid: true, version);
-            }
-        }
-
-        private sealed class WaitDirectory<TKey>
-        {
-            private readonly Dictionary<TKey, (TaskCompletionSource<object> tcs, int refCount)> _entries;
-
-            public WaitDirectory()
-            {
-                _entries = new Dictionary<TKey, (TaskCompletionSource<object> tcs, int refCount)>();
-            }
-
-            public Task WaitForNotification(TKey key, CancellationToken cancellation)
-            {
-                if (key == null)
-                    throw new ArgumentNullException(nameof(key));
-
-                if (cancellation.IsCancellationRequested)
-                    return Task.FromCanceled(cancellation);
-
-                TaskCompletionSource<object> tcs;
-
-                lock (_entries)
-                {
-                    var refCount = 0;
-
-                    if (_entries.TryGetValue(key, out var entry))
-                    {
-                        tcs = entry.tcs;
-                        refCount = entry.refCount;
-                    }
-                    else
-                    {
-                        tcs = new TaskCompletionSource<object>();
-                    }
-
-                    refCount++;
-
-                    _entries[key] = (tcs, refCount);
-                }
-
-                cancellation.Register(() =>
-                {
-                    lock (_entries)
-                    {
-                        if (!_entries.TryGetValue(key, out var entry))
-                        {
-                            return;
-                        }
-
-                        Assert(entry.refCount >= 1);
-
-                        if (entry.refCount == 1)
-                        {
-                            _entries.Remove(key);
-                        }
-                        else
-                        {
-                            _entries[key] = (entry.tcs, entry.refCount - 1);
-                        }
-                    }
-                });
-
-                return tcs.Task.WithCancellation(cancellation);
-            }
-
-            public void Notify(TKey key)
-            {
-                if (key == null)
-                    throw new ArgumentNullException(nameof(key));
-
-                TaskCompletionSource<object> tcs;
-
-                lock (_entries)
-                {
-                    if (!_entries.TryGetValue(key, out var entry))
-                    {
-                        return;
-                    }
-
-                    tcs = entry.tcs;
-                    _entries.Remove(key);
-
-                }
-
-                tcs.SetResult(null);
             }
         }
     }

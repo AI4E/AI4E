@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -16,6 +16,7 @@
     <Compile Include="..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />
     <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
     <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
+    <Compile Include="..\Common\AsyncWaitDirectory.cs" Link="Internal\AsyncWaitDirectory.cs" />
   </ItemGroup>
 
   <ItemGroup>

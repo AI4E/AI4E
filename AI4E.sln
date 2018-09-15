@@ -54,6 +54,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{4836898A-A46F-4139-A085-536903EE5E5A}"
 	ProjectSection(SolutionItems) = preProject
 		src\Common\AsyncEnumerableExtensions.cs = src\Common\AsyncEnumerableExtensions.cs
+		src\Common\AsyncWaitDirectory.cs = src\Common\AsyncWaitDirectory.cs
 		src\Common\BinaryReaderExtension.cs = src\Common\BinaryReaderExtension.cs
 		src\Common\BinaryWriterExtension.cs = src\Common\BinaryWriterExtension.cs
 		src\Common\CancellationTokenExtension.cs = src\Common\CancellationTokenExtension.cs
