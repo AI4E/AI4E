@@ -36,7 +36,6 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -76,7 +75,8 @@ namespace AI4E.Coordination
         private readonly IAddressConversion<TAddress> _addressConversion;
         private readonly ILogger<CoordinationManager<TAddress>> _logger;
 
-        private readonly ConcurrentDictionary<CoordinationEntryPath, CacheEntry> _cache;
+        private readonly CoordinationEntryCache _cache;
+
         private readonly AsyncWaitDirectory<(Session session, CoordinationEntryPath path)> _readLockWaitDirectory;
         private readonly AsyncWaitDirectory<(Session session, CoordinationEntryPath path)> _writeLockWaitDirectory;
 
@@ -129,7 +129,7 @@ namespace AI4E.Coordination
             _addressConversion = addressConversion;
             _logger = logger;
 
-            _cache = new ConcurrentDictionary<CoordinationEntryPath, CacheEntry>();
+            _cache = new CoordinationEntryCache();
             _readLockWaitDirectory = new AsyncWaitDirectory<(Session session, CoordinationEntryPath path)>();
             _writeLockWaitDirectory = new AsyncWaitDirectory<(Session session, CoordinationEntryPath path)>();
 
@@ -569,7 +569,7 @@ namespace AI4E.Coordination
                     return result;
                 }
 
-                comparandVersion = cacheEntry.Version;
+                comparandVersion = cacheEntry.CacheEntryVersion;
             }
 
             return await LoadEntryAsync(path, comparandVersion, cancellation);
@@ -1076,8 +1076,8 @@ namespace AI4E.Coordination
             // We must remove the entry from the cache by ourselves here, 
             // as we do allow the session to hold a read-lock and a write-lock at the same time 
             // and hence do not wipe the entry from the cache on write lock acquirement.
-            _cache.TryRemove(entry.Path, out _);
 
+            _cache.RemoveEntry(entry.Path);
             return (entry: null, deleted: true);
         }
 
@@ -1143,53 +1143,28 @@ namespace AI4E.Coordination
 
         #region Cache
 
-        private bool TryGetCacheEntry(CoordinationEntryPath path, out CacheEntry cacheEntry)
+        private bool TryGetCacheEntry(CoordinationEntryPath path, out ICacheEntry cacheEntry)
         {
-            return _cache.TryGetValue(path, out cacheEntry);
+            return _cache.TryGetEntry(path, out cacheEntry);
         }
 
-        private void UpdateCacheEntry(CoordinationEntryPath path, Func<CacheEntry> createFunc, Func<CacheEntry, CacheEntry> updateFunc)
-        {
-            bool writeOk;
-
-            do
-            {
-                if (!_cache.TryGetValue(path, out var current))
-                {
-                    current = null;
-                }
-
-                var start = current;
-
-                if (start == null)
-                {
-                    var desired = createFunc();
-
-                    writeOk = _cache.TryAdd(path, desired);
-                }
-                else
-                {
-                    var desired = updateFunc(start);
-
-                    // Nothing to change in the cache. We are done.
-                    if (start == desired)
-                    {
-                        break;
-                    }
-
-                    writeOk = _cache.TryUpdate(path, desired, start);
-                }
-            }
-            while (!writeOk);
-        }
-
+        [Obsolete]
         private void UpdateCacheEntry(IStoredEntry entry, int comparandVersion)
         {
-            UpdateCacheEntry(entry.Path,
-                             createFunc: () => new CacheEntry(entry.Path, entry),
-                             updateFunc: currentEntry => currentEntry.Update(entry, comparandVersion));
+            Assert(entry != null);
+
+            _cache.UpdateEntry(entry, comparandVersion);      
         }
 
+        private void UpdateCacheEntry(ICacheEntry cacheEntry, IStoredEntry entry/*, int comparandVersion*/)
+        {
+            Assert(cacheEntry != null);
+            Assert(entry != null);
+
+            _cache.UpdateEntry(cacheEntry, entry);
+        }
+
+        [Obsolete]
         private async Task<IStoredEntry> AddToCacheAsync(IStoredEntry entry, int comparandVersion, CancellationToken cancellation)
         {
             Assert(entry != null);
@@ -1214,7 +1189,43 @@ namespace AI4E.Coordination
                     }
                 }
 
-                UpdateCacheEntry(entry, comparandVersion);
+                _cache.UpdateEntry(entry, comparandVersion);
+                return entry;
+            }
+            catch
+            {
+                await ReleaseReadLockAsync(entry);
+
+                throw;
+            }
+        }
+
+        private async Task<IStoredEntry> AddToCacheAsync(ICacheEntry cacheEntry, IStoredEntry entry, CancellationToken cancellation)
+        {
+            Assert(cacheEntry != null);
+            Assert(entry != null);
+
+            try
+            {
+                entry = await AcquireReadLockAsync(entry, cancellation);
+
+                if (entry == null)
+                {
+                    if (!entry.Path.IsRoot)
+                    {
+                        var parentPath = entry.Path.GetParentPath();
+                        var child = entry.Path.Segments.Last();
+
+                        var parent = await _storage.GetEntryAsync(parentPath, cancellation);
+
+                        if (parent != null && parent.Children.Contains(child))
+                        {
+                            await RemoveChildEntryAsync(parent, child, cancellation);
+                        }
+                    }
+                }
+
+                _cache.UpdateEntry(cacheEntry, entry);
 
                 return entry;
             }
@@ -1233,9 +1244,7 @@ namespace AI4E.Coordination
 
             var session = await GetSessionAsync(cancellation);
 
-            UpdateCacheEntry(path,
-                            createFunc: () => new CacheEntry(path),
-                            updateFunc: currentEntry => currentEntry.Invalidate());
+            _cache.InvalidateEntry(path);
 
             var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposeHelper.DisposalRequested);
 
@@ -1420,7 +1429,7 @@ namespace AI4E.Coordination
                 _logger?.LogTrace($"[{await GetSessionAsync()}] Releasing write-lock for entry '{entry.Path}'.");
             }
 
-            var cacheVersion = 0;
+            var cacheEntryVersion = 0;
 
             do
             {
@@ -1440,7 +1449,7 @@ namespace AI4E.Coordination
 
                 if (TryGetCacheEntry(entry.Path, out var cacheEntry))
                 {
-                    cacheVersion = cacheEntry.Version;
+                    cacheEntryVersion = cacheEntry.CacheEntryVersion;
                 }
 
                 desired = _storedEntryManager.ReleaseWriteLock(start, session);
@@ -1449,7 +1458,7 @@ namespace AI4E.Coordination
             }
             while (entry != start);
 
-            UpdateCacheEntry(start, cacheVersion);
+            UpdateCacheEntry(start, cacheEntryVersion);
 
             if (entry != null)
             {
@@ -1759,72 +1768,6 @@ namespace AI4E.Coordination
             public CoordinationEntryPath ParentPath => Path.GetParentPath();
 
             public ICoordinationManager CoordinationManager { get; }
-        }
-
-        private sealed class CacheEntry
-        {
-            public CacheEntry(CoordinationEntryPath path)
-            {
-                Assert(path != null);
-
-                Path = path;
-                Entry = default;
-                Version = 1;
-                IsValid = false;
-            }
-
-            public CacheEntry(CoordinationEntryPath path, IStoredEntry entry)
-            {
-                Assert(path != null);
-                Assert(entry != null);
-
-                Path = path;
-                Entry = entry;
-                Version = 1;
-                IsValid = true;
-            }
-
-            private CacheEntry(CoordinationEntryPath path, IStoredEntry entry, bool isValid, int version)
-            {
-                Assert(path != null);
-                Assert(isValid, entry != null);
-
-                Path = path;
-                Entry = entry;
-                Version = version;
-                IsValid = isValid;
-            }
-
-            public CoordinationEntryPath Path { get; }
-
-            public bool IsValid { get; }
-
-            public IStoredEntry Entry { get; }
-
-            // The cache entry version's purpose is to prevent a situation that
-            // 1) a read operation tries to update the cache and
-            // 2) another session concurrently writes to the entry, invalidating our cache entry
-            // Without the version, the cache update of operation (1) and the cache invalidation of operation (2)
-            // may be performed in the wrong order, leaving the cache with a non-invalidated entry but no read-lock aquired.
-            // For this reason, each invalidation increments the version by one, each update operation checks the version.
-            public int Version { get; }
-
-            public CacheEntry Invalidate()
-            {
-                return new CacheEntry(Path, null, isValid: false, Version + 1);
-            }
-
-            public CacheEntry Update(IStoredEntry entry, int version)
-            {
-                if (version != Version ||
-                    entry == null ||
-                    IsValid && Entry != null && Entry.StorageVersion > entry.StorageVersion)
-                {
-                    return this;
-                }
-
-                return new CacheEntry(Path, entry, isValid: true, version);
-            }
         }
     }
 
