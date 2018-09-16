@@ -714,14 +714,7 @@ namespace AI4E.Coordination
                     }
 
                     var name = path.Segments.Last();
-                    var parentUpdateResult = await _storage.UpdateEntryAsync(_storedEntryManager.AddChild(parent, name, session), parent, cancellation);
-
-                    // We are holding the exclusive lock => No one else can alter the entry.
-                    // The only exception is that out session terminates.
-                    if (!AreVersionEqual(parentUpdateResult, parent))
-                    {
-                        throw new SessionTerminatedException();
-                    }
+                    await UpdateEntryAsync(_storedEntryManager.AddChild(parent, name, session), parent, cancellation);
 
                     try
                     {
@@ -844,14 +837,7 @@ namespace AI4E.Coordination
 
                 if (childEntry == null)
                 {
-                    var result = await _storage.UpdateEntryAsync(_storedEntryManager.RemoveChild(entry, child, session), entry, cancellation);
-
-                    // We are holding the exclusive lock => No one else can alter the entry.
-                    // The only exception is that out session terminates.
-                    if (!AreVersionEqual(result, entry))
-                    {
-                        throw new SessionTerminatedException();
-                    }
+                    await UpdateEntryAsync(_storedEntryManager.RemoveChild(entry, child, session), entry, cancellation);
                 }
 
                 return entry;
@@ -917,14 +903,7 @@ namespace AI4E.Coordination
 
                             // The entry is deleted now, because WE deleted it.
                             var name = path.Segments.Last();
-                            var parentBeforeUpdate = await _storage.UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, name, session), parent, combinedCancellationSource.Token);
-
-                            // We are holding the exclusive lock => No one else can alter the parent.
-                            // The only exception is that out session terminates.
-                            if (!AreVersionEqual(parentBeforeUpdate, parent))
-                            {
-                                throw new SessionTerminatedException();
-                            }
+                            await UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, name, session), parent, combinedCancellationSource.Token);
                         }
                     }
                 }
@@ -1025,14 +1004,7 @@ namespace AI4E.Coordination
             }
 
             // Delete the entry
-            var result = await _storage.UpdateEntryAsync(_storedEntryManager.Remove(entry, session), entry, cancellation);
-
-            // We are holding the exclusive lock => No one else can alter the entry.
-            // The only exception is that our session terminates.
-            if (!AreVersionEqual(result, entry))
-            {
-                throw new SessionTerminatedException();
-            }
+            await UpdateEntryAsync(_storedEntryManager.Remove(entry, session), entry, cancellation);
 
             if (entry.EphemeralOwner != null)
             {
@@ -1083,14 +1055,7 @@ namespace AI4E.Coordination
                         return entry.Version;
                     }
 
-                    var result = await _storage.UpdateEntryAsync(_storedEntryManager.SetValue(entry, value.Span, session), entry, combinedCancellationSource.Token);
-
-                    // We are holding the exclusive lock => No one else can alter the entry.
-                    // The only exception is that out session terminates.
-                    if (!AreVersionEqual(entry, result))
-                    {
-                        throw new SessionTerminatedException();
-                    }
+                    await UpdateEntryAsync(_storedEntryManager.SetValue(entry, value.Span, session), entry, combinedCancellationSource.Token);
                 }
             }
 
@@ -1463,18 +1428,11 @@ namespace AI4E.Coordination
 
             var entries = await _sessionManager.GetEntriesAsync(session, cancellation);
 
-            try
-            {
-                await Task.WhenAll(entries.Select(async entry =>
-                          {
-                              await DeleteAsync(entry, version: default, recursive: false, cancellation);
-                              await _sessionManager.RemoveSessionEntryAsync(session, entry, cancellation);
-                          }));
-            }
-            catch (Exception exc)
-            {
-
-            }
+            await Task.WhenAll(entries.Select(async entry =>
+                      {
+                          await DeleteAsync(entry, version: default, recursive: false, cancellation);
+                          await _sessionManager.RemoveSessionEntryAsync(session, entry, cancellation);
+                      }));
 
             await _sessionManager.EndSessionAsync(session, cancellation);
         }
@@ -1560,6 +1518,18 @@ namespace AI4E.Coordination
         }
 
         #endregion
+
+        private async Task UpdateEntryAsync(IStoredEntry value, IStoredEntry comparand, CancellationToken cancellation)
+        {
+            var result = await _storage.UpdateEntryAsync(value, comparand, cancellation);
+
+            // We are holding the exclusive lock => No one else can alter the entry.
+            // The only exception is that out session terminates.
+            if (!AreVersionEqual(result, comparand))
+            {
+                throw new SessionTerminatedException();
+            }
+        }
 
         private static bool AreVersionEqual(IStoredEntry left, IStoredEntry right)
         {
