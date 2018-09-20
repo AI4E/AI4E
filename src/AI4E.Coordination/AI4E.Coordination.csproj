@@ -4,10 +4,6 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-  </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="..\Common\BinaryReaderExtension.cs" Link="Internal\BinaryReaderExtension.cs" />
     <Compile Include="..\Common\BinaryWriterExtension.cs" Link="Internal\BinaryWriterExtension.cs" />
