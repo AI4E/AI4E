@@ -41,7 +41,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
-using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -50,7 +49,6 @@ using AI4E.Internal;
 using AI4E.Processing;
 using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
-using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 using static AI4E.Internal.DebugEx;
 
@@ -600,7 +598,7 @@ namespace AI4E.Coordination
             }
             catch
             {
-                await ReleaseReadLockAsync(result, cancellation);
+                await ReleaseReadLockAsync(path, cancellation);
                 throw;
             }
 
@@ -1131,7 +1129,7 @@ namespace AI4E.Coordination
 
             try
             {
-                entry = await AcquireReadLockAsync(entry, cancellation);
+                entry = await InternalAcquireReadLockAsync(entry, cancellation);
 
                 if (entry == null)
                 {
@@ -1143,7 +1141,7 @@ namespace AI4E.Coordination
             }
             catch
             {
-                await ReleaseReadLockAsync(entry, cancellation);
+                await ReleaseReadLockAsync(path, cancellation);
 
                 throw;
             }
@@ -1158,7 +1156,7 @@ namespace AI4E.Coordination
 
             try
             {
-                entry = await AcquireReadLockAsync(entry, cancellation);
+                entry = await InternalAcquireReadLockAsync(entry, cancellation);
 
                 if (entry == null)
                 {
@@ -1171,7 +1169,7 @@ namespace AI4E.Coordination
             }
             catch
             {
-                await ReleaseReadLockAsync(entry, cancellation);
+                await ReleaseReadLockAsync(path, cancellation);
 
                 throw;
             }
@@ -1239,7 +1237,7 @@ namespace AI4E.Coordination
 
                 var entry = await _storage.GetEntryAsync(path, combinedCancellationSource.Token);
 
-                await ReleaseReadLockAsync(entry, cancellation);
+                await ReleaseReadLockAsync(path, cancellation);
             }
         }
 
@@ -1250,9 +1248,7 @@ namespace AI4E.Coordination
         private async Task AcquireLocalLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
             var cacheEntry = _cache.GetEntry(path);
-
-            // Enter local lock
-            await cacheEntry.LocalLock.LockAsync(cancellation);
+            await cacheEntry.LocalLock.WaitAsync(cancellation);
         }
 
         private Task ReleaseLocalLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
@@ -1260,13 +1256,9 @@ namespace AI4E.Coordination
             var cacheEntry = _cache.GetEntry(path);
 
             Assert(cacheEntry != null);
-            // TODO: Assert that the lock is taken
-            // TODO: Replace this.
-            var method = typeof(AsyncLock).GetMethod("ReleaseLock", BindingFlags.Instance | BindingFlags.NonPublic);
-            Assert(method != null);
+            Assert(cacheEntry.LocalLock.CurrentCount == 0);
 
-            method.Invoke(cacheEntry.LocalLock, parameters: null);
-
+            cacheEntry.LocalLock.Release();
             return Task.CompletedTask;
         }
 
@@ -1277,28 +1269,29 @@ namespace AI4E.Coordination
             var cacheEntry = _cache.GetEntry(path);
 
             // Enter local lock
-            var localLockReleaser = await cacheEntry.LocalLock.LockAsync(cancellation);
+            await cacheEntry.LocalLock.WaitAsync(cancellation);
 
             try
             {
+                var entry = cacheEntry.IsValid ? cacheEntry.Entry : await _storage.GetEntryAsync(path, cancellation);
+
                 // Enter global lock
-                var result = await InternalAcquireWriteLockAsync(cacheEntry.Entry, cancellation);
+                var result = await InternalAcquireWriteLockAsync(entry, cancellation);
 
                 // Release the local lock if the entry is null.
                 if (result == null)
                 {
-                    localLockReleaser.Dispose();
+                    Assert(cacheEntry.LocalLock.CurrentCount == 0);
+                    cacheEntry.LocalLock.Release();
                 }
 
                 return result;
             }
             catch
             {
+                Assert(cacheEntry.LocalLock.CurrentCount == 0);
                 // Release local lock on failure
-                if (localLockReleaser != null)
-                {
-                    localLockReleaser.Dispose();
-                }
+                cacheEntry.LocalLock.Release();
                 throw;
             }
         }
@@ -1476,31 +1469,28 @@ namespace AI4E.Coordination
 
         private async Task<IStoredEntry> AcquireReadLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
-            // Freshly load the entry from the database.
-            var entry = await _storage.GetEntryAsync(path, cancellation);
-
-            // If the entry could be loaded, we add it to the cache
-            if (entry == null)
-                return default;
-
-            var cacheEntry = _cache.GetEntry(path);
-
             // Enter local write lock, as we are modifying the stored entry with entering the read-lock
-            using (await cacheEntry.LocalLock.LockAsync(cancellation))
+            await AcquireLocalLockAsync(path, cancellation);
+            try
             {
+                // Freshly load the entry from the database.
+                var entry = await _storage.GetEntryAsync(path, cancellation);
+
                 // Enter global read lock.
-                return await AcquireReadLockAsync(entry, cancellation);
-            } // Exit local write lock            
+                return await InternalAcquireReadLockAsync(entry, cancellation);
+            }
+            finally
+            {
+                await ReleaseLocalLockAsync(path, cancellation);
+            }
         }
 
-        private Task<IStoredEntry> ReleaseReadLockAsync(IStoredEntry entry, CancellationToken cancellation)
+        private Task<IStoredEntry> ReleaseReadLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
-            Assert(entry != null);
-
-            return ReleaseReadLockAsync(entry).WithCancellation(cancellation);
+            return ReleaseReadLockAsync(path).WithCancellation(cancellation);
         }
 
-        private async Task<IStoredEntry> AcquireReadLockAsync(IStoredEntry entry, CancellationToken cancellation)
+        private async Task<IStoredEntry> InternalAcquireReadLockAsync(IStoredEntry entry, CancellationToken cancellation)
         {
             Stopwatch watch = null;
             if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
@@ -1531,7 +1521,6 @@ namespace AI4E.Coordination
                 Assert(start.WriteLock == null || start.WriteLock == session);
 
                 desired = _storedEntryManager.AcquireReadLock(start, session);
-
                 entry = await _storage.UpdateEntryAsync(desired, start, cancellation);
             }
             while (start != entry);
@@ -1554,19 +1543,32 @@ namespace AI4E.Coordination
             }
             catch
             {
+                Assert(entry != null);
+
                 // Release global read lock on failure.
-                await ReleaseReadLockAsync(entry);
+                await ReleaseReadLockAsync(entry.Path);
                 throw;
             }
         }
 
-        private async Task<IStoredEntry> ReleaseReadLockAsync(IStoredEntry entry)
+        private async Task<IStoredEntry> ReleaseReadLockAsync(CoordinationEntryPath path)
         {
-            Assert(entry != null);
-
             try
             {
-                return await InternalReleaseReadLockAsync(entry);
+                // Enter local write lock, as we are modifying the stored entry with entering the read-lock
+                await AcquireLocalLockAsync(path, cancellation: default);
+                try
+                {
+                    // Freshly load the entry from the database.
+                    var entry = await _storage.GetEntryAsync(path, cancellation: default);
+
+                    // Release global read lock.
+                    return await InternalReleaseReadLockAsync(entry);
+                }
+                finally
+                {
+                    await ReleaseLocalLockAsync(path, cancellation: default);
+                }
             }
             catch
             {

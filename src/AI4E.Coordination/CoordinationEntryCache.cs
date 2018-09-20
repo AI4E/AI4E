@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Threading;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 using static AI4E.Internal.DebugEx;
@@ -212,7 +213,7 @@ namespace AI4E.Coordination
             _entry = default;
             CacheEntryVersion = 1;
             IsValid = false;
-            LocalLock = new AsyncLock();
+            LocalLock = CreateLocalLock();
         }
 
         internal CacheEntry(CoordinationEntryPath path, IStoredEntry entry)
@@ -224,10 +225,10 @@ namespace AI4E.Coordination
             _entry = entry;
             CacheEntryVersion = 1;
             IsValid = true;
-            LocalLock = new AsyncLock();
+            LocalLock = CreateLocalLock();
         }
 
-        private CacheEntry(CoordinationEntryPath path, IStoredEntry entry, bool isValid, int version, AsyncLock localLock)
+        private CacheEntry(CoordinationEntryPath path, IStoredEntry entry, bool isValid, int version, SemaphoreSlim localLock)
         {
             Assert(path != null);
             Assert(isValid, entry != null);
@@ -238,6 +239,11 @@ namespace AI4E.Coordination
             CacheEntryVersion = version;
             IsValid = isValid;
             LocalLock = localLock;
+        }
+
+        private static SemaphoreSlim CreateLocalLock()
+        {
+            return new SemaphoreSlim(1);
         }
 
         /// <summary>
@@ -270,7 +276,7 @@ namespace AI4E.Coordination
         /// <summary>
         /// The local lock of the cache entry.
         /// </summary>
-        public AsyncLock LocalLock { get; }
+        public SemaphoreSlim LocalLock { get; }
 
         // The cache entry version's purpose is to prevent a situation that
         // 1) a read operation tries to update the cache and
