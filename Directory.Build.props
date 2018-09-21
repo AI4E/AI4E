@@ -25,4 +25,10 @@
     <MSBuildProjectExtensionsPath>$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
     <RestoreOutputPath>$(BaseIntermediateOutputPath)</RestoreOutputPath>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <MicrosoftAspNetCoreBlazorBrowserVersion Condition="'$(MicrosoftAspNetCoreBlazorBrowserVersion)' == ''">0.5.1</MicrosoftAspNetCoreBlazorBrowserVersion>
+    <MicrosoftAspNetCoreBlazorBuildVersion Condition="'$(MicrosoftAspNetCoreBlazorBuildVersion)' == ''">0.5.1</MicrosoftAspNetCoreBlazorBuildVersion>
+    <MicrosoftAspNetCoreBlazorServerVersion Condition="'$(MicrosoftAspNetCoreBlazorServerVersion)' == ''">0.5.1</MicrosoftAspNetCoreBlazorServerVersion>
+  </PropertyGroup>
 </Project>
