@@ -70,7 +70,6 @@ namespace AI4E.Coordination
         private readonly CoordinationEntryCache _cache;
         private readonly ICoordinationWaitManager _waitManager;
         private readonly ICoordinationLockManager _lockManager;
-        private readonly ICoordinationCacheManager _cacheManager;
         private readonly ICoordinationExchangeManager _exchangeManager;
 
         private readonly DisposableAsyncLazy<Session> _session;
@@ -125,10 +124,9 @@ namespace AI4E.Coordination
 
             _options = optionsAccessor.Value ?? new CoordinationManagerOptions();
             _cache = new CoordinationEntryCache();
-            _exchangeManager = new CoordinationExchangeManager<TAddress>(this, _sessionManager, Provider.Create(() => _waitManager), Provider.Create(() => _cacheManager), _endPointMultiplexer, _addressConversion, _logger);
+            _exchangeManager = new CoordinationExchangeManager<TAddress>(this, _sessionManager, Provider.Create(() => _waitManager), Provider.Create(() => _lockManager), _cache, _endPointMultiplexer, _addressConversion, _logger);
             _waitManager = new CoordinationWaitManager(this, _storage, _storedEntryManager, _sessionManager, _exchangeManager, _logger);
             _lockManager = new CoordinationLockManager(this, _cache, _storage, _storedEntryManager, _waitManager, _exchangeManager, _logger);
-            _cacheManager = new CoordinationCacheManager(_cache, _lockManager);
 
             _session = new DisposableAsyncLazy<Session>(
                 factory: StartSessionAsync,
@@ -283,7 +281,7 @@ namespace AI4E.Coordination
             }
 
             Assert(entry != null);
-            await _cacheManager.AddToCacheAsync(entry, cancellation);
+            await AddToCacheAsync(entry, cancellation);
 
             return new Entry(this, entry);
         }
@@ -315,9 +313,35 @@ namespace AI4E.Coordination
                                                           cancellation);
 
             Assert(entry != null);
-            await _cacheManager.AddToCacheAsync(entry, cancellation);
+            await AddToCacheAsync(entry, cancellation);
 
             return new Entry(this, entry);
+        }
+
+        private async Task<IStoredEntry> AddToCacheAsync(IStoredEntry entry, CancellationToken cancellation)
+        {
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
+
+            var path = entry.Path;
+
+            try
+            {
+                entry = await _lockManager.AcquireReadLockAsync(entry, cancellation);
+
+                if (entry != null)
+                {
+                    _cache.UpdateEntry(entry, comparandVersion: default);
+                }
+
+                return entry;
+            }
+            catch
+            {
+                await _lockManager.ReleaseReadLockAsync(path, cancellation);
+
+                throw;
+            }
         }
 
         private async Task<(IStoredEntry entry, bool created)> TryCreateInternalAsync(CoordinationEntryPath path,

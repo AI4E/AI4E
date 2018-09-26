@@ -23,7 +23,8 @@ namespace AI4E.Coordination
         private readonly ICoordinationManager _coordinationManager;
         private readonly ISessionManager _sessionManager;
         private readonly IProvider<ICoordinationWaitManager> _waitManager;
-        private readonly IProvider<ICoordinationCacheManager> _cacheManager;
+        private readonly IProvider<ICoordinationLockManager> _lockManager;
+        private readonly CoordinationEntryCache _cache;
         private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
         private readonly IAddressConversion<TAddress> _addressConversion;
         private readonly ILogger _logger;
@@ -38,7 +39,8 @@ namespace AI4E.Coordination
         public CoordinationExchangeManager(ICoordinationManager coordinationManager,
                                ISessionManager sessionManager,
                                IProvider<ICoordinationWaitManager> waitManager, // TODO: This breaks circular dependency. Can this be implemented better?
-                               IProvider<ICoordinationCacheManager> cacheManager, // TODO: This breaks circular dependency. Can this be implemented better?
+                               IProvider<ICoordinationLockManager> lockManager, // TODO: This breaks circular dependency. Can this be implemented better?
+                               CoordinationEntryCache cache,
                                IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
                                IAddressConversion<TAddress> addressConversion,
                                ILogger logger = null)
@@ -52,8 +54,11 @@ namespace AI4E.Coordination
             if (waitManager == null)
                 throw new ArgumentNullException(nameof(waitManager));
 
-            if (cacheManager == null)
-                throw new ArgumentNullException(nameof(cacheManager));
+            if (lockManager == null)
+                throw new ArgumentNullException(nameof(lockManager));
+
+            if (cache == null)
+                throw new ArgumentNullException(nameof(cache));
 
             if (endPointMultiplexer == null)
                 throw new ArgumentNullException(nameof(endPointMultiplexer));
@@ -64,7 +69,8 @@ namespace AI4E.Coordination
             _coordinationManager = coordinationManager;
             _sessionManager = sessionManager;
             _waitManager = waitManager;
-            _cacheManager = cacheManager;
+            _lockManager = lockManager;
+            _cache = cache;
             _endPointMultiplexer = endPointMultiplexer;
             _addressConversion = addressConversion;
             _logger = logger;
@@ -95,7 +101,7 @@ namespace AI4E.Coordination
         #endregion
 
         private ICoordinationWaitManager WaitManager => _waitManager.ProvideInstance();
-        private ICoordinationCacheManager CacheManager => _cacheManager.ProvideInstance();
+        private ICoordinationLockManager LockManager => _lockManager.ProvideInstance();
 
         #region ICoordinationExchangeManager
 
@@ -148,7 +154,7 @@ namespace AI4E.Coordination
         {
             if (session == await _coordinationManager.GetSessionAsync(cancellation))
             {
-                await CacheManager.InvalidateCacheEntryAsync(path, cancellation);
+                await InvalidateCacheEntryAsync(path, cancellation);
             }
             else
             {
@@ -166,6 +172,12 @@ namespace AI4E.Coordination
         }
 
         #endregion
+
+        private async Task InvalidateCacheEntryAsync(CoordinationEntryPath path, CancellationToken cancellation)
+        {
+            _cache.InvalidateEntry(path);
+            await LockManager.ReleaseReadLockAsync(path, cancellation);
+        }
 
         private async Task ReceiveProcess(CancellationToken cancellation)
         {
@@ -199,7 +211,7 @@ namespace AI4E.Coordination
                     }
                     else
                     {
-                        await CacheManager.InvalidateCacheEntryAsync(path, cancellation);
+                        await InvalidateCacheEntryAsync(path, cancellation);
                     }
                     break;
 
