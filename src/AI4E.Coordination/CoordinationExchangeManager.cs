@@ -9,6 +9,7 @@ using AI4E.Internal;
 using AI4E.Processing;
 using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 using static AI4E.Internal.DebugEx;
 
@@ -29,6 +30,7 @@ namespace AI4E.Coordination
         private readonly IAddressConversion<TAddress> _addressConversion;
         private readonly ILogger<CoordinationExchangeManager<TAddress>> _logger;
 
+        private readonly CoordinationManagerOptions _options;
         private readonly IAsyncProcess _receiveProcess;
         private readonly DisposableAsyncLazy<IPhysicalEndPoint<TAddress>> _physicalEndPoint;
 
@@ -43,6 +45,7 @@ namespace AI4E.Coordination
                                            CoordinationEntryCache cache,
                                            IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
                                            IAddressConversion<TAddress> addressConversion,
+                                           IOptions<CoordinationManagerOptions> optionsAccessor,
                                            ILogger<CoordinationExchangeManager<TAddress>> logger = null)
         {
             if (coordinationManager == null)
@@ -75,6 +78,7 @@ namespace AI4E.Coordination
             _addressConversion = addressConversion;
             _logger = logger;
 
+            _options = optionsAccessor.Value ?? new CoordinationManagerOptions();
             _physicalEndPoint = new DisposableAsyncLazy<IPhysicalEndPoint<TAddress>>(
                 factory: GetSessionEndPointAsync,
                 disposal: DisposePhysicalEndPointAsync,
@@ -257,9 +261,21 @@ namespace AI4E.Coordination
                                        .Assert(p => p != null);
         }
 
-        private static string GetMultiplexEndPointName(Session session)
+        private string GetMultiplexEndPointName(Session session)
         {
-            return "coord/" + session.ToString(); // TODO: This should be configurable.
+            var prefix = _options.MultiplexPrefix;
+
+            if (prefix == null)
+            {
+                prefix = CoordinationManagerOptions.MultiplexPrefixDefault;
+            }
+
+            if (prefix == string.Empty)
+            {
+                return session.ToString();
+            }
+
+            return prefix + session.ToString();
         }
 
         private (MessageType messageType, CoordinationEntryPath path, Session session) DecodeMessage(IMessage message)

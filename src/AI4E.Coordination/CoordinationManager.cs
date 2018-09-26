@@ -66,6 +66,7 @@ namespace AI4E.Coordination
         private readonly CoordinationEntryCache _cache;
         private readonly ICoordinationLockManager _lockManager;
         private readonly ILogger<CoordinationManager<TAddress>> _logger;
+
         private readonly CoordinationManagerOptions _options;
         private readonly DisposableAsyncLazy<Session> _session;
         private readonly CoordinationSessionManagement _sessionManagement;
