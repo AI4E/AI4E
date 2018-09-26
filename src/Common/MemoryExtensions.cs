@@ -98,6 +98,20 @@ namespace AI4E.Coordination
 
         public static string ConvertToString(this ReadOnlyMemory<char> memory)
         {
+            if (memory.IsEmpty)
+            {
+                return string.Empty;
+            }
+
+            if (MemoryMarshal.TryGetString(memory, out var text, out var start, out var length))
+            {
+                // If the memory is only a part of the string we had to substring anyway.
+                if (start == 0 && length == text.Length)
+                {
+                    return text;
+                }
+            }
+
             var result = new string('\0', memory.Length);
             var resultAsMemory = MemoryMarshal.AsMemory(result.AsMemory());
             memory.CopyTo(resultAsMemory);

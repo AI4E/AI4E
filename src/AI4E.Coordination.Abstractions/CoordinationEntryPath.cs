@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.InteropServices;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
@@ -318,7 +319,7 @@ namespace AI4E.Coordination
                 return unescapedSegment;
             }
             var span = unescapedSegment.Span;
-            var result = new char[unescapedSegment.Length + numberOfCharsToEscape];
+            var result = MemoryMarshal.AsMemory(new string('\0', count: unescapedSegment.Length + numberOfCharsToEscape).AsMemory());
             var resultWriter = new MemoryWriter<char>(result);
 
             var copySegmentStart = 0;
@@ -384,7 +385,7 @@ namespace AI4E.Coordination
         private static ReadOnlyMemory<char> Unescape(ReadOnlyMemory<char> escapedSegment)
         {
             var span = escapedSegment.Span;
-            char[] result = null;
+            Memory<char>? result = null;
             MemoryWriter<char> resultWriter = default;
 
             var copySegmentStart = 0;
@@ -405,8 +406,9 @@ namespace AI4E.Coordination
 
                         if (result == null)
                         {
-                            result = new char[escapedSegment.Length];
-                            resultWriter = new MemoryWriter<char>(result);
+                            var allocatedMemory = MemoryMarshal.AsMemory(new string('\0', count: escapedSegment.Length).AsMemory());
+                            result = allocatedMemory;
+                            resultWriter = new MemoryWriter<char>(allocatedMemory);
                         }
 
                         var numberOfCharsToCopy = i - copySegmentStart;
