@@ -171,24 +171,16 @@ namespace AI4E.Coordination
                                   .HandleExceptionsAsync(_logger);
         }
 
-        #region Initialization
-
         public ValueTask<Session> GetSessionAsync(CancellationToken cancellation)
         {
             return new ValueTask<Session>(_session.Task.WithCancellation(cancellation));
         }
-
-        #endregion
-
-        #region Disposal
 
         public void Dispose()
         {
             _sessionManagement.Dispose();
             _session.Dispose();
         }
-
-        #endregion
 
         #region Get entry
 
@@ -829,7 +821,7 @@ namespace AI4E.Coordination
                         IDateTimeProvider dateTimeProvider,
                         IAddressConversion<TAddress> addressConversion,
                         IOptions<CoordinationManagerOptions> optionsAccessor,
-                        ILogger<CoordinationManager<TAddress>> logger)
+                        ILogger<CoordinationManager<TAddress>> logger = null)
         {
             if (storage == null)
                 throw new ArgumentNullException(nameof(storage));

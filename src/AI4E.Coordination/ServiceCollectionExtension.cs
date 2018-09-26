@@ -27,6 +27,8 @@ namespace AI4E.Coordination
 
         private static ICoordinationBuilder AddCoordinationService(this IServiceCollection services, Type addressType)
         {
+            services.AddOptions();
+
             // Add helpers
             services.AddSingleton(p => ConfigureSessionProvider(p, addressType));
 
