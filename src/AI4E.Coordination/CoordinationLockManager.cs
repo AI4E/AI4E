@@ -3,12 +3,11 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Async;
 using AI4E.Internal;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 using static AI4E.Internal.DebugEx;
-
-// TODO: Release lock cancellation
 
 namespace AI4E.Coordination
 {
@@ -17,6 +16,7 @@ namespace AI4E.Coordination
         #region Fields
 
         private readonly IProvider<ICoordinationManager> _coordinationManager;
+        private readonly ISessionManager _sessionManager;
         private readonly CoordinationEntryCache _cache;
         private readonly ICoordinationStorage _storage;
         private readonly IStoredEntryManager _storedEntryManager;
@@ -24,11 +24,14 @@ namespace AI4E.Coordination
         private readonly ICoordinationExchangeManager _exchangeManager;
         private readonly ILogger<CoordinationLockManager> _logger;
 
+        private readonly DisposableAsyncLazy<TaskCancellationTokenSource> _sessionTerminationSource;
+
         #endregion
 
         #region C'tor
 
         public CoordinationLockManager(IProvider<ICoordinationManager> coordinationManager,
+                                       ISessionManager sessionManager,
                                        CoordinationEntryCache cache,
                                        ICoordinationStorage storage,
                                        IStoredEntryManager storedEntryManager,
@@ -54,13 +57,35 @@ namespace AI4E.Coordination
             if (coordinationManager == null)
                 throw new ArgumentNullException(nameof(coordinationManager));
 
+            if (sessionManager == null)
+                throw new ArgumentNullException(nameof(sessionManager));
+
             _coordinationManager = coordinationManager;
+            _sessionManager = sessionManager;
             _cache = cache;
             _storage = storage;
             _storedEntryManager = storedEntryManager;
             _waitManager = waitManager;
             _exchangeManager = exchangeManager;
             _logger = logger;
+
+            _sessionTerminationSource = new DisposableAsyncLazy<TaskCancellationTokenSource>(
+                factory: BuildSessionTerminationSourceAsync,
+                disposal: DestroySessionTerminationSourceAsync,
+                DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
+        }
+
+        private async Task<TaskCancellationTokenSource> BuildSessionTerminationSourceAsync(CancellationToken cancellation)
+        {
+            var session = await CoordinationManager.GetSessionAsync(cancellation);
+            var sessionTermination = _sessionManager.WaitForTerminationAsync(session, cancellation);
+            return new TaskCancellationTokenSource(sessionTermination);
+        }
+
+        private Task DestroySessionTerminationSourceAsync(TaskCancellationTokenSource sessionTerminationSource)
+        {
+            sessionTerminationSource.Dispose();
+            return Task.CompletedTask;
         }
 
         #endregion
@@ -284,8 +309,7 @@ namespace AI4E.Coordination
 
         private async Task<IStoredEntry> InternalReleaseWriteLockAsync(IStoredEntry entry)
         {
-            var cancellation = CancellationToken.None; // TODO _coordinationManagerXX._disposeHelper.DisposalRequested;
-
+            var cancellation = (await _sessionTerminationSource).Token;
             IStoredEntry start, desired;
 
             var session = await CoordinationManager.GetSessionAsync(cancellation);
@@ -430,8 +454,7 @@ namespace AI4E.Coordination
         {
             Assert(entry != null);
 
-            var cancellation = CancellationToken.None; // TODO _coordinationManagerXX._disposeHelper.DisposalRequested;
-
+            var cancellation = (await _sessionTerminationSource).Token;
             IStoredEntry start, desired;
 
             var session = await CoordinationManager.GetSessionAsync(cancellation);

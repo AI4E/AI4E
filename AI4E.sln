@@ -75,6 +75,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\ListExtension.cs = src\Common\ListExtension.cs
 		src\Common\MemoryExtensions.cs = src\Common\MemoryExtensions.cs
 		src\Common\MemoryWriter.cs = src\Common\MemoryWriter.cs
+		src\Common\MessageDispatcherBuilder.cs = src\Common\MessageDispatcherBuilder.cs
 		src\Common\ObjectExtension.cs = src\Common\ObjectExtension.cs
 		src\Common\ParameterExpressionReplacer.cs = src\Common\ParameterExpressionReplacer.cs
 		src\Common\PathInternal.cs = src\Common\PathInternal.cs
@@ -85,6 +86,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\StreamExtension.cs = src\Common\StreamExtension.cs
 		src\Common\StringBuilderExtension.cs = src\Common\StringBuilderExtension.cs
 		src\Common\StringExtension.cs = src\Common\StringExtension.cs
+		src\Common\TaskCancellationTokenSource.cs = src\Common\TaskCancellationTokenSource.cs
 		src\Common\TaskExtension.cs = src\Common\TaskExtension.cs
 		src\Common\TypeExtension.cs = src\Common\TypeExtension.cs
 		src\Common\TypeLoadHelper.cs = src\Common\TypeLoadHelper.cs
@@ -179,7 +181,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.Host", "src
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.Module", "src\AI4E.Modularity.Module\AI4E.Modularity.Module.csproj", "{7AA16B8A-A2CC-4E40-BCDD-812FC91200B0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Coordination.Test", "test\AI4E.Coordination.Test\AI4E.Coordination.Test.csproj", "{C745BC0F-3CE7-4BD8-B2CC-988B4DFF789A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Coordination.Test", "test\AI4E.Coordination.Test\AI4E.Coordination.Test.csproj", "{C745BC0F-3CE7-4BD8-B2CC-988B4DFF789A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

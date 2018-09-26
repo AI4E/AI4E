@@ -14,6 +14,7 @@
     <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
     <Compile Include="..\Common\AsyncWaitDirectory.cs" Link="Internal\AsyncWaitDirectory.cs" />
     <Compile Include="..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
+    <Compile Include="..\Common\TaskCancellationTokenSource.cs" Link="Internal\TaskCancellationTokenSource.cs" />
   </ItemGroup>
 
   <ItemGroup>
