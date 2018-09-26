@@ -159,45 +159,60 @@ namespace AI4E.Internal
             return HandleExceptionsAsync(task, logger: null, defaultValue: default);
         }
 
-        public static async Task WithCancellation(this Task task, CancellationToken cancellation)
+        public static Task WithCancellation(this Task task, CancellationToken cancellation)
         {
             if (task == null)
                 throw new ArgumentNullException(nameof(task));
 
-            if (cancellation == default)
+            if (!cancellation.CanBeCanceled || task.IsCompleted)
             {
-                await task;
-                return;
+                return task;
             }
 
-            var completed = await Task.WhenAny(cancellation.AsTask(), task);
-
-            if (completed != task)
+            if (cancellation.IsCancellationRequested)
             {
-                task.HandleExceptions();
-                throw new TaskCanceledException();
+                return Task.FromCanceled(cancellation);
             }
 
-            await task;
+            return InternalWithCancellation(task, cancellation);
         }
 
-        public static async Task<T> WithCancellation<T>(this Task<T> task, CancellationToken cancellation)
+        private static async Task InternalWithCancellation(Task task, CancellationToken cancellation)
+        {
+            var tcs = new TaskCompletionSource<object>();
+
+            using (cancellation.Register(() => tcs.TrySetCanceled(cancellation), useSynchronizationContext: false))
+            {
+                await await Task.WhenAny(tcs.Task, task).ConfigureAwait(false);
+            }
+        }
+
+        public static Task<T> WithCancellation<T>(this Task<T> task, CancellationToken cancellation)
         {
             if (task == null)
                 throw new ArgumentNullException(nameof(task));
 
-            if (cancellation == default)
-                return await task;
-
-            var completed = await Task.WhenAny(cancellation.AsTask(), task);
-
-            if (completed != task)
+            if (!cancellation.CanBeCanceled || task.IsCompleted)
             {
-                task.HandleExceptions();
-                throw new TaskCanceledException();
+                return task;
             }
 
-            return await task;
+            if (cancellation.IsCancellationRequested)
+            {
+                return Task.FromCanceled<T>(cancellation);
+            }
+
+            return InternalWithCancellation(task, cancellation);
+        }
+
+        private static async Task<T> InternalWithCancellation<T>(Task<T> task, CancellationToken cancellation)
+        {
+            var tcs = new TaskCompletionSource<T>();
+
+            using (cancellation.Register(() => tcs.TrySetCanceled(cancellation), useSynchronizationContext: false))
+            {
+                return await await Task.WhenAny(tcs.Task, task).ConfigureAwait(false);
+            }
         }
 
         public static object GetResult(this Task t)

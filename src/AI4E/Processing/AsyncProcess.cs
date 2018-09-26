@@ -36,12 +36,17 @@ namespace AI4E.Processing
         private TaskCompletionSource<object> _startNotificationSource;
         private TaskCompletionSource<object> _terminationNotificationSource;
 
-        public AsyncProcess(Func<CancellationToken, Task> operation)
+        public AsyncProcess(Func<CancellationToken, Task> operation, bool start = false)
         {
             if (operation == null)
                 throw new ArgumentNullException(nameof(operation));
 
             _operation = operation;
+
+            if (start)
+            {
+                Start();
+            }
         }
 
         public Task Startup => _startNotificationSource.Task;

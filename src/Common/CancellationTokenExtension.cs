@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -32,6 +33,8 @@ namespace AI4E.Internal
             return true;
         }
 
+
+        [Obsolete] // This never deregisters the cancellation action.
         public static Task AsTask(this CancellationToken cancellationToken)
         {
             var tcs = new TaskCompletionSource<object>();
