@@ -43,7 +43,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Internal;
-using AI4E.Remoting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -180,7 +179,6 @@ namespace AI4E.Coordination
         public void Dispose()
         {
             _serviceScope.Dispose();
-            _sessionManagement.Dispose();
             _session.Dispose();
         }
 
@@ -819,16 +817,6 @@ namespace AI4E.Coordination
         {
             var scope = _serviceProvider.CreateScope();
             return ActivatorUtilities.CreateInstance<CoordinationManager<TAddress>>(scope.ServiceProvider, scope);
-
-            //return new CoordinationManager<TAddress>(_storage,
-            //                                         _storedEntryManager,
-            //                                         _sessionManager,
-            //                                         _endPointMultiplexer,
-            //                                         _sessionProvider,
-            //                                         _dateTimeProvider,
-            //                                         _addressConversion,
-            //                                         _optionsAccessor,
-            //                                         _logger);
         }
     }
 }
