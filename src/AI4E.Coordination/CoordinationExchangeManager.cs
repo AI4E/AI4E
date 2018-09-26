@@ -20,14 +20,14 @@ namespace AI4E.Coordination
     {
         #region Fields
 
-        private readonly ICoordinationManager _coordinationManager;
+        private readonly IProvider<ICoordinationManager> _coordinationManager;
         private readonly ISessionManager _sessionManager;
         private readonly IProvider<ICoordinationWaitManager> _waitManager;
         private readonly IProvider<ICoordinationLockManager> _lockManager;
         private readonly CoordinationEntryCache _cache;
         private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
         private readonly IAddressConversion<TAddress> _addressConversion;
-        private readonly ILogger _logger;
+        private readonly ILogger<CoordinationExchangeManager<TAddress>> _logger;
 
         private readonly IAsyncProcess _receiveProcess;
         private readonly DisposableAsyncLazy<IPhysicalEndPoint<TAddress>> _physicalEndPoint;
@@ -36,14 +36,14 @@ namespace AI4E.Coordination
 
         #region C'tor
 
-        public CoordinationExchangeManager(ICoordinationManager coordinationManager,
-                               ISessionManager sessionManager,
-                               IProvider<ICoordinationWaitManager> waitManager, // TODO: This breaks circular dependency. Can this be implemented better?
-                               IProvider<ICoordinationLockManager> lockManager, // TODO: This breaks circular dependency. Can this be implemented better?
-                               CoordinationEntryCache cache,
-                               IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
-                               IAddressConversion<TAddress> addressConversion,
-                               ILogger logger = null)
+        public CoordinationExchangeManager(IProvider<ICoordinationManager> coordinationManager,
+                                           ISessionManager sessionManager,
+                                           IProvider<ICoordinationWaitManager> waitManager,
+                                           IProvider<ICoordinationLockManager> lockManager,
+                                           CoordinationEntryCache cache,
+                                           IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
+                                           IAddressConversion<TAddress> addressConversion,
+                                           ILogger<CoordinationExchangeManager<TAddress>> logger = null)
         {
             if (coordinationManager == null)
                 throw new ArgumentNullException(nameof(coordinationManager));
@@ -84,10 +84,12 @@ namespace AI4E.Coordination
             _receiveProcess.Start();
         }
 
+        public ICoordinationManager CoordinationManager => _coordinationManager.ProvideInstance();
+
         // TODO: Rename
         private async Task<IPhysicalEndPoint<TAddress>> GetSessionEndPointAsync(CancellationToken cancellation)
         {
-            var session = await _coordinationManager.GetSessionAsync(cancellation);
+            var session = await CoordinationManager.GetSessionAsync(cancellation);
             return GetSessionEndPoint(session);
         }
 
@@ -113,7 +115,7 @@ namespace AI4E.Coordination
         public async Task NotifyReadLockReleasedAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
             var sessions = await _sessionManager.GetSessionsAsync(cancellation);
-            var localSession = await _coordinationManager.GetSessionAsync(cancellation);
+            var localSession = await CoordinationManager.GetSessionAsync(cancellation);
 
             foreach (var session in sessions)
             {
@@ -133,7 +135,7 @@ namespace AI4E.Coordination
         public async Task NotifyWriteLockReleasedAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
             var sessions = await _sessionManager.GetSessionsAsync(cancellation);
-            var localSession = await _coordinationManager.GetSessionAsync(cancellation);
+            var localSession = await CoordinationManager.GetSessionAsync(cancellation);
 
             foreach (var session in sessions)
             {
@@ -152,7 +154,7 @@ namespace AI4E.Coordination
 
         public async Task InvalidateCacheEntryAsync(CoordinationEntryPath path, Session session, CancellationToken cancellation)
         {
-            if (session == await _coordinationManager.GetSessionAsync(cancellation))
+            if (session == await CoordinationManager.GetSessionAsync(cancellation))
             {
                 await InvalidateCacheEntryAsync(path, cancellation);
             }
@@ -195,7 +197,7 @@ namespace AI4E.Coordination
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
                 {
-                    _logger?.LogWarning(exc, $"[{await _coordinationManager.GetSessionAsync(cancellation)}] Failure while decoding received message.");
+                    _logger?.LogWarning(exc, $"[{await CoordinationManager.GetSessionAsync(cancellation)}] Failure while decoding received message.");
                 }
             }
         }
@@ -205,9 +207,9 @@ namespace AI4E.Coordination
             switch (messageType)
             {
                 case MessageType.InvalidateCacheEntry:
-                    if (session != await _coordinationManager.GetSessionAsync(cancellation))
+                    if (session != await CoordinationManager.GetSessionAsync(cancellation))
                     {
-                        _logger?.LogWarning($"[{await _coordinationManager.GetSessionAsync(cancellation)}] Received invalidate message for session that is not present.");
+                        _logger?.LogWarning($"[{await CoordinationManager.GetSessionAsync(cancellation)}] Received invalidate message for session that is not present.");
                     }
                     else
                     {
@@ -225,7 +227,7 @@ namespace AI4E.Coordination
 
                 case MessageType.Unknown:
                 default:
-                    _logger?.LogWarning($"[{await _coordinationManager.GetSessionAsync(cancellation)}] Received invalid message or message with unknown message type.");
+                    _logger?.LogWarning($"[{await CoordinationManager.GetSessionAsync(cancellation)}] Received invalid message or message with unknown message type.");
                     break;
             }
         }

@@ -13,22 +13,22 @@ using static AI4E.Internal.DebugEx;
 
 namespace AI4E.Coordination
 {
-    internal sealed class CoordinationSessionManagement : IDisposable
+    public sealed class CoordinationSessionManagement : IDisposable
     {
-        private readonly ICoordinationManager _coordinationManager;
+        private readonly IProvider<ICoordinationManager> _coordinationManager;
         private readonly ISessionManager _sessionManager;
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly ILogger _logger;
+        private readonly ILogger<CoordinationSessionManagement> _logger;
 
         private readonly CoordinationManagerOptions _options;
         private readonly IAsyncProcess _updateSessionProcess;
         private readonly IAsyncProcess _sessionCleanupProcess;
 
-        public CoordinationSessionManagement(ICoordinationManager coordinationManager,
-                                 ISessionManager sessionManager,
-                                 IDateTimeProvider dateTimeProvider,
-                                 IOptions<CoordinationManagerOptions> optionsAccessor,
-                                 ILogger logger = null)
+        public CoordinationSessionManagement(IProvider<ICoordinationManager> coordinationManager,
+                                             ISessionManager sessionManager,
+                                             IDateTimeProvider dateTimeProvider,
+                                             IOptions<CoordinationManagerOptions> optionsAccessor,
+                                             ILogger<CoordinationSessionManagement> logger = null)
         {
             if (coordinationManager == null)
                 throw new ArgumentNullException(nameof(coordinationManager));
@@ -52,9 +52,11 @@ namespace AI4E.Coordination
             _sessionCleanupProcess = new AsyncProcess(SessionCleanupProcess, start: true);
         }
 
+        private ICoordinationManager CoordinationManager => _coordinationManager.ProvideInstance();
+
         private async Task SessionCleanupProcess(CancellationToken cancellation)
         {
-            var session = await _coordinationManager.GetSessionAsync(cancellation);
+            var session = await CoordinationManager.GetSessionAsync(cancellation);
 
             _logger?.LogTrace($"[{session}] Started session cleanup process.");
 
@@ -87,7 +89,7 @@ namespace AI4E.Coordination
 
         private async Task UpdateSessionProcess(CancellationToken cancellation)
         {
-            var session = await _coordinationManager.GetSessionAsync(cancellation);
+            var session = await CoordinationManager.GetSessionAsync(cancellation);
 
             while (cancellation.ThrowOrContinue())
             {
@@ -138,13 +140,13 @@ namespace AI4E.Coordination
 
         private async Task CleanupSessionAsync(Session session, CancellationToken cancellation)
         {
-            _logger?.LogInformation($"[{await _coordinationManager.GetSessionAsync(cancellation)}] Cleaning up session '{session}'.");
+            _logger?.LogInformation($"[{await CoordinationManager.GetSessionAsync(cancellation)}] Cleaning up session '{session}'.");
 
             var entries = await _sessionManager.GetEntriesAsync(session, cancellation);
 
             await Task.WhenAll(entries.Select(async entry =>
             {
-                await _coordinationManager.DeleteAsync(entry, version: default, recursive: false, cancellation);
+                await CoordinationManager.DeleteAsync(entry, version: default, recursive: false, cancellation);
                 await _sessionManager.RemoveSessionEntryAsync(session, entry, cancellation);
             }));
 

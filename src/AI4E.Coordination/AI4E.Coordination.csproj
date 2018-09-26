@@ -13,6 +13,7 @@
     <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
     <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
     <Compile Include="..\Common\AsyncWaitDirectory.cs" Link="Internal\AsyncWaitDirectory.cs" />
+    <Compile Include="..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>

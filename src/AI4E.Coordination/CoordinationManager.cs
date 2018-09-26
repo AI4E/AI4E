@@ -44,6 +44,7 @@ using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Internal;
 using AI4E.Remoting;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
@@ -57,21 +58,16 @@ namespace AI4E.Coordination
     {
         #region Fields
 
+        private readonly IServiceScope _serviceScope;
         private readonly ICoordinationStorage _storage;
         private readonly IStoredEntryManager _storedEntryManager;
         private readonly ISessionManager _sessionManager;
-        private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
         private readonly ISessionProvider _sessionProvider;
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly IAddressConversion<TAddress> _addressConversion;
-        private readonly ILogger<CoordinationManager<TAddress>> _logger;
-
-        private readonly CoordinationManagerOptions _options;
         private readonly CoordinationEntryCache _cache;
-        private readonly ICoordinationWaitManager _waitManager;
         private readonly ICoordinationLockManager _lockManager;
-        private readonly ICoordinationExchangeManager _exchangeManager;
-
+        private readonly ILogger<CoordinationManager<TAddress>> _logger;
+        private readonly CoordinationManagerOptions _options;
         private readonly DisposableAsyncLazy<Session> _session;
         private readonly CoordinationSessionManagement _sessionManagement;
 
@@ -79,16 +75,21 @@ namespace AI4E.Coordination
 
         #region C'tor
 
-        public CoordinationManager(ICoordinationStorage storage,
+        public CoordinationManager(IServiceScope serviceScope,
+                                   ICoordinationStorage storage,
                                    IStoredEntryManager storedEntryManager,
                                    ISessionManager sessionManager,
-                                   IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
                                    ISessionProvider sessionProvider,
                                    IDateTimeProvider dateTimeProvider,
-                                   IAddressConversion<TAddress> addressConversion,
+                                   CoordinationEntryCache cache,
+                                   ICoordinationLockManager lockManager,
+                                   CoordinationSessionManagement sessionManagement,
                                    IOptions<CoordinationManagerOptions> optionsAccessor,
-                                   ILogger<CoordinationManager<TAddress>> logger)
+                                   ILogger<CoordinationManager<TAddress>> logger = null)
         {
+            if (serviceScope == null)
+                throw new ArgumentNullException(nameof(serviceScope));
+
             if (storage == null)
                 throw new ArgumentNullException(nameof(storage));
 
@@ -98,45 +99,45 @@ namespace AI4E.Coordination
             if (sessionManager == null)
                 throw new ArgumentNullException(nameof(sessionManager));
 
-            if (endPointMultiplexer == null)
-                throw new ArgumentNullException(nameof(endPointMultiplexer));
-
             if (sessionProvider == null)
                 throw new ArgumentNullException(nameof(sessionProvider));
 
             if (dateTimeProvider == null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
 
-            if (addressConversion == null)
-                throw new ArgumentNullException(nameof(addressConversion));
+            if (cache == null)
+                throw new ArgumentNullException(nameof(cache));
+
+            if (lockManager == null)
+                throw new ArgumentNullException(nameof(lockManager));
+
+            if (sessionManagement == null)
+                throw new ArgumentNullException(nameof(sessionManagement));
 
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
 
+            _serviceScope = serviceScope;
             _storage = storage;
             _storedEntryManager = storedEntryManager;
             _sessionManager = sessionManager;
-            _endPointMultiplexer = endPointMultiplexer;
             _sessionProvider = sessionProvider;
             _dateTimeProvider = dateTimeProvider;
-            _addressConversion = addressConversion;
+            _cache = cache;
+            _lockManager = lockManager;
+            _sessionManagement = sessionManagement;
             _logger = logger;
 
             _options = optionsAccessor.Value ?? new CoordinationManagerOptions();
-            _cache = new CoordinationEntryCache();
-            _exchangeManager = new CoordinationExchangeManager<TAddress>(this, _sessionManager, Provider.Create(() => _waitManager), Provider.Create(() => _lockManager), _cache, _endPointMultiplexer, _addressConversion, _logger);
-            _waitManager = new CoordinationWaitManager(this, _storage, _storedEntryManager, _sessionManager, _exchangeManager, _logger);
-            _lockManager = new CoordinationLockManager(this, _cache, _storage, _storedEntryManager, _waitManager, _exchangeManager, _logger);
-
             _session = new DisposableAsyncLazy<Session>(
                 factory: StartSessionAsync,
                 disposal: TerminateSessionAsync,
                 DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
-
-            _sessionManagement = new CoordinationSessionManagement(this, _sessionManager, _dateTimeProvider, optionsAccessor, _logger);
         }
 
         #endregion
+
+        public IServiceProvider ServiceProvider => _serviceScope.ServiceProvider;
 
         private async Task<Session> StartSessionAsync(CancellationToken cancellation)
         {
@@ -178,6 +179,7 @@ namespace AI4E.Coordination
 
         public void Dispose()
         {
+            _serviceScope.Dispose();
             _sessionManagement.Dispose();
             _session.Dispose();
         }
@@ -803,72 +805,30 @@ namespace AI4E.Coordination
 
     public sealed class CoordinationManagerFactory<TAddress> : ICoordinationManagerFactory
     {
-        private readonly ICoordinationStorage _storage;
-        private readonly IStoredEntryManager _storedEntryManager;
-        private readonly ISessionManager _sessionManager;
-        private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
-        private readonly ISessionProvider _sessionProvider;
-        private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly IAddressConversion<TAddress> _addressConversion;
-        private readonly IOptions<CoordinationManagerOptions> _optionsAccessor;
-        private readonly ILogger<CoordinationManager<TAddress>> _logger;
+        private readonly IServiceProvider _serviceProvider;
 
-        public CoordinationManagerFactory(ICoordinationStorage storage,
-                        IStoredEntryManager storedEntryManager,
-                        ISessionManager sessionManager,
-                        IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
-                        ISessionProvider sessionProvider,
-                        IDateTimeProvider dateTimeProvider,
-                        IAddressConversion<TAddress> addressConversion,
-                        IOptions<CoordinationManagerOptions> optionsAccessor,
-                        ILogger<CoordinationManager<TAddress>> logger = null)
+        public CoordinationManagerFactory(IServiceProvider serviceProvider)
         {
-            if (storage == null)
-                throw new ArgumentNullException(nameof(storage));
+            if (serviceProvider == null)
+                throw new ArgumentNullException(nameof(serviceProvider));
 
-            if (storedEntryManager == null)
-                throw new ArgumentNullException(nameof(storedEntryManager));
-
-            if (sessionManager == null)
-                throw new ArgumentNullException(nameof(sessionManager));
-
-            if (endPointMultiplexer == null)
-                throw new ArgumentNullException(nameof(endPointMultiplexer));
-
-            if (sessionProvider == null)
-                throw new ArgumentNullException(nameof(sessionProvider));
-
-            if (dateTimeProvider == null)
-                throw new ArgumentNullException(nameof(dateTimeProvider));
-
-            if (addressConversion == null)
-                throw new ArgumentNullException(nameof(addressConversion));
-
-            if (optionsAccessor == null)
-                throw new ArgumentNullException(nameof(optionsAccessor));
-
-            _storage = storage;
-            _storedEntryManager = storedEntryManager;
-            _sessionManager = sessionManager;
-            _endPointMultiplexer = endPointMultiplexer;
-            _sessionProvider = sessionProvider;
-            _dateTimeProvider = dateTimeProvider;
-            _addressConversion = addressConversion;
-            _optionsAccessor = optionsAccessor;
-            _logger = logger;
+            _serviceProvider = serviceProvider;
         }
 
         public ICoordinationManager CreateCoordinationManager()
         {
-            return new CoordinationManager<TAddress>(_storage,
-                                                     _storedEntryManager,
-                                                     _sessionManager,
-                                                     _endPointMultiplexer,
-                                                     _sessionProvider,
-                                                     _dateTimeProvider,
-                                                     _addressConversion,
-                                                     _optionsAccessor,
-                                                     _logger);
+            var scope = _serviceProvider.CreateScope();
+            return ActivatorUtilities.CreateInstance<CoordinationManager<TAddress>>(scope.ServiceProvider, scope);
+
+            //return new CoordinationManager<TAddress>(_storage,
+            //                                         _storedEntryManager,
+            //                                         _sessionManager,
+            //                                         _endPointMultiplexer,
+            //                                         _sessionProvider,
+            //                                         _dateTimeProvider,
+            //                                         _addressConversion,
+            //                                         _optionsAccessor,
+            //                                         _logger);
         }
     }
 }

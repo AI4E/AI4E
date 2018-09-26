@@ -16,25 +16,25 @@ namespace AI4E.Coordination
     {
         #region Fields
 
-        private readonly ICoordinationManager _coordinationManager;
+        private readonly IProvider<ICoordinationManager> _coordinationManager;
         private readonly CoordinationEntryCache _cache;
         private readonly ICoordinationStorage _storage;
         private readonly IStoredEntryManager _storedEntryManager;
         private readonly ICoordinationWaitManager _waitManager;
         private readonly ICoordinationExchangeManager _exchangeManager;
-        private readonly ILogger _logger;
+        private readonly ILogger<CoordinationLockManager> _logger;
 
         #endregion
 
         #region C'tor
 
-        public CoordinationLockManager(ICoordinationManager coordinationManager,
-                           CoordinationEntryCache cache,
-                           ICoordinationStorage storage,
-                           IStoredEntryManager storedEntryManager,
-                           ICoordinationWaitManager waitManager,
-                           ICoordinationExchangeManager exchangeManager,
-                           ILogger logger = null)
+        public CoordinationLockManager(IProvider<ICoordinationManager> coordinationManager,
+                                       CoordinationEntryCache cache,
+                                       ICoordinationStorage storage,
+                                       IStoredEntryManager storedEntryManager,
+                                       ICoordinationWaitManager waitManager,
+                                       ICoordinationExchangeManager exchangeManager,
+                                       ILogger<CoordinationLockManager> logger = null)
         {
             if (cache == null)
                 throw new ArgumentNullException(nameof(cache));
@@ -64,6 +64,8 @@ namespace AI4E.Coordination
         }
 
         #endregion
+
+        public ICoordinationManager CoordinationManager => _coordinationManager.ProvideInstance();
 
         #region ICoordinationLockManager
 
@@ -189,7 +191,7 @@ namespace AI4E.Coordination
             catch (SessionTerminatedException) { throw; }
             catch
             {
-                _coordinationManager.Dispose();
+                CoordinationManager.Dispose();
                 throw;
             }
         }
@@ -203,11 +205,11 @@ namespace AI4E.Coordination
                 watch.Start();
             }
 
-            var session = await _coordinationManager.GetSessionAsync(cancellation);
+            var session = await CoordinationManager.GetSessionAsync(cancellation);
 
             if (entry != null)
             {
-                _logger?.LogTrace($"[{await _coordinationManager.GetSessionAsync(cancellation)}] Acquiring write-lock for entry '{entry.Path}'.");
+                _logger?.LogTrace($"[{session}] Acquiring write-lock for entry '{entry.Path}'.");
             }
 
             // TODO: Check whether session is still alive
@@ -240,7 +242,7 @@ namespace AI4E.Coordination
 
             try
             {
-                _logger?.LogTrace($"[{await _coordinationManager.GetSessionAsync(cancellation)}] Pending write-lock for entry '{entry.Path}'. Waiting for read-locks to release.");
+                _logger?.LogTrace($"[{session}] Pending write-lock for entry '{entry.Path}'. Waiting for read-locks to release.");
 
                 // Wait till all read-locks are freed.
                 entry = await _waitManager.WaitForReadLocksReleaseAsync(entry, cancellation);
@@ -258,7 +260,7 @@ namespace AI4E.Coordination
                     Assert(watch != null);
                     watch.Stop();
 
-                    _logger?.LogTrace($"[{await _coordinationManager.GetSessionAsync(cancellation)}] Acquired write-lock for entry '{entry.Path}' in {watch.Elapsed.TotalSeconds}sec.");
+                    _logger?.LogTrace($"[{session}] Acquired write-lock for entry '{entry.Path}' in {watch.Elapsed.TotalSeconds}sec.");
                 }
 
                 return entry;
@@ -272,7 +274,7 @@ namespace AI4E.Coordination
                 catch (SessionTerminatedException) { throw; }
                 catch
                 {
-                    _coordinationManager.Dispose();
+                    CoordinationManager.Dispose();
                     throw;
                 }
 
@@ -286,11 +288,11 @@ namespace AI4E.Coordination
 
             IStoredEntry start, desired;
 
-            var session = await _coordinationManager.GetSessionAsync(cancellation);
+            var session = await CoordinationManager.GetSessionAsync(cancellation);
 
             if (entry != null)
             {
-                _logger?.LogTrace($"[{await _coordinationManager.GetSessionAsync(cancellation)}] Releasing write-lock for entry '{entry.Path}'.");
+                _logger?.LogTrace($"[{session}] Releasing write-lock for entry '{entry.Path}'.");
             }
 
             CacheEntry cacheEntry;
@@ -303,7 +305,7 @@ namespace AI4E.Coordination
                 if (start == null)
                 {
                     _exchangeManager.NotifyWriteLockReleasedAsync(entry.Path, cancellation).HandleExceptions(_logger);
-                    _logger?.LogTrace($"[{await _coordinationManager.GetSessionAsync(cancellation)}] Released write-lock for entry '{entry.Path}'.");
+                    _logger?.LogTrace($"[{session}] Released write-lock for entry '{entry.Path}'.");
                     return start;
                 }
 
@@ -331,7 +333,7 @@ namespace AI4E.Coordination
             if (entry != null)
             {
                 _exchangeManager.NotifyWriteLockReleasedAsync(entry.Path, cancellation).HandleExceptions(_logger);
-                _logger?.LogTrace($"[{await _coordinationManager.GetSessionAsync(cancellation)}] Released write-lock for entry '{entry.Path}'.");
+                _logger?.LogTrace($"[{session}] Released write-lock for entry '{entry.Path}'.");
             }
 
             return desired;
@@ -348,11 +350,11 @@ namespace AI4E.Coordination
 
             IStoredEntry start, desired;
 
-            var session = await _coordinationManager.GetSessionAsync(cancellation);
+            var session = await CoordinationManager.GetSessionAsync(cancellation);
 
             if (entry != null)
             {
-                _logger?.LogTrace($"[{await _coordinationManager.GetSessionAsync(cancellation)}] Acquiring read-lock for entry '{entry.Path}'.");
+                _logger?.LogTrace($"[{session}] Acquiring read-lock for entry '{entry.Path}'.");
             }
 
             do
@@ -383,7 +385,7 @@ namespace AI4E.Coordination
                     Assert(watch != null);
                     watch.Stop();
 
-                    _logger?.LogTrace($"[{await _coordinationManager.GetSessionAsync(cancellation)}] Acquired read-lock for entry '{entry.Path.EscapedPath}' in {watch.ElapsedMilliseconds}ms.");
+                    _logger?.LogTrace($"[{session}] Acquired read-lock for entry '{entry.Path.EscapedPath}' in {watch.ElapsedMilliseconds}ms.");
                 }
 
                 return entry;
@@ -419,7 +421,7 @@ namespace AI4E.Coordination
             }
             catch
             {
-                _coordinationManager.Dispose();
+                CoordinationManager.Dispose();
                 throw;
             }
         }
@@ -432,11 +434,11 @@ namespace AI4E.Coordination
 
             IStoredEntry start, desired;
 
-            var session = await _coordinationManager.GetSessionAsync(cancellation);
+            var session = await CoordinationManager.GetSessionAsync(cancellation);
 
             if (entry != null)
             {
-                _logger?.LogTrace($"[{await _coordinationManager.GetSessionAsync(cancellation)}] Releasing read-lock for entry '{entry.Path}'.");
+                _logger?.LogTrace($"[{session}] Releasing read-lock for entry '{entry.Path}'.");
             }
 
             do
@@ -458,7 +460,7 @@ namespace AI4E.Coordination
             Assert(entry != null);
 
             _exchangeManager.NotifyReadLockReleasedAsync(entry.Path, cancellation).HandleExceptions(_logger);
-            _logger?.LogTrace($"[{await _coordinationManager.GetSessionAsync(cancellation)}] Released read-lock for entry '{entry.Path}'.");
+            _logger?.LogTrace($"[{session}] Released read-lock for entry '{entry.Path}'.");
 
             return desired;
         }
