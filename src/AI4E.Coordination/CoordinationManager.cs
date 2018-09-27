@@ -324,7 +324,7 @@ namespace AI4E.Coordination
 
                 if (entry != null)
                 {
-                    _cache.UpdateEntry(entry, comparandVersion: default);
+                    _cache.AddEntry(entry);
                 }
 
                 return entry;

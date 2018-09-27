@@ -127,7 +127,14 @@ namespace AI4E.Coordination
             }
 
             return UpdateEntry(entry, cacheEntry.CacheEntryVersion);
+        }
 
+        public CacheEntry AddEntry(IStoredEntry entry)
+        {
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
+
+            return UpdateEntry(entry, comparandVersion: default);
         }
 
         /// <summary>
@@ -140,7 +147,7 @@ namespace AI4E.Coordination
         /// <remarks>
         /// It is NOT guaranteed that the returned cache entry is valid and the <see cref="CacheEntry.Entry"/> property accessable.
         /// </remarks>
-        public CacheEntry UpdateEntry(IStoredEntry entry, int comparandVersion)
+        private CacheEntry UpdateEntry(IStoredEntry entry, int comparandVersion)
         {
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
@@ -282,7 +289,7 @@ namespace AI4E.Coordination
         // 1) a read operation tries to update the cache and
         // 2) another session concurrently writes to the entry, invalidating our cache entry
         // Without the version, the cache update of operation (1) and the cache invalidation of operation (2)
-        // may be performed in the wrong order, leaving the cache with a non-invalidated entry but no read-lock aquired.
+        // may be performed out of order, leaving the cache with a non-invalidated entry but no read-lock aquired.
         // For this reason, each invalidation increments the version by one, each update operation checks the version.
         internal int CacheEntryVersion { get; }
 
