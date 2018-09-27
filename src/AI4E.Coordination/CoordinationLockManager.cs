@@ -182,11 +182,11 @@ namespace AI4E.Coordination
             try
             {
                 // We had to wait for the local lock. Freshly load the entry from the database as the chances are great that our entry is outdated.
-                if(!atomicWait)
+                if (!atomicWait)
                 {
                     entry = await _storage.GetEntryAsync(path, cancellation);
                 }
-                
+
                 // Enter global read lock.
                 return await InternalAcquireReadLockAsync(entry, cancellation);
             }
@@ -215,13 +215,7 @@ namespace AI4E.Coordination
                 return Task.FromResult(true);
             }
 
-            return AcquireLocalWriteLockCoreAsync(writeLock, cancellation);
-        }
-
-        private async Task<bool> AcquireLocalWriteLockCoreAsync(SemaphoreSlim writeLock, CancellationToken cancellation)
-        {
-            await writeLock.WaitAsync(cancellation);
-            return true;
+            return writeLock.WaitAsync(cancellation).WithResult(false);
         }
 
         private async Task<IStoredEntry> ReleaseWriteLockAsync(IStoredEntry entry)

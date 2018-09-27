@@ -226,6 +226,14 @@ namespace AI4E.Internal
 
             return t.GetType().GetProperty("Result").GetValue(t);
         }
+
+        public static Task<T> WithResult<T>(this Task t, T result)
+        {
+            if (t == null)
+                throw new ArgumentNullException(nameof(t));
+
+            return t.ContinueWith(_ => result);
+        }
     }
 
     internal static class ExceptionHelper
