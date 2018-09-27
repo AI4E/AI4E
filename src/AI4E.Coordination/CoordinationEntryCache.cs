@@ -241,12 +241,12 @@ namespace AI4E.Coordination
                            IStoredEntry entry,
                            bool isValid,
                            int version,
-                           SemaphoreSlim locakReadLock,
+                           SemaphoreSlim localReadLock,
                            SemaphoreSlim localWriteLock)
         {
             Assert(path != null);
             Assert(isValid, entry != null);
-            Assert(locakReadLock != null);
+            Assert(localReadLock != null);
             Assert(localWriteLock != null);
 
             Path = path;
@@ -309,7 +309,7 @@ namespace AI4E.Coordination
 
         internal CacheEntry Invalidate()
         {
-            return new CacheEntry(Path, null, isValid: false, version: CacheEntryVersion + 1, locakReadLock: LocalReadLock, localWriteLock: LocalWriteLock);
+            return new CacheEntry(Path, null, isValid: false, version: CacheEntryVersion + 1, localReadLock: LocalReadLock, localWriteLock: LocalWriteLock);
         }
 
         internal CacheEntry Update(IStoredEntry entry, int version)
@@ -321,7 +321,7 @@ namespace AI4E.Coordination
                 return this;
             }
 
-            return new CacheEntry(Path, entry, isValid: true, version: version, locakReadLock: LocalReadLock, localWriteLock: LocalWriteLock);
+            return new CacheEntry(Path, entry, isValid: true, version: version, localReadLock: LocalReadLock, localWriteLock: LocalWriteLock);
         }
     }
 }
