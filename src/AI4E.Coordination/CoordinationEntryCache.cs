@@ -220,7 +220,8 @@ namespace AI4E.Coordination
             _entry = default;
             CacheEntryVersion = 1;
             IsValid = false;
-            LocalLock = CreateLocalLock();
+            LocalReadLock = CreateLocalLock();
+            LocalWriteLock = CreateLocalLock();
         }
 
         internal CacheEntry(CoordinationEntryPath path, IStoredEntry entry)
@@ -232,20 +233,28 @@ namespace AI4E.Coordination
             _entry = entry;
             CacheEntryVersion = 1;
             IsValid = true;
-            LocalLock = CreateLocalLock();
+            LocalReadLock = CreateLocalLock();
+            LocalWriteLock = CreateLocalLock();
         }
 
-        private CacheEntry(CoordinationEntryPath path, IStoredEntry entry, bool isValid, int version, SemaphoreSlim localLock)
+        private CacheEntry(CoordinationEntryPath path,
+                           IStoredEntry entry,
+                           bool isValid,
+                           int version,
+                           SemaphoreSlim locakReadLock,
+                           SemaphoreSlim localWriteLock)
         {
             Assert(path != null);
             Assert(isValid, entry != null);
-            Assert(localLock != null);
+            Assert(locakReadLock != null);
+            Assert(localWriteLock != null);
 
             Path = path;
             _entry = entry;
             CacheEntryVersion = version;
             IsValid = isValid;
-            LocalLock = localLock;
+            LocalReadLock = LocalReadLock;
+            LocalWriteLock = localWriteLock;
         }
 
         private static SemaphoreSlim CreateLocalLock()
@@ -281,9 +290,14 @@ namespace AI4E.Coordination
         }
 
         /// <summary>
-        /// The local lock of the cache entry.
+        /// Gets the local read lock of the cache entry.
         /// </summary>
-        public SemaphoreSlim LocalLock { get; }
+        public SemaphoreSlim LocalReadLock { get; }
+
+        /// <summary>
+        /// Gets the local write lock of the cache entry.
+        /// </summary>
+        public SemaphoreSlim LocalWriteLock { get; }
 
         // The cache entry version's purpose is to prevent a situation that
         // 1) a read operation tries to update the cache and
@@ -295,7 +309,7 @@ namespace AI4E.Coordination
 
         internal CacheEntry Invalidate()
         {
-            return new CacheEntry(Path, null, isValid: false, CacheEntryVersion + 1, LocalLock);
+            return new CacheEntry(Path, null, isValid: false, version: CacheEntryVersion + 1, locakReadLock: LocalReadLock, localWriteLock: LocalWriteLock);
         }
 
         internal CacheEntry Update(IStoredEntry entry, int version)
@@ -307,7 +321,7 @@ namespace AI4E.Coordination
                 return this;
             }
 
-            return new CacheEntry(Path, entry, isValid: true, version, LocalLock);
+            return new CacheEntry(Path, entry, isValid: true, version: version, locakReadLock: LocalReadLock, localWriteLock: LocalWriteLock);
         }
     }
 }

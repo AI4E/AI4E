@@ -49,8 +49,6 @@ using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 using static AI4E.Internal.DebugEx;
 
-// TODO: Do we have to synchronize read access? See GetEntryAsync
-
 namespace AI4E.Coordination
 {
     public sealed partial class CoordinationManager<TAddress> : ICoordinationManager
@@ -208,43 +206,58 @@ namespace AI4E.Coordination
                 return cacheEntry.Entry;
             }
 
-            var result = await _lockManager.AcquireReadLockAsync(path, cancellation);
-
-            if (result == null)
-            {
-                // TODO: Why do we perform this here?
-                await UpdateParentOfDeletedEntry(path, cancellation);
-                return null;
-            }
+            await _lockManager.AcquireLocalReadLockAsync(path, cancellation);
 
             try
             {
-                var updatedCacheEntry = _cache.UpdateEntry(cacheEntry, result);
+                var entry = await _storage.GetEntryAsync(path, cancellation);
 
-                // TODO: If we cannot update the cache, f.e. due to an old cache entry version, the cache is invalidated, and we do not need the read-lock. => Free it.
-                // This must be synchronized with any concurrent read operations that 
-                // (1) Register a read-lock (No-op, as we currently own a read-lock)
-                // (2) Updates the cache entry successfully.
-                // (3) We are releasing the read-lock here
-                // This leaves the coordination service in an inconsistent state, as we have cached an entry but do not have a read-lock for it.
+                if (entry == null)
+                {
+                    goto CleanupParentOfDeletedEntry;
+                }
 
-                //if (!updatedCacheEntry.IsValid)
-                //{
-                //    await ReleaseReadLockAsync(result, cancellation);
-                //}
+                entry = await _lockManager.AcquireReadLockAsync(entry, cancellation);
+
+                if (entry == null)
+                {
+                    goto CleanupParentOfDeletedEntry;
+                }
+
+                try
+                {
+                    var updatedCacheEntry = _cache.UpdateEntry(cacheEntry, entry);
+
+                    // If we cannot update the cache, f.e. due to an old cache entry version, the cache is invalidated, and we do not need the read-lock. => Free it.
+                    // This must be synchronized with any concurrent read operations that 
+                    // (1) Register a read-lock (No-op, as we currently own a read-lock)
+                    // (2) Updates the cache entry successfully.
+                    // (3) We are releasing the read-lock here
+                    // In order to not leaves the coordination service in an inconsistent state, we have acquire a separate local read-lock on cache update.
+                    if (!updatedCacheEntry.IsValid)
+                    {
+                        await _lockManager.ReleaseReadLockAsync(path, cancellation);
+                    }
+                }
+                catch
+                {
+                    await _lockManager.ReleaseReadLockAsync(path, cancellation);
+                    throw;
+                }
+
+                return entry;
             }
-            catch
+            finally
             {
-                await _lockManager.ReleaseReadLockAsync(path, cancellation);
-                throw;
+                await _lockManager.ReleaseLocalReadLockAsync(path, cancellation);
             }
 
-            return result;
+            // We do not want to do this under the local read-lock.
+            CleanupParentOfDeletedEntry:
 
-            // TODO: Is it ok that we insert the data outside of the local lock?
-            // TODO: Is it consistent this way? Is it possible that we concurrently allocate/deallocate read-locks? Do we have to synchronize this?
-            // TODO: It is a bit ugly that the lock manager uses the cache entry to get the local-lock, and we are using it, to update the payload.
-
+            // TODO: Why do we perform this here?
+            await UpdateParentOfDeletedEntry(path, cancellation);
+            return null;
         }
 
         #endregion
@@ -318,22 +331,31 @@ namespace AI4E.Coordination
 
             var path = entry.Path;
 
+            await _lockManager.AcquireLocalReadLockAsync(path, cancellation);
+
             try
             {
-                entry = await _lockManager.AcquireReadLockAsync(entry, cancellation);
-
-                if (entry != null)
+                try
                 {
-                    _cache.AddEntry(entry);
+                    entry = await _lockManager.AcquireReadLockAsync(entry, cancellation);
+
+                    if (entry != null)
+                    {
+                        _cache.AddEntry(entry);
+                    }
+
+                    return entry;
                 }
+                catch
+                {
+                    await _lockManager.ReleaseReadLockAsync(path, cancellation);
 
-                return entry;
+                    throw;
+                }
             }
-            catch
+            finally
             {
-                await _lockManager.ReleaseReadLockAsync(path, cancellation);
-
-                throw;
+                await _lockManager.ReleaseLocalReadLockAsync(path, cancellation);
             }
         }
 
@@ -437,7 +459,7 @@ namespace AI4E.Coordination
         {
             // Lock the local-lock first.
             // Create will lock the write-lock for us.
-            await _lockManager.AcquireLocalLockAsync(path, cancellation);
+            await _lockManager.AcquireLocalWriteLockAsync(path, cancellation);
 
             var entry = _storedEntryManager.Create(path, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.Span);
             var comparand = await _storage.UpdateEntryAsync(entry, comparand: null, cancellation);
@@ -461,7 +483,7 @@ namespace AI4E.Coordination
                 // There is already an entry present => Release the local lock only.
                 if (comparand != null)
                 {
-                    await _lockManager.ReleaseLocalLockAsync(path, cancellation);
+                    await _lockManager.ReleaseLocalWriteLockAsync(path, cancellation);
                 }
                 else
                 {

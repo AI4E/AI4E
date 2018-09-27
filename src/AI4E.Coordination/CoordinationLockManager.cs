@@ -94,20 +94,35 @@ namespace AI4E.Coordination
 
         #region ICoordinationLockManager
 
-        public async Task AcquireLocalLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
+        public Task AcquireLocalWriteLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
-            var cacheEntry = _cache.GetEntry(path);
-            await cacheEntry.LocalLock.WaitAsync(cancellation);
+            return AcquireLocalWriteLockInternalAsync(path, cancellation);
         }
 
-        public Task ReleaseLocalLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
+        public Task ReleaseLocalWriteLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
             var cacheEntry = _cache.GetEntry(path);
 
             Assert(cacheEntry != null);
-            Assert(cacheEntry.LocalLock.CurrentCount == 0);
+            Assert(cacheEntry.LocalWriteLock.CurrentCount == 0);
 
-            cacheEntry.LocalLock.Release();
+            cacheEntry.LocalWriteLock.Release();
+            return Task.CompletedTask;
+        }
+
+        public async Task AcquireLocalReadLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
+        {
+            var cacheEntry = _cache.GetEntry(path);
+            await cacheEntry.LocalReadLock.WaitAsync(cancellation);
+        }
+
+        public Task ReleaseLocalReadLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
+        {
+            var cacheEntry = _cache.GetEntry(path);
+            Assert(cacheEntry != null);
+            Assert(cacheEntry.LocalReadLock.CurrentCount == 0);
+
+            cacheEntry.LocalReadLock.Release();
             return Task.CompletedTask;
         }
 
@@ -118,7 +133,7 @@ namespace AI4E.Coordination
             var cacheEntry = _cache.GetEntry(path);
 
             // Enter local lock
-            await cacheEntry.LocalLock.WaitAsync(cancellation);
+            await cacheEntry.LocalWriteLock.WaitAsync(cancellation);
 
             try
             {
@@ -130,17 +145,17 @@ namespace AI4E.Coordination
                 // Release the local lock if the entry is null.
                 if (result == null)
                 {
-                    Assert(cacheEntry.LocalLock.CurrentCount == 0);
-                    cacheEntry.LocalLock.Release();
+                    Assert(cacheEntry.LocalWriteLock.CurrentCount == 0);
+                    cacheEntry.LocalWriteLock.Release();
                 }
 
                 return result;
             }
             catch
             {
-                Assert(cacheEntry.LocalLock.CurrentCount == 0);
+                Assert(cacheEntry.LocalWriteLock.CurrentCount == 0);
                 // Release local lock on failure
-                cacheEntry.LocalLock.Release();
+                cacheEntry.LocalWriteLock.Release();
                 throw;
             }
         }
@@ -155,24 +170,6 @@ namespace AI4E.Coordination
             return ReleaseWriteLockAsync(entry).WithCancellation(cancellation);
         }
 
-        public async Task<IStoredEntry> AcquireReadLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
-        {
-            // Enter local write lock, as we are modifying the stored entry with entering the read-lock
-            await AcquireLocalLockAsync(path, cancellation);
-            try
-            {
-                // Freshly load the entry from the database.
-                var entry = await _storage.GetEntryAsync(path, cancellation);
-
-                // Enter global read lock.
-                return await InternalAcquireReadLockAsync(entry, cancellation);
-            }
-            finally
-            {
-                await ReleaseLocalLockAsync(path, cancellation);
-            }
-        }
-
         public async Task<IStoredEntry> AcquireReadLockAsync(IStoredEntry entry, CancellationToken cancellation)
         {
             if (entry == null)
@@ -181,18 +178,21 @@ namespace AI4E.Coordination
             var path = entry.Path;
 
             // Enter local write lock, as we are modifying the stored entry with entering the read-lock
-            await AcquireLocalLockAsync(path, cancellation);
+            var atomicWait = await AcquireLocalWriteLockInternalAsync(path, cancellation);
             try
             {
-                // Freshly load the entry from the database.
-                //var entry = await _storage.GetEntryAsync(path, cancellation);
-
+                // We had to wait for the local lock. Freshly load the entry from the database as the chances are great that our entry is outdated.
+                if(!atomicWait)
+                {
+                    entry = await _storage.GetEntryAsync(path, cancellation);
+                }
+                
                 // Enter global read lock.
                 return await InternalAcquireReadLockAsync(entry, cancellation);
             }
             finally
             {
-                await ReleaseLocalLockAsync(path, cancellation);
+                await ReleaseLocalWriteLockAsync(path, cancellation);
             }
         }
 
@@ -203,6 +203,27 @@ namespace AI4E.Coordination
 
         #endregion
 
+        // True if the lock could be taken immediately, false otherwise.
+        private Task<bool> AcquireLocalWriteLockInternalAsync(CoordinationEntryPath path, CancellationToken cancellation)
+        {
+            var cacheEntry = _cache.GetEntry(path);
+
+            var writeLock = cacheEntry.LocalWriteLock;
+
+            if (writeLock.Wait(0))
+            {
+                return Task.FromResult(true);
+            }
+
+            return AcquireLocalWriteLockCoreAsync(writeLock, cancellation);
+        }
+
+        private async Task<bool> AcquireLocalWriteLockCoreAsync(SemaphoreSlim writeLock, CancellationToken cancellation)
+        {
+            await writeLock.WaitAsync(cancellation);
+            return true;
+        }
+
         private async Task<IStoredEntry> ReleaseWriteLockAsync(IStoredEntry entry)
         {
             Assert(entry != null);
@@ -210,7 +231,7 @@ namespace AI4E.Coordination
             try
             {
                 var result = await InternalReleaseWriteLockAsync(entry);
-                await ReleaseLocalLockAsync(entry.Path, cancellation: default);
+                await ReleaseLocalWriteLockAsync(entry.Path, cancellation: default);
                 return result;
             }
             catch (SessionTerminatedException) { throw; }
@@ -429,7 +450,7 @@ namespace AI4E.Coordination
             try
             {
                 // Enter local write lock, as we are modifying the stored entry with entering the read-lock
-                await AcquireLocalLockAsync(path, cancellation: default);
+                await AcquireLocalWriteLockAsync(path, cancellation: default);
                 try
                 {
                     // Freshly load the entry from the database.
@@ -440,7 +461,7 @@ namespace AI4E.Coordination
                 }
                 finally
                 {
-                    await ReleaseLocalLockAsync(path, cancellation: default);
+                    await ReleaseLocalWriteLockAsync(path, cancellation: default);
                 }
             }
             catch
