@@ -156,23 +156,16 @@ namespace AI4E.Coordination
                 do
                 {
                     CoordinationEntryPathSegment child;
+                    var index = ++_currentIndex;
 
-                    do
+                    if (index >= _entry.Children.Count)
                     {
-                        var index = ++_currentIndex;
-
-                        if (index >= _entry.Children.Count)
-                        {
-                            Current = default;
-                            return false;
-                        }
-
-                        child = _entry.Children[index];
+                        Current = default;
+                        return false;
                     }
-                    while (child == null); // TODO: This is always false
 
+                    child = _entry.Children[index];
                     var childFullName = _entry.Path.GetChildPath(child);
-
                     next = await _entry.CoordinationManager.GetAsync(childFullName, cancellationToken);
                 }
                 while (next == null);
