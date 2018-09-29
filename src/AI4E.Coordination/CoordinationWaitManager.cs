@@ -7,12 +7,16 @@ using AI4E.Internal;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 using static AI4E.Internal.DebugEx;
+using AsyncWaitDirectory = AI4E.Coordination.AsyncWaitDirectory<(AI4E.Coordination.Session session, AI4E.Coordination.CoordinationEntryPath path)>;
 
 namespace AI4E.Coordination
 {
     internal sealed class CoordinationWaitManager : ICoordinationWaitManager
     {
         #region Fields
+
+        private static readonly TimeSpan _timeToWaitMin = new TimeSpan(200 * TimeSpan.TicksPerMillisecond);
+        private static readonly TimeSpan _timeToWaitMax = new TimeSpan(12800 * TimeSpan.TicksPerMillisecond);
 
         private readonly IProvider<ICoordinationManager> _coordinationManager;
         private readonly ICoordinationStorage _storage;
@@ -21,8 +25,8 @@ namespace AI4E.Coordination
         private readonly ICoordinationExchangeManager _exchangeManager;
         private readonly ILogger<CoordinationWaitManager> _logger;
 
-        private readonly AsyncWaitDirectory<(Session session, CoordinationEntryPath path)> _readLockWaitDirectory;
-        private readonly AsyncWaitDirectory<(Session session, CoordinationEntryPath path)> _writeLockWaitDirectory;
+        private readonly AsyncWaitDirectory _readLockWaitDirectory;
+        private readonly AsyncWaitDirectory _writeLockWaitDirectory;
 
         #endregion
 
@@ -97,43 +101,41 @@ namespace AI4E.Coordination
                 // and acquired again in order that no concurrency conflicts may occur.
                 // Because of the case that we may keep a write and read lock at the same time, this does hold true only if we aquire a write lock.
                 // In this case, we could also allow this but had to synchronize the write operations locally.
-                if (allowWriteLock && writeLock == session)
+                if (writeLock == session)
                 {
+                    Assert(allowWriteLock);
+
                     return entry;
                 }
 
                 var path = entry.Path;
 
-                async Task<bool> Predicate(CancellationToken c)
+                if (!await _sessionManager.IsAliveAsync((Session)writeLock, cancellation))
                 {
-                    entry = await _storage.GetEntryAsync(path, c);
-                    return entry == null || entry.WriteLock == null;
+                    entry = await CleanupLocksOnSessionTermination(entry, (Session)writeLock, cancellation);
+                    continue;
                 }
 
-                Task Release(CancellationToken c)
+                bool IsLockReleased(IStoredEntry e)
                 {
-                    return _writeLockWaitDirectory.WaitForNotificationAsync(((Session)writeLock, path), c);
-                }
+                    if (e.WriteLock == null)
+                        return true;
 
-                var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
-
-                try
-
-                {
-                    var lockRelease = SpinWaitAsync(Predicate, Release, combinedCancellationSource.Token);
-                    var sessionTermination = _sessionManager.WaitForTerminationAsync((Session)writeLock);
-                    var completed = await (Task.WhenAny(sessionTermination, lockRelease).WithCancellation(cancellation));
-
-                    if (completed == sessionTermination)
+                    if (e.WriteLock == session)
                     {
-                        await CleanupLocksOnSessionTermination(path, (Session)writeLock, cancellation);
-                        entry = await _storage.GetEntryAsync(path, cancellation);
+                        Assert(allowWriteLock);
+                        return true;
                     }
+
+                    return false;
                 }
-                finally
-                {
-                    combinedCancellationSource.Cancel();
-                }
+
+                entry = await WaitForLockReleaseCoreAsync(entry,
+                                                          (Session)writeLock,
+                                                          _writeLockWaitDirectory,
+                                                          acquireLockRelease: null,
+                                                          isLockReleased: IsLockReleased,
+                                                          cancellation);
             }
 
             return null;
@@ -147,18 +149,34 @@ namespace AI4E.Coordination
 
             // Exclude our own read-lock (if present)
             var session = await CoordinationManager.GetSessionAsync(cancellation);
+
+            Assert(entry.WriteLock == session);
+
             readLocks = readLocks.Where(readLock => readLock != session);
 
-            // Send a message to each of 'readLocks' to ask for lock release and await the end of the session or the lock release, whichever occurs first.
-            await Task.WhenAll(readLocks.Select(readLock => WaitForReadLockRelease(entry.Path, readLock, cancellation)));
-
-            // The unlock of the 'readLocks' will alter the db, so we have to read the entry again.
-            entry = await _storage.GetEntryAsync(entry.Path, cancellation);
-
-            // We are holding the write-lock => The entry must not be deleted concurrently.
-            if (entry == null || entry.ReadLocks.Length != 0 && (entry.ReadLocks.Length > 1 || entry.ReadLocks.First() != session))
+            if (readLocks.Any())
             {
-                throw new SessionTerminatedException();
+                // Send a message to each of 'readLocks' to ask for lock release and await the end of the session or the lock release, whichever occurs first.
+                var lockReleaseResults = await Task.WhenAll(readLocks.Select(readLock => WaitForReadLockRelease(entry, readLock, cancellation)));
+                Assert(lockReleaseResults != null);
+                Assert(lockReleaseResults.Count() == readLocks.Count());
+                Assert(lockReleaseResults.Any());
+
+                // We own the write-lock. Anyone deleted the entry concurrently => Our session must be terminated.
+                if (lockReleaseResults.Any(p => p == null))
+                {
+                    throw new SessionTerminatedException();
+                }
+
+                entry = lockReleaseResults.OrderByDescending(p => p.StorageVersion).FirstOrDefault();
+
+                Assert(entry != null);
+
+                // We are holding the write-lock => The entry must not be deleted concurrently.
+                if (entry.ReadLocks.Length != 0 && (entry.ReadLocks.Length > 1 || entry.ReadLocks.First() != session))
+                {
+                    throw new SessionTerminatedException();
+                }
             }
 
             return entry;
@@ -166,7 +184,7 @@ namespace AI4E.Coordination
 
         #endregion
 
-        private async Task CleanupLocksOnSessionTermination(CoordinationEntryPath path, Session session, CancellationToken cancellation)
+        private async Task<IStoredEntry> CleanupLocksOnSessionTermination(IStoredEntry entry, Session session, CancellationToken cancellation)
         {
 #if DEBUG
             var isTerminated = !await _sessionManager.IsAliveAsync(session, cancellation);
@@ -182,8 +200,7 @@ namespace AI4E.Coordination
                 throw new SessionTerminatedException();
             }
 
-            IStoredEntry entry = await _storage.GetEntryAsync(path, cancellation),
-                         start,
+            IStoredEntry start,
                          desired;
 
             do
@@ -194,7 +211,7 @@ namespace AI4E.Coordination
 
                 if (start == null)
                 {
-                    return;
+                    return null;
                 }
 
                 desired = start;
@@ -211,92 +228,92 @@ namespace AI4E.Coordination
 
                 if (StoredEntryUtil.AreVersionEqual(start, desired))
                 {
-                    return;
+                    return entry;
                 }
 
                 entry = await _storage.UpdateEntryAsync(desired, start, cancellation);
             }
             while (start != entry);
+
+            return entry;
         }
 
-        private async Task WaitForReadLockRelease(CoordinationEntryPath path, Session session, CancellationToken cancellation)
+        private async Task<IStoredEntry> WaitForReadLockRelease(IStoredEntry entry, Session readLock, CancellationToken cancellation)
         {
-            var entry = await _storage.GetEntryAsync(path, cancellation);
+            Assert(entry != null);
+            Assert(entry.ReadLocks.Contains(readLock));
 
-            if (entry == null || !entry.ReadLocks.Contains(session))
+            if (!await _sessionManager.IsAliveAsync(readLock, cancellation))
             {
-                return;
+                return await CleanupLocksOnSessionTermination(entry, readLock, cancellation);
             }
 
-            if (!await _sessionManager.IsAliveAsync(session, cancellation))
+            do
             {
-                await CleanupLocksOnSessionTermination(path, session, cancellation);
-                return;
+                entry = await WaitForLockReleaseCoreAsync(entry,
+                                                          readLock,
+                                                          _readLockWaitDirectory,
+                                                          AcquireReadLockReleaseAsync,
+                                                          isLockReleased: e => !e.ReadLocks.Contains(readLock),
+                                                          cancellation);
             }
+            while (entry != null && entry.ReadLocks.Contains(readLock));
+            // We have to check for the read lock to be released, 
+            // because we may assume the release caused by a message from the session that owns the read-lock. 
+            // This message can be delayed and not be a response to our invalidation request.
 
-            async Task<bool> Predicate(CancellationToken c)
-            {
-                entry = await _storage.GetEntryAsync(path, c);
-
-                if (entry != null && entry.ReadLocks.Contains(session))
-                {
-                    _exchangeManager.InvalidateCacheEntryAsync(path, session, c).HandleExceptions(_logger);
-                    return false;
-                }
-
-                return true;
-            }
-
-            Task Release(CancellationToken c)
-            {
-                return _readLockWaitDirectory.WaitForNotificationAsync((session, path), c);
-            }
-
-            var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
-
-            try
-            {
-                var lockRelease = SpinWaitAsync(Predicate, Release, combinedCancellationSource.Token);
-                var sessionTermination = _sessionManager.WaitForTerminationAsync(session);
-                var completed = await (Task.WhenAny(sessionTermination, lockRelease).WithCancellation(cancellation));
-
-                if (completed == sessionTermination)
-                {
-                    await CleanupLocksOnSessionTermination(path, session, cancellation);
-                    entry = await _storage.GetEntryAsync(path, cancellation);
-                }
-            }
-            finally
-            {
-                combinedCancellationSource.Cancel();
-            }
-
+            return entry;
         }
 
-        private async Task SpinWaitAsync(Func<CancellationToken, Task<bool>> predicate, Func<CancellationToken, Task> release, CancellationToken cancellation)
+        private Task AcquireReadLockReleaseAsync(CoordinationEntryPath path, Session session, CancellationToken cancellation)
         {
-            var timeToWait = new TimeSpan(200 * TimeSpan.TicksPerMillisecond);
-            var timeToWaitMax = new TimeSpan(12800 * TimeSpan.TicksPerMillisecond);
+            return _exchangeManager.InvalidateCacheEntryAsync(path, session, cancellation);
+        }
 
-            cancellation.ThrowIfCancellationRequested();
-            var releaseX = release(cancellation); // TODO: Rename
+        private async Task<IStoredEntry> WaitForLockReleaseCoreAsync(IStoredEntry entry,
+                                                                     Session session,
+                                                                     AsyncWaitDirectory waitDirectory,
+                                                                     Func<CoordinationEntryPath, Session, CancellationToken, Task> acquireLockRelease,
+                                                                     Func<IStoredEntry, bool> isLockReleased,
+                                                                     CancellationToken cancellation)
+        {
+            var timeToWait = _timeToWaitMin;
+            var path = entry.Path;
+            var sessionTermination = _sessionManager.WaitForTerminationAsync(session, cancellation);
+            var releaseNotification = waitDirectory.WaitForNotificationAsync((session, path), cancellation);
 
-            while (!await predicate(cancellation))
+            while (entry != null && !isLockReleased(entry))
             {
+                acquireLockRelease?.Invoke(path, session, cancellation).HandleExceptions(_logger);
                 cancellation.ThrowIfCancellationRequested();
 
                 var delay = Task.Delay(timeToWait, cancellation);
 
-                var completed = await Task.WhenAny(delay, releaseX);
+                var completed = await Task.WhenAny(delay, releaseNotification, sessionTermination);
 
-                if (completed == releaseX)
+                if (completed == releaseNotification)
                 {
-                    return;
+                    return await _storage.GetEntryAsync(path, cancellation);
                 }
 
-                if (timeToWait < timeToWaitMax)
-                    timeToWait = new TimeSpan(timeToWait.Ticks * 2);
+                if (completed == sessionTermination)
+                {
+                    return await CleanupLocksOnSessionTermination(entry, session, cancellation);
+                }
+
+                Assert(completed == delay);
+
+                timeToWait = timeToWait + timeToWait;
+
+                if (timeToWait > _timeToWaitMax)
+                {
+                    timeToWait = _timeToWaitMax;
+                }
+
+                entry = await _storage.GetEntryAsync(path, cancellation);
             }
+
+            return entry;
         }
     }
 }
