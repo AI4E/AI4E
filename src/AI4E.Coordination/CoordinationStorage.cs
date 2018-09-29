@@ -89,10 +89,9 @@ namespace AI4E.Coordination
             return _storedSessionManager.Copy(storedSession);
         }
 
-        // TODO: Use IAsyncEnumerable
-        public async Task<IEnumerable<IStoredSession>> GetSessionsAsync(CancellationToken cancellation)
+        public IAsyncEnumerable<IStoredSession> GetSessionsAsync(CancellationToken cancellation)
         {
-            return await _database.GetAsync<StoredSession>(cancellation).Select(p => _storedSessionManager.Copy(p)).ToList(cancellation);
+            return _database.GetAsync<StoredSession>(cancellation).Select(p => _storedSessionManager.Copy(p));
         }
 
         public async Task<IStoredSession> UpdateSessionAsync(IStoredSession value, IStoredSession comparand, CancellationToken cancellation)

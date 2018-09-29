@@ -28,7 +28,7 @@ namespace AI4E.Coordination
     public interface ISessionStorage
     {
         Task<IStoredSession> GetSessionAsync(Session session, CancellationToken cancellation);
-        Task<IEnumerable<IStoredSession>> GetSessionsAsync(CancellationToken cancellation);
+        IAsyncEnumerable<IStoredSession> GetSessionsAsync(CancellationToken cancellation);
         Task<IStoredSession> UpdateSessionAsync(IStoredSession value, IStoredSession comparand, CancellationToken cancellation);
     }
 }
