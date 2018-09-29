@@ -272,7 +272,7 @@ namespace AI4E.Modularity
             if (normalize)
                 prefix = NormalizePrefix(prefix);
 
-            var uniqueEntryName = IdGenerator.GenerateId(endPoint.Route, session.ToCompactString());
+            var uniqueEntryName = IdGenerator.GenerateId(endPoint.Route, session.ToString());
             return _rootPrefixesPath.GetChildPath(prefix, uniqueEntryName);
         }
 
@@ -283,7 +283,7 @@ namespace AI4E.Modularity
 
         private static CoordinationEntryPath GetRunningModulePath(ModuleIdentifier module, Session session)
         {
-            return _rootRunningPath.GetChildPath(module.Name, session.ToCompactString());
+            return _rootRunningPath.GetChildPath(module.Name, session.ToString());
         }
     }
 }

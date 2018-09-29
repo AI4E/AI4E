@@ -42,7 +42,7 @@ namespace AI4E.Routing
                 throw new ArgumentDefaultException(nameof(address));
 
             var route = localEndPoint.Route;
-            var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToCompactString();
+            var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var path = GetPath(route, session);
 
             await _coordinationManager.GetOrCreateAsync(path, _addressConversion.SerializeAddress(address), EntryCreationModes.Ephemeral, cancellation);
@@ -61,7 +61,7 @@ namespace AI4E.Routing
 
             var route = localEndPoint.Route;
             var routeEntry = await GetRouteEntryAsync(route, cancellation);
-            var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToCompactString();
+            var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var path = GetPath(route, session);
 
             await _coordinationManager.DeleteAsync(path, cancellation: cancellation);

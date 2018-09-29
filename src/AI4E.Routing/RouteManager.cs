@@ -41,7 +41,7 @@ namespace AI4E.Routing
             if (string.IsNullOrWhiteSpace(route))
                 throw new ArgumentNullOrWhiteSpaceException(nameof(route));
 
-            var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToCompactString();
+            var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var reversePath = GetReversePath(session, endPoint.Route, route);
             await _coordinationManager.CreateAsync(reversePath, ReadOnlyMemory<byte>.Empty, EntryCreationModes.Ephemeral, cancellation);
 
@@ -69,7 +69,7 @@ namespace AI4E.Routing
             if (string.IsNullOrWhiteSpace(route))
                 throw new ArgumentNullOrWhiteSpaceException(nameof(route));
 
-            var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToCompactString();
+            var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var path = GetPath(route, endPoint.Route, session);
             await _coordinationManager.DeleteAsync(path, cancellation: cancellation);
 
@@ -82,7 +82,7 @@ namespace AI4E.Routing
             if (endPoint == null)
                 throw new ArgumentNullException(nameof(endPoint));
 
-            var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToCompactString();
+            var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var path = GetReversePath(session, endPoint.Route);
             var entry = await _coordinationManager.GetAsync(path, cancellation);
 
