@@ -213,7 +213,7 @@ namespace AI4E.Coordination
                 var entry = await _storage.GetEntryAsync(path, cancellation);
 
                 if (entry == null)
-                {
+                { 
                     goto CleanupParentOfDeletedEntry;
                 }
 

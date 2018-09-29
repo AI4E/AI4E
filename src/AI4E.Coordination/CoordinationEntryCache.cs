@@ -253,7 +253,7 @@ namespace AI4E.Coordination
             _entry = entry;
             CacheEntryVersion = version;
             IsValid = isValid;
-            LocalReadLock = LocalReadLock;
+            LocalReadLock = localReadLock;
             LocalWriteLock = localWriteLock;
         }
 
