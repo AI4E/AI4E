@@ -128,16 +128,24 @@ namespace AI4E.Coordination
 
         // Acquired a read lock for the entry with the specified path and returns the entry.
         // If the result is null, the entry does not exist and no lock is allocated.
-        public async Task<IStoredEntry> AcquireWriteLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
+        public async Task<IStoredEntry> AcquireWriteLockAsync(IStoredEntry entry, CancellationToken cancellation)
         {
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
+
+            var path = entry.Path;
             var cacheEntry = _cache.GetEntry(path);
 
             // Enter local lock
-            await cacheEntry.LocalWriteLock.WaitAsync(cancellation);
+            var atomicWait = await AcquireLocalWriteLockInternalAsync(path, cancellation);
 
             try
             {
-                var entry = cacheEntry.IsValid ? cacheEntry.Entry : await _storage.GetEntryAsync(path, cancellation);
+                // We had to wait for the local lock. Freshly load the entry from the database as the chances are great that our entry is outdated.
+                if (!atomicWait)
+                {
+                    entry = await _storage.GetEntryAsync(path, cancellation);
+                }
 
                 // Enter global lock
                 var result = await InternalAcquireWriteLockAsync(entry, cancellation);
@@ -165,7 +173,8 @@ namespace AI4E.Coordination
         // this method only releases the local lock but is a no-op otherwise.
         public Task<IStoredEntry> ReleaseWriteLockAsync(IStoredEntry entry, CancellationToken cancellation)
         {
-            Assert(entry != null);
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
 
             return ReleaseWriteLockAsync(entry).WithCancellation(cancellation);
         }
@@ -196,9 +205,12 @@ namespace AI4E.Coordination
             }
         }
 
-        public Task<IStoredEntry> ReleaseReadLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
+        public Task<IStoredEntry> ReleaseReadLockAsync(IStoredEntry entry, CancellationToken cancellation)
         {
-            return ReleaseReadLockAsync(path).WithCancellation(cancellation);
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
+
+            return ReleaseReadLockAsync(entry).WithCancellation(cancellation);
         }
 
         #endregion
@@ -434,21 +446,26 @@ namespace AI4E.Coordination
                 Assert(entry != null);
 
                 // Release global read lock on failure.
-                await ReleaseReadLockAsync(entry.Path);
+                await ReleaseReadLockAsync(entry);
                 throw;
             }
         }
 
-        private async Task<IStoredEntry> ReleaseReadLockAsync(CoordinationEntryPath path)
+        private async Task<IStoredEntry> ReleaseReadLockAsync(IStoredEntry entry)
         {
+            var path = entry.Path;
+
             try
             {
                 // Enter local write lock, as we are modifying the stored entry with entering the read-lock
-                await AcquireLocalWriteLockAsync(path, cancellation: default);
+                var atomicWait = await AcquireLocalWriteLockInternalAsync(path, cancellation: default);
                 try
                 {
-                    // Freshly load the entry from the database.
-                    var entry = await _storage.GetEntryAsync(path, cancellation: default);
+                    // We had to wait for the local lock. Freshly load the entry from the database as the chances are great that our entry is outdated.
+                    if (!atomicWait)
+                    {
+                        entry = await _storage.GetEntryAsync(path, cancellation: default);
+                    }
 
                     // Release global read lock.
                     return await InternalReleaseReadLockAsync(entry);

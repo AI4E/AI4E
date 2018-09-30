@@ -97,9 +97,7 @@ namespace AI4E.Coordination
         /// <returns>The invalidated cache entry.</returns>
         public CacheEntry InvalidateEntry(CoordinationEntryPath path)
         {
-            var entry = _cache.GetOrAdd(path, _ => new CacheEntry(path));
-            entry.Invalidate();
-            return entry;
+            return _cache.AddOrUpdate(path, _ => new CacheEntry(path), (_, e) => e.Invalidate());
         }
 
         /// <summary>
@@ -217,9 +215,8 @@ namespace AI4E.Coordination
             Assert(path != null);
 
             Path = path;
-            _entry = default;
+            _entry = null;
             CacheEntryVersion = 1;
-            IsValid = false;
             LocalReadLock = CreateLocalLock();
             LocalWriteLock = CreateLocalLock();
         }
@@ -232,27 +229,23 @@ namespace AI4E.Coordination
             Path = path;
             _entry = entry;
             CacheEntryVersion = 1;
-            IsValid = true;
             LocalReadLock = CreateLocalLock();
             LocalWriteLock = CreateLocalLock();
         }
 
         private CacheEntry(CoordinationEntryPath path,
                            IStoredEntry entry,
-                           bool isValid,
                            int version,
                            SemaphoreSlim localReadLock,
                            SemaphoreSlim localWriteLock)
         {
             Assert(path != null);
-            Assert(isValid, entry != null);
             Assert(localReadLock != null);
             Assert(localWriteLock != null);
 
             Path = path;
             _entry = entry;
             CacheEntryVersion = version;
-            IsValid = isValid;
             LocalReadLock = localReadLock;
             LocalWriteLock = localWriteLock;
         }
@@ -270,7 +263,7 @@ namespace AI4E.Coordination
         /// <summary>
         /// A boolean value indicating whether the cache entry is valid and <see cref="Entry"/> can be used safely.
         /// </summary>
-        public bool IsValid { get; }
+        public bool IsValid => _entry != null;
 
         /// <summary>
         /// The stored entry, the cache entry stored.
@@ -307,9 +300,15 @@ namespace AI4E.Coordination
         // For this reason, each invalidation increments the version by one, each update operation checks the version.
         internal int CacheEntryVersion { get; }
 
+        public bool TryGetEntry(out IStoredEntry entry)
+        {
+            entry = _entry;
+            return IsValid;
+        }
+
         internal CacheEntry Invalidate()
         {
-            return new CacheEntry(Path, null, isValid: false, version: CacheEntryVersion + 1, localReadLock: LocalReadLock, localWriteLock: LocalWriteLock);
+            return new CacheEntry(Path, entry: null, version: CacheEntryVersion + 1, localReadLock: LocalReadLock, localWriteLock: LocalWriteLock);
         }
 
         internal CacheEntry Update(IStoredEntry entry, int version)
@@ -321,7 +320,7 @@ namespace AI4E.Coordination
                 return this;
             }
 
-            return new CacheEntry(Path, entry, isValid: true, version: version, localReadLock: LocalReadLock, localWriteLock: LocalWriteLock);
+            return new CacheEntry(Path, entry, version: version, localReadLock: LocalReadLock, localWriteLock: LocalWriteLock);
         }
     }
 }

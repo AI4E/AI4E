@@ -13,7 +13,7 @@ namespace AI4E.Coordination
 
         // Acquired a read lock for the entry with the specified path and returns the entry.
         // If the result is null, the entry does not exist and no lock is allocated.
-        Task<IStoredEntry> AcquireWriteLockAsync(CoordinationEntryPath path, CancellationToken cancellation);
+        Task<IStoredEntry> AcquireWriteLockAsync(IStoredEntry entry, CancellationToken cancellation);
 
         // Releases the write lock for the specified entry and returns the updated entry.
         // If the current session does not own the write-lock for the entry (f.e. if it is deleted), 
@@ -21,6 +21,6 @@ namespace AI4E.Coordination
         Task<IStoredEntry> ReleaseWriteLockAsync(IStoredEntry entry, CancellationToken cancellation);
 
         Task<IStoredEntry> AcquireReadLockAsync(IStoredEntry entry, CancellationToken cancellation);
-        Task<IStoredEntry> ReleaseReadLockAsync(CoordinationEntryPath path, CancellationToken cancellation);
+        Task<IStoredEntry> ReleaseReadLockAsync(IStoredEntry entry, CancellationToken cancellation);
     }
 }

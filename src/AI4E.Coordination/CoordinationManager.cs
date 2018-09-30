@@ -213,7 +213,7 @@ namespace AI4E.Coordination
                 var entry = await _storage.GetEntryAsync(path, cancellation);
 
                 if (entry == null)
-                { 
+                {
                     goto CleanupParentOfDeletedEntry;
                 }
 
@@ -236,12 +236,14 @@ namespace AI4E.Coordination
                     // In order to not leaves the coordination service in an inconsistent state, we have acquire a separate local read-lock on cache update.
                     if (!updatedCacheEntry.IsValid)
                     {
-                        await _lockManager.ReleaseReadLockAsync(path, cancellation);
+                        Assert(entry != null);
+                        await _lockManager.ReleaseReadLockAsync(entry, cancellation);
                     }
                 }
                 catch
                 {
-                    await _lockManager.ReleaseReadLockAsync(path, cancellation);
+                    Assert(entry != null);
+                    await _lockManager.ReleaseReadLockAsync(entry, cancellation);
                     throw;
                 }
 
@@ -335,20 +337,24 @@ namespace AI4E.Coordination
 
             try
             {
+                entry = await _lockManager.AcquireReadLockAsync(entry, cancellation);
+
+                if (entry == null)
+                {
+                    return null;
+                }
+
                 try
                 {
-                    entry = await _lockManager.AcquireReadLockAsync(entry, cancellation);
-
-                    if (entry != null)
-                    {
-                        _cache.AddEntry(entry);
-                    }
+                    _cache.AddEntry(entry);
 
                     return entry;
                 }
                 catch
                 {
-                    await _lockManager.ReleaseReadLockAsync(path, cancellation);
+                    Assert(entry != null);
+
+                    await _lockManager.ReleaseReadLockAsync(entry, cancellation);
 
                     throw;
                 }
@@ -441,7 +447,7 @@ namespace AI4E.Coordination
         {
             IStoredEntry result;
 
-            while ((result = await _lockManager.AcquireWriteLockAsync(path, cancellation)) == null)
+            while ((result = await LoadAndAcquireWriteLockAsync(path, cancellation)) == null)
             {
                 await TryCreateInternalAsync(path, ReadOnlyMemory<byte>.Empty, modes: default, session, cancellation);
             }
@@ -524,7 +530,7 @@ namespace AI4E.Coordination
             // There is no parent entry.
             if (path.IsRoot)
             {
-                var entry = await _lockManager.AcquireWriteLockAsync(path, cancellation);
+                var entry = await LoadAndAcquireWriteLockAsync(path, cancellation);
                 try
                 {
                     return await DeleteInternalAsync(entry, session, version, recursive, cancellation);
@@ -536,7 +542,7 @@ namespace AI4E.Coordination
                 }
             }
 
-            var parent = await _lockManager.AcquireWriteLockAsync(path.GetParentPath(), cancellation);
+            var parent = await LoadAndAcquireWriteLockAsync(path.GetParentPath(), cancellation);
 
             try
             {
@@ -546,7 +552,7 @@ namespace AI4E.Coordination
                     return 0;
                 }
 
-                var entry = await _lockManager.AcquireWriteLockAsync(path, cancellation);
+                var entry = await LoadAndAcquireWriteLockAsync(path, cancellation);
 
                 if (entry == null)
                 {
@@ -647,7 +653,7 @@ namespace AI4E.Coordination
 
                 // First load the child entry.
                 var childPath = entry.Path.GetChildPath(childName);
-                var child = await _lockManager.AcquireWriteLockAsync(childPath, cancellation);
+                var child = await LoadAndAcquireWriteLockAsync(childPath, cancellation);
 
                 // The child-names collection is not guaranteed to be strongly consistent.
                 if (child == null)
@@ -709,7 +715,7 @@ namespace AI4E.Coordination
             if (!await _sessionManager.IsAliveAsync(session, cancellation))
                 throw new SessionTerminatedException();
 
-            var entry = await _lockManager.AcquireWriteLockAsync(path, cancellation);
+            var entry = await LoadAndAcquireWriteLockAsync(path, cancellation);
 
             if (entry == null)
             {
@@ -747,9 +753,7 @@ namespace AI4E.Coordination
                 if (parent != null && parent.Children.Contains(child))
                 {
                     var session = await GetSessionAsync(cancellation);
-
-                    // TODO: Can this be further optimized? We already loaded parent.
-                    parent = await _lockManager.AcquireWriteLockAsync(path, cancellation);
+                    parent = await _lockManager.AcquireWriteLockAsync(parent, cancellation);
 
                     if (parent == null)
                     {
@@ -785,6 +789,16 @@ namespace AI4E.Coordination
             {
                 throw new SessionTerminatedException();
             }
+        }
+
+        private async Task<IStoredEntry> LoadAndAcquireWriteLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
+        {
+            var entry = await _storage.GetEntryAsync(path, cancellation);
+
+            if (entry == null)
+                return null;
+
+            return await _lockManager.AcquireWriteLockAsync(entry, cancellation);
         }
 
         private sealed class Entry : IEntry

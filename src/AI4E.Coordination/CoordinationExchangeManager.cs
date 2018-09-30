@@ -25,6 +25,7 @@ namespace AI4E.Coordination
         private readonly ISessionManager _sessionManager;
         private readonly IProvider<ICoordinationWaitManager> _waitManager;
         private readonly IProvider<ICoordinationLockManager> _lockManager;
+        private readonly ICoordinationStorage _storage;
         private readonly CoordinationEntryCache _cache;
         private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
         private readonly IAddressConversion<TAddress> _addressConversion;
@@ -42,6 +43,7 @@ namespace AI4E.Coordination
                                            ISessionManager sessionManager,
                                            IProvider<ICoordinationWaitManager> waitManager,
                                            IProvider<ICoordinationLockManager> lockManager,
+                                           ICoordinationStorage storage,
                                            CoordinationEntryCache cache,
                                            IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
                                            IAddressConversion<TAddress> addressConversion,
@@ -60,6 +62,9 @@ namespace AI4E.Coordination
             if (lockManager == null)
                 throw new ArgumentNullException(nameof(lockManager));
 
+            if (storage == null)
+                throw new ArgumentNullException(nameof(storage));
+
             if (cache == null)
                 throw new ArgumentNullException(nameof(cache));
 
@@ -73,6 +78,7 @@ namespace AI4E.Coordination
             _sessionManager = sessionManager;
             _waitManager = waitManager;
             _lockManager = lockManager;
+            _storage = storage;
             _cache = cache;
             _endPointMultiplexer = endPointMultiplexer;
             _addressConversion = addressConversion;
@@ -201,8 +207,15 @@ namespace AI4E.Coordination
 
         private async Task InvalidateCacheEntryAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
+            var cacheEntry = _cache.GetEntry(path);
+
+            if (!cacheEntry.TryGetEntry(out var entry))
+            {
+                entry = await _storage.GetEntryAsync(path, cancellation);
+            }
+
             _cache.InvalidateEntry(path);
-            await LockManager.ReleaseReadLockAsync(path, cancellation);
+            await LockManager.ReleaseReadLockAsync(entry, cancellation);
         }
 
         private async Task ReceiveProcess(CancellationToken cancellation)
