@@ -257,7 +257,9 @@ namespace AI4E.Coordination
             // We do not want to do this under the local read-lock.
             CleanupParentOfDeletedEntry:
 
-            // TODO: Why do we perform this here?
+            // This operation is called for each child of an entry, when iterating the child collection.
+            // We are in the case that the requested entry cannot be found. 
+            // If this is part of the parents child collection, we clean this up now.
             await UpdateParentOfDeletedEntry(path, cancellation);
             return null;
         }
@@ -759,39 +761,43 @@ namespace AI4E.Coordination
 
         private async Task UpdateParentOfDeletedEntry(CoordinationEntryPath path, CancellationToken cancellation)
         {
-            if (!path.IsRoot)
+            if (path.IsRoot)
             {
-                var parentPath = path.GetParentPath();
-                var child = path.Segments.Last();
+                return;
+            }
 
-                var parent = await _storage.GetEntryAsync(parentPath, cancellation);
+            var parentPath = path.GetParentPath();
+            var child = path.Segments.Last();
 
-                if (parent != null && parent.Children.Contains(child))
+            var parent = await _storage.GetEntryAsync(parentPath, cancellation);
+
+            if (parent == null || !parent.Children.Contains(child))
+            {
+                return;
+            }
+
+            var session = await GetSessionAsync(cancellation);
+            parent = await _lockManager.AcquireWriteLockAsync(parent, cancellation);
+
+            if (parent == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var childPath = path.GetChildPath(child);
+                var childEntry = await _storage.GetEntryAsync(childPath, cancellation);
+
+                if (childEntry == null)
                 {
-                    var session = await GetSessionAsync(cancellation);
-                    parent = await _lockManager.AcquireWriteLockAsync(parent, cancellation);
-
-                    if (parent == null)
-                    {
-                        return;
-                    }
-
-                    try
-                    {
-                        var childPath = path.GetChildPath(child);
-                        var childEntry = await _storage.GetEntryAsync(childPath, cancellation);
-
-                        if (childEntry == null)
-                        {
-                            await UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, child, session), parent, cancellation);
-                        }
-                    }
-                    finally
-                    {
-                        Assert(parent != null);
-                        await _lockManager.ReleaseWriteLockAsync(parent, cancellation);
-                    }
+                    await UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, child, session), parent, cancellation);
                 }
+            }
+            finally
+            {
+                Assert(parent != null);
+                await _lockManager.ReleaseWriteLockAsync(parent, cancellation);
             }
         }
 
