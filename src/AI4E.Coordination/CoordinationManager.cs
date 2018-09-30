@@ -1,17 +1,12 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        CoordinationManager.cs 
- * Types:           (1) AI4E.Coordination.CoordinationManager
- *                  (2) AI4E.Coordination.CoordinationManager.CacheEntry
- *                  (3) AI4E.Coordination.CoordinationManager.Entry
- *                  (4) AI4E.Coordination.CoordinationManager.Entry.ChildrenEnumerable
- *                  (5) AI4E.Coordination.CoordinationManager.Entry.ChildrenEnumerator
- *                  (6) AI4E.Coordination.CoordinationManager.MessageType
- *                  (7) AI4E.Coordination.CoordinationManager.Provider
- *                  (8) AI4E.Coordination.CoordinationManager.WaitDirectory'1
+ * Types:           (1) AI4E.Coordination.CoordinationManager'1
+ *                  (2) AI4E.Coordination.CoordinationManager'1.Entry
+ *                  (3) AI4E.Coordination.CoordinationManagerFactory'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   10.05.2018 
+ * Last modified:   30.09.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -43,6 +38,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Internal;
+using AI4E.Processing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -67,7 +63,9 @@ namespace AI4E.Coordination
 
         private readonly CoordinationManagerOptions _options;
         private readonly DisposableAsyncLazy<Session> _session;
-        private readonly CoordinationSessionManagement _sessionManagement;
+
+        private readonly IAsyncProcess _updateSessionProcess;
+        private readonly IAsyncProcess _sessionCleanupProcess;
 
         #endregion
 
@@ -81,7 +79,6 @@ namespace AI4E.Coordination
                                    IDateTimeProvider dateTimeProvider,
                                    CoordinationEntryCache cache,
                                    ICoordinationLockManager lockManager,
-                                   CoordinationSessionManagement sessionManagement,
                                    IOptions<CoordinationManagerOptions> optionsAccessor,
                                    ILogger<CoordinationManager<TAddress>> logger = null)
         {
@@ -109,9 +106,6 @@ namespace AI4E.Coordination
             if (lockManager == null)
                 throw new ArgumentNullException(nameof(lockManager));
 
-            if (sessionManagement == null)
-                throw new ArgumentNullException(nameof(sessionManagement));
-
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
 
@@ -123,19 +117,33 @@ namespace AI4E.Coordination
             _dateTimeProvider = dateTimeProvider;
             _cache = cache;
             _lockManager = lockManager;
-            _sessionManagement = sessionManagement;
             _logger = logger;
 
             _options = optionsAccessor.Value ?? new CoordinationManagerOptions();
-            _session = new DisposableAsyncLazy<Session>(
-                factory: StartSessionAsync,
-                disposal: TerminateSessionAsync,
-                DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
+            _session = BuildSession();
+
+            _updateSessionProcess = new AsyncProcess(UpdateSessionProcess, start: true);
+            _sessionCleanupProcess = new AsyncProcess(SessionCleanupProcess, start: true);
         }
 
         #endregion
 
         public IServiceProvider ServiceProvider => _serviceScope.ServiceProvider;
+
+        #region Session management
+
+        public ValueTask<Session> GetSessionAsync(CancellationToken cancellation)
+        {
+            return new ValueTask<Session>(_session.Task.WithCancellation(cancellation));
+        }
+
+        private DisposableAsyncLazy<Session> BuildSession()
+        {
+            return new DisposableAsyncLazy<Session>(
+                factory: StartSessionAsync,
+                disposal: TerminateSessionAsync,
+                DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
+        }
 
         private async Task<Session> StartSessionAsync(CancellationToken cancellation)
         {
@@ -170,13 +178,113 @@ namespace AI4E.Coordination
                                   .HandleExceptionsAsync(_logger);
         }
 
-        public ValueTask<Session> GetSessionAsync(CancellationToken cancellation)
+        private async Task SessionCleanupProcess(CancellationToken cancellation)
         {
-            return new ValueTask<Session>(_session.Task.WithCancellation(cancellation));
+            var session = await GetSessionAsync(cancellation);
+
+            _logger?.LogTrace($"[{session}] Started session cleanup process.");
+
+            while (cancellation.ThrowOrContinue())
+            {
+                try
+                {
+                    var terminated = await _sessionManager.WaitForTerminationAsync(cancellation);
+
+                    Assert(terminated != null);
+
+                    // Our session is terminated or
+                    // There are no session in the session manager. => Our session must be terminated.
+                    if (terminated == session)
+                    {
+                        Dispose();
+                    }
+                    else
+                    {
+                        await CleanupSessionAsync(terminated, cancellation);
+                    }
+                }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
+                catch (Exception exc)
+                {
+                    _logger?.LogWarning(exc, $"[{session}] Failure while cleaning up terminated sessions.");
+                }
+            }
         }
+
+        private async Task UpdateSessionProcess(CancellationToken cancellation)
+        {
+            var session = await GetSessionAsync(cancellation);
+
+            while (cancellation.ThrowOrContinue())
+            {
+                try
+                {
+                    await UpdateSessionAsync(session, cancellation);
+                }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
+                catch (Exception exc)
+                {
+                    _logger?.LogWarning(exc, $"[{session}] Failure while updating session {session}.");
+                }
+            }
+        }
+
+        private async Task UpdateSessionAsync(Session session, CancellationToken cancellation)
+        {
+            var leaseLength = _options.LeaseLength;
+
+            if (leaseLength <= TimeSpan.Zero)
+            {
+                leaseLength = CoordinationManagerOptions.LeaseLengthDefault;
+                Assert(leaseLength > TimeSpan.Zero);
+            }
+
+            var leaseLengthHalf = new TimeSpan(leaseLength.Ticks / 2);
+
+            if (leaseLengthHalf <= TimeSpan.Zero)
+            {
+                leaseLengthHalf = new TimeSpan(1);
+            }
+
+            Assert(session != null);
+
+            var leaseEnd = _dateTimeProvider.GetCurrentTime() + leaseLength;
+
+            try
+            {
+                await _sessionManager.UpdateSessionAsync(session, leaseEnd, cancellation);
+
+                await Task.Delay(leaseLengthHalf);
+            }
+            catch (SessionTerminatedException)
+            {
+                Dispose();
+            }
+        }
+
+        private async Task CleanupSessionAsync(Session session, CancellationToken cancellation)
+        {
+            _logger?.LogInformation($"[{await GetSessionAsync(cancellation)}] Cleaning up session '{session}'.");
+
+            var entries = await _sessionManager.GetEntriesAsync(session, cancellation);
+
+            await Task.WhenAll(entries.Select(async entry =>
+            {
+                await DeleteAsync(entry, version: default, recursive: false, cancellation);
+                await _sessionManager.RemoveSessionEntryAsync(session, entry, cancellation);
+            }));
+
+            await _sessionManager.EndSessionAsync(session, cancellation);
+        }
+
+
+        #endregion
 
         public void Dispose()
         {
+            _updateSessionProcess.Terminate();
+            _sessionCleanupProcess.Terminate();
+
             _serviceScope.Dispose();
             _session.Dispose();
         }
