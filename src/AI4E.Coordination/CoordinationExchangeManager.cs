@@ -13,8 +13,6 @@ using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 using static AI4E.Internal.DebugEx;
 
-// TODO: Rename
-
 namespace AI4E.Coordination
 {
     internal sealed class CoordinationExchangeManager<TAddress> : ICoordinationExchangeManager<TAddress>
@@ -86,7 +84,7 @@ namespace AI4E.Coordination
 
             _options = optionsAccessor.Value ?? new CoordinationManagerOptions();
             _physicalEndPoint = new DisposableAsyncLazy<IPhysicalEndPoint<TAddress>>(
-                factory: GetSessionEndPointAsync,
+                factory: GetLocalSessionEndPointAsync,
                 disposal: DisposePhysicalEndPointAsync,
                 DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
 
@@ -96,8 +94,7 @@ namespace AI4E.Coordination
 
         public ICoordinationManager CoordinationManager => _coordinationManager.ProvideInstance();
 
-        // TODO: Rename
-        private async Task<IPhysicalEndPoint<TAddress>> GetSessionEndPointAsync(CancellationToken cancellation)
+        private async Task<IPhysicalEndPoint<TAddress>> GetLocalSessionEndPointAsync(CancellationToken cancellation)
         {
             var session = await CoordinationManager.GetSessionAsync(cancellation);
             return GetSessionEndPoint(session);
