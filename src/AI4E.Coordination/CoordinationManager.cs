@@ -382,8 +382,12 @@ namespace AI4E.Coordination
             IStoredEntry entry;
             bool created;
 
-            // We have a parent entry.
-            if (!path.IsRoot)
+            // We have no parent entry.
+            if (path.IsRoot)
+            {
+                (entry, created) = await TryCreateCoreAsync(path, value, modes, session, cancellation);
+            }
+            else
             {
                 var parentPath = path.GetParentPath();
                 var parent = await EnsureParentLock(parentPath, session, cancellation);
@@ -394,7 +398,7 @@ namespace AI4E.Coordination
 
                     if (parent.EphemeralOwner != null)
                     {
-                        throw new InvalidOperationException($"Unable to create the entry. The parent entry is an ephemeral node and is not allowed to have child entries.");
+                        throw new InvalidOperationException($"Unable to create the entry. The parent entry is an ephemeral entry and is not allowed to have child entries.");
                     }
 
                     var name = path.Segments.Last();
@@ -407,10 +411,18 @@ namespace AI4E.Coordination
                     catch (SessionTerminatedException) { throw; }
                     catch
                     {
-                        // This is not the root node and the parent node was found. 
+                        // This is not the root entry and the parent entry was found. 
                         // We did not successfully create the entry.
-                        // TODO: Can we do anything about the cancellation? Note that the operation MUST be performed under the lock COMPLETELY.
-                        await UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, name, session), parent, cancellation: default);
+                        // Note that the operation MUST be performed under the lock COMPLETELY.
+                        try
+                        {
+                            // If this operation gets canceled, the parent entry is not cleaned up. 
+                            // This is not of a problem, because the parent entry is not guaranteed to be strongly consistent anyway.
+                            // In case of cancellation, we want the original exception to be rethrown.
+                            await UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, name, session), parent, cancellation);
+                        }
+                        catch (OperationCanceledException) { }
+
                         throw;
                     }
                 }
@@ -419,10 +431,6 @@ namespace AI4E.Coordination
                     Assert(parent != null);
                     await _lockManager.ReleaseWriteLockAsync(parent, cancellation);
                 }
-            }
-            else
-            {
-                (entry, created) = await TryCreateCoreAsync(path, value, modes, session, cancellation);
             }
 
             if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
@@ -482,7 +490,7 @@ namespace AI4E.Coordination
                 // and, hence, the entry may already exist or is created concurrently.
                 // This is ok because the session entry is skipped if the respective entry is not found. 
                 // This could lead to many dead entries, if we have lots of failures. But we assume that this case is rather rare.
-                // If this is ever a big performance problem, we can use a form a "reference counting" of session entries.
+                // If this is ever a big performance problem, we can use a form of "reference counting" of session entries.
             }
             finally
             {
@@ -574,18 +582,26 @@ namespace AI4E.Coordination
                     {
                         return result;
                     }
-
-                    // The entry is deleted now, because WE deleted it.
-                    var name = path.Segments.Last();
-                    await UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, name, session), parent, cancellation);
-
-                    return version;
                 }
                 finally
                 {
                     Assert(entry != null);
                     await _lockManager.ReleaseWriteLockAsync(entry, cancellation);
                 }
+
+                // The entry is deleted now, because WE deleted it.
+                var name = path.Segments.Last();
+
+                // This is not the root entry.
+
+                // We can safely remove the reference from the parent entry, as the entry cannot be recreaed concurrently. 
+                // (We own the write-lock for the parent entry, that must be allocated, before creating a child entry.)
+
+                // If this operation gets canceled, the parent entry is not cleaned up. 
+                // This is not of a problem, because the parent entry is not guaranteed to be strongly consistent anyway.
+                await UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, name, session), parent, cancellation);
+
+                return version;
             }
             finally
             {
