@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
     <Compile Include="..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />
     <Compile Include="..\Common\MemoryWriter.cs" Link="Internal\MemoryWriter.cs" />
     <Compile Include="..\Common\ReadOnlyStream.cs" Link="Internal\ReadOnlyStream.cs" />

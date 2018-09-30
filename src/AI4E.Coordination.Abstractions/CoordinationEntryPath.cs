@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.InteropServices;
+using AI4E.Internal;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
@@ -133,7 +134,7 @@ namespace AI4E.Coordination
 
         public override int GetHashCode()
         {
-            return Segments.GetHashCode(); // TODO: Can we use this?
+            return Segments.GetSequenceHashCode();
         }
 
         public override string ToString()
@@ -486,7 +487,7 @@ namespace AI4E.Coordination
 
         public bool Equals(CoordinationEntryPathSegment other)
         {
-            return Segment.SequenceEquals(other.Segment);
+            return Segment.Span.SequenceEqual(other.Segment.Span);
         }
 
         public override bool Equals(object obj)

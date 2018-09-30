@@ -118,7 +118,7 @@ namespace AI4E.Modularity
                             var payload = stream.ToArray();
                             var entry = await _coordinationManager.GetOrCreateAsync(prefixPath, payload, EntryCreationModes.Ephemeral, cancellation);
 
-                            Assert(entry.Value.SequenceEquals(payload));
+                            Assert(entry.Value.SequenceEqual(payload));
                         }
                     }
                 }

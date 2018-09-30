@@ -39,7 +39,7 @@ namespace AI4E.Coordination
 
             return s.Slice(start, count);
         }
-        public static bool SequenceEquals<T>(this ReadOnlyMemory<T> left, ReadOnlyMemory<T> right, IEqualityComparer<T> comparer)
+        public static bool SequenceEqual<T>(this ReadOnlyMemory<T> left, ReadOnlyMemory<T> right, IEqualityComparer<T> comparer)
         {
             if (comparer == null)
                 throw new ArgumentNullException(nameof(comparer));
@@ -67,10 +67,10 @@ namespace AI4E.Coordination
             return true;
         }
 
-        [Obsolete("Use left.Span.SequenceEquals(right.Span)")]
-        public static bool SequenceEquals<T>(this ReadOnlyMemory<T> left, ReadOnlyMemory<T> right)
+        [Obsolete("Use left.Span.SequenceEqual(right.Span)")]
+        public static bool SequenceEqual<T>(this ReadOnlyMemory<T> left, ReadOnlyMemory<T> right)
         {
-            return SequenceEquals(left, right, EqualityComparer<T>.Default);
+            return SequenceEqual(left, right, EqualityComparer<T>.Default);
         }
 
         public static bool IsEmptyOrWhiteSpace(this ReadOnlyMemory<char> s)
