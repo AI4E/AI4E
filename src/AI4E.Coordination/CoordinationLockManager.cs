@@ -259,12 +259,15 @@ namespace AI4E.Coordination
 
             var session = await CoordinationManager.GetSessionAsync(cancellation);
 
+            if (!await _sessionManager.IsAliveAsync(session, cancellation))
+            {
+                throw new SessionTerminatedException(session);
+            }
+
             if (entry != null)
             {
                 _logger?.LogTrace($"[{session}] Acquiring write-lock for entry '{entry.Path}'.");
             }
-
-            // TODO: Check whether session is still alive
 
             // We have to perform the operation in a CAS-like loop because concurrency is controlled via a version number only.
             IStoredEntry start, desired;
@@ -402,6 +405,11 @@ namespace AI4E.Coordination
             IStoredEntry start, desired;
 
             var session = await CoordinationManager.GetSessionAsync(cancellation);
+
+            if (!await _sessionManager.IsAliveAsync(session, cancellation))
+            {
+                throw new SessionTerminatedException(session);
+            }
 
             if (entry != null)
             {

@@ -179,6 +179,7 @@ namespace AI4E.Coordination
                 }
             }
 
+            Assert(entry != null);
             return entry;
         }
 
