@@ -25,4 +25,35 @@
     <MSBuildProjectExtensionsPath>$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
     <RestoreOutputPath>$(BaseIntermediateOutputPath)</RestoreOutputPath>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <SystemCollectionsImmutableVersion Condition="'$(SystemCollectionsImmutableVersion)' == ''">1.5.0</SystemCollectionsImmutableVersion>
+    <SystemInteractiveAsyncVersion Condition="'$(SystemInteractiveAsyncVersion)' == ''">3.2.0</SystemInteractiveAsyncVersion>
+    <SystemMemoryVersion Condition="'$(SystemMemoryVersion)' == ''">4.5.1</SystemMemoryVersion>
+    <SystemRuntimeCompilerServicesUnsafeVersion Condition="'$(SystemRuntimeCompilerServicesUnsafeVersion)' == ''">4.5.1</SystemRuntimeCompilerServicesUnsafeVersion>
+    <SystemThreadingTasksExtensionsVersion Condition="'$(SystemThreadingTasksExtensionsVersion)' == ''">4.5.1</SystemThreadingTasksExtensionsVersion>   
+    <JsonDiffPatchNetVersion Condition="'$(JsonDiffPatchNetVersion)' == ''">2.1.0</JsonDiffPatchNetVersion>
+    <MicrosoftExtensionsDependencyInjectionVersion Condition="'$(MicrosoftExtensionsDependencyInjectionVersion)' == ''">2.1.1</MicrosoftExtensionsDependencyInjectionVersion>
+    <MicrosoftExtensionsDependencyInjectionAbstractionsVersion Condition="'$(MicrosoftExtensionsDependencyInjectionAbstractionsVersion)' == ''">2.1.1</MicrosoftExtensionsDependencyInjectionAbstractionsVersion> 
+    <MicrosoftExtensionsDependencyModelVersion Condition="'$(MicrosoftExtensionsDependencyModelVersion)' == ''">2.1.0</MicrosoftExtensionsDependencyModelVersion>
+    <MicrosoftExtensionsLoggingVersion Condition="'$(MicrosoftExtensionsLoggingVersion)' == ''">2.1.1</MicrosoftExtensionsLoggingVersion>
+    <MicrosoftExtensionsLoggingAbstractionsVersion Condition="'$(MicrosoftExtensionsLoggingAbstractionsVersion)' == ''">2.1.1</MicrosoftExtensionsLoggingAbstractionsVersion>
+    <MicrosoftExtensionsOptionsVersion Condition="'$(MicrosoftExtensionsOptionsVersion)' == ''">2.1.1</MicrosoftExtensionsOptionsVersion> 
+    <NewtonsoftJsonVersion Condition="'$(NewtonsoftJsonVersion)' == ''">11.0.2</NewtonsoftJsonVersion>
+    <NewtonsoftJsonBsonVersion Condition="'$(NewtonsoftJsonBsonVersion)' == ''">1.0.1</NewtonsoftJsonBsonVersion>
+    <NitoAsyncExCoordinationVersion Condition="'$(NitoAsyncExCoordinationVersion)' == ''">1.0.2</NitoAsyncExCoordinationVersion>
+    <NitoCollectionsDequeVersion Condition="'$(NitoCollectionsDequeVersion)' == ''">1.0.4</NitoCollectionsDequeVersion>
+    
+   
+  
+    
+    <SystemRuntimeCompilerServicesUnsafeVersion Condition="'$(SystemRuntimeCompilerServicesUnsafeVersion)' == ''">4.5.1</SystemRuntimeCompilerServicesUnsafeVersion>
+    <SystemRuntimeCompilerServicesUnsafeVersion Condition="'$(SystemRuntimeCompilerServicesUnsafeVersion)' == ''">4.5.1</SystemRuntimeCompilerServicesUnsafeVersion>
+    <SystemRuntimeCompilerServicesUnsafeVersion Condition="'$(SystemRuntimeCompilerServicesUnsafeVersion)' == ''">4.5.1</SystemRuntimeCompilerServicesUnsafeVersion>
+    <SystemRuntimeCompilerServicesUnsafeVersion Condition="'$(SystemRuntimeCompilerServicesUnsafeVersion)' == ''">4.5.1</SystemRuntimeCompilerServicesUnsafeVersion>
+    <SystemRuntimeCompilerServicesUnsafeVersion Condition="'$(SystemRuntimeCompilerServicesUnsafeVersion)' == ''">4.5.1</SystemRuntimeCompilerServicesUnsafeVersion>
+    <SystemRuntimeCompilerServicesUnsafeVersion Condition="'$(SystemRuntimeCompilerServicesUnsafeVersion)' == ''">4.5.1</SystemRuntimeCompilerServicesUnsafeVersion>
+    <SystemRuntimeCompilerServicesUnsafeVersion Condition="'$(SystemRuntimeCompilerServicesUnsafeVersion)' == ''">4.5.1</SystemRuntimeCompilerServicesUnsafeVersion>
+    <SystemRuntimeCompilerServicesUnsafeVersion Condition="'$(SystemRuntimeCompilerServicesUnsafeVersion)' == ''">4.5.1</SystemRuntimeCompilerServicesUnsafeVersion>
+  </PropertyGroup>
 </Project>

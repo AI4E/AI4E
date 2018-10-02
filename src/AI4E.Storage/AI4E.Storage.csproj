@@ -29,14 +29,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="JsonDiffPatch.Net" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="2.1.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.1.1" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="2.1.1" />
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
-    <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.1" />
-    <PackageReference Include="Nito.Collections.Deque" Version="1.0.4" />
-    <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
+    <PackageReference Include="JsonDiffPatch.Net" Version="$(JsonDiffPatchNetVersion)" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsDependencyInjectionVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftExtensionsLoggingAbstractionsVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="$(MicrosoftExtensionsOptionsVersion)" />
+    <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
+    <PackageReference Include="Newtonsoft.Json.Bson" Version="$(NewtonsoftJsonBsonVersion)" />
+    <PackageReference Include="Nito.Collections.Deque" Version="$(NitoCollectionsDequeVersion)" />
+    <PackageReference Include="System.Collections.Immutable" Version="$(SystemCollectionsImmutableVersion)" />
     
   </ItemGroup>
 
