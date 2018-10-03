@@ -501,40 +501,9 @@ namespace AI4E.Coordination
             {
                 var parentPath = path.GetParentPath();
                 var parent = await EnsureParentLock(parentPath, session, cancellation);
-
                 try
                 {
-                    Assert(parent != null);
-
-                    if (parent.EphemeralOwner != null)
-                    {
-                        throw new InvalidOperationException($"Unable to create the entry. The parent entry is an ephemeral entry and is not allowed to have child entries.");
-                    }
-
-                    var name = path.Segments.Last();
-                    await UpdateEntryAsync(_storedEntryManager.AddChild(parent, name, session), parent, cancellation);
-
-                    try
-                    {
-                        (entry, created) = await TryCreateCoreAsync(path, value, modes, session, cancellation);
-                    }
-                    catch (SessionTerminatedException) { throw; }
-                    catch
-                    {
-                        // This is not the root entry and the parent entry was found. 
-                        // We did not successfully create the entry.
-                        // Note that the operation MUST be performed under the lock COMPLETELY.
-                        try
-                        {
-                            // If this operation gets canceled, the parent entry is not cleaned up. 
-                            // This is not of a problem, because the parent entry is not guaranteed to be strongly consistent anyway.
-                            // In case of cancellation, we want the original exception to be rethrown.
-                            await UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, name, session), parent, cancellation);
-                        }
-                        catch (OperationCanceledException) { }
-
-                        throw;
-                    }
+                    (entry, created) = await TryCreateChildAsync(path, parent, value, modes, session, cancellation);
                 }
                 finally
                 {
@@ -561,17 +530,67 @@ namespace AI4E.Coordination
             return (entry, created);
         }
 
+        private async Task<(IStoredEntry entry, bool created)> TryCreateChildAsync(CoordinationEntryPath path,
+                                                                                   IStoredEntry parent,
+                                                                                   ReadOnlyMemory<byte> value,
+                                                                                   EntryCreationModes modes,
+                                                                                   Session session,
+                                                                                   CancellationToken cancellation)
+        {
+            Assert(parent != null);
+
+            if (parent.EphemeralOwner != null)
+            {
+                throw new InvalidOperationException($"Unable to create the entry. The parent entry is an ephemeral entry and is not allowed to have child entries.");
+            }
+
+            var name = path.Segments.Last();
+            await UpdateEntryAsync(_storedEntryManager.AddChild(parent, name, session), parent, cancellation);
+
+            try
+            {
+                return await TryCreateCoreAsync(path, value, modes, session, cancellation);
+            }
+            catch (SessionTerminatedException) { throw; }
+            catch
+            {
+                // This is not the root entry and the parent entry was found. 
+                // We did not successfully create the entry.
+                // Note that the operation MUST be performed under the lock COMPLETELY.
+                try
+                {
+                    // If this operation gets canceled, the parent entry is not cleaned up. 
+                    // This is not of a problem, because the parent entry is not guaranteed to be strongly consistent anyway.
+                    // In case of cancellation, we want the original exception to be rethrown.
+                    await UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, name, session), parent, cancellation);
+                }
+                catch (OperationCanceledException) { }
+
+                throw;
+            }
+        }
+
         private async Task<IStoredEntry> EnsureParentLock(CoordinationEntryPath path, Session session, CancellationToken cancellation)
         {
             IStoredEntry result;
 
-            while ((result = await LoadAndAcquireWriteLockAsync(path, cancellation)) == null)
+            do
             {
-                await TryCreateInternalAsync(path, ReadOnlyMemory<byte>.Empty, modes: default, session, cancellation);
+                result = await LoadAndAcquireWriteLockAsync(path, cancellation);
+
+                if (result != null)
+                {
+                    break;
+                }
+
+                var (e, c) = await TryCreateInternalAsync(path, ReadOnlyMemory<byte>.Empty, modes: default, session, cancellation);
             }
+            while (true);
+
 
             Assert(result != null);
             Assert(result.WriteLock == session);
+            Assert(_cache.GetEntry(path).LocalWriteLock.CurrentCount == 0);
             return result;
         }
 
@@ -581,18 +600,30 @@ namespace AI4E.Coordination
                                                                                   Session session,
                                                                                   CancellationToken cancellation)
         {
+            IStoredEntry comparand = null;
+
             // Lock the local-lock first.
             // Create will lock the write-lock for us.
             await _lockManager.AcquireLocalWriteLockAsync(path, cancellation);
-
-            var entry = _storedEntryManager.Create(path, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.Span);
-            var comparand = await _storage.UpdateEntryAsync(entry, comparand: null, cancellation);
+            Assert(_cache.GetEntry(path).LocalWriteLock.CurrentCount == 0);
 
             try
             {
-                if ((modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral)
+                try
                 {
-                    await _sessionManager.AddSessionEntryAsync(session, path, cancellation);
+                    // Check if entry exists.
+                    comparand = await _storage.GetEntryAsync(path, cancellation);
+                }
+                catch
+                {
+                    await _lockManager.ReleaseLocalWriteLockAsync(path, cancellation);
+                    throw;
+                }
+
+                if (comparand != null)
+                {
+                    // There is already an entry present
+                    return (comparand, false);
                 }
 
                 // In case of failure, we currently do not remove the session entry. 
@@ -601,28 +632,40 @@ namespace AI4E.Coordination
                 // This is ok because the session entry is skipped if the respective entry is not found. 
                 // This could lead to many dead entries, if we have lots of failures. But we assume that this case is rather rare.
                 // If this is ever a big performance problem, we can use a form of "reference counting" of session entries.
+                if ((modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral)
+                {
+                    await _sessionManager.AddSessionEntryAsync(session, path, cancellation);
+                }
+
+                var entry = _storedEntryManager.Create(path, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.Span);
+                Assert(entry != null);
+                Assert(entry.WriteLock == session);
+
+                comparand = await _storage.UpdateEntryAsync(entry, comparand: null, cancellation);
+
+                if (comparand != null)
+                {
+                    // There is already an entry present
+                    return (comparand, false);
+                }
+
+                // We created the entry successfully. => Release the write lock.
+                entry = await _lockManager.ReleaseWriteLockAsync(entry, cancellation);
+
+                Assert(entry.WriteLock == null);
+
+                // We created the entry successfully.
+                return (entry, true);
             }
             finally
             {
-                // There is already an entry present => Release the local lock only.
                 if (comparand != null)
                 {
+                    Assert(comparand.WriteLock != session);
+
+                    // There is already an entry present => Release the local lock only.
                     await _lockManager.ReleaseLocalWriteLockAsync(path, cancellation);
                 }
-                else
-                {
-                    await _lockManager.ReleaseWriteLockAsync(entry, cancellation);
-                }
-            }
-
-            // There is already an entry present
-            if (comparand != null)
-            {
-                return (comparand, false);
-            }
-            else
-            {
-                return (entry, true);
             }
         }
 
@@ -649,12 +692,20 @@ namespace AI4E.Coordination
             if (path.IsRoot)
             {
                 var entry = await LoadAndAcquireWriteLockAsync(path, cancellation);
+
+                if (entry == null)
+                {
+                    return 0;
+                }
+
                 try
                 {
                     return await DeleteInternalAsync(entry, session, version, recursive, cancellation);
                 }
                 finally
                 {
+                    // We must only release the write-lock if we could acquire it previously. 
+                    // If the entry did not exist, this is not the case.
                     Assert(entry != null);
                     await _lockManager.ReleaseWriteLockAsync(entry, cancellation);
                 }
@@ -662,14 +713,14 @@ namespace AI4E.Coordination
 
             var parent = await LoadAndAcquireWriteLockAsync(path.GetParentPath(), cancellation);
 
+            // The parent was deleted concurrently. => The parent may only be deleted if all childs were deleted => Our entry does not exist any more.
+            if (parent == null)
+            {
+                return 0;
+            }
+
             try
             {
-                // The parent was deleted concurrently. => The parent may only be deleted if all childs were deleted => Our entry does not exist any more.
-                if (parent == null)
-                {
-                    return 0;
-                }
-
                 var entry = await LoadAndAcquireWriteLockAsync(path, cancellation);
 
                 if (entry == null)
@@ -823,7 +874,7 @@ namespace AI4E.Coordination
             // We must remove the entry from the cache by ourselves here, 
             // as we do allow the session to hold a read-lock and a write-lock at the same time 
             // and hence do not wipe the entry from the cache on write lock acquirement.
-            _cache.RemoveEntry(entry.Path);
+            _cache.InvalidateEntry(entry.Path); // TODO: We actually want to remove the entry from the cache, but this also deletes the local write-lock, we own.
             return (entry: null, deleted: true);
         }
 

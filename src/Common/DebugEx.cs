@@ -12,7 +12,10 @@ namespace AI4E.Internal
         public static void Assert(bool precondition, bool condition)
         {
             // precondition => condition
-            Debug.Assert(!precondition || condition);
+            if (precondition)
+            {
+                Debug.Assert(condition);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

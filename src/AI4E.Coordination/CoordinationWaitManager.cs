@@ -103,7 +103,7 @@ namespace AI4E.Coordination
                 // In this case, we could also allow this but had to synchronize the write operations locally.
                 if (writeLock == session)
                 {
-                    Assert(allowWriteLock);
+                    Assert(allowWriteLock); // If this fails, we have overlapping writes, that should be prevented by the local write lock.
 
                     return entry;
                 }
@@ -175,6 +175,13 @@ namespace AI4E.Coordination
                 // We are holding the write-lock => The entry must not be deleted concurrently.
                 if (entry.ReadLocks.Length != 0 && (entry.ReadLocks.Length > 1 || entry.ReadLocks.First() != session))
                 {
+#if DEBUG
+                    entry = await _storage.GetEntryAsync(entry.Path, cancellation);
+
+                    var x = entry.ReadLocks.Length != 0 && (entry.ReadLocks.Length > 1 || entry.ReadLocks.First() != session);
+
+                    System.Diagnostics.Debugger.Break();
+#endif
                     throw new SessionTerminatedException();
                 }
             }
@@ -236,6 +243,10 @@ namespace AI4E.Coordination
             }
             while (start != entry);
 
+            entry = desired;
+            Assert(!entry.ReadLocks.Contains(session));
+            Assert(entry.WriteLock != session);
+
             return entry;
         }
 
@@ -246,7 +257,9 @@ namespace AI4E.Coordination
 
             if (!await _sessionManager.IsAliveAsync(readLock, cancellation))
             {
-                return await CleanupLocksOnSessionTermination(entry, readLock, cancellation);
+                entry = await CleanupLocksOnSessionTermination(entry, readLock, cancellation);
+                Assert(!entry.ReadLocks.Contains(readLock));
+                return entry;
             }
 
             do
@@ -262,6 +275,8 @@ namespace AI4E.Coordination
             // We have to check for the read lock to be released, 
             // because we may assume the release caused by a message from the session that owns the read-lock. 
             // This message can be delayed and not be a response to our invalidation request.
+
+            Assert(!entry.ReadLocks.Contains(readLock));
 
             return entry;
         }

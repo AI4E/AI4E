@@ -66,5 +66,15 @@ namespace AI4E.Internal
 
             return t;
         }
+
+        public static async Task<T> AssertAsync<T>(this Task<T> task, Func<T, bool> assertion)
+        {
+            return (await task).Assert(assertion);
+        }
+
+        public static async Task<T> AssertAsync<T>(this Task<T> task, Func<T, bool> precondition, Func<T, bool> assertion)
+        {
+            return (await task).Assert(precondition, assertion);
+        }
     }
 }

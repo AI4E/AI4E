@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace AI4E.Coordination
@@ -116,6 +117,18 @@ namespace AI4E.Coordination
             var resultAsMemory = MemoryMarshal.AsMemory(result.AsMemory());
             memory.CopyTo(resultAsMemory);
             return result;
+        }
+
+        public static int SequenceHashCode<T>(this ReadOnlyMemory<T> memory) where T : unmanaged
+        {
+            // TODO: Optimize this https://stackoverflow.com/questions/3404715/c-sharp-hashcode-for-array-of-ints#answer-3404820
+
+            var hc = memory.Length;
+            for (var i = 0; i < memory.Length; ++i)
+            {
+                hc = unchecked(hc * 314159 + memory.Span[i].GetHashCode());
+            }
+            return hc;
         }
     }
 }

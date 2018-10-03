@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using AI4E.Internal;
 using static System.Diagnostics.Debug;
@@ -497,7 +498,7 @@ namespace AI4E.Coordination
 
         public override int GetHashCode()
         {
-            return Segment.GetHashCode();
+            return Segment.SequenceHashCode();
         }
 
         public override string ToString()

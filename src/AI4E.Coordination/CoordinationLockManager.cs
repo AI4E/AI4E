@@ -101,13 +101,7 @@ namespace AI4E.Coordination
 
         public Task ReleaseLocalWriteLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
-            var cacheEntry = _cache.GetEntry(path);
-
-            Assert(cacheEntry != null);
-            Assert(cacheEntry.LocalWriteLock.CurrentCount == 0);
-
-            cacheEntry.LocalWriteLock.Release();
-            return Task.CompletedTask;
+            return ReleaseLocalWriteLockInternalAsync(path, cancellation);
         }
 
         public async Task AcquireLocalReadLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
@@ -134,11 +128,11 @@ namespace AI4E.Coordination
                 throw new ArgumentNullException(nameof(entry));
 
             var path = entry.Path;
-            var cacheEntry = _cache.GetEntry(path);
+         
 
             // Enter local lock
-            var atomicWait = await AcquireLocalWriteLockInternalAsync(path, cancellation);
 
+            var atomicWait = await AcquireLocalWriteLockInternalAsync(path, cancellation);
             try
             {
                 // We had to wait for the local lock. Freshly load the entry from the database as the chances are great that our entry is outdated.
@@ -153,17 +147,15 @@ namespace AI4E.Coordination
                 // Release the local lock if the entry is null.
                 if (result == null)
                 {
-                    Assert(cacheEntry.LocalWriteLock.CurrentCount == 0);
-                    cacheEntry.LocalWriteLock.Release();
+                    await ReleaseLocalWriteLockInternalAsync(path, cancellation: default);
                 }
 
                 return result;
             }
             catch
             {
-                Assert(cacheEntry.LocalWriteLock.CurrentCount == 0);
                 // Release local lock on failure
-                cacheEntry.LocalWriteLock.Release();
+                await ReleaseLocalWriteLockInternalAsync(path, cancellation: default);
                 throw;
             }
         }
@@ -201,7 +193,7 @@ namespace AI4E.Coordination
             }
             finally
             {
-                await ReleaseLocalWriteLockAsync(path, cancellation);
+                await ReleaseLocalWriteLockInternalAsync(path, cancellation);
             }
         }
 
@@ -215,29 +207,67 @@ namespace AI4E.Coordination
 
         #endregion
 
+        private SemaphoreSlim GetWriteLock(CoordinationEntryPath path)
+        {
+            var cacheEntry = _cache.GetEntry(path);
+            return cacheEntry.LocalWriteLock;
+        }
+
         // True if the lock could be taken immediately, false otherwise.
         private Task<bool> AcquireLocalWriteLockInternalAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
-            var cacheEntry = _cache.GetEntry(path);
-
-            var writeLock = cacheEntry.LocalWriteLock;
+            var writeLock = GetWriteLock(path);
 
             if (writeLock.Wait(0))
             {
+                Assert(writeLock.CurrentCount == 0);
                 return Task.FromResult(true);
             }
 
-            return writeLock.WaitAsync(cancellation).WithResult(false);
+            return AcquireLocalWriteLockCoreAsync(writeLock, cancellation);
+        }
+
+        private async Task<bool> AcquireLocalWriteLockCoreAsync(SemaphoreSlim writeLock, CancellationToken cancellation)
+        {
+            await writeLock.WaitAsync(cancellation);
+            Assert(writeLock.CurrentCount == 0);
+
+            return false;
+        }
+
+        private
+#if DEBUG
+            async
+#endif
+            Task ReleaseLocalWriteLockInternalAsync(CoordinationEntryPath path, CancellationToken cancellation)
+        {
+            var writeLock = GetWriteLock(path);
+            Assert(writeLock.CurrentCount == 0);
+
+#if DEBUG
+            var entry = await _storage.GetEntryAsync(path, cancellation);
+            var session = await CoordinationManager.GetSessionAsync(cancellation);
+
+            // We must only release the local write-lock if we released the (global) write-lock first.
+            Assert(entry == null || !await _sessionManager.IsAliveAsync(session, cancellation) || entry.WriteLock != session);
+#endif
+
+            writeLock.Release();
+#if !DEBUG
+            //return Task.CompletedTask;
+#endif
         }
 
         private async Task<IStoredEntry> ReleaseWriteLockAsync(IStoredEntry entry)
         {
             Assert(entry != null);
-
             try
             {
                 var result = await InternalReleaseWriteLockAsync(entry);
-                await ReleaseLocalWriteLockAsync(entry.Path, cancellation: default);
+
+                Assert(result == null || result.WriteLock != await CoordinationManager.GetSessionAsync(cancellation: default));
+
+                await ReleaseLocalWriteLockInternalAsync(entry.Path, cancellation: default);
                 return result;
             }
             catch (SessionTerminatedException) { throw; }
@@ -339,6 +369,9 @@ namespace AI4E.Coordination
 
         private async Task<IStoredEntry> InternalReleaseWriteLockAsync(IStoredEntry entry)
         {
+            Assert(entry != null);
+
+            var path = entry.Path;
             var cancellation = (await _sessionTerminationSource).Token;
             IStoredEntry start, desired;
 
@@ -346,7 +379,7 @@ namespace AI4E.Coordination
 
             if (entry != null)
             {
-                _logger?.LogTrace($"[{session}] Releasing write-lock for entry '{entry.Path}'.");
+                _logger?.LogTrace($"[{session}] Releasing write-lock for entry '{path}'.");
             }
 
             CacheEntry cacheEntry;
@@ -358,8 +391,8 @@ namespace AI4E.Coordination
                 // The entry was deleted.
                 if (start == null)
                 {
-                    _exchangeManager.NotifyWriteLockReleasedAsync(entry.Path, cancellation).HandleExceptions(_logger);
-                    _logger?.LogTrace($"[{session}] Released write-lock for entry '{entry.Path}'.");
+                    _exchangeManager.NotifyWriteLockReleasedAsync(path, cancellation).HandleExceptions(_logger);
+                    _logger?.LogTrace($"[{session}] Released write-lock for entry '{path}'.");
                     return start;
                 }
 
@@ -374,7 +407,7 @@ namespace AI4E.Coordination
                 // that the write lock release is successful on the first attempt.
                 // We read the cache-entry before we release the write lock, to get the cache entry version and
                 // afterwards try to update the cache if no other session invalidated our cache entry in the meantime.
-                cacheEntry = _cache.GetEntry(entry.Path);
+                cacheEntry = _cache.GetEntry(path);
                 desired = _storedEntryManager.ReleaseWriteLock(start, session);
                 entry = await _storage.UpdateEntryAsync(desired, start, cancellation);
             }
@@ -382,15 +415,16 @@ namespace AI4E.Coordination
 
             entry = desired;
             Assert(entry != null);
+            Assert(entry.WriteLock == null);
             _cache.UpdateEntry(cacheEntry, entry);
 
             if (entry != null)
             {
-                _exchangeManager.NotifyWriteLockReleasedAsync(entry.Path, cancellation).HandleExceptions(_logger);
-                _logger?.LogTrace($"[{session}] Released write-lock for entry '{entry.Path}'.");
+                _exchangeManager.NotifyWriteLockReleasedAsync(path, cancellation).HandleExceptions(_logger);
+                _logger?.LogTrace($"[{session}] Released write-lock for entry '{path}'.");
             }
 
-            return desired;
+            return entry;
         }
 
         private async Task<IStoredEntry> InternalAcquireReadLockAsync(IStoredEntry entry, CancellationToken cancellation)
@@ -480,7 +514,7 @@ namespace AI4E.Coordination
                 }
                 finally
                 {
-                    await ReleaseLocalWriteLockAsync(path, cancellation: default);
+                    await ReleaseLocalWriteLockInternalAsync(path, cancellation: default);
                 }
             }
             catch
