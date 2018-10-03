@@ -102,7 +102,7 @@ namespace AI4E.Routing
             }
 
             await Task.WhenAll(tasks);
-            await _coordinationManager.DeleteAsync(path, cancellation: cancellation);
+            await _coordinationManager.DeleteAsync(path, recursive: true, cancellation: cancellation);
         }
 
         public async Task<IEnumerable<(EndPointRoute endPoint, RouteOptions options)>> GetRoutesAsync(string messageType, CancellationToken cancellation)

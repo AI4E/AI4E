@@ -805,8 +805,6 @@ namespace AI4E.Coordination
         // deleted: true, if the operation succeeded, false otherwise. Check the entry result in this case.
         private async Task<(IStoredEntry entry, bool deleted)> DeleteCoreAsync(IStoredEntry entry, Session session, int version, bool recursive, CancellationToken cancellation)
         {
-            //entry = await AcquireWriteLockAsync(entry, cancellation);
-
             // The entry is not existing.
             if (entry == null)
             {
@@ -817,6 +815,8 @@ namespace AI4E.Coordination
             {
                 return (entry, deleted: false);
             }
+
+            var comparand = entry;
 
             // Check whether there are child entries
             // It is important that all coordination manager instances handle the recursive operation in the same oder
@@ -830,7 +830,9 @@ namespace AI4E.Coordination
 
                 // First load the child entry.
                 var childPath = entry.Path.GetChildPath(childName);
+
                 var child = await LoadAndAcquireWriteLockAsync(childPath, cancellation);
+                var originalChild = child;
 
                 // The child-names collection is not guaranteed to be strongly consistent.
                 if (child == null)
@@ -854,17 +856,19 @@ namespace AI4E.Coordination
                 }
                 finally
                 {
-                    Assert(child != null);
-                    await _lockManager.ReleaseWriteLockAsync(child, cancellation);
+                    Assert(originalChild != null);
+                    await _lockManager.ReleaseWriteLockAsync(originalChild, cancellation);
                 }
 
                 // As we did not specify a version, the call must succeed.
                 Assert(deleted);
                 Assert(child == null);
+
+                entry = _storedEntryManager.RemoveChild(entry, childName, session);
             }
 
             // Delete the entry
-            await UpdateEntryAsync(_storedEntryManager.Remove(entry, session), entry, cancellation);
+            await UpdateEntryAsync(_storedEntryManager.Remove(entry, session), comparand, cancellation);
 
             if (entry.EphemeralOwner != null)
             {
