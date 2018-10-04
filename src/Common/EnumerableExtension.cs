@@ -28,6 +28,9 @@ namespace AI4E.Internal
 {
     internal static class EnumerableExtension
     {
+        private const int _sequenceHashCodeSeedValue = 0x2D2816FE;
+        private const int _sequenceHashCodePrimeNumber = 397;
+
         [ThreadStatic]
         private static Random _rnd;
         private static int _count = 0;
@@ -169,5 +172,15 @@ namespace AI4E.Internal
             return new HashSet<T>(source);
         }
 #endif
+
+        // Adapted from: https://stackoverflow.com/questions/8094867/good-gethashcode-override-for-list-of-foo-objects-respecting-the-order#answer-48192420
+        public static int GetSequenceHashCode<TItem>(this IEnumerable<TItem> list)
+        {
+            if (list == null)
+                return 0;
+           
+            return list.Aggregate(_sequenceHashCodeSeedValue, (current, item) => (current * _sequenceHashCodePrimeNumber) + (Equals(item, default(TItem)) ? 0 : item.GetHashCode()));
+        }
+
     }
 }

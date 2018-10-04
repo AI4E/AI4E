@@ -28,7 +28,7 @@ namespace AI4E.Coordination
 
         private static string FormatMessage(Session session)
         {
-            return $"The session '{session.ToCompactString()}' is terminated.";
+            return $"The session '{session.ToString()}' is terminated.";
         }
     }
 }

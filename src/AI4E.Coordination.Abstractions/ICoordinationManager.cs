@@ -28,7 +28,7 @@ namespace AI4E.Coordination
     /// <summary>
     /// Represents a coordination service.
     /// </summary>
-    public interface ICoordinationManager : IAsyncDisposable
+    public interface ICoordinationManager : IDisposable
     {
         /// <summary>
         /// Asynchronously creates a coordination entry with the specified path.

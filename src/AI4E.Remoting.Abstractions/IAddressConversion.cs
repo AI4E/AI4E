@@ -32,10 +32,10 @@ namespace AI4E.Remoting
 {
     public interface IAddressConversion<TAddress>
     {
-        byte[] SerializeAddress(TAddress route);
-        TAddress DeserializeAddress(byte[] buffer);
+        byte[] SerializeAddress(TAddress route); // TODO: Rename parameter to address
+        TAddress DeserializeAddress(byte[] buffer); // TODO: Rename parameter to serializedAddress
 
-        string ToString(TAddress route);
-        TAddress Parse(string str);
+        string ToString(TAddress route); // TODO: Rename parameter to address
+        TAddress Parse(string str); // TODO: Rename parameter to stringifiedAddress
     }
 }

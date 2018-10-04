@@ -71,7 +71,7 @@ namespace AI4E.Remoting
         /// </summary>
         /// <param name="physicalEndPoint">The underlying physical end point.</param>
         /// <param name="logger">A logger used to log messages.</param>
-        public PhysicalEndPointMultiplexer(IPhysicalEndPoint<TAddress> physicalEndPoint, ILogger<PhysicalEndPointMultiplexer<TAddress>> logger)
+        public PhysicalEndPointMultiplexer(IPhysicalEndPoint<TAddress> physicalEndPoint, ILogger<PhysicalEndPointMultiplexer<TAddress>> logger = null)
         {
             if (physicalEndPoint == null)
                 throw new ArgumentNullException(nameof(physicalEndPoint));

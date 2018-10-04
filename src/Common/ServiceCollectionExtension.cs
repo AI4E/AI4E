@@ -25,9 +25,10 @@ namespace AI4E.Internal
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            services.AddSingleton(typeof(IProvider<>), typeof(Provider<>));
-            services.AddSingleton(typeof(IContextualProvider<>), typeof(ContextualProvider<>));
-            services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+            // This must be registered as transient to allow retrieval of scoped services.
+            services.TryAddTransient(typeof(IProvider<>), typeof(Provider<>));
+            services.TryAddSingleton(typeof(IContextualProvider<>), typeof(ContextualProvider<>));
+            services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
 
             return services;
         }
