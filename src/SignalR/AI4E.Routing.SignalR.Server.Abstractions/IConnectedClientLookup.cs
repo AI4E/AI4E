@@ -5,7 +5,7 @@ namespace AI4E.Routing.SignalR.Server
 {
     public interface IConnectedClientLookup
     {
-        Task<(EndPointRoute endPoint, string securityToken)> AddClientAsync(CancellationToken cancellation);
-        Task<bool> ValidateClientAsync(EndPointRoute endPoint, string securityToken, CancellationToken cancellation);
+        Task<(EndPointAddress endPoint, string securityToken)> AddClientAsync(CancellationToken cancellation);
+        Task<bool> ValidateClientAsync(EndPointAddress endPoint, string securityToken, CancellationToken cancellation);
     }
 }

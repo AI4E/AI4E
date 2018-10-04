@@ -34,7 +34,7 @@ namespace AI4E.Routing.SignalR.Client
         private readonly ConcurrentDictionary<int, CancellationTokenSource> _cancellationTable = new ConcurrentDictionary<int, CancellationTokenSource>();
 
         private readonly IAsyncProcess _receiveProcess;
-        private readonly AsyncInitializationHelper<(EndPointRoute localEndPoint, string securityToken)> _initializationHelper;
+        private readonly AsyncInitializationHelper<(EndPointAddress localEndPoint, string securityToken)> _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
         private int _nextSeqNum;
@@ -52,7 +52,7 @@ namespace AI4E.Routing.SignalR.Client
             _logger = logger;
 
             _receiveProcess = new AsyncProcess(ReceiveProcess);
-            _initializationHelper = new AsyncInitializationHelper<(EndPointRoute localEndPoint, string securityToken)>(InitializeInternalAsync);
+            _initializationHelper = new AsyncInitializationHelper<(EndPointAddress localEndPoint, string securityToken)>(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
@@ -161,7 +161,7 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        public async ValueTask<EndPointRoute> GetLocalEndPointAsync(CancellationToken cancellation)
+        public async ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)
         {
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
@@ -190,9 +190,9 @@ namespace AI4E.Routing.SignalR.Client
         // These are the counterparts of the encode/decode functions in LogicalServerEndPoint. These must be in sync.
         // TODO: Create a base class and move the functions there.
 
-        private static void EncodeClientMessage(IMessage message, int seqNum, int corr, MessageType messageType, EndPointRoute localEndPoint, string securityToken)
+        private static void EncodeClientMessage(IMessage message, int seqNum, int corr, MessageType messageType, EndPointAddress localEndPoint, string securityToken)
         {
-            var endPointBytes = localEndPoint == null ? _emptyBytes : Encoding.UTF8.GetBytes(localEndPoint.Route);
+            var endPointBytes = localEndPoint == null ? _emptyBytes : Encoding.UTF8.GetBytes(localEndPoint.LogicalAddress);
             var securityTokenBytes = securityToken == null ? _emptyBytes : Encoding.UTF8.GetBytes(securityToken);
 
             using (var stream = message.PushFrame().OpenStream())
@@ -234,7 +234,7 @@ namespace AI4E.Routing.SignalR.Client
         }
 
         // This must be in sync with LogicalServerEndPoint.EncodeInitResponse
-        private static (EndPointRoute localEndPoint, string securityToken) DecodeInitResponse(IMessage result)
+        private static (EndPointAddress localEndPoint, string securityToken) DecodeInitResponse(IMessage result)
         {
             using (var stream = result.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
@@ -247,7 +247,7 @@ namespace AI4E.Routing.SignalR.Client
                 var securityTokenBytes = reader.ReadBytes(securityTokenBytesLength);
                 var securityToken = Encoding.UTF8.GetString(securityTokenBytes);
 
-                return (EndPointRoute.CreateRoute(localEndPoint), securityToken);
+                return (EndPointAddress.Create(localEndPoint), securityToken);
             }
         }
 
@@ -354,7 +354,7 @@ namespace AI4E.Routing.SignalR.Client
 
         #region Init
 
-        private async Task<(EndPointRoute localEndPoint, string securityToken)> InitializeInternalAsync(CancellationToken cancellation)
+        private async Task<(EndPointAddress localEndPoint, string securityToken)> InitializeInternalAsync(CancellationToken cancellation)
         {
             await _receiveProcess.StartAsync(cancellation);
 

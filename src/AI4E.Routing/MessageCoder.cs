@@ -55,8 +55,8 @@ namespace AI4E.Routing
         }
 
         public (IMessage message, TAddress localAddress,
-                TAddress remoteAddress, EndPointRoute remoteEndPoint,
-                EndPointRoute localEndPoint, MessageType messageType) DecodeMessage(IMessage message)
+                TAddress remoteAddress, EndPointAddress remoteEndPoint,
+                EndPointAddress localEndPoint, MessageType messageType) DecodeMessage(IMessage message)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
@@ -102,8 +102,8 @@ namespace AI4E.Routing
         }
 
         public IMessage EncodeMessage(IMessage message, TAddress localAddress,
-                                      TAddress remoteAddress, EndPointRoute remoteEndPoint,
-                                      EndPointRoute localEndPoint, MessageType messageType)
+                                      TAddress remoteAddress, EndPointAddress remoteEndPoint,
+                                      EndPointAddress localEndPoint, MessageType messageType)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));

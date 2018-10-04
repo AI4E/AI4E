@@ -64,7 +64,7 @@ namespace AI4E.Modularity
 
         #region IRunningModuleLookup
 
-        public async Task AddModuleAsync(ModuleIdentifier module, EndPointRoute endPoint, IEnumerable<string> prefixes, CancellationToken cancellation)
+        public async Task AddModuleAsync(ModuleIdentifier module, EndPointAddress endPoint, IEnumerable<string> prefixes, CancellationToken cancellation)
         {
             if (module == default)
                 throw new ArgumentDefaultException(nameof(module));
@@ -90,7 +90,7 @@ namespace AI4E.Modularity
             {
                 using (var writer = new BinaryWriter(memoryStream))
                 {
-                    var endPointAddress = endPoint.Route;
+                    var endPointAddress = endPoint.LogicalAddress;
                     var endPointAddressBytes = Encoding.UTF8.GetBytes(endPointAddress);
 
                     writer.Write(endPointAddressBytes.Length);
@@ -105,7 +105,7 @@ namespace AI4E.Modularity
                         writer.Write(normalizedPrefixBytes.Length);
                         writer.Write(normalizedPrefixBytes);
 
-                        var routeBytes = Encoding.UTF8.GetBytes(endPoint.Route);
+                        var routeBytes = Encoding.UTF8.GetBytes(endPoint.LogicalAddress);
 
                         using (var stream = new MemoryStream(capacity: 4 + routeBytes.Length))
                         {
@@ -152,7 +152,7 @@ namespace AI4E.Modularity
                 var endPointAddressBytesLength = reader.ReadInt32();
                 var endPointAddressBytes = reader.ReadBytes(endPointAddressBytesLength);
                 var endPointAddress = Encoding.UTF8.GetString(endPointAddressBytes);
-                var endPoint = EndPointRoute.CreateRoute(endPointAddress);
+                var endPoint = EndPointAddress.Create(endPointAddress);
                 var prefixesCount = reader.ReadInt32();
 
                 for (var i = 0; i < prefixesCount; i++)
@@ -167,7 +167,7 @@ namespace AI4E.Modularity
             }
         }
 
-        public async ValueTask<IEnumerable<EndPointRoute>> GetEndPointsAsync(string prefix, CancellationToken cancellation)
+        public async ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(string prefix, CancellationToken cancellation)
         {
             if (string.IsNullOrWhiteSpace(prefix))
                 throw new ArgumentNullOrWhiteSpaceException(nameof(prefix));
@@ -177,7 +177,7 @@ namespace AI4E.Modularity
             // It is not possible to register a route for the root path.
             if (string.IsNullOrWhiteSpace(normalizedPrefix))
             {
-                return Enumerable.Empty<EndPointRoute>();
+                return Enumerable.Empty<EndPointAddress>();
             }
 
             var path = GetPrefixPath(normalizedPrefix, normalize: false);
@@ -185,7 +185,7 @@ namespace AI4E.Modularity
 
             Assert(entry != null);
 
-            var result = new List<EndPointRoute>(capacity: entry.Children.Count);
+            var result = new List<EndPointAddress>(capacity: entry.Children.Count);
 
             var childEntries = (await entry.GetChildrenEntriesAsync(cancellation)).OrderBy(p => p.CreationTime);
 
@@ -196,7 +196,7 @@ namespace AI4E.Modularity
                 {
                     var routeBytesLength = reader.ReadInt32();
                     var routeBytes = reader.ReadBytes(routeBytesLength);
-                    result.Add(new EndPointRoute(Encoding.UTF8.GetString(routeBytes)));
+                    result.Add(new EndPointAddress(Encoding.UTF8.GetString(routeBytes)));
                 }
             }
 
@@ -267,12 +267,12 @@ namespace AI4E.Modularity
             return _rootPrefixesPath.GetChildPath(prefix);
         }
 
-        private static CoordinationEntryPath GetPrefixPath(string prefix, EndPointRoute endPoint, Session session, bool normalize = true)
+        private static CoordinationEntryPath GetPrefixPath(string prefix, EndPointAddress endPoint, Session session, bool normalize = true)
         {
             if (normalize)
                 prefix = NormalizePrefix(prefix);
 
-            var uniqueEntryName = IdGenerator.GenerateId(endPoint.Route, session.ToString());
+            var uniqueEntryName = IdGenerator.GenerateId(endPoint.LogicalAddress, session.ToString());
             return _rootPrefixesPath.GetChildPath(prefix, uniqueEntryName);
         }
 

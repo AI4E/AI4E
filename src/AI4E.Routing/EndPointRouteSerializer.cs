@@ -34,14 +34,14 @@ namespace AI4E.Routing
 {
     public class EndPointRouteSerializer : IRouteSerializer
     {
-        public byte[] SerializeRoute(EndPointRoute route)
+        public byte[] SerializeRoute(EndPointAddress route)
         {
             return Encoding.UTF8.GetBytes(route.ToString());
         }
 
-        public EndPointRoute DeserializeRoute(byte[] buffer)
+        public EndPointAddress DeserializeRoute(byte[] buffer)
         {
-            return EndPointRoute.CreateRoute(Encoding.UTF8.GetString(buffer));
+            return EndPointAddress.Create(Encoding.UTF8.GetString(buffer));
         }
     }
 }

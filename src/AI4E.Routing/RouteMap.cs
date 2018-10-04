@@ -30,7 +30,7 @@ namespace AI4E.Routing
 
         #region IRouteMap<TAddress>
 
-        public async Task MapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation)
+        public async Task MapRouteAsync(EndPointAddress localEndPoint, TAddress address, CancellationToken cancellation)
         {
             if (localEndPoint == null)
                 throw new ArgumentNullException(nameof(localEndPoint));
@@ -41,14 +41,14 @@ namespace AI4E.Routing
             if (address.Equals(default(TAddress)))
                 throw new ArgumentDefaultException(nameof(address));
 
-            var route = localEndPoint.Route;
+            var route = localEndPoint.LogicalAddress;
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var path = GetPath(route, session);
 
             await _coordinationManager.GetOrCreateAsync(path, _addressConversion.SerializeAddress(address), EntryCreationModes.Ephemeral, cancellation);
         }
 
-        public async Task UnmapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation)
+        public async Task UnmapRouteAsync(EndPointAddress localEndPoint, TAddress address, CancellationToken cancellation)
         {
             if (localEndPoint == null)
                 throw new ArgumentNullException(nameof(localEndPoint));
@@ -59,7 +59,7 @@ namespace AI4E.Routing
             if (address.Equals(default(TAddress)))
                 throw new ArgumentDefaultException(nameof(address));
 
-            var route = localEndPoint.Route;
+            var route = localEndPoint.LogicalAddress;
             var routeEntry = await GetRouteEntryAsync(route, cancellation);
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var path = GetPath(route, session);
@@ -67,23 +67,23 @@ namespace AI4E.Routing
             await _coordinationManager.DeleteAsync(path, cancellation: cancellation);
         }
 
-        public async Task UnmapRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
+        public async Task UnmapRouteAsync(EndPointAddress localEndPoint, CancellationToken cancellation)
         {
             if (localEndPoint == null)
                 throw new ArgumentNullException(nameof(localEndPoint));
 
-            var route = localEndPoint.Route;
+            var route = localEndPoint.LogicalAddress;
             var path = GetPath(route);
 
             await _coordinationManager.DeleteAsync(path, recursive: true, cancellation: cancellation);
         }
 
-        public async ValueTask<IEnumerable<TAddress>> GetMapsAsync(EndPointRoute endPoint, CancellationToken cancellation)
+        public async ValueTask<IEnumerable<TAddress>> GetMapsAsync(EndPointAddress endPoint, CancellationToken cancellation)
         {
             if (endPoint == null)
                 throw new ArgumentNullException(nameof(endPoint));
 
-            var route = endPoint.Route;
+            var route = endPoint.LogicalAddress;
             var routeEntry = await GetRouteEntryAsync(route, cancellation);
 
             Assert(routeEntry != null);

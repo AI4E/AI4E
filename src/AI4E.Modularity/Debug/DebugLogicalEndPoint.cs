@@ -19,7 +19,7 @@ namespace AI4E.Modularity.Debug
         private readonly DebugConnection _debugConnection;
         private readonly ILogger<DebugLogicalEndPoint> _logger;
 
-        public DebugLogicalEndPoint(DebugConnection debugConnection, EndPointRoute endPoint, ILogger<DebugLogicalEndPoint> logger = null)
+        public DebugLogicalEndPoint(DebugConnection debugConnection, EndPointAddress endPoint, ILogger<DebugLogicalEndPoint> logger = null)
         {
             if (debugConnection == null)
                 throw new ArgumentNullException(nameof(debugConnection));
@@ -64,7 +64,7 @@ namespace AI4E.Modularity.Debug
             return proxy;
         }
 
-        public EndPointRoute EndPoint { get; }
+        public EndPointAddress EndPoint { get; }
 
         public async Task<IMessage> ReceiveAsync(CancellationToken cancellation = default)
         {
@@ -98,7 +98,7 @@ namespace AI4E.Modularity.Debug
             return message;
         }
 
-        public async Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, CancellationToken cancellation = default)
+        public async Task SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation = default)
         {
             var proxy = await GetProxyAsync(cancellation);
 

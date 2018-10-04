@@ -63,7 +63,7 @@ namespace AI4E.Modularity.Hosting.Sample.TestModule
         private static ILogicalEndPoint ConfigureLogicalEndPoint(IServiceProvider serviceProvider)
         {
             var endPointManager = serviceProvider.GetRequiredService<IEndPointManager>();
-            return endPointManager.GetLogicalEndPoint(EndPointRoute.CreateRoute("AI4E.Modularity.Hosting.Sample.TestModule"));
+            return endPointManager.GetLogicalEndPoint(EndPointAddress.Create("AI4E.Modularity.Hosting.Sample.TestModule"));
         }
 
         private static async Task RunAsync()

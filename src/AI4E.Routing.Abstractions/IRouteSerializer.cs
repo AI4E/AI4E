@@ -32,7 +32,7 @@ namespace AI4E.Routing
 {
     public interface IRouteSerializer
     {
-        byte[] SerializeRoute(EndPointRoute route);
-        EndPointRoute DeserializeRoute(byte[] buffer);
+        byte[] SerializeRoute(EndPointAddress route);
+        EndPointAddress DeserializeRoute(byte[] buffer);
     }
 }

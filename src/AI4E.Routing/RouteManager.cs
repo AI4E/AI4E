@@ -33,7 +33,7 @@ namespace AI4E.Routing
 
         #region IRouteStore
 
-        public async Task AddRouteAsync(EndPointRoute endPoint, string route, CancellationToken cancellation)
+        public async Task AddRouteAsync(EndPointAddress endPoint, string route, CancellationToken cancellation)
         {
             if (endPoint == null)
                 throw new ArgumentNullException(nameof(endPoint));
@@ -42,11 +42,11 @@ namespace AI4E.Routing
                 throw new ArgumentNullOrWhiteSpaceException(nameof(route));
 
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
-            var reversePath = GetReversePath(session, endPoint.Route, route);
+            var reversePath = GetReversePath(session, endPoint.LogicalAddress, route);
             await _coordinationManager.CreateAsync(reversePath, ReadOnlyMemory<byte>.Empty, EntryCreationModes.Ephemeral, cancellation);
 
-            var path = GetPath(route, endPoint.Route, session);
-            var endPointBytes = Encoding.UTF8.GetBytes(endPoint.Route);
+            var path = GetPath(route, endPoint.LogicalAddress, session);
+            var endPointBytes = Encoding.UTF8.GetBytes(endPoint.LogicalAddress);
 
             using (var stream = new MemoryStream(capacity: 4 + 4 + endPointBytes.Length))
             {
@@ -61,7 +61,7 @@ namespace AI4E.Routing
             }
         }
 
-        public async Task RemoveRouteAsync(EndPointRoute endPoint, string route, CancellationToken cancellation)
+        public async Task RemoveRouteAsync(EndPointAddress endPoint, string route, CancellationToken cancellation)
         {
             if (endPoint == null)
                 throw new ArgumentNullException(nameof(endPoint));
@@ -70,20 +70,20 @@ namespace AI4E.Routing
                 throw new ArgumentNullOrWhiteSpaceException(nameof(route));
 
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
-            var path = GetPath(route, endPoint.Route, session);
+            var path = GetPath(route, endPoint.LogicalAddress, session);
             await _coordinationManager.DeleteAsync(path, cancellation: cancellation);
 
-            var reversePath = GetReversePath(session, endPoint.Route, endPoint.Route);
+            var reversePath = GetReversePath(session, endPoint.LogicalAddress, endPoint.LogicalAddress);
             await _coordinationManager.DeleteAsync(reversePath, cancellation: cancellation);
         }
 
-        public async Task RemoveRoutesAsync(EndPointRoute endPoint, CancellationToken cancellation)
+        public async Task RemoveRoutesAsync(EndPointAddress endPoint, CancellationToken cancellation)
         {
             if (endPoint == null)
                 throw new ArgumentNullException(nameof(endPoint));
 
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
-            var path = GetReversePath(session, endPoint.Route);
+            var path = GetReversePath(session, endPoint.LogicalAddress);
             var entry = await _coordinationManager.GetAsync(path, cancellation);
 
             if (entry == null)
@@ -94,7 +94,7 @@ namespace AI4E.Routing
             foreach (var routeEntry in await entry.GetChildrenEntriesAsync(cancellation))
             {
                 var route = routeEntry.Name.Segment.ConvertToString();
-                var routePath = GetPath(route, endPoint.Route, session);
+                var routePath = GetPath(route, endPoint.LogicalAddress, session);
 
                 var deletion = _coordinationManager.DeleteAsync(routePath, cancellation: cancellation);
 
@@ -105,7 +105,7 @@ namespace AI4E.Routing
             await _coordinationManager.DeleteAsync(path, recursive: true, cancellation: cancellation);
         }
 
-        public async Task<IEnumerable<(EndPointRoute endPoint, RouteOptions options)>> GetRoutesAsync(string messageType, CancellationToken cancellation)
+        public async Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options)>> GetRoutesAsync(string messageType, CancellationToken cancellation)
         {
             if (string.IsNullOrWhiteSpace(messageType))
                 throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
@@ -115,7 +115,7 @@ namespace AI4E.Routing
 
             Assert(entry != null);
 
-            (EndPointRoute endPoint, RouteOptions options) Extract(IEntry e)
+            (EndPointAddress endPoint, RouteOptions options) Extract(IEntry e)
             {
                 using (var stream = e.OpenStream())
                 using (var reader = new BinaryReader(stream))
@@ -123,7 +123,7 @@ namespace AI4E.Routing
                     var options = (RouteOptions)reader.ReadInt32();
                     var endPointBytesLength = reader.ReadInt32();
                     var endPointBytes = reader.ReadBytes(endPointBytesLength);
-                    var endPoint = EndPointRoute.CreateRoute(Encoding.UTF8.GetString(endPointBytes));
+                    var endPoint = EndPointAddress.Create(Encoding.UTF8.GetString(endPointBytes));
 
                     return (endPoint, options);
                 }

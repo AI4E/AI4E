@@ -31,9 +31,9 @@ namespace AI4E.Routing.SignalR.Server
             _dateTimeProvider = dateTimeProvider;
         }
 
-        public async Task<(EndPointRoute endPoint, string securityToken)> AddClientAsync(CancellationToken cancellation)
+        public async Task<(EndPointAddress endPoint, string securityToken)> AddClientAsync(CancellationToken cancellation)
         {
-            var endPoint = new EndPointRoute("client/" + Guid.NewGuid().ToString());
+            var endPoint = new EndPointAddress("client/" + Guid.NewGuid().ToString());
             var securityToken = Guid.NewGuid().ToString();
             var leaseEnd = _dateTimeProvider.GetCurrentTime() + _leaseLength;
 
@@ -56,7 +56,7 @@ namespace AI4E.Routing.SignalR.Server
             {
                 try
                 {
-                    await _coordinationManager.CreateAsync(_basePath.GetChildPath(endPoint.Route), bytes, cancellation: cancellation);
+                    await _coordinationManager.CreateAsync(_basePath.GetChildPath(endPoint.LogicalAddress), bytes, cancellation: cancellation);
 
                     return (endPoint, securityToken);
                 }
@@ -68,9 +68,9 @@ namespace AI4E.Routing.SignalR.Server
             while (true);
         }
 
-        public async Task<bool> ValidateClientAsync(EndPointRoute endPoint, string securityToken, CancellationToken cancellation)
+        public async Task<bool> ValidateClientAsync(EndPointAddress endPoint, string securityToken, CancellationToken cancellation)
         {
-            var path = _basePath.GetChildPath(endPoint.Route);
+            var path = _basePath.GetChildPath(endPoint.LogicalAddress);
             var entry = await _coordinationManager.GetAsync(path, cancellation: cancellation);
 
             if (entry == null)

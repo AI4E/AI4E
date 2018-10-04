@@ -57,9 +57,9 @@ namespace AI4E.Routing
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
-        public ValueTask<EndPointRoute> GetLocalEndPointAsync(CancellationToken cancellation)
+        public ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)
         {
-            return new ValueTask<EndPointRoute>(_logicalEndPoint.EndPoint);
+            return new ValueTask<EndPointAddress>(_logicalEndPoint.EndPoint);
         }
 
         #region Initialization
@@ -195,7 +195,7 @@ namespace AI4E.Routing
             return response;
         }
 
-        public ValueTask<IMessage> RouteAsync(string route, IMessage serializedMessage, bool publish, EndPointRoute endPoint, CancellationToken cancellation)
+        public ValueTask<IMessage> RouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation)
         {
             if (route == null)
                 throw new ArgumentNullException(nameof(route));
@@ -230,13 +230,13 @@ namespace AI4E.Routing
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
             var tasks = new List<ValueTask<IMessage>>();
-            var handledEndPoints = new HashSet<EndPointRoute>();
+            var handledEndPoints = new HashSet<EndPointAddress>();
 
             _logger?.LogTrace($"Routing a message ({(publish ? "publish" : "p2p")}) with routes: {routes.Aggregate((e, n) => e + ", " + n)}");
 
             foreach (var route in routes)
             {
-                List<(EndPointRoute endPoint, RouteOptions options)> matches;
+                List<(EndPointAddress endPoint, RouteOptions options)> matches;
 
                 var matchRouteTask = MatchRouteAsync(route, cancellation);
                 var matchRouteResult = await MatchRouteAsync(route, cancellation);
@@ -252,7 +252,7 @@ namespace AI4E.Routing
                 {
                     if (!publish)
                     {
-                        EndPointRoute ResolveEndPoint()
+                        EndPointAddress ResolveEndPoint()
                         {
                             for (var i = matches.Count - 1; i >= 0; i--)
                             {
@@ -304,7 +304,7 @@ namespace AI4E.Routing
             return (await Task.WhenAll(tasks.Select(p => p.AsTask()))).ToList(); // TODO: Use ValueTaskHelper.WhenAny
         }
 
-        private async ValueTask<IMessage> InternalRouteAsync(string route, IMessage serializedMessage, bool publish, EndPointRoute endPoint, CancellationToken cancellation)
+        private async ValueTask<IMessage> InternalRouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation)
         {
             Assert(endPoint != null);
 
@@ -330,7 +330,7 @@ namespace AI4E.Routing
 
             try
             {
-                _logger?.LogDebug($"End-point '{localEndPoint}': Dispatching request message with seq-num '{seqNum}' to remote end point '{endPoint.Route}'.");
+                _logger?.LogDebug($"End-point '{localEndPoint}': Dispatching request message with seq-num '{seqNum}' to remote end point '{endPoint.LogicalAddress}'.");
 
                 // Remove all frames from other protocol stacks.
                 serializedMessage.Trim();
@@ -440,7 +440,7 @@ namespace AI4E.Routing
             await _routeStore.RemoveRouteAsync(localEndPoint, route, cancellation);
         }
 
-        private Task<IEnumerable<(EndPointRoute endPoint, RouteOptions options)>> MatchRouteAsync(string route, CancellationToken cancellation)
+        private Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options)>> MatchRouteAsync(string route, CancellationToken cancellation)
         {
             return _routeStore.GetRoutesAsync(route, cancellation);
         }
@@ -478,7 +478,7 @@ namespace AI4E.Routing
             _loggerFactory = loggerFactory;
         }
 
-        public IMessageRouter CreateMessageRouter(EndPointRoute endPoint, ISerializedMessageHandler serializedMessageHandler, RouteOptions options)
+        public IMessageRouter CreateMessageRouter(EndPointAddress endPoint, ISerializedMessageHandler serializedMessageHandler, RouteOptions options)
         {
             if (endPoint == null)
                 throw new ArgumentNullException(nameof(endPoint));

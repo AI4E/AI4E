@@ -73,9 +73,9 @@ namespace AI4E.Routing
     {
         public RemoteMessagingOptions()
         {
-            LocalEndPoint = EndPointRoute.CreateRoute(Assembly.GetEntryAssembly().GetName().Name);
+            LocalEndPoint = EndPointAddress.Create(Assembly.GetEntryAssembly().GetName().Name);
         }
 
-        public EndPointRoute LocalEndPoint { get; set; }
+        public EndPointAddress LocalEndPoint { get; set; }
     }
 }

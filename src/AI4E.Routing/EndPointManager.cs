@@ -58,7 +58,7 @@ namespace AI4E.Routing
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger _logger;
 
-        private readonly WeakDictionary<EndPointRoute, LogicalEndPoint> _endPoints;
+        private readonly WeakDictionary<EndPointAddress, LogicalEndPoint> _endPoints;
 
         private readonly IAsyncProcess _sendProcess;
         private readonly AsyncInitializationHelper _initializationHelper;
@@ -67,7 +67,7 @@ namespace AI4E.Routing
         // A buffer for messages to send. 
         // Messages are not sent directly to the remote end point but stored and processed one after another by a seperate async process. 
         // This enables to send again a messages that no physical end point can be found for currently or the sent failed.
-        private readonly AsyncProducerConsumerQueue<(IMessage message, EndPointRoute localEndPoint, EndPointRoute remoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)> _txQueue;
+        private readonly AsyncProducerConsumerQueue<(IMessage message, EndPointAddress localEndPoint, EndPointAddress remoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)> _txQueue;
 
         #endregion
 
@@ -101,9 +101,9 @@ namespace AI4E.Routing
             _endPointScheduler = endPointScheduler;
             _serviceProvider = serviceProvider;
             _logger = logger;
-            _endPoints = new WeakDictionary<EndPointRoute, LogicalEndPoint>();
+            _endPoints = new WeakDictionary<EndPointAddress, LogicalEndPoint>();
 
-            _txQueue = new AsyncProducerConsumerQueue<(IMessage message, EndPointRoute localEndPoint, EndPointRoute RemoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)>();
+            _txQueue = new AsyncProducerConsumerQueue<(IMessage message, EndPointAddress localEndPoint, EndPointAddress RemoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)>();
 
             _sendProcess = new AsyncProcess(SendProcess);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
@@ -161,7 +161,7 @@ namespace AI4E.Routing
 
         #endregion
 
-        public ILogicalEndPoint<TAddress> GetLogicalEndPoint(EndPointRoute route)
+        public ILogicalEndPoint<TAddress> GetLogicalEndPoint(EndPointAddress route)
         {
             if (route == null)
                 throw new ArgumentNullException(nameof(route));
@@ -176,12 +176,12 @@ namespace AI4E.Routing
             return result;
         }
 
-        ILogicalEndPoint IEndPointManager.GetLogicalEndPoint(EndPointRoute route)
+        ILogicalEndPoint IEndPointManager.GetLogicalEndPoint(EndPointAddress route)
         {
             return GetLogicalEndPoint(route);
         }
 
-        private LogicalEndPoint CreateLogicalEndPoint(EndPointRoute route)
+        private LogicalEndPoint CreateLogicalEndPoint(EndPointAddress route)
         {
             var physicalEndPoint = GetMultiplexPhysicalEndPoint(route);
             var logger = _serviceProvider.GetService<ILogger<LogicalEndPoint>>();
@@ -191,16 +191,16 @@ namespace AI4E.Routing
             return result;
         }
 
-        private IPhysicalEndPoint<TAddress> GetMultiplexPhysicalEndPoint(EndPointRoute route)
+        private IPhysicalEndPoint<TAddress> GetMultiplexPhysicalEndPoint(EndPointAddress route)
         {
-            var result = _endPointMultiplexer.GetPhysicalEndPoint("end-points/" + route.Route);
+            var result = _endPointMultiplexer.GetPhysicalEndPoint("end-points/" + route.LogicalAddress);
             Assert(result != null);
             return result;
         }
 
         #region Transmission
 
-        private async Task SendAsync(IMessage message, EndPointRoute localEndPoint, EndPointRoute remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
+        private async Task SendAsync(IMessage message, EndPointAddress localEndPoint, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
@@ -234,7 +234,7 @@ namespace AI4E.Routing
             }
         }
 
-        private async Task SendAsync(IMessage message, EndPointRoute localEndPoint, EndPointRoute remoteEndPoint, CancellationToken cancellation)
+        private async Task SendAsync(IMessage message, EndPointAddress localEndPoint, EndPointAddress remoteEndPoint, CancellationToken cancellation)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
@@ -296,7 +296,7 @@ namespace AI4E.Routing
             }
         }
 
-        private async Task Reschedule(IMessage message, EndPointRoute localEndPoint, EndPointRoute remoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)
+        private async Task Reschedule(IMessage message, EndPointAddress localEndPoint, EndPointAddress remoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)
         {
             // Calculate wait time in seconds
             var timeToWait = TimeSpan.FromSeconds(Pow(2, attempt - 1));
@@ -327,7 +327,7 @@ namespace AI4E.Routing
             return result;
         }
 
-        private async Task SendInternalAsync(IMessage message, EndPointRoute localEndPoint, EndPointRoute remoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)
+        private async Task SendInternalAsync(IMessage message, EndPointAddress localEndPoint, EndPointAddress remoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)
         {
             try
             {
@@ -379,7 +379,7 @@ namespace AI4E.Routing
             Reschedule(message, localEndPoint, remoteEndPoint, attempt, tcs, cancellation).HandleExceptions(_logger);
         }
 
-        private async Task SendInternalAsync(IMessage message, EndPointRoute localEndPoint, EndPointRoute remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
+        private async Task SendInternalAsync(IMessage message, EndPointAddress localEndPoint, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
         {
             var frameIdx = message.FrameIndex;
             _messageCoder.EncodeMessage(message, LocalAddress, remoteAddress, remoteEndPoint, localEndPoint, MessageType.Message);
@@ -414,7 +414,7 @@ namespace AI4E.Routing
 
             public LogicalEndPoint(EndPointManager<TAddress> endPointManager,
                                  IPhysicalEndPoint<TAddress> physicalEndPoint,
-                                 EndPointRoute route,
+                                 EndPointAddress route,
                                  IMessageCoder<TAddress> messageCoder,
                                  IRouteMap<TAddress> routeManager,
                                  ILogger<LogicalEndPoint> logger)
@@ -445,7 +445,7 @@ namespace AI4E.Routing
                 _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
             }
 
-            public EndPointRoute EndPoint { get; }
+            public EndPointAddress EndPoint { get; }
             public TAddress LocalAddress => PhysicalEndPoint.LocalAddress;
             public IPhysicalEndPoint<TAddress> PhysicalEndPoint { get; }
 
@@ -537,7 +537,7 @@ namespace AI4E.Routing
                 }
             }
 
-            private async Task HandleMessageAsync(IMessage message, TAddress localAddress, TAddress remoteAddress, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, MessageType messageType, CancellationToken cancellation)
+            private async Task HandleMessageAsync(IMessage message, TAddress localAddress, TAddress remoteAddress, EndPointAddress remoteEndPoint, EndPointAddress localEndPoint, MessageType messageType, CancellationToken cancellation)
             {
                 if (!localAddress.Equals(LocalAddress) || !EndPoint.Equals(localEndPoint))
                 {
@@ -570,7 +570,7 @@ namespace AI4E.Routing
                 }
             }
 
-            private Task SendMisroutedAsync(TAddress remoteAddress, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation)
+            private Task SendMisroutedAsync(TAddress remoteAddress, EndPointAddress remoteEndPoint, EndPointAddress localEndPoint, CancellationToken cancellation)
             {
                 var message = _messageCoder.EncodeMessage(LocalAddress, remoteAddress, remoteEndPoint, localEndPoint, MessageType.Misrouted);
                 return PhysicalEndPoint.SendAsync(message, remoteAddress, cancellation);
@@ -578,7 +578,7 @@ namespace AI4E.Routing
 
             #endregion
 
-            private async Task OnReceivedAsync(IMessage message, TAddress remoteAddress, EndPointRoute remoteEndPoint, CancellationToken cancellation)
+            private async Task OnReceivedAsync(IMessage message, TAddress remoteAddress, EndPointAddress remoteEndPoint, CancellationToken cancellation)
             {
                 if (message == null)
                     throw new ArgumentNullException(nameof(message));
@@ -623,7 +623,7 @@ namespace AI4E.Routing
                 }
             }
 
-            public async Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, CancellationToken cancellation)
+            public async Task SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation)
             {
                 if (message == null)
                     throw new ArgumentNullException(nameof(message));
@@ -663,7 +663,7 @@ namespace AI4E.Routing
                 }
             }
 
-            public async Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
+            public async Task SendAsync(IMessage message, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
             {
                 if (message == null)
                     throw new ArgumentNullException(nameof(message));
@@ -725,7 +725,7 @@ namespace AI4E.Routing
                 request.PushFrame();
 
                 TAddress remoteAddress;
-                EndPointRoute localEndPoint, remoteEndPoint;
+                EndPointAddress localEndPoint, remoteEndPoint;
 
                 try
                 {
@@ -790,7 +790,7 @@ namespace AI4E.Routing
                 }
             }
 
-            private Task SendInternalAsync(IMessage message, EndPointRoute remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
+            private Task SendInternalAsync(IMessage message, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
             {
                 //If we are the sender, we can short-circuit
                 if (remoteAddress.Equals(LocalAddress))

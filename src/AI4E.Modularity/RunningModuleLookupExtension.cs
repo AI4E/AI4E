@@ -33,7 +33,7 @@ namespace AI4E.Modularity
     {
         // TODO: Do the two operations "GetPrefixesAsync" and "GetEndPointsAsync" have to be called atomically? 
         //       Does we have to and how can we ensure consistency?
-        public static async Task<IEnumerable<EndPointRoute>> GetEndPointsAsync(this IRunningModuleLookup runningModules, ModuleIdentifier module, CancellationToken cancellation)
+        public static async Task<IEnumerable<EndPointAddress>> GetEndPointsAsync(this IRunningModuleLookup runningModules, ModuleIdentifier module, CancellationToken cancellation)
         {
             if (runningModules == null)
                 throw new ArgumentNullException(nameof(runningModules));
@@ -48,7 +48,7 @@ namespace AI4E.Modularity
             return flattenedResult.Distinct();
         }
 
-        public static async Task<EndPointRoute> MapHttpPathAsync(this IRunningModuleLookup runningModules, string path, CancellationToken cancellation)
+        public static async Task<EndPointAddress> MapHttpPathAsync(this IRunningModuleLookup runningModules, string path, CancellationToken cancellation)
         {
             if (runningModules == null)
                 throw new ArgumentNullException(nameof(runningModules));

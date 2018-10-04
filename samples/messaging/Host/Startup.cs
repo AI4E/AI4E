@@ -38,7 +38,7 @@ namespace Host
 
             services.Configure<RemoteMessagingOptions>(options =>
             {
-                options.LocalEndPoint = EndPointRoute.CreateRoute("host");
+                options.LocalEndPoint = EndPointAddress.Create("host");
             });
         }
 

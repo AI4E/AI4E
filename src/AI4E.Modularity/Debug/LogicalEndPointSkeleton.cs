@@ -12,7 +12,7 @@ namespace AI4E.Modularity.Debug
         private readonly IEndPointManager _endPointManager;
         private readonly ILogicalEndPoint _logicalEndPoint;
 
-        public LogicalEndPointSkeleton(IEndPointManager endPointManager, EndPointRoute route)
+        public LogicalEndPointSkeleton(IEndPointManager endPointManager, EndPointAddress route)
         {
             if (endPointManager == null)
                 throw new System.ArgumentNullException(nameof(endPointManager));
@@ -39,7 +39,7 @@ namespace AI4E.Modularity.Debug
             return buffer;
         }
 
-        public async Task SendAsync(byte[] messageBuffer, EndPointRoute remoteEndPoint, CancellationToken cancellation = default)
+        public async Task SendAsync(byte[] messageBuffer, EndPointAddress remoteEndPoint, CancellationToken cancellation = default)
         {
             var message = new Message();
 

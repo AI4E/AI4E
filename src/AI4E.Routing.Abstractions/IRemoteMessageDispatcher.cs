@@ -49,13 +49,13 @@ namespace AI4E.Routing
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if either <paramref name="messageType"/> or <paramref name="message"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown if <paramref name="message"/> is not of type <paramref name="messageType"/> or a derived type.</exception>
-        Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, EndPointRoute endPoint, CancellationToken cancellation = default); // TODO: Return ValueTask<IDispatchResult>
+        Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, EndPointAddress endPoint, CancellationToken cancellation = default); // TODO: Return ValueTask<IDispatchResult>
 
         Task<IDispatchResult> DispatchLocalAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation = default); // TODO: Return ValueTask<IDispatchResult>
 
         [Obsolete("Use GetLocalEndPointAsync(CancellationToken)")]
-        EndPointRoute LocalEndPoint { get; }
+        EndPointAddress LocalEndPoint { get; }
 
-        ValueTask<EndPointRoute> GetLocalEndPointAsync(CancellationToken cancellation = default);
+        ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation = default);
     }
 }

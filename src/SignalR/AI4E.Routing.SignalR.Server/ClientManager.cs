@@ -28,8 +28,8 @@ namespace AI4E.Routing.SignalR.Server
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILogger<ClientManager> _logger;
 
-        private readonly Dictionary<EndPointRoute, LinkedListNode<(DateTime leaseEnd, IMessageRouter router, EndPointRoute endPoint)>> _routers;
-        private readonly LinkedList<(DateTime leaseEnd, IMessageRouter router, EndPointRoute endPoint)> _sortedRouters;
+        private readonly Dictionary<EndPointAddress, LinkedListNode<(DateTime leaseEnd, IMessageRouter router, EndPointAddress endPoint)>> _routers;
+        private readonly LinkedList<(DateTime leaseEnd, IMessageRouter router, EndPointAddress endPoint)> _sortedRouters;
         private readonly object _routersLock = new object();
 
         private readonly IAsyncProcess _receiveProcess;
@@ -61,8 +61,8 @@ namespace AI4E.Routing.SignalR.Server
             _dateTimeProvider = dateTimeProvider;
             _logger = logger;
 
-            _routers = new Dictionary<EndPointRoute, LinkedListNode<(DateTime leaseEnd, IMessageRouter router, EndPointRoute endPoint)>>();
-            _sortedRouters = new LinkedList<(DateTime leaseEnd, IMessageRouter router, EndPointRoute endPoint)>();
+            _routers = new Dictionary<EndPointAddress, LinkedListNode<(DateTime leaseEnd, IMessageRouter router, EndPointAddress endPoint)>>();
+            _sortedRouters = new LinkedList<(DateTime leaseEnd, IMessageRouter router, EndPointAddress endPoint)>();
 
             _receiveProcess = new AsyncProcess(ReceiveProcess);
             _garbageCollectionProcess = new AsyncProcess(GarbageCollectionProcess);
@@ -108,7 +108,7 @@ namespace AI4E.Routing.SignalR.Server
 
         #region Routers
 
-        private IMessageRouter GetRouter(EndPointRoute endPoint)
+        private IMessageRouter GetRouter(EndPointAddress endPoint)
         {
             var now = _dateTimeProvider.GetCurrentTime();
             var leaseEnd = now + _leaseLength;
@@ -143,7 +143,7 @@ namespace AI4E.Routing.SignalR.Server
             }
         }
 
-        private IMessageRouter CreateRouter(EndPointRoute endPoint)
+        private IMessageRouter CreateRouter(EndPointAddress endPoint)
         {
             // TODO: Get the clients route options and combine them with RouteOptions.PublishOnly. 
             //       This is not necessary for now as there are no other options currently.
@@ -156,9 +156,9 @@ namespace AI4E.Routing.SignalR.Server
         private sealed class SerializedMessageHandlerProxy : ISerializedMessageHandler
         {
             private readonly ClientManager _owner;
-            private readonly EndPointRoute _endPoint;
+            private readonly EndPointAddress _endPoint;
 
-            public SerializedMessageHandlerProxy(ClientManager owner, EndPointRoute endPoint)
+            public SerializedMessageHandlerProxy(ClientManager owner, EndPointAddress endPoint)
             {
                 Assert(owner != null);
                 Assert(endPoint != null);
@@ -223,7 +223,7 @@ namespace AI4E.Routing.SignalR.Server
         {
             var now = _dateTimeProvider.GetCurrentTime();
 
-            LinkedListNode<(DateTime leaseEnd, IMessageRouter router, EndPointRoute endPoint)> node;
+            LinkedListNode<(DateTime leaseEnd, IMessageRouter router, EndPointAddress endPoint)> node;
             DateTime leaseEnd;
 
             lock (_routersLock)
@@ -299,7 +299,7 @@ namespace AI4E.Routing.SignalR.Server
             }
         }
 
-        private async Task<IMessage> ReceiveAsync(IMessage message, EndPointRoute endPoint, CancellationToken cancellation)
+        private async Task<IMessage> ReceiveAsync(IMessage message, EndPointAddress endPoint, CancellationToken cancellation)
         {
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
@@ -337,7 +337,7 @@ namespace AI4E.Routing.SignalR.Server
                             var route = Encoding.UTF8.GetString(routeBytes);
                             var endPointBytesLength = reader.ReadInt32();
                             var endPointBytes = reader.ReadBytes(endPointBytesLength);
-                            var remoteEndPoint = EndPointRoute.CreateRoute(Encoding.UTF8.GetString(endPointBytes));
+                            var remoteEndPoint = EndPointAddress.Create(Encoding.UTF8.GetString(endPointBytes));
                             var publish = reader.ReadBoolean();
                             var response = await router.RouteAsync(route, message, publish, remoteEndPoint, cancellation);
                             return response;

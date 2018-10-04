@@ -37,8 +37,8 @@ namespace AI4E.Routing
     {
         public static IMessage EncodeMessage<TAddress>(this IMessageCoder<TAddress> messageCoder,
                                                        TAddress localAddress,
-                                                       TAddress remoteAddress, EndPointRoute remoteEndPoint,
-                                                       EndPointRoute localEndPoint, MessageType messageType)
+                                                       TAddress remoteAddress, EndPointAddress remoteEndPoint,
+                                                       EndPointAddress localEndPoint, MessageType messageType)
         {
             if (messageCoder == null)
                 throw new ArgumentNullException(nameof(messageCoder));

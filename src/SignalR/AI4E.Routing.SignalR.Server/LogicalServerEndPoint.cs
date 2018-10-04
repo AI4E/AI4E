@@ -28,10 +28,10 @@ namespace AI4E.Routing.SignalR.Server
         private readonly IConnectedClientLookup _connectedClients;
         private readonly ILogger<LogicalServerEndPoint> _logger;
 
-        private readonly AsyncProducerConsumerQueue<(IMessage message, int seqNum, EndPointRoute endPoint)> _rxQueue = new AsyncProducerConsumerQueue<(IMessage message, int seqNum, EndPointRoute endPoint)>();
+        private readonly AsyncProducerConsumerQueue<(IMessage message, int seqNum, EndPointAddress endPoint)> _rxQueue = new AsyncProducerConsumerQueue<(IMessage message, int seqNum, EndPointAddress endPoint)>();
         private readonly ConcurrentDictionary<int, TaskCompletionSource<IMessage>> _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<IMessage>>();
         private readonly ConcurrentDictionary<int, CancellationTokenSource> _cancellationTable = new ConcurrentDictionary<int, CancellationTokenSource>();
-        private readonly ConcurrentDictionary<EndPointRoute, string> _clientLookup = new ConcurrentDictionary<EndPointRoute, string>();
+        private readonly ConcurrentDictionary<EndPointAddress, string> _clientLookup = new ConcurrentDictionary<EndPointAddress, string>();
 
         private readonly IAsyncProcess _receiveProcess;
         private readonly AsyncInitializationHelper _initializationHelper;
@@ -64,7 +64,7 @@ namespace AI4E.Routing.SignalR.Server
 
         #region ILogicalServerEndPoint
 
-        public async Task<IMessage> SendAsync(IMessage message, EndPointRoute endPoint, CancellationToken cancellation)
+        public async Task<IMessage> SendAsync(IMessage message, EndPointAddress endPoint, CancellationToken cancellation)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
@@ -114,7 +114,7 @@ namespace AI4E.Routing.SignalR.Server
             }
         }
 
-        public async Task ReceiveAsync(Func<IMessage, EndPointRoute, CancellationToken, Task<IMessage>> handler, CancellationToken cancellation)
+        public async Task ReceiveAsync(Func<IMessage, EndPointAddress, CancellationToken, Task<IMessage>> handler, CancellationToken cancellation)
         {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
@@ -190,9 +190,9 @@ namespace AI4E.Routing.SignalR.Server
             }
         }
 
-        private static (int seqNum, int corr, MessageType messageType, EndPointRoute remoteEndPoint, string securityToken) DecodeClientMessage(IMessage message)
+        private static (int seqNum, int corr, MessageType messageType, EndPointAddress remoteEndPoint, string securityToken) DecodeClientMessage(IMessage message)
         {
-            EndPointRoute remoteEndPoint = null;
+            EndPointAddress remoteEndPoint = null;
             string securityToken = null;
 
             using (var stream = message.PopFrame().OpenStream())
@@ -210,7 +210,7 @@ namespace AI4E.Routing.SignalR.Server
                 if (remoteEndPointBytesLength > 0)
                 {
                     var remoteEndPointBytes = reader.ReadBytes(remoteEndPointBytesLength); // Variable length
-                    remoteEndPoint = EndPointRoute.CreateRoute(Encoding.UTF8.GetString(remoteEndPointBytes));
+                    remoteEndPoint = EndPointAddress.Create(Encoding.UTF8.GetString(remoteEndPointBytes));
                 }
 
                 var securityTokenBytesLength = reader.ReadInt32(); // 4 bytes
@@ -226,9 +226,9 @@ namespace AI4E.Routing.SignalR.Server
         }
 
         // This must be in sync with LogicalClientEndPoint.DecodeInitResponse
-        private static void EncodeInitResponse(IMessage result, EndPointRoute endPoint, string securityToken)
+        private static void EncodeInitResponse(IMessage result, EndPointAddress endPoint, string securityToken)
         {
-            var endPointBytes = Encoding.UTF8.GetBytes(endPoint.Route);
+            var endPointBytes = Encoding.UTF8.GetBytes(endPoint.LogicalAddress);
             var securityTokenBytes = Encoding.UTF8.GetBytes(securityToken);
 
             using (var stream = result.PushFrame().OpenStream())
@@ -255,19 +255,19 @@ namespace AI4E.Routing.SignalR.Server
         }
 
         // The message is encoded (Our message frame is on tos)
-        private Task SendInternalAsync(IMessage message, EndPointRoute endPoint, CancellationToken cancellation)
+        private Task SendInternalAsync(IMessage message, EndPointAddress endPoint, CancellationToken cancellation)
         {
             var address = LookupAddress(endPoint);
 
             if (address == null)
             {
-                throw new Exception($"The client '{endPoint.Route}' is unreachable."); // TODO
+                throw new Exception($"The client '{endPoint.LogicalAddress}' is unreachable."); // TODO
             }
 
             return SendInternalAsync(message, address, cancellation);
         }
 
-        private string LookupAddress(EndPointRoute endPoint)
+        private string LookupAddress(EndPointAddress endPoint)
         {
             if (_clientLookup.TryGetValue(endPoint, out var address))
             {
@@ -341,7 +341,7 @@ namespace AI4E.Routing.SignalR.Server
             }
         }
 
-        private async Task<bool> ValidateIntegrityAsync(string address, EndPointRoute remoteEndPoint, string securityToken, CancellationToken cancellation)
+        private async Task<bool> ValidateIntegrityAsync(string address, EndPointAddress remoteEndPoint, string securityToken, CancellationToken cancellation)
         {
             var result = await _connectedClients.ValidateClientAsync(remoteEndPoint, securityToken, cancellation);
 
@@ -360,7 +360,7 @@ namespace AI4E.Routing.SignalR.Server
 
             var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationRequest, cancellation).Token;
 
-            EndPointRoute endPoint;
+            EndPointAddress endPoint;
             string securityToken;
 
             try
@@ -390,7 +390,7 @@ namespace AI4E.Routing.SignalR.Server
             await SendInternalAsync(initResponse, address, combinedCancellation);
         }
 
-        private Task ReceiveRequestAsync(IMessage message, int seqNum, EndPointRoute remoteEndPoint, CancellationToken cancellation)
+        private Task ReceiveRequestAsync(IMessage message, int seqNum, EndPointAddress remoteEndPoint, CancellationToken cancellation)
         {
             _cancellationTable.GetOrAdd(seqNum, _ => new CancellationTokenSource());
 

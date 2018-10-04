@@ -33,7 +33,7 @@ namespace Module
 
             services.Configure<RemoteMessagingOptions>(options =>
             {
-                options.LocalEndPoint = EndPointRoute.CreateRoute("module");
+                options.LocalEndPoint = EndPointAddress.Create("module");
             });
 
             services.Configure<ModuleServerOptions>(options =>

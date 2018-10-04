@@ -64,7 +64,7 @@ namespace AI4E.Routing.SignalR.Client
 
         #region IMessageRouter
 
-        public ValueTask<EndPointRoute> GetLocalEndPointAsync(CancellationToken cancellation = default)
+        public ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation = default)
         {
             return _logicalEndPoint.GetLocalEndPointAsync(cancellation);
         }
@@ -104,7 +104,7 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        public async ValueTask<IMessage> RouteAsync(string route, IMessage serializedMessage, bool publish, EndPointRoute endPoint, CancellationToken cancellation = default)
+        public async ValueTask<IMessage> RouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation = default)
         {
             if (route == null)
                 throw new ArgumentNullException(nameof(route));
@@ -204,10 +204,10 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        private static void EncodeRouteRequest(IMessage message, string route, bool publish, EndPointRoute endPoint)
+        private static void EncodeRouteRequest(IMessage message, string route, bool publish, EndPointAddress endPoint)
         {
             var routeBytes = Encoding.UTF8.GetBytes(route);
-            var endPointBytes = Encoding.UTF8.GetBytes(endPoint.Route);
+            var endPointBytes = Encoding.UTF8.GetBytes(endPoint.LogicalAddress);
 
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(stream))
@@ -497,7 +497,7 @@ namespace AI4E.Routing.SignalR.Client
             return new RemoteMessageRouter(serializedMessageHandler, _logicalEndPoint, _dateTimeProvider, logger);
         }
 
-        public IMessageRouter CreateMessageRouter(EndPointRoute logicalEndPoint, ISerializedMessageHandler serializedMessageHandler, RouteOptions options)
+        public IMessageRouter CreateMessageRouter(EndPointAddress logicalEndPoint, ISerializedMessageHandler serializedMessageHandler, RouteOptions options)
         {
             throw new NotSupportedException();
         }

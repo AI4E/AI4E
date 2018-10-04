@@ -38,10 +38,10 @@ namespace AI4E.Routing
 {
     public interface ILogicalEndPoint : IAsyncInitialization, IAsyncDisposable
     {
-        EndPointRoute EndPoint { get; }
+        EndPointAddress EndPoint { get; }
 
         Task<IMessage> ReceiveAsync(CancellationToken cancellation = default);
-        Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, CancellationToken cancellation = default);
+        Task SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation = default);
         Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation = default);
     }
 
@@ -49,6 +49,6 @@ namespace AI4E.Routing
     {
         TAddress LocalAddress { get; }
 
-        Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation = default);
+        Task SendAsync(IMessage message, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation = default);
     }
 }

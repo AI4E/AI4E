@@ -37,15 +37,15 @@ namespace AI4E.Routing
         (IMessage message, // TODO: We seriously need a struct for the decoded message
          TAddress localAddress,
          TAddress remoteAddress,
-         EndPointRoute remoteEndPoint,
-         EndPointRoute localEndPoint,
+         EndPointAddress remoteEndPoint,
+         EndPointAddress localEndPoint,
          MessageType messageType) DecodeMessage(IMessage message);
 
         IMessage EncodeMessage(IMessage message,
                                TAddress localAddress,
                                TAddress remoteAddress,
-                               EndPointRoute remoteEndPoint,
-                               EndPointRoute localEndPoint,
+                               EndPointAddress remoteEndPoint,
+                               EndPointAddress localEndPoint,
                                MessageType messageType);
     }
 }

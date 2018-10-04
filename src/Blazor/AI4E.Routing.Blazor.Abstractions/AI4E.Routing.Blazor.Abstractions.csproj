@@ -10,7 +10,7 @@
     <Compile Include="..\..\AI4E.Remoting.Abstractions\IMessage.cs" Link="Remoting\IMessage.cs" />
     <Compile Include="..\..\AI4E.Remoting.Abstractions\IMessageFrame.cs" Link="Remoting\IMessageFrame.cs" />
     <Compile Include="..\..\AI4E.Remoting.Abstractions\ITypeConversion.cs" Link="Remoting\ITypeConversion.cs" />
-    <Compile Include="..\..\AI4E.Routing.Abstractions\EndPointRoute.cs" Link="Routing\EndPointRoute.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\EndPointAddress.cs" Link="Routing\EndPointAddress.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\IMessageRouter.cs" Link="Routing\IMessageRouter.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\IMessageRouterFactory.cs" Link="Routing\IMessageRouterFactory.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\IRemoteMessageDispatcher.cs" Link="Routing\IRemoteMessageDispatcher.cs" />
