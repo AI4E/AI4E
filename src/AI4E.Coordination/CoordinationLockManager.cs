@@ -254,7 +254,7 @@ namespace AI4E.Coordination
 
             writeLock.Release();
 #if !DEBUG
-            //return Task.CompletedTask;
+            return Task.CompletedTask;
 #endif
         }
 
