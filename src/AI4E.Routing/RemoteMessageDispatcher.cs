@@ -151,7 +151,7 @@ namespace AI4E.Routing
 
                 Assert(messageType != null);
 
-                var dispatchData = _remoteMessageDispatcher.DeserializeDispatchValues(serializedMessage);
+                var dispatchData = _remoteMessageDispatcher.DeserializeDispatchData(serializedMessage);
                 var dispatchResult = await _remoteMessageDispatcher.DispatchLocalAsync(dispatchData, publish, cancellation);
 
                 var response = new Message();
@@ -187,7 +187,7 @@ namespace AI4E.Routing
             }
         }
 
-        private void SerializeDispatchValues(IMessage message, DispatchDataDictionary dispatchData)
+        private void SerializeDispatchData(IMessage message, DispatchDataDictionary dispatchData)
         {
             Assert(message != null);
             Assert(dispatchData != null);
@@ -200,7 +200,7 @@ namespace AI4E.Routing
             }
         }
 
-        private DispatchDataDictionary DeserializeDispatchValues(IMessage message)
+        private DispatchDataDictionary DeserializeDispatchData(IMessage message)
         {
             Assert(message != null);
 
@@ -248,7 +248,7 @@ namespace AI4E.Routing
             var route = _typeConversion.SerializeType(dispatchData.MessageType);
             var serializedMessage = new Message();
 
-            SerializeDispatchValues(serializedMessage, dispatchData);
+            SerializeDispatchData(serializedMessage, dispatchData);
 
             var serializedResult = await _messageRouter.RouteAsync(route, serializedMessage, publish, endPoint, cancellation);
             var result = DeserializeDispatchResult(serializedResult);
@@ -262,7 +262,7 @@ namespace AI4E.Routing
         {
             var routes = GetRoutes(dispatchData.MessageType);
             var serializedMessage = new Message();
-            SerializeDispatchValues(serializedMessage, dispatchData);
+            SerializeDispatchData(serializedMessage, dispatchData);
 
             var serializedResults = await _messageRouter.RouteAsync(routes, serializedMessage, publish, cancellation);
             var results = serializedResults.Select(p => DeserializeDispatchResult(p)).ToList();
