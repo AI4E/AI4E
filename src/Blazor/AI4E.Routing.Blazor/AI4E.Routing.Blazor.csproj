@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Blazor.Extensions.SignalR" Version="0.1.5" />
+    <PackageReference Include="Blazor.Extensions.SignalR" Version="$(BlazorExtensionsSignalRVersion)" />
   </ItemGroup>
 
   <ItemGroup>

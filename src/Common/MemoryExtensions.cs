@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace AI4E.Coordination
@@ -39,7 +40,7 @@ namespace AI4E.Coordination
 
             return s.Slice(start, count);
         }
-        public static bool SequenceEquals<T>(this ReadOnlyMemory<T> left, ReadOnlyMemory<T> right, IEqualityComparer<T> comparer)
+        public static bool SequenceEqual<T>(this ReadOnlyMemory<T> left, ReadOnlyMemory<T> right, IEqualityComparer<T> comparer)
         {
             if (comparer == null)
                 throw new ArgumentNullException(nameof(comparer));
@@ -67,10 +68,10 @@ namespace AI4E.Coordination
             return true;
         }
 
-        [Obsolete("Use left.Span.SequenceEquals(right.Span)")]
-        public static bool SequenceEquals<T>(this ReadOnlyMemory<T> left, ReadOnlyMemory<T> right)
+        [Obsolete("Use left.Span.SequenceEqual(right.Span)")]
+        public static bool SequenceEqual<T>(this ReadOnlyMemory<T> left, ReadOnlyMemory<T> right)
         {
-            return SequenceEquals(left, right, EqualityComparer<T>.Default);
+            return SequenceEqual(left, right, EqualityComparer<T>.Default);
         }
 
         public static bool IsEmptyOrWhiteSpace(this ReadOnlyMemory<char> s)
@@ -98,10 +99,36 @@ namespace AI4E.Coordination
 
         public static string ConvertToString(this ReadOnlyMemory<char> memory)
         {
+            if (memory.IsEmpty)
+            {
+                return string.Empty;
+            }
+
+            if (MemoryMarshal.TryGetString(memory, out var text, out var start, out var length))
+            {
+                // If the memory is only a part of the string we had to substring anyway.
+                if (start == 0 && length == text.Length)
+                {
+                    return text;
+                }
+            }
+
             var result = new string('\0', memory.Length);
             var resultAsMemory = MemoryMarshal.AsMemory(result.AsMemory());
             memory.CopyTo(resultAsMemory);
             return result;
+        }
+
+        public static int SequenceHashCode<T>(this ReadOnlyMemory<T> memory) where T : unmanaged
+        {
+            // TODO: Optimize this https://stackoverflow.com/questions/3404715/c-sharp-hashcode-for-array-of-ints#answer-3404820
+
+            var hc = memory.Length;
+            for (var i = 0; i < memory.Length; ++i)
+            {
+                hc = unchecked(hc * 314159 + memory.Span[i].GetHashCode());
+            }
+            return hc;
         }
     }
 }

@@ -33,7 +33,7 @@ namespace AI4E.Coordination
             _dateTimeProvider = dateTimeProvider;
         }
 
-        public async Task<bool> TryBeginSessionAsync(Session session, DateTime leaseEnd, CancellationToken cancellation = default)
+        public async Task<bool> TryBeginSessionAsync(Session session, DateTime leaseEnd, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -184,27 +184,37 @@ namespace AI4E.Coordination
             {
                 cancellation.ThrowIfCancellationRequested();
 
-                var sessions = await _storage.GetSessionsAsync(cancellation);
-
                 var delay = TimeSpan.FromSeconds(2);
+                var sessions = _storage.GetSessionsAsync(cancellation);
 
-                foreach (var session in sessions)
+                var enumerator = sessions.GetEnumerator();
+
+                try
                 {
-                    if (_storedSessionManager.IsEnded(session))
-                        return session.Session;
+                    while (await enumerator.MoveNext(cancellation))
+                    {
+                        var session = enumerator.Current;
 
-                    var now = _dateTimeProvider.GetCurrentTime();
-                    var timeToWait = session.LeaseEnd - now;
+                        if (_storedSessionManager.IsEnded(session))
+                            return session.Session;
 
-                    if (timeToWait < delay)
-                        delay = timeToWait;
+                        var now = _dateTimeProvider.GetCurrentTime();
+                        var timeToWait = session.LeaseEnd - now;
+
+                        if (timeToWait < delay)
+                            delay = timeToWait;
+                    }
+                }
+                finally
+                {
+                    enumerator.Dispose();
                 }
 
                 await Task.Delay(delay, cancellation);
             }
         }
 
-        public async Task<bool> IsAliveAsync(Session session, CancellationToken cancellation = default)
+        public async Task<bool> IsAliveAsync(Session session, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -214,7 +224,7 @@ namespace AI4E.Coordination
             return s != null && !_storedSessionManager.IsEnded(s);
         }
 
-        public async Task AddSessionEntryAsync(Session session, CoordinationEntryPath entryPath, CancellationToken cancellation = default)
+        public async Task AddSessionEntryAsync(Session session, CoordinationEntryPath entryPath, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -239,7 +249,7 @@ namespace AI4E.Coordination
             while (start != current);
         }
 
-        public async Task RemoveSessionEntryAsync(Session session, CoordinationEntryPath entryPath, CancellationToken cancellation = default)
+        public async Task RemoveSessionEntryAsync(Session session, CoordinationEntryPath entryPath, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -269,7 +279,7 @@ namespace AI4E.Coordination
             while (start != current);
         }
 
-        public async Task<IEnumerable<CoordinationEntryPath>> GetEntriesAsync(Session session, CancellationToken cancellation = default)
+        public async Task<IEnumerable<CoordinationEntryPath>> GetEntriesAsync(Session session, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -282,9 +292,11 @@ namespace AI4E.Coordination
             return current.EntryPaths;
         }
 
-        public async Task<IEnumerable<Session>> GetSessionsAsync(CancellationToken cancellation = default)
+        public IAsyncEnumerable<Session> GetSessionsAsync(CancellationToken cancellation)
         {
-            return (await _storage.GetSessionsAsync(cancellation)).Where(p => !_storedSessionManager.IsEnded(p)).Select(p => p.Session);
+            return _storage.GetSessionsAsync(cancellation)
+                           .Where(p => !_storedSessionManager.IsEnded(p))
+                           .Select(p => p.Session);
         }
     }
 }
