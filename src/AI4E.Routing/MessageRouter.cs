@@ -21,7 +21,7 @@ namespace AI4E.Routing
 
         private readonly ISerializedMessageHandler _serializedMessageHandler;
         private readonly ILogicalEndPoint _logicalEndPoint;
-        private readonly IRouteStore _routeStore;
+        private readonly IRouteManager _routeManager;
         private readonly ILogger<MessageRouter> _logger;
 
         private readonly ConcurrentDictionary<int, TaskCompletionSource<IMessage>> _responseTable;
@@ -33,7 +33,7 @@ namespace AI4E.Routing
 
         public MessageRouter(ISerializedMessageHandler serializedMessageHandler,
                              ILogicalEndPoint logicalEndPoint,
-                             IRouteStore routeStore,
+                             IRouteManager routeManager,
                              ILogger<MessageRouter> logger = null)
         {
             if (serializedMessageHandler == null)
@@ -42,12 +42,12 @@ namespace AI4E.Routing
             if (logicalEndPoint == null)
                 throw new ArgumentNullException(nameof(logicalEndPoint));
 
-            if (routeStore == null)
-                throw new ArgumentNullException(nameof(routeStore));
+            if (routeManager == null)
+                throw new ArgumentNullException(nameof(routeManager));
 
             _serializedMessageHandler = serializedMessageHandler;
             _logicalEndPoint = logicalEndPoint;
-            _routeStore = routeStore;
+            _routeManager = routeManager;
             _logger = logger;
 
             _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<IMessage>>();
@@ -81,7 +81,7 @@ namespace AI4E.Routing
             await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
             await _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
             await _logicalEndPoint.DisposeAsync().HandleExceptionsAsync(_logger);
-            await _routeStore.RemoveRoutesAsync(_logicalEndPoint.EndPoint, cancellation: default).HandleExceptionsAsync(_logger);
+            await _routeManager.RemoveRoutesAsync(_logicalEndPoint.EndPoint, cancellation: default).HandleExceptionsAsync(_logger);
         }
 
         public void Dispose()
@@ -430,19 +430,19 @@ namespace AI4E.Routing
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
 
-            await _routeStore.AddRouteAsync(localEndPoint, route, cancellation);
+            await _routeManager.AddRouteAsync(localEndPoint, route, cancellation);
         }
 
         public async Task UnregisterRouteAsync(string route, CancellationToken cancellation)
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
 
-            await _routeStore.RemoveRouteAsync(localEndPoint, route, cancellation);
+            await _routeManager.RemoveRouteAsync(localEndPoint, route, cancellation);
         }
 
         private Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options)>> MatchRouteAsync(string route, CancellationToken cancellation)
         {
-            return _routeStore.GetRoutesAsync(route, cancellation);
+            return _routeManager.GetRoutesAsync(route, cancellation);
         }
 
         private int GetNextSeqNum()
@@ -453,18 +453,18 @@ namespace AI4E.Routing
 
     public sealed class MessageRouterFactory : IMessageRouterFactory
     {
-        private readonly IRouteStoreFactory _routeStoreFactory;
+        private readonly IRouteManagerFactory _routeManagerFactory;
         private readonly IEndPointManager _endPointManager;
         private readonly ILogicalEndPoint _logicalEndPoint;
         private readonly ILoggerFactory _loggerFactory;
 
-        public MessageRouterFactory(IRouteStoreFactory routeStoreFactory,
+        public MessageRouterFactory(IRouteManagerFactory routeManagerFactory,
                                     IEndPointManager endPointManager,
                                     ILogicalEndPoint logicalEndPoint,
                                     ILoggerFactory loggerFactory = null)
         {
-            if (routeStoreFactory == null)
-                throw new ArgumentNullException(nameof(routeStoreFactory));
+            if (routeManagerFactory == null)
+                throw new ArgumentNullException(nameof(routeManagerFactory));
 
             if (endPointManager == null)
                 throw new ArgumentNullException(nameof(endPointManager));
@@ -472,7 +472,7 @@ namespace AI4E.Routing
             if (logicalEndPoint == null)
                 throw new ArgumentNullException(nameof(logicalEndPoint));
 
-            _routeStoreFactory = routeStoreFactory;
+            _routeManagerFactory = routeManagerFactory;
             _endPointManager = endPointManager;
             _logicalEndPoint = logicalEndPoint;
             _loggerFactory = loggerFactory;
@@ -506,7 +506,7 @@ namespace AI4E.Routing
         private IMessageRouter CreateMessageRouterInternal(ILogicalEndPoint endPoint, ISerializedMessageHandler serializedMessageHandler, RouteOptions options)
         {
             var logger = _loggerFactory?.CreateLogger<MessageRouter>();
-            var routeStore = _routeStoreFactory.CreateRouteStore(options);
+            var routeStore = _routeManagerFactory.CreateRouteManager(options);
 
             Assert(routeStore != null);
 

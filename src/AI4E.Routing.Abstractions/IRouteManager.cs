@@ -1,10 +1,10 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IRouteSerializer.cs 
- * Types:           AI4E.Routing.IRouteSerializer
+ * Filename:        IRouteManager.cs 
+ * Types:           AI4E.Routing.IRouteManager
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   04.10.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -28,11 +28,22 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace AI4E.Routing
 {
-    public interface IRouteSerializer
+    public interface IRouteManager
     {
-        byte[] SerializeRoute(EndPointAddress route);
-        EndPointAddress DeserializeRoute(byte[] buffer);
+        Task AddRouteAsync(EndPointAddress endPoint, string route, CancellationToken cancellation);
+        Task RemoveRouteAsync(EndPointAddress endPoint, string route, CancellationToken cancellation);
+        Task RemoveRoutesAsync(EndPointAddress endPoint, CancellationToken cancellation);
+        Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options)>> GetRoutesAsync(string route, CancellationToken cancellation);
+    }
+
+    public interface IRouteManagerFactory
+    {
+        IRouteManager CreateRouteManager(RouteOptions options);
     }
 }

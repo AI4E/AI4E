@@ -9,14 +9,14 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing
 {
-    public sealed class RouteMap<TAddress> : IRouteMap<TAddress>
+    public sealed class EndPointMap<TAddress> : IEndPointMap<TAddress>
     {
         private static readonly CoordinationEntryPath _mapsRootPath = new CoordinationEntryPath("maps");
 
         private readonly ICoordinationManager _coordinationManager;
         private readonly IAddressConversion<TAddress> _addressConversion;
 
-        public RouteMap(ICoordinationManager coordinationManager, IAddressConversion<TAddress> addressConversion)
+        public EndPointMap(ICoordinationManager coordinationManager, IAddressConversion<TAddress> addressConversion)
         {
             if (coordinationManager == null)
                 throw new ArgumentNullException(nameof(coordinationManager));
@@ -28,12 +28,12 @@ namespace AI4E.Routing
             _addressConversion = addressConversion;
         }
 
-        #region IRouteMap<TAddress>
+        #region IEndPointMap<TAddress>
 
-        public async Task MapRouteAsync(EndPointAddress localEndPoint, TAddress address, CancellationToken cancellation)
+        public async Task MapEndPointAsync(EndPointAddress endPoint, TAddress address, CancellationToken cancellation)
         {
-            if (localEndPoint == null)
-                throw new ArgumentNullException(nameof(localEndPoint));
+            if (endPoint == null)
+                throw new ArgumentNullException(nameof(endPoint));
 
             if (address == null)
                 throw new ArgumentNullException(nameof(address));
@@ -41,17 +41,17 @@ namespace AI4E.Routing
             if (address.Equals(default(TAddress)))
                 throw new ArgumentDefaultException(nameof(address));
 
-            var route = localEndPoint.LogicalAddress;
+            var logicalAddress = endPoint.LogicalAddress;
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
-            var path = GetPath(route, session);
+            var path = GetPath(logicalAddress, session);
 
             await _coordinationManager.GetOrCreateAsync(path, _addressConversion.SerializeAddress(address), EntryCreationModes.Ephemeral, cancellation);
         }
 
-        public async Task UnmapRouteAsync(EndPointAddress localEndPoint, TAddress address, CancellationToken cancellation)
+        public async Task UnmapEndPointAsync(EndPointAddress endPoint, TAddress address, CancellationToken cancellation)
         {
-            if (localEndPoint == null)
-                throw new ArgumentNullException(nameof(localEndPoint));
+            if (endPoint == null)
+                throw new ArgumentNullException(nameof(endPoint));
 
             if (address == null)
                 throw new ArgumentNullException(nameof(address));
@@ -59,21 +59,21 @@ namespace AI4E.Routing
             if (address.Equals(default(TAddress)))
                 throw new ArgumentDefaultException(nameof(address));
 
-            var route = localEndPoint.LogicalAddress;
-            var routeEntry = await GetRouteEntryAsync(route, cancellation);
+            var logicalAddress = endPoint.LogicalAddress;
+            var logicalAddressEntry = await GetLogicalAddressEntryAsync(logicalAddress, cancellation);
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
-            var path = GetPath(route, session);
+            var path = GetPath(logicalAddress, session);
 
             await _coordinationManager.DeleteAsync(path, cancellation: cancellation);
         }
 
-        public async Task UnmapRouteAsync(EndPointAddress localEndPoint, CancellationToken cancellation)
+        public async Task UnmapEndPointAsync(EndPointAddress endPoint, CancellationToken cancellation)
         {
-            if (localEndPoint == null)
-                throw new ArgumentNullException(nameof(localEndPoint));
+            if (endPoint == null)
+                throw new ArgumentNullException(nameof(endPoint));
 
-            var route = localEndPoint.LogicalAddress;
-            var path = GetPath(route);
+            var logicalAddress = endPoint.LogicalAddress;
+            var path = GetPath(logicalAddress);
 
             await _coordinationManager.DeleteAsync(path, recursive: true, cancellation: cancellation);
         }
@@ -83,32 +83,32 @@ namespace AI4E.Routing
             if (endPoint == null)
                 throw new ArgumentNullException(nameof(endPoint));
 
-            var route = endPoint.LogicalAddress;
-            var routeEntry = await GetRouteEntryAsync(route, cancellation);
+            var logicalAddress = endPoint.LogicalAddress;
+            var logicalAddressEntry = await GetLogicalAddressEntryAsync(logicalAddress, cancellation);
 
-            Assert(routeEntry != null);
+            Assert(logicalAddressEntry != null);
 
-            var entries = await routeEntry.GetChildrenEntries().ToArray(cancellation);
+            var entries = await logicalAddressEntry.GetChildrenEntries().ToArray(cancellation);
 
             return entries.Select(p => _addressConversion.DeserializeAddress(p.Value.ToArray()));
         }
 
         #endregion
 
-        private ValueTask<IEntry> GetRouteEntryAsync(string route, CancellationToken cancellation)
+        private ValueTask<IEntry> GetLogicalAddressEntryAsync(string logicalAddress, CancellationToken cancellation)
         {
-            var path = GetPath(route);
+            var path = GetPath(logicalAddress);
             return _coordinationManager.GetOrCreateAsync(path, ReadOnlyMemory<byte>.Empty, EntryCreationModes.Default, cancellation);
         }
 
-        private static CoordinationEntryPath GetPath(string route)
+        private static CoordinationEntryPath GetPath(string logicalAddress)
         {
-            return _mapsRootPath.GetChildPath(route);
+            return _mapsRootPath.GetChildPath(logicalAddress);
         }
 
-        private static CoordinationEntryPath GetPath(string route, string session)
+        private static CoordinationEntryPath GetPath(string logicalAddress, string session)
         {
-            return _mapsRootPath.GetChildPath(route, session);
+            return _mapsRootPath.GetChildPath(logicalAddress, session);
         }
     }
 }

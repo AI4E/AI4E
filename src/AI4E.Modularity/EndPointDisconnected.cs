@@ -24,9 +24,9 @@ namespace AI4E.Modularity
 {
     public sealed class EndPointDisconnected
     {
-        public EndPointDisconnected(EndPointAddress route)
+        public EndPointDisconnected(EndPointAddress endPoint)
         {
-            EndPoint = route;
+            EndPoint = endPoint;
         }
 
         public EndPointAddress EndPoint { get; }

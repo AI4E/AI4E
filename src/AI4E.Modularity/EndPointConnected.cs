@@ -24,11 +24,11 @@ namespace AI4E.Modularity
 {
     public sealed class EndPointConnected
     {
-        public EndPointConnected(EndPointAddress route)
+        public EndPointConnected(EndPointAddress endPoint)
         {
-            Route = route;
+            EndPoint = endPoint;
         }
 
-        public EndPointAddress Route { get; }
+        public EndPointAddress EndPoint { get; }
     }
 }

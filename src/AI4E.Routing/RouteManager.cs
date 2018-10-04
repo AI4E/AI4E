@@ -13,7 +13,7 @@ namespace AI4E.Routing
 {
     // TODO: This thing is currently not thread safe in regards to the consistency of the coordination service's memory.
     //       We can only ensure consistency within a single session here, but do we have to do?
-    public sealed class RouteManager : IRouteStore
+    public sealed class RouteManager : IRouteManager
     {
         private static readonly byte[] _emptyPayload = new byte[0];
         private static readonly CoordinationEntryPath _routesRootPath = new CoordinationEntryPath("routes");
@@ -105,12 +105,12 @@ namespace AI4E.Routing
             await _coordinationManager.DeleteAsync(path, recursive: true, cancellation: cancellation);
         }
 
-        public async Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options)>> GetRoutesAsync(string messageType, CancellationToken cancellation)
+        public async Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options)>> GetRoutesAsync(string route, CancellationToken cancellation)
         {
-            if (string.IsNullOrWhiteSpace(messageType))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(messageType));
+            if (string.IsNullOrWhiteSpace(route))
+                throw new ArgumentNullOrWhiteSpaceException(nameof(route));
 
-            var path = GetPath(messageType);
+            var path = GetPath(route);
             var entry = await _coordinationManager.GetOrCreateAsync(path, _emptyPayload, EntryCreationModes.Default, cancellation);
 
             Assert(entry != null);
@@ -159,7 +159,7 @@ namespace AI4E.Routing
         }
     }
 
-    public sealed class RouteManagerFactory : IRouteStoreFactory
+    public sealed class RouteManagerFactory : IRouteManagerFactory
     {
         private readonly ICoordinationManager _coordinationManager;
 
@@ -170,7 +170,7 @@ namespace AI4E.Routing
             _coordinationManager = coordinationManager;
         }
 
-        public IRouteStore CreateRouteStore(RouteOptions options)
+        public IRouteManager CreateRouteManager(RouteOptions options)
         {
             // TODO: Validate options
 

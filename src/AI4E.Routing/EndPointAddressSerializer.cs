@@ -1,7 +1,7 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IRouteStore.cs 
- * Types:           AI4E.Routing.IRouteStore
+ * Filename:        EndPointAddressSerializer.cs 
+ * Types:           AI4E.Routing.EndPointAddressSerializer
  * Version:         1.0
  * Author:          Andreas Trütschel
  * Last modified:   11.04.2018 
@@ -28,22 +28,20 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text;
 
 namespace AI4E.Routing
 {
-    public interface IRouteStore
+    public class EndPointAddressSerializer : IEndPointAddressSerializer
     {
-        Task AddRouteAsync(EndPointAddress endPoint, string messageType, CancellationToken cancellation);
-        Task RemoveRouteAsync(EndPointAddress endPoint, string messageType, CancellationToken cancellation);
-        Task RemoveRoutesAsync(EndPointAddress endPoint, CancellationToken cancellation);
-        Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options)>> GetRoutesAsync(string messageType, CancellationToken cancellation);
-    }
+        public byte[] Serialize(EndPointAddress endPoint)
+        {
+            return Encoding.UTF8.GetBytes(endPoint.ToString());
+        }
 
-    public interface IRouteStoreFactory
-    {
-        IRouteStore CreateRouteStore(RouteOptions options);
+        public EndPointAddress Deserialize(byte[] bytes)
+        {
+            return EndPointAddress.Create(Encoding.UTF8.GetString(bytes));
+        }
     }
 }

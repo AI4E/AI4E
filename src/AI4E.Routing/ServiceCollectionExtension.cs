@@ -40,8 +40,8 @@ namespace AI4E.Routing
 
             services.AddSingleton(typeof(IMessageCoder<>), typeof(MessageCoder<>));
             services.AddSingleton(typeof(IEndPointScheduler<>), typeof(RandomEndPointScheduler<>));
-            services.AddSingleton(typeof(IRouteMap<>), typeof(RouteMap<>));
-            services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
+            services.AddSingleton(typeof(IEndPointMap<>), typeof(EndPointMap<>));
+            services.AddSingleton<IEndPointAddressSerializer, EndPointAddressSerializer>();
 
             services.AddCoordinationService();
         }
@@ -56,7 +56,7 @@ namespace AI4E.Routing
 
         public static void AddMessageRouter(this IServiceCollection services)
         {
-            services.AddSingleton<IRouteStoreFactory, RouteManagerFactory>();
+            services.AddSingleton<IRouteManagerFactory, RouteManagerFactory>();
             services.AddSingleton<IMessageRouterFactory, MessageRouterFactory>();
             services.AddHelperServices();
         }

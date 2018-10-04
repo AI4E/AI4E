@@ -1,10 +1,10 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IRouteMap.cs 
- * Types:           AI4E.Routing.IRouteMap'1
+ * Filename:        IEndPointAddressSerializer.cs 
+ * Types:           AI4E.Routing.IEndPointAddressSerializer
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
+ * Last modified:   04.10.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -28,17 +28,11 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace AI4E.Routing
 {
-    public interface IRouteMap<TAddress>
+    public interface IEndPointAddressSerializer
     {
-        ValueTask<IEnumerable<TAddress>> GetMapsAsync(EndPointAddress endPoint, CancellationToken cancellation);
-        Task MapRouteAsync(EndPointAddress localEndPoint, TAddress address, CancellationToken cancellation);
-        Task UnmapRouteAsync(EndPointAddress localEndPoint, TAddress address, CancellationToken cancellation);
-        Task UnmapRouteAsync(EndPointAddress localEndPoint, CancellationToken cancellation);
+        byte[] Serialize(EndPointAddress endPoint);
+        EndPointAddress Deserialize(byte[] bytes);
     }
 }

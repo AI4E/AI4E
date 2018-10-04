@@ -1,7 +1,7 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IRouteStore.cs 
- * Types:           AI4E.Routing.IRouteStore
+ * Filename:        RouteOptions.cs 
+ * Types:           AI4E.Routing.RouteOptions
  * Version:         1.0
  * Author:          Andreas Trütschel
  * Last modified:   11.04.2018 

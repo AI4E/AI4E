@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
@@ -12,17 +13,17 @@ namespace AI4E.Modularity.Debug
         private readonly IEndPointManager _endPointManager;
         private readonly ILogicalEndPoint _logicalEndPoint;
 
-        public LogicalEndPointSkeleton(IEndPointManager endPointManager, EndPointAddress route)
+        public LogicalEndPointSkeleton(IEndPointManager endPointManager, EndPointAddress endPoint)
         {
             if (endPointManager == null)
-                throw new System.ArgumentNullException(nameof(endPointManager));
+                throw new ArgumentNullException(nameof(endPointManager));
 
-            if (route == null)
-                throw new System.ArgumentNullException(nameof(route));
+            if (endPoint == null)
+                throw new ArgumentNullException(nameof(endPoint));
 
             _endPointManager = endPointManager;
 
-            _logicalEndPoint = _endPointManager.GetLogicalEndPoint(route);
+            _logicalEndPoint = _endPointManager.GetLogicalEndPoint(endPoint);
         }
 
         public async Task<byte[]> ReceiveAsync(CancellationToken cancellation = default)

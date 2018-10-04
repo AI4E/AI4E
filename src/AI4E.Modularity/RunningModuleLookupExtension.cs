@@ -61,7 +61,7 @@ namespace AI4E.Modularity
                 // TODO: Performance optimization: We are working with a string, turning it into a stringbuilder, than a string, a stringbuilder...
                 var endPoints = await runningModules.GetEndPointsAsync(a.ToString(), cancellation);
 
-                // We take the entry that was registered first. This is done in order that a vitual end-point cannot override a route for an already existing end-point.
+                // We take the entry that was registered first. This is done in order that a logical end-point cannot override an address of an already existing end-point.
                 var endPoint = endPoints.FirstOrDefault();
 
                 if (endPoint != null)

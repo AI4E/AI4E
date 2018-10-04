@@ -39,18 +39,18 @@ namespace AI4E.Routing
     {
         private static readonly byte[] _emptyByteArray = new byte[0];
 
-        private readonly IRouteSerializer _routeSerializer;
+        private readonly IEndPointAddressSerializer _endPointAddressSerializer;
         private readonly IAddressConversion<TAddress> _addressSerializer;
 
-        public MessageCoder(IRouteSerializer routeSerializer, IAddressConversion<TAddress> addressSerializer)
+        public MessageCoder(IEndPointAddressSerializer endPointAddressSerializer, IAddressConversion<TAddress> addressSerializer)
         {
-            if (routeSerializer == null)
-                throw new ArgumentNullException(nameof(routeSerializer));
+            if (endPointAddressSerializer == null)
+                throw new ArgumentNullException(nameof(endPointAddressSerializer));
 
             if (addressSerializer == null)
                 throw new ArgumentNullException(nameof(addressSerializer));
 
-            _routeSerializer = routeSerializer;
+            _endPointAddressSerializer = endPointAddressSerializer;
             _addressSerializer = addressSerializer;
         }
 
@@ -64,7 +64,7 @@ namespace AI4E.Routing
             var messageType = default(MessageType);
             var frameIdx = message.FrameIndex;
 
-            byte[] remoteRouteBytes, remoteAddressBytes, localRouteBytes, localAddressBytes;
+            byte[] remoteEndPointBytes, remoteAddressBytes, localEndPointBytes, localAddressBytes;
 
             try
             {
@@ -73,14 +73,14 @@ namespace AI4E.Routing
                 {
                     messageType = (MessageType)reader.ReadInt32();
 
-                    var remoteRouteLength = reader.ReadInt32();
-                    remoteRouteBytes = reader.ReadBytes(remoteRouteLength);
+                    var remoteEndPointLength = reader.ReadInt32();
+                    remoteEndPointBytes = reader.ReadBytes(remoteEndPointLength);
 
                     var remoteAddressLength = reader.ReadInt32();
                     remoteAddressBytes = reader.ReadBytes(remoteAddressLength);
 
-                    var localRouteLength = reader.ReadInt32();
-                    localRouteBytes = reader.ReadBytes(localRouteLength);
+                    var localEndPointLength = reader.ReadInt32();
+                    localEndPointBytes = reader.ReadBytes(localEndPointLength);
 
                     var localAddressLength = reader.ReadInt32();
                     localAddressBytes = reader.ReadBytes(localAddressLength);
@@ -93,12 +93,12 @@ namespace AI4E.Routing
                 throw;
             }
 
-            var remoteRoute = remoteRouteBytes.Length > 0 ? _routeSerializer.DeserializeRoute(remoteRouteBytes) : default;
+            var remoteEndPoint = remoteEndPointBytes.Length > 0 ? _endPointAddressSerializer.Deserialize(remoteEndPointBytes) : default;
             var remoteAddress = remoteAddressBytes.Length > 0 ? _addressSerializer.DeserializeAddress(remoteAddressBytes) : default;
-            var localRoute = localRouteBytes.Length > 0 ? _routeSerializer.DeserializeRoute(localRouteBytes) : default;
+            var localEndPoint = localEndPointBytes.Length > 0 ? _endPointAddressSerializer.Deserialize(localEndPointBytes) : default;
             var localAddress = localAddressBytes.Length > 0 ? _addressSerializer.DeserializeAddress(localAddressBytes) : default;
 
-            return (message, localAddress, remoteAddress, remoteRoute, localRoute, messageType);
+            return (message, localAddress, remoteAddress, remoteEndPoint, localEndPoint, messageType);
         }
 
         public IMessage EncodeMessage(IMessage message, TAddress localAddress,
@@ -109,9 +109,9 @@ namespace AI4E.Routing
                 throw new ArgumentNullException(nameof(message));
 
             var serializedLocalAddress = localAddress == null || localAddress.Equals(default) ? _emptyByteArray : _addressSerializer.SerializeAddress(localAddress);
-            var serializedLocalRoute = localEndPoint == null ? _emptyByteArray : _routeSerializer.SerializeRoute(localEndPoint);
+            var serializedLocalEndPoint = localEndPoint == null ? _emptyByteArray : _endPointAddressSerializer.Serialize(localEndPoint);
             var serializedRemoteAddress = remoteAddress == null || remoteAddress.Equals(default) ? _emptyByteArray : _addressSerializer.SerializeAddress(remoteAddress);
-            var serializedRemoteRoute = remoteEndPoint == null ? _emptyByteArray : _routeSerializer.SerializeRoute(remoteEndPoint);
+            var serializedRemoteEndPoint = remoteEndPoint == null ? _emptyByteArray : _endPointAddressSerializer.Serialize(remoteEndPoint);
             var frameIdx = message.FrameIndex;
 
             try
@@ -120,13 +120,13 @@ namespace AI4E.Routing
                 using (var writer = new BinaryWriter(frameStream))
                 {
                     writer.Write((int)messageType);                  // Message type            -- 4 Byte
-                    writer.Write(serializedLocalRoute.Length);       // Local route length      -- 4 Byte
-                    writer.Write(serializedLocalRoute);              // Local route             -- (Local route length Byte)
+                    writer.Write(serializedLocalEndPoint.Length);    // Local ep length         -- 4 Byte
+                    writer.Write(serializedLocalEndPoint);           // Local ep                -- (Local ep length Byte)
                     writer.Write(serializedLocalAddress.Length);     // Local address length    -- 4 Byte
                     writer.Write(serializedLocalAddress);            // Local address           -- (Local address length Byte)
-                    writer.Write(serializedRemoteRoute.Length);      // Remote route length     -- 4 Byte
-                    writer.Write(serializedRemoteRoute);             // Remote route            -- (Remote route length Byte)
-                    writer.Write(serializedRemoteAddress.Length);    // Remote address length   -- 4 Byte
+                    writer.Write(serializedRemoteEndPoint.Length);   // Remote ep length        -- 4 Byte
+                    writer.Write(serializedRemoteEndPoint);          // Remote ep               -- (Remote ep length Byte)
+                    writer.Write(serializedRemoteAddress.Length);    // Remote ep length        -- 4 Byte
                     writer.Write(serializedRemoteAddress);           // Remote address          -- (Remote address length Byte)   
                 }
             }

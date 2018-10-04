@@ -35,13 +35,13 @@ namespace AI4E.Routing
 {
     public interface IEndPointManager : IDisposable
     {
-        ILogicalEndPoint GetLogicalEndPoint(EndPointAddress route);
+        ILogicalEndPoint GetLogicalEndPoint(EndPointAddress endPoint);
     }
 
     public interface IEndPointManager<TAddress> : IEndPointManager
     {
         TAddress LocalAddress { get; }
 
-        new ILogicalEndPoint<TAddress> GetLogicalEndPoint(EndPointAddress route);
+        new ILogicalEndPoint<TAddress> GetLogicalEndPoint(EndPointAddress endPoint);
     }
 }

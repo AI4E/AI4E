@@ -52,7 +52,7 @@ namespace AI4E.Routing
         #region Fields
 
         private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
-        private readonly IRouteMap<TAddress> _routeManager;
+        private readonly IEndPointMap<TAddress> _endPointMap;
         private readonly IMessageCoder<TAddress> _messageCoder;
         private readonly IEndPointScheduler<TAddress> _endPointScheduler;
         private readonly IServiceProvider _serviceProvider;
@@ -74,7 +74,7 @@ namespace AI4E.Routing
         #region C'tor
 
         public EndPointManager(IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
-                               IRouteMap<TAddress> routeManager,
+                               IEndPointMap<TAddress> endPointMap,
                                IMessageCoder<TAddress> messageCoder,
                                IEndPointScheduler<TAddress> endPointScheduler,
                                IServiceProvider serviceProvider,
@@ -83,8 +83,8 @@ namespace AI4E.Routing
             if (endPointMultiplexer == null)
                 throw new ArgumentNullException(nameof(endPointMultiplexer));
 
-            if (routeManager == null)
-                throw new ArgumentNullException(nameof(routeManager));
+            if (endPointMap == null)
+                throw new ArgumentNullException(nameof(endPointMap));
 
             if (messageCoder == null)
                 throw new ArgumentNullException(nameof(messageCoder));
@@ -96,14 +96,14 @@ namespace AI4E.Routing
                 throw new ArgumentNullException(nameof(serviceProvider));
 
             _endPointMultiplexer = endPointMultiplexer;
-            _routeManager = routeManager;
+            _endPointMap = endPointMap;
             _messageCoder = messageCoder;
             _endPointScheduler = endPointScheduler;
             _serviceProvider = serviceProvider;
             _logger = logger;
             _endPoints = new WeakDictionary<EndPointAddress, LogicalEndPoint>();
 
-            _txQueue = new AsyncProducerConsumerQueue<(IMessage message, EndPointAddress localEndPoint, EndPointAddress RemoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)>();
+            _txQueue = new AsyncProducerConsumerQueue<(IMessage message, EndPointAddress localEndPoint, EndPointAddress remoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)>();
 
             _sendProcess = new AsyncProcess(SendProcess);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
@@ -161,14 +161,14 @@ namespace AI4E.Routing
 
         #endregion
 
-        public ILogicalEndPoint<TAddress> GetLogicalEndPoint(EndPointAddress route)
+        public ILogicalEndPoint<TAddress> GetLogicalEndPoint(EndPointAddress endPoint)
         {
-            if (route == null)
-                throw new ArgumentNullException(nameof(route));
+            if (endPoint == null)
+                throw new ArgumentNullException(nameof(endPoint));
 
-            var result = CreateLogicalEndPoint(route); // TODO: The logical end point must not initialize directly;
+            var result = CreateLogicalEndPoint(endPoint); // TODO: The logical end point must not initialize directly;
 
-            if (_endPoints.GetOrAdd(route, result) != result)
+            if (_endPoints.GetOrAdd(endPoint, result) != result)
             {
                 throw new Exception("End point already present!"); // TODO
             }
@@ -176,24 +176,24 @@ namespace AI4E.Routing
             return result;
         }
 
-        ILogicalEndPoint IEndPointManager.GetLogicalEndPoint(EndPointAddress route)
+        ILogicalEndPoint IEndPointManager.GetLogicalEndPoint(EndPointAddress endPoint)
         {
-            return GetLogicalEndPoint(route);
+            return GetLogicalEndPoint(endPoint);
         }
 
-        private LogicalEndPoint CreateLogicalEndPoint(EndPointAddress route)
+        private LogicalEndPoint CreateLogicalEndPoint(EndPointAddress endPoint)
         {
-            var physicalEndPoint = GetMultiplexPhysicalEndPoint(route);
+            var physicalEndPoint = GetMultiplexPhysicalEndPoint(endPoint);
             var logger = _serviceProvider.GetService<ILogger<LogicalEndPoint>>();
-            var result = new LogicalEndPoint(this, physicalEndPoint, route, _messageCoder, _routeManager, logger);
+            var result = new LogicalEndPoint(this, physicalEndPoint, endPoint, _messageCoder, _endPointMap, logger);
 
             Assert(result != null);
             return result;
         }
 
-        private IPhysicalEndPoint<TAddress> GetMultiplexPhysicalEndPoint(EndPointAddress route)
+        private IPhysicalEndPoint<TAddress> GetMultiplexPhysicalEndPoint(EndPointAddress endPoint)
         {
-            var result = _endPointMultiplexer.GetPhysicalEndPoint("end-points/" + route.LogicalAddress);
+            var result = _endPointMultiplexer.GetPhysicalEndPoint("end-points/" + endPoint.LogicalAddress);
             Assert(result != null);
             return result;
         }
@@ -331,7 +331,7 @@ namespace AI4E.Routing
         {
             try
             {
-                var replica = await _routeManager.GetMapsAsync(remoteEndPoint, cancellation);
+                var replica = await _endPointMap.GetMapsAsync(remoteEndPoint, cancellation);
 
                 replica = Schedule(replica);
 
@@ -404,7 +404,7 @@ namespace AI4E.Routing
         {
             private readonly EndPointManager<TAddress> _endPointManager;
             private readonly IMessageCoder<TAddress> _messageCoder;
-            private readonly IRouteMap<TAddress> _routeManager;
+            private readonly IEndPointMap<TAddress> _endPointMap;
             private readonly ILogger<LogicalEndPoint> _logger;
 
             private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
@@ -414,9 +414,9 @@ namespace AI4E.Routing
 
             public LogicalEndPoint(EndPointManager<TAddress> endPointManager,
                                  IPhysicalEndPoint<TAddress> physicalEndPoint,
-                                 EndPointAddress route,
+                                 EndPointAddress endPointAddress,
                                  IMessageCoder<TAddress> messageCoder,
-                                 IRouteMap<TAddress> routeManager,
+                                 IEndPointMap<TAddress> endPointMap,
                                  ILogger<LogicalEndPoint> logger)
             {
                 if (endPointManager == null)
@@ -425,20 +425,20 @@ namespace AI4E.Routing
                 if (physicalEndPoint == null)
                     throw new ArgumentNullException(nameof(physicalEndPoint));
 
-                if (route == null)
-                    throw new ArgumentNullException(nameof(route));
+                if (endPointAddress == null)
+                    throw new ArgumentNullException(nameof(endPointAddress));
 
                 if (messageCoder == null)
                     throw new ArgumentNullException(nameof(messageCoder));
 
-                if (routeManager == null)
-                    throw new ArgumentNullException(nameof(routeManager));
+                if (endPointMap == null)
+                    throw new ArgumentNullException(nameof(endPointMap));
 
                 _endPointManager = endPointManager;
                 PhysicalEndPoint = physicalEndPoint;
-                EndPoint = route;
+                EndPoint = endPointAddress;
                 _messageCoder = messageCoder;
-                _routeManager = routeManager;
+                _endPointMap = endPointMap;
                 _logger = logger;
                 _receiveProcess = new AsyncProcess(ReceiveProcess);
                 _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
@@ -459,7 +459,7 @@ namespace AI4E.Routing
 
                 try
                 {
-                    await _routeManager.MapRouteAsync(EndPoint, LocalAddress, cancellation);
+                    await _endPointMap.MapEndPointAsync(EndPoint, LocalAddress, cancellation);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
@@ -498,7 +498,7 @@ namespace AI4E.Routing
                 {
                     _logger?.LogDebug($"Unmap local end-point '{EndPoint}' from physical end-point {LocalAddress}.");
 
-                    await _routeManager.UnmapRouteAsync(EndPoint, LocalAddress, cancellation: default).HandleExceptionsAsync(_logger);
+                    await _endPointMap.UnmapEndPointAsync(EndPoint, LocalAddress, cancellation: default).HandleExceptionsAsync(_logger);
                 }
 
                 async Task TerminateReception()

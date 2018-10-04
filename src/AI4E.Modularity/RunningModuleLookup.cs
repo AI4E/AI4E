@@ -105,14 +105,14 @@ namespace AI4E.Modularity
                         writer.Write(normalizedPrefixBytes.Length);
                         writer.Write(normalizedPrefixBytes);
 
-                        var routeBytes = Encoding.UTF8.GetBytes(endPoint.LogicalAddress);
+                        var endPointAddressBytes2 = Encoding.UTF8.GetBytes(endPoint.LogicalAddress);
 
-                        using (var stream = new MemoryStream(capacity: 4 + routeBytes.Length))
+                        using (var stream = new MemoryStream(capacity: 4 + endPointAddressBytes2.Length))
                         {
                             using (var writer2 = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
                             {
-                                writer2.Write(routeBytes.Length);
-                                writer2.Write(routeBytes);
+                                writer2.Write(endPointAddressBytes2.Length);
+                                writer2.Write(endPointAddressBytes2);
                             }
 
                             var payload = stream.ToArray();
@@ -174,7 +174,7 @@ namespace AI4E.Modularity
 
             var normalizedPrefix = NormalizePrefix(prefix);
 
-            // It is not possible to register a route for the root path.
+            // It is not possible to register an end-point address for the root path.
             if (string.IsNullOrWhiteSpace(normalizedPrefix))
             {
                 return Enumerable.Empty<EndPointAddress>();
@@ -194,9 +194,9 @@ namespace AI4E.Modularity
                 using (var stream = childEntry.OpenStream())
                 using (var reader = new BinaryReader(stream))
                 {
-                    var routeBytesLength = reader.ReadInt32();
-                    var routeBytes = reader.ReadBytes(routeBytesLength);
-                    result.Add(new EndPointAddress(Encoding.UTF8.GetString(routeBytes)));
+                    var endPointBytesLength = reader.ReadInt32();
+                    var endPointBytes = reader.ReadBytes(endPointBytesLength);
+                    result.Add(new EndPointAddress(Encoding.UTF8.GetString(endPointBytes)));
                 }
             }
 
