@@ -29,9 +29,18 @@ namespace AI4E
         [MessageProcessorContext]
         public IMessageProcessorContext Context { get; internal set; }
 
-        public virtual ValueTask<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, ValueTask<IDispatchResult>> next, CancellationToken cancellation)
+        public virtual ValueTask<IDispatchResult> ProcessAsync<TMessage>(DispatchDataDictionary<TMessage> dispatchData,
+                                                                         Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
+                                                                         CancellationToken cancellation)
+            where TMessage : class
         {
-            return next(message);
+            if (dispatchData == null)
+                throw new ArgumentNullException(nameof(dispatchData));
+
+            if (next == null)
+                throw new ArgumentNullException(nameof(next));
+
+            return next(dispatchData);
         }
     }
 }

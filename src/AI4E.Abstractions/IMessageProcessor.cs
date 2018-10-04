@@ -26,16 +26,16 @@ namespace AI4E
 {
     public interface IMessageProcessor
     {
-        ValueTask<IDispatchResult> ProcessAsync<TMessage>(TMessage message, Func<TMessage, ValueTask<IDispatchResult>> next, CancellationToken cancellation);
+        ValueTask<IDispatchResult> ProcessAsync<TMessage>(DispatchDataDictionary<TMessage> dispatchData,
+                                                          Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
+                                                          CancellationToken cancellation)
+            where TMessage : class;
     }
 
     public interface IMessageProcessorContext
     {
         MessageHandlerActionDescriptor MessageHandlerAction { get; }
         object MessageHandler { get; }
-        Type MessageType { get; }
-
-        DispatchValueDictionary DispatchValues { get; }
     }
 
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]

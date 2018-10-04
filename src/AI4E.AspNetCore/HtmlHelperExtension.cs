@@ -13,6 +13,7 @@ namespace AI4E.AspNetCore
     public static class HtmlHelperExtension
     {
         public static async Task<string> RenderViewExtensionAsync<TViewExtension>(this IMessageDispatcher messageDispatcher)
+            where TViewExtension : class, new()
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -30,13 +31,25 @@ namespace AI4E.AspNetCore
             }
             else if (dispatchResult.IsAggregateResult(out var aggregateResult))
             {
-                aggregateResult = aggregateResult.Flatten();
-
+                var flattenedDispatchResult = aggregateResult.Flatten();
                 var contentBuilder = new StringBuilder();
 
-                foreach (var r in aggregateResult.DispatchResults)
+                if (flattenedDispatchResult is IAggregateDispatchResult adr)
                 {
-                    var result = (r as IDispatchResult<string>)?.Result;
+
+                    foreach (var r in adr.DispatchResults)
+                    {
+                        var result = (r as IDispatchResult<string>)?.Result;
+
+                        if (result != null)
+                        {
+                            contentBuilder.Append(result);
+                        }
+                    }
+                }
+                else
+                {
+                    var result = (flattenedDispatchResult as IDispatchResult<string>)?.Result;
 
                     if (result != null)
                     {
@@ -56,6 +69,7 @@ namespace AI4E.AspNetCore
         }
 
         public static async Task<string> RenderViewExtensionAsync<TViewExtension>(this IMessageDispatcher messageDispatcher, TViewExtension viewExtension)
+             where TViewExtension : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -73,13 +87,25 @@ namespace AI4E.AspNetCore
             }
             else if (dispatchResult.IsAggregateResult(out var aggregateResult))
             {
-                aggregateResult = aggregateResult.Flatten();
-
+                var flattenedDispatchResult = aggregateResult.Flatten();
                 var contentBuilder = new StringBuilder();
 
-                foreach (var r in aggregateResult.DispatchResults)
+                if (flattenedDispatchResult is IAggregateDispatchResult adr)
                 {
-                    var result = (r as IDispatchResult<string>)?.Result;
+
+                    foreach (var r in adr.DispatchResults)
+                    {
+                        var result = (r as IDispatchResult<string>)?.Result;
+
+                        if (result != null)
+                        {
+                            contentBuilder.Append(result);
+                        }
+                    }
+                }
+                else
+                {
+                    var result = (flattenedDispatchResult as IDispatchResult<string>)?.Result;
 
                     if (result != null)
                     {
@@ -99,27 +125,16 @@ namespace AI4E.AspNetCore
         }
 
         public static Task<IHtmlContent> RenderViewExtensionAsync<TViewExtension>(this IHtmlHelper html)
+             where TViewExtension : class, new()
         {
             if (html == null)
                 throw new ArgumentNullException(nameof(html));
 
-            var viewExtension = default(TViewExtension);
-
-            try
-            {
-                viewExtension = Activator.CreateInstance<TViewExtension>();
-            }
-            catch (MissingMethodException exc)
-            {
-                throw new ArgumentException("The specified view extension must have a parameterless constructor.", exc);
-            }
-
-            Debug.Assert(viewExtension != null);
-
-            return html.RenderViewExtensionAsync(viewExtension);
+            return html.RenderViewExtensionAsync(new TViewExtension());
         }
 
         public static async Task<IHtmlContent> RenderViewExtensionAsync<TViewExtension>(this IHtmlHelper html, TViewExtension viewExtension)
+            where TViewExtension : class
         {
             if (html == null)
                 throw new ArgumentNullException(nameof(html));
@@ -138,7 +153,7 @@ namespace AI4E.AspNetCore
 
             try
             {
-                dispatchResult = await dispatcher.DispatchAsync(viewExtension, new DispatchValueDictionary(), publish: true, cancellation).WithCancellation(cancellation);
+                dispatchResult = await dispatcher.DispatchAsync(viewExtension, publish: true, cancellation).WithCancellation(cancellation);
             }
             catch (OperationCanceledException)
             {
@@ -157,13 +172,25 @@ namespace AI4E.AspNetCore
             }
             else if (dispatchResult.IsAggregateResult(out var aggregateResult))
             {
-                aggregateResult = aggregateResult.Flatten();
-
+                var flattenedDispatchResult = aggregateResult.Flatten();
                 var contentBuilder = new StringBuilder();
 
-                foreach (var r in aggregateResult.DispatchResults)
+                if (flattenedDispatchResult is IAggregateDispatchResult adr)
                 {
-                    var result = (r as IDispatchResult<string>)?.Result;
+
+                    foreach (var r in adr.DispatchResults)
+                    {
+                        var result = (r as IDispatchResult<string>)?.Result;
+
+                        if (result != null)
+                        {
+                            contentBuilder.Append(result);
+                        }
+                    }
+                }
+                else
+                {
+                    var result = (flattenedDispatchResult as IDispatchResult<string>)?.Result;
 
                     if (result != null)
                     {

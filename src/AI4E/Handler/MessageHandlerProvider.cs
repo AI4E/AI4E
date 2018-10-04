@@ -7,6 +7,7 @@ using static System.Diagnostics.Debug;
 namespace AI4E.Handler
 {
     public sealed class MessageHandlerProvider<TMessage> : IContextualProvider<IMessageHandler<TMessage>>
+        where TMessage : class
     {
         private readonly Type _type;
         private readonly MessageHandlerActionDescriptor _actionDescriptor;

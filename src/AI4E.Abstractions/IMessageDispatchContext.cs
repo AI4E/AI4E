@@ -26,7 +26,7 @@ namespace AI4E
     public interface IMessageDispatchContext
     {
         IServiceProvider DispatchServices { get; }
-        DispatchValueDictionary DispatchValues { get; }
+        DispatchDataDictionary DispatchData { get; }
     }
 
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]

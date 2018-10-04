@@ -19,7 +19,7 @@
  */
 
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,21 +30,23 @@ namespace AI4E
     /// </summary>
     public static class MessageDispatcherExtension
     {
-        public static Task<IDispatchResult> PublishAsync<TMessage>(this IMessageDispatcher messageDispatcher,
-                                                                   TMessage message,
-                                                                   DispatchValueDictionary context,
-                                                                   CancellationToken cancellation = default)
+        [Obsolete("Use DispatchAsync(dispatchData, bool, CancellationToken) with publish set to true.")]
+        public static Task<IDispatchResult> PublishAsync(this IMessageDispatcher messageDispatcher,
+                                                         DispatchDataDictionary dispatchData,
+                                                         CancellationToken cancellation = default)
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
+            if (dispatchData == null)
+                throw new ArgumentNullException(nameof(dispatchData));
 
-            return messageDispatcher.DispatchAsync(message, context, publish: true, cancellation);
+            return messageDispatcher.DispatchAsync(dispatchData, publish: true, cancellation);
         }
 
+        [Obsolete("Use DispatchAsync<TMessage>(TMessage, bool, CancellationToken) with publish set to true.")]
         public static Task<IDispatchResult> PublishAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, CancellationToken cancellation = default)
+            where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -52,10 +54,26 @@ namespace AI4E
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            return messageDispatcher.DispatchAsync(message, new DispatchValueDictionary(), publish: true, cancellation);
+            return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message), publish: true, cancellation);
+        }
+
+        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, IEnumerable<KeyValuePair<string, object>> data, CancellationToken cancellation = default)
+             where TMessage : class
+        {
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
+
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message, data), publish: false, cancellation);
         }
 
         public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, CancellationToken cancellation = default)
+             where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -63,31 +81,20 @@ namespace AI4E
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            return messageDispatcher.DispatchAsync(message, publish: false, cancellation);
+            return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message), publish: false, cancellation);
         }
 
         public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, CancellationToken cancellation = default)
+             where TMessage : class, new()
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
-            var message = default(TMessage);
-
-            try
-            {
-                message = Activator.CreateInstance<TMessage>();
-            }
-            catch (MissingMethodException exc)
-            {
-                throw new ArgumentException("The specified message must have a parameterless constructor.", exc);
-            }
-
-            Debug.Assert(message != null);
-
-            return messageDispatcher.DispatchAsync(message, cancellation);
+            return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(new TMessage()), publish: false, cancellation);
         }
 
-        public static Task<IDispatchResult> DispatchAsync(this IMessageDispatcher messageDispatcher, object message, bool publish, CancellationToken cancellation = default)
+        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, IEnumerable<KeyValuePair<string, object>> data, bool publish, CancellationToken cancellation = default)
+             where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -95,10 +102,14 @@ namespace AI4E
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            return messageDispatcher.DispatchAsync(message.GetType(), message, new DispatchValueDictionary(), publish, cancellation);
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message, data), publish, cancellation);
         }
 
-        public static Task<IDispatchResult> DispatchAsync(this IMessageDispatcher messageDispatcher, object message, CancellationToken cancellation = default)
+        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, bool publish, CancellationToken cancellation = default)
+             where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -106,31 +117,16 @@ namespace AI4E
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            return messageDispatcher.DispatchAsync(message.GetType(), message, new DispatchValueDictionary(), publish: false, cancellation);
+            return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message), publish, cancellation);
         }
 
-        public static Task<IDispatchResult> DispatchAsync(this IMessageDispatcher messageDispatcher, Type messageType, CancellationToken cancellation = default)
+        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, bool publish, CancellationToken cancellation = default)
+             where TMessage : class, new()
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
-            if (messageType == null)
-                throw new ArgumentNullException(nameof(messageType));
-
-            var message = default(object);
-
-            try
-            {
-                message = Activator.CreateInstance(messageType);
-            }
-            catch (MissingMethodException exc)
-            {
-                throw new ArgumentException("The specified message must have a parameterless constructor.", exc);
-            }
-
-            Debug.Assert(message != null);
-
-            return messageDispatcher.DispatchAsync(message, cancellation);
+            return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(new TMessage()), publish, cancellation);
         }
     }
 }

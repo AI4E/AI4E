@@ -4,13 +4,22 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>AI4E</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
+  </ItemGroup>
   
   <ItemGroup>
+	<PackageReference Include="System.Collections.Immutable" Version="$(SystemCollectionsImmutableVersion)" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsDependencyInjectionAbstractionsVersion)" />
     <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
     <PackageReference Include="System.Memory" Version="$(SystemMemoryVersion)" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="$(SystemRuntimeCompilerServicesUnsafeVersion)" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="$(SystemThreadingTasksExtensionsVersion)" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Folder Include="Internal\" />
   </ItemGroup> 
 
 </Project>

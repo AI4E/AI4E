@@ -36,7 +36,7 @@ namespace AI4E
     /// <summary>
     /// Describes a single message handler action (method).
     /// </summary>
-    public struct MessageHandlerActionDescriptor
+    public readonly struct MessageHandlerActionDescriptor
     {
         /// <summary>
         /// Creates a new instance of the <see cref="MessageHandlerActionDescriptor"/> type.

@@ -31,6 +31,9 @@ namespace AI4E.DispatchResults
 
         public AggregateDispatchResult(IEnumerable<IDispatchResult> dispatchResults)
         {
+            if (dispatchResults == null)
+                throw new ArgumentNullException(nameof(dispatchResults));
+
             _dispatchResults = dispatchResults.ToImmutableArray();
         }
 
@@ -42,7 +45,7 @@ namespace AI4E.DispatchResults
 
         public override string ToString()
         {
-            return ((IDispatchResult)this).Message;
+            return Message;
         }
     }
 }

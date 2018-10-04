@@ -4,7 +4,7 @@
  * Types:           AI4E.IMessageDispatcher
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   25.02.2018 
+ * Last modified:   09.09.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -28,6 +28,8 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+// TODO: Can we specify a non-generic register function?
+
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,24 +42,9 @@ namespace AI4E
     public interface IMessageDispatcher
     {
         /// <summary>
-        /// Asynchronously dispatches a message.
-        /// </summary>
-        /// <param name="message">The message to dispatch.</param>
-        /// <param name="publish">A boolean value specifying whether the message shall be published to all handlers.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <typeparam name="TMessage">The type of message.</typeparam>
-        /// <returns>
-        /// A task representing the asynchronous operation.
-        /// The tasks result contains an <see cref="IDispatchResult"/> indicating the message handling state.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is null.</exception>
-        Task<IDispatchResult> DispatchAsync<TMessage>(TMessage message, DispatchValueDictionary context, bool publish, CancellationToken cancellation = default);
-
-        /// <summary>
         /// Asynchronously dispatches a message of the specified message type.
         /// </summary>
-        /// <param name="messageType">The type of message.</param>
-        /// <param name="message">The message to dispatch.</param>
+        /// <param name="dispatchData">The dispatchd data dictionary that contains the message and supporting values.</param>
         /// <param name="publish">A boolean value specifying whether the message shall be published to all handlers.</param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>
@@ -66,7 +53,7 @@ namespace AI4E
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if either <paramref name="messageType"/> or <paramref name="message"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown if <paramref name="message"/> is not of type <paramref name="messageType"/> or a derived type.</exception>
-        Task<IDispatchResult> DispatchAsync(Type messageType, object message, DispatchValueDictionary context, bool publish, CancellationToken cancellation = default);
+        Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation = default); // TODO: Return ValueTask<IDispatchResult>
 
         /// <summary>
         /// Registers a message handler.
@@ -77,6 +64,7 @@ namespace AI4E
         /// A <see cref="IHandlerRegistration"/> that represents the handlers registration.
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="messageHandlerProvider"/> is null.</exception>
-        IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider);
+        IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
+            where TMessage : class;
     }
 }
