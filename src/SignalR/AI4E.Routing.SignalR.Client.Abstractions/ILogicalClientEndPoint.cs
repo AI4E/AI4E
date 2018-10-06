@@ -12,7 +12,7 @@ namespace AI4E.Routing.SignalR.Client
     public interface ILogicalClientEndPoint
     {
         Task<IMessage> SendAsync(IMessage message, CancellationToken cancellation = default);
-        Task ReceiveAsync(Func<IMessage, CancellationToken, Task<IMessage>> handler, CancellationToken cancellation = default);
+        Task<IMessageReceiveResult> ReceiveAsync(CancellationToken cancellation = default);
 
         ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation = default);
     }

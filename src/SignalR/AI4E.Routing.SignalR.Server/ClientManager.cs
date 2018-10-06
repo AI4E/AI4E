@@ -270,26 +270,36 @@ namespace AI4E.Routing.SignalR.Server
 
         private async Task ReceiveProcess(CancellationToken cancellation)
         {
-            var semaphore = new SemaphoreSlim(10);
-
             while (cancellation.ThrowOrContinue())
             {
                 try
                 {
-                    // Throttle the receive process to 10 concurrent requests
-                    await semaphore.WaitAsync(cancellation);
+                    var receiveResult = await _logicalEndPoint.ReceiveAsync(cancellation);
 
-                    Task.Run(async () =>
+                    async Task HandleResult()
                     {
+                        cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation, receiveResult.Cancellation).Token;
+
                         try
                         {
-                            await _logicalEndPoint.ReceiveAsync(ReceiveAsync, cancellation);
+                            var response = await ReceiveAsync(receiveResult.Message, receiveResult.RemoteEndPoint, cancellation);
+
+                            if (response != null)
+                            {
+                                await receiveResult.SendResponseAsync(response);
+                            }
+                            else
+                            {
+                                await receiveResult.SendAckAsync();
+                            }
                         }
-                        finally
+                        catch (OperationCanceledException) when (receiveResult.Cancellation.IsCancellationRequested)
                         {
-                            semaphore.Release();
+                            await receiveResult.SendCancellationAsync();
                         }
-                    }).HandleExceptions(_logger);
+                    }
+
+                    HandleResult().HandleExceptions(_logger);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
@@ -299,7 +309,7 @@ namespace AI4E.Routing.SignalR.Server
             }
         }
 
-        private async Task<IMessage> ReceiveAsync(IMessage message, EndPointAddress endPoint, CancellationToken cancellation)
+        private async Task<IMessage> ReceiveAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation)
         {
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
@@ -307,7 +317,7 @@ namespace AI4E.Routing.SignalR.Server
                 var messageType = (MessageType)reader.ReadInt16();
                 reader.ReadInt16();
 
-                var router = GetRouter(endPoint);
+                var router = GetRouter(remoteEndPoint);
 
                 switch (messageType)
                 {
@@ -337,9 +347,9 @@ namespace AI4E.Routing.SignalR.Server
                             var route = Encoding.UTF8.GetString(routeBytes);
                             var endPointBytesLength = reader.ReadInt32();
                             var endPointBytes = reader.ReadBytes(endPointBytesLength);
-                            var remoteEndPoint = EndPointAddress.Create(Encoding.UTF8.GetString(endPointBytes));
+                            var endPoint = EndPointAddress.Create(Encoding.UTF8.GetString(endPointBytes));
                             var publish = reader.ReadBoolean();
-                            var response = await router.RouteAsync(route, message, publish, remoteEndPoint, cancellation);
+                            var response = await router.RouteAsync(route, message, publish, endPoint, cancellation);
                             return response;
                         }
 

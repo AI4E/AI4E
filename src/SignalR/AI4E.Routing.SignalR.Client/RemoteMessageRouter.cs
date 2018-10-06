@@ -355,26 +355,36 @@ namespace AI4E.Routing.SignalR.Client
         {
             await _initializationHelper.Initialization.WithCancellation(cancellation);
 
-            var semaphore = new SemaphoreSlim(10);
-
             while (cancellation.ThrowOrContinue())
             {
                 try
                 {
-                    // Throttle the receive process to 10 concurrent requests
-                    await semaphore.WaitAsync(cancellation);
+                    var receiveResult = await _logicalEndPoint.ReceiveAsync(cancellation);
 
-                    Task.Run(async () =>
+                    async Task HandleResult()
                     {
+                        cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation, receiveResult.Cancellation).Token;
+
                         try
                         {
-                            await _logicalEndPoint.ReceiveAsync(ReceiveAsync, cancellation);
+                            var response = await ReceiveAsync(receiveResult.Message, cancellation);
+
+                            if (response != null)
+                            {
+                                await receiveResult.SendResponseAsync(response);
+                            }
+                            else
+                            {
+                                await receiveResult.SendAckAsync();
+                            }
                         }
-                        finally
+                        catch (OperationCanceledException) when (receiveResult.Cancellation.IsCancellationRequested)
                         {
-                            semaphore.Release();
+                            await receiveResult.SendCancellationAsync();
                         }
-                    }).HandleExceptions(_logger);
+                    }
+
+                    HandleResult().HandleExceptions(_logger);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)

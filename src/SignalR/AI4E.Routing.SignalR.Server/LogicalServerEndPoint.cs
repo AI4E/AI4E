@@ -114,11 +114,8 @@ namespace AI4E.Routing.SignalR.Server
             }
         }
 
-        public async Task ReceiveAsync(Func<IMessage, EndPointAddress, CancellationToken, Task<IMessage>> handler, CancellationToken cancellation)
+        public async Task<IMessageReceiveResult<EndPointAddress>> ReceiveAsync(CancellationToken cancellation)
         {
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
                 if (_disposeHelper.IsDisposed)
@@ -132,40 +129,73 @@ namespace AI4E.Routing.SignalR.Server
 
                     var (message, seqNum, endPoint) = await _rxQueue.DequeueAsync(combinedCancellation);
 
-
-                    var cancellationRequestSource = _cancellationTable.GetOrAdd(seqNum, new CancellationTokenSource());
-                    var cancellationRequest = cancellationRequestSource.Token;
-
-                    IMessage response;
-
-                    try
-                    {
-                        response = await handler(message, endPoint, CancellationTokenSource.CreateLinkedTokenSource(combinedCancellation, cancellationRequest).Token);
-                    }
-                    catch (OperationCanceledException) when (cancellationRequest.IsCancellationRequested)
-                    {
-                        var cancellationResponse = new Message();
-
-                        EncodeServerMessage(cancellationResponse, seqNum: GetNextSeqNum(), corr: seqNum, MessageType.CancellationResponse);
-
-                        await SendInternalAsync(cancellationResponse, endPoint, combinedCancellation);
-
-                        return;
-                    }
-
-                    if (response == null)
-                    {
-                        response = new Message();
-                    }
-
-                    EncodeServerMessage(response, seqNum: GetNextSeqNum(), corr: seqNum, MessageType.Response);
-
-                    await SendInternalAsync(response, endPoint, combinedCancellation);
+                    return new MessageReceiveResult(this, message, seqNum, endPoint);
                 }
                 catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
                 {
                     throw new ObjectDisposedException(GetType().FullName);
                 }
+            }
+        }
+
+        private sealed class MessageReceiveResult : IMessageReceiveResult<EndPointAddress>
+        {
+            private readonly LogicalServerEndPoint _logicalEndPoint;
+            private readonly int _seqNum;
+            private readonly CancellationTokenSource _cancellationRequestSource;
+
+            public MessageReceiveResult(LogicalServerEndPoint logicalEndPoint, IMessage message, int seqNum, EndPointAddress remoteEndPoint)
+            {
+                _logicalEndPoint = logicalEndPoint;
+                Message = message;
+                _seqNum = seqNum;
+                RemoteEndPoint = remoteEndPoint;
+
+                _cancellationRequestSource = _logicalEndPoint._cancellationTable.GetOrAdd(seqNum, new CancellationTokenSource());
+            }
+
+            public CancellationToken Cancellation => _cancellationRequestSource.Token;
+
+            public IMessage Message { get; }
+
+            public EndPointAddress RemoteEndPoint { get; }
+
+            public Task SendResponseAsync(IMessage response)
+            {
+                if (response == null)
+                    throw new ArgumentNullException(nameof(response));
+
+                return InternalSendResponseAsync(response);
+            }
+
+            public Task SendAckAsync()
+            {
+                return InternalSendResponseAsync(response: null);
+            }
+
+            public Task SendCancellationAsync()
+            {
+                var cancellationResponse = new Message();
+                EncodeServerMessage(cancellationResponse, seqNum: _logicalEndPoint.GetNextSeqNum(), corr: _seqNum, MessageType.CancellationResponse);
+                return _logicalEndPoint.SendInternalAsync(cancellationResponse, RemoteEndPoint, cancellation: default);
+            }
+
+            private Task InternalSendResponseAsync(IMessage response)
+            {
+                if (response == null)
+                {
+                    response = new Message();
+                }
+
+                EncodeServerMessage(response, seqNum: _logicalEndPoint.GetNextSeqNum(), corr: _seqNum, MessageType.Response);
+
+                return _logicalEndPoint.SendInternalAsync(response, RemoteEndPoint, Cancellation);
+            }
+
+            public void Dispose()
+            {
+                _cancellationRequestSource.Dispose();
+                _logicalEndPoint._cancellationTable.Remove(_seqNum, _cancellationRequestSource);
             }
         }
 

@@ -10,6 +10,7 @@
     <Compile Include="..\..\AI4E.Remoting\TypeSerializer.cs" Link="Remoting\TypeSerializer.cs" />
     <Compile Include="..\..\AI4E.Routing\RemoteMessageDispatcher.cs" Link="Routing\RemoteMessageDispatcher.cs" />
     <Compile Include="..\..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
+    <Compile Include="..\..\Common\DictionaryExtension.cs" Link="Internal\DictionaryExtension.cs" />
     <Compile Include="..\..\Common\CustomAttributeProviderExtension.cs" Link="Internal\CustomAttributeProviderExtension.cs" />
     <Compile Include="..\..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
     <Compile Include="..\..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
