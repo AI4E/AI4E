@@ -67,9 +67,34 @@ namespace AI4E.Routing
         // A buffer for messages to send. 
         // Messages are not sent directly to the remote end point but stored and processed one after another by a seperate async process. 
         // This enables to send again a messages that no physical end point can be found for currently or the sent failed.
-        private readonly AsyncProducerConsumerQueue<(IMessage message, EndPointAddress localEndPoint, EndPointAddress remoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)> _txQueue;
+        private readonly AsyncProducerConsumerQueue<TransmitMessage> _txQueue = new AsyncProducerConsumerQueue<TransmitMessage>();
 
         #endregion
+
+        private readonly struct TransmitMessage
+        {
+            public TransmitMessage(IMessage message,
+                                   EndPointAddress localEndPoint,
+                                   EndPointAddress remoteEndPoint,
+                                   int attempt,
+                                   TaskCompletionSource<object> taskCompletionSource,
+                                   CancellationToken cancellation)
+            {
+                Message = message;
+                LocalEndPoint = localEndPoint;
+                RemoteEndPoint = remoteEndPoint;
+                Attempt = attempt;
+                TaskCompletionSource = taskCompletionSource;
+                Cancellation = cancellation;
+            }
+
+            public IMessage Message { get; }
+            public EndPointAddress LocalEndPoint { get; }
+            public EndPointAddress RemoteEndPoint { get; }
+            public int Attempt { get; }
+            public TaskCompletionSource<object> TaskCompletionSource { get; }
+            public CancellationToken Cancellation { get; }
+        }
 
         #region C'tor
 
@@ -102,8 +127,6 @@ namespace AI4E.Routing
             _serviceProvider = serviceProvider;
             _logger = logger;
             _endPoints = new WeakDictionary<EndPointAddress, LogicalEndPoint>();
-
-            _txQueue = new AsyncProducerConsumerQueue<(IMessage message, EndPointAddress localEndPoint, EndPointAddress remoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)>();
 
             _sendProcess = new AsyncProcess(SendProcess);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
@@ -255,7 +278,7 @@ namespace AI4E.Routing
                 {
                     var tcs = new TaskCompletionSource<object>();
 
-                    await _txQueue.EnqueueAsync((message, localEndPoint, remoteEndPoint, attempt: 1, tcs, combinedCancellation), combinedCancellation);
+                    await _txQueue.EnqueueAsync(new TransmitMessage(message, localEndPoint, remoteEndPoint, attempt: 1, tcs, combinedCancellation), combinedCancellation);
 
                     await tcs.Task.WithCancellation(combinedCancellation);
                 }
@@ -277,16 +300,24 @@ namespace AI4E.Routing
             {
                 try
                 {
-                    var (message, localEndPoint, remoteEndPoint, attempt, tcs, sendCancellation) = await _txQueue.DequeueAsync(cancellation);
+                    var transmitMessage = await _txQueue.DequeueAsync(cancellation);
 
-                    if (attempt == 1)
+                    var sendCancellation = transmitMessage.Cancellation;
+
+                    if (transmitMessage.Attempt == 1)
                     {
-                        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation, sendCancellation);
+                        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation, transmitMessage.Cancellation);
 
                         sendCancellation = cts.Token;
                     }
 
-                    Task.Run(() => SendInternalAsync(message, localEndPoint, remoteEndPoint, attempt, tcs, sendCancellation)).HandleExceptions(_logger);
+                    Task.Run(() => SendInternalAsync(transmitMessage.Message,
+                                                     transmitMessage.LocalEndPoint,
+                                                     transmitMessage.RemoteEndPoint,
+                                                     transmitMessage.Attempt,
+                                                     transmitMessage.TaskCompletionSource,
+                                                     sendCancellation))
+                        .HandleExceptions(_logger);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
@@ -303,7 +334,7 @@ namespace AI4E.Routing
 
             await Task.Delay(timeToWait);
 
-            await _txQueue.EnqueueAsync((message, localEndPoint, remoteEndPoint, attempt + 1, tcs, cancellation), cancellation);
+            await _txQueue.EnqueueAsync(new TransmitMessage(message, localEndPoint, remoteEndPoint, attempt + 1, tcs, cancellation), cancellation);
         }
 
         // Adapted from: https://stackoverflow.com/questions/383587/how-do-you-do-integer-exponentiation-in-c

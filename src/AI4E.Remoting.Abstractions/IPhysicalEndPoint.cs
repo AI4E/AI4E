@@ -40,7 +40,7 @@ namespace AI4E.Remoting
     /// </summary>
     /// <typeparam name="TAddress">The type of physical address used.</typeparam>
     /// <remarks>
-    /// The physical end point neither does guarantee message delivery nor does it provide any guarantiees about the ordering of messages.
+    /// The physical end point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
     /// </remarks>
     public interface IPhysicalEndPoint<TAddress> : IInboundPhysicalEndPoint<TAddress>, IOutboundPhysicalEndPoint<TAddress>
     {
@@ -55,7 +55,7 @@ namespace AI4E.Remoting
     /// </summary>
     /// <typeparam name="TAddress">The type of physical address used.</typeparam>
     /// <remarks>
-    /// The physical end point neither does guarantee message delivery nor does it provide any guarantiees about the ordering of messages.
+    /// The physical end point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
     /// </remarks>
     public interface IInboundPhysicalEndPoint<TAddress>
     {
@@ -81,12 +81,12 @@ namespace AI4E.Remoting
     /// </summary>
     /// <typeparam name="TAddress">The type of physical address used.</typeparam>
     /// <remarks>
-    /// The physical end point neither does guarantee message delivery nor does it provide any guarantiees about the ordering of messages.
+    /// The physical end point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
     /// </remarks>
     public interface IOutboundPhysicalEndPoint<TAddress>
     {
         /// <summary>
-        /// Asynchronously send a message to the remote end point with the specifies address.
+        /// Asynchronously send a message to the remote end point with the specified address.
         /// </summary>
         /// <param name="message">The message to send.</param>
         /// <param name="address">The address of the remote end point.</param>
