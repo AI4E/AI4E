@@ -19,21 +19,14 @@
  */
 
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Threading;
 
 namespace AI4E.Storage.Projection
 {
     public interface IProjection<TSource, TProjection>
+        where TSource : class
+        where TProjection : class
     {
-        /// <summary>
-        /// Asynchronously projects the specified source object to a single projection result.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>
-        /// A value task representing the asynchronous operation.
-        /// </returns>
-        ValueTask<TProjection> ProjectAsync(TSource source);
-
         /// <summary>
         /// Asynchronously projects the specified source object.
         /// </summary>
@@ -41,11 +34,6 @@ namespace AI4E.Storage.Projection
         /// <returns>
         /// An async enumerable that enumerates the projection results.
         /// </returns>
-        IAsyncEnumerable<TProjection> ProjectMultipleAsync(TSource source);
-
-        /// <summary>
-        /// Gets a boolean value indicating whether the projection has multiple results
-        /// </summary>
-        bool MultipleResults { get; }
+        IAsyncEnumerable<TProjection> ProjectAsync(TSource source, CancellationToken cancellation);
     }
 }

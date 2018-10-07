@@ -130,7 +130,7 @@ namespace AI4E.Modularity.Module
                 var addressBytes = addressConversion.SerializeAddress(address);
                 var message = new DebugModuleConnected(addressBytes, endPoint, metadata.Module, metadata.Version);
 
-                await _messageDispatcher.PublishAsync(message, cancellationToken);
+                await _messageDispatcher.DispatchAsync(message, publish: true, cancellationToken);
             }
 
             async Task RegisterModuleAsync()
@@ -211,11 +211,13 @@ namespace AI4E.Modularity.Module
                 _logger = logger;
             }
 
-            public async Task<IDispatchResult> HandleAsync(ModuleHttpRequest message, DispatchValueDictionary ctx)
+            public async ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<ModuleHttpRequest> dispatchData,
+                                                                CancellationToken cancellation)
             {
-                if (message == null)
-                    throw new ArgumentNullException(nameof(message));
+                if (dispatchData == null)
+                    throw new ArgumentNullException(nameof(dispatchData));
 
+                var message = dispatchData.Message;
                 var responseStream = new MemoryStream();
                 var requestFeature = BuildRequestFeature(message);
                 var responseFeature = BuildResponseFeature(responseStream);

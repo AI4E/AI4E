@@ -10,8 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Blazor.Browser" Version="0.6.0-preview1-20180811.2" />
-    <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="0.6.0-preview1-20180811.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Blazor.Browser" Version="$(MicrosoftAspNetCoreBlazorBrowserVersion)" />
+    <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="$(MicrosoftAspNetCoreBlazorBuildVersion)" />
   </ItemGroup>
 
   <ItemGroup>

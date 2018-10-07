@@ -25,4 +25,48 @@
     <MSBuildProjectExtensionsPath>$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
     <RestoreOutputPath>$(BaseIntermediateOutputPath)</RestoreOutputPath>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <SystemCollectionsImmutableVersion Condition="'$(SystemCollectionsImmutableVersion)' == ''">1.5.0</SystemCollectionsImmutableVersion>
+    <SystemInteractiveAsyncVersion Condition="'$(SystemInteractiveAsyncVersion)' == ''">3.2.0</SystemInteractiveAsyncVersion>
+    <SystemMemoryVersion Condition="'$(SystemMemoryVersion)' == ''">4.5.1</SystemMemoryVersion>
+    <SystemReflectionExtensionsVersion Condition="'$(SystemReflectionExtensionsVersion)' == ''">4.3.0</SystemReflectionExtensionsVersion>
+    <SystemRuntimeCompilerServicesUnsafeVersion Condition="'$(SystemRuntimeCompilerServicesUnsafeVersion)' == ''">4.5.2</SystemRuntimeCompilerServicesUnsafeVersion>
+    <SystemThreadingTasksExtensionsVersion Condition="'$(SystemThreadingTasksExtensionsVersion)' == ''">4.5.1</SystemThreadingTasksExtensionsVersion>
+    <BlazorExtensionsSignalRVersion Condition="'$(BlazorExtensionsSignalRVersion)' == ''">0.1.6</BlazorExtensionsSignalRVersion>
+    <BlazorExtensionsLoggingVersion Condition="'$(BlazorExtensionsLoggingVersion)' == ''">0.1.8</BlazorExtensionsLoggingVersion>
+    <JsonDiffPatchNetVersion Condition="'$(JsonDiffPatchNetVersion)' == ''">2.1.0</JsonDiffPatchNetVersion>
+    <MicrosoftAspNetCoreBlazorBrowserVersion Condition="'$(MicrosoftAspNetCoreBlazorBrowserVersion)' == ''">0.6.0</MicrosoftAspNetCoreBlazorBrowserVersion>
+    <MicrosoftAspNetCoreBlazorBuildVersion Condition="'$(MicrosoftAspNetCoreBlazorBuildVersion)' == ''">0.6.0</MicrosoftAspNetCoreBlazorBuildVersion>
+    <MicrosoftAspNetCoreBlazorServerVersion Condition="'$(MicrosoftAspNetCoreBlazorServerVersion)' == ''">0.6.0</MicrosoftAspNetCoreBlazorServerVersion>
+    <MicrosoftAspNetCoreHostingVersion Condition="'$(MicrosoftAspNetCoreHostingVersion)' == ''">2.1.1</MicrosoftAspNetCoreHostingVersion>
+    <MicrosoftAspNetCoreHtmlAbstractionsVersion Condition="'$(MicrosoftAspNetCoreHtmlAbstractionsVersion)' == ''">2.1.1</MicrosoftAspNetCoreHtmlAbstractionsVersion>
+    <MicrosoftAspNetCoreMvcRazorVersion Condition="'$(MicrosoftAspNetCoreMvcRazorVersion)' == ''">2.1.3</MicrosoftAspNetCoreMvcRazorVersion>
+    <MicrosoftAspNetCoreMvcViewFeaturesVersion Condition="'$(MicrosoftAspNetCoreMvcViewFeaturesVersion)' == ''">2.1.3</MicrosoftAspNetCoreMvcViewFeaturesVersion>
+    <MicrosoftAspNetCoreSignalRVersion Condition="'$(MicrosoftAspNetCoreSignalRVersion)' == ''">1.0.4</MicrosoftAspNetCoreSignalRVersion>
+    <MicrosoftAspNetCoreSignalRClientVersion Condition="'$(MicrosoftAspNetCoreSignalRClientVersion)' == ''">1.0.4</MicrosoftAspNetCoreSignalRClientVersion>
+    <MicrosoftAspNetCoreStaticFilesVersion Condition="'$(MicrosoftAspNetCoreStaticFilesVersion)' == ''">2.1.1</MicrosoftAspNetCoreStaticFilesVersion>
+    <MicrosoftExtensionsConfigurationVersion Condition="'$(MicrosoftExtensionsConfigurationVersion)' == ''">2.1.1</MicrosoftExtensionsConfigurationVersion>
+    <MicrosoftExtensionsConfigurationAbstractionsVersion Condition="'$(MicrosoftExtensionsConfigurationAbstractionsVersion)' == ''">2.1.1</MicrosoftExtensionsConfigurationAbstractionsVersion>
+    <MicrosoftExtensionsConfigurationCommandLineVersion Condition="'$(MicrosoftExtensionsConfigurationCommandLineVersion)' == ''">2.1.1</MicrosoftExtensionsConfigurationCommandLineVersion>
+    <MicrosoftExtensionsConfigurationJsonVersion Condition="'$(MicrosoftExtensionsConfigurationJsonVersion)' == ''">2.1.1</MicrosoftExtensionsConfigurationJsonVersion>
+    <MicrosoftExtensionsConfigurationUserSecretsVersion Condition="'$(MicrosoftExtensionsConfigurationUserSecretsVersion)' == ''">2.1.1</MicrosoftExtensionsConfigurationUserSecretsVersion>
+    <MicrosoftExtensionsDependencyInjectionVersion Condition="'$(MicrosoftExtensionsDependencyInjectionVersion)' == ''">2.1.1</MicrosoftExtensionsDependencyInjectionVersion>
+    <MicrosoftExtensionsDependencyInjectionAbstractionsVersion Condition="'$(MicrosoftExtensionsDependencyInjectionAbstractionsVersion)' == ''">2.1.1</MicrosoftExtensionsDependencyInjectionAbstractionsVersion>
+    <MicrosoftExtensionsDependencyModelVersion Condition="'$(MicrosoftExtensionsDependencyModelVersion)' == ''">2.1.0</MicrosoftExtensionsDependencyModelVersion>
+    <MicrosoftExtensionsLoggingVersion Condition="'$(MicrosoftExtensionsLoggingVersion)' == ''">2.1.1</MicrosoftExtensionsLoggingVersion>
+    <MicrosoftExtensionsLoggingAbstractionsVersion Condition="'$(MicrosoftExtensionsLoggingAbstractionsVersion)' == ''">2.1.1</MicrosoftExtensionsLoggingAbstractionsVersion>
+    <MicrosoftExtensionsLoggingConsoleVersion Condition="'$(MicrosoftExtensionsLoggingConsoleVersion)' == ''">2.1.1</MicrosoftExtensionsLoggingConsoleVersion>
+    <MicrosoftExtensionsLoggingDebugVersion Condition="'$(MicrosoftExtensionsLoggingDebugVersion)' == ''">2.1.1</MicrosoftExtensionsLoggingDebugVersion>
+    <MicrosoftExtensionsOptionsVersion Condition="'$(MicrosoftExtensionsOptionsVersion)' == ''">2.1.1</MicrosoftExtensionsOptionsVersion>
+    <MongoDBDriverVersion Condition="'$(MongoDBDriverVersion)' == ''">2.7.0</MongoDBDriverVersion>
+    <NewtonsoftJsonVersion Condition="'$(NewtonsoftJsonVersion)' == ''">11.0.2</NewtonsoftJsonVersion>
+    <NewtonsoftJsonBsonVersion Condition="'$(NewtonsoftJsonBsonVersion)' == ''">1.0.1</NewtonsoftJsonBsonVersion>
+    <NitoAsyncExCoordinationVersion Condition="'$(NitoAsyncExCoordinationVersion)' == ''">1.0.2</NitoAsyncExCoordinationVersion>
+    <NitoCollectionsDequeVersion Condition="'$(NitoCollectionsDequeVersion)' == ''">1.0.4</NitoCollectionsDequeVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <MicrosoftAspNetCoreAppVersion Condition="'$(MicrosoftAspNetCoreAppVersion)' == ''">2.1.5</MicrosoftAspNetCoreAppVersion>  
+  </PropertyGroup>
 </Project>

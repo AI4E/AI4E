@@ -24,8 +24,6 @@ namespace AI4E.Routing.SignalR.Client
 #if BLAZOR
         private static IDisposable RegisterMethod<TArg>(HubConnection hubConnection, object obj, MethodInfo method)
         {
-            Console.WriteLine("Y1");
-
             Func<TArg, Task> handler;
 
             var arg = Expression.Parameter(typeof(TArg), "arg");
@@ -65,7 +63,6 @@ namespace AI4E.Routing.SignalR.Client
 
             var methods = typeof(T).GetMethods(BindingFlags.Instance | BindingFlags.Public);
             var disposables = new List<IDisposable>();
-            Console.WriteLine(typeof(T).GetType().FullName);
             foreach (var method in methods)
             {
                 // We do not support generic methods

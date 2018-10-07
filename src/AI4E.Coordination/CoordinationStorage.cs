@@ -80,7 +80,7 @@ namespace AI4E.Coordination
             if (session == null)
                 throw new ArgumentNullException(nameof(session));
 
-            var compactStringSession = session.ToCompactString();
+            var compactStringSession = session.ToString();
 
             var storedSession = await _database.GetOneAsync<StoredSession>(p => p.Id == compactStringSession, cancellation);
 
@@ -89,10 +89,9 @@ namespace AI4E.Coordination
             return _storedSessionManager.Copy(storedSession);
         }
 
-        // TODO: Use IAsyncEnumerable
-        public async Task<IEnumerable<IStoredSession>> GetSessionsAsync(CancellationToken cancellation)
+        public IAsyncEnumerable<IStoredSession> GetSessionsAsync(CancellationToken cancellation)
         {
-            return await _database.GetAsync<StoredSession>(cancellation).Select(p => _storedSessionManager.Copy(p)).ToList(cancellation);
+            return _database.GetAsync<StoredSession>(cancellation).Select(p => _storedSessionManager.Copy(p));
         }
 
         public async Task<IStoredSession> UpdateSessionAsync(IStoredSession value, IStoredSession comparand, CancellationToken cancellation)
@@ -133,14 +132,14 @@ namespace AI4E.Coordination
             {
                 Id = entry.Path.EscapedPath.ConvertToString();
                 Value = entry.Value.ToArray();
-                ReadLocks = entry.ReadLocks.Select(p => p.ToCompactString()).ToArray();
-                WriteLock = entry.WriteLock?.ToCompactString();
+                ReadLocks = entry.ReadLocks.Select(p => p.ToString()).ToArray();
+                WriteLock = entry.WriteLock?.ToString();
                 Children = entry.Children.Select(p => p.EscapedSegment.ConvertToString()).ToArray();
                 CreationTime = entry.CreationTime;
                 LastWriteTime = entry.LastWriteTime;
                 Version = entry.Version;
                 StorageVersion = entry.StorageVersion;
-                EphemeralOwner = entry.EphemeralOwner?.ToCompactString();
+                EphemeralOwner = entry.EphemeralOwner?.ToString();
             }
 
             public string Id { get; set; }
@@ -170,7 +169,7 @@ namespace AI4E.Coordination
 
             public StoredSession(IStoredSession session)
             {
-                Id = session.Session.ToCompactString();
+                Id = session.Session.ToString();
                 IsEnded = session.IsEnded;
                 LeaseEnd = session.LeaseEnd;
                 EntryPaths = session.EntryPaths.Select(p => p.EscapedPath.ConvertToString()).ToArray();

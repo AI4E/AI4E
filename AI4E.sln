@@ -54,6 +54,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{4836898A-A46F-4139-A085-536903EE5E5A}"
 	ProjectSection(SolutionItems) = preProject
 		src\Common\AsyncEnumerableExtensions.cs = src\Common\AsyncEnumerableExtensions.cs
+		src\Common\AsyncWaitDirectory.cs = src\Common\AsyncWaitDirectory.cs
 		src\Common\BinaryReaderExtension.cs = src\Common\BinaryReaderExtension.cs
 		src\Common\BinaryWriterExtension.cs = src\Common\BinaryWriterExtension.cs
 		src\Common\CancellationTokenExtension.cs = src\Common\CancellationTokenExtension.cs
@@ -75,7 +76,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\MemoryExtensions.cs = src\Common\MemoryExtensions.cs
 		src\Common\MemoryWriter.cs = src\Common\MemoryWriter.cs
 		src\Common\MessageDispatcherBuilder.cs = src\Common\MessageDispatcherBuilder.cs
-		src\Common\MessageDispatcherServiceCollectionExtension.cs = src\Common\MessageDispatcherServiceCollectionExtension.cs
 		src\Common\ObjectExtension.cs = src\Common\ObjectExtension.cs
 		src\Common\ParameterExpressionReplacer.cs = src\Common\ParameterExpressionReplacer.cs
 		src\Common\PathInternal.cs = src\Common\PathInternal.cs
@@ -86,6 +86,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\StreamExtension.cs = src\Common\StreamExtension.cs
 		src\Common\StringBuilderExtension.cs = src\Common\StringBuilderExtension.cs
 		src\Common\StringExtension.cs = src\Common\StringExtension.cs
+		src\Common\TaskCancellationTokenSource.cs = src\Common\TaskCancellationTokenSource.cs
 		src\Common\TaskExtension.cs = src\Common\TaskExtension.cs
 		src\Common\TypeExtension.cs = src\Common\TypeExtension.cs
 		src\Common\TypeLoadHelper.cs = src\Common\TypeLoadHelper.cs
@@ -179,6 +180,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.Host", "src\AI4E.Modularity.Host\AI4E.Modularity.Host.csproj", "{32321136-FE8A-4331-A0D2-CE1712BFBC9C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.Module", "src\AI4E.Modularity.Module\AI4E.Modularity.Module.csproj", "{7AA16B8A-A2CC-4E40-BCDD-812FC91200B0}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Coordination.Test", "test\AI4E.Coordination.Test\AI4E.Coordination.Test.csproj", "{C745BC0F-3CE7-4BD8-B2CC-988B4DFF789A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -385,6 +388,10 @@ Global
 		{7AA16B8A-A2CC-4E40-BCDD-812FC91200B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7AA16B8A-A2CC-4E40-BCDD-812FC91200B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7AA16B8A-A2CC-4E40-BCDD-812FC91200B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C745BC0F-3CE7-4BD8-B2CC-988B4DFF789A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C745BC0F-3CE7-4BD8-B2CC-988B4DFF789A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C745BC0F-3CE7-4BD8-B2CC-988B4DFF789A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C745BC0F-3CE7-4BD8-B2CC-988B4DFF789A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -447,6 +454,7 @@ Global
 		{2D40A62F-C5AD-4CF1-AD51-76B4C74D38CE} = {51EBAD3B-B475-4587-A6DE-2CCDDC1952F7}
 		{32321136-FE8A-4331-A0D2-CE1712BFBC9C} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
 		{7AA16B8A-A2CC-4E40-BCDD-812FC91200B0} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
+		{C745BC0F-3CE7-4BD8-B2CC-988B4DFF789A} = {51EBAD3B-B475-4587-A6DE-2CCDDC1952F7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}

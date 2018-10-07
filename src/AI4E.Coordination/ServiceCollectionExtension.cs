@@ -1,4 +1,5 @@
 ﻿using System;
+using AI4E.Internal;
 using AI4E.Remoting;
 using AI4E.Storage;
 using AI4E.Storage.InMemory;
@@ -27,7 +28,10 @@ namespace AI4E.Coordination
 
         private static ICoordinationBuilder AddCoordinationService(this IServiceCollection services, Type addressType)
         {
+            services.AddOptions();
+
             // Add helpers
+            services.AddCoreServices();
             services.AddSingleton(p => ConfigureSessionProvider(p, addressType));
 
             // Add default storage
@@ -43,8 +47,20 @@ namespace AI4E.Coordination
             // Add coordination service
             services.AddSingleton(p => p.GetRequiredService<ICoordinationManagerFactory>().CreateCoordinationManager());
             services.AddSingleton(p => ConfigureCoordinationManagerFactory(p, addressType));
+            services.AddScoped(p => ConfigureCoordinationExchangeManager(p, addressType));
+            services.AddScoped<ICoordinationWaitManager, CoordinationWaitManager>();
+            services.AddScoped<ICoordinationLockManager, CoordinationLockManager>();
+            services.AddScoped<CoordinationEntryCache>();
 
             return new CoordinationBuilder(services);
+        }
+
+        private static ICoordinationExchangeManager ConfigureCoordinationExchangeManager(IServiceProvider serviceProvider, Type addressType)
+        {
+            if (addressType == null)
+                addressType = LookupAddressType(serviceProvider);
+
+            return (ICoordinationExchangeManager)ActivatorUtilities.CreateInstance(serviceProvider, typeof(CoordinationExchangeManager<>).MakeGenericType(addressType));
         }
 
         private static ICoordinationManagerFactory ConfigureCoordinationManagerFactory(IServiceProvider serviceProvider, Type addressType)

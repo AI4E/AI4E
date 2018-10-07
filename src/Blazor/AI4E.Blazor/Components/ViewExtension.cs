@@ -160,11 +160,7 @@ namespace AI4E.Blazor.Components
                 _hasCalledInit = true;
                 var componentFactory = new ComponentFactory(ServiceProvider);
 
-                Console.WriteLine("view-extension-type: " + typeof(TViewExtension));
-
                 _component = (TViewExtension)componentFactory.InstantiateComponent(typeof(TViewExtension));
-
-                //Configuration?.Invoke(_component);
                 _component.Init(_renderHandle);
             }
 

@@ -59,9 +59,6 @@ namespace AI4E.Coordination
             Assert(writtenMemory.Length == resultLenght);
 
             return result;
-
-            //// TODO: This will copy everything to a new aray
-            // return Convert.ToBase64String(_bytes.ToArray());
         }
 
         public static bool operator ==(Session left, Session right)
@@ -74,12 +71,6 @@ namespace AI4E.Coordination
             return !left.Equals(right);
         }
 
-        [Obsolete("Use ToString()")]
-        public string ToCompactString()
-        {
-            return ToString();
-        }
-
         public static Session FromChars(ReadOnlySpan<char> chars)
         {
             if (chars.IsEmpty)
@@ -87,9 +78,6 @@ namespace AI4E.Coordination
 
             var bytes = new byte[Base64Coder.ComputeBase64DecodedLength(chars)];
             var bytesLength = Base64Coder.FromBase64Chars(chars, bytes).Length;
-
-            //// TODO: This will copy everything to a new aray
-            //var bytes = Convert.FromBase64CharArray(chars.ToArray(), 0, chars.Length);
 
             return new Session(bytes.AsMemory().Slice(start: 0, length: bytesLength));
         }

@@ -66,7 +66,7 @@ namespace AI4E.Modularity.Debug
 
         public async Task<string> GetSessionAsync(CancellationToken cancellation = default)
         {
-            return (await _coordinationManager.GetSessionAsync(cancellation)).ToCompactString();
+            return (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
         }
 
         #region Disposal

@@ -232,33 +232,20 @@ namespace AI4E.Routing
             var tasks = new List<ValueTask<IMessage>>();
             var handledEndPoints = new HashSet<EndPointRoute>();
 
-            Console.WriteLine($"Routing a message with type {(publish ? "publish" : "p2p")} with routes: {routes.Aggregate((e, n) => e + ", " + n)}");
+            _logger?.LogTrace($"Routing a message ({(publish ? "publish" : "p2p")}) with routes: {routes.Aggregate((e, n) => e + ", " + n)}");
 
             foreach (var route in routes)
             {
                 List<(EndPointRoute endPoint, RouteOptions options)> matches;
-                try
-                {
-                    Console.WriteLine("Handling route: " + route);
 
-                    var matchRouteTask = MatchRouteAsync(route, cancellation);
-                    var matchRouteResult = await MatchRouteAsync(route, cancellation);
-                    Console.WriteLine($"Found {matchRouteResult.Count()} matches for route: " + route);
+                var matchRouteTask = MatchRouteAsync(route, cancellation);
+                var matchRouteResult = await MatchRouteAsync(route, cancellation);
+                var matchCount = matchRouteResult.Count();
 
-                    matches = matchRouteResult.Where(p => !handledEndPoints.Contains(p.endPoint)).ToList();
-                    Console.WriteLine($"Found {matchRouteResult.Count()} matches for route (considering handled end-points): " + route);
-
-                    //matches = (await MatchRouteAsync(route, cancellation)).Where(p => !handledEndPoints.Contains(p.endPoint)).ToList();
-                }
-                catch (Exception exc)
-                {
-                    Console.WriteLine(exc);
-                    throw;
-                }
-
+                matches = matchRouteResult.Where(p => !handledEndPoints.Contains(p.endPoint)).ToList();
+                _logger?.LogTrace($"Found {matchCount} ({matchRouteResult.Count()} considering handled end-points) matches for route '{route}'.");
 
                 var endPoints = matches.Select(p => p.endPoint);
-
                 handledEndPoints.UnionWith(endPoints);
 
                 if (matches.Any())
@@ -300,31 +287,21 @@ namespace AI4E.Routing
                     {
                         if (endPoint.Equals(localEndPoint))
                         {
-                            Console.WriteLine("Routing to end-point: " + endPoint + " (local end-point)");
+                            _logger?.LogTrace("Routing to end-point: " + endPoint + " (local end-point)");
 
                             tasks.Add(RouteToLocalAsync(route, serializedMessage, publish: true, cancellation));
                         }
                         else
                         {
-                            Console.WriteLine("Routing to end-point: " + endPoint);
+                            _logger?.LogTrace("Routing to end-point: " + endPoint);
 
-
-
-                            tasks.Add(WriteOnSuccess(InternalRouteAsync(route, serializedMessage, publish: true, endPoint, cancellation), endPoint.Route));
+                            tasks.Add(InternalRouteAsync(route, serializedMessage, publish: true, endPoint, cancellation));
                         }
                     }
                 }
             }
 
             return (await Task.WhenAll(tasks.Select(p => p.AsTask()))).ToList(); // TODO: Use ValueTaskHelper.WhenAny
-        }
-
-        private async ValueTask<IMessage> WriteOnSuccess(ValueTask<IMessage> dispatch, string endPoint)
-        {
-            var result = await dispatch;
-            Console.WriteLine("Received result from end-point: " + endPoint);
-
-            return result;
         }
 
         private async ValueTask<IMessage> InternalRouteAsync(string route, IMessage serializedMessage, bool publish, EndPointRoute endPoint, CancellationToken cancellation)

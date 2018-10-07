@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using AI4E.Internal;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
@@ -132,7 +135,7 @@ namespace AI4E.Coordination
 
         public override int GetHashCode()
         {
-            return Segments.GetHashCode(); // TODO: Can we use this?
+            return Segments.GetSequenceHashCode();
         }
 
         public override string ToString()
@@ -318,7 +321,7 @@ namespace AI4E.Coordination
                 return unescapedSegment;
             }
             var span = unescapedSegment.Span;
-            var result = new char[unescapedSegment.Length + numberOfCharsToEscape];
+            var result = MemoryMarshal.AsMemory(new string('\0', count: unescapedSegment.Length + numberOfCharsToEscape).AsMemory());
             var resultWriter = new MemoryWriter<char>(result);
 
             var copySegmentStart = 0;
@@ -384,7 +387,7 @@ namespace AI4E.Coordination
         private static ReadOnlyMemory<char> Unescape(ReadOnlyMemory<char> escapedSegment)
         {
             var span = escapedSegment.Span;
-            char[] result = null;
+            Memory<char>? result = null;
             MemoryWriter<char> resultWriter = default;
 
             var copySegmentStart = 0;
@@ -405,8 +408,9 @@ namespace AI4E.Coordination
 
                         if (result == null)
                         {
-                            result = new char[escapedSegment.Length];
-                            resultWriter = new MemoryWriter<char>(result);
+                            var allocatedMemory = MemoryMarshal.AsMemory(new string('\0', count: escapedSegment.Length).AsMemory());
+                            result = allocatedMemory;
+                            resultWriter = new MemoryWriter<char>(allocatedMemory);
                         }
 
                         var numberOfCharsToCopy = i - copySegmentStart;
@@ -484,7 +488,7 @@ namespace AI4E.Coordination
 
         public bool Equals(CoordinationEntryPathSegment other)
         {
-            return Segment.SequenceEquals(other.Segment);
+            return Segment.Span.SequenceEqual(other.Segment.Span);
         }
 
         public override bool Equals(object obj)
@@ -494,7 +498,7 @@ namespace AI4E.Coordination
 
         public override int GetHashCode()
         {
-            return Segment.GetHashCode();
+            return Segment.SequenceHashCode();
         }
 
         public override string ToString()

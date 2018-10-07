@@ -4,7 +4,7 @@
  * Types:           AI4E.IMessageHandler'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   25.02.2018 
+ * Last modified:   09.09.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -38,13 +38,16 @@ namespace AI4E
     /// </summary>
     /// <typeparam name="TMessage">The type of message.</typeparam>
     public interface IMessageHandler<TMessage>
+        where TMessage : class
     {
         /// <summary>
         /// Asynchronously handles the specified message.
         /// </summary>
-        /// <param name="message">The message to be handled.</param>
-        /// <param name="context">The message context.</param>
-        /// <returns>A task representing the asynchronous operation. The task contains the dispatch result on evaluation.</returns>
-        Task<IDispatchResult> HandleAsync(TMessage message, DispatchValueDictionary context);
+        /// <param name="dispatchData">The dispatch data that contains the message to handle and supporting data.</param>
+        /// <returns>
+        /// A value task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the dispatch result.
+        /// </returns>
+        ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, CancellationToken cancellation);
     }
 }
