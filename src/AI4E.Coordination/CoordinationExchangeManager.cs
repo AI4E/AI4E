@@ -223,7 +223,7 @@ namespace AI4E.Coordination
             {
                 try
                 {
-                    var message = await physicalEndPoint.ReceiveAsync(cancellation);
+                    var (message, _) = await physicalEndPoint.ReceiveAsync(cancellation);
                     var (messageType, path, session) = DecodeMessage(message);
 
                     Task.Run(() => HandleMessageAsync(message, messageType, path, session, cancellation)).HandleExceptions();

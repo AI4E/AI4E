@@ -22,7 +22,7 @@ namespace AI4E.Remoting
 
         private readonly ILogger<UdpEndPoint> _logger;
         private readonly UdpClient _udpClient;
-        private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
+        private readonly AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)> _rxQueue;
         private readonly IAsyncProcess _receiveProcess;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
@@ -30,10 +30,20 @@ namespace AI4E.Remoting
         public UdpEndPoint(ILogger<UdpEndPoint> logger)
         {
             _logger = logger;
+            _rxQueue = new AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)>();
+
+            var localAddress = GetLocalAddress();
+
+            if (localAddress == null)
+            {
+                throw new Exception("Cannot evaluate local address."); // TODO: https://github.com/AI4E/AI4E/issues/32
+            }
 
             // We generate an IPv4 end-point for now.
             // TODO: https://github.com/AI4E/AI4E/issues/30
-            _udpClient = new UdpClient(port: 0);
+            _udpClient = new UdpClient(new IPEndPoint(localAddress, port: 0));
+
+            LocalAddress = new IPEndPoint(localAddress, ((IPEndPoint)_udpClient.Client.LocalEndPoint).Port);
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -46,19 +56,12 @@ namespace AI4E.Remoting
                 _udpClient.Client.IOControl(unchecked((int)SIO_UDP_CONNRESET), new byte[] { Convert.ToByte(false) }, null);
             }
 
-            LocalAddress = GetLocalAddress();
-
-            if (LocalAddress == null)
-            {
-                throw new Exception("Cannot evaluate local address."); // TODO: https://github.com/AI4E/AI4E/issues/32
-            }
-
             _receiveProcess = new AsyncProcess(ReceiveProcedure);
             _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
-        private IPEndPoint GetLocalAddress()
+        private IPAddress GetLocalAddress()
         {
             var host = Dns.GetHostEntry(Dns.GetHostName());
             foreach (var ip in host.AddressList)
@@ -67,7 +70,7 @@ namespace AI4E.Remoting
                 // TODO: https://github.com/AI4E/AI4E/issues/30
                 if (ip.AddressFamily == AddressFamily.InterNetwork)
                 {
-                    return new IPEndPoint(ip, ((IPEndPoint)_udpClient.Client.LocalEndPoint).Port);
+                    return ip;
                 }
             }
 
@@ -145,7 +148,7 @@ namespace AI4E.Remoting
                         await message.ReadAsync(memoryStream, cancellation);
                     }
 
-                    await _rxQueue.EnqueueAsync(message, cancellation);
+                    await _rxQueue.EnqueueAsync((message, receiveResult.RemoteEndPoint), cancellation);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
 
@@ -158,17 +161,17 @@ namespace AI4E.Remoting
             }
         }
 
-        public async Task SendAsync(IMessage message, IPEndPoint address, CancellationToken cancellation)
+        public async Task SendAsync(IMessage message, IPEndPoint remoteAddress, CancellationToken cancellation)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            if (address == null)
-                throw new ArgumentNullException(nameof(address));
+            if (remoteAddress == null)
+                throw new ArgumentNullException(nameof(remoteAddress));
 
-            if (address.Equals(LocalAddress))
+            if (remoteAddress.Equals(LocalAddress))
             {
-                await _rxQueue.EnqueueAsync(message, cancellation);
+                await _rxQueue.EnqueueAsync((message, LocalAddress), cancellation);
                 return;
             }
 
@@ -178,10 +181,10 @@ namespace AI4E.Remoting
                 await message.WriteAsync(memoryStream, cancellation);
             }
 
-            await _udpClient.SendAsync(buffer, buffer.Length, address).WithCancellation(cancellation);
+            await _udpClient.SendAsync(buffer, buffer.Length, remoteAddress).WithCancellation(cancellation);
         }
 
-        public Task<IMessage> ReceiveAsync(CancellationToken cancellation)
+        public Task<(IMessage message, IPEndPoint remoteAddress)> ReceiveAsync(CancellationToken cancellation)
         {
             return _rxQueue.DequeueAsync(cancellation);
         }

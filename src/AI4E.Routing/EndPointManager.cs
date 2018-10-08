@@ -523,7 +523,7 @@ namespace AI4E.Routing
                     try
                     {
                         // Receive a single message
-                        var message = await PhysicalEndPoint.ReceiveAsync(cancellation);
+                        var (message, _) = await PhysicalEndPoint.ReceiveAsync(cancellation);
 
                         var (_, localAddress, remoteAddress, remoteEndPoint, localEndPoint, messageType) = _messageCoder.DecodeMessage(message);
 
