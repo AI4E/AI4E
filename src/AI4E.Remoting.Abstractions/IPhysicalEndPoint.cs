@@ -30,6 +30,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -42,7 +43,7 @@ namespace AI4E.Remoting
     /// <remarks>
     /// The physical end-point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
     /// </remarks>
-    public interface IPhysicalEndPoint<TAddress> : IInboundPhysicalEndPoint<TAddress>, IOutboundPhysicalEndPoint<TAddress>
+    public interface IPhysicalEndPoint<TAddress> : IInboundPhysicalEndPoint<TAddress>, IOutboundPhysicalEndPoint<TAddress>, IDisposable
     {
         /// <summary>
         /// Gets the physical address of the local physical end point.
@@ -57,7 +58,7 @@ namespace AI4E.Remoting
     /// <remarks>
     /// The physical end-point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
     /// </remarks>
-    public interface IInboundPhysicalEndPoint<TAddress>
+    public interface IInboundPhysicalEndPoint<TAddress> : IDisposable
     {
         /// <summary>
         /// Asynchronously receives a message from the physical end-point.
@@ -83,7 +84,7 @@ namespace AI4E.Remoting
     /// <remarks>
     /// The physical end point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
     /// </remarks>
-    public interface IOutboundPhysicalEndPoint<TAddress>
+    public interface IOutboundPhysicalEndPoint<TAddress> : IDisposable
     {
         /// <summary>
         /// Asynchronously send a message to the remote physical end-point with the specified address.

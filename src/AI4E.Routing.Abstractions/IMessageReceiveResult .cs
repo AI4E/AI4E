@@ -20,4 +20,9 @@ namespace AI4E.Routing
     {
         TEndPointAddress RemoteEndPoint { get; }
     }
+
+    public interface IMessageReceiveResult<TAddress, TEndPointAddress> : IMessageReceiveResult<TEndPointAddress>, IMessageReceiveResult, IDisposable
+    {
+        TAddress RemoteAddress { get; }
+    }
 }

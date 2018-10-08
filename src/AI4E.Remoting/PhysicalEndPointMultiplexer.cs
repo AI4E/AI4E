@@ -350,6 +350,8 @@ namespace AI4E.Remoting
                     throw;
                 }
             }
+
+            public void Dispose() { }
         }
     }
 }

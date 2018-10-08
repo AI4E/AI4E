@@ -27,6 +27,8 @@ namespace AI4E.Coordination.Utils
 
             return _rxQueue.EnqueueAsync(message, cancellation);
         }
+
+        public void Dispose() { }
     }
 
     public sealed class InMemoryPhysicalAddress

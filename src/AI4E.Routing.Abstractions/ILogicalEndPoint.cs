@@ -29,26 +29,24 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
 using AI4E.Remoting;
 
 namespace AI4E.Routing
 {
-    public interface ILogicalEndPoint : IAsyncInitialization, IAsyncDisposable
+    public interface ILogicalEndPoint : IDisposable
     {
         EndPointAddress EndPoint { get; }
-
-        Task<IMessage> ReceiveAsync(CancellationToken cancellation = default);
-        Task SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation = default);
-        Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation = default);
+        Task<IMessageReceiveResult<EndPointAddress>> ReceiveAsync(CancellationToken cancellation = default);
+        Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation = default);
     }
 
-    public interface ILogicalEndPoint<TAddress> : ILogicalEndPoint
+    public interface ILogicalEndPoint<TAddress> : ILogicalEndPoint, IDisposable
     {
         TAddress LocalAddress { get; }
-
-        Task SendAsync(IMessage message, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation = default);
+        new Task<IMessageReceiveResult<TAddress, EndPointAddress>> ReceiveAsync(CancellationToken cancellation = default);
+        Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation = default);
     }
 }

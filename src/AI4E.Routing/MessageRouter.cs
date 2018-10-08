@@ -80,7 +80,7 @@ namespace AI4E.Routing
             // Cancel the initialization
             await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
             await _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
-            await _logicalEndPoint.DisposeAsync().HandleExceptionsAsync(_logger);
+            _logicalEndPoint.Dispose();
             await _routeManager.RemoveRoutesAsync(_logicalEndPoint.EndPoint, cancellation: default).HandleExceptionsAsync(_logger);
         }
 
