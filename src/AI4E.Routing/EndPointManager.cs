@@ -57,7 +57,7 @@ namespace AI4E.Routing
         private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
         private readonly IEndPointMap<TAddress> _endPointMap;
         private readonly IEndPointScheduler<TAddress> _endPointScheduler;
-        private readonly IRouteSerializer _routeSerializer;
+        private readonly IEndPointAddressSerializer _endPointAddressSerializer;
         private readonly IAddressConversion<TAddress> _addressSerializer;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger _logger;
@@ -105,7 +105,7 @@ namespace AI4E.Routing
         public EndPointManager(IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
                                IEndPointMap<TAddress> endPointMap,
                                IEndPointScheduler<TAddress> endPointScheduler,
-                               IRouteSerializer routeSerializer,
+                               IEndPointAddressSerializer endPointAddressSerializer,
                                IAddressConversion<TAddress> addressSerializer,
                                IServiceProvider serviceProvider,
                                ILogger<EndPointManager<TAddress>> logger)
@@ -119,8 +119,8 @@ namespace AI4E.Routing
             if (endPointScheduler == null)
                 throw new ArgumentNullException(nameof(endPointScheduler));
 
-            if (routeSerializer == null)
-                throw new ArgumentNullException(nameof(routeSerializer));
+            if (endPointAddressSerializer == null)
+                throw new ArgumentNullException(nameof(endPointAddressSerializer));
 
             if (addressSerializer == null)
                 throw new ArgumentNullException(nameof(addressSerializer));
@@ -131,7 +131,7 @@ namespace AI4E.Routing
             _endPointMultiplexer = endPointMultiplexer;
             _endPointMap = endPointMap;
             _endPointScheduler = endPointScheduler;
-            _routeSerializer = routeSerializer;
+            _endPointAddressSerializer = endPointAddressSerializer;
             _addressSerializer = addressSerializer;
             _serviceProvider = serviceProvider;
             _logger = logger;
@@ -445,8 +445,8 @@ namespace AI4E.Routing
         private readonly struct DecodedMessage
         {
             public DecodedMessage(TAddress txAddress,
-                EndPointRoute txEndPoint,
-                EndPointRoute rxEndPoint,
+                EndPointAddress txEndPoint,
+                EndPointAddress rxEndPoint,
                 MessageType messageType)
             {
                 TxAddress = txAddress;
@@ -456,8 +456,8 @@ namespace AI4E.Routing
             }
 
             public TAddress TxAddress { get; }
-            public EndPointRoute TxEndPoint { get; }
-            public EndPointRoute RxEndPoint { get; }
+            public EndPointAddress TxEndPoint { get; }
+            public EndPointAddress RxEndPoint { get; }
             public MessageType MessageType { get; }
         }
 
@@ -469,7 +469,7 @@ namespace AI4E.Routing
             var messageType = default(MessageType);
             var frameIdx = message.FrameIndex;
 
-            byte[] rxEndPointBytes,txEndPointBytes, txAddressBytes;
+            byte[] rxEndPointBytes, txEndPointBytes, txAddressBytes;
 
             try
             {
@@ -495,8 +495,8 @@ namespace AI4E.Routing
                 throw;
             }
 
-            var rxEndPoint = rxEndPointBytes.Length > 0 ? _routeSerializer.DeserializeRoute(rxEndPointBytes) : default;
-            var txEndPoint = txEndPointBytes.Length > 0 ? _routeSerializer.DeserializeRoute(txEndPointBytes) : default;
+            var rxEndPoint = rxEndPointBytes.Length > 0 ? _endPointAddressSerializer.Deserialize(rxEndPointBytes) : default;
+            var txEndPoint = txEndPointBytes.Length > 0 ? _endPointAddressSerializer.Deserialize(txEndPointBytes) : default;
             var txAddress = txAddressBytes.Length > 0 ? _addressSerializer.DeserializeAddress(txAddressBytes) : default;
 
             decodedMessage = new DecodedMessage(txAddress, txEndPoint, rxEndPoint, messageType);
@@ -508,8 +508,8 @@ namespace AI4E.Routing
                 throw new ArgumentNullException(nameof(message));
 
             var serializedTxAddress = decodedMessage.TxAddress == null || decodedMessage.TxAddress.Equals(default) ? _emptyByteArray : _addressSerializer.SerializeAddress(decodedMessage.TxAddress);
-            var serializedTxEndPoint = decodedMessage.TxEndPoint == null ? _emptyByteArray : _routeSerializer.SerializeRoute(decodedMessage.TxEndPoint);
-            var serializedRxEndPoint = decodedMessage.RxEndPoint == null ? _emptyByteArray : _routeSerializer.SerializeRoute(decodedMessage.RxEndPoint);
+            var serializedTxEndPoint = decodedMessage.TxEndPoint == null ? _emptyByteArray : _endPointAddressSerializer.Serialize(decodedMessage.TxEndPoint);
+            var serializedRxEndPoint = decodedMessage.RxEndPoint == null ? _emptyByteArray : _endPointAddressSerializer.Serialize(decodedMessage.RxEndPoint);
             var frameIdx = message.FrameIndex;
 
             try
