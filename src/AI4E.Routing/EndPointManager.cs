@@ -431,19 +431,6 @@ namespace AI4E.Routing
             public EndPointRoute TxEndPoint { get; }
             public EndPointRoute RxEndPoint { get; }
             public MessageType MessageType { get; }
-
-            public void Deconstruct(out TAddress txAddress,
-                out TAddress rxAddress,
-                out EndPointRoute txEndPoint,
-                out EndPointRoute rxEndPoint,
-                out MessageType messageType)
-            {
-                txAddress = TxAddress;
-                rxAddress = RxAddress;
-                txEndPoint = TxEndPoint;
-                rxEndPoint = RxEndPoint;
-                messageType = MessageType;
-            }
         }
 
         private void DecodeMessage(IMessage message, out DecodedMessage decodedMessage)
@@ -454,7 +441,7 @@ namespace AI4E.Routing
             var messageType = default(MessageType);
             var frameIdx = message.FrameIndex;
 
-            byte[] remoteEndPointBytes, remoteAddressBytes, localEndPointBytes, localAddressBytes;
+            byte[] rxEndPointBytes, rxAddressBytes, txEndPointBytes, txAddressBytes;
 
             try
             {
@@ -463,17 +450,17 @@ namespace AI4E.Routing
                 {
                     messageType = (MessageType)reader.ReadInt32();
 
-                    var remoteRouteLength = reader.ReadInt32();
-                    remoteEndPointBytes = reader.ReadBytes(remoteRouteLength);
+                    var txEndPointLength = reader.ReadInt32();
+                    txEndPointBytes = reader.ReadBytes(txEndPointLength);
 
-                    var remoteAddressLength = reader.ReadInt32();
-                    remoteAddressBytes = reader.ReadBytes(remoteAddressLength);
+                    var txAddressLength = reader.ReadInt32();
+                    txAddressBytes = reader.ReadBytes(txAddressLength);
 
-                    var localRouteLength = reader.ReadInt32();
-                    localEndPointBytes = reader.ReadBytes(localRouteLength);
+                    var rxEndPointLength = reader.ReadInt32();
+                    rxEndPointBytes = reader.ReadBytes(rxEndPointLength);
 
-                    var localAddressLength = reader.ReadInt32();
-                    localAddressBytes = reader.ReadBytes(localAddressLength);
+                    var rxAddressLength = reader.ReadInt32();
+                    rxAddressBytes = reader.ReadBytes(rxAddressLength);
                 }
             }
             catch when (message.FrameIndex != frameIdx)
@@ -483,12 +470,12 @@ namespace AI4E.Routing
                 throw;
             }
 
-            var remoteEndPoint = remoteEndPointBytes.Length > 0 ? _routeSerializer.DeserializeRoute(remoteEndPointBytes) : default;
-            var remoteAddress = remoteAddressBytes.Length > 0 ? _addressSerializer.DeserializeAddress(remoteAddressBytes) : default;
-            var localEndPoint = localEndPointBytes.Length > 0 ? _routeSerializer.DeserializeRoute(localEndPointBytes) : default;
-            var localAddress = localAddressBytes.Length > 0 ? _addressSerializer.DeserializeAddress(localAddressBytes) : default;
+            var rxEndPoint = rxEndPointBytes.Length > 0 ? _routeSerializer.DeserializeRoute(rxEndPointBytes) : default;
+            var rxAddress = rxAddressBytes.Length > 0 ? _addressSerializer.DeserializeAddress(rxAddressBytes) : default;
+            var txEndPoint = txEndPointBytes.Length > 0 ? _routeSerializer.DeserializeRoute(txEndPointBytes) : default;
+            var txAddress = txAddressBytes.Length > 0 ? _addressSerializer.DeserializeAddress(txAddressBytes) : default;
 
-            decodedMessage = new DecodedMessage(localAddress, remoteAddress, localEndPoint, remoteEndPoint, messageType);
+            decodedMessage = new DecodedMessage(txAddress, rxAddress, txEndPoint, rxEndPoint, messageType);
         }
 
         private void EncodeMessage(IMessage message, in DecodedMessage decodedMessage)
@@ -496,10 +483,10 @@ namespace AI4E.Routing
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            var serializedLocalAddress = decodedMessage.TxAddress == null || decodedMessage.TxAddress.Equals(default) ? _emptyByteArray : _addressSerializer.SerializeAddress(decodedMessage.TxAddress);
-            var serializedLocalRoute = decodedMessage.TxEndPoint == null ? _emptyByteArray : _routeSerializer.SerializeRoute(decodedMessage.TxEndPoint);
-            var serializedRemoteAddress = decodedMessage.RxAddress == null || decodedMessage.RxAddress.Equals(default) ? _emptyByteArray : _addressSerializer.SerializeAddress(decodedMessage.RxAddress);
-            var serializedRemoteRoute = decodedMessage.RxEndPoint == null ? _emptyByteArray : _routeSerializer.SerializeRoute(decodedMessage.RxEndPoint);
+            var serializedTxAddress = decodedMessage.TxAddress == null || decodedMessage.TxAddress.Equals(default) ? _emptyByteArray : _addressSerializer.SerializeAddress(decodedMessage.TxAddress);
+            var serializedTxEndPoint = decodedMessage.TxEndPoint == null ? _emptyByteArray : _routeSerializer.SerializeRoute(decodedMessage.TxEndPoint);
+            var serializedRxAddress = decodedMessage.RxAddress == null || decodedMessage.RxAddress.Equals(default) ? _emptyByteArray : _addressSerializer.SerializeAddress(decodedMessage.RxAddress);
+            var serializedRxEndPoint = decodedMessage.RxEndPoint == null ? _emptyByteArray : _routeSerializer.SerializeRoute(decodedMessage.RxEndPoint);
             var frameIdx = message.FrameIndex;
 
             try
@@ -507,15 +494,19 @@ namespace AI4E.Routing
                 using (var frameStream = message.PushFrame().OpenStream(overrideContent: true))
                 using (var writer = new BinaryWriter(frameStream))
                 {
-                    writer.Write((int)decodedMessage.MessageType);   // Message type            -- 4 Byte
-                    writer.Write(serializedLocalRoute.Length);       // Local route length      -- 4 Byte
-                    writer.Write(serializedLocalRoute);              // Local route             -- (Local route length Byte)
-                    writer.Write(serializedLocalAddress.Length);     // Local address length    -- 4 Byte
-                    writer.Write(serializedLocalAddress);            // Local address           -- (Local address length Byte)
-                    writer.Write(serializedRemoteRoute.Length);      // Remote route length     -- 4 Byte
-                    writer.Write(serializedRemoteRoute);             // Remote route            -- (Remote route length Byte)
-                    writer.Write(serializedRemoteAddress.Length);    // Remote address length   -- 4 Byte
-                    writer.Write(serializedRemoteAddress);           // Remote address          -- (Remote address length Byte)   
+                    writer.Write((int)decodedMessage.MessageType);   // Message type        -- 4 Byte
+
+                    writer.Write(serializedTxEndPoint.Length);       // Tx end-point length -- 4 Byte
+                    writer.Write(serializedTxEndPoint);              // Tx end-point        -- (Local route length Byte)
+
+                    writer.Write(serializedTxAddress.Length);        // Tx address length   -- 4 Byte
+                    writer.Write(serializedTxAddress);               // Tx address          -- (Local address length Byte)
+
+                    writer.Write(serializedRxEndPoint.Length);       // Rx end-point length -- 4 Byte
+                    writer.Write(serializedRxEndPoint);              // Rx end-point        -- (Remote route length Byte)
+
+                    writer.Write(serializedRxAddress.Length);        // Rx address length   -- 4 Byte
+                    writer.Write(serializedRxAddress);               // Rx address          -- (Remote address length Byte)   
                 }
             }
             catch when (message.FrameIndex != frameIdx)
@@ -661,9 +652,9 @@ namespace AI4E.Routing
             {
                 _endPointManager.DecodeMessage(message, out var decodedMessage);
 
-                if (!decodedMessage.TxAddress.Equals(LocalAddress) || !EndPoint.Equals(decodedMessage.TxEndPoint))
+                if (!decodedMessage.RxAddress.Equals(LocalAddress) || !EndPoint.Equals(decodedMessage.RxEndPoint))
                 {
-                    await SendMisroutedAsync(decodedMessage.RxAddress, decodedMessage.RxEndPoint, decodedMessage.TxEndPoint, cancellation);
+                    await SendMisroutedAsync(decodedMessage.TxAddress, decodedMessage.TxEndPoint, decodedMessage.RxEndPoint, cancellation);
                     return;
                 }
 
@@ -671,9 +662,9 @@ namespace AI4E.Routing
                 {
                     case MessageType.Message:
                         {
-                            _logger?.LogTrace($"Received message from address {decodedMessage.RxAddress}, end-point {decodedMessage.RxEndPoint} for end-point {decodedMessage.TxEndPoint}.");
+                            _logger?.LogTrace($"Received message from address {decodedMessage.TxAddress}, end-point {decodedMessage.TxEndPoint} for end-point {decodedMessage.RxEndPoint}.");
 
-                            await OnReceivedAsync(message, decodedMessage.RxAddress, decodedMessage.RxEndPoint, cancellation);
+                            await OnReceivedAsync(message, decodedMessage.TxAddress, decodedMessage.TxEndPoint, cancellation);
 
                             break;
                         }
@@ -855,7 +846,9 @@ namespace AI4E.Routing
                     try
                     {
                         _endPointManager.DecodeMessage(request, out var decodedMessage);
-                        (_, remoteAddress, localEndPoint, remoteEndPoint, _) = decodedMessage; // TODO: Is the order of the end-points correct?
+                        remoteAddress = decodedMessage.TxAddress;
+                        localEndPoint = decodedMessage.RxEndPoint;
+                        remoteEndPoint = decodedMessage.TxEndPoint;
                     }
                     catch (Exception exc)
                     {
