@@ -38,7 +38,6 @@ namespace AI4E.Routing
             services.AddOptions();
             services.AddCoreServices();
 
-            services.AddSingleton(typeof(IMessageCoder<>), typeof(MessageCoder<>));
             services.AddSingleton(typeof(IEndPointScheduler<>), typeof(RandomEndPointScheduler<>));
             services.AddSingleton(typeof(IRouteMap<>), typeof(RouteMap<>));
             services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
