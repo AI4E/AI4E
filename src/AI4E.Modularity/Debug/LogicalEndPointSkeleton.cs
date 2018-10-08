@@ -23,7 +23,7 @@ namespace AI4E.Modularity.Debug
 
             _endPointManager = endPointManager;
 
-            _logicalEndPoint = _endPointManager.GetLogicalEndPoint(endPoint);
+            _logicalEndPoint = _endPointManager.CreateLogicalEndPoint(endPoint);
         }
 
         public async Task<byte[]> ReceiveAsync(CancellationToken cancellation = default)

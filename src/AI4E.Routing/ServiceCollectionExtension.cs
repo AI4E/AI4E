@@ -30,7 +30,7 @@ namespace AI4E.Routing
                 throw new InvalidOperationException("A local end point must be specified.");
             }
 
-            return endPointManager.GetLogicalEndPoint(options.LocalEndPoint);
+            return endPointManager.CreateLogicalEndPoint(options.LocalEndPoint);
         }
 
         private static void AddHelperServices(this IServiceCollection services)

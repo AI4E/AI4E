@@ -491,7 +491,7 @@ namespace AI4E.Routing
                 return CreateMessageRouterInternal(_logicalEndPoint, serializedMessageHandler, options);
             }
 
-            var logicalEndPoint = _endPointManager.GetLogicalEndPoint(endPoint);
+            var logicalEndPoint = _endPointManager.CreateLogicalEndPoint(endPoint);
             return CreateMessageRouterInternal(logicalEndPoint, serializedMessageHandler, options);
         }
 
