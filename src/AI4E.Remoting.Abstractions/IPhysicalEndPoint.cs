@@ -36,11 +36,11 @@ using System.Threading.Tasks;
 namespace AI4E.Remoting
 {
     /// <summary>
-    /// Represents a physical end point that is able to receive and send messages.
+    /// Represents a physical end-point that is able to receive and send messages.
     /// </summary>
     /// <typeparam name="TAddress">The type of physical address used.</typeparam>
     /// <remarks>
-    /// The physical end point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
+    /// The physical end-point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
     /// </remarks>
     public interface IPhysicalEndPoint<TAddress> : IInboundPhysicalEndPoint<TAddress>, IOutboundPhysicalEndPoint<TAddress>
     {
@@ -51,33 +51,33 @@ namespace AI4E.Remoting
     }
 
     /// <summary>
-    /// Represents an inbound physical end point that is able to receive messages.
+    /// Represents an inbound physical end-point that is able to receive messages.
     /// </summary>
     /// <typeparam name="TAddress">The type of physical address used.</typeparam>
     /// <remarks>
-    /// The physical end point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
+    /// The physical end-point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
     /// </remarks>
     public interface IInboundPhysicalEndPoint<TAddress>
     {
         /// <summary>
-        /// Asynchronously receives a message from the physical end point.
+        /// Asynchronously receives a message from the physical end-point.
         /// </summary>
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>
         /// A task representing the asynchronous operation.
-        /// When evaluated, the tasks result contains the received message.
+        /// When evaluated, the tasks result contains the received message and the address of the remote physical end-point.
         /// </returns>
         /// <exception cref="System.OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
-        Task<IMessage> ReceiveAsync(CancellationToken cancellation = default);
+        Task<(IMessage message, TAddress remoteAddress)> ReceiveAsync(CancellationToken cancellation = default);
 
         /// <summary>
-        /// Gets the physical address of the local physical end point.
+        /// Gets the physical address of the local physical end-point.
         /// </summary>
         TAddress LocalAddress { get; }
     }
 
     /// <summary>
-    /// Represents an outbound physical end point that is able to send messages.
+    /// Represents an outbound physical end-point that is able to send messages.
     /// </summary>
     /// <typeparam name="TAddress">The type of physical address used.</typeparam>
     /// <remarks>
@@ -86,19 +86,19 @@ namespace AI4E.Remoting
     public interface IOutboundPhysicalEndPoint<TAddress>
     {
         /// <summary>
-        /// Asynchronously send a message to the remote end point with the specified address.
+        /// Asynchronously send a message to the remote physical end-point with the specified address.
         /// </summary>
         /// <param name="message">The message to send.</param>
-        /// <param name="address">The address of the remote end point.</param>
+        /// <param name="remoteAddress">The address of the remote physical end-point.</param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        /// <exception cref="System.ArgumentNullException">Thrown if either <paramref name="message"/> or <paramref name="address"/> is null.</exception>
-        /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="address"/> is the default value of type <see cref="TAddress"/>.</exception>
+        /// <exception cref="System.ArgumentNullException">Thrown if either <paramref name="message"/> or <paramref name="remoteAddress"/> is null.</exception>
+        /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="remoteAddress"/> is the default value of type <see cref="TAddress"/>.</exception>
         /// <exception cref="System.OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
-        Task SendAsync(IMessage message, TAddress address, CancellationToken cancellation = default);
+        Task SendAsync(IMessage message, TAddress remoteAddress, CancellationToken cancellation = default);
 
         /// <summary>
-        /// Gets the physical address of the local physical end point.
+        /// Gets the physical address of the local physical end-point.
         /// </summary>
         TAddress LocalAddress { get; }
     }

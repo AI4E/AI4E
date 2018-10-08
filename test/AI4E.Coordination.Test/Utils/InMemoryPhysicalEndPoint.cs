@@ -12,18 +12,18 @@ namespace AI4E.Coordination.Utils
 
         public InMemoryPhysicalAddress LocalAddress => InMemoryPhysicalAddress.Instance;
 
-        public Task<IMessage> ReceiveAsync(CancellationToken cancellation)
+        public async Task<(IMessage message, InMemoryPhysicalAddress remoteAddress)> ReceiveAsync(CancellationToken cancellation)
         {
-            return _rxQueue.DequeueAsync(cancellation);
+            return (await _rxQueue.DequeueAsync(cancellation), InMemoryPhysicalAddress.Instance);
         }
 
-        public Task SendAsync(IMessage message, InMemoryPhysicalAddress address, CancellationToken cancellation)
+        public Task SendAsync(IMessage message, InMemoryPhysicalAddress remoteAddress, CancellationToken cancellation)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            if (address == null)
-                throw new ArgumentNullException(nameof(address));
+            if (remoteAddress == null)
+                throw new ArgumentNullException(nameof(remoteAddress));
 
             return _rxQueue.EnqueueAsync(message, cancellation);
         }
