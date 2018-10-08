@@ -58,6 +58,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\BinaryReaderExtension.cs = src\Common\BinaryReaderExtension.cs
 		src\Common\BinaryWriterExtension.cs = src\Common\BinaryWriterExtension.cs
 		src\Common\CancellationTokenExtension.cs = src\Common\CancellationTokenExtension.cs
+		src\Common\CastTo.cs = src\Common\CastTo.cs
 		src\Common\CompressionHelper.cs = src\Common\CompressionHelper.cs
 		src\Common\ConcurrentDictionaryExtension.cs = src\Common\ConcurrentDictionaryExtension.cs
 		src\Common\CustomAttributeProviderExtension.cs = src\Common\CustomAttributeProviderExtension.cs
