@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -24,11 +23,7 @@ namespace AI4E.Routing
         private readonly IRouteManager _routeManager;
         private readonly ILogger<MessageRouter> _logger;
 
-        private readonly ConcurrentDictionary<int, TaskCompletionSource<IMessage>> _responseTable;
-        private int _nextSeqNum = 1;
-
         private readonly IAsyncProcess _receiveProcess;
-        private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
         public MessageRouter(ISerializedMessageHandler serializedMessageHandler,
@@ -50,10 +45,7 @@ namespace AI4E.Routing
             _routeManager = routeManager;
             _logger = logger;
 
-            _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<IMessage>>();
-
-            _receiveProcess = new AsyncProcess(ReceiveProcedure);
-            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
+            _receiveProcess = new AsyncProcess(ReceiveProcedure, start: true);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
@@ -78,7 +70,6 @@ namespace AI4E.Routing
         private async Task DisposeInternalAsync()
         {
             // Cancel the initialization
-            await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
             await _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
             _logicalEndPoint.Dispose();
             await _routeManager.RemoveRoutesAsync(_logicalEndPoint.EndPoint, cancellation: default).HandleExceptionsAsync(_logger);
@@ -106,25 +97,8 @@ namespace AI4E.Routing
             {
                 try
                 {
-                    var message = await _logicalEndPoint.ReceiveAsync(cancellation);
-                    var (seqNum, messageType, publish, route, corr) = DecodeMessage(message);
-
-                    switch (messageType)
-                    {
-                        case MessageType.Request:
-                            Task.Run(() => ProcessRequestAsync(message, seqNum, publish, route, cancellation)).HandleExceptions();
-                            break;
-
-                        case MessageType.Response:
-                            Task.Run(() => ProcessResponseAsync(message, seqNum, corr, cancellation)).HandleExceptions();
-                            break;
-
-                        case MessageType.Cancellation:// TODO: Implement
-                        case MessageType.Unknown:
-                        default:
-                            _logger?.LogWarning($"End-point '{localEndPoint}': Received bad message that is either of an unkown type or could not be deserialized.");
-                            break;
-                    }
+                    var receiveResult = await _logicalEndPoint.ReceiveAsync(cancellation);
+                    receiveResult.HandleAsync(ReceiveAsync, cancellation).HandleExceptions(_logger);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
@@ -134,45 +108,17 @@ namespace AI4E.Routing
             }
         }
 
-        private async Task ProcessRequestAsync(IMessage message, int seqNum, bool publish, string route, CancellationToken cancellation)
+        private async Task<IMessage> ReceiveAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation)
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
+            var (publish, route) = DecodeMessage(message);
 
-            _logger?.LogDebug($"End-point '{localEndPoint}': Processing request message with seq-num '{seqNum}'.");
-
-            var frameCount = message.FrameCount;
-
-            // We must push the frame that we read when received the message from the logical end point 
-            // in order for the message to look exactly the same as when the logical end point delivered the message to us.
-            var frameIdx = message.FrameIndex + 1;
+            _logger?.LogDebug($"End-point '{localEndPoint}': Processing request message.");
             var response = await RouteToLocalAsync(route, message, publish, cancellation);
 
-            var responseSeqNum = GetNextSeqNum();
-            EncodeMessage(response, responseSeqNum, MessageType.Response, default, default, seqNum);
+            // TODO: Do we want to send a message frame back to the initiator? This would be empty for now.
 
-            Assert(message.FrameCount == frameCount);
-            Assert(message.FrameIndex <= frameIdx);
-
-            while (message.FrameIndex < frameIdx)
-            {
-                message.PushFrame();
-            }
-
-            Assert(message.FrameIndex == frameIdx);
-
-            await _logicalEndPoint.SendAsync(response, message, cancellation);
-        }
-
-        private async Task ProcessResponseAsync(IMessage message, int seqNum, int corr, CancellationToken cancellation)
-        {
-            var localEndPoint = await GetLocalEndPointAsync(cancellation);
-
-            _logger?.LogDebug($"End-point '{localEndPoint}': Processing response message for seq-num '{corr}'. [{seqNum}]");
-
-            if (_responseTable.TryRemove(corr, out var tcs))
-            {
-                tcs.TrySetResult(message);
-            }
+            return response;
         }
 
         #endregion
@@ -185,7 +131,7 @@ namespace AI4E.Routing
             var response = await _serializedMessageHandler.HandleAsync(route, serializedMessage, publish, cancellation);
 
             // Remove all frames from other protocol stacks.
-            response.Trim();
+            response.Trim(); // TODO
 
             // We do not want to override frames.
             Assert(response.FrameIndex == response.FrameCount - 1);
@@ -269,7 +215,7 @@ namespace AI4E.Routing
 
                         var resolvedEndPoint = ResolveEndPoint();
 
-                        // There is no (publish only match) for the current route.
+                        // There is no (publish only) match for the current route.
                         if (resolvedEndPoint == null)
                         {
                             continue;
@@ -318,112 +264,65 @@ namespace AI4E.Routing
                 return await RouteToLocalAsync(route, serializedMessage, publish, cancellation);
             }
 
-            var seqNum = GetNextSeqNum();
-            var tcs = new TaskCompletionSource<IMessage>();
+            _logger?.LogDebug($"Message router for end-point '{localEndPoint}': Dispatching request message to remote end point '{endPoint.LogicalAddress}'.");
 
-            while (!_responseTable.TryAdd(seqNum, tcs))
-            {
-                seqNum = GetNextSeqNum();
-            }
+            // Remove all frames from other protocol stacks.
+            serializedMessage.Trim(); // TODO
 
-            // TODO: Cancellation
+            // We do not want to override frames.
+            Assert(serializedMessage.FrameIndex == serializedMessage.FrameCount - 1);
 
-            try
-            {
-                _logger?.LogDebug($"End-point '{localEndPoint}': Dispatching request message with seq-num '{seqNum}' to remote end point '{endPoint.LogicalAddress}'.");
+            EncodeMessage(serializedMessage, publish, route);
 
-                // Remove all frames from other protocol stacks.
-                serializedMessage.Trim();
+            var response = await _logicalEndPoint.SendAsync(serializedMessage, endPoint, cancellation);
 
-                // We do not want to override frames.
-                Assert(serializedMessage.FrameIndex == serializedMessage.FrameCount - 1);
+            _logger?.LogDebug($"Message router for end-point '{localEndPoint}': Processing response message."); // TODO
 
-                EncodeMessage(serializedMessage, seqNum, MessageType.Request, publish, route, default);
+            response.Trim(); // TODO
 
-                await _logicalEndPoint.SendAsync(serializedMessage, endPoint, cancellation);
-
-                var response = await tcs.Task;
-
-                response.Trim();
-
-                return response;
-            }
-            finally
-            {
-                _responseTable.TryRemove(seqNum, tcs);
-            }
+            return response;
         }
 
-        private static void EncodeMessage(IMessage message, int seqNum, MessageType messageType, bool publish, string route, int corr)
+        private static void EncodeMessage(IMessage message, bool publish, string route)
         {
             var routeBytes = route != null ? Encoding.UTF8.GetBytes(route) : _emptyBytes;
 
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(stream))
             {
-                writer.Write(seqNum); // 4 Byte
-                writer.Write((short)messageType); // 2 Byte
+                writer.Write(publish);              // 1 Byte
+                writer.Write((short)0);             // 2 Byte (padding)
+                writer.Write((byte)0);              // 1 Byte (padding)
+                writer.Write(routeBytes.Length);    // 4 Bytes
 
-                if (messageType == MessageType.Request)
+                if (routeBytes.Length > 0)
                 {
-                    writer.Write((byte)0); // 1 Byte (padding)
-                    writer.Write(publish); // 1 Byte
-                    writer.Write(routeBytes.Length); // 4 Bytes
-
-                    if (routeBytes.Length > 0)
-                    {
-                        writer.Write(routeBytes); // Variable length
-                    }
-                }
-                else if (messageType == MessageType.Response || messageType == MessageType.Cancellation)
-                {
-                    writer.Write((short)0); // 2 Bytes (padding)
-                    writer.Write(corr);
+                    writer.Write(routeBytes);       // Variable length
                 }
             }
         }
 
-        private static (int seqNum, MessageType messageType, bool publish, string route, int corr) DecodeMessage(IMessage message)
+        private static (bool publish, string route) DecodeMessage(IMessage message)
         {
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
             {
-                var seqNum = reader.ReadInt32(); // 4 Byte
-                var messageType = (MessageType)reader.ReadInt16(); // 2 Byte
-
                 var publish = false;
                 var route = default(string);
-                var corr = 0;
 
-                if (messageType == MessageType.Request)
+                publish = reader.ReadBoolean();                             // 1 Byte
+                reader.ReadInt16();                                         // 2 Byte (padding)
+                reader.ReadByte();                                          // 1 Byte (padding)
+
+                var routeBytesLength = reader.ReadInt32();                  // 4 Byte
+                if (routeBytesLength > 0)
                 {
-                    reader.ReadByte(); // 1 Byte (padding)
-                    publish = reader.ReadBoolean();  // 1 Byte
-
-                    var routeBytesLength = reader.ReadInt32(); // 4 Byte
-                    if (routeBytesLength > 0)
-                    {
-                        var routeBytes = reader.ReadBytes(routeBytesLength); // Variable length
-                        route = Encoding.UTF8.GetString(routeBytes);
-                    }
-                }
-                else if (messageType == MessageType.Response || messageType == MessageType.Cancellation)
-                {
-                    reader.ReadInt16(); // 2 Byte (padding)
-
-                    corr = reader.ReadInt32(); // 4 Byte
+                    var routeBytes = reader.ReadBytes(routeBytesLength);    // Variable length
+                    route = Encoding.UTF8.GetString(routeBytes);
                 }
 
-                return (seqNum, messageType, publish, route, corr);
+                return (publish, route);
             }
-        }
-
-        private enum MessageType : short
-        {
-            Unknown = 0,
-            Request = 1,
-            Response = 2,
-            Cancellation = 3
         }
 
         public async Task RegisterRouteAsync(string route, CancellationToken cancellation)
@@ -443,11 +342,6 @@ namespace AI4E.Routing
         private Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options)>> MatchRouteAsync(string route, CancellationToken cancellation)
         {
             return _routeManager.GetRoutesAsync(route, cancellation);
-        }
-
-        private int GetNextSeqNum()
-        {
-            return Interlocked.Increment(ref _nextSeqNum);
         }
     }
 

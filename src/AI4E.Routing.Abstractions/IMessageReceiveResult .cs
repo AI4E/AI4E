@@ -25,4 +25,163 @@ namespace AI4E.Routing
     {
         TAddress RemoteAddress { get; }
     }
+
+    public static class MessageReceiveResultExtensions
+    {
+        public static async Task HandleAsync(
+            this IMessageReceiveResult messageReceiveResult,
+            Func<IMessage, CancellationToken, Task<IMessage>> handler,
+            CancellationToken cancellation)
+        {
+            if (messageReceiveResult == null)
+                throw new ArgumentNullException(nameof(messageReceiveResult));
+
+            if (handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            try
+            {
+                var response = await handler(messageReceiveResult.Message, cancellation);
+
+                if (response != null)
+                {
+                    await messageReceiveResult.SendResponseAsync(response);
+                }
+                else
+                {
+                    await messageReceiveResult.SendAckAsync();
+                }
+            }
+            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+            {
+                await messageReceiveResult.SendCancellationAsync();
+            }
+        }
+
+        public static async Task HandleAsync(
+            this IMessageReceiveResult messageReceiveResult,
+            Func<IMessage, CancellationToken, Task> handler,
+            CancellationToken cancellation)
+        {
+            if (messageReceiveResult == null)
+                throw new ArgumentNullException(nameof(messageReceiveResult));
+
+            if (handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            try
+            {
+                await handler(messageReceiveResult.Message, cancellation);
+                await messageReceiveResult.SendAckAsync();
+            }
+            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+            {
+                await messageReceiveResult.SendCancellationAsync();
+            }
+        }
+
+        public static async Task HandleAsync<TEndPointAddress>(
+            this IMessageReceiveResult<TEndPointAddress> messageReceiveResult,
+            Func<IMessage, TEndPointAddress, CancellationToken, Task<IMessage>> handler,
+            CancellationToken cancellation)
+        {
+            if (messageReceiveResult == null)
+                throw new ArgumentNullException(nameof(messageReceiveResult));
+
+            if (handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            try
+            {
+                var response = await handler(messageReceiveResult.Message, messageReceiveResult.RemoteEndPoint, cancellation);
+
+                if (response != null)
+                {
+                    await messageReceiveResult.SendResponseAsync(response);
+                }
+                else
+                {
+                    await messageReceiveResult.SendAckAsync();
+                }
+            }
+            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+            {
+                await messageReceiveResult.SendCancellationAsync();
+            }
+        }
+
+        public static async Task HandleAsync<TEndPointAddress>(
+            this IMessageReceiveResult<TEndPointAddress> messageReceiveResult,
+            Func<IMessage, TEndPointAddress, CancellationToken, Task> handler,
+            CancellationToken cancellation)
+        {
+            if (messageReceiveResult == null)
+                throw new ArgumentNullException(nameof(messageReceiveResult));
+
+            if (handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            try
+            {
+                await handler(messageReceiveResult.Message, messageReceiveResult.RemoteEndPoint, cancellation);
+                await messageReceiveResult.SendAckAsync();
+            }
+            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+            {
+                await messageReceiveResult.SendCancellationAsync();
+            }
+        }
+
+        public static async Task HandleAsync<TAddress, TEndPointAddress>(
+            this IMessageReceiveResult<TAddress, TEndPointAddress> messageReceiveResult,
+            Func<IMessage, TAddress, TEndPointAddress, CancellationToken, Task<IMessage>> handler,
+            CancellationToken cancellation)
+        {
+            if (messageReceiveResult == null)
+                throw new ArgumentNullException(nameof(messageReceiveResult));
+
+            if (handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            try
+            {
+                var response = await handler(messageReceiveResult.Message, messageReceiveResult.RemoteAddress, messageReceiveResult.RemoteEndPoint, cancellation);
+
+                if (response != null)
+                {
+                    await messageReceiveResult.SendResponseAsync(response);
+                }
+                else
+                {
+                    await messageReceiveResult.SendAckAsync();
+                }
+            }
+            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+            {
+                await messageReceiveResult.SendCancellationAsync();
+            }
+        }
+
+        public static async Task HandleAsync<TAddress, TEndPointAddress>(
+            this IMessageReceiveResult<TAddress, TEndPointAddress> messageReceiveResult,
+            Func<IMessage, TAddress, TEndPointAddress, CancellationToken, Task> handler,
+            CancellationToken cancellation)
+        {
+            if (messageReceiveResult == null)
+                throw new ArgumentNullException(nameof(messageReceiveResult));
+
+            if (handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            try
+            {
+                await handler(messageReceiveResult.Message, messageReceiveResult.RemoteAddress, messageReceiveResult.RemoteEndPoint, cancellation);
+                await messageReceiveResult.SendAckAsync();
+            }
+            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+            {
+                await messageReceiveResult.SendCancellationAsync();
+            }
+        }
+    }
 }
