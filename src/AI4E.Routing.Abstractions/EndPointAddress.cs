@@ -1,10 +1,11 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        EndPointAddress.cs 
- * Types:           AI4E.Routing.EndPointAddress
+ * Types:           (1) AI4E.Routing.EndPointAddress
+ *                  (2) AI4E.Routing.EndPointAddressExtension
+ *                  (3) AI4E.Routing.EndPointAddressJsonConverter
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   04.10.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -238,7 +239,7 @@ namespace AI4E.Routing
             if (utf8EncodedValue.Length > 0)
             {
                 var stream = writer.BaseStream;
-                stream.Write(utf8EncodedValue);
+                stream.Write(utf8EncodedValue.Span);
             }
         }
     }
