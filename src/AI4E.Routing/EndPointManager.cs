@@ -22,7 +22,6 @@ namespace AI4E.Routing
         private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
         private readonly IEndPointMap<TAddress> _endPointMap;
         private readonly IEndPointScheduler<TAddress> _endPointScheduler;
-        private readonly IEndPointAddressSerializer _endPointAddressSerializer;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<EndPointManager<TAddress>> _logger;
@@ -36,7 +35,6 @@ namespace AI4E.Routing
         public EndPointManager(IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
                                IEndPointMap<TAddress> endPointMap,
                                IEndPointScheduler<TAddress> endPointScheduler,
-                               IEndPointAddressSerializer endPointAddressSerializer,
                                IServiceProvider serviceProvider,
                                ILoggerFactory loggerFactory)
         {
@@ -49,16 +47,12 @@ namespace AI4E.Routing
             if (endPointScheduler == null)
                 throw new ArgumentNullException(nameof(endPointScheduler));
 
-            if (endPointAddressSerializer == null)
-                throw new ArgumentNullException(nameof(endPointAddressSerializer));
-
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
             _endPointMultiplexer = endPointMultiplexer;
             _endPointMap = endPointMap;
             _endPointScheduler = endPointScheduler;
-            _endPointAddressSerializer = endPointAddressSerializer;
             _serviceProvider = serviceProvider;
             _loggerFactory = loggerFactory;
             _logger = loggerFactory?.CreateLogger<EndPointManager<TAddress>>();
@@ -72,8 +66,8 @@ namespace AI4E.Routing
 
         public ILogicalEndPoint<TAddress> GetLogicalEndPoint(EndPointAddress endPoint)
         {
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             lock (_endPointsLock)
             {
@@ -93,8 +87,8 @@ namespace AI4E.Routing
 
         public ILogicalEndPoint<TAddress> CreateLogicalEndPoint(EndPointAddress endPoint)
         {
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             if (_isDisposed != 0) // Volatile read op.
                 throw new ObjectDisposedException(GetType().FullName);
@@ -162,7 +156,7 @@ namespace AI4E.Routing
 
         private IPhysicalEndPoint<TAddress> GetMultiplexPhysicalEndPoint(EndPointAddress endPoint)
         {
-            var result = _endPointMultiplexer.GetPhysicalEndPoint("end-points/" + endPoint.LogicalAddress); // TODO: This should be configurable
+            var result = _endPointMultiplexer.GetPhysicalEndPoint("end-points/" + endPoint.ToString()); // TODO: This should be configurable
             Assert(result != null);
             return result;
         }
@@ -511,11 +505,10 @@ namespace AI4E.Routing
                 if (message == null)
                     throw new ArgumentNullException(nameof(message));
 
-                var messageType = default(MessageType);
-                int seqNum, corr;
                 var frameIdx = message.FrameIndex;
-
-                byte[] rxEndPointBytes, txEndPointBytes;
+                MessageType messageType;
+                int seqNum, corr;
+                EndPointAddress txEndPoint, rxEndPoint;
 
                 try
                 {
@@ -526,11 +519,8 @@ namespace AI4E.Routing
                         seqNum = reader.ReadInt32();
                         corr = reader.ReadInt32();
 
-                        var txEndPointLength = reader.ReadInt32();
-                        txEndPointBytes = reader.ReadBytes(txEndPointLength);
-
-                        var rxEndPointLength = reader.ReadInt32();
-                        rxEndPointBytes = reader.ReadBytes(rxEndPointLength);
+                        txEndPoint = reader.ReadEndPointAddress();
+                        rxEndPoint = reader.ReadEndPointAddress();
                     }
                 }
                 catch when (message.FrameIndex != frameIdx)
@@ -540,9 +530,6 @@ namespace AI4E.Routing
                     throw;
                 }
 
-                var rxEndPoint = rxEndPointBytes.Length > 0 ? _endPointManager._endPointAddressSerializer.Deserialize(rxEndPointBytes) : default;
-                var txEndPoint = txEndPointBytes.Length > 0 ? _endPointManager._endPointAddressSerializer.Deserialize(txEndPointBytes) : default;
-
                 decodedMessage = new DecodedMessage(messageType, seqNum, corr, txEndPoint, rxEndPoint);
             }
 
@@ -551,8 +538,6 @@ namespace AI4E.Routing
                 if (message == null)
                     throw new ArgumentNullException(nameof(message));
 
-                var serializedTxEndPoint = decodedMessage.TxEndPoint == null ? _emptyByteArray : _endPointManager._endPointAddressSerializer.Serialize(decodedMessage.TxEndPoint);
-                var serializedRxEndPoint = decodedMessage.RxEndPoint == null ? _emptyByteArray : _endPointManager._endPointAddressSerializer.Serialize(decodedMessage.RxEndPoint);
                 var frameIdx = message.FrameIndex;
 
                 try
@@ -562,13 +547,9 @@ namespace AI4E.Routing
                     {
                         writer.Write((int)decodedMessage.MessageType);  // Message type        -- 4 Byte
                         writer.Write(decodedMessage.SeqNum);            // Seq num             -- 4 Byte
-                        writer.Write(decodedMessage.Corr);              // Coor num             -- 4 Byte
-
-                        writer.Write(serializedTxEndPoint.Length);      // Tx end-point length -- 4 Byte
-                        writer.Write(serializedTxEndPoint);             // Tx end-point        -- (Local route length Byte)
-
-                        writer.Write(serializedRxEndPoint.Length);      // Rx end-point length -- 4 Byte
-                        writer.Write(serializedRxEndPoint);             // Rx end-point        -- (Remote route length Byte)
+                        writer.Write(decodedMessage.Corr);              // Coor num            -- 4 Byte
+                        writer.Write(decodedMessage.TxEndPoint);
+                        writer.Write(decodedMessage.RxEndPoint);
                     }
                 }
                 catch when (message.FrameIndex != frameIdx)

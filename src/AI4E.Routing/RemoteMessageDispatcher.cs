@@ -222,7 +222,7 @@ namespace AI4E.Routing
             if (dispatchData == null)
                 throw new ArgumentNullException(nameof(dispatchData));
 
-            if (endPoint != null)
+            if (endPoint != default)
             {
                 return InternalDispatchAsync(dispatchData, publish, endPoint, cancellation);
             }

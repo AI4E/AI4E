@@ -161,7 +161,7 @@ namespace AI4E.Routing.SignalR.Server
             public SerializedMessageHandlerProxy(ClientManager owner, EndPointAddress endPoint)
             {
                 Assert(owner != null);
-                Assert(endPoint != null);
+                Assert(endPoint != default);
                 _owner = owner;
                 _endPoint = endPoint;
             }
@@ -345,9 +345,7 @@ namespace AI4E.Routing.SignalR.Server
                             var routeBytesLength = reader.ReadInt32();
                             var routeBytes = reader.ReadBytes(routeBytesLength);
                             var route = Encoding.UTF8.GetString(routeBytes);
-                            var endPointBytesLength = reader.ReadInt32();
-                            var endPointBytes = reader.ReadBytes(endPointBytesLength);
-                            var endPoint = EndPointAddress.Create(Encoding.UTF8.GetString(endPointBytes));
+                            var endPoint = reader.ReadEndPointAddress();
                             var publish = reader.ReadBoolean();
                             var response = await router.RouteAsync(route, message, publish, endPoint, cancellation);
                             return response;

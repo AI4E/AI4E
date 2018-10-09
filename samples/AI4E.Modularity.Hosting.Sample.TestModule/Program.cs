@@ -33,7 +33,6 @@ namespace AI4E.Modularity.Hosting.Sample.TestModule
             services.AddOptions();
             services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
             services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
-            services.AddSingleton<IEndPointAddressSerializer, EndPointAddressSerializer>();
             services.AddSingleton<ITypeConversion, TypeSerializer>();
             services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
             services.AddSingleton<IRouteManager, RouteManager>();
@@ -63,7 +62,7 @@ namespace AI4E.Modularity.Hosting.Sample.TestModule
         private static ILogicalEndPoint ConfigureLogicalEndPoint(IServiceProvider serviceProvider)
         {
             var endPointManager = serviceProvider.GetRequiredService<IEndPointManager>();
-            return endPointManager.CreateLogicalEndPoint(EndPointAddress.Create("AI4E.Modularity.Hosting.Sample.TestModule"));
+            return endPointManager.CreateLogicalEndPoint(new EndPointAddress("AI4E.Modularity.Hosting.Sample.TestModule"));
         }
 
         private static async Task RunAsync()

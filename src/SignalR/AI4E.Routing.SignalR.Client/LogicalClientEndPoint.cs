@@ -225,7 +225,6 @@ namespace AI4E.Routing.SignalR.Client
 
         private static void EncodeClientMessage(IMessage message, int seqNum, int corr, MessageType messageType, EndPointAddress localEndPoint, string securityToken)
         {
-            var endPointBytes = localEndPoint == null ? _emptyBytes : Encoding.UTF8.GetBytes(localEndPoint.LogicalAddress);
             var securityTokenBytes = securityToken == null ? _emptyBytes : Encoding.UTF8.GetBytes(securityToken);
 
             using (var stream = message.PushFrame().OpenStream())
@@ -237,11 +236,10 @@ namespace AI4E.Routing.SignalR.Client
                 writer.Write((byte)0); // 1 bytes (padding)
                 writer.Write((byte)0); // 1 bytes (padding)
                 writer.Write(corr); // 4 bytes
-                writer.Write(endPointBytes.Length); // 4 bytes
-                if (endPointBytes.Length > 0)
-                {
-                    writer.Write(endPointBytes); // Variable length
-                }
+
+                writer.Write(localEndPoint);
+
+
                 writer.Write(securityTokenBytes.Length); // 4 bytes
                 if (securityTokenBytes.Length > 0)
                 {
@@ -272,15 +270,13 @@ namespace AI4E.Routing.SignalR.Client
             using (var stream = result.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
             {
-                var localEndPointBytesLenght = reader.ReadInt32();
-                var localEndPointBytes = reader.ReadBytes(localEndPointBytesLenght);
-                var localEndPoint = Encoding.UTF8.GetString(localEndPointBytes);
+                var localEndPoint = reader.ReadEndPointAddress();
 
                 var securityTokenBytesLength = reader.ReadInt32();
                 var securityTokenBytes = reader.ReadBytes(securityTokenBytesLength);
                 var securityToken = Encoding.UTF8.GetString(securityTokenBytes);
 
-                return (EndPointAddress.Create(localEndPoint), securityToken);
+                return (localEndPoint, securityToken);
             }
         }
 
@@ -403,11 +399,11 @@ namespace AI4E.Routing.SignalR.Client
             void RequestCancellation()
             {
                 var cancellationRequest = new Message();
-                EncodeClientMessage(cancellationRequest, GetNextSeqNum(), corr: seqNum, MessageType.CancellationRequest, localEndPoint: null, securityToken: null);
+                EncodeClientMessage(cancellationRequest, GetNextSeqNum(), corr: seqNum, MessageType.CancellationRequest, localEndPoint: default, securityToken: null);
                 SendInternalAsync(cancellationRequest, cancellation: default).HandleExceptions(_logger);
             }
 
-            EncodeClientMessage(message, seqNum, corr: default, MessageType.Init, localEndPoint: null, securityToken: null);
+            EncodeClientMessage(message, seqNum, corr: default, MessageType.Init, localEndPoint: default, securityToken: null);
 
             using (cancellation.Register(RequestCancellation))
             {

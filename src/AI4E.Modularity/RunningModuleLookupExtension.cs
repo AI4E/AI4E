@@ -64,13 +64,13 @@ namespace AI4E.Modularity
                 // We take the entry that was registered first. This is done in order that a logical end-point cannot override an address of an already existing end-point.
                 var endPoint = endPoints.FirstOrDefault();
 
-                if (endPoint != null)
+                if (endPoint != default)
                 {
                     return endPoint;
                 }
             }
 
-            return null;
+            return EndPointAddress.UnknownAddress;
         }
     }
 }

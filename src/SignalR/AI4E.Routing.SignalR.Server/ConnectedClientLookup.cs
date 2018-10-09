@@ -56,7 +56,7 @@ namespace AI4E.Routing.SignalR.Server
             {
                 try
                 {
-                    await _coordinationManager.CreateAsync(_basePath.GetChildPath(endPoint.LogicalAddress), bytes, cancellation: cancellation);
+                    await _coordinationManager.CreateAsync(_basePath.GetChildPath(endPoint.ToString()), bytes, cancellation: cancellation);
 
                     return (endPoint, securityToken);
                 }
@@ -70,7 +70,7 @@ namespace AI4E.Routing.SignalR.Server
 
         public async Task<bool> ValidateClientAsync(EndPointAddress endPoint, string securityToken, CancellationToken cancellation)
         {
-            var path = _basePath.GetChildPath(endPoint.LogicalAddress);
+            var path = _basePath.GetChildPath(endPoint.ToString());
             var entry = await _coordinationManager.GetAsync(path, cancellation: cancellation);
 
             if (entry == null)

@@ -69,8 +69,8 @@ namespace AI4E.Modularity
             if (module == default)
                 throw new ArgumentDefaultException(nameof(module));
 
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             if (prefixes == null)
                 throw new ArgumentNullException(nameof(prefixes));
@@ -90,11 +90,8 @@ namespace AI4E.Modularity
             {
                 using (var writer = new BinaryWriter(memoryStream))
                 {
-                    var endPointAddress = endPoint.LogicalAddress;
-                    var endPointAddressBytes = Encoding.UTF8.GetBytes(endPointAddress);
-
-                    writer.Write(endPointAddressBytes.Length);
-                    writer.Write(endPointAddressBytes);
+                    writer.Write(endPoint);
+           
                     writer.Write(prefixes.Count());
 
                     foreach (var prefix in prefixes)
@@ -105,14 +102,11 @@ namespace AI4E.Modularity
                         writer.Write(normalizedPrefixBytes.Length);
                         writer.Write(normalizedPrefixBytes);
 
-                        var endPointAddressBytes2 = Encoding.UTF8.GetBytes(endPoint.LogicalAddress);
-
-                        using (var stream = new MemoryStream(capacity: 4 + endPointAddressBytes2.Length))
+                        using (var stream = new MemoryStream(capacity: 4 + endPoint.Utf8EncodedValue.Length))
                         {
                             using (var writer2 = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
                             {
-                                writer2.Write(endPointAddressBytes2.Length);
-                                writer2.Write(endPointAddressBytes2);
+                                writer.Write(endPoint);
                             }
 
                             var payload = stream.ToArray();
@@ -149,10 +143,7 @@ namespace AI4E.Modularity
             using (var stream = entry.OpenStream())
             using (var reader = new BinaryReader(stream))
             {
-                var endPointAddressBytesLength = reader.ReadInt32();
-                var endPointAddressBytes = reader.ReadBytes(endPointAddressBytesLength);
-                var endPointAddress = Encoding.UTF8.GetString(endPointAddressBytes);
-                var endPoint = EndPointAddress.Create(endPointAddress);
+                var endPoint = reader.ReadEndPointAddress();
                 var prefixesCount = reader.ReadInt32();
 
                 for (var i = 0; i < prefixesCount; i++)
@@ -272,7 +263,7 @@ namespace AI4E.Modularity
             if (normalize)
                 prefix = NormalizePrefix(prefix);
 
-            var uniqueEntryName = IdGenerator.GenerateId(endPoint.LogicalAddress, session.ToString());
+            var uniqueEntryName = IdGenerator.GenerateId(endPoint.ToString(), session.ToString());
             return _rootPrefixesPath.GetChildPath(prefix, uniqueEntryName);
         }
 

@@ -32,8 +32,8 @@ namespace AI4E.Routing
 
         public async Task MapEndPointAsync(EndPointAddress endPoint, TAddress address, CancellationToken cancellation)
         {
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             if (address == null)
                 throw new ArgumentNullException(nameof(address));
@@ -41,17 +41,16 @@ namespace AI4E.Routing
             if (address.Equals(default(TAddress)))
                 throw new ArgumentDefaultException(nameof(address));
 
-            var logicalAddress = endPoint.LogicalAddress;
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
-            var path = GetPath(logicalAddress, session);
+            var path = GetPath(endPoint, session);
 
             await _coordinationManager.GetOrCreateAsync(path, _addressConversion.SerializeAddress(address), EntryCreationModes.Ephemeral, cancellation);
         }
 
         public async Task UnmapEndPointAsync(EndPointAddress endPoint, TAddress address, CancellationToken cancellation)
         {
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             if (address == null)
                 throw new ArgumentNullException(nameof(address));
@@ -59,56 +58,53 @@ namespace AI4E.Routing
             if (address.Equals(default(TAddress)))
                 throw new ArgumentDefaultException(nameof(address));
 
-            var logicalAddress = endPoint.LogicalAddress;
-            var logicalAddressEntry = await GetLogicalAddressEntryAsync(logicalAddress, cancellation);
+            var endPointEntry = await GetLogicalAddressEntryAsync(endPoint, cancellation);
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
-            var path = GetPath(logicalAddress, session);
+            var path = GetPath(endPoint, session);
 
             await _coordinationManager.DeleteAsync(path, cancellation: cancellation);
         }
 
         public async Task UnmapEndPointAsync(EndPointAddress endPoint, CancellationToken cancellation)
         {
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
-            var logicalAddress = endPoint.LogicalAddress;
-            var path = GetPath(logicalAddress);
+            var path = GetPath(endPoint);
 
             await _coordinationManager.DeleteAsync(path, recursive: true, cancellation: cancellation);
         }
 
         public async ValueTask<IEnumerable<TAddress>> GetMapsAsync(EndPointAddress endPoint, CancellationToken cancellation)
         {
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
-            var logicalAddress = endPoint.LogicalAddress;
-            var logicalAddressEntry = await GetLogicalAddressEntryAsync(logicalAddress, cancellation);
+            var endPointEntry = await GetLogicalAddressEntryAsync(endPoint, cancellation);
 
-            Assert(logicalAddressEntry != null);
+            Assert(endPointEntry != null);
 
-            var entries = await logicalAddressEntry.GetChildrenEntries().ToArray(cancellation);
+            var entries = await endPointEntry.GetChildrenEntries().ToArray(cancellation);
 
             return entries.Select(p => _addressConversion.DeserializeAddress(p.Value.ToArray()));
         }
 
         #endregion
 
-        private ValueTask<IEntry> GetLogicalAddressEntryAsync(string logicalAddress, CancellationToken cancellation)
+        private ValueTask<IEntry> GetLogicalAddressEntryAsync(EndPointAddress endPoint, CancellationToken cancellation)
         {
-            var path = GetPath(logicalAddress);
+            var path = GetPath(endPoint);
             return _coordinationManager.GetOrCreateAsync(path, ReadOnlyMemory<byte>.Empty, EntryCreationModes.Default, cancellation);
         }
 
-        private static CoordinationEntryPath GetPath(string logicalAddress)
+        private static CoordinationEntryPath GetPath(EndPointAddress endPoint)
         {
-            return _mapsRootPath.GetChildPath(logicalAddress);
+            return _mapsRootPath.GetChildPath(endPoint.ToString());
         }
 
-        private static CoordinationEntryPath GetPath(string logicalAddress, string session)
+        private static CoordinationEntryPath GetPath(EndPointAddress endPoint, string session)
         {
-            return _mapsRootPath.GetChildPath(logicalAddress, session);
+            return _mapsRootPath.GetChildPath(endPoint.ToString(), session);
         }
     }
 }

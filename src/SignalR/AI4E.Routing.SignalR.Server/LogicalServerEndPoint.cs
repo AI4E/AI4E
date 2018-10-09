@@ -69,8 +69,8 @@ namespace AI4E.Routing.SignalR.Server
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
@@ -222,8 +222,8 @@ namespace AI4E.Routing.SignalR.Server
 
         private static (int seqNum, int corr, MessageType messageType, EndPointAddress remoteEndPoint, string securityToken) DecodeClientMessage(IMessage message)
         {
-            EndPointAddress remoteEndPoint = null;
-            string securityToken = null;
+            EndPointAddress remoteEndPoint;
+            string securityToken;
 
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
@@ -235,13 +235,7 @@ namespace AI4E.Routing.SignalR.Server
                 reader.ReadByte(); // 1 bytes (padding)
                 var corr = reader.ReadInt32(); // 4 bytes
 
-                var remoteEndPointBytesLength = reader.ReadInt32(); // 4 bytes
-
-                if (remoteEndPointBytesLength > 0)
-                {
-                    var remoteEndPointBytes = reader.ReadBytes(remoteEndPointBytesLength); // Variable length
-                    remoteEndPoint = EndPointAddress.Create(Encoding.UTF8.GetString(remoteEndPointBytes));
-                }
+                remoteEndPoint = reader.ReadEndPointAddress();
 
                 var securityTokenBytesLength = reader.ReadInt32(); // 4 bytes
 
@@ -249,6 +243,10 @@ namespace AI4E.Routing.SignalR.Server
                 {
                     var securityTokenBytes = reader.ReadBytes(securityTokenBytesLength); // Variable length
                     securityToken = Encoding.UTF8.GetString(securityTokenBytes);
+                }
+                else
+                {
+                    securityToken = null;
                 }
 
                 return (seqNum, corr, messageType, remoteEndPoint, securityToken);
@@ -258,15 +256,13 @@ namespace AI4E.Routing.SignalR.Server
         // This must be in sync with LogicalClientEndPoint.DecodeInitResponse
         private static void EncodeInitResponse(IMessage result, EndPointAddress endPoint, string securityToken)
         {
-            var endPointBytes = Encoding.UTF8.GetBytes(endPoint.LogicalAddress);
             var securityTokenBytes = Encoding.UTF8.GetBytes(securityToken);
 
             using (var stream = result.PushFrame().OpenStream())
             {
                 using (var writer = new BinaryWriter(stream))
                 {
-                    writer.Write(endPointBytes.Length);
-                    writer.Write(endPointBytes);
+                    writer.Write(endPoint);
 
                     writer.Write(securityTokenBytes.Length);
                     writer.Write(securityTokenBytes);
@@ -291,7 +287,7 @@ namespace AI4E.Routing.SignalR.Server
 
             if (address == null)
             {
-                throw new Exception($"The client '{endPoint.LogicalAddress}' is unreachable."); // TODO
+                throw new Exception($"The client '{endPoint}' is unreachable."); // TODO
             }
 
             return SendInternalAsync(message, address, cancellation);

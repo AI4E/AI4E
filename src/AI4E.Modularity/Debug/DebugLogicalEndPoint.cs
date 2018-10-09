@@ -24,8 +24,8 @@ namespace AI4E.Modularity.Debug
             if (debugConnection == null)
                 throw new ArgumentNullException(nameof(debugConnection));
 
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             _debugConnection = debugConnection;
             EndPoint = endPoint;

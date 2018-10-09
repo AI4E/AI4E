@@ -19,8 +19,8 @@ namespace AI4E.Modularity.Debug
             if (endPointManager == null)
                 throw new ArgumentNullException(nameof(endPointManager));
 
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             _endPointManager = endPointManager;
 

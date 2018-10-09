@@ -1,0 +1,3 @@
+[submodule "lib/AI4E.Memory.Compatibility"]
+	path = lib/AI4E.Memory.Compatibility
+	url = https://github.com/AI4E/AI4E.Memory.Compatibility.git

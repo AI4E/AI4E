@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace AI4E.Coordination
+namespace AI4E.Internal
 {
     internal static class MemoryExtensions
     {

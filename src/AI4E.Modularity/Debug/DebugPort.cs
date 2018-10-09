@@ -146,8 +146,8 @@ namespace AI4E.Modularity.Debug
             if (address == null)
                 throw new ArgumentNullException(nameof(address));
 
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             if (module == default)
                 throw new ArgumentDefaultException(nameof(module));
@@ -159,7 +159,7 @@ namespace AI4E.Modularity.Debug
 
             // TODO: There is a race condition if this is hte metadata for an older debug session that had the same address coincidentally.
             session.SetMetadata(endPoint, module, moduleVersion);
-            _logger?.LogTrace($"The metadata for debug session '{endPoint.LogicalAddress}' were set.");
+            _logger?.LogTrace($"The metadata for debug session '{endPoint}' were set.");
         }
 
         private async Task ConnectProcedure(CancellationToken cancellation)

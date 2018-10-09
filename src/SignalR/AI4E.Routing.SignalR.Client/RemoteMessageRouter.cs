@@ -112,8 +112,8 @@ namespace AI4E.Routing.SignalR.Client
             if (serializedMessage == null)
                 throw new ArgumentNullException(nameof(serializedMessage));
 
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             var idx = serializedMessage.FrameIndex;
 
@@ -207,7 +207,6 @@ namespace AI4E.Routing.SignalR.Client
         private static void EncodeRouteRequest(IMessage message, string route, bool publish, EndPointAddress endPoint)
         {
             var routeBytes = Encoding.UTF8.GetBytes(route);
-            var endPointBytes = Encoding.UTF8.GetBytes(endPoint.LogicalAddress);
 
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(stream))
@@ -216,8 +215,8 @@ namespace AI4E.Routing.SignalR.Client
                 writer.Write((short)0);
                 writer.Write(routeBytes.Length);
                 writer.Write(routeBytes);
-                writer.Write(endPointBytes.Length);
-                writer.Write(endPointBytes);
+                writer.Write(endPoint);
+ 
                 writer.Write(publish);
             }
         }

@@ -49,6 +49,25 @@ namespace AI4E.Internal
             }
         }
 
+        public static void ReadExact(this Stream stream, byte[] buffer, int offset, int count)
+        {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+
+            while (count > 0)
+            {
+                var readBytes = stream.Read(buffer, offset, count);
+
+                if (readBytes == 0)
+                    throw new EndOfStreamException();
+
+                count -= readBytes;
+                offset += readBytes;
+
+                Debug.Assert(!(count < 0));
+            }
+        }
+
         public static async Task<byte[]> ToArrayAsync(this Stream stream)
         {
             if (stream == null)

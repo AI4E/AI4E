@@ -40,7 +40,6 @@ namespace AI4E.Routing
 
             services.AddSingleton(typeof(IEndPointScheduler<>), typeof(RandomEndPointScheduler<>));
             services.AddSingleton(typeof(IEndPointMap<>), typeof(EndPointMap<>));
-            services.AddSingleton<IEndPointAddressSerializer, EndPointAddressSerializer>();
 
             services.AddCoordinationService();
         }
@@ -72,7 +71,7 @@ namespace AI4E.Routing
     {
         public RemoteMessagingOptions()
         {
-            LocalEndPoint = EndPointAddress.Create(Assembly.GetEntryAssembly().GetName().Name);
+            LocalEndPoint = new EndPointAddress(Assembly.GetEntryAssembly().GetName().Name);
         }
 
         public EndPointAddress LocalEndPoint { get; set; }

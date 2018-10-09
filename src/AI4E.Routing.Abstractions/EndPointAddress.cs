@@ -29,44 +29,72 @@
  */
 
 using System;
-using System.Collections.Concurrent;
+using System.IO;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
+using System.Text;
+using AI4E.Internal;
+using AI4E.Memory.Compatibility;
+using Newtonsoft.Json;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing
 {
     /// <summary>
     /// Represents the address of a logical end point.
     /// </summary>
-    [Serializable]
-    public sealed class EndPointAddress : IEquatable<EndPointAddress>
+    [Serializable, JsonConverter(typeof(EndPointAddressJsonConverter))]
+    public readonly struct EndPointAddress : IEquatable<EndPointAddress>, ISerializable
     {
-        private static readonly ConcurrentDictionary<string, EndPointAddress> _instances = new ConcurrentDictionary<string, EndPointAddress>();
+        public static EndPointAddress UnknownAddress { get; } = default;
 
-        // TODO: private -> Fix serialization
+        #region C'tor
+
         public EndPointAddress(string logicalAddress)
-        {
-            LogicalAddress = logicalAddress;
-        }
-
-        /// <summary>
-        /// Gets a stringified version of the end point address.
-        /// </summary>
-        public string LogicalAddress { get; }
-
-        /// <summary>
-        /// Creates a new end point address from the specified string.
-        /// </summary>
-        /// <param name="logicalAddress">The string that specifies the end point address.</param>
-        /// <returns>The created end point address.</returns>
-        /// <exception cref="ArgumentNullOrWhiteSpaceException">Thrown if <paramref name="logicalAddress"/> is either null, an empty string or a string consisting of whitespace only.</exception>
-        public static EndPointAddress Create(string logicalAddress)
         {
             if (string.IsNullOrWhiteSpace(logicalAddress))
             {
-                throw new ArgumentNullOrWhiteSpaceException(nameof(logicalAddress));
+                this = UnknownAddress;
             }
-
-            return _instances.GetOrAdd(logicalAddress, _ => new EndPointAddress(logicalAddress));
+            else
+            {
+                Utf8EncodedValue = EncodeAddress(logicalAddress);
+            }
         }
+
+        public EndPointAddress(ReadOnlyMemory<byte> utf8EncodedValue)
+        {
+            // TODO: Do we have to trim?
+            Utf8EncodedValue = utf8EncodedValue;
+        }
+
+        private EndPointAddress(SerializationInfo info, StreamingContext context)
+        {
+            var logicalAddress = info.GetString("address-string");
+
+            if (string.IsNullOrWhiteSpace(logicalAddress))
+            {
+                this = UnknownAddress;
+            }
+            else
+            {
+                Utf8EncodedValue = EncodeAddress(logicalAddress);
+            }
+        }
+
+        private static ReadOnlyMemory<byte> EncodeAddress(string logicalAddress)
+        {
+            var chars = logicalAddress.AsSpan().Trim();
+            var byteCount = Encoding.UTF8.GetByteCount(chars);
+            var bytes = new byte[byteCount];
+            var bytesWritten = Encoding.UTF8.GetBytes(chars, bytes);
+            Assert(bytesWritten == byteCount);
+            return bytes;
+        }
+
+        #endregion
+
+        public ReadOnlyMemory<byte> Utf8EncodedValue { get; }
 
         /// <summary>
         /// Returns a boolean value indicating whether the specifies end point address equals the current instance.
@@ -75,13 +103,7 @@ namespace AI4E.Routing
         /// <returns>True if <paramref name="other"/> equals the current end point address, false otherwise.</returns>
         public bool Equals(EndPointAddress other)
         {
-            if (other is null)
-                return false;
-
-            if (ReferenceEquals(other, this))
-                return true;
-
-            return other.LogicalAddress == LogicalAddress;
+            return other.Utf8EncodedValue.Span.SequenceEqual(Utf8EncodedValue.Span);
         }
 
         /// <summary>
@@ -100,7 +122,7 @@ namespace AI4E.Routing
         /// <returns>The generated hash code.</returns>
         public override int GetHashCode()
         {
-            return LogicalAddress.GetHashCode();
+            return Utf8EncodedValue.SequenceHashCode();
         }
 
         /// <summary>
@@ -109,7 +131,10 @@ namespace AI4E.Routing
         /// <returns>A string representing the current end point address.</returns>
         public override string ToString()
         {
-            return LogicalAddress;
+            if (Utf8EncodedValue.IsEmpty)
+                return null;
+
+            return Encoding.UTF8.GetString(Utf8EncodedValue.Span);
         }
 
         /// <summary>
@@ -120,9 +145,6 @@ namespace AI4E.Routing
         /// <returns>True if <paramref name="left"/> equals <paramref name="right"/>, false otherwise.</returns>
         public static bool operator ==(EndPointAddress left, EndPointAddress right)
         {
-            if (left is null)
-                return right is null;
-
             return left.Equals(right);
         }
 
@@ -134,10 +156,90 @@ namespace AI4E.Routing
         /// <returns>True if <paramref name="left"/> does not equal <paramref name="right"/>, false otherwise.</returns>
         public static bool operator !=(EndPointAddress left, EndPointAddress right)
         {
-            if (left is null)
-                return !(right is null);
-
             return !left.Equals(right);
+        }
+
+        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
+        void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("address-string", ToString());
+        }
+    }
+
+    public sealed class EndPointAddressJsonConverter : JsonConverter<EndPointAddress>
+    {
+        public override void WriteJson(JsonWriter writer, EndPointAddress value, JsonSerializer serializer)
+        {
+            writer.WriteValue(value.ToString());
+        }
+
+        public override EndPointAddress ReadJson(JsonReader reader, Type objectType, EndPointAddress existingValue, bool hasExistingValue, JsonSerializer serializer)
+        {
+            var addressString = reader.ReadAsString();
+
+            if (string.IsNullOrWhiteSpace(addressString))
+            {
+                return EndPointAddress.UnknownAddress;
+            }
+
+            return new EndPointAddress(addressString);
+        }
+    }
+
+    public static class EndPointAddressExtension
+    {
+        public static EndPointAddress ReadEndPointAddress(this BinaryReader reader)
+        {
+            if (reader == null)
+                throw new ArgumentNullException(nameof(reader));
+
+            var localEndPointBytesLenght = reader.ReadInt32();
+
+            if (localEndPointBytesLenght == 0)
+            {
+                return EndPointAddress.UnknownAddress;
+            }
+
+            var stream = reader.BaseStream;
+
+            if (stream is MemoryStream memoryStream && memoryStream.TryGetBuffer(out var buffer))
+            {
+                var memory = buffer.AsMemory();
+                var position = checked((int)memoryStream.Position);
+
+                if (position - localEndPointBytesLenght > memoryStream.Length)
+                {
+                    throw new EndOfStreamException();
+                }
+
+                return new EndPointAddress(memory.Slice(position, localEndPointBytesLenght));
+            }
+
+            var utf8EncodedValue = new byte[localEndPointBytesLenght];
+            stream.ReadExact(utf8EncodedValue, offset: 0, count: localEndPointBytesLenght);
+
+            return new EndPointAddress(utf8EncodedValue);
+        }
+
+        public static void Write(this BinaryWriter writer, EndPointAddress endPointAddress)
+        {
+            if (writer == null)
+                throw new ArgumentNullException(nameof(writer));
+
+            if (endPointAddress == default)
+            {
+                writer.Write(0);
+            }
+            var utf8EncodedValue = endPointAddress.Utf8EncodedValue;
+
+            writer.Write(utf8EncodedValue.Length);
+            writer.Flush();
+
+            if (utf8EncodedValue.Length > 0)
+            {
+                var stream = writer.BaseStream;
+                stream.Write(utf8EncodedValue);
+            }
         }
     }
 }

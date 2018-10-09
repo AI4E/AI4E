@@ -149,8 +149,8 @@ namespace AI4E.Routing
             if (serializedMessage == null)
                 throw new ArgumentNullException(nameof(serializedMessage));
 
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             return InternalRouteAsync(route, serializedMessage, publish, endPoint, cancellation);
         }
@@ -210,13 +210,13 @@ namespace AI4E.Routing
                                 }
                             }
 
-                            return null;
+                            return EndPointAddress.UnknownAddress;
                         }
 
                         var resolvedEndPoint = ResolveEndPoint();
 
                         // There is no (publish only) match for the current route.
-                        if (resolvedEndPoint == null)
+                        if (resolvedEndPoint == EndPointAddress.UnknownAddress)
                         {
                             continue;
                         }
@@ -252,7 +252,7 @@ namespace AI4E.Routing
 
         private async ValueTask<IMessage> InternalRouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation)
         {
-            Assert(endPoint != null);
+            Assert(endPoint != default);
 
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
 
@@ -264,7 +264,7 @@ namespace AI4E.Routing
                 return await RouteToLocalAsync(route, serializedMessage, publish, cancellation);
             }
 
-            _logger?.LogDebug($"Message router for end-point '{localEndPoint}': Dispatching request message to remote end point '{endPoint.LogicalAddress}'.");
+            _logger?.LogDebug($"Message router for end-point '{localEndPoint}': Dispatching request message to remote end point '{endPoint}'.");
 
             // Remove all frames from other protocol stacks.
             serializedMessage.Trim(); // TODO
@@ -374,8 +374,8 @@ namespace AI4E.Routing
 
         public IMessageRouter CreateMessageRouter(EndPointAddress endPoint, ISerializedMessageHandler serializedMessageHandler, RouteOptions options)
         {
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             if (serializedMessageHandler == null)
                 throw new ArgumentNullException(nameof(serializedMessageHandler));
