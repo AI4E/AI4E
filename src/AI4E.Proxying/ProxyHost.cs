@@ -40,6 +40,7 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
@@ -202,7 +203,7 @@ namespace AI4E.Proxying
 
         #region Proxies
 
-        private IProxy RegisterLocalProxy(IProxy proxy)
+        internal IProxy RegisterLocalProxy(IProxy proxy)
         {
             lock (_proxyLock)
             {
@@ -750,7 +751,7 @@ namespace AI4E.Proxying
 
                     var proxyType = proxy.GetType().GetGenericArguments()[0];
                     writer.Write(proxyType.AssemblyQualifiedName);
-                    writer.Write((proxy?.LocalInstance.GetType() ?? proxyType).AssemblyQualifiedName);
+                    writer.Write((proxy.LocalInstance?.GetType() ?? proxyType).AssemblyQualifiedName);
                     writer.Write(proxy.Id);
                     break;
 
@@ -761,7 +762,7 @@ namespace AI4E.Proxying
                 default:
                     writer.Write((byte)TypeCode.Other);
                     writer.Flush();
-                    new BinaryFormatter().Serialize(writer.BaseStream, obj);
+                    GetBinaryFormatter().Serialize(writer.BaseStream, obj);
                     break;
             }
         }
@@ -861,11 +862,18 @@ namespace AI4E.Proxying
                     return CancellationToken.None; // TODO: Cancellation token support
 
                 case TypeCode.Other:
-                    return new BinaryFormatter().Deserialize(reader.BaseStream);
+                    return GetBinaryFormatter().Deserialize(reader.BaseStream);
 
                 default:
                     throw new FormatException("Unknown type code.");
             }
+        }
+
+        private BinaryFormatter GetBinaryFormatter()
+        {
+            var selector = new SurrogateSelector();
+
+            return new BinaryFormatter(selector, context: default);
         }
 
         private static Type LoadTypeIgnoringVersion(string assemblyQualifiedName)

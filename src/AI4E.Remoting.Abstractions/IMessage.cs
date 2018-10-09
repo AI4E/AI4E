@@ -49,5 +49,7 @@ namespace AI4E.Remoting
 
         int FrameCount { get; }
         int FrameIndex { get; }
+
+        byte[] ToArray();
     }
 }

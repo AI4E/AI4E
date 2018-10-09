@@ -40,11 +40,12 @@ namespace AI4E.Proxying
         where TRemote : class
     {
         private ProxyHost _host;
-        private int _id;
         private Action _unregisterAction;
         private readonly Type _remoteType;
         private readonly bool _ownsInstance;
         private readonly AsyncDisposeHelper _disposeHelper;
+
+        #region C'tor
 
         public Proxy(TRemote instance)
         {
@@ -67,16 +68,18 @@ namespace AI4E.Proxying
                 throw new ArgumentNullException(nameof(host));
 
             _host = host;
-            _id = id;
+            Id = id;
             _remoteType = remoteType;
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
+
+        #endregion
 
         public TRemote LocalInstance { get; }
 
         public Type ObjectType => IsRemoteProxy ? _remoteType : LocalInstance.GetType();
 
-        public int Id => _id;
+        public int Id { get; private set; }
 
         object IProxy.LocalInstance => LocalInstance;
 
@@ -102,7 +105,7 @@ namespace AI4E.Proxying
             {
                 Debug.Assert(_host != null);
 
-                await _host.Deactivate(_id, cancellation: default);
+                await _host.Deactivate(Id, cancellation: default);
             }
             else
             {
@@ -213,7 +216,7 @@ namespace AI4E.Proxying
                 throw new ArgumentNullException(nameof(unregisterAction));
 
             _host = host;
-            _id = proxyId;
+            Id = proxyId;
             _unregisterAction = unregisterAction;
         }
 
@@ -239,7 +242,7 @@ namespace AI4E.Proxying
             }
             else
             {
-                return new Proxy<T>((T)(object)LocalInstance, _ownsInstance) { _host = _host, _id = _id, _unregisterAction = _unregisterAction };
+                return new Proxy<T>((T)(object)LocalInstance, _ownsInstance) { _host = _host, Id = Id, _unregisterAction = _unregisterAction };
             }
         }
     }

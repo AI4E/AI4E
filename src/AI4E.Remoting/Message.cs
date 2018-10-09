@@ -158,6 +158,20 @@ namespace AI4E.Remoting
             _frames = new List<MessageFrame>(((IEnumerable<MessageFrame>)frames).Reverse());
             FrameIndex = currentIndex;
         }
+
+        public byte[] ToArray()
+        {
+            var buffer = new byte[Length];
+
+            using (var stream = new MemoryStream(buffer, writable: true))
+            {
+                WriteAsync(stream, cancellation: default).ConfigureAwait(false)
+                                                         .GetAwaiter()
+                                                         .GetResult();
+            }
+
+            return buffer;
+        }
     }
 
     [Serializable]
