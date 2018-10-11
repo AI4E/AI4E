@@ -19,7 +19,7 @@ namespace AI4E.Coordination
     {
         #region Fields
 
-        private readonly IProvider<ICoordinationManager> _coordinationManager;
+        private readonly ICoordinationSessionOwner _sessionOwner;
         private readonly ISessionManager _sessionManager;
         private readonly IProvider<ICoordinationWaitManager> _waitManager;
         private readonly IProvider<ICoordinationLockManager> _lockManager;
@@ -37,7 +37,7 @@ namespace AI4E.Coordination
 
         #region C'tor
 
-        public CoordinationExchangeManager(IProvider<ICoordinationManager> coordinationManager,
+        public CoordinationExchangeManager(ICoordinationSessionOwner sessionOwner,
                                            ISessionManager sessionManager,
                                            IProvider<ICoordinationWaitManager> waitManager,
                                            IProvider<ICoordinationLockManager> lockManager,
@@ -48,8 +48,8 @@ namespace AI4E.Coordination
                                            IOptions<CoordinationManagerOptions> optionsAccessor,
                                            ILogger<CoordinationExchangeManager<TAddress>> logger = null)
         {
-            if (coordinationManager == null)
-                throw new ArgumentNullException(nameof(coordinationManager));
+            if (sessionOwner == null)
+                throw new ArgumentNullException(nameof(sessionOwner));
 
             if (sessionManager == null)
                 throw new ArgumentNullException(nameof(sessionManager));
@@ -72,7 +72,7 @@ namespace AI4E.Coordination
             if (addressConversion == null)
                 throw new ArgumentNullException(nameof(addressConversion));
 
-            _coordinationManager = coordinationManager;
+            _sessionOwner = sessionOwner;
             _sessionManager = sessionManager;
             _waitManager = waitManager;
             _lockManager = lockManager;
@@ -92,11 +92,9 @@ namespace AI4E.Coordination
             _receiveProcess.Start();
         }
 
-        public ICoordinationManager CoordinationManager => _coordinationManager.ProvideInstance();
-
         private async Task<IPhysicalEndPoint<TAddress>> GetLocalSessionEndPointAsync(CancellationToken cancellation)
         {
-            var session = await CoordinationManager.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionAsync(cancellation);
             return GetSessionEndPoint(session);
         }
 
@@ -122,7 +120,7 @@ namespace AI4E.Coordination
         public async Task NotifyReadLockReleasedAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
             var sessions = _sessionManager.GetSessionsAsync(cancellation);
-            var localSession = await CoordinationManager.GetSessionAsync(cancellation);
+            var localSession = await _sessionOwner.GetSessionAsync(cancellation);
 
             var enumerator = sessions.GetEnumerator();
             try
@@ -152,7 +150,7 @@ namespace AI4E.Coordination
         public async Task NotifyWriteLockReleasedAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
             var sessions = _sessionManager.GetSessionsAsync(cancellation);
-            var localSession = await CoordinationManager.GetSessionAsync(cancellation);
+            var localSession = await _sessionOwner.GetSessionAsync(cancellation);
 
             var enumerator = sessions.GetEnumerator();
             try
@@ -181,7 +179,7 @@ namespace AI4E.Coordination
 
         public async Task InvalidateCacheEntryAsync(CoordinationEntryPath path, Session session, CancellationToken cancellation)
         {
-            if (session == await CoordinationManager.GetSessionAsync(cancellation))
+            if (session == await _sessionOwner.GetSessionAsync(cancellation))
             {
                 await InvalidateCacheEntryAsync(path, cancellation);
             }
@@ -231,7 +229,7 @@ namespace AI4E.Coordination
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
                 {
-                    _logger?.LogWarning(exc, $"[{await CoordinationManager.GetSessionAsync(cancellation)}] Failure while decoding received message.");
+                    _logger?.LogWarning(exc, $"[{await _sessionOwner.GetSessionAsync(cancellation)}] Failure while decoding received message.");
                 }
             }
         }
@@ -241,9 +239,9 @@ namespace AI4E.Coordination
             switch (messageType)
             {
                 case MessageType.InvalidateCacheEntry:
-                    if (session != await CoordinationManager.GetSessionAsync(cancellation))
+                    if (session != await _sessionOwner.GetSessionAsync(cancellation))
                     {
-                        _logger?.LogWarning($"[{await CoordinationManager.GetSessionAsync(cancellation)}] Received invalidate message for session that is not present.");
+                        _logger?.LogWarning($"[{await _sessionOwner.GetSessionAsync(cancellation)}] Received invalidate message for session that is not present.");
                     }
                     else
                     {
@@ -261,7 +259,7 @@ namespace AI4E.Coordination
 
                 case MessageType.Unknown:
                 default:
-                    _logger?.LogWarning($"[{await CoordinationManager.GetSessionAsync(cancellation)}] Received invalid message or message with unknown message type.");
+                    _logger?.LogWarning($"[{await _sessionOwner.GetSessionAsync(cancellation)}] Received invalid message or message with unknown message type.");
                     break;
             }
         }

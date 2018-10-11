@@ -15,7 +15,7 @@ namespace AI4E.Coordination
     {
         #region Fields
 
-        private readonly IProvider<ICoordinationManager> _coordinationManager;
+        private readonly ICoordinationSessionOwner _sessionOwner;
         private readonly ISessionManager _sessionManager;
         private readonly CoordinationEntryCache _cache;
         private readonly ICoordinationStorage _storage;
@@ -30,7 +30,7 @@ namespace AI4E.Coordination
 
         #region C'tor
 
-        public CoordinationLockManager(IProvider<ICoordinationManager> coordinationManager,
+        public CoordinationLockManager(ICoordinationSessionOwner sessionOwner,
                                        ISessionManager sessionManager,
                                        CoordinationEntryCache cache,
                                        ICoordinationStorage storage,
@@ -54,13 +54,13 @@ namespace AI4E.Coordination
             if (exchangeManager == null)
                 throw new ArgumentNullException(nameof(exchangeManager));
 
-            if (coordinationManager == null)
-                throw new ArgumentNullException(nameof(coordinationManager));
+            if (sessionOwner == null)
+                throw new ArgumentNullException(nameof(sessionOwner));
 
             if (sessionManager == null)
                 throw new ArgumentNullException(nameof(sessionManager));
 
-            _coordinationManager = coordinationManager;
+            _sessionOwner = sessionOwner;
             _sessionManager = sessionManager;
             _cache = cache;
             _storage = storage;
@@ -77,7 +77,7 @@ namespace AI4E.Coordination
 
         private async Task<TaskCancellationTokenSource> BuildSessionTerminationSourceAsync(CancellationToken cancellation)
         {
-            var session = await CoordinationManager.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionAsync(cancellation);
             var sessionTermination = _sessionManager.WaitForTerminationAsync(session, cancellation);
             return new TaskCancellationTokenSource(sessionTermination);
         }
@@ -89,8 +89,6 @@ namespace AI4E.Coordination
         }
 
         #endregion
-
-        public ICoordinationManager CoordinationManager => _coordinationManager.ProvideInstance();
 
         #region ICoordinationLockManager
 
@@ -128,7 +126,7 @@ namespace AI4E.Coordination
                 throw new ArgumentNullException(nameof(entry));
 
             var path = entry.Path;
-         
+
 
             // Enter local lock
 
@@ -246,7 +244,7 @@ namespace AI4E.Coordination
 
 #if DEBUG
             var entry = await _storage.GetEntryAsync(path, cancellation);
-            var session = await CoordinationManager.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionAsync(cancellation);
 
             // We must only release the local write-lock if we released the (global) write-lock first.
             Assert(entry == null || !await _sessionManager.IsAliveAsync(session, cancellation) || entry.WriteLock != session);
@@ -265,7 +263,7 @@ namespace AI4E.Coordination
             {
                 var result = await InternalReleaseWriteLockAsync(entry);
 
-                Assert(result == null || result.WriteLock != await CoordinationManager.GetSessionAsync(cancellation: default));
+                Assert(result == null || result.WriteLock != await _sessionOwner.GetSessionAsync(cancellation: default));
 
                 await ReleaseLocalWriteLockInternalAsync(entry.Path, cancellation: default);
                 return result;
@@ -273,7 +271,7 @@ namespace AI4E.Coordination
             catch (SessionTerminatedException) { throw; }
             catch
             {
-                CoordinationManager.Dispose();
+                _sessionOwner.Dispose();
                 throw;
             }
         }
@@ -287,7 +285,7 @@ namespace AI4E.Coordination
                 watch.Start();
             }
 
-            var session = await CoordinationManager.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionAsync(cancellation);
 
             if (!await _sessionManager.IsAliveAsync(session, cancellation))
             {
@@ -359,7 +357,7 @@ namespace AI4E.Coordination
                 catch (SessionTerminatedException) { throw; }
                 catch
                 {
-                    CoordinationManager.Dispose();
+                    _sessionOwner.Dispose();
                     throw;
                 }
 
@@ -375,7 +373,7 @@ namespace AI4E.Coordination
             var cancellation = (await _sessionTerminationSource).Token;
             IStoredEntry start, desired;
 
-            var session = await CoordinationManager.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionAsync(cancellation);
 
             if (entry != null)
             {
@@ -438,7 +436,7 @@ namespace AI4E.Coordination
 
             IStoredEntry start, desired;
 
-            var session = await CoordinationManager.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionAsync(cancellation);
 
             if (!await _sessionManager.IsAliveAsync(session, cancellation))
             {
@@ -519,7 +517,7 @@ namespace AI4E.Coordination
             }
             catch
             {
-                CoordinationManager.Dispose();
+                _sessionOwner.Dispose();
                 throw;
             }
         }
@@ -531,7 +529,7 @@ namespace AI4E.Coordination
             var cancellation = (await _sessionTerminationSource).Token;
             IStoredEntry start, desired;
 
-            var session = await CoordinationManager.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionAsync(cancellation);
 
             if (entry != null)
             {
