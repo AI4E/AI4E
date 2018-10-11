@@ -18,7 +18,7 @@ namespace AI4E.Coordination
         private static readonly TimeSpan _timeToWaitMin = new TimeSpan(200 * TimeSpan.TicksPerMillisecond);
         private static readonly TimeSpan _timeToWaitMax = new TimeSpan(12800 * TimeSpan.TicksPerMillisecond);
 
-        private readonly IProvider<ICoordinationManager> _coordinationManager;
+        private readonly ICoordinationSessionOwner _sessionOwner;
         private readonly ICoordinationStorage _storage;
         private readonly IStoredEntryManager _storedEntryManager;
         private readonly ISessionManager _sessionManager;
@@ -32,15 +32,15 @@ namespace AI4E.Coordination
 
         #region C'tor
 
-        public CoordinationWaitManager(IProvider<ICoordinationManager> coordinationManager,
+        public CoordinationWaitManager(ICoordinationSessionOwner sessionOwner,
                                        ICoordinationStorage storage,
                                        IStoredEntryManager storedEntryManager,
                                        ISessionManager sessionManager,
                                        ICoordinationExchangeManager exchangeManager,
                                        ILogger<CoordinationWaitManager> logger = null)
         {
-            if (coordinationManager == null)
-                throw new ArgumentNullException(nameof(coordinationManager));
+            if (sessionOwner == null)
+                throw new ArgumentNullException(nameof(sessionOwner));
 
             if (storage == null)
                 throw new ArgumentNullException(nameof(storage));
@@ -54,7 +54,7 @@ namespace AI4E.Coordination
             if (exchangeManager == null)
                 throw new ArgumentNullException(nameof(exchangeManager));
 
-            _coordinationManager = coordinationManager;
+            _sessionOwner = sessionOwner;
             _storage = storage;
             _storedEntryManager = storedEntryManager;
             _sessionManager = sessionManager;
@@ -66,8 +66,6 @@ namespace AI4E.Coordination
         }
 
         #endregion
-
-        public ICoordinationManager CoordinationManager => _coordinationManager.ProvideInstance();
 
         #region ICoordinationWaitManager
 
@@ -85,7 +83,7 @@ namespace AI4E.Coordination
         // to complete the write operation, without the session to terminate.
         public async Task<IStoredEntry> WaitForWriteLockReleaseAsync(IStoredEntry entry, bool allowWriteLock, CancellationToken cancellation)
         {
-            var session = await CoordinationManager.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionAsync(cancellation);
 
             // The entry was deleted (concurrently).
             while (entry != null)
@@ -148,7 +146,7 @@ namespace AI4E.Coordination
             IEnumerable<Session> readLocks = entry.ReadLocks;
 
             // Exclude our own read-lock (if present)
-            var session = await CoordinationManager.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionAsync(cancellation);
 
             Assert(entry.WriteLock == session);
 
@@ -200,7 +198,7 @@ namespace AI4E.Coordination
             Assert(isTerminated);
 #endif
 
-            var localSession = await CoordinationManager.GetSessionAsync(cancellation);
+            var localSession = await _sessionOwner.GetSessionAsync(cancellation);
 
             // We waited for ourself to terminate => We are terminated now.
             if (session == localSession)

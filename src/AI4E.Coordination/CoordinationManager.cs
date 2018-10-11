@@ -36,7 +36,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
 using AI4E.Internal;
 using AI4E.Processing;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,6 +54,7 @@ namespace AI4E.Coordination
         private readonly ICoordinationStorage _storage;
         private readonly IStoredEntryManager _storedEntryManager;
         private readonly ISessionManager _sessionManager;
+        private readonly ICoordinationSessionOwner _sessionOwner;
         private readonly ISessionProvider _sessionProvider;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly CoordinationEntryCache _cache;
@@ -62,7 +62,6 @@ namespace AI4E.Coordination
         private readonly ILogger<CoordinationManager<TAddress>> _logger;
 
         private readonly CoordinationManagerOptions _options;
-        private readonly DisposableAsyncLazy<Session> _session;
 
         private readonly IAsyncProcess _updateSessionProcess;
         private readonly IAsyncProcess _sessionCleanupProcess;
@@ -75,7 +74,7 @@ namespace AI4E.Coordination
                                    ICoordinationStorage storage,
                                    IStoredEntryManager storedEntryManager,
                                    ISessionManager sessionManager,
-                                   ISessionProvider sessionProvider,
+                                   ICoordinationSessionOwner sessionOwner,
                                    IDateTimeProvider dateTimeProvider,
                                    CoordinationEntryCache cache,
                                    ICoordinationLockManager lockManager,
@@ -94,8 +93,8 @@ namespace AI4E.Coordination
             if (sessionManager == null)
                 throw new ArgumentNullException(nameof(sessionManager));
 
-            if (sessionProvider == null)
-                throw new ArgumentNullException(nameof(sessionProvider));
+            if (sessionOwner == null)
+                throw new ArgumentNullException(nameof(sessionOwner));
 
             if (dateTimeProvider == null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
@@ -113,14 +112,13 @@ namespace AI4E.Coordination
             _storage = storage;
             _storedEntryManager = storedEntryManager;
             _sessionManager = sessionManager;
-            _sessionProvider = sessionProvider;
+            _sessionOwner = sessionOwner;
             _dateTimeProvider = dateTimeProvider;
             _cache = cache;
             _lockManager = lockManager;
             _logger = logger;
 
             _options = optionsAccessor.Value ?? new CoordinationManagerOptions();
-            _session = BuildSession();
 
             _updateSessionProcess = new AsyncProcess(UpdateSessionProcess, start: true);
             _sessionCleanupProcess = new AsyncProcess(SessionCleanupProcess, start: true);
@@ -134,48 +132,7 @@ namespace AI4E.Coordination
 
         public ValueTask<Session> GetSessionAsync(CancellationToken cancellation)
         {
-            return new ValueTask<Session>(_session.Task.WithCancellation(cancellation));
-        }
-
-        private DisposableAsyncLazy<Session> BuildSession()
-        {
-            return new DisposableAsyncLazy<Session>(
-                factory: StartSessionAsync,
-                disposal: TerminateSessionAsync,
-                DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
-        }
-
-        private async Task<Session> StartSessionAsync(CancellationToken cancellation)
-        {
-            var leaseLength = _options.LeaseLength;
-
-            if (leaseLength <= TimeSpan.Zero)
-            {
-                leaseLength = CoordinationManagerOptions.LeaseLengthDefault;
-                Assert(leaseLength > TimeSpan.Zero);
-            }
-
-            Session session;
-
-            do
-            {
-                session = _sessionProvider.GetSession();
-
-                Assert(session != null);
-            }
-            while (!await _sessionManager.TryBeginSessionAsync(session, leaseEnd: _dateTimeProvider.GetCurrentTime() + leaseLength, cancellation));
-
-            _logger?.LogInformation($"[{session}] Started session.");
-
-            return session;
-        }
-
-        private Task TerminateSessionAsync(Session session)
-        {
-            Assert(session != null);
-
-            return _sessionManager.EndSessionAsync(session)
-                                  .HandleExceptionsAsync(_logger);
+            return _sessionOwner.GetSessionAsync(cancellation);
         }
 
         private async Task SessionCleanupProcess(CancellationToken cancellation)
@@ -286,7 +243,6 @@ namespace AI4E.Coordination
             _sessionCleanupProcess.Terminate();
 
             _serviceScope.Dispose();
-            _session.Dispose();
         }
 
         #region Get entry
@@ -983,7 +939,11 @@ namespace AI4E.Coordination
             if (entry == null)
                 return null;
 
-            return await _lockManager.AcquireWriteLockAsync(entry, cancellation);
+            var result = await _lockManager.AcquireWriteLockAsync(entry, cancellation);
+
+            Assert(result == null || result.WriteLock == await GetSessionAsync(cancellation));
+
+            return result;
         }
 
         private sealed class Entry : IEntry

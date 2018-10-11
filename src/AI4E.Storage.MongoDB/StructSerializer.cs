@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using MongoDB.Bson;
 using MongoDB.Bson.IO;
 using MongoDB.Bson.Serialization;
@@ -38,7 +39,16 @@ namespace AI4E.Storage.MongoDB
     {
         private static readonly Type _serializerTypeDefinition = typeof(StructSerializer<>);
 
-        [ThreadStatic] private Dictionary<Type, IBsonSerializer> _serializers;
+        private readonly ThreadLocal<Dictionary<Type, IBsonSerializer>> _serializers;
+
+        public StructSerializationProvider()
+        {
+            _serializers = new ThreadLocal<Dictionary<Type, IBsonSerializer>>(
+                valueFactory: () => new Dictionary<Type, IBsonSerializer>(),
+                trackAllValues: false);
+        }
+
+        private Dictionary<Type, IBsonSerializer> Serializers => _serializers.Value;
 
         public IBsonSerializer GetSerializer(Type type)
         {
@@ -51,16 +61,11 @@ namespace AI4E.Storage.MongoDB
             if (!CanHandle(type))
                 return null;
 
-            if (_serializers == null)
-            {
-                _serializers = new Dictionary<Type, IBsonSerializer>();
-            }
-
-            if (!_serializers.TryGetValue(type, out var serializer))
+            if (!Serializers.TryGetValue(type, out var serializer))
             {
                 serializer = CreateSerializer(type);
 
-                _serializers.Add(type, serializer);
+                Serializers.Add(type, serializer);
             }
 
             return serializer;

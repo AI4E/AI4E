@@ -73,7 +73,7 @@ namespace AI4E.Handler
         private void AssertLegalResult(object result)
         {
             var returnType = ReturnTypeDescriptor.ResultType;
-            Assert(result == null && (IsNullable(returnType) || returnType == typeof(void)) || 
+            Assert(result == null && (IsNullable(returnType) || returnType == typeof(void)) ||
                    result != null && returnType.IsAssignableFrom(result.GetType()));
         }
 
@@ -105,14 +105,14 @@ namespace AI4E.Handler
                     var expression = Expression.Lambda<Action<object>>(methodCall, instance);
                     var compiledExpression = expression.Compile();
 
-                    return (instace, firstArg, paramResolver) => { compiledExpression(instance); return null; };
+                    return (obj, firstArg, paramResolver) => { compiledExpression(obj); return null; };
                 }
                 else
                 {
                     var expression = Expression.Lambda<Func<object, object>>(Expression.Convert(methodCall, typeof(object)), instance);
                     var compiledExpression = expression.Compile();
 
-                    return (instace, firstArg, paramResolver) => compiledExpression(instance);
+                    return (obj, firstArg, paramResolver) => compiledExpression(obj);
                 }
             }
             else
@@ -142,7 +142,7 @@ namespace AI4E.Handler
                     var expression = Expression.Lambda<Action<object, object, Func<ParameterInfo, object>>>(methodCall, instance, firstArgument, parameterResolver);
                     var compiledExpression = expression.Compile();
 
-                    return (instace, firstArg, paramResolver) => { compiledExpression(instance, firstArg, paramResolver); return null; };
+                    return (obj, firstArg, paramResolver) => { compiledExpression(obj, firstArg, paramResolver); return null; };
                 }
                 else
                 {
