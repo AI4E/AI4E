@@ -79,7 +79,7 @@ namespace AI4E.Remoting
             return result;
         }
 
-        public void Trim() // TODO: Rename?
+        public void Trim()
         {
             if (FrameIndex == FrameCount - 1)
             {
@@ -184,7 +184,7 @@ namespace AI4E.Remoting
 
         internal MessageFrame() { }
 
-        public long Length => _length + _headerLength;/*(_payload?.Length ?? 0) + _headerLength*/
+        public long Length => _length + _headerLength;
 
         internal long PaddedLength => Length + (4 * ((Length + 3) / 4) - Length);
 

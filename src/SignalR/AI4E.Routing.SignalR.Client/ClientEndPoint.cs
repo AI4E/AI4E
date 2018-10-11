@@ -177,7 +177,7 @@ namespace AI4E.Routing.SignalR.Client
                 {
                     _logger?.LogDebug($"Sending message ({bytes.Length} total bytes) with seq-num {seqNum}.");
 
-                    await Task.WhenAll(_hubConnection.InvokeAsync<ICallStub>(p => p.DeliverAsync(new DeliverAsyncArgs { SeqNum = seqNum, Bytes = Convert.ToBase64String(bytes) }), cancellation), ackSource.Task);
+                    await Task.WhenAll(_hubConnection.InvokeAsync<ICallStub>(p => p.DeliverAsync(seqNum, bytes), cancellation), ackSource.Task);
                 }
             }
             catch
@@ -204,7 +204,7 @@ namespace AI4E.Routing.SignalR.Client
         private async Task UnderlyingConnectionClosedAsync(Exception exception)
         {
             await ConnectAsync(cancellation: _disposalSource.Token);
-            await Task.WhenAll(_outboundMessages.ToList().Select(p => _hubConnection.InvokeAsync<ICallStub>(q => q.DeliverAsync(new DeliverAsyncArgs { SeqNum = p.Key, Bytes = Convert.ToBase64String(p.Value.bytes) }), cancellation: default)));
+            await Task.WhenAll(_outboundMessages.ToList().Select(p => _hubConnection.InvokeAsync<ICallStub>(q => q.DeliverAsync(p.Key, p.Value.bytes), cancellation: default)));
         }
 
         private async Task ConnectAsync(CancellationToken cancellation)
@@ -281,13 +281,9 @@ namespace AI4E.Routing.SignalR.Client
                 _endPoint = endPoint;
             }
 
-            // The Blazor SignalR client currently only supports handlers with a single argument.
-            // TODO: When https://github.com/BlazorExtensions/SignalR/pull/14 is merged and published, we can investigate here.
-            public Task DeliverAsync(DeliverAsyncArgs args /*int seqNum, byte[] bytes*/)
+            public Task DeliverAsync(int seqNum, byte[] bytes)
             {
-                var bytes = Convert.FromBase64String(args.Bytes);
-
-                return _endPoint.ReceiveAsync(args.SeqNum, bytes); //seqNum, bytes);
+                return _endPoint.ReceiveAsync(seqNum, bytes);
             }
 
             public Task AckAsync(int seqNum)
