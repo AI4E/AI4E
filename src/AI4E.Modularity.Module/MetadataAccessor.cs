@@ -38,10 +38,7 @@ namespace AI4E.Modularity.Module
 
             if (metadataFullName != null)
             {
-                using (var manifestStream = entryAssembly.GetManifestResourceStream(metadataFullName))
-                {
-                    return new ValueTask<IModuleMetadata>(_metadataReader.ReadMetadataAsync(manifestStream, cancellation));
-                }
+                return GetMetadataFromManifestResourceAsync(entryAssembly, metadataFullName, cancellation);
             }
 
             // Check if there is a file in the bin directory
@@ -49,22 +46,35 @@ namespace AI4E.Modularity.Module
             var entryAssemblyDir = Path.GetDirectoryName(entryAssemblyLocation);
             var metadataPath = Path.Combine(entryAssemblyDir, metadataName);
 
+            return GetMetadataCoreAsync(entryAssembly, metadataPath, cancellation);
+        }
+
+        private async ValueTask<IModuleMetadata> GetMetadataFromManifestResourceAsync(Assembly entryAssembly, string metadataFullName, CancellationToken cancellation)
+        {
+            using (var manifestStream = entryAssembly.GetManifestResourceStream(metadataFullName))
+            {
+                return await _metadataReader.ReadMetadataAsync(manifestStream, cancellation);
+            }
+        }
+
+        private async ValueTask<IModuleMetadata> GetMetadataCoreAsync(Assembly entryAssembly, string metadataPath, CancellationToken cancellation)
+        {
             if (File.Exists(metadataPath))
             {
                 try
                 {
                     using (var stream = new FileStream(metadataPath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true))
                     {
-                        return new ValueTask<IModuleMetadata>(_metadataReader.ReadMetadataAsync(stream, cancellation));
+                        return await _metadataReader.ReadMetadataAsync(stream, cancellation);
                     }
                 }
                 catch (FileNotFoundException) { }
                 catch (DirectoryNotFoundException) { }
-            }
 
+            }
             // If we reach this point, we cannot find a manifest resource/file.
             // We now assembly our own metadata
-            return new ValueTask<IModuleMetadata>(new ModuleMetadata(entryAssembly));
+            return new ModuleMetadata(entryAssembly);
         }
 
         private sealed class ModuleMetadata : IModuleMetadata
