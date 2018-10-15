@@ -7,7 +7,6 @@ using AI4E.Internal;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 using static AI4E.Internal.DebugEx;
-using AsyncWaitDirectory = AI4E.Coordination.AsyncWaitDirectory<(AI4E.Coordination.Session session, AI4E.Coordination.CoordinationEntryPath path)>;
 
 namespace AI4E.Coordination
 {
@@ -23,10 +22,8 @@ namespace AI4E.Coordination
         private readonly IStoredEntryManager _storedEntryManager;
         private readonly ISessionManager _sessionManager;
         private readonly ICoordinationExchangeManager _exchangeManager;
+        private readonly ILockWaitDirectory _lockWaitDirectory;
         private readonly ILogger<CoordinationWaitManager> _logger;
-
-        private readonly AsyncWaitDirectory _readLockWaitDirectory;
-        private readonly AsyncWaitDirectory _writeLockWaitDirectory;
 
         #endregion
 
@@ -37,6 +34,7 @@ namespace AI4E.Coordination
                                        IStoredEntryManager storedEntryManager,
                                        ISessionManager sessionManager,
                                        ICoordinationExchangeManager exchangeManager,
+                                       ILockWaitDirectory lockWaitDirectory,
                                        ILogger<CoordinationWaitManager> logger = null)
         {
             if (sessionOwner == null)
@@ -54,30 +52,21 @@ namespace AI4E.Coordination
             if (exchangeManager == null)
                 throw new ArgumentNullException(nameof(exchangeManager));
 
+            if (lockWaitDirectory == null)
+                throw new ArgumentNullException(nameof(lockWaitDirectory));
+
             _sessionOwner = sessionOwner;
             _storage = storage;
             _storedEntryManager = storedEntryManager;
             _sessionManager = sessionManager;
             _exchangeManager = exchangeManager;
+            _lockWaitDirectory = lockWaitDirectory;
             _logger = logger;
-
-            _readLockWaitDirectory = new AsyncWaitDirectory<(Session session, CoordinationEntryPath path)>();
-            _writeLockWaitDirectory = new AsyncWaitDirectory<(Session session, CoordinationEntryPath path)>();
         }
 
         #endregion
 
         #region ICoordinationWaitManager
-
-        public void NotifyReadLockRelease(CoordinationEntryPath path, Session session)
-        {
-            _readLockWaitDirectory.Notify((session, path));
-        }
-
-        public void NotifyWriteLockRelease(CoordinationEntryPath path, Session session)
-        {
-            _writeLockWaitDirectory.Notify((session, path));
-        }
 
         // WaitForWriteLockReleaseAsync updates the session in order that there is enough time
         // to complete the write operation, without the session to terminate.
@@ -130,7 +119,7 @@ namespace AI4E.Coordination
 
                 entry = await WaitForLockReleaseCoreAsync(entry,
                                                           (Session)writeLock,
-                                                          _writeLockWaitDirectory,
+                                                          wait: _lockWaitDirectory.WaitForWriteLockNotificationAsync,
                                                           acquireLockRelease: null,
                                                           isLockReleased: IsLockReleased,
                                                           cancellation);
@@ -264,7 +253,7 @@ namespace AI4E.Coordination
             {
                 entry = await WaitForLockReleaseCoreAsync(entry,
                                                           readLock,
-                                                          _readLockWaitDirectory,
+                                                          wait: _lockWaitDirectory.WaitForReadLockNotificationAsync,
                                                           AcquireReadLockReleaseAsync,
                                                           isLockReleased: e => !e.ReadLocks.Contains(readLock),
                                                           cancellation);
@@ -286,7 +275,7 @@ namespace AI4E.Coordination
 
         private async Task<IStoredEntry> WaitForLockReleaseCoreAsync(IStoredEntry entry,
                                                                      Session session,
-                                                                     AsyncWaitDirectory waitDirectory,
+                                                                     Func<CoordinationEntryPath, Session, CancellationToken, Task> wait,
                                                                      Func<CoordinationEntryPath, Session, CancellationToken, Task> acquireLockRelease,
                                                                      Func<IStoredEntry, bool> isLockReleased,
                                                                      CancellationToken cancellation)
@@ -294,7 +283,7 @@ namespace AI4E.Coordination
             var timeToWait = _timeToWaitMin;
             var path = entry.Path;
             var sessionTermination = _sessionManager.WaitForTerminationAsync(session, cancellation);
-            var releaseNotification = waitDirectory.WaitForNotificationAsync((session, path), cancellation);
+            var releaseNotification = wait(path, session, cancellation);
 
             while (entry != null && !isLockReleased(entry))
             {

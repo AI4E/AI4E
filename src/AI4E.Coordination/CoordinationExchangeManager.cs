@@ -21,7 +21,7 @@ namespace AI4E.Coordination
 
         private readonly ICoordinationSessionOwner _sessionOwner;
         private readonly ISessionManager _sessionManager;
-        private readonly IProvider<ICoordinationWaitManager> _waitManager;
+        private readonly ILockWaitDirectory _lockWaitDirectory;
         private readonly IProvider<ICoordinationLockManager> _lockManager;
         private readonly ICoordinationStorage _storage;
         private readonly CoordinationEntryCache _cache;
@@ -39,7 +39,7 @@ namespace AI4E.Coordination
 
         public CoordinationExchangeManager(ICoordinationSessionOwner sessionOwner,
                                            ISessionManager sessionManager,
-                                           IProvider<ICoordinationWaitManager> waitManager,
+                                           ILockWaitDirectory lockWaitDirectory,
                                            IProvider<ICoordinationLockManager> lockManager,
                                            ICoordinationStorage storage,
                                            CoordinationEntryCache cache,
@@ -54,8 +54,8 @@ namespace AI4E.Coordination
             if (sessionManager == null)
                 throw new ArgumentNullException(nameof(sessionManager));
 
-            if (waitManager == null)
-                throw new ArgumentNullException(nameof(waitManager));
+            if (lockWaitDirectory == null)
+                throw new ArgumentNullException(nameof(lockWaitDirectory));
 
             if (lockManager == null)
                 throw new ArgumentNullException(nameof(lockManager));
@@ -74,7 +74,7 @@ namespace AI4E.Coordination
 
             _sessionOwner = sessionOwner;
             _sessionManager = sessionManager;
-            _waitManager = waitManager;
+            _lockWaitDirectory = lockWaitDirectory;
             _lockManager = lockManager;
             _storage = storage;
             _cache = cache;
@@ -107,7 +107,6 @@ namespace AI4E.Coordination
 
         #endregion
 
-        private ICoordinationWaitManager WaitManager => _waitManager.ProvideInstance();
         private ICoordinationLockManager LockManager => _lockManager.ProvideInstance();
 
         #region ICoordinationExchangeManager
@@ -131,7 +130,7 @@ namespace AI4E.Coordination
 
                     if (session == localSession)
                     {
-                        WaitManager.NotifyReadLockRelease(path, session);
+                        _lockWaitDirectory.NotifyReadLockRelease(path, session);
                         continue;
                     }
 
@@ -161,7 +160,7 @@ namespace AI4E.Coordination
 
                     if (session == localSession)
                     {
-                        WaitManager.NotifyWriteLockRelease(path, session);
+                        _lockWaitDirectory.NotifyWriteLockRelease(path, session);
                         continue;
                     }
 
@@ -250,11 +249,11 @@ namespace AI4E.Coordination
                     break;
 
                 case MessageType.ReleasedReadLock:
-                    WaitManager.NotifyReadLockRelease(path, session);
+                    _lockWaitDirectory.NotifyReadLockRelease(path, session);
                     break;
 
                 case MessageType.ReleasedWriteLock:
-                    WaitManager.NotifyWriteLockRelease(path, session);
+                    _lockWaitDirectory.NotifyWriteLockRelease(path, session);
                     break;
 
                 case MessageType.Unknown:
