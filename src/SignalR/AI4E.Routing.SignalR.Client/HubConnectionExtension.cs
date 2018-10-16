@@ -19,39 +19,8 @@ namespace AI4E.Routing.Blazor
 namespace AI4E.Routing.SignalR.Client
 #endif
 {
-    public static class HubConnectionExtension
+    public static partial class HubConnectionExtension
     {
-#if BLAZOR
-        private static IDisposable RegisterMethod<TArg>(HubConnection hubConnection, object obj, MethodInfo method)
-        {
-            Func<TArg, Task> handler;
-
-            var arg = Expression.Parameter(typeof(TArg), "arg");
-            var objConst = Expression.Constant(obj, typeof(object));
-
-            var methodCall = Expression.Call(Expression.Convert(objConst, method.DeclaringType), method, arg);
-
-            // The method is asynchronous
-            if (method.ReturnType.IsAssignableFrom(typeof(Task)))
-            {
-                var convertedResult = Expression.Convert(methodCall, typeof(Task));
-
-                handler = Expression.Lambda<Func<TArg, Task>>(convertedResult, arg).Compile();
-            }
-            else
-            {
-                var synchronousHandler = Expression.Lambda<Action<TArg>>(methodCall, arg).Compile();
-
-                handler = p =>
-                {
-                    synchronousHandler(p);
-                    return Task.CompletedTask;
-                };
-            }
-
-            return hubConnection.On(method.Name, handler);
-        }
-#endif
         public static IDisposable Register<T>(this HubConnection hubConnection, T skeleton)
             where T : class
         {
@@ -79,21 +48,7 @@ namespace AI4E.Routing.SignalR.Client
                     continue;
 
 #if BLAZOR
-                if (parameters.Length != 1)
-                {
-                    throw new NotSupportedException("The blazor signal r client supports stub methods with a single argument only.");
-                }
-
-                var parameterType = parameters.Single().ParameterType;
-
-                var registerMethod = typeof(HubConnectionExtension).GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
-                                                                   .SingleOrDefault(p => p.Name == nameof(RegisterMethod) && p.IsGenericMethod)
-                                                                  ?.MakeGenericMethod(parameterType);
-
-                Assert(registerMethod != null);
-
-                var invocationResult = registerMethod.Invoke(null, new object[] { hubConnection, skeleton, method });
-                var handlerRegistration = (IDisposable)invocationResult;
+                var handlerRegistration = RegisterMethod(hubConnection, skeleton, method, parameters);
 #else
                 Func<object[], object, Task> handler;
 

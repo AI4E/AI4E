@@ -26,9 +26,9 @@ namespace AI4E.Routing.SignalR.Server
             _endPoint = endPoint;
         }
 
-        public Task DeliverAsync(int seqNum, byte[] bytes)
+        public Task DeliverAsync(int seqNum, string base64) // byte[] bytes)
         {
-            return _endPoint.ReceiveAsync(seqNum, bytes, Context.ConnectionId);
+            return _endPoint.ReceiveAsync(seqNum, Convert.FromBase64String(base64), Context.ConnectionId);
         }
 
         public Task AckAsync(int seqNum)
@@ -118,7 +118,7 @@ namespace AI4E.Routing.SignalR.Server
 
             // TODO: Are HubContext, IHubClients, etc. thread-safe?
             var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
-            await Task.WhenAll(messages.Select(p => hubContext.Clients.Client(address).DeliverAsync(p.seqNum, p.bytes)));
+            await Task.WhenAll(messages.Select(p => hubContext.Clients.Client(address).DeliverAsync(p.seqNum, Convert.ToBase64String(p.bytes))));
         }
 
         private async Task SendAsync(byte[] bytes, string address, CancellationToken cancellation)
@@ -148,7 +148,7 @@ namespace AI4E.Routing.SignalR.Server
                 using (cancellation.Register(CancelSend))
                 {
                     var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
-                    await Task.WhenAll(hubContext.Clients.Client(address).DeliverAsync(seqNum,bytes), ackSource.Task);
+                    await Task.WhenAll(hubContext.Clients.Client(address).DeliverAsync(seqNum, Convert.ToBase64String(bytes)), ackSource.Task);
                 }
             }
             catch

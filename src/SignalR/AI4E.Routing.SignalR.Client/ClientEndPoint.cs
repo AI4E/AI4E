@@ -177,7 +177,7 @@ namespace AI4E.Routing.SignalR.Client
                 {
                     _logger?.LogDebug($"Sending message ({bytes.Length} total bytes) with seq-num {seqNum}.");
 
-                    await Task.WhenAll(_hubConnection.InvokeAsync<ICallStub>(p => p.DeliverAsync(seqNum, bytes), cancellation), ackSource.Task);
+                    await Task.WhenAll(_hubConnection.InvokeAsync<ICallStub>(p => p.DeliverAsync(seqNum, Convert.ToBase64String(bytes)), cancellation), ackSource.Task);
                 }
             }
             catch
@@ -204,7 +204,7 @@ namespace AI4E.Routing.SignalR.Client
         private async Task UnderlyingConnectionClosedAsync(Exception exception)
         {
             await ConnectAsync(cancellation: _disposalSource.Token);
-            await Task.WhenAll(_outboundMessages.ToList().Select(p => _hubConnection.InvokeAsync<ICallStub>(q => q.DeliverAsync(p.Key, p.Value.bytes), cancellation: default)));
+            await Task.WhenAll(_outboundMessages.ToList().Select(p => _hubConnection.InvokeAsync<ICallStub>(q => q.DeliverAsync(p.Key, Convert.ToBase64String(p.Value.bytes)), cancellation: default)));
         }
 
         private async Task ConnectAsync(CancellationToken cancellation)
@@ -281,9 +281,9 @@ namespace AI4E.Routing.SignalR.Client
                 _endPoint = endPoint;
             }
 
-            public Task DeliverAsync(int seqNum, byte[] bytes)
+            public Task DeliverAsync(int seqNum, string base64) // byte[] bytes)
             {
-                return _endPoint.ReceiveAsync(seqNum, bytes);
+                return _endPoint.ReceiveAsync(seqNum, Convert.FromBase64String(base64));
             }
 
             public Task AckAsync(int seqNum)

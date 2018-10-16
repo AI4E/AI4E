@@ -5,7 +5,7 @@ namespace AI4E.Routing.SignalR.Client
     /*internal*/
     public interface ICallStub
     {
-        Task DeliverAsync(int seqNum, byte[] bytes);
+        Task DeliverAsync(int seqNum, string base64); // byte[] bytes);
         Task AckAsync(int seqNum);
     }
 

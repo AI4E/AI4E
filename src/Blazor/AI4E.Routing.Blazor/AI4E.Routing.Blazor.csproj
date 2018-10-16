@@ -40,4 +40,12 @@
     <ProjectReference Include="..\AI4E.Routing.Blazor.Abstractions\AI4E.Routing.Blazor.Abstractions.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <DotNetCliToolReference Include="T5.TextTransform.Tool" Version="1.1.0-*" />
+  </ItemGroup>
+
+  <Target Name="AfterRestore" AfterTargets="Restore;CollectPackageReferences">
+    <Exec Command="dotnet tt $(ProjectDir)HubConnectionExtension.Blazor.tt" />
+  </Target>
+
 </Project>
