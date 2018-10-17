@@ -65,8 +65,8 @@ namespace AI4E.Internal
 
                     for (var i = 1; i < vectors.Length; i++)
                     {
-                        vectorAccumulator = vectorAccumulator * _vectorMultiplicator;
-                        vectorAccumulator = vectorAccumulator + vectors[i] * _scalarMultiplicator;
+                        vectorAccumulator *= _vectorMultiplicator;
+                        vectorAccumulator += vectors[i] * _scalarMultiplicator;
                     }
 
                     for (var i = 0; i < Vector<int>.Count; i++)
@@ -101,7 +101,7 @@ namespace AI4E.Internal
                     for (var i = 1; i < nonConsideredBytes; i++)
                     {
                         // As the resulting hash code is not intended to be platform independent, we do not care about byte order here.
-                        x = (x << 1) & bytes[1];
+                        x = (x << 1) & bytes[i];
                     }
 
                     accumulator *= _scalarMultiplicationValue;
@@ -147,8 +147,8 @@ namespace AI4E.Internal
                         }
                         span = span.Slice(Vector<int>.Count);
 
-                        vectorAccumulator = vectorAccumulator * _vectorMultiplicator;
-                        vectorAccumulator = vectorAccumulator + vector * _scalarMultiplicator;
+                        vectorAccumulator *= _vectorMultiplicator;
+                        vectorAccumulator +=  vector * _scalarMultiplicator;
                     }
 
                     for (var i = 0; i < Vector<int>.Count; i++)
