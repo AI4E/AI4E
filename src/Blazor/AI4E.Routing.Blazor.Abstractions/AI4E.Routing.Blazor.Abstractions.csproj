@@ -18,6 +18,7 @@
     <Compile Include="..\..\AI4E.Routing.Abstractions\ISerializedMessageHandler.cs" Link="Routing\ISerializedMessageHandler.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\RouteOptions.cs" Link="Routing\RouteOptions.cs" />
     <Compile Include="..\..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />
+    <Compile Include="..\..\Common\MemoryExtensions.SequenceHashCode.cs" Link="Internal\MemoryExtensions.SequenceHashCode.cs" />
     <Compile Include="..\..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client.Abstractions\IClientEndPoint.cs" Link="IClientEndPoint.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client.Abstractions\ILogicalClientEndPoint.cs" Link="ILogicalClientEndPoint.cs" />
@@ -25,6 +26,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="$(SystemThreadingTasksExtensionsVersion)" />
+    <PackageReference Include="System.Numerics.Vectors" Version="$(SystemNumericsVectorsVersion)" />
   </ItemGroup>
 
   <ItemGroup>

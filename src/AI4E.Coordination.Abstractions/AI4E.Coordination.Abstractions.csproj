@@ -12,11 +12,13 @@
   <ItemGroup>
     <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
     <Compile Include="..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />
+    <Compile Include="..\Common\MemoryExtensions.SequenceHashCode.cs" Link="Internal\MemoryExtensions.SequenceHashCode.cs" />
     <Compile Include="..\Common\MemoryWriter.cs" Link="Internal\MemoryWriter.cs" />
     <Compile Include="..\Common\ReadOnlyStream.cs" Link="Internal\ReadOnlyStream.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Numerics.Vectors" Version="$(SystemNumericsVectorsVersion)" />
     <PackageReference Include="System.Collections.Immutable" Version="$(SystemCollectionsImmutableVersion)" />
     <PackageReference Include="System.Interactive.Async" Version="$(SystemInteractiveAsyncVersion)" />
     <PackageReference Include="System.Memory" Version="$(SystemMemoryVersion)" />

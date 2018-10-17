@@ -9,26 +9,12 @@
 
 	string BuildGenericArgumentList(int argumentCount)
 	{
-		StringBuilder result = new StringBuilder(argumentCount*4);
-
-		for(var i = argumentRange.min; i <= argumentCount; i++)
-		{
-			if(result.Length != 0)
-			{
-				result.Append(',');
-				result.Append(' ');
-			}
-
-			result.Append('T');
-			result.Append(i);
-		}
-
-		return result.ToString();
+		return BuildArgumentList(argumentCount, "T");
 	}
 
 	string BuildArgumentList(int argumentCount, string argPrefix = "arg")
 	{
-		StringBuilder result = new StringBuilder(argumentCount*4);
+		StringBuilder result = new StringBuilder(argumentCount * (3 + argPrefix.Length));
 
 		for(var i = argumentRange.min; i <= argumentCount; i++)
 		{
@@ -81,6 +67,7 @@ namespace AI4E.Routing.Blazor
 			Assert(_registerMethod<#=argumentCount#> != null);
 <#}#>
 		}
+
 <# for(var argumentCount = argumentRange.min; argumentCount <= argumentRange.max; argumentCount++) {#>
 		private static IDisposable RegisterMethod<<#=BuildGenericArgumentList(argumentCount)#>>(HubConnection hubConnection, object obj, MethodInfo method)
         {
@@ -126,6 +113,7 @@ namespace AI4E.Routing.Blazor
 
             return hubConnection.On(method.Name, handler);
         }
+
 <#}#>
 		private static IDisposable RegisterMethod(HubConnection hubConnection, object obj, MethodInfo method, ParameterInfo[] parameters)
         {
@@ -140,7 +128,7 @@ namespace AI4E.Routing.Blazor
 
 			/*
 			 * We are using reflection here, which is rather slow. 
-			 * This is not intended to be futher optimized, as this is called relativel rarely. 
+			 * This is not intended to be futher optimized, as this is called relatively rarely. 
 			 * The hot path in the generic RegisterMethod methods is optimized.
 			 */
 
