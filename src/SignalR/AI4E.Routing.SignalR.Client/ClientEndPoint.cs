@@ -189,7 +189,7 @@ namespace AI4E.Routing.SignalR.Client
 
         private void Ack(int seqNum)
         {
-            _logger?.LogDebug($"Received acknoledgment for seq-num {seqNum}.");
+            _logger?.LogDebug($"Received acknowledgment for seq-num {seqNum}.");
 
             var success = _outboundMessages.TryRemove(seqNum, out var entry) &&
                           entry.ackSource.TrySetResult(null);
@@ -209,7 +209,7 @@ namespace AI4E.Routing.SignalR.Client
 
         private async Task ConnectAsync(CancellationToken cancellation)
         {
-            _logger?.LogInformation("Trying to reconnect...");
+            _logger?.LogDebug("Trying to reconnect to server.");
 
             using (await _lock.LockAsync())
             {

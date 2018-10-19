@@ -145,6 +145,8 @@ namespace AI4E.Routing.SignalR.Server
 
         private async Task ReceiveAsync(int seqNum, ReadOnlyMemory<byte> memory, string address)
         {
+            _logger?.LogDebug($"Received message ({memory.Length} total bytes) with seq-num {seqNum} from client {address}.");
+
             var message = new Message();
 
             using (var stream = new ReadOnlyStream(memory))
@@ -161,6 +163,8 @@ namespace AI4E.Routing.SignalR.Server
 
         private void Ack(int seqNum, string address)
         {
+            _logger?.LogDebug($"Received acknowledgment for seq-num {seqNum} from client {address}.");
+
             var success = _outboundMessages.TryRemove(seqNum, out var compareAddress, out _, out var ackSource) &&
                           ackSource.TrySetResult(null);
             Assert(success);
@@ -170,7 +174,12 @@ namespace AI4E.Routing.SignalR.Server
         private async Task InitAsync(string address, string previousAddress)
         {
             if (previousAddress == null)
+            {
+                _logger?.LogDebug($"Client {address} initiated connection.");
                 return;
+            }
+
+            _logger?.LogDebug($"Client {address} with previous address {previousAddress} re-initiated connection.");
 
             var messages = _outboundMessages.Update(previousAddress, address);
 
@@ -196,6 +205,8 @@ namespace AI4E.Routing.SignalR.Server
 
                 var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
                 var base64 = Base64Coder.ToBase64String(bytes.Span);
+
+                _logger?.LogDebug($"Sending message ({bytes.Length} total bytes) with seq-num {seqNum} to client {address}.");
 
                 var tasks = new[] { hubContext.Clients.Client(address).DeliverAsync(seqNum, base64), ackSource.Task };
                 await Task.WhenAll(tasks).WithCancellation(cancellation);
