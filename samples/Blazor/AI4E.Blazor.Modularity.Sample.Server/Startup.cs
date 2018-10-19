@@ -31,17 +31,7 @@ namespace AI4E.Blazor.Modularity.Sample.Server
                 });
             });
 
-         
-      
-            services.AddSignalR();
-
-            services.AddSingleton<ServerEndPoint>();
-            services.AddSingleton<IServerEndPoint>(p => p.GetRequiredService<ServerEndPoint>());
-            services.AddSingleton<ILogicalServerEndPoint, LogicalServerEndPoint>();
-            services.AddSingleton<ClientManager>();
-            services.AddSingleton<IConnectedClientLookup, ConnectedClientLookup>();
-            services.ConfigureApplicationServices(serviceManager => serviceManager.AddService<ClientManager>());
-
+            services.AddSignalRServerRouting();
             services.AddMvc();
 
             services.AddStorage()
@@ -72,10 +62,7 @@ namespace AI4E.Blazor.Modularity.Sample.Server
 
             app.UseModularity();
 
-            app.UseSignalR(routes =>
-            {
-                routes.MapHub<ServerCallStub>("/MessageDispatcherHub");
-            });
+            app.UseSignalRServerRouting();
 
             // Use component registrations and static files from the app project.
             app.UseBlazor<App.Startup>();/*ServerSide*/

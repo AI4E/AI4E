@@ -4,7 +4,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Internal
 {
-    public sealed class ReadOnlyStream : Stream
+    internal sealed class ReadOnlyStream : Stream
     {
         private readonly ReadOnlyMemory<byte> _memory;
         private int _position;
