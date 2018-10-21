@@ -34,17 +34,22 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
 using static System.Diagnostics.Debug;
+
+// TODO: Remove frame reverse on send and receive
 
 namespace AI4E.Remoting
 {
     [Serializable]
     public sealed class Message : IMessage
     {
-        private static readonly long _headerLength = 12;
+        private static readonly int _headerLength = Unsafe.SizeOf<long>() + Unsafe.SizeOf<int>(); // 8 + 4 = 12
         private List<MessageFrame> _frames = new List<MessageFrame>();
 
         public Message() { }
@@ -101,6 +106,61 @@ namespace AI4E.Remoting
             return PushFrame();
         }
 
+        public Memory<byte> Write(Memory<byte> memory)
+        {
+            if (memory.Length < Length)
+            {
+                throw new ArgumentException(); // TODO: Exception message
+            }
+
+            var originalMemory = memory;
+
+            // Write header
+            var length = Length; // TODO: HTON
+            var frameIndex = FrameIndex; // TODO: HTON
+            MemoryMarshal.Write(memory.Span, ref length);
+            MemoryMarshal.Write(memory.Span.Slice(Unsafe.SizeOf<long>()), ref frameIndex);
+            memory = memory.Slice(_headerLength);
+
+            // Write frames
+            var orderedFrames = ((IEnumerable<MessageFrame>)_frames).Reverse(); // TODO
+
+            foreach (var frame in orderedFrames)
+            {
+                memory = frame.Write(memory);
+            }
+
+            Assert(memory.Length == originalMemory.Length - Length);
+
+            return originalMemory.Slice(start: 0, checked((int)Length));
+        }
+
+        public void Read(ReadOnlyMemory<byte> memory)
+        {
+            if (memory.Length < _headerLength)
+            {
+                throw new IOException(); // TODO: Exception type and message
+            }
+
+            // Read the header 
+
+            var length = MemoryMarshal.Read<long>(memory.Span); // TODO: NTOH
+            var frameIndex = MemoryMarshal.Read<int>(memory.Span.Slice(Unsafe.SizeOf<long>())); // TODO: NTOH
+            memory = memory.Slice(start: _headerLength, length: checked((int)length - _headerLength));
+
+            var frames = new List<MessageFrame>();
+
+            while (memory.Length > 0)
+            {
+                var frame = new MessageFrame();
+                memory = frame.Read(memory);
+                frames.Add(frame);
+            }
+
+            _frames = new List<MessageFrame>(((IEnumerable<MessageFrame>)frames).Reverse());
+            FrameIndex = frameIndex;
+        }
+
         public async Task WriteAsync(Stream stream, CancellationToken cancellation)
         {
             // Write the packet header
@@ -122,7 +182,12 @@ namespace AI4E.Remoting
 
             foreach (var frame in orderedFrames)
             {
-                await frame.WriteAsync(stream, cancellation);
+                // TODO
+                var frameBuffer = new byte[frame.PaddedLength];
+
+                frame.Write(frameBuffer);
+
+                await stream.WriteAsync(frameBuffer, offset: 0, count: frameBuffer.Length, cancellation);
             }
         }
 
@@ -145,13 +210,13 @@ namespace AI4E.Remoting
             await stream.ReadExactAsync(buffer, 0, buffer.Length, cancellation);
 
             var frames = new List<MessageFrame>();
-            var index = 0;
 
-            while (index < buffer.Length - 1)
+            ReadOnlyMemory<byte> memory = buffer.AsMemory();
+
+            while (memory.Length > 0)
             {
                 var frame = new MessageFrame();
-                index = frame.Read(buffer, index, buffer.Length - index);
-
+                memory = frame.Read(memory);
                 frames.Add(frame);
             }
 
@@ -177,90 +242,79 @@ namespace AI4E.Remoting
     [Serializable]
     public sealed class MessageFrame : IMessageFrame
     {
-        internal static readonly long _headerLength = 8;
+        internal static readonly int _headerLength = Unsafe.SizeOf<long>(); // 8 bytes
 
-        private byte[] _payload = new byte[0];
-        private int _offset, _length;
+        private ReadOnlyMemory<byte> _payload = Array.Empty<byte>();
 
         internal MessageFrame() { }
 
-        public long Length => _length + _headerLength;
+        public int Length => checked(_payload.Length + _headerLength);
+        internal int PaddedLength => checked(Length + (4 * ((Length + 3) / 4) - Length));
 
-        internal long PaddedLength => Length + (4 * ((Length + 3) / 4) - Length);
+        long IMessageFrame.Length => Length;
 
         public Stream OpenStream(bool overrideContent = false)
         {
             return new MessageFrameStream(this, overrideContent);
         }
 
-        internal async Task WriteAsync(Stream stream, CancellationToken cancellation)
+        internal Memory<byte> Write(Memory<byte> memory)
         {
-            // Write the packet header
-
-            var header = new byte[_headerLength];
-
-            using (var memStream = new MemoryStream(header))
-            using (var binaryWriter = new BinaryWriter(memStream))
+            if (memory.Length - PaddedLength < 0)
             {
-                binaryWriter.Write(Length);   // 8 byte -- Packet length without padding
+                throw new IOException();
             }
 
-            await stream.WriteAsync(header, 0, header.Length, cancellation);
+            // Write the header
+            var packetLength = IPAddress.HostToNetworkOrder(Length);
 
-            // Only send a payload and padding if payload is available.
+            MemoryMarshal.Write(memory.Span, ref packetLength);
+            memory = memory.Slice(start: _headerLength);
+
+            // Write the payload
             var padding = checked((int)(4 * ((Length + 3) / 4) - Length));
 
             Assert(padding >= 0 && padding <= 3);
             Assert((Length + padding) % 4 == 0);
 
-            if (_length > 0)
+            // Only send a payload and padding if payload is available.
+            if (!_payload.IsEmpty)
             {
-                await stream.WriteAsync(_payload, _offset, _length, cancellation);
+                _payload.CopyTo(memory);
+                return memory.Slice(start: _payload.Length + padding);
+            }
 
-                if (padding > 0)
-                {
-                    // Just send anything to pad the message.
-                    await stream.WriteAsync(header, 0, padding, cancellation);
-                }
-            }
-            else
-            {
-                // Payload is empty and the header length is a multiple of 4 => There must be no padding
-                Assert(padding == 0);
-            }
+            // Payload is empty and the header length is a multiple of 4 => There must be no padding
+            Assert(padding == 0);
+            return memory;
         }
 
-        internal int Read(byte[] buffer, int index, int count)
+        internal ReadOnlyMemory<byte> Read(ReadOnlyMemory<byte> memory)
         {
-            long packetLength; // Does NOT include padding.
-            int padding;
-
-            if (count < _headerLength)
+            if (memory.Length - _headerLength < 0)
             {
                 throw new IOException("Read past the end of the message.");
             }
 
-            using (var memStream = new MemoryStream(buffer, index, checked((int)_headerLength)))
-            using (var binaryReader = new BinaryReader(memStream))
-            {
-                packetLength = binaryReader.ReadInt64();
-            }
+            // Read the header 
 
-            padding = checked((int)(4 * ((packetLength + 3) / 4) - packetLength));
+            // Does NOT include padding but does include the header length.
+            var packetLength = IPAddress.NetworkToHostOrder(MemoryMarshal.Read<long>(memory.Span));
+            memory = memory.Slice(start: _headerLength);
+
+            // Read the payload
+            var padding = checked((int)(4 * ((packetLength + 3) / 4) - packetLength));
             Assert(padding >= 0 && padding <= 3);
-
             var payloadLength = packetLength - _headerLength;
 
             if (payloadLength > 0)
             {
-                if (count - checked((int)_headerLength) - payloadLength - padding < 0)
+                if (memory.Length - payloadLength - padding < 0)
                 {
                     throw new IOException("Read past the end of the message.");
                 }
 
-                _payload = buffer;
-                _offset = index + checked((int)_headerLength);
-                _length = checked((int)payloadLength);
+                _payload = memory.Slice(start: 0, checked((int)payloadLength));
             }
             else
             {
@@ -268,92 +322,225 @@ namespace AI4E.Remoting
                 Assert(padding == 0);
             }
 
-            return index + checked((int)PaddedLength);
+            // The header is already 'sliced away'
+            return memory.Slice(start: checked((int)payloadLength) + padding);
         }
 
         private sealed class MessageFrameStream : Stream
         {
             private readonly MessageFrame _frame;
-            private MemoryStream _stream;
-            private bool _touched = false;
-            private long _readPosition = 0;
+            private readonly ReadOnlyMemory<byte> _readMemory;
+            private Memory<byte> _writeMemory;
+            private int _position;
+            private bool _touched;
+            private int _length;
 
             public MessageFrameStream(MessageFrame frame, bool overrideContent)
             {
                 _frame = frame;
+                _readMemory = _frame._payload;
+                _position = overrideContent ? _readMemory.Length : 0;
+                _length = _readMemory.Length;
+            }
 
-                if (overrideContent)
+            public override void Flush()
+            {
+                if (_touched)
                 {
-                    _stream = new MemoryStream();
-                    _touched = true;
-                }
-                else
-                {
-                    _stream = new MemoryStream(frame._payload, frame._offset, frame._length);
+                    _frame._payload = _writeMemory.Slice(start: 0, _length);
                 }
             }
 
-            public override void Flush() { }
-
             public override int Read(byte[] buffer, int offset, int count)
             {
+                if (buffer == null)
+                    throw new ArgumentNullException(nameof(buffer));
+
+                if (offset < 0)
+                    throw new ArgumentOutOfRangeException(nameof(offset));
+
+                if (buffer.Length - offset < count)
+                    throw new ArgumentException("The sum of offset and count is larger than the buffer length.");
+
+                ReadOnlyMemory<byte> slice;
+                var sliceLength = Math.Min(_length - _position, count);
+
                 if (!_touched)
                 {
-                    return _stream.Read(buffer, offset, count);
+                    slice = _readMemory.Slice(start: _position, sliceLength);
+                }
+                else
+                {
+                    slice = _writeMemory.Slice(start: _position, sliceLength);
                 }
 
-                var position = _stream.Position;
-                _stream.Position = _readPosition;
+                var dest = buffer.AsMemory(offset, slice.Length);
+                slice.CopyTo(dest);
+                Position += slice.Length;
 
-                var result = _stream.Read(buffer, offset, count);
-
-                _readPosition = _stream.Position;
-                _stream.Position = position;
-
-                return result;
+                return slice.Length;
             }
 
             public override long Seek(long offset, SeekOrigin origin)
             {
-                throw new NotSupportedException();
+                int position;
+
+                switch (origin)
+                {
+                    case SeekOrigin.Begin:
+                        position = 0;
+                        break;
+
+                    case SeekOrigin.Current:
+                        position = _position;
+                        break;
+
+                    case SeekOrigin.End:
+                        position = _length;
+                        break;
+
+                    default:
+                        throw new ArgumentException("Invalid enum value.", nameof(origin));
+                }
+
+                var newPosition = position + offset;
+
+                if (newPosition < 0)
+                    newPosition = 0;
+
+                if (newPosition > int.MaxValue)
+                    newPosition = int.MaxValue;
+
+                if (newPosition > _length)
+                {
+                    SetLength(newPosition);
+                }
+
+                _position = unchecked((int)newPosition);
+
+                return newPosition;
             }
 
             public override void SetLength(long value)
             {
-                throw new NotSupportedException();
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException(nameof(value));
+
+                int newLength;
+
+                if (value < int.MaxValue)
+                {
+                    newLength = unchecked((int)value);
+                }
+                else
+                {
+                    newLength = int.MaxValue;
+                }
+
+                if (_length == newLength)
+                {
+                    return;
+                }
+
+                if (!_touched)
+                {
+                    Touch(newLength);
+                }
+
+                if (newLength > _length)
+                {
+                    EnsureLength(newLength);
+
+                    // Zero out additional memory.
+                    var newSpace = _writeMemory.Slice(_length, newLength - _length);
+                    var newSpaceAsIntPtr = MemoryMarshal.Cast<byte, IntPtr>(newSpace.Span);
+
+                    for (var i = 0; i < newSpaceAsIntPtr.Length; i++)
+                    {
+                        newSpaceAsIntPtr[i] = IntPtr.Zero;
+                    }
+
+                    newSpace = newSpace.Slice(start: newSpaceAsIntPtr.Length * Unsafe.SizeOf<IntPtr>());
+
+                    for (var i = 0; i < newSpace.Length; i++)
+                    {
+                        newSpace.Span[i] = 0;
+                    }
+                }
+
+                _length = newLength;
+            }
+
+            private void Touch(int minLength)
+            {
+                Assert(!_touched);
+
+                _writeMemory = new byte[Math.Max(_readMemory.Length, minLength)];
+                _length = _readMemory.Length;
+                _touched = true;
+            }
+
+            private void EnsureLength(int minLength)
+            {
+                if (!_touched)
+                {
+                    Touch(minLength);
+                    return;
+                }
+
+                if (_writeMemory.Length < minLength)
+                {
+                    var writeMemory = new byte[Math.Max(_writeMemory.Length << 1, minLength)];
+                    Assert(writeMemory.Length >= minLength);
+
+                    _writeMemory.Slice(start: 0, _length).CopyTo(writeMemory);
+                    _writeMemory = writeMemory;
+                }
             }
 
             public override void Write(byte[] buffer, int offset, int count)
             {
-                if (!_touched)
-                {
-                    _readPosition = _stream.Position;
-                    _stream = new MemoryStream(count + _frame._length);
-                    _stream.Write(_frame._payload, _frame._offset, _frame._length);
-                    _touched = true;
-                }
+                if (buffer == null)
+                    throw new ArgumentNullException(nameof(buffer));
 
-                _stream.Write(buffer, offset, count);
+                if (offset < 0)
+                    throw new ArgumentOutOfRangeException(nameof(offset));
+
+                if (buffer.Length - offset < count)
+                    throw new ArgumentException("The sum of offset and count is larger than the buffer length.");
+
+                if (count == 0)
+                    return;
+
+                var newLength = Math.Max(_length, _position + count);
+                EnsureLength(newLength);
+                buffer.AsMemory(offset, count).CopyTo(_writeMemory.Slice(start: _position));
+                _length = newLength;
             }
 
             public override bool CanRead => true;
 
-            public override bool CanSeek => false;
+            public override bool CanSeek => true;
 
             public override bool CanWrite => true;
 
-            public override long Length => throw new NotSupportedException();
+            public override long Length => _length;
 
-            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+            public override long Position
+            {
+                get => _position;
+                set
+                {
+                    if (_position < 0 || _position > _length)
+                        throw new ArgumentOutOfRangeException(nameof(value));
+
+                    _position = unchecked((int)value);
+                }
+            }
 
             protected override void Dispose(bool disposing)
             {
-                if (_touched)
-                {
-                    _frame._payload = _stream.ToArray();
-                    _frame._length = _frame._payload.Length;
-                    _frame._offset = 0;
-                }
+                Flush();
             }
         }
     }

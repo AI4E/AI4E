@@ -208,16 +208,17 @@ namespace AI4E.Routing
 
             public async Task<IMessageReceiveResult<TAddress, EndPointAddress>> ReceiveAsync(CancellationToken cancellation)
             {
-                var disposal = CheckDisposal(ref cancellation);
-
-                try
+                using (CheckDisposal(ref cancellation, out var externalCancellation, out var disposal))
                 {
-                    var (message, decodedMessage, remoteAddress) = await _rxQueue.DequeueAsync(cancellation);
-                    return new MessageReceiveResult(this, message, decodedMessage, remoteAddress);
-                }
-                catch (OperationCanceledException) when (disposal.IsCancellationRequested)
-                {
-                    throw new ObjectDisposedException(GetType().FullName);
+                    try
+                    {
+                        var (message, decodedMessage, remoteAddress) = await _rxQueue.DequeueAsync(cancellation);
+                        return new MessageReceiveResult(this, message, decodedMessage, remoteAddress);
+                    }
+                    catch (OperationCanceledException) when (disposal.IsCancellationRequested)
+                    {
+                        throw new ObjectDisposedException(GetType().FullName);
+                    }
                 }
             }
 
@@ -229,66 +230,68 @@ namespace AI4E.Routing
 
             public async Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
             {
-                var disposal = CheckDisposal(ref cancellation);
-
-                try
+                using (CheckDisposal(ref cancellation, out var externalCancellation, out var disposal))
                 {
-                    return await SendInternalAsync(message, remoteEndPoint, remoteAddress, cancellation);
-                }
-                catch (OperationCanceledException) when (disposal.IsCancellationRequested)
-                {
-                    throw new ObjectDisposedException(GetType().FullName);
+                    try
+                    {
+                        return await SendInternalAsync(message, remoteEndPoint, remoteAddress, cancellation);
+                    }
+                    catch (OperationCanceledException) when (disposal.IsCancellationRequested)
+                    {
+                        throw new ObjectDisposedException(GetType().FullName);
+                    }
                 }
             }
 
             public async Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation)
             {
-                var disposal = CheckDisposal(ref cancellation);
-
-                try
+                using (CheckDisposal(ref cancellation, out var externalCancellation, out var disposal))
                 {
-                    var cancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
-                    var remoteAddresses = await GetAddressesAsync(remoteEndPoint, cancellation);
-                    var operations = new List<Task>();
-                    var timeout = default(Task);
-
                     try
                     {
-                        foreach (var remoteAddress in remoteAddresses)
+                        var cancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, token2: default);
+                        var remoteAddresses = await GetAddressesAsync(remoteEndPoint, cancellation);
+                        var operations = new List<Task>();
+                        var timeout = default(Task);
+
+                        try
                         {
-                            if (timeout != null)
+                            foreach (var remoteAddress in remoteAddresses)
                             {
-                                operations.Remove(timeout);
+                                if (timeout != null)
+                                {
+                                    operations.Remove(timeout);
+                                }
+
+                                operations.Add(SendInternalAsync(message, remoteEndPoint, remoteAddress, cancellation));
+                                timeout = Task.Delay(5000); // TODO: This should be configurable
+                                operations.Add(timeout);
+
+                                var completedOperation = await Task.WhenAny(operations);
+
+                                if (completedOperation != timeout)
+                                {
+                                    return await (completedOperation as Task<IMessage>);
+                                }
                             }
 
-                            operations.Add(SendInternalAsync(message, remoteEndPoint, remoteAddress, cancellation));
-                            timeout = Task.Delay(5000); // TODO: This should be configurable
-                            operations.Add(timeout);
+                            Assert(timeout != null);
+                            operations.Remove(timeout);
 
-                            var completedOperation = await Task.WhenAny(operations);
-
-                            if (completedOperation != timeout)
+                            return await (await Task.WhenAny(operations) as Task<IMessage>);
+                        }
+                        finally
+                        {
+                            if (operations.Count > 1)
                             {
-                                return await (completedOperation as Task<IMessage>);
+                                cancellationSource.Cancel();
                             }
                         }
-
-                        Assert(timeout != null);
-                        operations.Remove(timeout);
-
-                        return await (await Task.WhenAny(operations) as Task<IMessage>);
                     }
-                    finally
+                    catch (OperationCanceledException) when (disposal.IsCancellationRequested)
                     {
-                        if (operations.Count > 1)
-                        {
-                            cancellationSource.Cancel();
-                        }
+                        throw new ObjectDisposedException(GetType().FullName);
                     }
-                }
-                catch (OperationCanceledException) when (disposal.IsCancellationRequested)
-                {
-                    throw new ObjectDisposedException(GetType().FullName);
                 }
             }
 
@@ -592,9 +595,11 @@ namespace AI4E.Routing
                         _endPointManager._endPoints.Remove(EndPoint, this);
                     }
 
+                    disposalSource.Dispose();
                 }
             }
 
+            [Obsolete]
             private CancellationToken CheckDisposal(ref CancellationToken cancellation)
             {
                 var disposalSource = _disposalSource; // Volatile read op
@@ -615,6 +620,33 @@ namespace AI4E.Routing
                 }
 
                 return disposalToken;
+            }
+
+            private IDisposable CheckDisposal(ref CancellationToken cancellation,
+                                              out CancellationToken externalCancellation,
+                                              out CancellationToken disposal)
+            {
+                var disposalSource = _disposalSource; // Volatile read op
+
+                if (disposalSource == null)
+                    throw new ObjectDisposedException(GetType().FullName);
+
+                externalCancellation = cancellation;
+                disposal = disposalSource.Token;
+
+                if (cancellation.CanBeCanceled)
+                {
+                    var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, disposal);
+                    cancellation = combinedCancellationSource.Token;
+
+                    return combinedCancellationSource;
+                }
+                else
+                {
+                    cancellation = disposal;
+
+                    return NoOpDisposable.Instance;
+                }
             }
 
             #endregion

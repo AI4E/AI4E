@@ -18,6 +18,8 @@
     <Compile Include="..\..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
     <Compile Include="..\..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
     <Compile Include="..\..\Common\TypeLoadHelper.cs" Link="Internal\TypeLoadHelper.cs" />
+    <Compile Include="..\..\Common\NoOpDisposable.cs" Link="Internal\NoOpDisposable.cs" />
+    <Compile Include="..\..\Common\ArrayPoolExtension.cs" Link="Internal\ArrayPoolExtension.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\ClientEndPoint.cs" Link="ClientEndPoint.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\HubConnectionExtension.cs" Link="HubConnectionExtension.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\LogicalClientEndPoint.cs" Link="LogicalClientEndPoint.cs" />

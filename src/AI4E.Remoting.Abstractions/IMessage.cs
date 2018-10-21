@@ -28,6 +28,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,6 +44,8 @@ namespace AI4E.Remoting
         IMessageFrame PushFrame();
 
         void Trim(); // TODO: Rename?
+
+        Memory<byte> Write(Memory<byte> memory);
 
         Task WriteAsync(Stream stream, CancellationToken cancellation);
         Task ReadAsync(Stream stream, CancellationToken cancellation);
