@@ -64,7 +64,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\CustomAttributeProviderExtension.cs = src\Common\CustomAttributeProviderExtension.cs
 		src\Common\DataPropertyHelper.cs = src\Common\DataPropertyHelper.cs
 		src\Common\DebugEx.cs = src\Common\DebugEx.cs
-		src\Common\DeepCopyByExpressionTrees.cs = src\Common\DeepCopyByExpressionTrees.cs
 		src\Common\DictionaryExtension.cs = src\Common\DictionaryExtension.cs
 		src\Common\DisposeAwareStream.cs = src\Common\DisposeAwareStream.cs
 		src\Common\EnumerableExtension.cs = src\Common\EnumerableExtension.cs
@@ -184,7 +183,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.Module", "s
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Coordination.Test", "test\AI4E.Coordination.Test\AI4E.Coordination.Test.csproj", "{C745BC0F-3CE7-4BD8-B2CC-988B4DFF789A}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "lib", "lib", "{183B9E0B-2916-4CE7-AC3B-D082F948D18C}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "lib", "lib", "{C671034D-56C6-4CD2-AEFA-0767FF5B93A8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AI4E.Utils.ObjectClone", "AI4E.Utils.ObjectClone", "{A7827E17-5092-42F0-98E6-6EBA6FCCB7E3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.ObjectClone", "lib\AI4E.Utils.ObjectClone\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj", "{BEE1D3DD-087B-4499-AC33-590BC2D016C6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AI4E.ApplicationParts", "AI4E.ApplicationParts", "{03BEA7FD-C579-4548-B689-355D1557C9BB}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.ApplicationParts", "lib\AI4E.ApplicationParts\src\AI4E.ApplicationParts\AI4E.ApplicationParts.csproj", "{E4209050-CE1C-49F3-9D2D-E80007AE6BA3}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AI4E.Memory.Compatibility", "AI4E.Memory.Compatibility", "{013DC807-6B35-4BF5-B13F-B3D8283701CC}"
 EndProject
@@ -399,6 +406,14 @@ Global
 		{C745BC0F-3CE7-4BD8-B2CC-988B4DFF789A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C745BC0F-3CE7-4BD8-B2CC-988B4DFF789A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C745BC0F-3CE7-4BD8-B2CC-988B4DFF789A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BEE1D3DD-087B-4499-AC33-590BC2D016C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BEE1D3DD-087B-4499-AC33-590BC2D016C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BEE1D3DD-087B-4499-AC33-590BC2D016C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BEE1D3DD-087B-4499-AC33-590BC2D016C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E4209050-CE1C-49F3-9D2D-E80007AE6BA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E4209050-CE1C-49F3-9D2D-E80007AE6BA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E4209050-CE1C-49F3-9D2D-E80007AE6BA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E4209050-CE1C-49F3-9D2D-E80007AE6BA3}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B0A4CB59-053E-4A41-B32F-4EB3E2C8F9AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B0A4CB59-053E-4A41-B32F-4EB3E2C8F9AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B0A4CB59-053E-4A41-B32F-4EB3E2C8F9AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -466,7 +481,11 @@ Global
 		{32321136-FE8A-4331-A0D2-CE1712BFBC9C} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
 		{7AA16B8A-A2CC-4E40-BCDD-812FC91200B0} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
 		{C745BC0F-3CE7-4BD8-B2CC-988B4DFF789A} = {51EBAD3B-B475-4587-A6DE-2CCDDC1952F7}
-		{013DC807-6B35-4BF5-B13F-B3D8283701CC} = {183B9E0B-2916-4CE7-AC3B-D082F948D18C}
+		{A7827E17-5092-42F0-98E6-6EBA6FCCB7E3} = {C671034D-56C6-4CD2-AEFA-0767FF5B93A8}
+		{BEE1D3DD-087B-4499-AC33-590BC2D016C6} = {A7827E17-5092-42F0-98E6-6EBA6FCCB7E3}
+		{03BEA7FD-C579-4548-B689-355D1557C9BB} = {C671034D-56C6-4CD2-AEFA-0767FF5B93A8}
+		{E4209050-CE1C-49F3-9D2D-E80007AE6BA3} = {03BEA7FD-C579-4548-B689-355D1557C9BB}
+		{013DC807-6B35-4BF5-B13F-B3D8283701CC} = {C671034D-56C6-4CD2-AEFA-0767FF5B93A8}
 		{B0A4CB59-053E-4A41-B32F-4EB3E2C8F9AE} = {013DC807-6B35-4BF5-B13F-B3D8283701CC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution

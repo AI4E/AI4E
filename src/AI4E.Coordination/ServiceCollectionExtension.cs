@@ -51,6 +51,7 @@ namespace AI4E.Coordination
             services.AddScoped<ICoordinationWaitManager, CoordinationWaitManager>();
             services.AddScoped<ICoordinationLockManager, CoordinationLockManager>();
             services.AddScoped<ICoordinationSessionOwner, CoordinationSessionOwner>();
+            services.AddScoped<ILockWaitDirectory, LockWaitDirectory>();
             services.AddScoped<CoordinationEntryCache>();
 
             return new CoordinationBuilder(services);

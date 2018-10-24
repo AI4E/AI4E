@@ -25,10 +25,11 @@
     <PackageReference Include="Newtonsoft.Json.Bson" Version="$(NewtonsoftJsonBsonVersion)" />  
     <PackageReference Include="System.Interactive.Async" Version="$(SystemInteractiveAsyncVersion)" />
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="$(NitoAsyncExCoordinationVersion)" />
-    <PackageReference Include="System.Collections.Immutable" Version="$(SystemCollectionsImmutableVersion)"/>
+    <PackageReference Include="System.Collections.Immutable" Version="$(SystemCollectionsImmutableVersion)" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\lib\AI4E.ApplicationParts\src\AI4E.ApplicationParts\AI4E.ApplicationParts.csproj" />
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
   </ItemGroup>
 

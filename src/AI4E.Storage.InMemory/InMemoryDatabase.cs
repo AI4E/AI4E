@@ -6,6 +6,7 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using AI4E.Utils;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 
@@ -256,7 +257,7 @@ namespace AI4E.Storage.InMemory
                 return false;
             }
 
-            var copy = data.DeepCopyByExpressionTree();
+            var copy = data.DeepClone();
 
             return await ExecuteAsync(data, p, (_1, _2) => _entries[id] = copy, cancellation);
         }
@@ -278,7 +279,7 @@ namespace AI4E.Storage.InMemory
             if (comparand != null)
                 return false;
 
-            var copy = data.DeepCopyByExpressionTree();
+            var copy = data.DeepClone();
 
             using (await _lock.WriterLockAsync(cancellation))
             {
@@ -336,15 +337,15 @@ namespace AI4E.Storage.InMemory
                 {
                     foreach (var entry in _entries.Values)
                     {
-                            if (compiledPredicate(entry))
-                                result.Add(entry);
+                        if (compiledPredicate(entry))
+                            result.Add(entry);
                     }
                 }
 
                 return result;
             }
 
-            return GetRawData().ToAsyncEnumerable().Select(p => p.DeepCopyByExpressionTree());
+            return GetRawData().ToAsyncEnumerable().Select(p => p.DeepClone());
         }
 
         public async ValueTask<TData> GetOneAsync(Expression<Func<TData, bool>> predicate, CancellationToken cancellation)
@@ -367,7 +368,7 @@ namespace AI4E.Storage.InMemory
                 }
             }
 
-            return resultFound ? result.DeepCopyByExpressionTree() : null;
+            return resultFound ? result.DeepClone() : null;
         }
     }
 }
