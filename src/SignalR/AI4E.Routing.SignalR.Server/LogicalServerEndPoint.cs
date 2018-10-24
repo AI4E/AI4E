@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
 using AI4E.Internal;
 using AI4E.Processing;
 using AI4E.Remoting;
@@ -20,7 +18,7 @@ namespace AI4E.Routing.SignalR.Server
     //       (3) If a message is sent from a caller, the message may by put to the underlying end-point, just in the time that the signalr connection is already re-established. 
     //           The logical end-point now tries to send a message to a client address that is not available any more, or more dangerous is already allocated for a completely other client.
     //       (4) There are lots of duplicates, both in the type itself and compared to LogicalClientEndPoint. Maybe a common base class can help here.
-    public sealed class LogicalServerEndPoint : ILogicalServerEndPoint, IAsyncDisposable
+    public sealed class LogicalServerEndPoint : ILogicalServerEndPoint, IDisposable
     {
         #region Fields
 
@@ -34,8 +32,6 @@ namespace AI4E.Routing.SignalR.Server
         private readonly ConcurrentDictionary<EndPointAddress, string> _clientLookup = new ConcurrentDictionary<EndPointAddress, string>();
 
         private readonly IAsyncProcess _receiveProcess;
-        private readonly AsyncInitializationHelper _initializationHelper;
-        private readonly AsyncDisposeHelper _disposeHelper;
 
         private int _nextSeqNum;
 
@@ -55,9 +51,7 @@ namespace AI4E.Routing.SignalR.Server
             _connectedClients = connectedClients;
             _logger = logger;
 
-            _receiveProcess = new AsyncProcess(ReceiveProcess);
-            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
-            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+            _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
         }
 
         #endregion
@@ -72,17 +66,10 @@ namespace AI4E.Routing.SignalR.Server
             if (endPoint == default)
                 throw new ArgumentDefaultException(nameof(endPoint));
 
-            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            using (CheckDisposal(ref cancellation, out var externalCancellation, out var disposal))
             {
-                if (_disposeHelper.IsDisposed)
-                    throw new ObjectDisposedException(GetType().FullName);
-
-                var combinedCancellation = _disposeHelper.CancelledOrDisposed(cancellation);
-
                 try
                 {
-                    await _initializationHelper.Initialization.WithCancellation(combinedCancellation);
-
                     var seqNum = GetNextSeqNum();
                     var responseSource = new TaskCompletionSource<IMessage>();
 
@@ -100,14 +87,15 @@ namespace AI4E.Routing.SignalR.Server
 
                     EncodeServerMessage(message, seqNum, corr: default, MessageType.Request);
 
-                    using (combinedCancellation.Register(RequestCancellation))
+                    using (cancellation.Register(RequestCancellation))
                     {
-                        await Task.WhenAll(SendInternalAsync(message, endPoint, combinedCancellation), responseSource.Task);
+                        await Task.WhenAll(SendInternalAsync(message, endPoint, cancellation), responseSource.Task);
                     }
 
                     return await responseSource.Task;
+
                 }
-                catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+                catch (OperationCanceledException) when (disposal.IsCancellationRequested)
                 {
                     throw new ObjectDisposedException(GetType().FullName);
                 }
@@ -116,22 +104,15 @@ namespace AI4E.Routing.SignalR.Server
 
         public async Task<IMessageReceiveResult<EndPointAddress>> ReceiveAsync(CancellationToken cancellation)
         {
-            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            using (CheckDisposal(ref cancellation, out var externalCancellation, out var disposal))
             {
-                if (_disposeHelper.IsDisposed)
-                    throw new ObjectDisposedException(GetType().FullName);
-
-                var combinedCancellation = _disposeHelper.CancelledOrDisposed(cancellation);
-
                 try
                 {
-                    await _initializationHelper.Initialization.WithCancellation(combinedCancellation);
-
-                    var (message, seqNum, endPoint) = await _rxQueue.DequeueAsync(combinedCancellation);
+                    var (message, seqNum, endPoint) = await _rxQueue.DequeueAsync(cancellation);
 
                     return new MessageReceiveResult(this, message, seqNum, endPoint);
                 }
-                catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+                catch (OperationCanceledException) when (disposal.IsCancellationRequested)
                 {
                     throw new ObjectDisposedException(GetType().FullName);
                 }
@@ -457,33 +438,47 @@ namespace AI4E.Routing.SignalR.Server
 
         #endregion
 
-        #region Init
-
-        private Task InitializeInternalAsync(CancellationToken cancellation)
-        {
-            return _receiveProcess.StartAsync(cancellation);
-        }
-
-        #endregion
-
         #region Disposal
 
-        public Task Disposal => _disposeHelper.Disposal;
+        private volatile CancellationTokenSource _disposalSource;
 
         public void Dispose()
         {
-            _disposeHelper.Dispose();
+            var disposalSource = Interlocked.Exchange(ref _disposalSource, null);
+
+            if (disposalSource != null)
+            {
+                // TODO: Log
+
+                _receiveProcess.Terminate();
+            }
         }
 
-        public Task DisposeAsync()
+        private IDisposable CheckDisposal(ref CancellationToken cancellation,
+                                              out CancellationToken externalCancellation,
+                                              out CancellationToken disposal)
         {
-            return _disposeHelper.DisposeAsync();
-        }
+            var disposalSource = _disposalSource; // Volatile read op
 
-        private async Task DisposeInternalAsync()
-        {
-            await _initializationHelper.CancelAsync().HandleExceptionsAsync();
-            await _receiveProcess.TerminateAsync().HandleExceptionsAsync();
+            if (disposalSource == null)
+                throw new ObjectDisposedException(GetType().FullName);
+
+            externalCancellation = cancellation;
+            disposal = disposalSource.Token;
+
+            if (cancellation.CanBeCanceled)
+            {
+                var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, disposal);
+                cancellation = combinedCancellationSource.Token;
+
+                return combinedCancellationSource;
+            }
+            else
+            {
+                cancellation = disposal;
+
+                return NoOpDisposable.Instance;
+            }
         }
 
         #endregion

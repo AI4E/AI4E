@@ -599,29 +599,6 @@ namespace AI4E.Routing
                 }
             }
 
-            [Obsolete]
-            private CancellationToken CheckDisposal(ref CancellationToken cancellation)
-            {
-                var disposalSource = _disposalSource; // Volatile read op
-
-                if (disposalSource == null)
-                    throw new ObjectDisposedException(GetType().FullName);
-
-                var disposalToken = disposalSource.Token;
-
-                if (cancellation.CanBeCanceled)
-                {
-                    var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, disposalToken);
-                    cancellation = combinedCancellationSource.Token;
-                }
-                else
-                {
-                    cancellation = disposalToken;
-                }
-
-                return disposalToken;
-            }
-
             private IDisposable CheckDisposal(ref CancellationToken cancellation,
                                               out CancellationToken externalCancellation,
                                               out CancellationToken disposal)
