@@ -1,3 +1,6 @@
 [submodule "lib/AI4E.Utils.ObjectClone"]
 	path = lib/AI4E.Utils.ObjectClone
 	url = https://github.com/AI4E/AI4E.Utils.ObjectClone.git
+[submodule "lib/AI4E.ApplicationParts"]
+	path = lib/AI4E.ApplicationParts
+	url = https://github.com/AI4E/AI4E.ApplicationParts.git
