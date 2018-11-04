@@ -133,59 +133,5 @@ namespace AI4E.Routing.SignalR.Server
                 return intermediate.Select(p => (seqNum: p.Key, bytes: p.Value)).ToImmutableList();
             }
         }
-
-        ///// <summary>
-        ///// Updates all outgoing messages of a single receiver and returns the updated messages.
-        ///// </summary>
-        ///// <param name="address">The address, the messages were sent to originally.</param>
-        ///// <param name="updatedAddress">The new receiver address.</param>
-        ///// <returns>A collection of all updated messages.</returns>
-        ///// <exception cref="ArgumentNullException">
-        ///// Thrown if any of <paramref name="address"/> or <paramref name="updatedAddress"/> is null.
-        ///// </exception>
-        //public IEnumerable<(int seqNum, ReadOnlyMemory<byte> bytes)> Update(string address, string updatedAddress)
-        //{
-        //    if (address == null)
-        //    {
-        //        throw new ArgumentNullException(nameof(address));
-        //    }
-
-        //    if (updatedAddress == null)
-        //    {
-        //        throw new ArgumentNullException(nameof(updatedAddress));
-        //    }
-
-        //    Dictionary<int, ReadOnlyMemory<byte>> messages;
-
-        //    lock (_lock)
-        //    {
-        //        if (!_byAddress.Remove(address, out messages))
-        //        {
-        //            return Enumerable.Empty<(int seqNum, ReadOnlyMemory<byte> bytes)>();
-        //        }
-
-        //        if (!_byAddress.TryGetValue(updatedAddress, out var updatedMessages))
-        //        {
-        //            updatedMessages = new Dictionary<int, ReadOnlyMemory<byte>>();
-        //            _byAddress.Add(address, updatedMessages);
-        //        }
-
-        //        foreach (var message in messages)
-        //        {
-        //            var success = updatedMessages.TryAdd(message.Key, message.Value);
-        //            Assert(success);
-
-        //            success = _bySeqNum.TryGetValue(message.Key, out var entry);
-        //            Assert(success);
-
-        //            if (success)
-        //            {
-        //                _bySeqNum[message.Key] = (updatedAddress, entry.bytes, entry.ackSource);
-        //            }
-        //        }
-        //    }
-
-        //    return messages.Select(p => (seqNum: p.Key, bytes: p.Value));
-        //}
     }
 }
