@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Connections;
@@ -16,7 +16,7 @@ namespace AI4E.Routing.SignalR.Server
             services.AddSignalR();
             services.AddSingleton<ServerEndPoint>();
             services.AddSingleton<IServerEndPoint>(p => p.GetRequiredService<ServerEndPoint>());
-            services.AddSingleton<ILogicalServerEndPoint, LogicalServerEndPoint>();
+            services.AddSingleton<IRequestReplyServerEndPoint, RequestReplyServerEndPoint>();
             services.AddSingleton<ClientManager>();
             services.AddSingleton<IConnectedClientLookup, ConnectedClientLookup>();
             services.ConfigureApplicationServices(serviceManager => serviceManager.AddService<ClientManager>());

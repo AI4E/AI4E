@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -206,7 +206,7 @@ namespace AI4E.Routing
             public TAddress LocalAddress => _endPointManager.LocalAddress;
             public EndPointAddress EndPoint { get; }
 
-            public async Task<IMessageReceiveResult<TAddress, EndPointAddress>> ReceiveAsync(CancellationToken cancellation)
+            public async Task<ILogicalEndPointReceiveResult<TAddress>> ReceiveAsync(CancellationToken cancellation)
             {
                 using (CheckDisposal(ref cancellation, out var externalCancellation, out var disposal))
                 {
@@ -222,8 +222,8 @@ namespace AI4E.Routing
                 }
             }
 
-            // TODO: Can we downcast here, without an async state machine?
-            async Task<IMessageReceiveResult<EndPointAddress>> ILogicalEndPoint.ReceiveAsync(CancellationToken cancellation)
+            // TODO: Can we downcast here, without an async state machine? (See also: RequestReplyClientEndPoint)
+            async Task<ILogicalEndPointReceiveResult> ILogicalEndPoint.ReceiveAsync(CancellationToken cancellation)
             {
                 return await ReceiveAsync(cancellation);
             }
@@ -645,7 +645,7 @@ namespace AI4E.Routing
                 return seqNum;
             }
 
-            private sealed class MessageReceiveResult : IMessageReceiveResult<TAddress, EndPointAddress>
+            private sealed class MessageReceiveResult : ILogicalEndPointReceiveResult<TAddress>
             {
                 private readonly LogicalEndPoint _logicalEndPoint;
                 private readonly CancellationTokenSource _cancellationRequestSource;
@@ -669,6 +669,12 @@ namespace AI4E.Routing
                 public EndPointAddress RemoteEndPoint { get; }
 
                 public TAddress RemoteAddress { get; }
+
+                Packet<EndPointAddress> IMessageReceiveResult<Packet<EndPointAddress>>.Packet
+                    => new Packet<EndPointAddress>(Message, RemoteEndPoint);
+
+                Packet<EndPointAddress, TAddress> IMessageReceiveResult<Packet<EndPointAddress, TAddress>>.Packet
+                    => new Packet<EndPointAddress, TAddress>(Message, RemoteEndPoint, RemoteAddress);
 
                 public void Dispose()
                 {

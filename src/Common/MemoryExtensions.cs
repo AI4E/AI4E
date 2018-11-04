@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
@@ -39,6 +39,7 @@ namespace AI4E.Internal
 
             return s.Slice(start, count);
         }
+
         public static bool SequenceEqual<T>(this ReadOnlyMemory<T> left, ReadOnlyMemory<T> right, IEqualityComparer<T> comparer)
         {
             if (comparer == null)
@@ -73,14 +74,18 @@ namespace AI4E.Internal
             return SequenceEqual(left, right, EqualityComparer<T>.Default);
         }
 
+        [Obsolete("Use 'IsEmptyOrWhiteSpace(ReadOnlySpan<char>)'")]
         public static bool IsEmptyOrWhiteSpace(this ReadOnlyMemory<char> s)
         {
-            if (s.IsEmpty)
+            return s.Span.IsEmptyOrWhiteSpace();
+        }
+
+        public static bool IsEmptyOrWhiteSpace(this ReadOnlySpan<char> span)
+        {
+            if (span.IsEmpty)
                 return true;
 
-            var span = s.Span;
-
-            for (var j = 0; j < s.Length; j++)
+            for (var j = 0; j < span.Length; j++)
             {
                 if (!char.IsWhiteSpace(span[j]))
                 {

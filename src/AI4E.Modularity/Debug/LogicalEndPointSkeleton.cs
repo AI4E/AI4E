@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -66,9 +66,9 @@ namespace AI4E.Modularity.Debug
 
     public sealed class MessageReceiveResultSkeleton
     {
-        private readonly IMessageReceiveResult<EndPointAddress> _receiveResult;
+        private readonly ILogicalEndPointReceiveResult _receiveResult;
 
-        public MessageReceiveResultSkeleton(IMessageReceiveResult<EndPointAddress> receiveResult)
+        public MessageReceiveResultSkeleton(ILogicalEndPointReceiveResult receiveResult)
         {
             if (receiveResult == null)
                 throw new ArgumentNullException(nameof(receiveResult));

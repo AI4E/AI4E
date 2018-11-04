@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -22,7 +22,7 @@ namespace AI4E.Routing.SignalR.Server
     {
         private readonly TimeSpan _leaseLength = TimeSpan.FromSeconds(30); // TODO: This should be configurable.
 
-        private readonly ILogicalServerEndPoint _logicalEndPoint;
+        private readonly IRequestReplyServerEndPoint _endPoint;
         private readonly IMessageRouterFactory _messageRouterFactory;
         private readonly IEndPointManager _endPointManager;
         private readonly IDateTimeProvider _dateTimeProvider;
@@ -37,14 +37,14 @@ namespace AI4E.Routing.SignalR.Server
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
-        public ClientManager(ILogicalServerEndPoint logicalEndPoint,
+        public ClientManager(IRequestReplyServerEndPoint endPoint,
                              IMessageRouterFactory messageRouterFactory,
                              IEndPointManager endPointManager,
                              IDateTimeProvider dateTimeProvider,
                              ILogger<ClientManager> logger)
         {
-            if (logicalEndPoint == null)
-                throw new ArgumentNullException(nameof(logicalEndPoint));
+            if (endPoint == null)
+                throw new ArgumentNullException(nameof(endPoint));
 
             if (messageRouterFactory == null)
                 throw new ArgumentNullException(nameof(messageRouterFactory));
@@ -55,7 +55,7 @@ namespace AI4E.Routing.SignalR.Server
             if (dateTimeProvider == null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
 
-            _logicalEndPoint = logicalEndPoint;
+            _endPoint = endPoint;
             _messageRouterFactory = messageRouterFactory;
             _endPointManager = endPointManager;
             _dateTimeProvider = dateTimeProvider;
@@ -186,7 +186,7 @@ namespace AI4E.Routing.SignalR.Server
 
                     EncodeHandleRequest(message, route, publish);
 
-                    var response = await _owner._logicalEndPoint.SendAsync(message, _endPoint, cancellation);
+                    var response = await _owner._endPoint.SendAsync(message, _endPoint, cancellation);
                     return response;
                 }
                 finally
@@ -274,7 +274,7 @@ namespace AI4E.Routing.SignalR.Server
             {
                 try
                 {
-                    var receiveResult = await _logicalEndPoint.ReceiveAsync(cancellation);
+                    var receiveResult = await _endPoint.ReceiveAsync(cancellation);
 
                     async Task HandleResult()
                     {

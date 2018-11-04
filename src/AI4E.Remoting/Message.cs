@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        Message.cs 
  * Types:           (1) AI4E.Remoting.Message
@@ -106,7 +106,7 @@ namespace AI4E.Remoting
             return PushFrame();
         }
 
-        public Memory<byte> Write(Memory<byte> memory)
+        public Span<byte> Write(Span<byte> memory)
         {
             if (memory.Length < Length)
             {
@@ -118,8 +118,8 @@ namespace AI4E.Remoting
             // Write header
             var length = Length; // TODO: HTON
             var frameIndex = FrameIndex; // TODO: HTON
-            MemoryMarshal.Write(memory.Span, ref length);
-            MemoryMarshal.Write(memory.Span.Slice(Unsafe.SizeOf<long>()), ref frameIndex);
+            MemoryMarshal.Write(memory, ref length);
+            MemoryMarshal.Write(memory.Slice(Unsafe.SizeOf<long>()), ref frameIndex);
             memory = memory.Slice(_headerLength);
 
             // Write frames
@@ -135,7 +135,7 @@ namespace AI4E.Remoting
             return originalMemory.Slice(start: 0, checked((int)Length));
         }
 
-        public void Read(ReadOnlyMemory<byte> memory)
+        public void Read(ReadOnlySpan<byte> memory)
         {
             if (memory.Length < _headerLength)
             {
@@ -144,8 +144,8 @@ namespace AI4E.Remoting
 
             // Read the header 
 
-            var length = MemoryMarshal.Read<long>(memory.Span); // TODO: NTOH
-            var frameIndex = MemoryMarshal.Read<int>(memory.Span.Slice(Unsafe.SizeOf<long>())); // TODO: NTOH
+            var length = MemoryMarshal.Read<long>(memory); // TODO: NTOH
+            var frameIndex = MemoryMarshal.Read<int>(memory.Slice(Unsafe.SizeOf<long>())); // TODO: NTOH
             memory = memory.Slice(start: _headerLength, length: checked((int)length - _headerLength));
 
             var frames = new List<MessageFrame>();
@@ -209,9 +209,15 @@ namespace AI4E.Remoting
             var buffer = new byte[packetLength - header.LongLength];
             await stream.ReadExactAsync(buffer, 0, buffer.Length, cancellation);
 
+            _frames = ReadFrames(buffer);
+            FrameIndex = currentIndex;
+        }
+
+        private static List<MessageFrame> ReadFrames(byte[] buffer)
+        {
             var frames = new List<MessageFrame>();
 
-            ReadOnlyMemory<byte> memory = buffer.AsMemory();
+            ReadOnlySpan<byte> memory = buffer.AsSpan();
 
             while (memory.Length > 0)
             {
@@ -220,8 +226,7 @@ namespace AI4E.Remoting
                 frames.Add(frame);
             }
 
-            _frames = new List<MessageFrame>(((IEnumerable<MessageFrame>)frames).Reverse());
-            FrameIndex = currentIndex;
+            return new List<MessageFrame>(((IEnumerable<MessageFrame>)frames).Reverse());
         }
 
         public byte[] ToArray()
@@ -258,7 +263,7 @@ namespace AI4E.Remoting
             return new MessageFrameStream(this, overrideContent);
         }
 
-        internal Memory<byte> Write(Memory<byte> memory)
+        internal Span<byte> Write(Span<byte> memory)
         {
             if (memory.Length - PaddedLength < 0)
             {
@@ -268,7 +273,7 @@ namespace AI4E.Remoting
             // Write the header
             var packetLength = IPAddress.HostToNetworkOrder(Length);
 
-            MemoryMarshal.Write(memory.Span, ref packetLength);
+            MemoryMarshal.Write(memory, ref packetLength);
             memory = memory.Slice(start: _headerLength);
 
             // Write the payload
@@ -280,7 +285,7 @@ namespace AI4E.Remoting
             // Only send a payload and padding if payload is available.
             if (!_payload.IsEmpty)
             {
-                _payload.CopyTo(memory);
+                _payload.Span.CopyTo(memory);
                 return memory.Slice(start: _payload.Length + padding);
             }
 
@@ -289,7 +294,7 @@ namespace AI4E.Remoting
             return memory;
         }
 
-        internal ReadOnlyMemory<byte> Read(ReadOnlyMemory<byte> memory)
+        internal ReadOnlySpan<byte> Read(ReadOnlySpan<byte> memory)
         {
             if (memory.Length - _headerLength < 0)
             {
@@ -299,7 +304,7 @@ namespace AI4E.Remoting
             // Read the header 
 
             // Does NOT include padding but does include the header length.
-            var packetLength = IPAddress.NetworkToHostOrder(MemoryMarshal.Read<long>(memory.Span));
+            var packetLength = IPAddress.NetworkToHostOrder(MemoryMarshal.Read<long>(memory));
             memory = memory.Slice(start: _headerLength);
 
             // Read the payload
@@ -314,7 +319,9 @@ namespace AI4E.Remoting
                     throw new IOException("Read past the end of the message.");
                 }
 
-                _payload = memory.Slice(start: 0, checked((int)payloadLength));
+                var payload = new byte[checked((int)payloadLength)];
+                memory.Slice(start: 0, checked((int)payloadLength)).CopyTo(payload);
+                _payload = payload;
             }
             else
             {
@@ -354,13 +361,19 @@ namespace AI4E.Remoting
             public override int Read(byte[] buffer, int offset, int count)
             {
                 if (buffer == null)
+                {
                     throw new ArgumentNullException(nameof(buffer));
+                }
 
                 if (offset < 0)
+                {
                     throw new ArgumentOutOfRangeException(nameof(offset));
+                }
 
                 if (buffer.Length - offset < count)
+                {
                     throw new ArgumentException("The sum of offset and count is larger than the buffer length.");
+                }
 
                 ReadOnlyMemory<byte> slice;
                 var sliceLength = Math.Min(_length - _position, count);
@@ -406,10 +419,14 @@ namespace AI4E.Remoting
                 var newPosition = position + offset;
 
                 if (newPosition < 0)
+                {
                     newPosition = 0;
+                }
 
                 if (newPosition > int.MaxValue)
+                {
                     newPosition = int.MaxValue;
+                }
 
                 if (newPosition > _length)
                 {
@@ -424,7 +441,9 @@ namespace AI4E.Remoting
             public override void SetLength(long value)
             {
                 if (value < 0)
+                {
                     throw new ArgumentOutOfRangeException(nameof(value));
+                }
 
                 int newLength;
 
@@ -501,16 +520,24 @@ namespace AI4E.Remoting
             public override void Write(byte[] buffer, int offset, int count)
             {
                 if (buffer == null)
+                {
                     throw new ArgumentNullException(nameof(buffer));
+                }
 
                 if (offset < 0)
+                {
                     throw new ArgumentOutOfRangeException(nameof(offset));
+                }
 
                 if (buffer.Length - offset < count)
+                {
                     throw new ArgumentException("The sum of offset and count is larger than the buffer length.");
+                }
 
                 if (count == 0)
+                {
                     return;
+                }
 
                 var newLength = Math.Max(_length, _position + count);
                 EnsureLength(newLength);
@@ -532,7 +559,9 @@ namespace AI4E.Remoting
                 set
                 {
                     if (_position < 0 || _position > _length)
+                    {
                         throw new ArgumentOutOfRangeException(nameof(value));
+                    }
 
                     _position = unchecked((int)value);
                 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -25,7 +25,7 @@ namespace AI4E.Routing.SignalR.Client
         private static readonly TimeSpan _leaseLengthHalf = new TimeSpan(_leaseLength.Ticks / 2);
 
         private readonly ISerializedMessageHandler _serializedMessageHandler;
-        private readonly ILogicalClientEndPoint _logicalEndPoint;
+        private readonly IRequestReplyClientEndPoint _logicalEndPoint;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILogger<RemoteMessageRouter> _logger;
 
@@ -38,7 +38,7 @@ namespace AI4E.Routing.SignalR.Client
         private readonly object _lastSendTimeLock = new object();
 
         public RemoteMessageRouter(ISerializedMessageHandler serializedMessageHandler,
-                                   ILogicalClientEndPoint logicalEndPoint,
+                                   IRequestReplyClientEndPoint logicalEndPoint,
                                    IDateTimeProvider dateTimeProvider,
                                    ILogger<RemoteMessageRouter> logger = null)
         {
@@ -478,11 +478,11 @@ namespace AI4E.Routing.SignalR.Client
 
     public sealed class RemoteMessageRouterFactory : IMessageRouterFactory
     {
-        private readonly ILogicalClientEndPoint _logicalEndPoint;
+        private readonly IRequestReplyClientEndPoint _logicalEndPoint;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILoggerFactory _loggerFactory;
 
-        public RemoteMessageRouterFactory(ILogicalClientEndPoint logicalEndPoint,
+        public RemoteMessageRouterFactory(IRequestReplyClientEndPoint logicalEndPoint,
                                           IDateTimeProvider dateTimeProvider,
                                           ILoggerFactory loggerFactory = null)
         {

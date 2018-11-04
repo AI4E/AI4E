@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using AI4E.Routing.SignalR.Sample.Common;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -32,7 +32,7 @@ namespace AI4E.Routing.SignalR.Client.Sample
 
             services.AddRemoteMessageDispatcher();
             services.AddSingleton<IClientEndPoint, ClientEndPoint>();
-            services.AddSingleton<ILogicalClientEndPoint, LogicalClientEndPoint>();
+            services.AddSingleton<IRequestReplyClientEndPoint, RequestReplyClientEndPoint>();
             services.AddSingleton<IMessageRouterFactory, RemoteMessageRouterFactory>();
         }
 

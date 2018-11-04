@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Remoting;
@@ -16,17 +16,77 @@ namespace AI4E.Routing
         Task SendAckAsync();
     }
 
-    public interface IMessageReceiveResult<TEndPointAddress> : IMessageReceiveResult, IDisposable
+    // TODO: Move this to a helper lib, as this should not be used for public facing APIs
+    public interface IMessageReceiveResult<TPacket> : IMessageReceiveResult
+        where TPacket : IPacket
     {
-        TEndPointAddress RemoteEndPoint { get; }
+        TPacket Packet { get; }
     }
 
-    public interface IMessageReceiveResult<TAddress, TEndPointAddress> : IMessageReceiveResult<TEndPointAddress>, IMessageReceiveResult, IDisposable
+    // TODO: Move this to a helper lib, as this should not be used for public facing APIs
+    public interface IPacket
     {
-        TAddress RemoteAddress { get; }
+        IMessage Message { get; }
+
+        IPacket WithMessage(IMessage message);
     }
 
-    public static class MessageReceiveResultExtensions
+    // TODO: Move this to a helper lib, as this should not be used for public facing APIs
+    public interface IPacket<TPacket> : IPacket where TPacket : IPacket
+    {
+        new TPacket WithMessage(IMessage message);
+    }
+
+    // TODO: Move this to a helper lib, as this should not be used for public facing APIs
+    public readonly struct Packet<TEndPointAddress> : IPacket<Packet<TEndPointAddress>>
+    {
+        public Packet(IMessage message, TEndPointAddress endPoint)
+        {
+            Message = message;
+            EndPoint = endPoint;
+        }
+
+        public IMessage Message { get; }
+        public TEndPointAddress EndPoint { get; }
+
+        public Packet<TEndPointAddress> WithMessage(IMessage message)
+        {
+            return new Packet<TEndPointAddress>(message, EndPoint);
+        }
+
+        IPacket IPacket.WithMessage(IMessage message)
+        {
+            return WithMessage(message);
+        }
+    }
+
+    // TODO: Move this to a helper lib, as this should not be used for public facing APIs
+    public readonly struct Packet<TEndPointAddress, TAddress> : IPacket<Packet<TEndPointAddress, TAddress>>
+    {
+        public Packet(IMessage message, TEndPointAddress endPoint, TAddress address)
+        {
+            Message = message;
+            EndPoint = endPoint;
+            Address = address;
+        }
+
+        public IMessage Message { get; }
+        public TEndPointAddress EndPoint { get; }
+        public TAddress Address { get; }
+
+        // TODO: Move this to a helper lib, as this should not be used for public facing APIs
+        public Packet<TEndPointAddress, TAddress> WithMessage(IMessage message)
+        {
+            return new Packet<TEndPointAddress, TAddress>(message, EndPoint, Address);
+        }
+
+        IPacket IPacket.WithMessage(IMessage message)
+        {
+            return WithMessage(message);
+        }
+    }
+
+    public static partial class MessageReceiveResultExtensions
     {
         public static async Task HandleAsync(
             this IMessageReceiveResult messageReceiveResult,
@@ -72,110 +132,6 @@ namespace AI4E.Routing
             try
             {
                 await handler(messageReceiveResult.Message, cancellation);
-                await messageReceiveResult.SendAckAsync();
-            }
-            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
-            {
-                await messageReceiveResult.SendCancellationAsync();
-            }
-        }
-
-        public static async Task HandleAsync<TEndPointAddress>(
-            this IMessageReceiveResult<TEndPointAddress> messageReceiveResult,
-            Func<IMessage, TEndPointAddress, CancellationToken, Task<IMessage>> handler,
-            CancellationToken cancellation)
-        {
-            if (messageReceiveResult == null)
-                throw new ArgumentNullException(nameof(messageReceiveResult));
-
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-
-            try
-            {
-                var response = await handler(messageReceiveResult.Message, messageReceiveResult.RemoteEndPoint, cancellation);
-
-                if (response != null)
-                {
-                    await messageReceiveResult.SendResponseAsync(response);
-                }
-                else
-                {
-                    await messageReceiveResult.SendAckAsync();
-                }
-            }
-            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
-            {
-                await messageReceiveResult.SendCancellationAsync();
-            }
-        }
-
-        public static async Task HandleAsync<TEndPointAddress>(
-            this IMessageReceiveResult<TEndPointAddress> messageReceiveResult,
-            Func<IMessage, TEndPointAddress, CancellationToken, Task> handler,
-            CancellationToken cancellation)
-        {
-            if (messageReceiveResult == null)
-                throw new ArgumentNullException(nameof(messageReceiveResult));
-
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-
-            try
-            {
-                await handler(messageReceiveResult.Message, messageReceiveResult.RemoteEndPoint, cancellation);
-                await messageReceiveResult.SendAckAsync();
-            }
-            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
-            {
-                await messageReceiveResult.SendCancellationAsync();
-            }
-        }
-
-        public static async Task HandleAsync<TAddress, TEndPointAddress>(
-            this IMessageReceiveResult<TAddress, TEndPointAddress> messageReceiveResult,
-            Func<IMessage, TAddress, TEndPointAddress, CancellationToken, Task<IMessage>> handler,
-            CancellationToken cancellation)
-        {
-            if (messageReceiveResult == null)
-                throw new ArgumentNullException(nameof(messageReceiveResult));
-
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-
-            try
-            {
-                var response = await handler(messageReceiveResult.Message, messageReceiveResult.RemoteAddress, messageReceiveResult.RemoteEndPoint, cancellation);
-
-                if (response != null)
-                {
-                    await messageReceiveResult.SendResponseAsync(response);
-                }
-                else
-                {
-                    await messageReceiveResult.SendAckAsync();
-                }
-            }
-            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
-            {
-                await messageReceiveResult.SendCancellationAsync();
-            }
-        }
-
-        public static async Task HandleAsync<TAddress, TEndPointAddress>(
-            this IMessageReceiveResult<TAddress, TEndPointAddress> messageReceiveResult,
-            Func<IMessage, TAddress, TEndPointAddress, CancellationToken, Task> handler,
-            CancellationToken cancellation)
-        {
-            if (messageReceiveResult == null)
-                throw new ArgumentNullException(nameof(messageReceiveResult));
-
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-
-            try
-            {
-                await handler(messageReceiveResult.Message, messageReceiveResult.RemoteAddress, messageReceiveResult.RemoteEndPoint, cancellation);
                 await messageReceiveResult.SendAckAsync();
             }
             catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)

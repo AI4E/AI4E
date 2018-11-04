@@ -1,12 +1,12 @@
-﻿using System;
+using System;
 using System.Buffers;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Routing.SignalR.Client
+namespace AI4E.Internal
 {
     internal static class ArrayPoolExtension
     {
-        public static ArrayPoolReleaser<T> Rent<T>(this ArrayPool<T> arrayPool, int length, out Memory<T> memory)
+        public static ArrayPoolReleaser<T> RentExact<T>(this ArrayPool<T> arrayPool, int length, out Memory<T> memory)
         {
             if (arrayPool == null)
                 throw new ArgumentNullException(nameof(arrayPool));
@@ -24,6 +24,32 @@ namespace AI4E.Routing.SignalR.Client
             try
             {
                 memory = array.AsMemory().Slice(start: 0, length);
+                return new ArrayPoolReleaser<T>(arrayPool, array);
+            }
+            catch
+            {
+                arrayPool.Return(array);
+                throw;
+            }
+        }
+
+        public static ArrayPoolReleaser<T> Rent<T>(this ArrayPool<T> arrayPool, int minimumLength, out T[] array)
+        {
+            if (arrayPool == null)
+                throw new ArgumentNullException(nameof(arrayPool));
+
+            if (minimumLength < 0)
+                throw new ArgumentOutOfRangeException(nameof(minimumLength));
+
+            if (minimumLength == 0)
+            {
+                array = Array.Empty<T>();
+                return default;
+            }
+
+            array = arrayPool.Rent(minimumLength);
+            try
+            {
                 return new ArrayPoolReleaser<T>(arrayPool, array);
             }
             catch

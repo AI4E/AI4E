@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -66,7 +66,7 @@ namespace AI4E.Modularity.Debug
 
         public EndPointAddress EndPoint { get; }
 
-        public async Task<IMessageReceiveResult<EndPointAddress>> ReceiveAsync(CancellationToken cancellation = default)
+        public async Task<ILogicalEndPointReceiveResult> ReceiveAsync(CancellationToken cancellation = default)
         {
             var proxy = await GetProxyAsync(cancellation);
 
@@ -162,7 +162,7 @@ namespace AI4E.Modularity.Debug
 
         #endregion
 
-        private sealed class DebugMessageReceiveResult : IMessageReceiveResult<EndPointAddress>
+        private sealed class DebugMessageReceiveResult : ILogicalEndPointReceiveResult
         {
             private readonly IProxy<MessageReceiveResultSkeleton> _proxy;
             private readonly MessageReceiveResultValues _values;
@@ -191,6 +191,9 @@ namespace AI4E.Modularity.Debug
                     return message;
                 }
             }
+
+            Packet<EndPointAddress> IMessageReceiveResult<Packet<EndPointAddress>>.Packet
+                => new Packet<EndPointAddress>(Message, RemoteEndPoint);
 
             public async Task SendResponseAsync(IMessage response)
             {

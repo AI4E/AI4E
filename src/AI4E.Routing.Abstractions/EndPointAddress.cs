@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        EndPointAddress.cs 
  * Types:           (1) AI4E.Routing.EndPointAddress
@@ -59,6 +59,18 @@ namespace AI4E.Routing
             }
             else
             {
+                Utf8EncodedValue = EncodeAddress(logicalAddress.AsSpan());
+            }
+        }
+
+        public EndPointAddress(ReadOnlySpan<char> logicalAddress)
+        {
+            if (logicalAddress.IsEmptyOrWhiteSpace())
+            {
+                this = UnknownAddress;
+            }
+            else
+            {
                 Utf8EncodedValue = EncodeAddress(logicalAddress);
             }
         }
@@ -79,13 +91,13 @@ namespace AI4E.Routing
             }
             else
             {
-                Utf8EncodedValue = EncodeAddress(logicalAddress);
+                Utf8EncodedValue = EncodeAddress(logicalAddress.AsSpan());
             }
         }
 
-        private static ReadOnlyMemory<byte> EncodeAddress(string logicalAddress)
+        private static ReadOnlyMemory<byte> EncodeAddress(ReadOnlySpan<char> logicalAddress)
         {
-            var chars = logicalAddress.AsSpan().Trim();
+            var chars = logicalAddress.Trim();
             var byteCount = Encoding.UTF8.GetByteCount(chars);
             var bytes = new byte[byteCount];
             var bytesWritten = Encoding.UTF8.GetBytes(chars, bytes);

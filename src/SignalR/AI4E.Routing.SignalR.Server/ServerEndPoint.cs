@@ -1,36 +1,6 @@
-﻿/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        ServerEndPoint.cs 
- * Types:           (1) AI4E.Routing.SignalR.Server.ServerEndPoint
- *                  (2) AI4E.Routing.SignalR.Server.ServerEndPoint.ServerCallStub
- * Version:         1.0
- * Author:          Andreas Trütschel
- * --------------------------------------------------------------------------------------------------------------------
- */
-
-/* License
- * --------------------------------------------------------------------------------------------------------------------
- * This file is part of the AI4E distribution.
- *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
- * 
- * AI4E is free software: you can redistribute it and/or modify  
- * it under the terms of the GNU Lesser General Public License as   
- * published by the Free Software Foundation, version 3.
- *
- * AI4E is distributed in the hope that it will be useful, but 
- * WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 using System;
-using System.Buffers;
-using System.IO;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -45,27 +15,24 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing.SignalR.Server
 {
-    /// <summary>
-    /// Represents the server end-point, directly wrapping an underlying signal-r connection.
-    /// </summary>
-    /// <remarks>
-    /// The type and the corresponding client-side types implement a protocol 
-    /// to abstract away the signal-r connection and provide a persistent connection
-    /// across multiple connections (automatic reconnection). It does not validate client authentication.
-    /// 
-    /// This type is registered as singleton in the dependency injection container normally and is not instanciated directly.
-    /// This type is not meant to be used directly but is supporting the signal-r messaging stack.
-    /// </remarks>
-    public sealed class ServerEndPoint : IServerEndPoint
+    // TODO: When a client disconnects, we have to remove its messages from the tx-queue and also its address from the lookup.
+    //       This can be achieved by handling the "ClientsDisconnected" event of the ConnectedClientLookup.
+    //       We have to watch out for the case that a different client registers with exactly the same address, we may lazy remove.
+    //       It is theoretically possible to remove the new clients messages.
+    public sealed class ServerEndPoint : IDisposable, IServerEndPoint
     {
         #region Fields
 
+        private readonly AsyncProducerConsumerQueue<(IMessage message, EndPointAddress endPoint)> _rxQueue = new AsyncProducerConsumerQueue<(IMessage message, EndPointAddress endPoint)>();
+        private readonly OutboundMessageLookup _txQueues = new OutboundMessageLookup();
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ServerEndPoint> _logger;
 
-        // Store and forward queues.
-        private readonly AsyncProducerConsumerQueue<(IMessage message, string address)> _inboundMessages;
-        private readonly OutboundMessageLookup _outboundMessages = new OutboundMessageLookup();
+        // Cluster-wide store of connected clients and their security tokens.
+        private readonly IConnectedClientLookup _connectedClients;
+
+        // Local lookup of a clients current physical address
+        private readonly ConcurrentDictionary<EndPointAddress, string> _clientLookup = new ConcurrentDictionary<EndPointAddress, string>();
 
         private int _nextSeqNum = 1;
 
@@ -73,126 +40,34 @@ namespace AI4E.Routing.SignalR.Server
 
         #region C'tor
 
-        /// <summary>
-        /// Creates a new instance of the <see cref="ServerEndPoint"/> type.
-        /// </summary>
-        /// <param name="serviceProvider">The server provider used to request service instances.</param>
-        /// <param name="logger">A logger used for logging or null.</param>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
-        public ServerEndPoint(IServiceProvider serviceProvider, ILogger<ServerEndPoint> logger = null)
+        public ServerEndPoint(IConnectedClientLookup connectedClients, IServiceProvider serviceProvider, ILogger<ServerEndPoint> logger = null)
         {
+            if (connectedClients == null)
+                throw new ArgumentNullException(nameof(connectedClients));
+
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
+            _connectedClients = connectedClients;
             _serviceProvider = serviceProvider;
             _logger = logger;
-
-            _inboundMessages = new AsyncProducerConsumerQueue<(IMessage message, string address)>();
         }
 
         #endregion
 
-        #region IServerEndPoint
+        #region IServerEndPoint 
 
-        /// <summary>
-        /// Asynchronously received a message from any connected clients.
-        /// </summary>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>
-        /// A task representing the asynchronous operation.
-        /// When evaluated, the tasks result contains the received message and the address of the client the sent the message.</returns>
-        public Task<(IMessage message, string address)> ReceiveAsync(CancellationToken cancellation)
-        {
-            return _inboundMessages.DequeueAsync(cancellation);
-        }
-
-        /// <summary>
-        /// Asynchronously sends a message to the specified client.
-        /// </summary>
-        /// <param name="message">The message to send.</param>
-        /// <param name="address">The address of the client.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if any of <paramref name="message"/> or <paramref name="address"/> is null</exception>
-        public async Task SendAsync(IMessage message, string address, CancellationToken cancellation)
-        {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
-            if (address == null)
-                throw new ArgumentNullException(nameof(address));
-
-            var length = checked((int)message.Length);
-            var bytes = ArrayPool<byte>.Shared.Rent(checked((int)message.Length));
-
-            try
-            {
-                var memory = bytes.AsMemory().Slice(start: 0, length);
-                using (var stream = new MemoryStream(bytes, writable: true))
-                {
-                    await message.WriteAsync(stream, cancellation);
-                }
-
-                await SendAsync(memory, address, cancellation);
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(bytes);
-            }
-        }
-
-        #endregion
-
-        private async Task ReceiveAsync(int seqNum, ReadOnlyMemory<byte> memory, string address)
-        {
-            _logger?.LogDebug($"Received message ({memory.Length} total bytes) with seq-num {seqNum} from client {address}.");
-
-            var message = new Message();
-
-            using (var stream = new ReadOnlyStream(memory))
-            {
-                await message.ReadAsync(stream, cancellation: default);
-            }
-
-            await _inboundMessages.EnqueueAsync((message, address));
-
-            var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
-
-            await hubContext.Clients.Client(address).AckAsync(seqNum);
-        }
-
-        private void Ack(int seqNum, string address)
-        {
-            _logger?.LogDebug($"Received acknowledgment for seq-num {seqNum} from client {address}.");
-
-            var success = _outboundMessages.TryRemove(seqNum, out var compareAddress, out _, out var ackSource) &&
-                          ackSource.TrySetResult(null);
-            Assert(success);
-            Assert(compareAddress == address);
-        }
-
-        private async Task InitAsync(string address, string previousAddress)
-        {
-            if (previousAddress == null)
-            {
-                _logger?.LogDebug($"Client {address} initiated connection.");
-                return;
-            }
-
-            _logger?.LogDebug($"Client {address} with previous address {previousAddress} re-initiated connection.");
-
-            var messages = _outboundMessages.Update(previousAddress, address);
-
-            var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
-            await Task.WhenAll(messages.Select(p => hubContext.Clients.Client(address).DeliverAsync(p.seqNum, Base64Coder.ToBase64String(p.bytes.Span))));
-        }
-
-        private async Task SendAsync(ReadOnlyMemory<byte> bytes, string address, CancellationToken cancellation)
+        public async Task SendAsync(IMessage message, EndPointAddress endPoint, CancellationToken cancellation)
         {
             var ackSource = new TaskCompletionSource<object>();
+
+            // TODO
+            var bytes = new byte[message.Length];
+            message.Write(bytes);
+
             var seqNum = GetNextSeqNum();
 
-            while (!_outboundMessages.TryAdd(seqNum, address, bytes, ackSource))
+            while (!_txQueues.TryAdd(seqNum, endPoint, bytes, ackSource))
             {
                 seqNum = GetNextSeqNum();
             }
@@ -203,23 +78,184 @@ namespace AI4E.Routing.SignalR.Server
                 // It is possible that the cancellation is invoked, when the message is just acked,
                 // but before the delegate is unregistered from the cancellation token.
 
-                var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, ICallStub>>();
-                var base64 = Base64Coder.ToBase64String(bytes.Span);
+                _logger?.LogDebug($"Sending message ({bytes.Length} total bytes) with seq-num {seqNum} to client {endPoint}.");
 
-                _logger?.LogDebug($"Sending message ({bytes.Length} total bytes) with seq-num {seqNum} to client {address}.");
+                var address = LookupAddress(endPoint);
 
-                var tasks = new[] { hubContext.Clients.Client(address).DeliverAsync(seqNum, base64), ackSource.Task };
-                await Task.WhenAll(tasks).WithCancellation(cancellation);
-            }
-            catch
-            {
-                if (_outboundMessages.TryRemove(seqNum))
+                if (address == null)
                 {
-                    ackSource.TrySetCanceled();
+                    // TODO
+                    throw null;
+                }
+
+                await PushToClientAsync(address, seqNum, bytes).WithCancellation(cancellation);
+                await ackSource.Task.WithCancellation(cancellation);
+            }
+            catch (Exception exc)
+            {
+                if (_txQueues.TryRemove(seqNum))
+                {
+                    ackSource.TrySetExceptionOrCancelled(exc);
                 }
 
                 throw;
             }
+        }
+
+        public Task<(IMessage message, EndPointAddress endPoint)> ReceiveAsync(CancellationToken cancellation)
+        {
+            return _rxQueue.DequeueAsync(cancellation);
+        }
+
+        #endregion
+
+        #region AddressTranslation
+
+        private string LookupAddress(EndPointAddress endPoint)
+        {
+            return _clientLookup.TryGetValue(endPoint, out var result) ? result : null;
+        }
+
+        private async Task<bool> ValidateAndUpdateTranslationAsync(string address, EndPointAddress endPoint, string securityToken, CancellationToken cancellation)
+        {
+            var result = await _connectedClients.ValidateClientAsync(endPoint, securityToken, cancellation);
+
+            if (result)
+            {
+                _clientLookup.AddOrUpdate(endPoint, address, (_, entry) => address);
+            }
+
+            return result;
+        }
+
+        private async Task<(EndPointAddress endPoint, string securityToken)> AddTranlationAsync(string address, CancellationToken cancellation)
+        {
+            var (endPoint, securityToken) = await _connectedClients.AddClientAsync(cancellation: default);
+            var sucess = _clientLookup.TryAdd(endPoint, address);
+            Assert(sucess);
+
+            return (endPoint, securityToken);
+        }
+
+        #endregion
+
+        #region Send
+
+        private Task PushToClientAsync(string address, int seqNum, ReadOnlyMemory<byte> payload)
+        {
+            var client = GetClient(address);
+
+            return client.PushAsync(seqNum, Base64Coder.ToBase64String(payload.Span));
+        }
+
+        private Task SendAckAsync(string address, int seqNum)
+        {
+            var client = GetClient(address);
+
+            return client.AckAsync(seqNum);
+        }
+
+        private Task SendBadMessageAsync(string address, int seqNum)
+        {
+            var client = GetClient(address);
+
+            return client.BadMessageAsync(seqNum);
+        }
+
+        private Task SendBadClientResponseAsync(string address)
+        {
+            var client = GetClient(address);
+
+            return client.BadClientAsync();
+        }
+
+        #endregion
+
+        #region Receive
+
+        private async Task ReceiveAsync(int seqNum,
+                                        string address,
+                                        EndPointAddress endPoint,
+                                        string securityToken,
+                                        ReadOnlyMemory<byte> payload)
+        {
+            if (!await ValidateAndUpdateTranslationAsync(address, endPoint, securityToken, cancellation: default))
+            {
+                await SendBadClientResponseAsync(address);
+                return;
+            }
+
+            var message = new Message();
+            message.Read(payload.Span);
+
+            await _rxQueue.EnqueueAsync((message, endPoint));
+            await SendAckAsync(address, seqNum);
+        }
+
+        private void ReceiveAckAsync(int seqNum, string address)
+        {
+            _logger?.LogDebug($"Received acknowledgment for seq-num {seqNum} from client {address}.");
+
+            var success = _txQueues.TryRemove(seqNum, out var endPoint, out _, out var ackSource) &&
+                          ackSource.TrySetResult(null);
+            Assert(success);
+
+            // We cannot assume that the ack of a message is received from the client, that we are currently connected with.
+            //Assert(LookupAddress(endPoint) == address);
+        }
+
+        private void ReceiveBadMessageAsync(int seqNum, string address)
+        {
+            // TODO: Log
+            // TODO: Shutdown connection, etc.
+        }
+
+        // The client connects to the cluster for the first time.
+        private async Task<(string endPoint, string securityToken)> ConnectAsync(string address)
+        {
+            var (endPoint, securityToken) = await AddTranlationAsync(address, cancellation: default);
+
+            return (endPoint.ToString(), securityToken);
+        }
+
+        // The client does reconnect to the cluster, but may connect to this cluster node the first time (previousAddress is null or belongs to other cluster node.
+        private async Task ReconnectAsync(string address, EndPointAddress endPoint, string securityToken, string previousAddress)
+        {
+            if (!await ValidateAndUpdateTranslationAsync(address, endPoint, securityToken, cancellation: default))
+            {
+                await SendBadClientResponseAsync(address);
+                return;
+            }
+
+            if (previousAddress == null /* || previous address is from different cluster node*/) // TODO: Check whether the address is from our cluster node
+            {
+                _logger?.LogDebug($"Client {address} initiated connection.");
+                return;
+            }
+
+            _logger?.LogDebug($"Client {address} with previous address {previousAddress} re-initiated connection.");
+
+            var messages = _txQueues.GetAll(endPoint);
+
+            var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, IClientCallStub>>();
+            var tasks = new List<Task>();
+
+            foreach (var (seqNum, payload) in messages)
+            {
+                tasks.Add(PushToClientAsync(address, seqNum, payload));
+            }
+
+            await Task.WhenAll(tasks);
+        }
+
+        #endregion
+
+        private IClientCallStub GetClient(string address)
+        {
+            // TODO: Can this be cached? Does this provide as any perf benefits?
+            var hubContext = _serviceProvider.GetRequiredService<IHubContext<ServerCallStub, IClientCallStub>>();
+
+            return hubContext.Clients.Client(address);
         }
 
         private int GetNextSeqNum()
@@ -227,52 +263,50 @@ namespace AI4E.Routing.SignalR.Server
             return Interlocked.Increment(ref _nextSeqNum);
         }
 
-        public void Dispose() { }
-
-        internal sealed class ServerCallStub : Hub<ICallStub>, IServerCallStub
+        internal sealed class ServerCallStub : Hub<IClientCallStub>, IServerCallStub
         {
             private readonly ServerEndPoint _endPoint;
 
             public ServerCallStub(ServerEndPoint endPoint)
             {
-                if (endPoint == null)
-                    throw new ArgumentNullException(nameof(endPoint));
+                Assert(endPoint != null);
 
                 _endPoint = endPoint;
             }
 
-            public async Task DeliverAsync(int seqNum, string base64) // byte[] bytes)
+            public async Task PushAsync(int seqNum, string endPoint, string securityToken, string payload)
             {
-                var bytesLength = Base64Coder.ComputeBase64DecodedLength(base64.AsSpan());
-                var bytes = ArrayPool<byte>.Shared.Rent(bytesLength);
-
-                try
+                using (payload.Base64Decode(out var bytes))
                 {
-                    var success = Base64Coder.TryFromBase64Chars(base64.AsSpan(), bytes, out var bytesWritten);
-                    Assert(success);
-
-                    var memory = bytes.AsMemory().Slice(start: 0, length: bytesWritten);
-
-                    await _endPoint.ReceiveAsync(seqNum, memory, Context.ConnectionId);
-                }
-                finally
-                {
-                    ArrayPool<byte>.Shared.Return(bytes);
+                    await _endPoint.ReceiveAsync(seqNum, Context.ConnectionId, new EndPointAddress(endPoint), securityToken, bytes);
                 }
             }
 
             public Task AckAsync(int seqNum)
             {
-                _endPoint.Ack(seqNum, Context.ConnectionId);
-
+                _endPoint.ReceiveAckAsync(seqNum, Context.ConnectionId);
                 return Task.CompletedTask;
             }
 
-            public async Task<string> InitAsync(string previousAddress)
+            public Task BadMessageAsync(int seqNum)
             {
-                await _endPoint.InitAsync(Context.ConnectionId, previousAddress);
+                _endPoint.ReceiveBadMessageAsync(seqNum, Context.ConnectionId);
+                return Task.CompletedTask;
+            }
+
+            public async Task<(string address, string endPoint, string securityToken)> ConnectAsync()
+            {
+                var (endPoint, securityToken) = await _endPoint.ConnectAsync(Context.ConnectionId);
+                return (Context.ConnectionId, endPoint, securityToken);
+            }
+
+            public async Task<string> ReconnectAsync(string endPoint, string securityToken, string previousAddress)
+            {
+                await _endPoint.ReconnectAsync(Context.ConnectionId, new EndPointAddress(endPoint), securityToken, previousAddress);
                 return Context.ConnectionId;
             }
         }
+
+        public void Dispose() { }
     }
 }

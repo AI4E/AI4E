@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
@@ -7,13 +7,12 @@ using AI4E.Internal;
 using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
-using static System.Diagnostics.Debug;
 using System.Buffers;
-using System.Diagnostics;
+using AI4E.Routing.SignalR.Server;
+using static System.Diagnostics.Debug;
 
 #if BLAZOR
 using Blazor.Extensions;
-using AI4E.Routing.SignalR.Client;
 #else
 using Microsoft.AspNetCore.SignalR.Client;
 #endif
@@ -30,23 +29,23 @@ namespace AI4E.Routing.SignalR.Client
 
         private readonly HubConnection _hubConnection;
         private readonly ILogger<ClientEndPoint> _logger;
-        private readonly AsyncProducerConsumerQueue<IMessage> _inboundMessages;
-        private readonly ConcurrentDictionary<int, (ReadOnlyMemory<byte> bytes, TaskCompletionSource<object> ackSource)> _outboundMessages;
+        private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue;
+        private readonly ConcurrentDictionary<int, (ReadOnlyMemory<byte> bytes, TaskCompletionSource<object> ackSource)> _txQueue;
 
         private readonly ClientCallStub _client;
         private readonly IDisposable _stubRegistration;
-        private readonly AsyncLock _lock = new AsyncLock();
 
         private volatile CancellationTokenSource _disposalSource = new CancellationTokenSource();
 
         private int _nextSeqNum;
-        private string _id = string.Empty;
 
-        // Indicates the loose of connection on the layer, the client end-point establishes.
-        private readonly AsyncConnectionLostEvent _connectionLostEvent = new AsyncConnectionLostEvent(set: true);
+        private string _address, _endPoint, _securityToken;
 
-        // Indicates the loose of the underlying connection (the signal-r connection; 1 = true, 0 = false)
-        private volatile int _underlyingConnectionLost = 1;
+        private readonly object _connectionLock = new object();
+        private Task _connectionTask;
+
+        private readonly AsyncManualResetEvent _connectionLost = new AsyncManualResetEvent(set: true);
+        private readonly TaskCompletionSource<EndPointAddress> _localEndPointTaskSource = new TaskCompletionSource<EndPointAddress>();
 
         #endregion
 
@@ -59,8 +58,8 @@ namespace AI4E.Routing.SignalR.Client
 
             _hubConnection = hubConnection;
             _logger = logger;
-            _inboundMessages = new AsyncProducerConsumerQueue<IMessage>();
-            _outboundMessages = new ConcurrentDictionary<int, (ReadOnlyMemory<byte> bytes, TaskCompletionSource<object> ackSource)>();
+            _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
+            _txQueue = new ConcurrentDictionary<int, (ReadOnlyMemory<byte> bytes, TaskCompletionSource<object> ackSource)>();
 #if BLAZOR
             _hubConnection.OnClose(UnderlyingConnectionLostAsync);
 #else
@@ -78,13 +77,18 @@ namespace AI4E.Routing.SignalR.Client
 
         #region IClientEndPoint
 
+        public ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)
+        {
+            return new ValueTask<EndPointAddress>(_localEndPointTaskSource.Task.WithCancellation(cancellation));
+        }
+
         public async Task<IMessage> ReceiveAsync(CancellationToken cancellation)
         {
             using (CheckDisposal(ref cancellation, out var externalCancellation, out var disposal))
             {
                 try
                 {
-                    return await _inboundMessages.DequeueAsync(cancellation);
+                    return await _rxQueue.DequeueAsync(cancellation);
                 }
                 catch (OperationCanceledException) when (disposal.IsCancellationRequested)
                 {
@@ -99,9 +103,9 @@ namespace AI4E.Routing.SignalR.Client
             {
                 try
                 {
-                    using (ArrayPool<byte>.Shared.Rent((int)message.Length, out var memory))
+                    using (ArrayPool<byte>.Shared.RentExact((int)message.Length, out var memory))
                     {
-                        message.Write(memory);
+                        message.Write(memory.Span);
 
                         await SendAsync(memory, cancellation);
                     }
@@ -113,30 +117,19 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        #endregion
-
-        #region Protocol implementation
-
-        private async Task ReceiveAsync(int seqNum, ReadOnlyMemory<byte> bytes)
-        {
-            _logger?.LogDebug($"Received message ({bytes.Length} total bytes) with seq-num {seqNum}.");
-
-            var message = new Message();
-            message.Read(bytes);
-
-            await _inboundMessages.EnqueueAsync(message);
-            await _hubConnection.InvokeAsync<ICallStub>(p => p.AckAsync(seqNum));
-        }
-
         private async Task SendAsync(ReadOnlyMemory<byte> memory, CancellationToken cancellation)
         {
             var ackSource = new TaskCompletionSource<object>();
             var seqNum = GetNextSeqNum();
 
-            while (!_outboundMessages.TryAdd(seqNum, (memory, ackSource)))
+            while (!_txQueue.TryAdd(seqNum, (memory, ackSource)))
             {
                 seqNum = GetNextSeqNum();
             }
+
+            // Try to send the message. If we are unconnected currently or our connection breaks in the meantime,
+            // do not execute or cancel the send respectively. The message is already put to the tx-queue.
+            // The reconnection process will (re)send the message after the connection is (re)established.
 
             try
             {
@@ -146,50 +139,42 @@ namespace AI4E.Routing.SignalR.Client
 
                 _logger?.LogDebug($"Sending message ({memory.Length} total bytes) with seq-num {seqNum}.");
 
-                async Task Send()
+                //  Cancel the send, if the collection is lost in the meantime, as is done in the ordinary send operation.
+                if (IsConnected(out var connectionLose))
                 {
-                    var base64 = Base64Coder.ToBase64String(memory.Span);
+                    using (var cancellationTokenSource = new TaskCancellationTokenSource(connectionLose, cancellation))
+                    {
+                        // Resend all messages
+                        await Task.WhenAll(_txQueue.ToList().Select(p => PushToServerAsync(seqNum: p.Key, payload: p.Value.bytes, cancellation: cancellationTokenSource.CancellationToken)));
 
-                    await _hubConnection.InvokeAsync<ICallStub>(p => p.DeliverAsync(seqNum, base64), cancellation);
-                    await ackSource.Task.WithCancellation(cancellation);
+                        try
+                        {
+                            await PushToServerAsync(seqNum, memory, cancellationTokenSource.CancellationToken);
+                        }
+                        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
+                        {
+                            // The connection is broken. The message will be re-sent, when reconnected.
+                        }
+                    }
                 }
 
-                var sendOperation = Send();
-                var connectionLost = _connectionLostEvent.WaitAsync();
-
-                var completed = await Task.WhenAny(sendOperation, connectionLost);
-
-                if (completed == connectionLost)
-                {
-                    // The connection is broken. The message will be re-sent, when reconnected.
-                    await ackSource.Task.WithCancellation(cancellation);
-                }
+                await ackSource.Task.WithCancellation(cancellation);
             }
-            catch
+            catch (Exception exc)
             {
                 // The operation was either cancellation from outside or the object is disposed or something is wrong.
-                if (_outboundMessages.TryRemove(seqNum, out _))
+                if (_txQueue.TryRemove(seqNum, out _))
                 {
-                    ackSource.TrySetCanceled();
+                    ackSource.TrySetExceptionOrCancelled(exc);
                 }
 
                 throw;
             }
         }
 
-        private void Ack(int seqNum)
-        {
-            _logger?.LogDebug($"Received acknowledgment for seq-num {seqNum}.");
+        #endregion
 
-            var success = _outboundMessages.TryRemove(seqNum, out var entry) &&
-                          entry.ackSource.TrySetResult(null);
-            Assert(success);
-        }
-
-        private int GetNextSeqNum()
-        {
-            return Interlocked.Increment(ref _nextSeqNum);
-        }
+        #region Reconnection
 
         private Task UnderlyingConnectionLostAsync(Exception exception)
         {
@@ -197,6 +182,34 @@ namespace AI4E.Routing.SignalR.Client
             return EstablishConnectionAsync(isInitialConnection: false);
         }
 
+        private bool IsConnected(out Task connectionLose)
+        {
+            // Initial state, our the connection is broken and not yet re-established.
+            connectionLose = _connectionLost.WaitAsync();
+
+            if (connectionLose.IsCompleted)
+            {
+                return false;
+            }
+
+            Task connectionTask;
+
+            lock (_connectionLock)
+            {
+                connectionTask = _connectionTask;
+            }
+
+            // We are currently re-establishing the connection.
+            if (connectionTask != null)
+            {
+                connectionLose = Task.CompletedTask;
+                return false;
+            }
+
+            return true;
+        }
+
+        // https://github.com/StephenCleary/AsyncEx/issues/151
         private async Task EstablishConnectionAsync(bool isInitialConnection)
         {
             var disposalSource = _disposalSource; // Volatile read op
@@ -207,86 +220,149 @@ namespace AI4E.Routing.SignalR.Client
                 return;
             }
 
-            Task SendMessage(int seqNum, ReadOnlyMemory<byte> bytes)
+            _connectionLost.Set();
+
+            async Task Reconnect()
             {
-                var base64 = Base64Coder.ToBase64String(bytes.Span);
-                return _hubConnection.InvokeAsync<ICallStub>(p => p.DeliverAsync(seqNum, base64), cancellation: disposalSource.Token);
-            }
-
-            _underlyingConnectionLost = 1; // Volatile read op.
-
-            do
-            {
-                // If this is false, we are already performing a reconnection concurrently
-                // or this is the initial connection.
-                var lostConnection = _connectionLostEvent.Set();
-
-                if (lostConnection || isInitialConnection)
+                try
                 {
-                    isInitialConnection = false;
-
                     // Reconnect
-                    await EstablishConnectionCoreAsync(cancellation: disposalSource.Token); // TODO: This may throw.
-
-                    // Resend all messages
-                    await Task.WhenAll(_outboundMessages.ToList().Select(p => SendMessage(seqNum: p.Key, bytes: p.Value.bytes))); // TODO: This may throw.
-
-                    _connectionLostEvent.Reset();
+                    await EstablishConnectionCoreAsync(isInitialConnection, cancellation: disposalSource.Token);
+                    isInitialConnection = false;
+                }
+                finally
+                {
+                    lock (_connectionLock)
+                    {
+                        _connectionTask = null;
+                    }
                 }
             }
-            while (_underlyingConnectionLost == 1); // Volatile read op.
-            // We have to perform this in a loop to prevent a race condition that,
-            // We set' the _connectionLostEvent, preventing other to concurrenty re-establish the connection and we currently are just before the resetting the event.
-            // Concurrently, the operation is performed for another time, as the connection is lost, while we perform out operation.
-            // The concurrent operation connection enter the if-condition, as it did not set' the event actually.
-            // This would lead to a situation of lost wake-up, that the connection is factual lost, but we do not reconnect.
+
+            Task connectionTask;
+            while (_connectionLost.IsSet || isInitialConnection)
+            {
+                lock (_connectionLock)
+                {
+                    if (_connectionTask == null)
+                        _connectionTask = Reconnect();
+
+                    connectionTask = _connectionTask;
+                }
+
+                await connectionTask;
+            }
+
+            //  Cancel the resend, if the collection is lost in the meantime, as is done in the ordinary send operation.
+            if (IsConnected(out var connectionLose))
+            {
+                using (var cancellationTokenSource = new TaskCancellationTokenSource(connectionLose, disposalSource.Token))
+                {
+                    // Resend all messages
+                    await Task.WhenAll(_txQueue.ToList().Select(p => PushToServerAsync(seqNum: p.Key, payload: p.Value.bytes, cancellation: cancellationTokenSource.CancellationToken)));
+                }
+            }
         }
 
-        private async Task EstablishConnectionCoreAsync(CancellationToken cancellation)
+        private async Task EstablishConnectionCoreAsync(bool isInitialConnection, CancellationToken cancellation)
         {
             _logger?.LogDebug("Trying to (re)connect to server.");
 
-            using (await _lock.LockAsync())
+            // We are waiting one second after the first failed attempt to connect.
+            // For each failed attempt, we increase the waited time to the next connection attempt,
+            // until we reach an upper limit of 12 seconds.
+            var timeToWait = new TimeSpan(1000 * TimeSpan.TicksPerMillisecond);
+            var timeToWaitMax = new TimeSpan(12000 * TimeSpan.TicksPerMillisecond);
+
+            while (cancellation.ThrowOrContinue())
             {
-                // We are waiting one second after the first failed attempt to connect.
-                // For each failed attempt, we increase the waited time to the next connection attempt,
-                // until we reach an upper limit of 12 seconds.
-                var timeToWait = new TimeSpan(1000 * TimeSpan.TicksPerMillisecond);
-                var timeToWaitMax = new TimeSpan(12000 * TimeSpan.TicksPerMillisecond);
-
-                while (cancellation.ThrowOrContinue())
+                try
                 {
-                    try
-                    {
-                        // We will re-establish the underlying connection now. => Reset the connection lost indicator.
-                        _underlyingConnectionLost = 0;
+                    // We will re-establish the underlying connection now. => Reset the connection lost indicator.
+                    _connectionLost.Reset();
+
 #if BLAZOR
-                        await _hubConnection.StartAsync();
+                    await _hubConnection.StartAsync();
 #else
-                        await _hubConnection.StartAsync(cancellation);
+                    await _hubConnection.StartAsync(cancellation);
 #endif
-                        _id = await _hubConnection.InvokeAsync<IServerCallStub, string>(p => p.InitAsync(_id), cancellation);
-
-                        // The underlying connection was not lost in the meantime.
-                        if (_underlyingConnectionLost == 0)
-                        {
-                            break;
-                        }
-
-                    }
-                    catch (ObjectDisposedException) { throw; }
-                    catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                    catch (Exception)
+                    if (isInitialConnection)
                     {
-                        _logger?.LogWarning($"Reconnection failed. Trying again in {timeToWait.TotalSeconds} sec.");
+                        (_address, _endPoint, _securityToken) = await _hubConnection.InvokeAsync<IServerCallStub, (string address, string endPoint, string securityToken)>(
+                            p => p.ConnectAsync(), cancellation);
 
-                        await Task.Delay(timeToWait, cancellation);
+                        _localEndPointTaskSource.SetResult(new EndPointAddress(_endPoint));
+                        isInitialConnection = false;
+                    }
+                    else
+                    {
+                        _address = await _hubConnection.InvokeAsync<IServerCallStub, string>(
+                            p => p.ReconnectAsync(_endPoint, _securityToken, _address));
+                    }
 
-                        if (timeToWait < timeToWaitMax)
-                            timeToWait = new TimeSpan(timeToWait.Ticks * 2);
+                    // The underlying connection was not lost in the meantime.
+                    if (!_connectionLost.IsSet)
+                    {
+                        break;
                     }
                 }
+                catch (ObjectDisposedException) { throw; }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
+                catch (Exception)
+                {
+                    _logger?.LogWarning($"Reconnection failed. Trying again in {timeToWait.TotalSeconds} sec.");
+
+                    await Task.Delay(timeToWait, cancellation);
+
+                    if (timeToWait < timeToWaitMax)
+                        timeToWait = new TimeSpan(timeToWait.Ticks * 2);
+                }
             }
+        }
+
+        #endregion
+
+        #region Send
+
+        private Task PushToServerAsync(int seqNum, ReadOnlyMemory<byte> payload, CancellationToken cancellation)
+        {
+            var base64 = Base64Coder.ToBase64String(payload.Span);
+
+            return _hubConnection.InvokeAsync<IServerCallStub>(p => p.PushAsync(seqNum, _endPoint, _securityToken, base64), cancellation);
+        }
+
+        private Task SendAckAsync(int seqNum, CancellationToken cancellation)
+        {
+            return _hubConnection.InvokeAsync<IServerCallStub>(p => p.AckAsync(seqNum), cancellation);
+        }
+
+        private Task SendBadMessageAsync(int seqNum, CancellationToken cancellation)
+        {
+            return _hubConnection.InvokeAsync<IServerCallStub>(p => p.BadMessageAsync(seqNum), cancellation);
+        }
+
+        #endregion
+
+        #region Receive
+
+        private async Task ReceiveAsync(int seqNum, ReadOnlyMemory<byte> payload)
+        {
+            _logger?.LogDebug($"Received message ({payload.Length} total bytes) with seq-num {seqNum}.");
+
+            var message = new Message();
+            message.Read(payload.Span);
+
+            await _rxQueue.EnqueueAsync(message);
+            await SendAckAsync(seqNum, cancellation: default);
+        }
+
+        private void ReceiveAckAsync(int seqNum)
+        {
+            _logger?.LogDebug($"Received acknowledgment for seq-num {seqNum}.");
+
+            var success = _txQueue.TryRemove(seqNum, out var entry) &&
+                          entry.ackSource.TrySetResult(null);
+            Assert(success);
         }
 
         #endregion
@@ -339,7 +415,12 @@ namespace AI4E.Routing.SignalR.Client
 
         #endregion
 
-        private sealed class ClientCallStub : ICallStub
+        private int GetNextSeqNum()
+        {
+            return Interlocked.Increment(ref _nextSeqNum);
+        }
+
+        private sealed class ClientCallStub : IClientCallStub
         {
             private readonly ClientEndPoint _endPoint;
 
@@ -349,147 +430,79 @@ namespace AI4E.Routing.SignalR.Client
                 _endPoint = endPoint;
             }
 
-            public async Task DeliverAsync(int seqNum, string base64) // byte[] bytes)
+            public async Task PushAsync(int seqNum, string payload)
             {
-                var minBytesLength = Base64Coder.ComputeBase64DecodedLength(base64.AsSpan());
-
-                using (ArrayPool<byte>.Shared.Rent(minBytesLength, out var memory))
+                using (payload.Base64Decode(out var bytes))
                 {
-                    var success = Base64Coder.TryFromBase64Chars(base64.AsSpan(), memory.Span, out var bytesWritten);
-                    Assert(success);
-
-                    memory = memory.Slice(start: 0, length: bytesWritten);
-
-                    await _endPoint.ReceiveAsync(seqNum, memory);
+                    await _endPoint.ReceiveAsync(seqNum, bytes);
                 }
             }
 
             public Task AckAsync(int seqNum)
             {
-                _endPoint.Ack(seqNum);
+                _endPoint.ReceiveAckAsync(seqNum);
                 return Task.CompletedTask;
+            }
+
+            public Task BadMessageAsync(int seqNum)
+            {
+                return Task.CompletedTask; // TODO
+            }
+
+            public Task BadClientAsync()
+            {
+                return Task.CompletedTask; // TODO
             }
         }
     }
 
-    // Based on: https://github.com/StephenCleary/AsyncEx/blob/db32fd5db0d1051e867b36ae039ea13d2c36eb91/src/Nito.AsyncEx.Coordination/AsyncManualResetEvent.cs
-    internal sealed class AsyncConnectionLostEvent
+    internal struct TaskCancellationTokenSource : IDisposable
     {
-        /// <summary>
-        /// The object used for synchronization.
-        /// </summary>
-        private readonly object _mutex = new object();
+        private CancellationTokenSource _cancellationTokenSource;
 
-        /// <summary>
-        /// The current state of the event.
-        /// </summary>
-        private TaskCompletionSource<object> _tcs = TaskCompletionSourceExtensions.CreateAsyncTaskSource<object>();
-
-        /// <summary>
-        /// The semi-unique identifier for this instance. This is 0 if the id has not yet been created.
-        /// </summary>
-        private int _id;
-
-        [DebuggerNonUserCode]
-        private bool GetStateForDebugger => _tcs.Task.IsCompleted;
-
-        #region C'tor
-
-        /// <summary>
-        /// Creates an async-compatible manual-reset event.
-        /// </summary>
-        /// <param name="set">Whether the manual-reset event is initially set or unset.</param>
-        public AsyncConnectionLostEvent(bool set)
+        public TaskCancellationTokenSource(Task task)
         {
-            if (set)
-            {
-                _tcs.TrySetResult(null);
-            }
+            if (task == null)
+                throw new ArgumentNullException(nameof(task));
+
+            Task = task;
+            _cancellationTokenSource = new CancellationTokenSource();
+            task.ContinueWith((_, cts) => ((CancellationTokenSource)cts).Cancel(), _cancellationTokenSource);
         }
 
-        /// <summary>
-        /// Creates an async-compatible manual-reset event that is initially unset.
-        /// </summary>
-        public AsyncConnectionLostEvent() { }
-
-        #endregion
-
-        /// <summary>
-        /// Whether this event is currently set. This member is seldom used; code using this member has a high possibility of race conditions.
-        /// </summary>
-        public bool IsSet
+        public TaskCancellationTokenSource(Task task, params CancellationToken[] linkedTokens)
         {
-            get
+            if (task == null)
+                throw new ArgumentNullException(nameof(task));
+
+            if (linkedTokens == null)
+                throw new ArgumentNullException(nameof(linkedTokens));
+
+            Task = task;
+
+            if (!linkedTokens.Any())
             {
-                lock (_mutex)
-                {
-                    return _tcs.Task.IsCompleted;
-                }
+                _cancellationTokenSource = new CancellationTokenSource();
             }
+            else
+            {
+                _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(linkedTokens);
+            }
+
+            task.ContinueWith((_, cts) => ((CancellationTokenSource)cts).Cancel(), _cancellationTokenSource);
         }
 
-        /// <summary>
-        /// Asynchronously waits for this event to be set.
-        /// </summary>
-        public Task WaitAsync()
+        public Task Task { get; }
+        public CancellationToken CancellationToken => _cancellationTokenSource?.Token ?? new CancellationToken(canceled: true);
+
+        public void Dispose()
         {
-            lock (_mutex)
+            var cancellationTokenSource = Interlocked.Exchange(ref _cancellationTokenSource, null);
+
+            if (cancellationTokenSource != null)
             {
-                return _tcs.Task;
+                cancellationTokenSource.Dispose();
             }
-        }
-
-        /// <summary>
-        /// Asynchronously waits for this event to be set or for the wait to be canceled.
-        /// </summary>
-        /// <param name="cancellationToken">The cancellation token used to cancel the wait. If this token is already canceled, this method will first check whether the event is set.</param>
-        public Task WaitAsync(CancellationToken cancellationToken)
-        {
-            var waitTask = WaitAsync();
-
-            if (waitTask.IsCompleted)
-            {
-                return waitTask;
-            }
-
-            return waitTask.WaitAsync(cancellationToken);
-        }
-
-        /// <summary>
-        /// Sets the event, atomically completing every task returned by <see cref="O:Nito.AsyncEx.AsyncManualResetEvent.WaitAsync"/>. 
-        /// If the event is already set, this method does nothing.
-        /// </summary>
-        /// <returns>True if the event was set, false othewise.</returns>
-        public bool Set()
-        {
-            bool result;
-
-            lock (_mutex)
-            {
-                result = _tcs.TrySetResult(null);
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Resets the event. If the event is already reset, this method does nothing.
-        /// </summary>
-        /// <returns>True if the event was reset, false otherwise.</returns>
-        public bool Reset()
-        {
-            var result = false;
-
-            lock (_mutex)
-            {
-                if (_tcs.Task.IsCompleted)
-                {
-                    result = true;
-                    _tcs = TaskCompletionSourceExtensions.CreateAsyncTaskSource<object>();
-                }
-            }
-
-            return result;
         }
     }
 }
