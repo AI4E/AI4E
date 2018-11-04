@@ -23,7 +23,7 @@ namespace AI4E.Routing.SignalR.Server
     {
         #region Fields
 
-        private readonly AsyncProducerConsumerQueue<(IMessage message, EndPointAddress endPoint)> _rxQueue = new AsyncProducerConsumerQueue<(IMessage message, EndPointAddress endPoint)>();
+        private readonly AsyncProducerConsumerQueue<(IMessage message, EndPointAddress endPoint)> _rxQueue;
         private readonly OutboundMessageLookup _txQueues = new OutboundMessageLookup();
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ServerEndPoint> _logger;
@@ -32,7 +32,8 @@ namespace AI4E.Routing.SignalR.Server
         private readonly IConnectedClientLookup _connectedClients;
 
         // Local lookup of a clients current physical address
-        private readonly ConcurrentDictionary<EndPointAddress, string> _clientLookup = new ConcurrentDictionary<EndPointAddress, string>();
+        private readonly Dictionary<EndPointAddress, (string address, Task disonnectionTask)> _clientLookup;
+        private readonly object _clientLookupLock = new object();
 
         private int _nextSeqNum = 1;
 
@@ -51,6 +52,9 @@ namespace AI4E.Routing.SignalR.Server
             _connectedClients = connectedClients;
             _serviceProvider = serviceProvider;
             _logger = logger;
+
+            _rxQueue = new AsyncProducerConsumerQueue<(IMessage message, EndPointAddress endPoint)>();
+            _clientLookup = new Dictionary<EndPointAddress, (string address, Task disonnectionTask)>();
         }
 
         #endregion
@@ -113,7 +117,10 @@ namespace AI4E.Routing.SignalR.Server
 
         private string LookupAddress(EndPointAddress endPoint)
         {
-            return _clientLookup.TryGetValue(endPoint, out var result) ? result : null;
+            lock (_clientLookupLock)
+            {
+                return _clientLookup.TryGetValue(endPoint, out var entry) ? entry.address : null;
+            }
         }
 
         private async Task<bool> ValidateAndUpdateTranslationAsync(string address, EndPointAddress endPoint, string securityToken, CancellationToken cancellation)
@@ -122,7 +129,16 @@ namespace AI4E.Routing.SignalR.Server
 
             if (result)
             {
-                _clientLookup.AddOrUpdate(endPoint, address, (_, entry) => address);
+                lock (_clientLookupLock)
+                {
+                    var entry = _clientLookup[endPoint];
+
+                    if (entry.address != address)
+                    {
+                        entry.address = address;
+                        _clientLookup[endPoint] = entry;
+                    }
+                }
             }
 
             return result;
@@ -131,8 +147,29 @@ namespace AI4E.Routing.SignalR.Server
         private async Task<(EndPointAddress endPoint, string securityToken)> AddTranlationAsync(string address, CancellationToken cancellation)
         {
             var (endPoint, securityToken) = await _connectedClients.AddClientAsync(cancellation: default);
-            var sucess = _clientLookup.TryAdd(endPoint, address);
-            Assert(sucess);
+            var disonnectionTask = _connectedClients.WaitForDisconnectAsync(endPoint, cancellation: default);
+
+            Assert(!disonnectionTask.IsCompleted);
+
+            lock (_clientLookupLock)
+            {
+                async Task ClientDisconnectionWithEntryRemoval()
+                {
+                    try
+                    {
+                        await disonnectionTask;
+                    }
+                    finally
+                    {
+                        lock (_clientLookupLock)
+                        {
+                            _clientLookup.Remove(endPoint);
+                        }
+                    }
+                }
+
+                _clientLookup.Add(endPoint, (address, ClientDisconnectionWithEntryRemoval()));
+            }
 
             return (endPoint, securityToken);
         }

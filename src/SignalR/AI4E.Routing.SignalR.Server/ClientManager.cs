@@ -18,7 +18,7 @@ namespace AI4E.Routing.SignalR.Server
         private readonly IRequestReplyServerEndPoint _endPoint;
         private readonly IMessageRouterFactory _messageRouterFactory;
         private readonly IEndPointManager _endPointManager;
-        private readonly IConnectedClientLookup _clientLookup;
+        private readonly IConnectedClientLookup _connectedClients;
         private readonly ILogger<ClientManager> _logger;
 
         private readonly Dictionary<EndPointAddress, (IMessageRouter router, Task disonnectionTask)> _routers;
@@ -30,7 +30,7 @@ namespace AI4E.Routing.SignalR.Server
         public ClientManager(IRequestReplyServerEndPoint endPoint,
                              IMessageRouterFactory messageRouterFactory,
                              IEndPointManager endPointManager,
-                             IConnectedClientLookup clientLookup,
+                             IConnectedClientLookup connectedClients,
                              ILogger<ClientManager> logger)
         {
             if (endPoint == null)
@@ -42,14 +42,14 @@ namespace AI4E.Routing.SignalR.Server
             if (endPointManager == null)
                 throw new ArgumentNullException(nameof(endPointManager));
 
-            if (clientLookup == null)
-                throw new ArgumentNullException(nameof(clientLookup));
+            if (connectedClients == null)
+                throw new ArgumentNullException(nameof(connectedClients));
 
 
             _endPoint = endPoint;
             _messageRouterFactory = messageRouterFactory;
             _endPointManager = endPointManager;
-            _clientLookup = clientLookup;
+            _connectedClients = connectedClients;
             _logger = logger;
 
             _routers = new Dictionary<EndPointAddress, (IMessageRouter router, Task disonnectionTask)>();
@@ -103,7 +103,7 @@ namespace AI4E.Routing.SignalR.Server
                     return entry.router;
                 }
 
-                var disonnectionTask = _clientLookup.WaitForDisconnectAsync(endPoint, cancellation: default);
+                var disonnectionTask = _connectedClients.WaitForDisconnectAsync(endPoint, cancellation: default);
 
                 if (disonnectionTask.IsCompleted)
                 {
