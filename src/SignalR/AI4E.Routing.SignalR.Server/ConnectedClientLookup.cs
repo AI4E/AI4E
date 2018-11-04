@@ -11,15 +11,24 @@ using AI4E.Processing;
 
 namespace AI4E.Routing.SignalR.Server
 {
+    // TODO: Rename
     public sealed class ConnectedClientLookup : IConnectedClientLookup, IDisposable
     {
+        #region Fields
+
         private static readonly CoordinationEntryPath _basePath = new CoordinationEntryPath("connectedClients"); // TODO: This should be configurable.
         private static readonly TimeSpan _leaseLength = TimeSpan.FromMinutes(10); // TODO: This should be configurable.
 
         private readonly ICoordinationManager _coordinationManager;
         private readonly IDateTimeProvider _dateTimeProvider;
-
         private readonly IAsyncProcess _garbageCollectionProcess;
+        private readonly Dictionary<EndPointAddress, Task> _clientDisconnectCache = new Dictionary<EndPointAddress, Task>();
+        private readonly object _lock = new object();
+        private volatile CancellationTokenSource _disposalSource = new CancellationTokenSource();
+
+        #endregion
+
+        #region C'tor
 
         public ConnectedClientLookup(ICoordinationManager coordinationManager, IDateTimeProvider dateTimeProvider)
         {
@@ -34,12 +43,95 @@ namespace AI4E.Routing.SignalR.Server
             _garbageCollectionProcess = new AsyncProcess(GarbageCollection, start: true);
         }
 
+        #endregion
+
+        #region IConnectedClientLookup
+
         public async Task<(EndPointAddress endPoint, string securityToken)> AddClientAsync(CancellationToken cancellation)
         {
-            var securityToken = Guid.NewGuid().ToString();
-            var leaseEnd = _dateTimeProvider.GetCurrentTime() + _leaseLength;
+            using (CheckDisposal(ref cancellation, out var disposal))
+            {
+                try
+                {
+                    return await AddClientCoreAsync(cancellation);
+                }
+                catch (OperationCanceledException) when (disposal.IsCancellationRequested)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
+            }
+        }
 
+        public async Task<bool> ValidateClientAsync(EndPointAddress endPoint, string securityToken, CancellationToken cancellation)
+        {
+            using (CheckDisposal(ref cancellation, out var disposal))
+            {
+                try
+                {
+                    return await ValidateClientAsync(endPoint, securityToken, cancellation);
+                }
+                catch (OperationCanceledException) when (disposal.IsCancellationRequested)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
+            }
+        }
+
+        //public async Task<bool> DisconnectAsync(EndPointAddress endPoint, string securityToken, CancellationToken cancellation)
+
+        // TODO: WaitForDisconnectAsync must return a completed task, if the client is not connected at the time of call.
+        public async Task WaitForDisconnectAsync(EndPointAddress endPoint, CancellationToken cancellation)
+        {
+            using (CheckDisposal(ref cancellation, out var disposal))
+            {
+                try
+                {
+                    async Task BuildClientDisconnectCacheEntry()
+                    {
+                        try
+                        {
+                            // Yields back the task, that represents the asnyc state machine immediately to leave the critical section as fast as possible.
+                            await Task.Yield();
+                            await WaitForDisconnectCoreAsync(endPoint);
+                        }
+                        finally
+                        {
+                            lock (_lock)
+                            {
+                                _clientDisconnectCache.Remove(endPoint);
+                            }
+                        }
+                    }
+
+                    Task task;
+
+                    lock (_lock)
+                    {
+                        if (!_clientDisconnectCache.TryGetValue(endPoint, out task))
+                        {
+                            task = BuildClientDisconnectCacheEntry();
+                            _clientDisconnectCache.Add(endPoint, task);
+                        }
+                    }
+
+                    await task.WithCancellation(cancellation);
+                }
+                catch (OperationCanceledException) when (disposal.IsCancellationRequested)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
+            }
+        }
+
+        #endregion
+
+        private async Task<(EndPointAddress endPoint, string securityToken)> AddClientCoreAsync(CancellationToken cancellation)
+        {
+            var now = _dateTimeProvider.GetCurrentTime();
+            var securityToken = Guid.NewGuid().ToString();
+            var leaseEnd = now + _leaseLength;
             var securityTokenBytesCount = Encoding.UTF8.GetByteCount(securityToken);
+
 
             using (ArrayPool<byte>.Shared.Rent(8 + 4 + securityTokenBytesCount, out var bytes))
             {
@@ -50,10 +142,11 @@ namespace AI4E.Routing.SignalR.Server
                 do
                 {
                     endPoint = new EndPointAddress("client/" + Guid.NewGuid().ToString());
+                    var path = GetPath(endPoint);
 
                     try
                     {
-                        await _coordinationManager.CreateAsync(_basePath.GetChildPath(endPoint.ToString()), payload, cancellation: cancellation);
+                        await _coordinationManager.CreateAsync(path, payload, cancellation: cancellation);
 
                         break;
                     }
@@ -68,10 +161,12 @@ namespace AI4E.Routing.SignalR.Server
             }
         }
 
-        public async Task<bool> ValidateClientAsync(EndPointAddress endPoint, string securityToken, CancellationToken cancellation)
+        private async Task<bool> ValidateClientCoreAsync(EndPointAddress endPoint,
+                                                         string securityToken,
+                                                         CancellationToken cancellation)
         {
-            var path = _basePath.GetChildPath(endPoint.ToString());
-
+            var now = _dateTimeProvider.GetCurrentTime();
+            var path = GetPath(endPoint);
             do
             {
                 var entry = await _coordinationManager.GetAsync(path, cancellation: cancellation);
@@ -82,23 +177,12 @@ namespace AI4E.Routing.SignalR.Server
                 }
 
                 var (comparandSecurityToken, leaseEnd) = DecodePayload(entry.Value.Span);
-                var now = _dateTimeProvider.GetCurrentTime();
 
                 // We have to assume that the client is not connected anymore.
                 // This is a race condition, that has to be prevented.
                 if (now < leaseEnd)
                 {
                     await _coordinationManager.DeleteAsync(entry.Path, cancellation: cancellation);
-
-                    var clientsDisconnected = Volatile.Read(ref ClientsDisconnected);
-
-                    if (clientsDisconnected != null && clientsDisconnected.GetInvocationList().Any())
-                    {
-                        var clientEndPoints = new EndPointAddress[] { new EndPointAddress(entry.Name.Segment.Span) };
-                        var eventArgs = new ClientsDisconnectedEventArgs(clientEndPoints);
-
-                        clientsDisconnected(this, eventArgs);
-                    }
 
                     return false;
                 }
@@ -134,7 +218,99 @@ namespace AI4E.Routing.SignalR.Server
             while (true);
         }
 
-        public event EventHandler<ClientsDisconnectedEventArgs> ClientsDisconnected;
+        // This does not receive a cancellation token, as the result of this is cached and must not depend on a callers cancellation token.
+        private async Task WaitForDisconnectCoreAsync(EndPointAddress endPoint)
+        {
+            var disposalSource = _disposalSource; // Volatile read op.
+
+            if (disposalSource.IsCancellationRequested)
+                throw new ObjectDisposedException(GetType().FullName);
+
+            var disposal = disposalSource.Token;
+
+            try
+            {
+                var path = GetPath(endPoint);
+                var entry = await _coordinationManager.GetAsync(path, disposal);
+
+                while (entry != null)
+                {
+                    var now = _dateTimeProvider.GetCurrentTime();
+                    var (_, leaseEnd) = DecodePayload(entry.Value.Span);
+
+                    if (now >= leaseEnd)
+                    {
+                        return;
+                    }
+
+                    var timeToWait = leaseEnd - now;
+                    await Task.Delay(timeToWait, disposal);
+
+                    entry = await _coordinationManager.GetAsync(path, disposal);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
+            }
+        }
+
+        private async Task GarbageCollection(CancellationToken cancellation)
+        {
+            ICollection<IEntry> disconnectedClients = new LinkedList<IEntry>();
+
+            while (cancellation.ThrowOrContinue())
+            {
+                try
+                {
+                    var delay = TimeSpan.FromSeconds(2);
+                    disconnectedClients.Clear();
+
+                    var rootNode = await _coordinationManager.GetAsync(_basePath, cancellation);
+                    var clients = rootNode.GetChildrenEntries();
+
+                    var enumerator = clients.GetEnumerator();
+                    try
+                    {
+                        while (await enumerator.MoveNext(cancellation))
+                        {
+                            var client = enumerator.Current;
+                            var (_, leaseEnd) = DecodePayload(client.Value.Span);
+
+                            var now = _dateTimeProvider.GetCurrentTime();
+                            if (now >= leaseEnd)
+                            {
+                                disconnectedClients.Add(client);
+                                continue;
+                            }
+
+                            var timeToWait = leaseEnd - now;
+                            if (timeToWait < delay)
+                                delay = timeToWait;
+                        }
+                    }
+                    finally
+                    {
+                        enumerator.Dispose();
+                    }
+
+                    await Task.WhenAll(disconnectedClients.Select(p => _coordinationManager.DeleteAsync(p.Path, cancellation: cancellation).AsTask()));
+                    await Task.Delay(delay, cancellation);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch
+                {
+                    // TODO: Log
+                }
+            }
+        }
+
+        private static CoordinationEntryPath GetPath(EndPointAddress endPoint)
+        {
+            return _basePath.GetChildPath(endPoint.ToString());
+        }
+
+        #region Coding
 
         private int EncodePayload(Span<byte> span, ReadOnlySpan<char> securityToken, DateTime leaseEnd)
         {
@@ -154,70 +330,46 @@ namespace AI4E.Routing.SignalR.Server
             return (securityToken, leaseEnd);
         }
 
-        private async Task GarbageCollection(CancellationToken cancellation)
-        {
-            ICollection<IEntry> disconnectedClients = new LinkedList<IEntry>();
+        #endregion
 
-            while (cancellation.ThrowOrContinue())
-            {
-                try
-                {
-                    var delay = TimeSpan.FromSeconds(2); // TODO: This should be configurable.
-                    disconnectedClients.Clear();
-
-                    var rootNode = await _coordinationManager.GetAsync(_basePath, cancellation);
-                    var clients = rootNode.GetChildrenEntries();
-
-                    var enumerator = clients.GetEnumerator();
-                    try
-                    {
-                        while (await enumerator.MoveNext(cancellation))
-                        {
-                            var client = enumerator.Current;
-                            var (_, leaseEnd) = DecodePayload(client.Value.Span);
-
-                            var now = _dateTimeProvider.GetCurrentTime();
-                            if (now < leaseEnd)
-                            {
-                                disconnectedClients.Add(client);
-                                continue;
-                            }
-
-                            var timeToWait = leaseEnd - now;
-                            if (timeToWait < delay)
-                                delay = timeToWait;
-                        }
-                    }
-                    finally
-                    {
-                        enumerator.Dispose();
-                    }
-
-                    await Task.WhenAll(disconnectedClients.Select(p => _coordinationManager.DeleteAsync(p.Path, cancellation: cancellation).AsTask()));
-
-                    var clientsDisconnected = Volatile.Read(ref ClientsDisconnected);
-
-                    if (clientsDisconnected != null && clientsDisconnected.GetInvocationList().Any())
-                    {
-                        var clientEndPoints = disconnectedClients.Select(p => new EndPointAddress(p.Name.Segment.Span)).ToList();
-                        var eventArgs = new ClientsDisconnectedEventArgs(clientEndPoints);
-
-                        clientsDisconnected(this, eventArgs);
-                    }
-
-                    await Task.Delay(delay, cancellation);
-                }
-                catch (OperationCanceledException) { throw; }
-                catch
-                {
-                    // TODO: Log
-                }
-            }
-        }
+        #region Disposal
 
         public void Dispose()
         {
-            _garbageCollectionProcess.Terminate();
+            var disposalSource = Interlocked.Exchange(ref _disposalSource, null);
+
+            if (disposalSource != null)
+            {
+                _garbageCollectionProcess.Terminate();
+                disposalSource.Dispose();
+            }
         }
+
+        private IDisposable CheckDisposal(ref CancellationToken cancellation,
+                                          out CancellationToken disposal)
+        {
+            var disposalSource = _disposalSource; // Volatile read op
+
+            if (disposalSource == null)
+                throw new ObjectDisposedException(GetType().FullName);
+
+            disposal = disposalSource.Token;
+
+            if (cancellation.CanBeCanceled)
+            {
+                var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, disposal);
+                cancellation = combinedCancellationSource.Token;
+
+                return combinedCancellationSource;
+            }
+            else
+            {
+                cancellation = disposal;
+
+                return NoOpDisposable.Instance;
+            }
+        }
+
+        #endregion
     }
 }

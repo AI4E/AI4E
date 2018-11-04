@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -91,6 +91,8 @@ namespace AI4E.Routing
 
         private async Task ReceiveProcedure(CancellationToken cancellation)
         {
+            // We cache the delegate for perf reasons.
+            var handler = new Func<IMessage, EndPointAddress, CancellationToken, Task<IMessage>>(HandleAsync);
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
 
             while (cancellation.ThrowOrContinue())
@@ -98,7 +100,7 @@ namespace AI4E.Routing
                 try
                 {
                     var receiveResult = await _logicalEndPoint.ReceiveAsync(cancellation);
-                    receiveResult.HandleAsync(ReceiveAsync, cancellation).HandleExceptions(_logger);
+                    receiveResult.HandleAsync(handler, cancellation).HandleExceptions(_logger);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
@@ -108,7 +110,7 @@ namespace AI4E.Routing
             }
         }
 
-        private async Task<IMessage> ReceiveAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation)
+        private async Task<IMessage> HandleAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation)
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
             var (publish, route) = DecodeMessage(message);

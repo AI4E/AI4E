@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
 using AI4E.Internal;
 using AI4E.Processing;
 using AI4E.Remoting;
@@ -19,23 +18,15 @@ namespace AI4E.Routing.SignalR.Client
 #endif
 {
     // TODO: Logging   
-    public sealed class RemoteMessageRouter : IMessageRouter, IAsyncDisposable
+    public sealed class RemoteMessageRouter : IMessageRouter, IDisposable
     {
-        private static readonly TimeSpan _leaseLength = TimeSpan.FromMinutes(5); // TODO: This should be synced with the server
-        private static readonly TimeSpan _leaseLengthHalf = new TimeSpan(_leaseLength.Ticks / 2);
-
         private readonly ISerializedMessageHandler _serializedMessageHandler;
         private readonly IRequestReplyClientEndPoint _logicalEndPoint;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILogger<RemoteMessageRouter> _logger;
 
         private readonly IAsyncProcess _receiveProcess;
-        private readonly IAsyncProcess _pingProcess;
-        private readonly AsyncInitializationHelper _initializationHelper;
-        private readonly AsyncDisposeHelper _disposeHelper;
-
-        private DateTime _lastSendTime = DateTime.MinValue;
-        private readonly object _lastSendTimeLock = new object();
+        private volatile CancellationTokenSource _disposalSource = new CancellationTokenSource();
 
         public RemoteMessageRouter(ISerializedMessageHandler serializedMessageHandler,
                                    IRequestReplyClientEndPoint logicalEndPoint,
@@ -56,20 +47,21 @@ namespace AI4E.Routing.SignalR.Client
             _dateTimeProvider = dateTimeProvider;
             _logger = logger;
 
-            _receiveProcess = new AsyncProcess(ReceiveProcess);
-            _pingProcess = new AsyncProcess(PingProcess);
-            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
-            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+            _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
         }
 
         #region IMessageRouter
 
-        public ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation = default)
+        public ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)
         {
             return _logicalEndPoint.GetLocalEndPointAsync(cancellation);
         }
 
-        public async ValueTask<IReadOnlyCollection<IMessage>> RouteAsync(IEnumerable<string> routes, IMessage serializedMessage, bool publish, CancellationToken cancellation = default)
+        public async ValueTask<IReadOnlyCollection<IMessage>> RouteAsync(
+            IEnumerable<string> routes,
+            IMessage serializedMessage,
+            bool publish,
+            CancellationToken cancellation)
         {
             if (routes == null)
                 throw new ArgumentNullException(nameof(routes));
@@ -82,29 +74,44 @@ namespace AI4E.Routing.SignalR.Client
 
             var idx = serializedMessage.FrameIndex;
 
-            try
+            using (CheckDisposal(ref cancellation, out var disposal))
             {
-                EncodeRouteRequest(serializedMessage, routes, publish);
-
-                var response = await SendInternalAsync(serializedMessage, cancellation);
-                var result = await DecodeRouteResponseAsync(response, cancellation);
-
-                return result;
-            }
-            catch
-            {
-                Assert(serializedMessage.FrameIndex >= idx);
-
-                while (serializedMessage.FrameIndex > idx)
+                try
                 {
-                    serializedMessage.PopFrame();
-                }
+                    try
+                    {
+                        EncodeRouteRequest(serializedMessage, routes, publish);
 
-                throw;
+                        var response = await SendInternalAsync(serializedMessage, cancellation);
+                        var result = await DecodeRouteResponseAsync(response, cancellation);
+
+                        return result;
+                    }
+                    catch
+                    {
+                        Assert(serializedMessage.FrameIndex >= idx);
+
+                        while (serializedMessage.FrameIndex > idx)
+                        {
+                            serializedMessage.PopFrame();
+                        }
+
+                        throw;
+                    }
+                }
+                catch (OperationCanceledException) when (disposal.IsCancellationRequested)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
             }
         }
 
-        public async ValueTask<IMessage> RouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation = default)
+        public async ValueTask<IMessage> RouteAsync(
+            string route,
+            IMessage serializedMessage,
+            bool publish,
+            EndPointAddress endPoint,
+            CancellationToken cancellation)
         {
             if (route == null)
                 throw new ArgumentNullException(nameof(route));
@@ -117,39 +124,73 @@ namespace AI4E.Routing.SignalR.Client
 
             var idx = serializedMessage.FrameIndex;
 
-            try
+            using (CheckDisposal(ref cancellation, out var disposal))
             {
-                EncodeRouteRequest(serializedMessage, route, publish, endPoint);
-
-                var response = await SendInternalAsync(serializedMessage, cancellation);
-
-                return response;
-            }
-            catch
-            {
-                Assert(serializedMessage.FrameIndex >= idx);
-
-                while (serializedMessage.FrameIndex > idx)
+                try
                 {
-                    serializedMessage.PopFrame();
-                }
+                    try
+                    {
+                        EncodeRouteRequest(serializedMessage, route, publish, endPoint);
 
-                throw;
+                        var response = await SendInternalAsync(serializedMessage, cancellation);
+
+                        return response;
+                    }
+                    catch
+                    {
+                        Assert(serializedMessage.FrameIndex >= idx);
+
+                        while (serializedMessage.FrameIndex > idx)
+                        {
+                            serializedMessage.PopFrame();
+                        }
+
+                        throw;
+                    }
+                }
+                catch (OperationCanceledException) when (disposal.IsCancellationRequested)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
             }
         }
 
-        public Task RegisterRouteAsync(string route, CancellationToken cancellation = default)
+        public Task RegisterRouteAsync(
+            string route,
+            CancellationToken cancellation)
         {
-            var message = new Message();
-            EncodeRegisterRouteRequest(message, route);
-            return SendInternalAsync(message, cancellation);
+            using (CheckDisposal(ref cancellation, out var disposal))
+            {
+                try
+                {
+                    var message = new Message();
+                    EncodeRegisterRouteRequest(message, route);
+                    return SendInternalAsync(message, cancellation);
+                }
+                catch (OperationCanceledException) when (disposal.IsCancellationRequested)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
+            }
         }
 
-        public Task UnregisterRouteAsync(string route, CancellationToken cancellation = default)
+        public Task UnregisterRouteAsync(
+            string route,
+            CancellationToken cancellation)
         {
-            var message = new Message();
-            EncodeUnregisterRouteRequest(message, route);
-            return SendInternalAsync(message, cancellation);
+            using (CheckDisposal(ref cancellation, out var disposal))
+            {
+                try
+                {
+                    var message = new Message();
+                    EncodeUnregisterRouteRequest(message, route);
+                    return SendInternalAsync(message, cancellation);
+                }
+                catch (OperationCanceledException) when (disposal.IsCancellationRequested)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
+            }        
         }
 
         #endregion
@@ -216,7 +257,7 @@ namespace AI4E.Routing.SignalR.Client
                 writer.Write(routeBytes.Length);
                 writer.Write(routeBytes);
                 writer.Write(endPoint);
- 
+
                 writer.Write(publish);
             }
         }
@@ -249,16 +290,6 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        private static void EncodePing(IMessage message)
-        {
-            using (var stream = message.PushFrame().OpenStream())
-            using (var writer = new BinaryWriter(stream))
-            {
-                writer.Write((short)MessageType.Ping);
-                writer.Write((short)0);
-            }
-        }
-
         #endregion
 
         #region Send
@@ -272,78 +303,7 @@ namespace AI4E.Routing.SignalR.Client
 
         private async Task<IMessage> SendInternalAsync(IMessage message, DateTime now, CancellationToken cancellation)
         {
-            lock (_lastSendTimeLock)
-            {
-                if (_lastSendTime < now)
-                {
-                    _lastSendTime = now;
-                }
-            }
-
             return await _logicalEndPoint.SendAsync(message, cancellation);
-        }
-
-        #endregion
-
-        #region Ping
-
-        private async Task PingProcess(CancellationToken cancellation)
-        {
-            await _initializationHelper.Initialization.WithCancellation(cancellation);
-
-            while (cancellation.ThrowOrContinue())
-            {
-                try
-                {
-                    var now = _dateTimeProvider.GetCurrentTime();
-
-                    DateTime lastSendTime;
-
-                    lock (_lastSendTimeLock)
-                    {
-                        lastSendTime = _lastSendTime;
-                    }
-
-                    if (lastSendTime > now)
-                    {
-                        now = lastSendTime;
-                    }
-
-                    Assert(now >= lastSendTime);
-
-                    var timeSinceLastSend = now - lastSendTime;
-
-                    Assert(timeSinceLastSend >= TimeSpan.Zero);
-
-                    if (timeSinceLastSend >= _leaseLengthHalf)
-                    {
-                        // This will set the last send time to now.
-                        await SendPingAsync(now, cancellation);
-
-                        continue;
-                    }
-                    else
-                    {
-                        var timeToWait = _leaseLengthHalf - timeSinceLastSend;
-
-                        Assert(timeToWait > TimeSpan.Zero);
-
-                        await Task.Delay(timeToWait, cancellation);
-                    }
-                }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception exc)
-                {
-                    // TODO: Log
-                }
-            }
-        }
-
-        private async Task SendPingAsync(DateTime now, CancellationToken cancellation)
-        {
-            var pingMessage = new Message();
-            EncodePing(pingMessage);
-            await SendInternalAsync(pingMessage, now, cancellation);
         }
 
         #endregion
@@ -352,38 +312,15 @@ namespace AI4E.Routing.SignalR.Client
 
         private async Task ReceiveProcess(CancellationToken cancellation)
         {
-            await _initializationHelper.Initialization.WithCancellation(cancellation);
+            // We cache the delegate for perf reasons.
+            var handler = new Func<IMessage, CancellationToken, Task<IMessage>>(HandleAsync);
 
             while (cancellation.ThrowOrContinue())
             {
                 try
                 {
                     var receiveResult = await _logicalEndPoint.ReceiveAsync(cancellation);
-
-                    async Task HandleResult()
-                    {
-                        cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation, receiveResult.Cancellation).Token;
-
-                        try
-                        {
-                            var response = await ReceiveAsync(receiveResult.Message, cancellation);
-
-                            if (response != null)
-                            {
-                                await receiveResult.SendResponseAsync(response);
-                            }
-                            else
-                            {
-                                await receiveResult.SendAckAsync();
-                            }
-                        }
-                        catch (OperationCanceledException) when (receiveResult.Cancellation.IsCancellationRequested)
-                        {
-                            await receiveResult.SendCancellationAsync();
-                        }
-                    }
-
-                    HandleResult().HandleExceptions(_logger);
+                    receiveResult.HandleAsync(handler, cancellation).HandleExceptions(_logger);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
@@ -393,7 +330,7 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        private async Task<IMessage> ReceiveAsync(IMessage message, CancellationToken cancellation)
+        private async Task<IMessage> HandleAsync(IMessage message, CancellationToken cancellation)
         {
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
@@ -432,35 +369,42 @@ namespace AI4E.Routing.SignalR.Client
 
         #endregion
 
-        #region Init
-
-        private async Task InitializeInternalAsync(CancellationToken cancellation)
-        {
-            await _receiveProcess.StartAsync(cancellation);
-            await _pingProcess.StartAsync(cancellation);
-        }
-
-        #endregion
-
         #region Disposal
-
-        public Task Disposal => _disposeHelper.Disposal;
 
         public void Dispose()
         {
-            _disposeHelper.Dispose();
+            var disposalSource = Interlocked.Exchange(ref _disposalSource, null);
+
+            if (disposalSource != null)
+            {
+                _receiveProcess.Terminate();
+                disposalSource.Dispose();
+            }
         }
 
-        public Task DisposeAsync()
+        private IDisposable CheckDisposal(ref CancellationToken cancellation,
+                                          out CancellationToken disposal)
         {
-            return _disposeHelper.DisposeAsync();
-        }
+            var disposalSource = _disposalSource; // Volatile read op
 
-        private async Task DisposeInternalAsync()
-        {
-            await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
-            await _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
-            await _pingProcess.TerminateAsync().HandleExceptionsAsync(_logger);
+            if (disposalSource == null)
+                throw new ObjectDisposedException(GetType().FullName);
+
+            disposal = disposalSource.Token;
+
+            if (cancellation.CanBeCanceled)
+            {
+                var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, disposal);
+                cancellation = combinedCancellationSource.Token;
+
+                return combinedCancellationSource;
+            }
+            else
+            {
+                cancellation = disposal;
+
+                return NoOpDisposable.Instance;
+            }
         }
 
         #endregion
@@ -471,7 +415,6 @@ namespace AI4E.Routing.SignalR.Client
             RouteToEndPoint = 1,
             RegisterRoute = 2,
             UnregisterRoute = 3,
-            Ping = 4,
             Handle = 5
         }
     }

@@ -99,22 +99,27 @@ namespace AI4E.Routing
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
 
-            try
+            using (var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, messageReceiveResult.Cancellation))
             {
-                var response = await handler(messageReceiveResult.Message, cancellation);
+                cancellation = combinedCancellationSource.Token;
 
-                if (response != null)
+                try
                 {
-                    await messageReceiveResult.SendResponseAsync(response);
+                    var response = await handler(messageReceiveResult.Message, cancellation);
+
+                    if (response != null)
+                    {
+                        await messageReceiveResult.SendResponseAsync(response);
+                    }
+                    else
+                    {
+                        await messageReceiveResult.SendAckAsync();
+                    }
                 }
-                else
+                catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
                 {
-                    await messageReceiveResult.SendAckAsync();
+                    await messageReceiveResult.SendCancellationAsync();
                 }
-            }
-            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
-            {
-                await messageReceiveResult.SendCancellationAsync();
             }
         }
 
@@ -128,15 +133,19 @@ namespace AI4E.Routing
 
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
+            using (var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, messageReceiveResult.Cancellation))
+            {
+                cancellation = combinedCancellationSource.Token;
 
-            try
-            {
-                await handler(messageReceiveResult.Message, cancellation);
-                await messageReceiveResult.SendAckAsync();
-            }
-            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
-            {
-                await messageReceiveResult.SendCancellationAsync();
+                try
+                {
+                    await handler(messageReceiveResult.Message, cancellation);
+                    await messageReceiveResult.SendAckAsync();
+                }
+                catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+                {
+                    await messageReceiveResult.SendCancellationAsync();
+                }
             }
         }
     }

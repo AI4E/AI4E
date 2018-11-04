@@ -73,22 +73,27 @@ namespace AI4E.Routing
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
 
-            try
+            using (var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, messageReceiveResult.Cancellation))
             {
-                var response = await handler(messageReceiveResult.Message, messageReceiveResult.RemoteEndPoint, cancellation);
+                cancellation = combinedCancellationSource.Token;
 
-                if (response != null)
+                try
                 {
-                    await messageReceiveResult.SendResponseAsync(response);
+                    var response = await handler(messageReceiveResult.Message, messageReceiveResult.RemoteEndPoint, cancellation);
+
+                    if (response != null)
+                    {
+                        await messageReceiveResult.SendResponseAsync(response);
+                    }
+                    else
+                    {
+                        await messageReceiveResult.SendAckAsync();
+                    }
                 }
-                else
+                catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
                 {
-                    await messageReceiveResult.SendAckAsync();
+                    await messageReceiveResult.SendCancellationAsync();
                 }
-            }
-            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
-            {
-                await messageReceiveResult.SendCancellationAsync();
             }
         }
 
@@ -103,14 +108,19 @@ namespace AI4E.Routing
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
 
-            try
+            using (var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, messageReceiveResult.Cancellation))
             {
-                await handler(messageReceiveResult.Message, messageReceiveResult.RemoteEndPoint, cancellation);
-                await messageReceiveResult.SendAckAsync();
-            }
-            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
-            {
-                await messageReceiveResult.SendCancellationAsync();
+                cancellation = combinedCancellationSource.Token;
+
+                try
+                {
+                    await handler(messageReceiveResult.Message, messageReceiveResult.RemoteEndPoint, cancellation);
+                    await messageReceiveResult.SendAckAsync();
+                }
+                catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+                {
+                    await messageReceiveResult.SendCancellationAsync();
+                }
             }
         }
 
@@ -125,22 +135,27 @@ namespace AI4E.Routing
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
 
-            try
+            using (var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, messageReceiveResult.Cancellation))
             {
-                var response = await handler(messageReceiveResult.Message, messageReceiveResult.RemoteAddress, messageReceiveResult.RemoteEndPoint, cancellation);
+                cancellation = combinedCancellationSource.Token;
 
-                if (response != null)
+                try
                 {
-                    await messageReceiveResult.SendResponseAsync(response);
+                    var response = await handler(messageReceiveResult.Message, messageReceiveResult.RemoteAddress, messageReceiveResult.RemoteEndPoint, cancellation);
+
+                    if (response != null)
+                    {
+                        await messageReceiveResult.SendResponseAsync(response);
+                    }
+                    else
+                    {
+                        await messageReceiveResult.SendAckAsync();
+                    }
                 }
-                else
+                catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
                 {
-                    await messageReceiveResult.SendAckAsync();
+                    await messageReceiveResult.SendCancellationAsync();
                 }
-            }
-            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
-            {
-                await messageReceiveResult.SendCancellationAsync();
             }
         }
 
@@ -155,14 +170,19 @@ namespace AI4E.Routing
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
 
-            try
+            using (var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, messageReceiveResult.Cancellation))
             {
-                await handler(messageReceiveResult.Message, messageReceiveResult.RemoteAddress, messageReceiveResult.RemoteEndPoint, cancellation);
-                await messageReceiveResult.SendAckAsync();
-            }
-            catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
-            {
-                await messageReceiveResult.SendCancellationAsync();
+                cancellation = combinedCancellationSource.Token;
+
+                try
+                {
+                    await handler(messageReceiveResult.Message, messageReceiveResult.RemoteAddress, messageReceiveResult.RemoteEndPoint, cancellation);
+                    await messageReceiveResult.SendAckAsync();
+                }
+                catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+                {
+                    await messageReceiveResult.SendCancellationAsync();
+                }
             }
         }
     }
