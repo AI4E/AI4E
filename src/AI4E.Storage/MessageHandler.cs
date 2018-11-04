@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -22,11 +22,6 @@ using System;
 
 namespace AI4E
 {
-    [Obsolete("Use MessageHandler<TEntity>")]
-    public abstract class CommandHandler<TEntity> : MessageHandler<TEntity>
-        where TEntity : class
-    { }
-
     public abstract class MessageHandler<TEntity> : MessageHandler
         where TEntity : class
     {
