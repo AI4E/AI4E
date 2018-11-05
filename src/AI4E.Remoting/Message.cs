@@ -247,7 +247,7 @@ namespace AI4E.Remoting
     [Serializable]
     public sealed class MessageFrame : IMessageFrame
     {
-        internal static readonly int _headerLength = Unsafe.SizeOf<long>(); // 8 bytes
+        internal static readonly int _headerLength = Unsafe.SizeOf<int>(); // 4 bytes
 
         private ReadOnlyMemory<byte> _payload = Array.Empty<byte>();
 
@@ -304,11 +304,11 @@ namespace AI4E.Remoting
             // Read the header 
 
             // Does NOT include padding but does include the header length.
-            var packetLength = IPAddress.NetworkToHostOrder(MemoryMarshal.Read<long>(memory));
+            var packetLength = IPAddress.NetworkToHostOrder(MemoryMarshal.Read<int>(memory));
             memory = memory.Slice(start: _headerLength);
 
             // Read the payload
-            var padding = checked((int)(4 * ((packetLength + 3) / 4) - packetLength));
+            var padding = 4 * ((packetLength + 3) / 4) - packetLength;
             Assert(padding >= 0 && padding <= 3);
             var payloadLength = packetLength - _headerLength;
 
@@ -319,8 +319,8 @@ namespace AI4E.Remoting
                     throw new IOException("Read past the end of the message.");
                 }
 
-                var payload = new byte[checked((int)payloadLength)];
-                memory.Slice(start: 0, checked((int)payloadLength)).CopyTo(payload);
+                var payload = new byte[payloadLength];
+                memory.Slice(start: 0, payloadLength).CopyTo(payload);
                 _payload = payload;
             }
             else
@@ -330,7 +330,7 @@ namespace AI4E.Remoting
             }
 
             // The header is already 'sliced away'
-            return memory.Slice(start: checked((int)payloadLength) + padding);
+            return memory.Slice(start: payloadLength + padding);
         }
 
         private sealed class MessageFrameStream : Stream
@@ -539,10 +539,14 @@ namespace AI4E.Remoting
                     return;
                 }
 
+                // Our current position in the stream does not have to be at the end of the stream.
+                // Compute the new stream length, which is either the length it has before or the position, we are writing at plus the number of bytes, whichever is greater.
                 var newLength = Math.Max(_length, _position + count);
                 EnsureLength(newLength);
+
                 buffer.AsMemory(offset, count).CopyTo(_writeMemory.Slice(start: _position));
                 _length = newLength;
+                Position += count;
             }
 
             public override bool CanRead => true;

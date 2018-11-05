@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -382,12 +382,10 @@ namespace AI4E.Storage.Transactions
 
                 // ProcessNonCommittedTransactionsAsync
                 var transactions = LoadNonCommittedTransactionsAsync(cancellation);
-                IAsyncEnumerator<ITransaction> transactionsEnumerator = null;
+                var transactionsEnumerator = transactions.GetEnumerator();
 
                 try
                 {
-                    transactionsEnumerator = transactions.GetEnumerator();
-
                     while (await transactionsEnumerator.MoveNext(cancellation))
                     {
                         var transaction = transactionsEnumerator.Current;
@@ -430,7 +428,7 @@ namespace AI4E.Storage.Transactions
                 }
                 finally
                 {
-                    transactionsEnumerator?.Dispose();
+                    transactionsEnumerator.Dispose();
                 }
 
                 return yield.Break();
@@ -541,10 +539,12 @@ namespace AI4E.Storage.Transactions
                 {
                     var pendingOperation = entry.PendingOperations[i];
                     var transaction = _transactionManager.GetTransaction(pendingOperation.TransactionId);
+                    var originalData = pendingOperation.OriginalData;
 
                     if (_nonCommittedTransactions.Contains(transaction))
                     {
-                        result = predicate(pendingOperation.OriginalData) ? pendingOperation.OriginalData : null;
+                        result = originalData.Data != null && predicate(originalData) ? originalData : null;
+
                         break;
                     }
 
@@ -555,8 +555,6 @@ namespace AI4E.Storage.Transactions
                     {
                         // An initial transaction must not have pending operations.
                         Assert(transactionState != TransactionStatus.Initial);
-
-                        var originalData = pendingOperation.OriginalData;
 
                         // The pending operation does no create the entry and the previous data matches the predicate.
                         result = originalData.Data != null && predicate(originalData) ? originalData : null;

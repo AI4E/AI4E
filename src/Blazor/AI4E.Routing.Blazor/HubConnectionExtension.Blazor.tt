@@ -5,7 +5,7 @@
 <#@ import namespace="System.Collections.Generic" #>
 <#@ output extension=".cs" #>
 <#
-	var argumentRange = (min: 1, max: 10);
+	var argumentRange = (min: 0, max: 10);
 
 	string BuildGenericArgumentList(int argumentCount)
 	{
@@ -16,7 +16,7 @@
 	{
 		StringBuilder result = new StringBuilder(argumentCount * (3 + argPrefix.Length));
 
-		for(var i = argumentRange.min; i <= argumentCount; i++)
+		for(var i = argumentRange.min+1; i <= argumentCount; i++)
 		{
 			if(result.Length != 0)
 			{
@@ -57,10 +57,13 @@ namespace AI4E.Routing.Blazor
 		static HubConnectionExtension()
 		{
 			var methodDefinitions = typeof(HubConnectionExtension).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
-														          .Where(p=> p.Name == nameof(RegisterMethod) && p.IsGenericMethodDefinition);
+														          .Where(p=> p.Name == nameof(RegisterMethodCore));
 
-<# for(var argumentCount = argumentRange.min; argumentCount <= argumentRange.max; argumentCount++) {#>
-			_registerMethod<#=argumentCount#> = methodDefinitions.SingleOrDefault(p=>p.GetGenericArguments().Length == <#=argumentCount#>);
+            _registerMethod0 = methodDefinitions.SingleOrDefault(
+                p => !p.IsGenericMethodDefinition);
+<# for(var argumentCount = argumentRange.min+1; argumentCount <= argumentRange.max; argumentCount++) {#>
+			_registerMethod<#=argumentCount#> = methodDefinitions.SingleOrDefault(
+                p => p.IsGenericMethodDefinition && p.GetGenericArguments().Length == <#=argumentCount#>);
 <#}#>
 
 <# for(var argumentCount = argumentRange.min; argumentCount <= argumentRange.max; argumentCount++) {#>
@@ -68,8 +71,14 @@ namespace AI4E.Routing.Blazor
 <#}#>
 		}
 
-<# for(var argumentCount = argumentRange.min; argumentCount <= argumentRange.max; argumentCount++) {#>
-		private static IDisposable RegisterMethod<<#=BuildGenericArgumentList(argumentCount)#>>(HubConnection hubConnection, object obj, MethodInfo method)
+<# for(var argumentCount = argumentRange.min; argumentCount <= argumentRange.max; argumentCount++) 
+{
+    var handlerType = "Func<" + (argumentCount > 0 ? BuildGenericArgumentList(argumentCount) + ", " : string.Empty) + "Task>";
+    var syncHandlerType = "Action" + (argumentCount > 0 ? "<" + BuildGenericArgumentList(argumentCount) + ">" : string.Empty);
+    var commaSeparatedParameterList = argumentCount > 0 ? ", " +  BuildArgumentList(argumentCount) : string.Empty;
+    var methodGenericArgumentList =  argumentCount > 0 ? "<" +  BuildGenericArgumentList(argumentCount) + ">" : string.Empty;
+#>
+		private static IDisposable RegisterMethodCore<#=methodGenericArgumentList#>(HubConnection hubConnection, object obj, MethodInfo method)
         {
 #if DEBUG            
 			Assert(hubConnection != null);
@@ -80,29 +89,28 @@ namespace AI4E.Routing.Blazor
 			var parameters = method.GetParameters();
 			Assert(parameters.Length == <#=argumentCount#>);
 
-<# for(var i = argumentRange.min; i <= argumentCount; i++) {#>
+<# for(var i = argumentRange.min+1; i <= argumentCount; i++) {#>
 			Assert(parameters[<#=i-1#>].ParameterType == typeof(T<#=i#>));
 <#}#>
 #endif
+			<#=handlerType#> handler;
 
-			Func<<#=BuildGenericArgumentList(argumentCount)#>, Task> handler;
-
-<# for(var i = argumentRange.min; i <= argumentCount; i++) {#>
+<# for(var i = argumentRange.min+1; i <= argumentCount; i++) {#>
 			var arg<#=i#> = Expression.Parameter(typeof(T<#=i#>), "arg<#=i#>");
 <#}#>
 			var objConst = Expression.Constant(obj, typeof(object));
-            var methodCall = Expression.Call(Expression.Convert(objConst, method.DeclaringType), method, <#=BuildArgumentList(argumentCount)#>);
+            var methodCall = Expression.Call(Expression.Convert(objConst, method.DeclaringType), method<#=commaSeparatedParameterList#>);
 
             // The method is asynchronous 
             if (method.ReturnType.IsAssignableFrom(typeof(Task)))
             {
                 var convertedResult = Expression.Convert(methodCall, typeof(Task));
 
-                handler = Expression.Lambda<Func<<#=BuildGenericArgumentList(argumentCount)#>, Task>>(convertedResult, <#=BuildArgumentList(argumentCount)#>).Compile();
+                handler = Expression.Lambda<<#=handlerType#>>(convertedResult<#=commaSeparatedParameterList#>).Compile();
             }
             else // TODO: The method can also be async without returning Task. We already have helpers for this.
             {
-                var synchronousHandler = Expression.Lambda<Action<<#=BuildGenericArgumentList(argumentCount)#>>>(methodCall, <#=BuildArgumentList(argumentCount)#>).Compile();
+                var synchronousHandler = Expression.Lambda<<#=syncHandlerType#>>(methodCall<#=commaSeparatedParameterList#>).Compile();
 
                 handler = (<#=BuildArgumentList(argumentCount, "p")#>) =>
                 {
@@ -111,7 +119,11 @@ namespace AI4E.Routing.Blazor
                 };
             }
 
+<# if(argumentCount == 0) { #>
+            return hubConnection.On<object>(method.Name, _ => handler());
+<# } else { #>
             return hubConnection.On(method.Name, handler);
+<# } #>
         }
 
 <#}#>
@@ -132,8 +144,14 @@ namespace AI4E.Routing.Blazor
 			 * The hot path in the generic RegisterMethod methods is optimized.
 			 */
 
-<# for(var argumentCount = argumentRange.min; argumentCount <= argumentRange.max; argumentCount++) {#>
-			<#if(argumentCount != 1) {#>else <#}#>if(parameterCount == <#=argumentCount#>)
+            if(parameterCount == 0)
+            {
+                var result = _registerMethod0.Invoke(obj: null, new [] { hubConnection, obj, method }) as IDisposable;
+				Assert(result != null);
+				return result;
+            }
+<# for(var argumentCount = argumentRange.min+1; argumentCount <= argumentRange.max; argumentCount++) {#>
+			else if(parameterCount == <#=argumentCount#>)
 			{
 				var result = _registerMethod<#=argumentCount#>.MakeGenericMethod(parameters.Select(p=> p.ParameterType).ToArray()).Invoke(obj: null, new [] { hubConnection, obj, method }) as IDisposable;
 				Assert(result != null);

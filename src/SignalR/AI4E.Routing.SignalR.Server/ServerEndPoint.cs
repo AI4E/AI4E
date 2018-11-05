@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -144,7 +143,7 @@ namespace AI4E.Routing.SignalR.Server
             return result;
         }
 
-        private async Task<(EndPointAddress endPoint, string securityToken)> AddTranlationAsync(string address, CancellationToken cancellation)
+        private async Task<(EndPointAddress endPoint, string securityToken)> AddTranslationAsync(string address, CancellationToken cancellation)
         {
             var (endPoint, securityToken) = await _connectedClients.AddClientAsync(cancellation: default);
             var disonnectionTask = _connectedClients.WaitForDisconnectAsync(endPoint, cancellation: default);
@@ -250,7 +249,7 @@ namespace AI4E.Routing.SignalR.Server
         // The client connects to the cluster for the first time.
         private async Task<(string endPoint, string securityToken)> ConnectAsync(string address)
         {
-            var (endPoint, securityToken) = await AddTranlationAsync(address, cancellation: default);
+            var (endPoint, securityToken) = await AddTranslationAsync(address, cancellation: default);
 
             return (endPoint.ToString(), securityToken);
         }

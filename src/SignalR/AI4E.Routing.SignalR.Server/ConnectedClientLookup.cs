@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using AI4E.Coordination;
 using AI4E.Internal;
 using AI4E.Processing;
+using Microsoft.Extensions.Logging;
 
 namespace AI4E.Routing.SignalR.Server
 {
@@ -21,6 +22,7 @@ namespace AI4E.Routing.SignalR.Server
 
         private readonly ICoordinationManager _coordinationManager;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly ILogger<ConnectedClientLookup> _logger;
         private readonly IAsyncProcess _garbageCollectionProcess;
         private readonly Dictionary<EndPointAddress, Task> _clientDisconnectCache = new Dictionary<EndPointAddress, Task>();
         private readonly object _lock = new object();
@@ -30,7 +32,9 @@ namespace AI4E.Routing.SignalR.Server
 
         #region C'tor
 
-        public ConnectedClientLookup(ICoordinationManager coordinationManager, IDateTimeProvider dateTimeProvider)
+        public ConnectedClientLookup(ICoordinationManager coordinationManager,
+                                     IDateTimeProvider dateTimeProvider,
+                                     ILogger<ConnectedClientLookup> logger = null)
         {
             if (coordinationManager == null)
                 throw new ArgumentNullException(nameof(coordinationManager));
@@ -40,6 +44,7 @@ namespace AI4E.Routing.SignalR.Server
 
             _coordinationManager = coordinationManager;
             _dateTimeProvider = dateTimeProvider;
+            _logger = logger;
             _garbageCollectionProcess = new AsyncProcess(GarbageCollection, start: true);
         }
 
@@ -68,7 +73,7 @@ namespace AI4E.Routing.SignalR.Server
             {
                 try
                 {
-                    return await ValidateClientAsync(endPoint, securityToken, cancellation);
+                    return await ValidateClientCoreAsync(endPoint, securityToken, cancellation);
                 }
                 catch (OperationCanceledException) when (disposal.IsCancellationRequested)
                 {
@@ -132,7 +137,6 @@ namespace AI4E.Routing.SignalR.Server
             var leaseEnd = now + _leaseLength;
             var securityTokenBytesCount = Encoding.UTF8.GetByteCount(securityToken);
 
-
             using (ArrayPool<byte>.Shared.Rent(8 + 4 + securityTokenBytesCount, out var bytes))
             {
                 var payloadLength = EncodePayload(bytes, securityToken.AsSpan(), leaseEnd);
@@ -147,6 +151,8 @@ namespace AI4E.Routing.SignalR.Server
                     try
                     {
                         await _coordinationManager.CreateAsync(path, payload, cancellation: cancellation);
+
+                        _logger?.LogDebug($"Assigning end-point '{endPoint.ToString()}' to recently connected client.");
 
                         break;
                     }
@@ -173,6 +179,8 @@ namespace AI4E.Routing.SignalR.Server
 
                 if (entry == null)
                 {
+                    _logger?.LogDebug($"Cannot update session for client with end-point '{endPoint.ToString()}'. Session is terminated.");
+
                     return false;
                 }
 
@@ -180,15 +188,18 @@ namespace AI4E.Routing.SignalR.Server
 
                 // We have to assume that the client is not connected anymore.
                 // This is a race condition, that has to be prevented.
-                if (now < leaseEnd)
+                if (now >= leaseEnd)
                 {
                     await _coordinationManager.DeleteAsync(entry.Path, cancellation: cancellation);
 
+                    _logger?.LogDebug($"Session for client with end-point '{endPoint.ToString()}' is terminated. Removing entry.");
+                    _logger?.LogDebug($"Cannot update session for client with end-point '{endPoint.ToString()}'. Session is terminated.");
                     return false;
                 }
 
                 if (securityToken != comparandSecurityToken)
                 {
+                    _logger?.LogDebug($"Cannot update session for client with end-point '{endPoint.ToString()}'. Session is terminated.");
                     return false;
                 }
 
@@ -211,6 +222,8 @@ namespace AI4E.Routing.SignalR.Server
 
                     if (version == entry.Version)
                     {
+                        _logger?.LogDebug($"Updated session for client with end-point '{endPoint.ToString()}'.");
+
                         return true;
                     }
                 }
@@ -263,38 +276,48 @@ namespace AI4E.Routing.SignalR.Server
             {
                 try
                 {
-                    var delay = TimeSpan.FromSeconds(2);
+                    var delay = TimeSpan.FromSeconds(10);
                     disconnectedClients.Clear();
 
                     var rootNode = await _coordinationManager.GetAsync(_basePath, cancellation);
-                    var clients = rootNode.GetChildrenEntries();
 
-                    var enumerator = clients.GetEnumerator();
-                    try
+                    if (rootNode != null)
                     {
-                        while (await enumerator.MoveNext(cancellation))
+                        var clients = rootNode.GetChildrenEntries();
+
+                        var enumerator = clients.GetEnumerator();
+                        try
                         {
-                            var client = enumerator.Current;
-                            var (_, leaseEnd) = DecodePayload(client.Value.Span);
-
-                            var now = _dateTimeProvider.GetCurrentTime();
-                            if (now >= leaseEnd)
+                            while (await enumerator.MoveNext(cancellation))
                             {
-                                disconnectedClients.Add(client);
-                                continue;
+                                var client = enumerator.Current;
+                                var (securityToken, leaseEnd) = DecodePayload(client.Value.Span);
+
+                                var now = _dateTimeProvider.GetCurrentTime();
+                                if (now >= leaseEnd)
+                                {
+                                    if (_logger.IsEnabled(LogLevel.Debug))
+                                    {
+                                        _logger?.LogDebug($"Session for client with end-point '{client.Name.ToString()}' is terminated. Removing entry.");
+                                    }
+
+                                    disconnectedClients.Add(client);
+                                    continue;
+                                }
+
+                                var timeToWait = leaseEnd - now;
+                                if (timeToWait < delay)
+                                    delay = timeToWait;
                             }
-
-                            var timeToWait = leaseEnd - now;
-                            if (timeToWait < delay)
-                                delay = timeToWait;
                         }
-                    }
-                    finally
-                    {
-                        enumerator.Dispose();
+                        finally
+                        {
+                            enumerator.Dispose();
+                        }
+
+                        await Task.WhenAll(disconnectedClients.Select(p => _coordinationManager.DeleteAsync(p.Path, cancellation: cancellation).AsTask()));
                     }
 
-                    await Task.WhenAll(disconnectedClients.Select(p => _coordinationManager.DeleteAsync(p.Path, cancellation: cancellation).AsTask()));
                     await Task.Delay(delay, cancellation);
                 }
                 catch (OperationCanceledException) { throw; }
@@ -326,7 +349,6 @@ namespace AI4E.Routing.SignalR.Server
             var reader = new BinarySpanReader(span);
             var securityToken = reader.ReadString();
             var leaseEnd = new DateTime(reader.ReadInt64());
-
             return (securityToken, leaseEnd);
         }
 

@@ -472,7 +472,11 @@ namespace AI4E.Internal
         public string ReadString()
         {
             var count = ReadInt32();
-            return Encoding.UTF8.GetString(Span.Slice(_offset, count));
+            var result = Encoding.UTF8.GetString(Span.Slice(_offset, count));
+
+            _offset += count;
+
+            return result;
         }
 
         private void EnsureSpace(int count)
