@@ -24,7 +24,7 @@ namespace AI4E.Modularity.Debug
 {
     public interface IDebugSession
     {
-        EndPointRoute EndPoint { get;  }
+        EndPointAddress EndPoint { get;  }
         ModuleIdentifier Module { get; }
         ModuleVersion ModuleVersion { get;  }
     }

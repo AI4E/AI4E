@@ -23,6 +23,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Domain.Services", "src
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{143B5D2D-F49E-47EC-808A-08B4E595035E}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		.gitignore = .gitignore
 		Directory.Build.props = Directory.Build.props
 	EndProjectSection
@@ -53,11 +54,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Transactions.S
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{4836898A-A46F-4139-A085-536903EE5E5A}"
 	ProjectSection(SolutionItems) = preProject
+		src\Common\ArrayPoolExtension.cs = src\Common\ArrayPoolExtension.cs
 		src\Common\AsyncEnumerableExtensions.cs = src\Common\AsyncEnumerableExtensions.cs
 		src\Common\AsyncWaitDirectory.cs = src\Common\AsyncWaitDirectory.cs
 		src\Common\BinaryReaderExtension.cs = src\Common\BinaryReaderExtension.cs
 		src\Common\BinaryWriterExtension.cs = src\Common\BinaryWriterExtension.cs
 		src\Common\CancellationTokenExtension.cs = src\Common\CancellationTokenExtension.cs
+		src\Common\CastTo.cs = src\Common\CastTo.cs
 		src\Common\CompressionHelper.cs = src\Common\CompressionHelper.cs
 		src\Common\ConcurrentDictionaryExtension.cs = src\Common\ConcurrentDictionaryExtension.cs
 		src\Common\CustomAttributeProviderExtension.cs = src\Common\CustomAttributeProviderExtension.cs
@@ -72,9 +75,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\IdGenerator.cs = src\Common\IdGenerator.cs
 		src\Common\ImmutableArrayExtension.cs = src\Common\ImmutableArrayExtension.cs
 		src\Common\ListExtension.cs = src\Common\ListExtension.cs
+		src\Common\MemoryExtensions.Base64Decode.cs = src\Common\MemoryExtensions.Base64Decode.cs
 		src\Common\MemoryExtensions.cs = src\Common\MemoryExtensions.cs
+		src\Common\MemoryExtensions.SequenceHashCode.cs = src\Common\MemoryExtensions.SequenceHashCode.cs
 		src\Common\MemoryWriter.cs = src\Common\MemoryWriter.cs
 		src\Common\MessageDispatcherBuilder.cs = src\Common\MessageDispatcherBuilder.cs
+		src\Common\NoOpDisposable.cs = src\Common\NoOpDisposable.cs
 		src\Common\ObjectExtension.cs = src\Common\ObjectExtension.cs
 		src\Common\ParameterExpressionReplacer.cs = src\Common\ParameterExpressionReplacer.cs
 		src\Common\PathInternal.cs = src\Common\PathInternal.cs
@@ -86,6 +92,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\StringBuilderExtension.cs = src\Common\StringBuilderExtension.cs
 		src\Common\StringExtension.cs = src\Common\StringExtension.cs
 		src\Common\TaskCancellationTokenSource.cs = src\Common\TaskCancellationTokenSource.cs
+		src\Common\TaskCompletionSourceExtension.cs = src\Common\TaskCompletionSourceExtension.cs
 		src\Common\TaskExtension.cs = src\Common\TaskExtension.cs
 		src\Common\TypeExtension.cs = src\Common\TypeExtension.cs
 		src\Common\TypeLoadHelper.cs = src\Common\TypeLoadHelper.cs
@@ -128,12 +135,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.SignalR.Client", "src\SignalR\AI4E.Routing.SignalR.Client\AI4E.Routing.SignalR.Client.csproj", "{2022EDD1-BC62-4808-9571-9302C5EF9A61}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SignalR", "SignalR", "{EF31F32F-6FB8-4FEA-8756-0EA7903B9ADD}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{F251A968-746E-4891-ADA0-D26BF8C79F5D}"
-	ProjectSection(SolutionItems) = preProject
-		src\SignalR\Common\HubConnectionExtension.cs = src\SignalR\Common\HubConnectionExtension.cs
-		src\SignalR\Common\ICallStub.cs = src\SignalR\Common\ICallStub.cs
-	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SignalR", "SignalR", "{93F0B472-14C6-4571-8F12-10501C66A3CB}"
 EndProject
@@ -191,6 +192,10 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AI4E.ApplicationParts", "AI4E.ApplicationParts", "{03BEA7FD-C579-4548-B689-355D1557C9BB}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.ApplicationParts", "lib\AI4E.ApplicationParts\src\AI4E.ApplicationParts\AI4E.ApplicationParts.csproj", "{E4209050-CE1C-49F3-9D2D-E80007AE6BA3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AI4E.Memory.Compatibility", "AI4E.Memory.Compatibility", "{013DC807-6B35-4BF5-B13F-B3D8283701CC}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Memory.Compatibility", "lib\AI4E.Memory.Compatibility\src\AI4E.Memory.Compatibility\AI4E.Memory.Compatibility.csproj", "{B0A4CB59-053E-4A41-B32F-4EB3E2C8F9AE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -409,6 +414,10 @@ Global
 		{E4209050-CE1C-49F3-9D2D-E80007AE6BA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E4209050-CE1C-49F3-9D2D-E80007AE6BA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E4209050-CE1C-49F3-9D2D-E80007AE6BA3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B0A4CB59-053E-4A41-B32F-4EB3E2C8F9AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B0A4CB59-053E-4A41-B32F-4EB3E2C8F9AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B0A4CB59-053E-4A41-B32F-4EB3E2C8F9AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B0A4CB59-053E-4A41-B32F-4EB3E2C8F9AE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -449,7 +458,6 @@ Global
 		{5F4F1785-CCE9-4C04-8C00-E908B9A20C31} = {EF31F32F-6FB8-4FEA-8756-0EA7903B9ADD}
 		{2022EDD1-BC62-4808-9571-9302C5EF9A61} = {EF31F32F-6FB8-4FEA-8756-0EA7903B9ADD}
 		{EF31F32F-6FB8-4FEA-8756-0EA7903B9ADD} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
-		{F251A968-746E-4891-ADA0-D26BF8C79F5D} = {EF31F32F-6FB8-4FEA-8756-0EA7903B9ADD}
 		{93F0B472-14C6-4571-8F12-10501C66A3CB} = {8682A1B5-6D4B-4176-8BC8-9F93018B12CE}
 		{0252A295-2BE8-4BD8-9D1F-9A68507BC908} = {93F0B472-14C6-4571-8F12-10501C66A3CB}
 		{C59D346A-16C8-4BC4-A9D1-B91BFEC7F1CF} = {93F0B472-14C6-4571-8F12-10501C66A3CB}
@@ -476,6 +484,8 @@ Global
 		{BEE1D3DD-087B-4499-AC33-590BC2D016C6} = {A7827E17-5092-42F0-98E6-6EBA6FCCB7E3}
 		{03BEA7FD-C579-4548-B689-355D1557C9BB} = {C671034D-56C6-4CD2-AEFA-0767FF5B93A8}
 		{E4209050-CE1C-49F3-9D2D-E80007AE6BA3} = {03BEA7FD-C579-4548-B689-355D1557C9BB}
+		{013DC807-6B35-4BF5-B13F-B3D8283701CC} = {C671034D-56C6-4CD2-AEFA-0767FF5B93A8}
+		{B0A4CB59-053E-4A41-B32F-4EB3E2C8F9AE} = {013DC807-6B35-4BF5-B13F-B3D8283701CC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}

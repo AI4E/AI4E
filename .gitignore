@@ -272,3 +272,4 @@ __pycache__/
 
 /lib/SignalR/
 /src/AI4E/EnumHelper.cs
+/src/Blazor/AI4E.Routing.Blazor/HubConnectionExtension.Blazor.cs

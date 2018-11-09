@@ -1,93 +1,48 @@
-﻿/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        EndPointManager.cs 
- * Types:           AI4E.Routing.EndPointManager'1
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   10.05.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
-/* License
- * --------------------------------------------------------------------------------------------------------------------
- * This file is part of the AI4E distribution.
- *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
- * 
- * AI4E is free software: you can redistribute it and/or modify  
- * it under the terms of the GNU Lesser General Public License as   
- * published by the Free Software Foundation, version 3.
- *
- * AI4E is distributed in the hope that it will be useful, but 
- * WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
 using AI4E.Internal;
 using AI4E.Processing;
 using AI4E.Remoting;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing
 {
-    // TODO: The logical end point must not initialize directly
-    //       If the logical end point is not disposed but gc'ed, how do we unmap and terminate the process?
-
-    public sealed class EndPointManager<TAddress> : IEndPointManager<TAddress>, IAsyncDisposable
+    // TODO: Retransmission for Request and CancellationRequest messages
+    public sealed class EndPointManager<TAddress> : IEndPointManager<TAddress>
     {
-        #region Fields
+        private static readonly byte[] _emptyByteArray = new byte[0];
 
         private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
-        private readonly IRouteMap<TAddress> _routeManager;
-        private readonly IMessageCoder<TAddress> _messageCoder;
+        private readonly IEndPointMap<TAddress> _endPointMap;
         private readonly IEndPointScheduler<TAddress> _endPointScheduler;
         private readonly IServiceProvider _serviceProvider;
-        private readonly ILogger _logger;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger<EndPointManager<TAddress>> _logger;
 
-        private readonly WeakDictionary<EndPointRoute, LogicalEndPoint> _endPoints;
+        private Dictionary<EndPointAddress, LogicalEndPoint> _endPoints;
+        private readonly object _endPointsLock = new object();
 
-        private readonly IAsyncProcess _sendProcess;
-        private readonly AsyncInitializationHelper _initializationHelper;
-        private readonly AsyncDisposeHelper _disposeHelper;
-
-        // A buffer for messages to send. 
-        // Messages are not sent directly to the remote end point but stored and processed one after another by a seperate async process. 
-        // This enables to send again a messages that no physical end point can be found for currently or the sent failed.
-        private readonly AsyncProducerConsumerQueue<(IMessage message, EndPointRoute localEndPoint, EndPointRoute remoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)> _txQueue;
-
-        #endregion
-
-        #region C'tor
+        // 0: false, 1: true
+        private volatile int _isDisposed = 0;
 
         public EndPointManager(IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
-                               IRouteMap<TAddress> routeManager,
-                               IMessageCoder<TAddress> messageCoder,
+                               IEndPointMap<TAddress> endPointMap,
                                IEndPointScheduler<TAddress> endPointScheduler,
                                IServiceProvider serviceProvider,
-                               ILogger<EndPointManager<TAddress>> logger)
+                               ILoggerFactory loggerFactory)
         {
             if (endPointMultiplexer == null)
                 throw new ArgumentNullException(nameof(endPointMultiplexer));
 
-            if (routeManager == null)
-                throw new ArgumentNullException(nameof(routeManager));
-
-            if (messageCoder == null)
-                throw new ArgumentNullException(nameof(messageCoder));
+            if (endPointMap == null)
+                throw new ArgumentNullException(nameof(endPointMap));
 
             if (endPointScheduler == null)
                 throw new ArgumentNullException(nameof(endPointScheduler));
@@ -96,425 +51,303 @@ namespace AI4E.Routing
                 throw new ArgumentNullException(nameof(serviceProvider));
 
             _endPointMultiplexer = endPointMultiplexer;
-            _routeManager = routeManager;
-            _messageCoder = messageCoder;
+            _endPointMap = endPointMap;
             _endPointScheduler = endPointScheduler;
             _serviceProvider = serviceProvider;
-            _logger = logger;
-            _endPoints = new WeakDictionary<EndPointRoute, LogicalEndPoint>();
+            _loggerFactory = loggerFactory;
+            _logger = loggerFactory?.CreateLogger<EndPointManager<TAddress>>();
 
-            _txQueue = new AsyncProducerConsumerQueue<(IMessage message, EndPointRoute localEndPoint, EndPointRoute RemoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)>();
-
-            _sendProcess = new AsyncProcess(SendProcess);
-            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
-            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
+            _endPoints = new Dictionary<EndPointAddress, LogicalEndPoint>();
         }
 
-        #endregion
+        #region IEndPointManager
 
         public TAddress LocalAddress => _endPointMultiplexer.LocalAddress;
 
-        #region Initialization
-
-        private async Task InitializeInternalAsync(CancellationToken cancellation)
+        public ILogicalEndPoint<TAddress> GetLogicalEndPoint(EndPointAddress endPoint)
         {
-            await _sendProcess.StartAsync(cancellation);
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
+
+            lock (_endPointsLock)
+            {
+                if (_endPoints == null)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
+
+                if (_endPoints.TryGetValue(endPoint, out var logicalEndPoint))
+                {
+                    return logicalEndPoint;
+                }
+
+                return null;
+            }
+        }
+
+        public ILogicalEndPoint<TAddress> CreateLogicalEndPoint(EndPointAddress endPoint)
+        {
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
+
+            if (_isDisposed != 0) // Volatile read op.
+                throw new ObjectDisposedException(GetType().FullName);
+
+            // We have to ensure that only a single logical end-point exists for each address at any given time.
+            // Event a concurrnet dictionary cannot ensure this => We have to lock.
+            lock (_endPointsLock)
+            {
+                if (_endPoints == null)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
+
+                if (_endPoints.TryGetValue(endPoint, out _))
+                {
+                    throw new Exception("End point already present!"); // TODO
+                }
+
+                var logicalEndPoint = CreateLogicalEndPointInternal(endPoint);
+                _endPoints.Add(endPoint, logicalEndPoint);
+                return logicalEndPoint;
+            }
+        }
+
+        ILogicalEndPoint IEndPointManager.GetLogicalEndPoint(EndPointAddress endPoint)
+        {
+            return GetLogicalEndPoint(endPoint);
+        }
+
+        ILogicalEndPoint IEndPointManager.CreateLogicalEndPoint(EndPointAddress endPoint)
+        {
+            return CreateLogicalEndPoint(endPoint);
         }
 
         #endregion
 
         #region Disposal
 
-        /// <summary>
-        /// Gets a task that represents the disposal of the type.
-        /// </summary>
-        public Task Disposal => _disposeHelper.Disposal;
-
-        private async Task DisposeInternalAsync()
-        {
-            await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
-            await _sendProcess.TerminateAsync().HandleExceptionsAsync(_logger);
-        }
-
-        /// <summary>
-        /// Disposes of the type.
-        /// </summary>
-        /// <remarks>
-        /// This method does not block but instead only initiates the disposal without actually waiting till disposal is completed.
-        /// </remarks>
         public void Dispose()
         {
-            _disposeHelper.Dispose();
-        }
+            var isDisposed = Interlocked.Exchange(ref _isDisposed, 1) != 0;
 
-        /// <summary>
-        /// Asynchronously disposes of the type.
-        /// </summary>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        /// <remarks>
-        /// This method initiates the disposal and returns a task that represents the disposal of the type.
-        /// </remarks>
-        public Task DisposeAsync()
-        {
-            return _disposeHelper.DisposeAsync();
+            if (!isDisposed)
+            {
+                lock (_endPointsLock)
+                {
+                    foreach (var logicalEndPoint in _endPoints.Values)
+                    {
+                        logicalEndPoint.Dispose();
+                    }
+
+                    _endPoints = null;
+                }
+            }
         }
 
         #endregion
 
-        public ILogicalEndPoint<TAddress> GetLogicalEndPoint(EndPointRoute route)
+        private LogicalEndPoint CreateLogicalEndPointInternal(EndPointAddress endPoint)
         {
-            if (route == null)
-                throw new ArgumentNullException(nameof(route));
-
-            var result = CreateLogicalEndPoint(route); // TODO: The logical end point must not initialize directly;
-
-            if (_endPoints.GetOrAdd(route, result) != result)
-            {
-                throw new Exception("End point already present!"); // TODO
-            }
-
-            return result;
+            var physicalEndPoint = GetMultiplexPhysicalEndPoint(endPoint);
+            var logger = _loggerFactory?.CreateLogger<LogicalEndPoint>();
+            return new LogicalEndPoint(this, physicalEndPoint, endPoint, logger);
         }
 
-        ILogicalEndPoint IEndPointManager.GetLogicalEndPoint(EndPointRoute route)
+        private IPhysicalEndPoint<TAddress> GetMultiplexPhysicalEndPoint(EndPointAddress endPoint)
         {
-            return GetLogicalEndPoint(route);
-        }
-
-        private LogicalEndPoint CreateLogicalEndPoint(EndPointRoute route)
-        {
-            var physicalEndPoint = GetMultiplexPhysicalEndPoint(route);
-            var logger = _serviceProvider.GetService<ILogger<LogicalEndPoint>>();
-            var result = new LogicalEndPoint(this, physicalEndPoint, route, _messageCoder, _routeManager, logger);
-
+            var result = _endPointMultiplexer.GetPhysicalEndPoint("end-points/" + endPoint.ToString()); // TODO: This should be configurable
             Assert(result != null);
             return result;
         }
-
-        private IPhysicalEndPoint<TAddress> GetMultiplexPhysicalEndPoint(EndPointRoute route)
-        {
-            var result = _endPointMultiplexer.GetPhysicalEndPoint("end-points/" + route.Route);
-            Assert(result != null);
-            return result;
-        }
-
-        #region Transmission
-
-        private async Task SendAsync(IMessage message, EndPointRoute localEndPoint, EndPointRoute remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
-        {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
-            if (localEndPoint == null)
-                throw new ArgumentNullException(nameof(localEndPoint));
-
-            if (remoteAddress == null)
-                throw new ArgumentNullException(nameof(remoteAddress));
-
-            if (remoteAddress.Equals(default(TAddress)))
-                throw new ArgumentDefaultException(nameof(remoteAddress));
-
-            await _initializationHelper.Initialization.WithCancellation(cancellation);
-
-            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
-            {
-                if (_disposeHelper.IsDisposed)
-                    throw new ObjectDisposedException(GetType().FullName);
-
-                var combinedCancellation = _disposeHelper.CancelledOrDisposed(cancellation);
-
-                try
-                {
-                    await SendInternalAsync(message, localEndPoint, remoteEndPoint, remoteAddress, combinedCancellation);
-                }
-                catch (OperationCanceledException exc) when (!cancellation.IsCancellationRequested)
-                {
-                    throw new ObjectDisposedException(GetType().FullName, exc);
-                }
-            }
-        }
-
-        private async Task SendAsync(IMessage message, EndPointRoute localEndPoint, EndPointRoute remoteEndPoint, CancellationToken cancellation)
-        {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
-            if (localEndPoint == null)
-                throw new ArgumentNullException(nameof(localEndPoint));
-
-            await _initializationHelper.Initialization.WithCancellation(cancellation);
-
-            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
-            {
-                if (_disposeHelper.IsDisposed)
-                    throw new ObjectDisposedException(GetType().FullName);
-
-                var combinedCancellation = _disposeHelper.CancelledOrDisposed(cancellation);
-
-                try
-                {
-                    var tcs = new TaskCompletionSource<object>();
-
-                    await _txQueue.EnqueueAsync((message, localEndPoint, remoteEndPoint, attempt: 1, tcs, combinedCancellation), combinedCancellation);
-
-                    await tcs.Task.WithCancellation(combinedCancellation);
-                }
-                catch (OperationCanceledException exc) when (!cancellation.IsCancellationRequested)
-                {
-                    throw new ObjectDisposedException(GetType().FullName, exc);
-                }
-            }
-        }
-
-        private IEnumerable<TAddress> Schedule(IEnumerable<TAddress> replica)
-        {
-            return _endPointScheduler.Schedule(replica);
-        }
-
-        private async Task SendProcess(CancellationToken cancellation)
-        {
-            while (cancellation.ThrowOrContinue())
-            {
-                try
-                {
-                    var (message, localEndPoint, remoteEndPoint, attempt, tcs, sendCancellation) = await _txQueue.DequeueAsync(cancellation);
-
-                    if (attempt == 1)
-                    {
-                        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation, sendCancellation);
-
-                        sendCancellation = cts.Token;
-                    }
-
-                    Task.Run(() => SendInternalAsync(message, localEndPoint, remoteEndPoint, attempt, tcs, sendCancellation)).HandleExceptions(_logger);
-                }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception exc)
-                {
-                    _logger?.LogWarning(exc, $"Failure on sending message to remote.");
-                }
-            }
-        }
-
-        private async Task Reschedule(IMessage message, EndPointRoute localEndPoint, EndPointRoute remoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)
-        {
-            // Calculate wait time in seconds
-            var timeToWait = TimeSpan.FromSeconds(Pow(2, attempt - 1));
-
-            await Task.Delay(timeToWait);
-
-            await _txQueue.EnqueueAsync((message, localEndPoint, remoteEndPoint, attempt + 1, tcs, cancellation), cancellation);
-        }
-
-        // Adapted from: https://stackoverflow.com/questions/383587/how-do-you-do-integer-exponentiation-in-c
-        private static int Pow(int x, int pow)
-        {
-            if (pow < 0)
-                throw new ArgumentOutOfRangeException(nameof(pow));
-
-            var result = 1;
-            while (pow != 0)
-            {
-                if ((pow & 1) == 1)
-                    result *= x;
-                x *= x;
-                pow >>= 1;
-            }
-
-            if (result < 0)
-                return int.MaxValue;
-
-            return result;
-        }
-
-        private async Task SendInternalAsync(IMessage message, EndPointRoute localEndPoint, EndPointRoute remoteEndPoint, int attempt, TaskCompletionSource<object> tcs, CancellationToken cancellation)
-        {
-            try
-            {
-                var replica = await _routeManager.GetMapsAsync(remoteEndPoint, cancellation);
-
-                replica = Schedule(replica);
-
-                foreach (var singleReplica in replica)
-                {
-                    try
-                    {
-                        await SendAsync(message, localEndPoint, remoteEndPoint, singleReplica, cancellation);
-                    }
-                    catch
-                    {
-                        continue;
-                    }
-
-                    try
-                    {
-                        tcs.TrySetResult(null);
-                    }
-                    catch (Exception exc)
-                    {
-                        _logger?.LogWarning(exc, "Exception occured while passing a message to the remote end.");
-                    }
-
-                    return;
-                }
-            }
-            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
-            {
-                try
-                {
-                    tcs.TrySetCanceled(cancellation);
-                }
-                catch (Exception exc)
-                {
-                    _logger?.LogWarning(exc, "Exception occured while passing a message to the remote end.");
-                }
-
-                return;
-            }
-            catch (Exception exc)
-            {
-                _logger?.LogWarning(exc, "Exception occured while passing a message to the remote end.");
-            }
-
-            Reschedule(message, localEndPoint, remoteEndPoint, attempt, tcs, cancellation).HandleExceptions(_logger);
-        }
-
-        private async Task SendInternalAsync(IMessage message, EndPointRoute localEndPoint, EndPointRoute remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
-        {
-            var frameIdx = message.FrameIndex;
-            _messageCoder.EncodeMessage(message, LocalAddress, remoteAddress, remoteEndPoint, localEndPoint, MessageType.Message);
-
-            try
-            {
-                var physicalEndPoint = GetMultiplexPhysicalEndPoint(remoteEndPoint);
-
-                await physicalEndPoint.SendAsync(message, remoteAddress, cancellation);
-            }
-            catch when (frameIdx != message.FrameIndex)
-            {
-                message.PopFrame();
-                Assert(frameIdx == message.FrameIndex);
-                throw;
-            }
-        }
-
-        #endregion
 
         private sealed class LogicalEndPoint : ILogicalEndPoint<TAddress>
         {
+            // TODO: This should be configurable
+            private static readonly TimeSpan _defaultDelay = new TimeSpan(20 * TimeSpan.TicksPerMillisecond);
+            private static readonly TimeSpan _maxDelay = new TimeSpan(12000 * TimeSpan.TicksPerMillisecond);
+
             private readonly EndPointManager<TAddress> _endPointManager;
-            private readonly IMessageCoder<TAddress> _messageCoder;
-            private readonly IRouteMap<TAddress> _routeManager;
+            private readonly IPhysicalEndPoint<TAddress> _physicalEndPoint;
             private readonly ILogger<LogicalEndPoint> _logger;
 
-            private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
-            private readonly AsyncInitializationHelper _initializationHelper;
-            private readonly AsyncDisposeHelper _disposeHelper;
+            private volatile CancellationTokenSource _disposalSource;
+
+            private readonly AsyncProducerConsumerQueue<(IMessage message, DecodedMessage decodedMessage, TAddress remoteAddress)> _rxQueue;
+            private readonly ConcurrentDictionary<int, TaskCompletionSource<(IMessage message, DecodedMessage DecodedMessage, TAddress remoteAddress)>> _responseTable;
+            private readonly ConcurrentDictionary<(EndPointAddress remoteEndPoint, TAddress remoteAddress, int seqNum), CancellationTokenSource> _cancellationTable;
             private readonly IAsyncProcess _receiveProcess;
 
+            private int _nextSeqNum;
+
             public LogicalEndPoint(EndPointManager<TAddress> endPointManager,
-                                 IPhysicalEndPoint<TAddress> physicalEndPoint,
-                                 EndPointRoute route,
-                                 IMessageCoder<TAddress> messageCoder,
-                                 IRouteMap<TAddress> routeManager,
-                                 ILogger<LogicalEndPoint> logger)
+                                   IPhysicalEndPoint<TAddress> physicalEndPoint,
+                                   EndPointAddress endPoint,
+                                   ILogger<LogicalEndPoint> logger)
             {
-                if (endPointManager == null)
-                    throw new ArgumentNullException(nameof(endPointManager));
-
-                if (physicalEndPoint == null)
-                    throw new ArgumentNullException(nameof(physicalEndPoint));
-
-                if (route == null)
-                    throw new ArgumentNullException(nameof(route));
-
-                if (messageCoder == null)
-                    throw new ArgumentNullException(nameof(messageCoder));
-
-                if (routeManager == null)
-                    throw new ArgumentNullException(nameof(routeManager));
-
                 _endPointManager = endPointManager;
-                PhysicalEndPoint = physicalEndPoint;
-                EndPoint = route;
-                _messageCoder = messageCoder;
-                _routeManager = routeManager;
+                _physicalEndPoint = physicalEndPoint;
+                EndPoint = endPoint;
                 _logger = logger;
-                _receiveProcess = new AsyncProcess(ReceiveProcess);
-                _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
-                _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+
+                _disposalSource = new CancellationTokenSource();
+
+                _rxQueue = new AsyncProducerConsumerQueue<(IMessage message, DecodedMessage decodedMessage, TAddress remoteAddress)>();
+                _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<(IMessage message, DecodedMessage DecodedMessage, TAddress remoteAddress)>>();
+                _cancellationTable = new ConcurrentDictionary<(EndPointAddress remoteEndPoint, TAddress remoteAddress, int seqNum), CancellationTokenSource>();
+                _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
+
+                // TODO
+                endPointManager._endPointMap.MapEndPointAsync(EndPoint, LocalAddress, cancellation: default).GetAwaiter().GetResult();
             }
 
-            public EndPointRoute EndPoint { get; }
-            public TAddress LocalAddress => PhysicalEndPoint.LocalAddress;
-            public IPhysicalEndPoint<TAddress> PhysicalEndPoint { get; }
+            #region ILogicalEndPoint
 
-            #region Initialization
+            public TAddress LocalAddress => _endPointManager.LocalAddress;
+            public EndPointAddress EndPoint { get; }
 
-            public Task Initialization => _initializationHelper.Initialization;
-
-            private async Task InitializeInternalAsync(CancellationToken cancellation)
+            public async Task<ILogicalEndPointReceiveResult<TAddress>> ReceiveAsync(CancellationToken cancellation)
             {
-                _logger?.LogDebug($"Map local end-point '{EndPoint}' to physical end-point {LocalAddress}.");
-
-                try
+                using (CheckDisposal(ref cancellation, out var externalCancellation, out var disposal))
                 {
-                    await _routeManager.MapRouteAsync(EndPoint, LocalAddress, cancellation);
+                    try
+                    {
+                        var (message, decodedMessage, remoteAddress) = await _rxQueue.DequeueAsync(cancellation);
+                        return new MessageReceiveResult(this, message, decodedMessage, remoteAddress);
+                    }
+                    catch (OperationCanceledException) when (disposal.IsCancellationRequested)
+                    {
+                        throw new ObjectDisposedException(GetType().FullName);
+                    }
                 }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception exc)
+            }
+
+            // TODO: Can we downcast here, without an async state machine? (See also: RequestReplyClientEndPoint)
+            async Task<ILogicalEndPointReceiveResult> ILogicalEndPoint.ReceiveAsync(CancellationToken cancellation)
+            {
+                return await ReceiveAsync(cancellation);
+            }
+
+            public async Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
+            {
+                using (CheckDisposal(ref cancellation, out var externalCancellation, out var disposal))
                 {
-                    _logger?.LogWarning(exc, $"Failure in map process for local end-point '{EndPoint}'.");
+                    try
+                    {
+                        return await SendInternalAsync(message, remoteEndPoint, remoteAddress, cancellation);
+                    }
+                    catch (OperationCanceledException) when (disposal.IsCancellationRequested)
+                    {
+                        throw new ObjectDisposedException(GetType().FullName);
+                    }
+                }
+            }
 
-                    throw;
+            public async Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation)
+            {
+                using (CheckDisposal(ref cancellation, out var externalCancellation, out var disposal))
+                {
+                    try
+                    {
+                        var cancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, token2: default);
+                        var remoteAddresses = await GetAddressesAsync(remoteEndPoint, cancellation);
+                        var operations = new List<Task>();
+                        var timeout = default(Task);
+
+                        try
+                        {
+                            foreach (var remoteAddress in remoteAddresses)
+                            {
+                                if (timeout != null)
+                                {
+                                    operations.Remove(timeout);
+                                }
+
+                                operations.Add(SendInternalAsync(message, remoteEndPoint, remoteAddress, cancellation));
+                                timeout = Task.Delay(5000); // TODO: This should be configurable
+                                operations.Add(timeout);
+
+                                var completedOperation = await Task.WhenAny(operations);
+
+                                if (completedOperation != timeout)
+                                {
+                                    return await (completedOperation as Task<IMessage>);
+                                }
+                            }
+
+                            Assert(timeout != null);
+                            operations.Remove(timeout);
+
+                            return await (await Task.WhenAny(operations) as Task<IMessage>);
+                        }
+                        finally
+                        {
+                            if (operations.Count > 1)
+                            {
+                                cancellationSource.Cancel();
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException) when (disposal.IsCancellationRequested)
+                    {
+                        throw new ObjectDisposedException(GetType().FullName);
+                    }
+                }
+            }
+
+            private async Task<IMessage> SendInternalAsync(IMessage message, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
+            {
+                var responseSource = EncodeRequestMessage(message, remoteEndPoint, out var seqNum);
+                var response = responseSource.Task;
+
+                void RequestCancellation()
+                {
+                    RequestCancellationAsync(seqNum, remoteEndPoint, remoteAddress).HandleExceptions(_logger);
                 }
 
-                await _receiveProcess.StartAsync(cancellation);
+                using (cancellation.Register(RequestCancellation))
+                {
+                    await Task.WhenAll(SendEncodedMessageInternalAsync(message, remoteEndPoint, remoteAddress, cancellation), response);
+                }
+
+                return (await response).message;
+            }
+
+            private async ValueTask<IEnumerable<TAddress>> GetAddressesAsync(EndPointAddress remoteEndPoint, CancellationToken cancellation)
+            {
+                var delay = _defaultDelay;
+                var addresses = await _endPointManager._endPointMap.GetMapsAsync(remoteEndPoint, cancellation);
+
+                while (!addresses.Any())
+                {
+                    await Task.Delay(delay, cancellation);
+                    addresses = await _endPointManager._endPointMap.GetMapsAsync(remoteEndPoint, cancellation);
+                    delay = delay + delay;
+
+                    if (delay > _maxDelay)
+                        delay = _maxDelay;
+                }
+
+                return _endPointManager._endPointScheduler.Schedule(addresses);
             }
 
             #endregion
 
-            #region Disposal
-
-            public bool IsDisposed => _disposeHelper.IsDisposed;
-
-            public Task Disposal => _disposeHelper.Disposal;
-
-            public void Dispose()
+            private Task SendEncodedMessageInternalAsync(IMessage encodedMessage, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
             {
-                _disposeHelper.Dispose();
+                var physicalEndPoint = _endPointManager.GetMultiplexPhysicalEndPoint(remoteEndPoint);
+                return physicalEndPoint.SendAsync(encodedMessage, remoteAddress, cancellation);
             }
 
-            public Task DisposeAsync()
+            private Task RequestCancellationAsync(int corr, EndPointAddress remoteEndPoint, TAddress remoteAddress)
             {
-                return _disposeHelper.DisposeAsync();
+                var message = new Message();
+                EncodeMessage(message, new DecodedMessage(MessageType.CancellationRequest, GetNextSeqNum(), corr, EndPoint, remoteEndPoint));
+
+                return SendEncodedMessageInternalAsync(message, remoteEndPoint, remoteAddress, cancellation: default);
             }
 
-            private async Task DisposeInternalAsync()
-            {
-                await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
-
-                async Task UnmapAsync()
-                {
-                    _logger?.LogDebug($"Unmap local end-point '{EndPoint}' from physical end-point {LocalAddress}.");
-
-                    await _routeManager.UnmapRouteAsync(EndPoint, LocalAddress, cancellation: default).HandleExceptionsAsync(_logger);
-                }
-
-                async Task TerminateReception()
-                {
-                    await _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
-                    await PhysicalEndPoint.DisposeIfDisposableAsync().HandleExceptionsAsync(_logger);
-                }
-
-                await Task.WhenAll(UnmapAsync(), TerminateReception());
-
-                _endPointManager._endPoints.TryRemove(EndPoint, this);
-            }
-
-            #endregion
-
-            #region ReceiveProcess
+            #region Receive
 
             private async Task ReceiveProcess(CancellationToken cancellation)
             {
@@ -523,11 +356,9 @@ namespace AI4E.Routing
                     try
                     {
                         // Receive a single message
-                        var message = await PhysicalEndPoint.ReceiveAsync(cancellation);
+                        var (message, remoteAddress) = await _physicalEndPoint.ReceiveAsync(cancellation);
 
-                        var (_, localAddress, remoteAddress, remoteEndPoint, localEndPoint, messageType) = _messageCoder.DecodeMessage(message);
-
-                        Task.Run(() => HandleMessageAsync(message, localAddress, remoteAddress, remoteEndPoint, localEndPoint, messageType, cancellation)).HandleExceptions(_logger);
+                        Task.Run(() => HandleMessageAsync(message, remoteAddress, cancellation)).HandleExceptions(_logger);
                     }
                     catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                     catch (Exception exc)
@@ -537,32 +368,36 @@ namespace AI4E.Routing
                 }
             }
 
-            private async Task HandleMessageAsync(IMessage message, TAddress localAddress, TAddress remoteAddress, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, MessageType messageType, CancellationToken cancellation)
+            private async Task HandleMessageAsync(IMessage message, TAddress remoteAddress, CancellationToken cancellation)
             {
-                if (!localAddress.Equals(LocalAddress) || !EndPoint.Equals(localEndPoint))
+                DecodeMessage(message, out var decodedMessage);
+
+                if (!EndPoint.Equals(decodedMessage.RxEndPoint))
                 {
-                    await SendMisroutedAsync(remoteAddress, remoteEndPoint, localEndPoint, cancellation);
+                    await SendMisroutedAsync(remoteAddress, decodedMessage.RxEndPoint, decodedMessage.SeqNum, cancellation);
                     return;
                 }
 
-                switch (messageType)
+                switch (decodedMessage.MessageType)
                 {
-                    case MessageType.Message:
-                        {
-                            _logger?.LogTrace($"Received message from address {remoteAddress}, end-point {remoteEndPoint} for end-point {localEndPoint}.");
+                    case MessageType.Request:
+                        await HandleRequestAsync(message, decodedMessage, remoteAddress, cancellation);
+                        break;
 
-                            await OnReceivedAsync(message, remoteAddress, remoteEndPoint, cancellation);
+                    case MessageType.Response:
+                        await HandleResponseAsync(message, decodedMessage, remoteAddress, cancellation);
+                        break;
 
-                            break;
-                        }
+                    case MessageType.CancellationRequest:
+                        await HandleCancellationRequestAsync(message, decodedMessage, remoteAddress, cancellation);
+                        break;
+
+                    case MessageType.CancellationResponse:
+                        await HandleCancellationResponseAsync(message, decodedMessage, cancellation);
+                        break;
+
                     case MessageType.EndPointNotPresent:
-                        /* TODO */
-                        break;
-
                     case MessageType.ProtocolNotSupported:
-                        /* TODO */
-                        break;
-
                     case MessageType.Unknown:
                     default:
                         /* TODO */
@@ -570,246 +405,315 @@ namespace AI4E.Routing
                 }
             }
 
-            private Task SendMisroutedAsync(TAddress remoteAddress, EndPointRoute remoteEndPoint, EndPointRoute localEndPoint, CancellationToken cancellation)
+            private Task SendMisroutedAsync(TAddress remoteAddress, EndPointAddress rxEndPoint, int seqNum, CancellationToken cancellation)
             {
-                var message = _messageCoder.EncodeMessage(LocalAddress, remoteAddress, remoteEndPoint, localEndPoint, MessageType.Misrouted);
-                return PhysicalEndPoint.SendAsync(message, remoteAddress, cancellation);
+                var message = new Message();
+                EncodeMessage(message, new DecodedMessage(MessageType.Misrouted, GetNextSeqNum(), seqNum, EndPoint, rxEndPoint));
+
+                return SendEncodedMessageInternalAsync(message, rxEndPoint, remoteAddress, cancellation);
+            }
+
+            private Task HandleRequestAsync(IMessage message, DecodedMessage decodedMessage, TAddress remoteAddress, CancellationToken cancellation)
+            {
+                _logger?.LogTrace($"Received message from address {remoteAddress}, end-point {decodedMessage.TxEndPoint} for end-point {decodedMessage.RxEndPoint}.");
+                _cancellationTable.GetOrAdd((decodedMessage.TxEndPoint, remoteAddress, decodedMessage.SeqNum), _ => new CancellationTokenSource());
+                return _rxQueue.EnqueueAsync((message, decodedMessage, remoteAddress), cancellation);
+            }
+
+            private Task HandleResponseAsync(IMessage message, DecodedMessage decodedMessage, TAddress remoteAddress, CancellationToken cancellation)
+            {
+                // We did not already receive a response for this corr-id.
+                if (_responseTable.TryGetValue(decodedMessage.Corr, out var responseSource))
+                {
+                    responseSource.SetResult((message, decodedMessage, remoteAddress));
+                }
+
+                return Task.CompletedTask;
+            }
+
+            private Task HandleCancellationRequestAsync(IMessage message, DecodedMessage decodedMessage, TAddress remoteAddress, CancellationToken cancellation)
+            {
+                if (_cancellationTable.TryGetValue((decodedMessage.TxEndPoint, remoteAddress, decodedMessage.Corr), out var cancellationSource))
+                {
+                    cancellationSource.Cancel();
+                }
+
+                return Task.CompletedTask;
+            }
+
+            private Task HandleCancellationResponseAsync(IMessage message, DecodedMessage decodedMessage, CancellationToken cancellation)
+            {
+                // We did not already receive a response for this corr-id.
+                if (_responseTable.TryGetValue(decodedMessage.Corr, out var responseSource))
+                {
+                    responseSource.TrySetCanceled();
+                }
+
+                return Task.CompletedTask;
             }
 
             #endregion
 
-            private async Task OnReceivedAsync(IMessage message, TAddress remoteAddress, EndPointRoute remoteEndPoint, CancellationToken cancellation)
+            #region Coding
+
+            private readonly struct DecodedMessage // TODO: Rename
+            {
+                public DecodedMessage(MessageType messageType,
+                                      int seqNum,
+                                      int corr,
+                                      EndPointAddress txEndPoint,
+                                      EndPointAddress rxEndPoint)
+                {
+                    MessageType = messageType;
+                    SeqNum = seqNum;
+                    Corr = corr;
+                    TxEndPoint = txEndPoint;
+                    RxEndPoint = rxEndPoint;
+                }
+                public MessageType MessageType { get; }
+                public int SeqNum { get; }
+                public int Corr { get; }
+                public EndPointAddress TxEndPoint { get; }
+                public EndPointAddress RxEndPoint { get; }
+            }
+
+            private enum MessageType : int
+            {
+                /// <summary>
+                /// An unknown message type.
+                /// </summary>
+                Unknown = 0,
+
+                /// <summary>
+                /// A normal (user) message.
+                /// </summary>
+                Request = 1,
+                Response = 2,
+                CancellationRequest = 3,
+                CancellationResponse = 4,
+
+
+                /// <summary>
+                /// The protocol of a received message is not supported. The payload is the seq-num of the message in raw format.
+                /// </summary>
+                ProtocolNotSupported = -1,
+
+                EndPointNotPresent = -2,
+
+                Misrouted = -3
+            }
+
+            private void DecodeMessage(IMessage message, out DecodedMessage decodedMessage)
             {
                 if (message == null)
                     throw new ArgumentNullException(nameof(message));
 
-                await _rxQueue.EnqueueAsync(message, cancellation);
-            }
-
-            public async Task<IMessage> ReceiveAsync(CancellationToken cancellation)
-            {
-                await _initializationHelper.Initialization.WithCancellation(cancellation);
-
-                using (await _endPointManager._disposeHelper.ProhibitDisposalAsync(cancellation))
-                {
-                    if (_endPointManager._disposeHelper.IsDisposed)
-                        throw new ObjectDisposedException(_endPointManager.GetType().FullName);
-
-                    var combinedCancellation = _endPointManager._disposeHelper.CancelledOrDisposed(cancellation);
-
-                    try
-                    {
-                        using (await _disposeHelper.ProhibitDisposalAsync(combinedCancellation))
-                        {
-                            if (_disposeHelper.IsDisposed)
-                                throw new ObjectDisposedException(GetType().FullName);
-
-                            combinedCancellation = _disposeHelper.CancelledOrDisposed(combinedCancellation);
-
-                            try
-                            {
-                                return await _rxQueue.DequeueAsync(combinedCancellation);
-                            }
-                            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
-                            {
-                                throw new ObjectDisposedException(GetType().FullName);
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException) when (_endPointManager._disposeHelper.IsDisposed)
-                    {
-                        throw new ObjectDisposedException(_endPointManager.GetType().FullName);
-                    }
-                }
-            }
-
-            public async Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, CancellationToken cancellation)
-            {
-                if (message == null)
-                    throw new ArgumentNullException(nameof(message));
-
-                await _initializationHelper.Initialization.WithCancellation(cancellation);
-
-                using (await _endPointManager._disposeHelper.ProhibitDisposalAsync(cancellation))
-                {
-                    if (_endPointManager._disposeHelper.IsDisposed)
-                        throw new ObjectDisposedException(_endPointManager.GetType().FullName);
-
-                    var combinedCancellation = _endPointManager._disposeHelper.CancelledOrDisposed(cancellation);
-
-                    try
-                    {
-                        using (await _disposeHelper.ProhibitDisposalAsync(combinedCancellation))
-                        {
-                            if (_disposeHelper.IsDisposed)
-                                throw new ObjectDisposedException(GetType().FullName);
-
-                            combinedCancellation = _disposeHelper.CancelledOrDisposed(combinedCancellation);
-
-                            try
-                            {
-                                await _endPointManager.SendAsync(message, EndPoint, remoteEndPoint, combinedCancellation);
-                            }
-                            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
-                            {
-                                throw new ObjectDisposedException(GetType().FullName);
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException) when (_endPointManager._disposeHelper.IsDisposed)
-                    {
-                        throw new ObjectDisposedException(_endPointManager.GetType().FullName);
-                    }
-                }
-            }
-
-            public async Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
-            {
-                if (message == null)
-                    throw new ArgumentNullException(nameof(message));
-
-                if (remoteEndPoint == null)
-                    throw new ArgumentNullException(nameof(remoteEndPoint));
-
-                if (remoteAddress == null)
-                    throw new ArgumentNullException(nameof(remoteAddress));
-
-                if (remoteAddress == default)
-                    throw new ArgumentDefaultException(nameof(remoteAddress));
-
-                await _initializationHelper.Initialization.WithCancellation(cancellation);
-
-                using (await _endPointManager._disposeHelper.ProhibitDisposalAsync(cancellation))
-                {
-                    if (_endPointManager._disposeHelper.IsDisposed)
-                        throw new ObjectDisposedException(_endPointManager.GetType().FullName);
-
-                    var combinedCancellation = _endPointManager._disposeHelper.CancelledOrDisposed(cancellation);
-
-                    try
-                    {
-                        using (await _disposeHelper.ProhibitDisposalAsync(combinedCancellation))
-                        {
-                            if (_disposeHelper.IsDisposed)
-                                throw new ObjectDisposedException(GetType().FullName);
-
-                            combinedCancellation = _disposeHelper.CancelledOrDisposed(combinedCancellation);
-
-                            try
-                            {
-                                await SendInternalAsync(message, remoteEndPoint, remoteAddress, combinedCancellation);
-                            }
-                            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
-                            {
-                                throw new ObjectDisposedException(GetType().FullName);
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException) when (_endPointManager._disposeHelper.IsDisposed)
-                    {
-                        throw new ObjectDisposedException(_endPointManager.GetType().FullName);
-                    }
-                }
-            }
-
-            public async Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation)
-            {
-                if (response == null)
-                    throw new ArgumentNullException(nameof(response));
-
-                if (request == null)
-                    throw new ArgumentNullException(nameof(request));
-
-                // We need to push the frame in order that the decoder can pop it
-                var frameIdx = request.FrameIndex;
-                request.PushFrame();
-
-                TAddress remoteAddress;
-                EndPointRoute localEndPoint, remoteEndPoint;
+                var frameIdx = message.FrameIndex;
+                MessageType messageType;
+                int seqNum, corr;
+                EndPointAddress txEndPoint, rxEndPoint;
 
                 try
                 {
-                    try
+                    using (var frameStream = message.PopFrame().OpenStream())
+                    using (var reader = new BinaryReader(frameStream))
                     {
-                        (_, _, remoteAddress, remoteEndPoint, localEndPoint, _) = _messageCoder.DecodeMessage(request);
-                    }
-                    catch (Exception exc)
-                    {
-                        throw new ArgumentException("The message is not formatted as expected.", nameof(request), exc);
-                    }
+                        messageType = (MessageType)reader.ReadInt32();
+                        seqNum = reader.ReadInt32();
+                        corr = reader.ReadInt32();
 
-                    Assert(remoteAddress != null);
-                    Assert(remoteEndPoint != null);
-                    Assert(localEndPoint != null);
-                    Assert(frameIdx == request.FrameIndex);
+                        txEndPoint = reader.ReadEndPointAddress();
+                        rxEndPoint = reader.ReadEndPointAddress();
+                    }
                 }
-                catch when (frameIdx != request.FrameIndex)
+                catch when (message.FrameIndex != frameIdx)
                 {
-                    request.PopFrame();
-                    Assert(frameIdx == request.FrameIndex);
+                    message.PushFrame();
+                    Assert(message.FrameIndex == frameIdx);
                     throw;
                 }
 
-                if (localEndPoint != EndPoint)
+                decodedMessage = new DecodedMessage(messageType, seqNum, corr, txEndPoint, rxEndPoint);
+            }
+
+            private void EncodeMessage(IMessage message, in DecodedMessage decodedMessage)
+            {
+                if (message == null)
+                    throw new ArgumentNullException(nameof(message));
+
+                var frameIdx = message.FrameIndex;
+
+                try
                 {
-                    throw new InvalidOperationException("Cannot send a response from another end point than the request was received from.");
+                    using (var frameStream = message.PushFrame().OpenStream(overrideContent: true))
+                    using (var writer = new BinaryWriter(frameStream))
+                    {
+                        writer.Write((int)decodedMessage.MessageType);  // Message type        -- 4 Byte
+                        writer.Write(decodedMessage.SeqNum);            // Seq num             -- 4 Byte
+                        writer.Write(decodedMessage.Corr);              // Coor num            -- 4 Byte
+                        writer.Write(decodedMessage.TxEndPoint);
+                        writer.Write(decodedMessage.RxEndPoint);
+                    }
                 }
-
-                await _initializationHelper.Initialization.WithCancellation(cancellation);
-
-                using (await _endPointManager._disposeHelper.ProhibitDisposalAsync(cancellation))
+                catch when (message.FrameIndex != frameIdx)
                 {
-                    if (_endPointManager._disposeHelper.IsDisposed)
-                        throw new ObjectDisposedException(_endPointManager.GetType().FullName);
-
-                    var combinedCancellation = _endPointManager._disposeHelper.CancelledOrDisposed(cancellation);
-
-                    try
-                    {
-                        using (await _disposeHelper.ProhibitDisposalAsync(combinedCancellation))
-                        {
-                            if (_disposeHelper.IsDisposed)
-                                throw new ObjectDisposedException(GetType().FullName);
-
-                            combinedCancellation = _disposeHelper.CancelledOrDisposed(combinedCancellation);
-
-                            try
-                            {
-                                await SendInternalAsync(response, remoteEndPoint, remoteAddress, combinedCancellation);
-                            }
-                            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
-                            {
-                                throw new ObjectDisposedException(GetType().FullName);
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException) when (_endPointManager._disposeHelper.IsDisposed)
-                    {
-                        throw new ObjectDisposedException(_endPointManager.GetType().FullName);
-                    }
+                    message.PopFrame();
+                    Assert(message.FrameIndex == frameIdx);
+                    throw;
                 }
             }
 
-            private Task SendInternalAsync(IMessage message, EndPointRoute remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
+            private TaskCompletionSource<(IMessage message, DecodedMessage decodedMessage, TAddress remoteAddress)> EncodeRequestMessage(
+                IMessage message,
+                EndPointAddress remoteEndPoint,
+                out int seqNum)
             {
-                //If we are the sender, we can short-circuit
-                if (remoteAddress.Equals(LocalAddress))
+                var responseSource = new TaskCompletionSource<(IMessage message, DecodedMessage decodedMessage, TAddress remoteAddress)>();
+                seqNum = AllocateResponseTableSlot(responseSource);
+
+                EncodeMessage(message, new DecodedMessage(MessageType.Request, seqNum, corr: 0, EndPoint, remoteEndPoint));
+                return responseSource;
+            }
+
+            #endregion
+
+            #region Disposal
+
+            public void Dispose()
+            {
+                var disposalSource = Interlocked.Exchange(ref _disposalSource, null);
+
+                if (disposalSource != null)
                 {
-                    if (EndPoint.Equals(remoteEndPoint))
+                    _logger?.LogDebug($"Unmap local end-point '{EndPoint}' from physical end-point {LocalAddress}.");
+                    _endPointManager._endPointMap.UnmapEndPointAsync(EndPoint, LocalAddress, cancellation: default).HandleExceptionsAsync(_logger).GetAwaiter().GetResult(); // TODO
+                    _receiveProcess.Terminate();
+                    _physicalEndPoint.Dispose();
+
+                    lock (_endPointManager._endPointsLock)
                     {
-                        return OnReceivedAsync(message, LocalAddress, EndPoint, cancellation);
+                        _endPointManager._endPoints.Remove(EndPoint, this);
                     }
 
-                    if (_endPointManager._endPoints.TryGetValue(remoteEndPoint, out var endPoint))
-                    {
-                        return endPoint.OnReceivedAsync(message, LocalAddress, EndPoint, cancellation);
-                    }
+                    disposalSource.Dispose();
+                }
+            }
 
-                    _logger?.LogWarning($"Received message for end-point {remoteEndPoint} that is unavailable.");
-                    return Task.CompletedTask;
+            private IDisposable CheckDisposal(ref CancellationToken cancellation,
+                                              out CancellationToken externalCancellation,
+                                              out CancellationToken disposal)
+            {
+                var disposalSource = _disposalSource; // Volatile read op
+
+                if (disposalSource == null)
+                    throw new ObjectDisposedException(GetType().FullName);
+
+                externalCancellation = cancellation;
+                disposal = disposalSource.Token;
+
+                if (cancellation.CanBeCanceled)
+                {
+                    var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, disposal);
+                    cancellation = combinedCancellationSource.Token;
+
+                    return combinedCancellationSource;
+                }
+                else
+                {
+                    cancellation = disposal;
+
+                    return NoOpDisposable.Instance;
+                }
+            }
+
+            #endregion
+
+            private int GetNextSeqNum()
+            {
+                return Interlocked.Increment(ref _nextSeqNum);
+            }
+
+            private int AllocateResponseTableSlot(TaskCompletionSource<(IMessage message, DecodedMessage decodedMessage, TAddress remoteAddress)> responseSource)
+            {
+                var seqNum = GetNextSeqNum();
+
+                while (!_responseTable.TryAdd(seqNum, responseSource))
+                {
+                    seqNum = GetNextSeqNum();
                 }
 
-                return _endPointManager.SendAsync(message, EndPoint, remoteEndPoint, remoteAddress, cancellation);
+                return seqNum;
+            }
+
+            private sealed class MessageReceiveResult : ILogicalEndPointReceiveResult<TAddress>
+            {
+                private readonly LogicalEndPoint _logicalEndPoint;
+                private readonly CancellationTokenSource _cancellationRequestSource;
+                private readonly int _seqNum;
+
+                public MessageReceiveResult(LogicalEndPoint logicalEndPoint, IMessage message, in DecodedMessage decodedMessage, TAddress remoteAddress)
+                {
+                    _logicalEndPoint = logicalEndPoint;
+                    Message = message;
+                    RemoteEndPoint = decodedMessage.TxEndPoint;
+                    RemoteAddress = remoteAddress;
+                    _seqNum = decodedMessage.SeqNum;
+
+                    _cancellationRequestSource = _logicalEndPoint._cancellationTable.GetOrAdd((RemoteEndPoint, RemoteAddress, _seqNum), new CancellationTokenSource());
+                }
+
+                public CancellationToken Cancellation => _cancellationRequestSource.Token;
+
+                public IMessage Message { get; }
+
+                public EndPointAddress RemoteEndPoint { get; }
+
+                public TAddress RemoteAddress { get; }
+
+                Packet<EndPointAddress> IMessageReceiveResult<Packet<EndPointAddress>>.Packet
+                    => new Packet<EndPointAddress>(Message, RemoteEndPoint);
+
+                Packet<EndPointAddress, TAddress> IMessageReceiveResult<Packet<EndPointAddress, TAddress>>.Packet
+                    => new Packet<EndPointAddress, TAddress>(Message, RemoteEndPoint, RemoteAddress);
+
+                public void Dispose()
+                {
+                    _cancellationRequestSource.Dispose();
+                    _logicalEndPoint._cancellationTable.Remove((RemoteEndPoint, RemoteAddress, _seqNum), _cancellationRequestSource);
+                }
+
+                public Task SendResponseAsync(IMessage response)
+                {
+                    if (response == null)
+                        throw new ArgumentNullException(nameof(response));
+
+                    return SendResponseInternalAsync(response);
+                }
+
+                public Task SendCancellationAsync()
+                {
+                    var message = new Message();
+                    _logicalEndPoint.EncodeMessage(message, new DecodedMessage(MessageType.CancellationResponse, _logicalEndPoint.GetNextSeqNum(), _seqNum, _logicalEndPoint.EndPoint, RemoteEndPoint));
+
+                    return _logicalEndPoint.SendEncodedMessageInternalAsync(message, RemoteEndPoint, RemoteAddress, Cancellation); // TODO: Can we pass Cancellation here?
+                }
+
+                public Task SendAckAsync()
+                {
+                    return SendResponseInternalAsync(null);
+                }
+
+                private Task SendResponseInternalAsync(IMessage response)
+                {
+                    if (response == null)
+                    {
+                        response = new Message();
+                    }
+
+                    _logicalEndPoint.EncodeMessage(response, new DecodedMessage(MessageType.Response, _logicalEndPoint.GetNextSeqNum(), _seqNum, _logicalEndPoint.EndPoint, RemoteEndPoint));
+
+                    return _logicalEndPoint.SendEncodedMessageInternalAsync(response, RemoteEndPoint, RemoteAddress, Cancellation); // TODO: Can we pass Cancellation here?
+                }
             }
         }
     }

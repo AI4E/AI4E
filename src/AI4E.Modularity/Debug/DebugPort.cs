@@ -139,15 +139,15 @@ namespace AI4E.Modularity.Debug
         public IReadOnlyCollection<IDebugSession> DebugSessions => _debugSessions.Values.Where(p => p.IsMetadataSet).ToList();
 
         public void DebugSessionConnected(IPEndPoint address,
-                                          EndPointRoute endPoint,
+                                          EndPointAddress endPoint,
                                           ModuleIdentifier module,
                                           ModuleVersion moduleVersion)
         {
             if (address == null)
                 throw new ArgumentNullException(nameof(address));
 
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             if (module == default)
                 throw new ArgumentDefaultException(nameof(module));
@@ -159,7 +159,7 @@ namespace AI4E.Modularity.Debug
 
             // TODO: There is a race condition if this is hte metadata for an older debug session that had the same address coincidentally.
             session.SetMetadata(endPoint, module, moduleVersion);
-            _logger?.LogTrace($"The metadata for debug session '{endPoint.Route}' were set.");
+            _logger?.LogTrace($"The metadata for debug session '{endPoint}' were set.");
         }
 
         private async Task ConnectProcedure(CancellationToken cancellation)
@@ -256,7 +256,7 @@ namespace AI4E.Modularity.Debug
             private readonly object _lock = new object();
             private volatile bool _isMetadataSet = false;
 
-            public void SetMetadata(EndPointRoute endPoint, ModuleIdentifier module, ModuleVersion moduleVersion)
+            public void SetMetadata(EndPointAddress endPoint, ModuleIdentifier module, ModuleVersion moduleVersion)
             {
                 // Volatile read op.
                 if (_isMetadataSet)
@@ -280,7 +280,7 @@ namespace AI4E.Modularity.Debug
             }
 
             // Reading any of these props before MetadataSet returns true is UNSAFE and vulnerable to threading issues.
-            public EndPointRoute EndPoint { get; private set; }
+            public EndPointAddress EndPoint { get; private set; }
             public ModuleIdentifier Module { get; private set; }
             public ModuleVersion ModuleVersion { get; private set; }
 

@@ -21,6 +21,6 @@
         /// <returns>The created message router.</returns>
         /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="serializedMessageHandler"/> is null.</exception>
         /// <exception cref="System.NotSupportedException">Thrown if the factory is unable to create message routers for end-points other than the default.</exception>
-        IMessageRouter CreateMessageRouter(EndPointRoute endPoint, ISerializedMessageHandler serializedMessageHandler, RouteOptions options);
+        IMessageRouter CreateMessageRouter(EndPointAddress endPoint, ISerializedMessageHandler serializedMessageHandler, RouteOptions options);
     }
 }

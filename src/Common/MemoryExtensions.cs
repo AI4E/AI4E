@@ -1,11 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace AI4E.Coordination
+namespace AI4E.Internal
 {
-    internal static class MemoryExtensions
+    internal static partial class MemoryExtensions
     {
         public static ReadOnlyMemory<char> Trim(this ReadOnlyMemory<char> s)
         {
@@ -40,6 +39,7 @@ namespace AI4E.Coordination
 
             return s.Slice(start, count);
         }
+
         public static bool SequenceEqual<T>(this ReadOnlyMemory<T> left, ReadOnlyMemory<T> right, IEqualityComparer<T> comparer)
         {
             if (comparer == null)
@@ -74,14 +74,18 @@ namespace AI4E.Coordination
             return SequenceEqual(left, right, EqualityComparer<T>.Default);
         }
 
+        [Obsolete("Use 'IsEmptyOrWhiteSpace(ReadOnlySpan<char>)'")]
         public static bool IsEmptyOrWhiteSpace(this ReadOnlyMemory<char> s)
         {
-            if (s.IsEmpty)
+            return s.Span.IsEmptyOrWhiteSpace();
+        }
+
+        public static bool IsEmptyOrWhiteSpace(this ReadOnlySpan<char> span)
+        {
+            if (span.IsEmpty)
                 return true;
 
-            var span = s.Span;
-
-            for (var j = 0; j < s.Length; j++)
+            for (var j = 0; j < span.Length; j++)
             {
                 if (!char.IsWhiteSpace(span[j]))
                 {
@@ -117,18 +121,6 @@ namespace AI4E.Coordination
             var resultAsMemory = MemoryMarshal.AsMemory(result.AsMemory());
             memory.CopyTo(resultAsMemory);
             return result;
-        }
-
-        public static int SequenceHashCode<T>(this ReadOnlyMemory<T> memory) where T : unmanaged
-        {
-            // TODO: Optimize this https://stackoverflow.com/questions/3404715/c-sharp-hashcode-for-array-of-ints#answer-3404820
-
-            var hc = memory.Length;
-            for (var i = 0; i < memory.Length; ++i)
-            {
-                hc = unchecked(hc * 314159 + memory.Span[i].GetHashCode());
-            }
-            return hc;
         }
     }
 }

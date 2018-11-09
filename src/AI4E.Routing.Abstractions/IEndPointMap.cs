@@ -1,10 +1,10 @@
 ﻿/* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        EventHandler.cs 
- * Types:           (1) AI4E.EventHandler
+ * Filename:        IEndPointMap.cs 
+ * Types:           AI4E.Routing.IEndPointMap'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   19.01.2018 
+ * Last modified:   11.04.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -28,11 +28,17 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-using AI4E.DispatchResults;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace AI4E
+namespace AI4E.Routing
 {
-    [Obsolete("Use MessageHandler")]
-    public abstract class EventHandler : MessageHandler  { }
+    public interface IEndPointMap<TAddress>
+    {
+        ValueTask<IEnumerable<TAddress>> GetMapsAsync(EndPointAddress endPoint, CancellationToken cancellation);
+        Task MapEndPointAsync(EndPointAddress endPoint, TAddress address, CancellationToken cancellation);
+        Task UnmapEndPointAsync(EndPointAddress endPoint, TAddress address, CancellationToken cancellation);
+        Task UnmapEndPointAsync(EndPointAddress endPoint, CancellationToken cancellation);
+    }
 }

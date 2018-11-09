@@ -83,7 +83,7 @@ namespace AI4E.Modularity.Module
             else
             {
                 var endPointManager = serviceProvider.GetRequiredService<IEndPointManager>();
-                return endPointManager.GetLogicalEndPoint(remoteOptions.LocalEndPoint);
+                return endPointManager.CreateLogicalEndPoint(remoteOptions.LocalEndPoint);
             }
         }
 

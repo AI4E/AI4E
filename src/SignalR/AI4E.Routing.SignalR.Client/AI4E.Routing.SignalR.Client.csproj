@@ -5,9 +5,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\Common\ArrayPoolExtension.cs" Link="Internal\ArrayPoolExtension.cs" />
     <Compile Include="..\..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
+    <Compile Include="..\..\Common\DictionaryExtension.cs" Link="Internal\DictionaryExtension.cs" />
+    <Compile Include="..\..\Common\MemoryExtensions.Base64Decode.cs" Link="Internal\MemoryExtensions.Base64Decode.cs" />
+    <Compile Include="..\..\Common\NoOpDisposable.cs" Link="Internal\NoOpDisposable.cs" />
+    <Compile Include="..\..\Common\TaskCompletionSourceExtension.cs" Link="Internal\TaskCompletionSourceExtension.cs" />
     <Compile Include="..\..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
-    <Compile Include="..\Common\ICallStub.cs" Link="Internal\ICallStub.cs" />
+    <Compile Include="..\AI4E.Routing.SignalR.Server\IServerCallStub.cs" Link="IServerCallStub.cs" />
   </ItemGroup>
 
   <ItemGroup>

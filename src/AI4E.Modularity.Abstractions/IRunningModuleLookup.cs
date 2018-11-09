@@ -27,10 +27,10 @@ namespace AI4E.Modularity
 {
     public interface IRunningModuleLookup
     {
-        Task AddModuleAsync(ModuleIdentifier module, EndPointRoute endPoint, IEnumerable<string> prefixes, CancellationToken cancellation);
+        Task AddModuleAsync(ModuleIdentifier module, EndPointAddress endPoint, IEnumerable<string> prefixes, CancellationToken cancellation);
         Task RemoveModuleAsync(ModuleIdentifier module, CancellationToken cancellation);
 
-        ValueTask<IEnumerable<EndPointRoute>> GetEndPointsAsync(string prefix, CancellationToken cancellation);
+        ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(string prefix, CancellationToken cancellation);
         ValueTask<IEnumerable<string>> GetPrefixesAsync(ModuleIdentifier module, CancellationToken cancellation);
     }
 }

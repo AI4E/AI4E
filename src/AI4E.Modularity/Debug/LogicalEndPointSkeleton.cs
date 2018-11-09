@@ -1,45 +1,40 @@
-﻿using System.IO;
+using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
+using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Debug
 {
-    public sealed class LogicalEndPointSkeleton : IAsyncDisposable
+    public sealed class LogicalEndPointSkeleton : IDisposable
     {
         private readonly IEndPointManager _endPointManager;
         private readonly ILogicalEndPoint _logicalEndPoint;
 
-        public LogicalEndPointSkeleton(IEndPointManager endPointManager, EndPointRoute route)
+        public LogicalEndPointSkeleton(IEndPointManager endPointManager, EndPointAddress endPoint)
         {
             if (endPointManager == null)
-                throw new System.ArgumentNullException(nameof(endPointManager));
+                throw new ArgumentNullException(nameof(endPointManager));
 
-            if (route == null)
-                throw new System.ArgumentNullException(nameof(route));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             _endPointManager = endPointManager;
 
-            _logicalEndPoint = _endPointManager.GetLogicalEndPoint(route);
+            _logicalEndPoint = _endPointManager.CreateLogicalEndPoint(endPoint);
         }
 
-        public async Task<byte[]> ReceiveAsync(CancellationToken cancellation = default)
+        public async Task<IProxy<MessageReceiveResultSkeleton>> ReceiveAsync(CancellationToken cancellation = default)
         {
-            var message = await _logicalEndPoint.ReceiveAsync(cancellation);
-
-            var buffer = new byte[message.Length];
-
-            using (var stream = new MemoryStream(buffer, writable: true))
-            {
-                await message.WriteAsync(stream, cancellation);
-            }
-
-            return buffer;
+            var receiveResult = await _logicalEndPoint.ReceiveAsync(cancellation);
+            var receiveResultSkeleton = new MessageReceiveResultSkeleton(receiveResult);
+            return new Proxy<MessageReceiveResultSkeleton>(receiveResultSkeleton, ownsInstance: true);
         }
 
-        public async Task SendAsync(byte[] messageBuffer, EndPointRoute remoteEndPoint, CancellationToken cancellation = default)
+        public async Task<byte[]> SendAsync(byte[] messageBuffer, EndPointAddress remoteEndPoint, CancellationToken cancellation = default)
         {
             var message = new Message();
 
@@ -48,41 +43,76 @@ namespace AI4E.Modularity.Debug
                 await message.ReadAsync(stream, cancellation);
             }
 
-            await _logicalEndPoint.SendAsync(message, remoteEndPoint, cancellation);
+            var response = await _logicalEndPoint.SendAsync(message, remoteEndPoint, cancellation);
+
+            return response.ToArray();
         }
-
-        public async Task SendAsync(byte[] responseBuffer, byte[] requestBuffer, CancellationToken cancellation = default)
-        {
-            var response = new Message();
-            var request = new Message();
-
-            using (var stream = new MemoryStream(responseBuffer))
-            {
-                await response.ReadAsync(stream, cancellation);
-            }
-
-            using (var stream = new MemoryStream(requestBuffer))
-            {
-                await request.ReadAsync(stream, cancellation);
-            }
-
-            await _logicalEndPoint.SendAsync(response, request, cancellation);
-        }
-
-        #region Disposal
-
-        public Task Disposal => _logicalEndPoint.Disposal;
 
         public void Dispose()
         {
             _logicalEndPoint.Dispose();
         }
+    }
 
-        public Task DisposeAsync()
+    [Serializable]
+    public struct MessageReceiveResultValues
+    {
+        public byte[] Message { get; set; }
+        public EndPointAddress RemoteEndPoint { get; set; }
+
+        [field: NonSerialized] // TODO: https://github.com/AI4E/AI4E/issues/62
+        public CancellationToken Cancellation { get; set; }
+    }
+
+    public sealed class MessageReceiveResultSkeleton
+    {
+        private readonly ILogicalEndPointReceiveResult _receiveResult;
+
+        public MessageReceiveResultSkeleton(ILogicalEndPointReceiveResult receiveResult)
         {
-            return _logicalEndPoint.DisposeAsync();
+            if (receiveResult == null)
+                throw new ArgumentNullException(nameof(receiveResult));
+
+            _receiveResult = receiveResult;
         }
 
-        #endregion
+        public MessageReceiveResultValues GetResultValues()
+        {
+            return new MessageReceiveResultValues
+            {
+                Message = _receiveResult.Message.ToArray(),
+                RemoteEndPoint = _receiveResult.RemoteEndPoint,
+                Cancellation = _receiveResult.Cancellation
+            };
+        }
+
+        public async Task SendResponseAsync(byte[] responseBuffer)
+        {
+            Assert(responseBuffer != null);
+
+            var response = new Message();
+
+            using (var stream = new MemoryStream(responseBuffer))
+            {
+                await response.ReadAsync(stream, cancellation: default);
+            }
+
+            await _receiveResult.SendResponseAsync(response);
+        }
+
+        public Task SendCancellationAsync()
+        {
+            return _receiveResult.SendCancellationAsync();
+        }
+
+        public Task SendAckAsync()
+        {
+            return _receiveResult.SendAckAsync();
+        }
+
+        public void Dispose()
+        {
+            _receiveResult.Dispose();
+        }
     }
 }

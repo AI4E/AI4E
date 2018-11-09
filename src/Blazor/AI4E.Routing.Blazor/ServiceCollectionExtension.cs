@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using AI4E.Internal;
 using AI4E.Remoting;
 using Blazor.Extensions;
@@ -29,7 +29,7 @@ namespace AI4E.Routing.Blazor
             services.AddSingleton<ITypeConversion, TypeSerializer>();
 
             services.AddSingleton<IClientEndPoint, ClientEndPoint>();
-            services.AddSingleton<ILogicalClientEndPoint, LogicalClientEndPoint>();
+            services.AddSingleton<IRequestReplyClientEndPoint, RequestReplyClientEndPoint>();
             services.AddSingleton<IMessageRouterFactory, RemoteMessageRouterFactory>();
             services.AddSingleton(configureHubConnection);
         }

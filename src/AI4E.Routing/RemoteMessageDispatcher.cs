@@ -113,12 +113,12 @@ namespace AI4E.Routing
         }
 
         [Obsolete("Use GetLocalEndPointAsync(CancellationToken)")]
-        EndPointRoute IRemoteMessageDispatcher.LocalEndPoint => GetLocalEndPointAsync(cancellation: default)
+        EndPointAddress IRemoteMessageDispatcher.LocalEndPoint => GetLocalEndPointAsync(cancellation: default)
                                                 .ConfigureAwait(false)
                                                 .GetAwaiter()
                                                 .GetResult();
 
-        public ValueTask<EndPointRoute> GetLocalEndPointAsync(CancellationToken cancellation)
+        public ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)
         {
             return _messageRouter.GetLocalEndPointAsync(cancellation);
         }
@@ -216,13 +216,13 @@ namespace AI4E.Routing
 
         public Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData,
                                                    bool publish,
-                                                   EndPointRoute endPoint,
+                                                   EndPointAddress endPoint,
                                                    CancellationToken cancellation = default)
         {
             if (dispatchData == null)
                 throw new ArgumentNullException(nameof(dispatchData));
 
-            if (endPoint != null)
+            if (endPoint != default)
             {
                 return InternalDispatchAsync(dispatchData, publish, endPoint, cancellation);
             }
@@ -242,7 +242,7 @@ namespace AI4E.Routing
 
         private async Task<IDispatchResult> InternalDispatchAsync(DispatchDataDictionary dispatchData,
                                                                   bool publish,
-                                                                  EndPointRoute endPoint,
+                                                                  EndPointAddress endPoint,
                                                                   CancellationToken cancellation)
         {
             var route = _typeConversion.SerializeType(dispatchData.MessageType);

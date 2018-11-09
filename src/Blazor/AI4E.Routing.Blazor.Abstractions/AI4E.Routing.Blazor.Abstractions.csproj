@@ -10,26 +10,35 @@
     <Compile Include="..\..\AI4E.Remoting.Abstractions\IMessage.cs" Link="Remoting\IMessage.cs" />
     <Compile Include="..\..\AI4E.Remoting.Abstractions\IMessageFrame.cs" Link="Remoting\IMessageFrame.cs" />
     <Compile Include="..\..\AI4E.Remoting.Abstractions\ITypeConversion.cs" Link="Remoting\ITypeConversion.cs" />
-    <Compile Include="..\..\AI4E.Routing.Abstractions\EndPointRoute.cs" Link="Routing\EndPointRoute.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\EndPointAddress.cs" Link="Routing\EndPointAddress.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\IEndPoint.cs" Link="Routing\IEndPoint.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\IMessageReceiveResult .cs" Link="Routing\IMessageReceiveResult .cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\IMessageRouter.cs" Link="Routing\IMessageRouter.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\IMessageRouterFactory.cs" Link="Routing\IMessageRouterFactory.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\IRemoteMessageDispatcher.cs" Link="Routing\IRemoteMessageDispatcher.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\IRequestReplyEndPoint.cs" Link="Routing\IRequestReplyEndPoint.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\ISerializedMessageHandler.cs" Link="Routing\ISerializedMessageHandler.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\RouteOptions.cs" Link="Routing\RouteOptions.cs" />
+    <Compile Include="..\..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />
+    <Compile Include="..\..\Common\MemoryExtensions.SequenceHashCode.cs" Link="Internal\MemoryExtensions.SequenceHashCode.cs" />
+    <Compile Include="..\..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client.Abstractions\IClientEndPoint.cs" Link="IClientEndPoint.cs" />
-    <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client.Abstractions\ILogicalClientEndPoint.cs" Link="ILogicalClientEndPoint.cs" />
+    <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client.Abstractions\IRequestReplyClientEndPoint.cs" Link="IRequestReplyClientEndPoint.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="$(SystemThreadingTasksExtensionsVersion)" />
+    <PackageReference Include="System.Numerics.Vectors" Version="$(SystemNumericsVectorsVersion)" />
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Internal\" />
     <Folder Include="Routing\" />
     <Folder Include="Remoting\" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\lib\AI4E.Memory.Compatibility\src\AI4E.Memory.Compatibility\AI4E.Memory.Compatibility.csproj" />
     <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
   </ItemGroup>
 

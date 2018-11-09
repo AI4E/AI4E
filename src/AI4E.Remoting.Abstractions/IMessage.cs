@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IMessage.cs 
  * Types:           AI4E.Remoting.IMessage
@@ -28,6 +28,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,10 +45,15 @@ namespace AI4E.Remoting
 
         void Trim(); // TODO: Rename?
 
+        Span<byte> Write(Span<byte> memory);
+        void Read(ReadOnlySpan<byte> memory);
+
         Task WriteAsync(Stream stream, CancellationToken cancellation);
         Task ReadAsync(Stream stream, CancellationToken cancellation);
 
         int FrameCount { get; }
         int FrameIndex { get; }
+
+        byte[] ToArray();
     }
 }

@@ -35,13 +35,7 @@ namespace AI4E.Routing.SignalR.Server.Sample
                     .UseInMemoryDatabase();
 
             services.AddModularity();
-            services.AddSignalR();
-
-            services.AddSingleton<ServerEndPoint>();
-            services.AddSingleton<IServerEndPoint>(p => p.GetRequiredService<ServerEndPoint>());
-            services.AddSingleton<ILogicalServerEndPoint, LogicalServerEndPoint>();
-            services.AddSingleton<ClientManager>();
-            services.AddSingleton<IConnectedClientLookup, ConnectedClientLookup>();
+            services.AddSignalRServerRouting();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -59,10 +53,7 @@ namespace AI4E.Routing.SignalR.Server.Sample
             app.UseStaticFiles();
             app.UseCookiePolicy();
 
-            app.UseSignalR(routes =>
-            {
-                routes.MapHub<ServerCallStub>("/MessageDispatcherHub");
-            });
+            app.UseSignalRServerRouting();
 
             app.UseMvc();
         }

@@ -49,7 +49,6 @@
 
 using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -165,6 +164,30 @@ namespace AI4E
             Debug.Assert(result.Length == charsWritten, $"Expected {result.Length} == {charsWritten}");
 
             return result.Span;
+        }
+
+        public static string ToBase64String(ReadOnlySpan<byte> bytes, Base64FormattingOptions options = Base64FormattingOptions.None)
+        {
+            if (bytes.IsEmpty)
+            {
+                return string.Empty;
+            }
+
+            var resultLength = ComputeBase64EncodedLength(bytes, options);
+
+            if (resultLength == 0)
+            {
+                return string.Empty;
+            }
+
+            var result = new string('\0', resultLength);
+            var memory = MemoryMarshal.AsMemory(result.AsMemory());
+
+            var charsLength = ToBase64Chars(bytes, memory.Span, options).Length;
+
+            Debug.Assert(charsLength == resultLength);
+
+            return result;
         }
 
         private static int ConvertToBase64Array(Span<char> chars, ReadOnlySpan<byte> bytes, int offset, int length, Base64FormattingOptions options)

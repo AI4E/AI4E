@@ -1,10 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
 using AI4E.Internal;
 using AI4E.Processing;
 using AI4E.Remoting;
@@ -13,38 +12,29 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing.SignalR.Server
 {
-    // TODO: (1) The receive process must be throttled. If not, the receive process will execute an infinite loop because the Task.Run call is not awaited.
-    //           This can be solved most clean if the LogicalServerEndPoints receive Api is replaced with an api like in the LogicalEndPoint.
-    //       (2) A GC must be implemented that removes clients that's sessions are terminated. 
-    //       (3) Rename
-    //       (4) Lease length shall be configurable and synced with the client.
-    public sealed class ClientManager : IAsyncDisposable
+    // TODO: Rename
+    public sealed class ClientManager : IDisposable
     {
-        private readonly TimeSpan _leaseLength = TimeSpan.FromSeconds(30); // TODO: This should be configurable.
-
-        private readonly ILogicalServerEndPoint _logicalEndPoint;
+        private readonly IRequestReplyServerEndPoint _endPoint;
         private readonly IMessageRouterFactory _messageRouterFactory;
         private readonly IEndPointManager _endPointManager;
-        private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IConnectedClientLookup _connectedClients;
         private readonly ILogger<ClientManager> _logger;
 
-        private readonly Dictionary<EndPointRoute, LinkedListNode<(DateTime leaseEnd, IMessageRouter router, EndPointRoute endPoint)>> _routers;
-        private readonly LinkedList<(DateTime leaseEnd, IMessageRouter router, EndPointRoute endPoint)> _sortedRouters;
+        private readonly Dictionary<EndPointAddress, (IMessageRouter router, Task disonnectionTask)> _routers;
         private readonly object _routersLock = new object();
 
         private readonly IAsyncProcess _receiveProcess;
-        private readonly IAsyncProcess _garbageCollectionProcess;
-        private readonly AsyncInitializationHelper _initializationHelper;
-        private readonly AsyncDisposeHelper _disposeHelper;
+        private bool _isDisposed;
 
-        public ClientManager(ILogicalServerEndPoint logicalEndPoint,
+        public ClientManager(IRequestReplyServerEndPoint endPoint,
                              IMessageRouterFactory messageRouterFactory,
                              IEndPointManager endPointManager,
-                             IDateTimeProvider dateTimeProvider,
+                             IConnectedClientLookup connectedClients,
                              ILogger<ClientManager> logger)
         {
-            if (logicalEndPoint == null)
-                throw new ArgumentNullException(nameof(logicalEndPoint));
+            if (endPoint == null)
+                throw new ArgumentNullException(nameof(endPoint));
 
             if (messageRouterFactory == null)
                 throw new ArgumentNullException(nameof(messageRouterFactory));
@@ -52,22 +42,18 @@ namespace AI4E.Routing.SignalR.Server
             if (endPointManager == null)
                 throw new ArgumentNullException(nameof(endPointManager));
 
-            if (dateTimeProvider == null)
-                throw new ArgumentNullException(nameof(dateTimeProvider));
+            if (connectedClients == null)
+                throw new ArgumentNullException(nameof(connectedClients));
 
-            _logicalEndPoint = logicalEndPoint;
+
+            _endPoint = endPoint;
             _messageRouterFactory = messageRouterFactory;
             _endPointManager = endPointManager;
-            _dateTimeProvider = dateTimeProvider;
+            _connectedClients = connectedClients;
             _logger = logger;
 
-            _routers = new Dictionary<EndPointRoute, LinkedListNode<(DateTime leaseEnd, IMessageRouter router, EndPointRoute endPoint)>>();
-            _sortedRouters = new LinkedList<(DateTime leaseEnd, IMessageRouter router, EndPointRoute endPoint)>();
-
-            _receiveProcess = new AsyncProcess(ReceiveProcess);
-            _garbageCollectionProcess = new AsyncProcess(GarbageCollectionProcess);
-            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
-            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+            _routers = new Dictionary<EndPointAddress, (IMessageRouter router, Task disonnectionTask)>();
+            _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
         }
 
         #region Encoding/Decoding
@@ -108,42 +94,48 @@ namespace AI4E.Routing.SignalR.Server
 
         #region Routers
 
-        private IMessageRouter GetRouter(EndPointRoute endPoint)
+        private IMessageRouter GetRouter(EndPointAddress endPoint)
         {
-            var now = _dateTimeProvider.GetCurrentTime();
-            var leaseEnd = now + _leaseLength;
-
             lock (_routersLock)
             {
-                if (_sortedRouters.Count > 0)
+                if (_routers.TryGetValue(endPoint, out var entry))
                 {
-                    var firstEntryLeaseEnd = _sortedRouters.First.Value.leaseEnd;
+                    return entry.router;
+                }
 
-                    if (firstEntryLeaseEnd > leaseEnd)
+                var disonnectionTask = _connectedClients.WaitForDisconnectAsync(endPoint, cancellation: default);
+
+                if (disonnectionTask.IsCompleted)
+                {
+                    return null;
+                }
+
+                var router = CreateRouter(endPoint);
+
+                async Task ClientDisconnectionWithEntryRemoval()
+                {
+                    try
                     {
-                        leaseEnd = _sortedRouters.First.Value.leaseEnd;
+                        await disonnectionTask;
+                    }
+                    finally
+                    {
+                        lock (_routersLock)
+                        {
+                            _routers.Remove(endPoint);
+                        }
+
+                        router.Dispose();
                     }
                 }
 
-                if (!_routers.TryGetValue(endPoint, out var entry))
-                {
-                    // TODO: This will hold on the lock while creating the router.
-                    var router = CreateRouter(endPoint);
-                    entry = _sortedRouters.AddFirst((leaseEnd, router, endPoint));
-                    _routers.Add(endPoint, entry);
-                }
-                else if (leaseEnd > entry.Value.leaseEnd)
-                {
-                    entry.Value = (leaseEnd, entry.Value.router, entry.Value.endPoint);
-                    _sortedRouters.Remove(entry);
-                    _sortedRouters.AddFirst(entry);
-                }
+                _routers.Add(endPoint, (router, ClientDisconnectionWithEntryRemoval()));
 
-                return entry.Value.router;
+                return router;
             }
         }
 
-        private IMessageRouter CreateRouter(EndPointRoute endPoint)
+        private IMessageRouter CreateRouter(EndPointAddress endPoint)
         {
             // TODO: Get the clients route options and combine them with RouteOptions.PublishOnly. 
             //       This is not necessary for now as there are no other options currently.
@@ -156,12 +148,12 @@ namespace AI4E.Routing.SignalR.Server
         private sealed class SerializedMessageHandlerProxy : ISerializedMessageHandler
         {
             private readonly ClientManager _owner;
-            private readonly EndPointRoute _endPoint;
+            private readonly EndPointAddress _endPoint;
 
-            public SerializedMessageHandlerProxy(ClientManager owner, EndPointRoute endPoint)
+            public SerializedMessageHandlerProxy(ClientManager owner, EndPointAddress endPoint)
             {
                 Assert(owner != null);
-                Assert(endPoint != null);
+                Assert(endPoint != default);
                 _owner = owner;
                 _endPoint = endPoint;
             }
@@ -186,7 +178,7 @@ namespace AI4E.Routing.SignalR.Server
 
                     EncodeHandleRequest(message, route, publish);
 
-                    var response = await _owner._logicalEndPoint.SendAsync(message, _endPoint, cancellation);
+                    var response = await _owner._endPoint.SendAsync(message, _endPoint, cancellation);
                     return response;
                 }
                 finally
@@ -201,95 +193,21 @@ namespace AI4E.Routing.SignalR.Server
             }
         }
 
-        private async Task GarbageCollectionProcess(CancellationToken cancellation)
-        {
-            while (cancellation.ThrowOrContinue())
-            {
-                try
-                {
-                    var timeToWait = PerformGarbageCollection();
-
-                    await Task.Delay(timeToWait, cancellation);
-                }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception exc)
-                {
-                    // TODO: Log
-                }
-            }
-        }
-
-        private TimeSpan PerformGarbageCollection()
-        {
-            var now = _dateTimeProvider.GetCurrentTime();
-
-            LinkedListNode<(DateTime leaseEnd, IMessageRouter router, EndPointRoute endPoint)> node;
-            DateTime leaseEnd;
-
-            lock (_routersLock)
-            {
-                if (_sortedRouters.Count == 0)
-                {
-                    return TimeSpan.FromSeconds(30);
-                }
-
-                node = _sortedRouters.Last;
-                leaseEnd = node.Value.leaseEnd;
-            }
-
-            while (leaseEnd <= now)
-            {
-                lock (_routersLock)
-                {
-                    if (_sortedRouters.Last == node &&
-                       node.Value.leaseEnd == leaseEnd)
-                    {
-                        _sortedRouters.RemoveLast();
-                        _routers.Remove(node.Value.endPoint);
-
-                        var router = node.Value.router;
-                        router.Dispose();
-                    }
-
-                    if (_sortedRouters.Count == 0)
-                    {
-                        return TimeSpan.FromSeconds(30);
-                    }
-
-                    node = _sortedRouters.Last;
-                    leaseEnd = node.Value.leaseEnd;
-                }
-            }
-
-            return leaseEnd - now;
-        }
-
         #endregion
 
         #region Receive
 
         private async Task ReceiveProcess(CancellationToken cancellation)
         {
-            var semaphore = new SemaphoreSlim(10);
+            // We cache the delegate for perf reasons.
+            var handler = new Func<IMessage, EndPointAddress, CancellationToken, Task<IMessage>>(HandleAsync);
 
             while (cancellation.ThrowOrContinue())
             {
                 try
                 {
-                    // Throttle the receive process to 10 concurrent requests
-                    await semaphore.WaitAsync(cancellation);
-
-                    Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await _logicalEndPoint.ReceiveAsync(ReceiveAsync, cancellation);
-                        }
-                        finally
-                        {
-                            semaphore.Release();
-                        }
-                    }).HandleExceptions(_logger);
+                    var receiveResult = await _endPoint.ReceiveAsync(cancellation);
+                    receiveResult.HandleAsync(handler, cancellation).HandleExceptions(_logger);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
@@ -299,7 +217,7 @@ namespace AI4E.Routing.SignalR.Server
             }
         }
 
-        private async Task<IMessage> ReceiveAsync(IMessage message, EndPointRoute endPoint, CancellationToken cancellation)
+        private async Task<IMessage> HandleAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation)
         {
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
@@ -307,7 +225,7 @@ namespace AI4E.Routing.SignalR.Server
                 var messageType = (MessageType)reader.ReadInt16();
                 reader.ReadInt16();
 
-                var router = GetRouter(endPoint);
+                var router = GetRouter(remoteEndPoint);
 
                 switch (messageType)
                 {
@@ -335,11 +253,9 @@ namespace AI4E.Routing.SignalR.Server
                             var routeBytesLength = reader.ReadInt32();
                             var routeBytes = reader.ReadBytes(routeBytesLength);
                             var route = Encoding.UTF8.GetString(routeBytes);
-                            var endPointBytesLength = reader.ReadInt32();
-                            var endPointBytes = reader.ReadBytes(endPointBytesLength);
-                            var remoteEndPoint = EndPointRoute.CreateRoute(Encoding.UTF8.GetString(endPointBytes));
+                            var endPoint = reader.ReadEndPointAddress();
                             var publish = reader.ReadBoolean();
-                            var response = await router.RouteAsync(route, message, publish, remoteEndPoint, cancellation);
+                            var response = await router.RouteAsync(route, message, publish, endPoint, cancellation);
                             return response;
                         }
 
@@ -362,11 +278,6 @@ namespace AI4E.Routing.SignalR.Server
                             return null;
                         }
 
-                    case MessageType.Ping:
-                        {
-                            return null;
-                        }
-
                     default:
                         {
                             // TODO: Send bad request message
@@ -380,37 +291,17 @@ namespace AI4E.Routing.SignalR.Server
 
         #endregion
 
-        #region Init
-
-        private async Task InitializeInternalAsync(CancellationToken cancellation)
-        {
-            await _receiveProcess.StartAsync(cancellation);
-            await _garbageCollectionProcess.StartAsync(cancellation);
-        }
-
-        #endregion
-
         #region Disposal
-
-        public Task Disposal => _disposeHelper.Disposal;
 
         public void Dispose()
         {
-            _disposeHelper.Dispose();
-        }
+            if (!_isDisposed)
+            {
+                _isDisposed = true;
 
-        public Task DisposeAsync()
-        {
-            return _disposeHelper.DisposeAsync();
+                _receiveProcess.Terminate();
+            }
         }
-
-        private async Task DisposeInternalAsync()
-        {
-            await _initializationHelper.CancelAsync().HandleExceptionsAsync();
-            await _receiveProcess.TerminateAsync().HandleExceptionsAsync();
-            await _garbageCollectionProcess.TerminateAsync().HandleExceptionsAsync();
-        }
-
         #endregion
 
         private enum MessageType : short
@@ -419,7 +310,6 @@ namespace AI4E.Routing.SignalR.Server
             RouteToEndPoint = 1,
             RegisterRoute = 2,
             UnregisterRoute = 3,
-            Ping = 4,
             Handle = 5
         }
     }

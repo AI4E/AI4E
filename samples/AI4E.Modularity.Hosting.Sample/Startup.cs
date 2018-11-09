@@ -44,7 +44,7 @@ namespace AI4E.Modularity.Hosting.Sample
             services.AddModularity();
             services.AddDomainServices();
 
-            services.Configure<RemoteMessagingOptions>(options => options.LocalEndPoint = EndPointRoute.CreateRoute("AI4E.Modularity.Hosting.Sample"));
+            services.Configure<RemoteMessagingOptions>(options => options.LocalEndPoint = new EndPointAddress("AI4E.Modularity.Hosting.Sample"));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

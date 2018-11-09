@@ -9,7 +9,9 @@
     <Compile Include="..\..\AI4E.Remoting\Message.cs" Link="Remoting\Message.cs" />
     <Compile Include="..\..\AI4E.Remoting\TypeSerializer.cs" Link="Remoting\TypeSerializer.cs" />
     <Compile Include="..\..\AI4E.Routing\RemoteMessageDispatcher.cs" Link="Routing\RemoteMessageDispatcher.cs" />
+    <Compile Include="..\..\AI4E.Routing\RequestReplyEndPoint.cs" Link="Routing\RequestReplyEndPoint.cs" />
     <Compile Include="..\..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
+    <Compile Include="..\..\Common\DictionaryExtension.cs" Link="Internal\DictionaryExtension.cs" />
     <Compile Include="..\..\Common\CustomAttributeProviderExtension.cs" Link="Internal\CustomAttributeProviderExtension.cs" />
     <Compile Include="..\..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
     <Compile Include="..\..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
@@ -17,11 +19,16 @@
     <Compile Include="..\..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
     <Compile Include="..\..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
     <Compile Include="..\..\Common\TypeLoadHelper.cs" Link="Internal\TypeLoadHelper.cs" />
+    <Compile Include="..\..\Common\NoOpDisposable.cs" Link="Internal\NoOpDisposable.cs" />
+    <Compile Include="..\..\Common\ArrayPoolExtension.cs" Link="Internal\ArrayPoolExtension.cs" />
+    <Compile Include="..\..\Common\MemoryExtensions.Base64Decode.cs" Link="Internal\MemoryExtensions.Base64Decode.cs" />
+    <Compile Include="..\..\Common\TaskCompletionSourceExtension.cs" Link="Internal\TaskCompletionSourceExtension.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\ClientEndPoint.cs" Link="ClientEndPoint.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\HubConnectionExtension.cs" Link="HubConnectionExtension.cs" />
-    <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\LogicalClientEndPoint.cs" Link="LogicalClientEndPoint.cs" />
+    <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\IClientCallStub.cs" Link="IClientCallStub.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\RemoteMessageRouter.cs" Link="RemoteMessageRouter.cs" />
-    <Compile Include="..\..\SignalR\Common\ICallStub.cs" Link="Internal\ICallStub.cs" />
+    <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\RequestReplyClientEndPoint.cs" Link="RequestReplyClientEndPoint.cs" />
+    <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Server\IServerCallStub.cs" Link="IServerCallStub.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -38,5 +45,13 @@
     <ProjectReference Include="..\..\AI4E\AI4E.csproj" />
     <ProjectReference Include="..\AI4E.Routing.Blazor.Abstractions\AI4E.Routing.Blazor.Abstractions.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <DotNetCliToolReference Include="T5.TextTransform.Tool" Version="1.1.0-*" />
+  </ItemGroup>
+
+  <Target Name="AfterRestore" AfterTargets="Restore;CollectPackageReferences">
+    <Exec Command="dotnet tt $(ProjectDir)HubConnectionExtension.Blazor.tt" />
+  </Target>
 
 </Project>

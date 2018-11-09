@@ -57,7 +57,7 @@ namespace AI4E.Remoting
         private readonly IPhysicalEndPoint<TAddress> _physicalEndPoint;
         private readonly ILogger<PhysicalEndPointMultiplexer<TAddress>> _logger;
 
-        private readonly WeakDictionary<string, AsyncProducerConsumerQueue<IMessage>> _rxQueues = new WeakDictionary<string, AsyncProducerConsumerQueue<IMessage>>();
+        private readonly WeakDictionary<string, AsyncProducerConsumerQueue<(IMessage message, TAddress remoteAddress)>> _rxQueues;
         private readonly IAsyncProcess _receiveProcess;
         private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
@@ -79,6 +79,7 @@ namespace AI4E.Remoting
             _physicalEndPoint = physicalEndPoint;
             _logger = logger;
 
+            _rxQueues = new WeakDictionary<string, AsyncProducerConsumerQueue<(IMessage message, TAddress remoteAddress)>>();
             _receiveProcess = new AsyncProcess(ReceiveProcess);
             _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
@@ -99,11 +100,12 @@ namespace AI4E.Remoting
             {
                 try
                 {
-                    var message = await _physicalEndPoint.ReceiveAsync(cancellation);
+                    var (message, remoteAddress) = await _physicalEndPoint.ReceiveAsync(cancellation);
 
                     Assert(message != null);
+                    Assert(remoteAddress != null);
 
-                    HandleMessageAsync(message, cancellation).HandleExceptions(_logger);
+                    HandleMessageAsync(message, remoteAddress, cancellation).HandleExceptions(_logger);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
@@ -113,12 +115,12 @@ namespace AI4E.Remoting
             }
         }
 
-        private Task HandleMessageAsync(IMessage message, CancellationToken cancellation)
+        private Task HandleMessageAsync(IMessage message, TAddress remoteAddress, CancellationToken cancellation)
         {
             Assert(message != null);
 
             var multiplexName = DecodeMultiplexName(message);
-            return GetRxQueue(multiplexName).EnqueueAsync(message, cancellation);
+            return GetRxQueue(multiplexName).EnqueueAsync((message, remoteAddress), cancellation);
         }
 
         #endregion
@@ -171,9 +173,9 @@ namespace AI4E.Remoting
 
         #endregion
 
-        private AsyncProducerConsumerQueue<IMessage> GetRxQueue(string multiplexName)
+        private AsyncProducerConsumerQueue<(IMessage message, TAddress remoteAddress)> GetRxQueue(string multiplexName)
         {
-            var result = _rxQueues.GetOrAdd(multiplexName, _ => new AsyncProducerConsumerQueue<IMessage>());
+            var result = _rxQueues.GetOrAdd(multiplexName, _ => new AsyncProducerConsumerQueue<(IMessage message, TAddress remoteAddress)>());
 
             Assert(result != null);
 
@@ -261,7 +263,7 @@ namespace AI4E.Remoting
         {
             // This must be stored as field and not looked up dynamically in ReceiveAsync
             // in order that the Multiplexer does not delete the collection.
-            private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue;
+            private readonly AsyncProducerConsumerQueue<(IMessage message, TAddress remoteAddress)> _rxQueue;
             private readonly PhysicalEndPointMultiplexer<TAddress> _multiplexer;
 
             public MultiplexPhysicalEndPoint(PhysicalEndPointMultiplexer<TAddress> multiplexer, string multiplexName)
@@ -279,7 +281,7 @@ namespace AI4E.Remoting
 
             public string MultiplexName { get; }
 
-            public async Task<IMessage> ReceiveAsync(CancellationToken cancellation = default)
+            public async Task<(IMessage message, TAddress remoteAddress)> ReceiveAsync(CancellationToken cancellation = default)
             {
                 await _multiplexer.Initialization.WithCancellation(cancellation);
 
@@ -301,15 +303,15 @@ namespace AI4E.Remoting
                 }
             }
 
-            public async Task SendAsync(IMessage message, TAddress address, CancellationToken cancellation = default)
+            public async Task SendAsync(IMessage message, TAddress remoteAddress, CancellationToken cancellation = default)
             {
                 if (message == null)
                     throw new ArgumentNullException(nameof(message));
 
-                if (address == null)
-                    throw new ArgumentNullException(nameof(address));
+                if (remoteAddress == null)
+                    throw new ArgumentNullException(nameof(remoteAddress));
 
-                if (address.Equals(default))
+                if (remoteAddress.Equals(default))
                     throw new ArgumentDefaultException(nameof(message));
 
                 await _multiplexer.Initialization.WithCancellation(cancellation);
@@ -323,7 +325,7 @@ namespace AI4E.Remoting
 
                     try
                     {
-                        await SendInternalAsync(message, address, combinedCancellation);
+                        await SendInternalAsync(message, remoteAddress, combinedCancellation);
                     }
                     catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
                     {
@@ -348,6 +350,8 @@ namespace AI4E.Remoting
                     throw;
                 }
             }
+
+            public void Dispose() { }
         }
     }
 }

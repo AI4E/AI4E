@@ -27,6 +27,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using AI4E.Internal;
 using static System.Diagnostics.Debug;
 
 namespace AI4E
@@ -108,9 +109,9 @@ foreach(var underlyingType in underlyingTypes.Keys)
 #>(underlyingType == typeof(<#= underlyingTypes[underlyingType] #>))
             {
                 var values = (TEnum[])Enum.GetValues(enumType);
-                var comparand = values.Select(p => (<#= underlyingTypes[underlyingType] #>)(object)p).Aggregate(seed: (<#= underlyingTypes[underlyingType] #>)0, (e, c) => (<#= underlyingTypes[underlyingType] #>)(e | c));
+                var comparand = values.Select(p => CastTo<<#= underlyingTypes[underlyingType] #>>.From(p)).Aggregate(seed: (<#= underlyingTypes[underlyingType] #>)0, (e, c) => (<#= underlyingTypes[underlyingType] #>)(e | c));
 
-                return value => (((<#= underlyingTypes[underlyingType] #>)(object)value) & ~comparand) == 0;
+                return value => ((CastTo<<#= underlyingTypes[underlyingType] #>>.From(value)) & ~comparand) == 0;
             }
 <#
 	first = false;
@@ -137,7 +138,7 @@ foreach(var underlyingType in underlyingTypes.Keys)
 
 			if (underlyingType == typeof(<#= underlyingTypes[underlyingType] #>))
             {
-                var values = new HashSet<<#= underlyingTypes[underlyingType] #>>(((TEnum[])Enum.GetValues(enumType)).Select(p => (<#= underlyingTypes[underlyingType] #>)(object)p));
+                var values = new HashSet<<#= underlyingTypes[underlyingType] #>>(((TEnum[])Enum.GetValues(enumType)).Select(p => CastTo<<#= underlyingTypes[underlyingType] #>>.From(p)));
 
                 if (values.Count == 0)
                 {
@@ -146,7 +147,9 @@ foreach(var underlyingType in underlyingTypes.Keys)
 
                 if (values.Count == 1)
                 {
-                    return value => values.First() == (<#= underlyingTypes[underlyingType] #>)(object)value;
+				    // We evaluate this here, in order that the hash-set is not captured by the lambda but only the single value.
+				    var singleValue = values.First();
+                    return value => singleValue == CastTo<<#= underlyingTypes[underlyingType] #>>.From(value);
                 }
 
                 var min = values.Min();
@@ -158,13 +161,13 @@ foreach(var underlyingType in underlyingTypes.Keys)
                 {
                     if (!values.Contains(i))
                     {
-                        return value => values.Contains((<#= underlyingTypes[underlyingType] #>)(object)value);
+                        return value => values.Contains(CastTo<<#= underlyingTypes[underlyingType] #>>.From(value));
                     }
                 }
 
                 return value =>
                 {
-                    var v = (<#= underlyingTypes[underlyingType] #>)(object)value;
+                    var v = CastTo<<#= underlyingTypes[underlyingType] #>>.From(value);
                     return v >= min && v <= max;
                 };
             }

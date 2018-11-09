@@ -30,7 +30,7 @@ namespace AI4E.Routing
                 throw new InvalidOperationException("A local end point must be specified.");
             }
 
-            return endPointManager.GetLogicalEndPoint(options.LocalEndPoint);
+            return endPointManager.CreateLogicalEndPoint(options.LocalEndPoint);
         }
 
         private static void AddHelperServices(this IServiceCollection services)
@@ -38,10 +38,8 @@ namespace AI4E.Routing
             services.AddOptions();
             services.AddCoreServices();
 
-            services.AddSingleton(typeof(IMessageCoder<>), typeof(MessageCoder<>));
             services.AddSingleton(typeof(IEndPointScheduler<>), typeof(RandomEndPointScheduler<>));
-            services.AddSingleton(typeof(IRouteMap<>), typeof(RouteMap<>));
-            services.AddSingleton<IRouteSerializer, EndPointRouteSerializer>();
+            services.AddSingleton(typeof(IEndPointMap<>), typeof(EndPointMap<>));
 
             services.AddCoordinationService();
         }
@@ -56,7 +54,7 @@ namespace AI4E.Routing
 
         public static void AddMessageRouter(this IServiceCollection services)
         {
-            services.AddSingleton<IRouteStoreFactory, RouteManagerFactory>();
+            services.AddSingleton<IRouteManagerFactory, RouteManagerFactory>();
             services.AddSingleton<IMessageRouterFactory, MessageRouterFactory>();
             services.AddHelperServices();
         }
@@ -73,9 +71,9 @@ namespace AI4E.Routing
     {
         public RemoteMessagingOptions()
         {
-            LocalEndPoint = EndPointRoute.CreateRoute(Assembly.GetEntryAssembly().GetName().Name);
+            LocalEndPoint = new EndPointAddress(Assembly.GetEntryAssembly().GetName().Name);
         }
 
-        public EndPointRoute LocalEndPoint { get; set; }
+        public EndPointAddress LocalEndPoint { get; set; }
     }
 }

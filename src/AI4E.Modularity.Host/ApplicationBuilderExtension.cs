@@ -56,7 +56,7 @@ namespace AI4E.Modularity.Host
                 var cancellation = context?.RequestAborted ?? default;
                 var endPoint = await runningModuleLookup.MapHttpPathAsync(context.Features.Get<IHttpRequestFeature>().Path, cancellation);
 
-                if (endPoint != null)
+                if (endPoint != EndPointAddress.UnknownAddress)
                 {
                     var requestFeature = context.Features.FirstOrDefault(p => p.Key == typeof(IHttpRequestFeature)).Value as IHttpRequestFeature;
 

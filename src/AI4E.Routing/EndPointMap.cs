@@ -9,14 +9,14 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing
 {
-    public sealed class RouteMap<TAddress> : IRouteMap<TAddress>
+    public sealed class EndPointMap<TAddress> : IEndPointMap<TAddress>
     {
         private static readonly CoordinationEntryPath _mapsRootPath = new CoordinationEntryPath("maps");
 
         private readonly ICoordinationManager _coordinationManager;
         private readonly IAddressConversion<TAddress> _addressConversion;
 
-        public RouteMap(ICoordinationManager coordinationManager, IAddressConversion<TAddress> addressConversion)
+        public EndPointMap(ICoordinationManager coordinationManager, IAddressConversion<TAddress> addressConversion)
         {
             if (coordinationManager == null)
                 throw new ArgumentNullException(nameof(coordinationManager));
@@ -28,12 +28,12 @@ namespace AI4E.Routing
             _addressConversion = addressConversion;
         }
 
-        #region IRouteMap<TAddress>
+        #region IEndPointMap<TAddress>
 
-        public async Task MapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation)
+        public async Task MapEndPointAsync(EndPointAddress endPoint, TAddress address, CancellationToken cancellation)
         {
-            if (localEndPoint == null)
-                throw new ArgumentNullException(nameof(localEndPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             if (address == null)
                 throw new ArgumentNullException(nameof(address));
@@ -41,17 +41,16 @@ namespace AI4E.Routing
             if (address.Equals(default(TAddress)))
                 throw new ArgumentDefaultException(nameof(address));
 
-            var route = localEndPoint.Route;
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
-            var path = GetPath(route, session);
+            var path = GetPath(endPoint, session);
 
             await _coordinationManager.GetOrCreateAsync(path, _addressConversion.SerializeAddress(address), EntryCreationModes.Ephemeral, cancellation);
         }
 
-        public async Task UnmapRouteAsync(EndPointRoute localEndPoint, TAddress address, CancellationToken cancellation)
+        public async Task UnmapEndPointAsync(EndPointAddress endPoint, TAddress address, CancellationToken cancellation)
         {
-            if (localEndPoint == null)
-                throw new ArgumentNullException(nameof(localEndPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             if (address == null)
                 throw new ArgumentNullException(nameof(address));
@@ -59,56 +58,53 @@ namespace AI4E.Routing
             if (address.Equals(default(TAddress)))
                 throw new ArgumentDefaultException(nameof(address));
 
-            var route = localEndPoint.Route;
-            var routeEntry = await GetRouteEntryAsync(route, cancellation);
+            var endPointEntry = await GetLogicalAddressEntryAsync(endPoint, cancellation);
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
-            var path = GetPath(route, session);
+            var path = GetPath(endPoint, session);
 
             await _coordinationManager.DeleteAsync(path, cancellation: cancellation);
         }
 
-        public async Task UnmapRouteAsync(EndPointRoute localEndPoint, CancellationToken cancellation)
+        public async Task UnmapEndPointAsync(EndPointAddress endPoint, CancellationToken cancellation)
         {
-            if (localEndPoint == null)
-                throw new ArgumentNullException(nameof(localEndPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
-            var route = localEndPoint.Route;
-            var path = GetPath(route);
+            var path = GetPath(endPoint);
 
             await _coordinationManager.DeleteAsync(path, recursive: true, cancellation: cancellation);
         }
 
-        public async ValueTask<IEnumerable<TAddress>> GetMapsAsync(EndPointRoute endPoint, CancellationToken cancellation)
+        public async ValueTask<IEnumerable<TAddress>> GetMapsAsync(EndPointAddress endPoint, CancellationToken cancellation)
         {
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
-            var route = endPoint.Route;
-            var routeEntry = await GetRouteEntryAsync(route, cancellation);
+            var endPointEntry = await GetLogicalAddressEntryAsync(endPoint, cancellation);
 
-            Assert(routeEntry != null);
+            Assert(endPointEntry != null);
 
-            var entries = await routeEntry.GetChildrenEntries().ToArray(cancellation);
+            var entries = await endPointEntry.GetChildrenEntries().ToArray(cancellation);
 
             return entries.Select(p => _addressConversion.DeserializeAddress(p.Value.ToArray()));
         }
 
         #endregion
 
-        private ValueTask<IEntry> GetRouteEntryAsync(string route, CancellationToken cancellation)
+        private ValueTask<IEntry> GetLogicalAddressEntryAsync(EndPointAddress endPoint, CancellationToken cancellation)
         {
-            var path = GetPath(route);
+            var path = GetPath(endPoint);
             return _coordinationManager.GetOrCreateAsync(path, ReadOnlyMemory<byte>.Empty, EntryCreationModes.Default, cancellation);
         }
 
-        private static CoordinationEntryPath GetPath(string route)
+        private static CoordinationEntryPath GetPath(EndPointAddress endPoint)
         {
-            return _mapsRootPath.GetChildPath(route);
+            return _mapsRootPath.GetChildPath(endPoint.ToString());
         }
 
-        private static CoordinationEntryPath GetPath(string route, string session)
+        private static CoordinationEntryPath GetPath(EndPointAddress endPoint, string session)
         {
-            return _mapsRootPath.GetChildPath(route, session);
+            return _mapsRootPath.GetChildPath(endPoint.ToString(), session);
         }
     }
 }

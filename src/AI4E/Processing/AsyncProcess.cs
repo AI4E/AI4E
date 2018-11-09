@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -49,8 +49,8 @@ namespace AI4E.Processing
             }
         }
 
-        public Task Startup => _startNotificationSource.Task;
-        public Task Termination => _terminationNotificationSource.Task;
+        public Task Startup => _startNotificationSource?.Task ?? Task.CompletedTask;
+        public Task Termination => _terminationNotificationSource?.Task ?? Task.CompletedTask;
 
         public AsyncProcessState State
         {
@@ -109,8 +109,7 @@ namespace AI4E.Processing
         {
             Terminate();
 
-            // TODO: https://github.com/AI4E/AI4E/issues/36
-            var result = _terminationNotificationSource.Task;
+            var result = _terminationNotificationSource?.Task ?? Task.CompletedTask;
 
             if (cancellation.CanBeCanceled)
             {

@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        ILogicalEndPoint.cs 
  * Types:           (1) AI4E.Routing.ILogicalEndPoint
@@ -29,26 +29,161 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
 using AI4E.Remoting;
 
 namespace AI4E.Routing
 {
-    public interface ILogicalEndPoint : IAsyncInitialization, IAsyncDisposable
+    public interface ILogicalEndPoint : IDisposable
     {
-        EndPointRoute EndPoint { get; }
-
-        Task<IMessage> ReceiveAsync(CancellationToken cancellation = default);
-        Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, CancellationToken cancellation = default);
-        Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation = default);
+        EndPointAddress EndPoint { get; }
+        Task<ILogicalEndPointReceiveResult> ReceiveAsync(CancellationToken cancellation = default);
+        Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation = default);
     }
 
-    public interface ILogicalEndPoint<TAddress> : ILogicalEndPoint
+    public interface ILogicalEndPoint<TAddress> : ILogicalEndPoint, IDisposable
     {
         TAddress LocalAddress { get; }
+        new Task<ILogicalEndPointReceiveResult<TAddress>> ReceiveAsync(CancellationToken cancellation = default);
+        Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation = default);
+    }
 
-        Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation = default);
+    public interface ILogicalEndPointReceiveResult : IMessageReceiveResult<Packet<EndPointAddress>>
+    {
+        EndPointAddress RemoteEndPoint { get; }
+    }
+
+    public interface ILogicalEndPointReceiveResult<TAddress> : ILogicalEndPointReceiveResult, IMessageReceiveResult<Packet<EndPointAddress, TAddress>>
+    {
+        TAddress RemoteAddress { get; }
+    }
+
+    public static partial class MessageReceiveResultExtensions
+    {
+        public static async Task HandleAsync(
+            this ILogicalEndPointReceiveResult messageReceiveResult,
+            Func<IMessage, EndPointAddress, CancellationToken, Task<IMessage>> handler,
+            CancellationToken cancellation)
+        {
+            if (messageReceiveResult == null)
+                throw new ArgumentNullException(nameof(messageReceiveResult));
+
+            if (handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            using (var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, messageReceiveResult.Cancellation))
+            {
+                cancellation = combinedCancellationSource.Token;
+
+                try
+                {
+                    var response = await handler(messageReceiveResult.Message, messageReceiveResult.RemoteEndPoint, cancellation);
+
+                    if (response != null)
+                    {
+                        await messageReceiveResult.SendResponseAsync(response);
+                    }
+                    else
+                    {
+                        await messageReceiveResult.SendAckAsync();
+                    }
+                }
+                catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+                {
+                    await messageReceiveResult.SendCancellationAsync();
+                }
+            }
+        }
+
+        public static async Task HandleAsync(
+            this ILogicalEndPointReceiveResult messageReceiveResult,
+            Func<IMessage, EndPointAddress, CancellationToken, Task> handler,
+            CancellationToken cancellation)
+        {
+            if (messageReceiveResult == null)
+                throw new ArgumentNullException(nameof(messageReceiveResult));
+
+            if (handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            using (var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, messageReceiveResult.Cancellation))
+            {
+                cancellation = combinedCancellationSource.Token;
+
+                try
+                {
+                    await handler(messageReceiveResult.Message, messageReceiveResult.RemoteEndPoint, cancellation);
+                    await messageReceiveResult.SendAckAsync();
+                }
+                catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+                {
+                    await messageReceiveResult.SendCancellationAsync();
+                }
+            }
+        }
+
+        public static async Task HandleAsync<TAddress>(
+            this ILogicalEndPointReceiveResult<TAddress> messageReceiveResult,
+            Func<IMessage, TAddress, EndPointAddress, CancellationToken, Task<IMessage>> handler,
+            CancellationToken cancellation)
+        {
+            if (messageReceiveResult == null)
+                throw new ArgumentNullException(nameof(messageReceiveResult));
+
+            if (handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            using (var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, messageReceiveResult.Cancellation))
+            {
+                cancellation = combinedCancellationSource.Token;
+
+                try
+                {
+                    var response = await handler(messageReceiveResult.Message, messageReceiveResult.RemoteAddress, messageReceiveResult.RemoteEndPoint, cancellation);
+
+                    if (response != null)
+                    {
+                        await messageReceiveResult.SendResponseAsync(response);
+                    }
+                    else
+                    {
+                        await messageReceiveResult.SendAckAsync();
+                    }
+                }
+                catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+                {
+                    await messageReceiveResult.SendCancellationAsync();
+                }
+            }
+        }
+
+        public static async Task HandleAsync<TAddress>(
+            this ILogicalEndPointReceiveResult<TAddress> messageReceiveResult,
+            Func<IMessage, TAddress, EndPointAddress, CancellationToken, Task> handler,
+            CancellationToken cancellation)
+        {
+            if (messageReceiveResult == null)
+                throw new ArgumentNullException(nameof(messageReceiveResult));
+
+            if (handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            using (var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, messageReceiveResult.Cancellation))
+            {
+                cancellation = combinedCancellationSource.Token;
+
+                try
+                {
+                    await handler(messageReceiveResult.Message, messageReceiveResult.RemoteAddress, messageReceiveResult.RemoteEndPoint, cancellation);
+                    await messageReceiveResult.SendAckAsync();
+                }
+                catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+                {
+                    await messageReceiveResult.SendCancellationAsync();
+                }
+            }
+        }
     }
 }

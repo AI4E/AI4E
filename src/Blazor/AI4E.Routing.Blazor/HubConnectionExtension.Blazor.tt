@@ -1,0 +1,167 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+<#
+	var argumentRange = (min: 0, max: 10);
+
+	string BuildGenericArgumentList(int argumentCount)
+	{
+		return BuildArgumentList(argumentCount, "T");
+	}
+
+	string BuildArgumentList(int argumentCount, string argPrefix = "arg")
+	{
+		StringBuilder result = new StringBuilder(argumentCount * (3 + argPrefix.Length));
+
+		for(var i = argumentRange.min+1; i <= argumentCount; i++)
+		{
+			if(result.Length != 0)
+			{
+				result.Append(',');
+				result.Append(' ');
+			}
+
+			result.Append(argPrefix);
+			result.Append(i);
+		}
+
+		return result.ToString();
+	}
+#>
+/*
+ * This file is auto-generated and should not be modified directly.
+ */
+
+using System;
+using System.CodeDom.Compiler;
+using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
+using System.Linq.Expressions;
+using AI4E.Internal;
+using Blazor.Extensions;
+using static System.Diagnostics.Debug;
+
+namespace AI4E.Routing.Blazor
+{
+	[GeneratedCode("", "")]
+	public static partial class HubConnectionExtension
+    {
+<# for(var argumentCount = argumentRange.min; argumentCount <= argumentRange.max; argumentCount++) {#>
+		private static readonly MethodInfo _registerMethod<#=argumentCount#>;
+<#}#>
+
+		static HubConnectionExtension()
+		{
+			var methodDefinitions = typeof(HubConnectionExtension).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+														          .Where(p=> p.Name == nameof(RegisterMethodCore));
+
+            _registerMethod0 = methodDefinitions.SingleOrDefault(
+                p => !p.IsGenericMethodDefinition);
+<# for(var argumentCount = argumentRange.min+1; argumentCount <= argumentRange.max; argumentCount++) {#>
+			_registerMethod<#=argumentCount#> = methodDefinitions.SingleOrDefault(
+                p => p.IsGenericMethodDefinition && p.GetGenericArguments().Length == <#=argumentCount#>);
+<#}#>
+
+<# for(var argumentCount = argumentRange.min; argumentCount <= argumentRange.max; argumentCount++) {#>
+			Assert(_registerMethod<#=argumentCount#> != null);
+<#}#>
+		}
+
+<# for(var argumentCount = argumentRange.min; argumentCount <= argumentRange.max; argumentCount++) 
+{
+    var handlerType = "Func<" + (argumentCount > 0 ? BuildGenericArgumentList(argumentCount) + ", " : string.Empty) + "Task>";
+    var syncHandlerType = "Action" + (argumentCount > 0 ? "<" + BuildGenericArgumentList(argumentCount) + ">" : string.Empty);
+    var commaSeparatedParameterList = argumentCount > 0 ? ", " +  BuildArgumentList(argumentCount) : string.Empty;
+    var methodGenericArgumentList =  argumentCount > 0 ? "<" +  BuildGenericArgumentList(argumentCount) + ">" : string.Empty;
+#>
+		private static IDisposable RegisterMethodCore<#=methodGenericArgumentList#>(HubConnection hubConnection, object obj, MethodInfo method)
+        {
+#if DEBUG            
+			Assert(hubConnection != null);
+            Assert(obj != null);
+            Assert(method != null);
+            Assert(method.DeclaringType.IsAssignableFrom(obj.GetType()));
+
+			var parameters = method.GetParameters();
+			Assert(parameters.Length == <#=argumentCount#>);
+
+<# for(var i = argumentRange.min+1; i <= argumentCount; i++) {#>
+			Assert(parameters[<#=i-1#>].ParameterType == typeof(T<#=i#>));
+<#}#>
+#endif
+			<#=handlerType#> handler;
+
+<# for(var i = argumentRange.min+1; i <= argumentCount; i++) {#>
+			var arg<#=i#> = Expression.Parameter(typeof(T<#=i#>), "arg<#=i#>");
+<#}#>
+			var objConst = Expression.Constant(obj, typeof(object));
+            var methodCall = Expression.Call(Expression.Convert(objConst, method.DeclaringType), method<#=commaSeparatedParameterList#>);
+
+            // The method is asynchronous 
+            if (method.ReturnType.IsAssignableFrom(typeof(Task)))
+            {
+                var convertedResult = Expression.Convert(methodCall, typeof(Task));
+
+                handler = Expression.Lambda<<#=handlerType#>>(convertedResult<#=commaSeparatedParameterList#>).Compile();
+            }
+            else // TODO: The method can also be async without returning Task. We already have helpers for this.
+            {
+                var synchronousHandler = Expression.Lambda<<#=syncHandlerType#>>(methodCall<#=commaSeparatedParameterList#>).Compile();
+
+                handler = (<#=BuildArgumentList(argumentCount, "p")#>) =>
+                {
+                    synchronousHandler(<#=BuildArgumentList(argumentCount, "p")#>);
+                    return Task.CompletedTask;
+                };
+            }
+
+<# if(argumentCount == 0) { #>
+            return hubConnection.On<object>(method.Name, _ => handler());
+<# } else { #>
+            return hubConnection.On(method.Name, handler);
+<# } #>
+        }
+
+<#}#>
+		private static IDisposable RegisterMethod(HubConnection hubConnection, object obj, MethodInfo method, ParameterInfo[] parameters)
+        {
+            Assert(hubConnection != null);
+            Assert(obj != null);
+            Assert(method != null);
+            Assert(parameters != null);
+            Assert(method.GetParameters().SequenceEqual(parameters));
+            Assert(method.DeclaringType.IsAssignableFrom(obj.GetType()));
+
+            var parameterCount = parameters.Length;
+
+			/*
+			 * We are using reflection here, which is rather slow. 
+			 * This is not intended to be futher optimized, as this is called relatively rarely. 
+			 * The hot path in the generic RegisterMethod methods is optimized.
+			 */
+
+            if(parameterCount == 0)
+            {
+                var result = _registerMethod0.Invoke(obj: null, new [] { hubConnection, obj, method }) as IDisposable;
+				Assert(result != null);
+				return result;
+            }
+<# for(var argumentCount = argumentRange.min+1; argumentCount <= argumentRange.max; argumentCount++) {#>
+			else if(parameterCount == <#=argumentCount#>)
+			{
+				var result = _registerMethod<#=argumentCount#>.MakeGenericMethod(parameters.Select(p=> p.ParameterType).ToArray()).Invoke(obj: null, new [] { hubConnection, obj, method }) as IDisposable;
+				Assert(result != null);
+				return result;
+			}
+<#}#>
+			else
+			{
+				throw new NotSupportedException("The blazor signal r client supports stub methods with up to ten arguments only.");
+			}
+        }
+	}	
+}

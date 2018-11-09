@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,13 +19,13 @@ namespace AI4E.Modularity.Debug
         private readonly DebugConnection _debugConnection;
         private readonly ILogger<DebugLogicalEndPoint> _logger;
 
-        public DebugLogicalEndPoint(DebugConnection debugConnection, EndPointRoute endPoint, ILogger<DebugLogicalEndPoint> logger = null)
+        public DebugLogicalEndPoint(DebugConnection debugConnection, EndPointAddress endPoint, ILogger<DebugLogicalEndPoint> logger = null)
         {
             if (debugConnection == null)
                 throw new ArgumentNullException(nameof(debugConnection));
 
-            if (endPoint == null)
-                throw new ArgumentNullException(nameof(endPoint));
+            if (endPoint == default)
+                throw new ArgumentDefaultException(nameof(endPoint));
 
             _debugConnection = debugConnection;
             EndPoint = endPoint;
@@ -64,13 +64,11 @@ namespace AI4E.Modularity.Debug
             return proxy;
         }
 
-        public EndPointRoute EndPoint { get; }
+        public EndPointAddress EndPoint { get; }
 
-        public async Task<IMessage> ReceiveAsync(CancellationToken cancellation = default)
+        public async Task<ILogicalEndPointReceiveResult> ReceiveAsync(CancellationToken cancellation = default)
         {
             var proxy = await GetProxyAsync(cancellation);
-
-            byte[] buffer;
 
             using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
             {
@@ -80,25 +78,19 @@ namespace AI4E.Modularity.Debug
 
                 try
                 {
-                    buffer = await proxy.ExecuteAsync(p => p.ReceiveAsync(combinedCancellation));
+                    var resultProxy = await proxy.ExecuteAsync(p => p.ReceiveAsync(combinedCancellation));
+                    var resultValues = await resultProxy.ExecuteAsync(p => p.GetResultValues());
+
+                    return new DebugMessageReceiveResult(resultProxy, resultValues);
                 }
                 catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
                 {
                     throw new ObjectDisposedException(GetType().FullName);
                 }
             }
-
-            var message = new Message();
-
-            using (var stream = new MemoryStream(buffer))
-            {
-                await message.ReadAsync(stream, cancellation);
-            }
-
-            return message;
         }
 
-        public async Task SendAsync(IMessage message, EndPointRoute remoteEndPoint, CancellationToken cancellation = default)
+        public async Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation = default)
         {
             var proxy = await GetProxyAsync(cancellation);
 
@@ -117,41 +109,15 @@ namespace AI4E.Modularity.Debug
 
                 try
                 {
-                    await proxy.ExecuteAsync(p => p.SendAsync(buffer, remoteEndPoint, combinedCancellation));
-                }
-                catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
-                {
-                    throw new ObjectDisposedException(GetType().FullName);
-                }
-            }
-        }
+                    var responseBuffer = await proxy.ExecuteAsync(p => p.SendAsync(buffer, remoteEndPoint, combinedCancellation));
+                    var response = new Message();
 
-        public async Task SendAsync(IMessage response, IMessage request, CancellationToken cancellation = default)
-        {
-            var proxy = await GetProxyAsync(cancellation);
+                    using (var stream = new MemoryStream(buffer))
+                    {
+                        await response.ReadAsync(stream, cancellation);
+                    }
 
-            var responseBuffer = new byte[response.Length];
-            var requestBuffer = new byte[request.Length];
-
-            using (var stream = new MemoryStream(responseBuffer, writable: true))
-            {
-                await response.WriteAsync(stream, cancellation);
-            }
-
-            using (var stream = new MemoryStream(requestBuffer, writable: true))
-            {
-                await request.WriteAsync(stream, cancellation);
-            }
-
-            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
-            {
-                CheckDisposal();
-
-                var combinedCancellation = _disposeHelper.CancelledOrDisposed(cancellation);
-
-                try
-                {
-                    await proxy.ExecuteAsync(p => p.SendAsync(responseBuffer, requestBuffer, combinedCancellation));
+                    return response;
                 }
                 catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
                 {
@@ -195,5 +161,60 @@ namespace AI4E.Modularity.Debug
         }
 
         #endregion
+
+        private sealed class DebugMessageReceiveResult : ILogicalEndPointReceiveResult
+        {
+            private readonly IProxy<MessageReceiveResultSkeleton> _proxy;
+            private readonly MessageReceiveResultValues _values;
+
+            public DebugMessageReceiveResult(IProxy<MessageReceiveResultSkeleton> proxy, MessageReceiveResultValues values)
+            {
+                _proxy = proxy;
+                _values = values;
+            }
+
+            public EndPointAddress RemoteEndPoint => _values.RemoteEndPoint;
+
+            public CancellationToken Cancellation => _values.Cancellation;
+
+            public IMessage Message
+            {
+                get
+                {
+                    var message = new Message();
+
+                    using (var stream = new MemoryStream(_values.Message))
+                    {
+                        message.ReadAsync(stream, cancellation: default).ConfigureAwait(false).GetAwaiter().GetResult();
+                    }
+
+                    return message;
+                }
+            }
+
+            Packet<EndPointAddress> IMessageReceiveResult<Packet<EndPointAddress>>.Packet
+                => new Packet<EndPointAddress>(Message, RemoteEndPoint);
+
+            public async Task SendResponseAsync(IMessage response)
+            {
+                var responseBuffer = response.ToArray();
+                await _proxy.ExecuteAsync(p => p.SendResponseAsync(responseBuffer));
+            }
+
+            public async Task SendCancellationAsync()
+            {
+                await _proxy.ExecuteAsync(p => p.SendCancellationAsync());
+            }
+
+            public async Task SendAckAsync()
+            {
+                await _proxy.ExecuteAsync(p => p.SendAckAsync());
+            }
+
+            public void Dispose()
+            {
+                _proxy.ExecuteAsync(p => p.Dispose()).HandleExceptions();
+            }
+        }
     }
 }
