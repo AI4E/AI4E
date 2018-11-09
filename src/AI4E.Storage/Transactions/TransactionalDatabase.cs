@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.Extensions.Logging;
 
 namespace AI4E.Storage.Transactions
@@ -35,8 +35,6 @@ namespace AI4E.Storage.Transactions
             var logger = _loggerFactory?.CreateLogger<ScopedTransactionalDatabase>();
 
             return new ScopedTransactionalDatabase(_transactionManager,
-                                                   _entryStateTransformerFactory,
-                                                   _entryStateStorageFactory,
                                                    logger);
         }
     }

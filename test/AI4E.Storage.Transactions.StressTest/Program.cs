@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,7 +11,7 @@ using MongoDB.Driver;
 
 namespace AI4E.Storage.Transactions.StressTest
 {
-    class Program
+    internal class Program
     {
         private static int _ba1AmountComparand = 0;
         private static int _ba2AmountComparand = 1;
@@ -46,7 +47,6 @@ namespace AI4E.Storage.Transactions.StressTest
 
         public static async Task Main(string[] args)
         {
-
             var services = new ServiceCollection();
             ConfigureServices(services);
             var serviceProvider = services.BuildServiceProvider();
@@ -66,28 +66,32 @@ namespace AI4E.Storage.Transactions.StressTest
                 tasks.Add(Task.Run(() => TransferAsync(bankAccountNo1, bankAccountNo2, serviceProvider.GetRequiredService<ITransactionalDatabase>())));
             }
 
-            tasks.Add(Task.Run(async () =>
+            var consoleIn = Task.Run(() => Console.In.ReadLineAsync());
+            tasks.Add(consoleIn);
+
+            long count = 0;
+            var watch = new Stopwatch();
+            watch.Start();
+
+            while (true)
             {
-                var numTasks = tasks.Count - 1;
+                var completed = await Task.WhenAny(tasks);
 
-                var completedBefore = 0;
-
-                for (var completed = tasks.Where(p => p.IsCompleted).Count();
-                     completed < tasks.Count - 1;
-                     completed = tasks.Where(p => p.IsCompleted).Count())
+                if (completed == consoleIn)
                 {
-                    if (completed != completedBefore)
-                    {
-                        await Console.Out.WriteLineAsync($"{completed} of {numTasks} tasks completed ({((double)completed / (double)numTasks * 100d).ToString("0.00")}%)");
-                    }
-
-                    completedBefore = completed;
-
-                    await Task.Delay(200);
+                    break;
                 }
 
-                await Console.Out.WriteLineAsync($"{numTasks} of {numTasks} tasks completed (100%)");
-            }));
+                tasks.Remove(completed);
+
+                count++;
+
+                await Console.Out.WriteLineAsync($"Task completed. Throughput: {(count * 1000.0) / watch.ElapsedMilliseconds }ops/sec");
+
+                tasks.Add(Task.Run(() => TransferAsync(bankAccountNo1, bankAccountNo2, serviceProvider.GetRequiredService<ITransactionalDatabase>())));
+            }
+
+            await Console.Out.WriteLineAsync("Waiting for other ops to complete.");
 
             await Task.WhenAll(tasks);
 
@@ -118,7 +122,7 @@ namespace AI4E.Storage.Transactions.StressTest
             }
 
             await Console.Out.WriteLineAsync($"Account1 amount: {bankAccount1.Amount} should be {_ba1AmountComparand}");
-            await Console.Out.WriteLineAsync($"Account1 amount: {bankAccount2.Amount} should be {_ba2AmountComparand}");
+            await Console.Out.WriteLineAsync($"Account2 amount: {bankAccount2.Amount} should be {_ba2AmountComparand}");
 
             await Console.Out.WriteLineAsync();
 
