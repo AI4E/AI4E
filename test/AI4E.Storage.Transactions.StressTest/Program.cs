@@ -61,7 +61,7 @@ namespace AI4E.Storage.Transactions.StressTest
 
             var tasks = new List<Task>();
 
-            for (var i = 0; i < 50; i++)
+            for (var i = 0; i < 10; i++)
             {
                 tasks.Add(Task.Run(() => TransferAsync(bankAccountNo1, bankAccountNo2, serviceProvider.GetRequiredService<ITransactionalDatabase>())));
             }
@@ -133,22 +133,34 @@ namespace AI4E.Storage.Transactions.StressTest
         {
             var transferAmount = Rnd.Next(2001) - 1000;
 
-            IScopedTransactionalDatabase transactionalStore;
-
-            do
+            using (var transactionalStore = database.CreateScope())
             {
-                transactionalStore = database.CreateScope();
+                do
+                {
+                    try
+                    {
+                        var bankAccount1 = await transactionalStore.GetAsync<BankAccount>(p => p.Id == bankAccountNo1).FirstOrDefault();
+                        var bankAccount2 = await transactionalStore.GetAsync<BankAccount>(p => p.Id == bankAccountNo2).FirstOrDefault();
 
-                var bankAccount1 = await transactionalStore.GetAsync<BankAccount>(p => p.Id == bankAccountNo1).FirstOrDefault();
-                var bankAccount2 = await transactionalStore.GetAsync<BankAccount>(p => p.Id == bankAccountNo2).FirstOrDefault();
+                        bankAccount1.Amount -= transferAmount;
+                        bankAccount2.Amount += transferAmount;
 
-                bankAccount1.Amount -= transferAmount;
-                bankAccount2.Amount += transferAmount;
+                        await transactionalStore.StoreAsync(bankAccount1);
+                        await transactionalStore.StoreAsync(bankAccount2);
+                    }
+                    catch (TransactionAbortedException)
+                    {
+                        continue;
+                    }
+                    catch
+                    {
+                        await transactionalStore.RollbackAsync();
 
-                await transactionalStore.StoreAsync(bankAccount1);
-                await transactionalStore.StoreAsync(bankAccount2);
+                        throw;
+                    }
+                }
+                while (!await transactionalStore.TryCommitAsync());
             }
-            while (!await transactionalStore.TryCommitAsync());
 
             Interlocked.Add(ref _ba1AmountComparand, -transferAmount);
             Interlocked.Add(ref _ba2AmountComparand, transferAmount);

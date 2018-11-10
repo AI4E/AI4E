@@ -50,23 +50,35 @@ namespace AI4E.Storage.Transactions
 
         public async Task<bool> TryCommitAsync(CancellationToken cancellation)
         {
-            bool result;
+            ITransaction transaction;
 
             using (await _lock.LockAsync(cancellation))
             {
-                result = await _transaction.TryCommitAsync(cancellation);
+                transaction = _transaction;
                 _transaction = null;
             }
 
-            return result;
+            if (transaction == null)
+            {
+                return true;
+            }
+
+            return await transaction.TryCommitAsync(cancellation);
         }
 
         public async Task RollbackAsync(CancellationToken cancellation)
         {
+            ITransaction transaction;
+
             using (await _lock.LockAsync(cancellation))
             {
-                await _transaction.AbortAsync(cancellation);
+                transaction = _transaction;
                 _transaction = null;
+            }
+
+            if (transaction != null)
+            {
+                await transaction.AbortAsync(cancellation);
             }
         }
 

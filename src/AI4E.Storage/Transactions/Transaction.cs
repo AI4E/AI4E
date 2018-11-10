@@ -32,23 +32,25 @@ namespace AI4E.Storage.Transactions
 
         private readonly ConcurrentDictionary<Type, ITypedTransaction> _typedTransactions = new ConcurrentDictionary<Type, ITypedTransaction>();
 
-        // This is null for transactions that we do not own to prevent bugs.
+        #region The following is null for transactions that we do not own to prevent bugs.
+
         private readonly ISet<Transaction> _nonCommittedTransactions;
         private readonly AsyncLock _lock;
 
+        #endregion
         #endregion
 
         #region C'tor
 
         internal Transaction(long id,
-                              bool ownsTransaction,
-                              ITransactionState entry,
-                              TransactionManager transactionManager,
-                              ITransactionStateStorage transactionStorage,
-                              ITransactionStateTransformer transactionStateTransformer,
-                              IEntryStateStorageFactory entryStateStorageFactory,
-                              IEntryStateTransformerFactory entryStateTransformerFactory,
-                              ILoggerFactory loggerFactory = null)
+                             bool ownsTransaction,
+                             ITransactionState entry,
+                             TransactionManager transactionManager,
+                             ITransactionStateStorage transactionStorage,
+                             ITransactionStateTransformer transactionStateTransformer,
+                             IEntryStateStorageFactory entryStateStorageFactory,
+                             IEntryStateTransformerFactory entryStateTransformerFactory,
+                             ILoggerFactory loggerFactory = null)
         {
 
             _transactionManager = transactionManager;
@@ -1142,6 +1144,8 @@ namespace AI4E.Storage.Transactions
                 return _entryStorage.UpdateEntryAsync(predicate, Update, Condition, cancellation).AsTask();
             }
 
+            #region Transaction processing
+
             private async Task<IEnumerable<Transaction>> GetDependenciesAsync(TData data, CancellationToken cancellation)
             {
                 var id = DataPropertyHelper.GetId<TId, TData>(data);
@@ -1296,6 +1300,8 @@ BUILD_RESULT:
                 _logger?.LogTrace($"Committed operation for transaction {_transaction.Id} to entry {id}.");
             }
 
+            #endregion
+
             private int? GetExpectedVersion(IEntrySnapshot<TId, TData> idMapEntry)
             {
                 if (idMapEntry == null)
@@ -1349,15 +1355,17 @@ BUILD_RESULT:
                 Assert(predicate != null);
 
                 var yield = await AsyncEnumerator<TData>.Capture();
+                var query = DataRepresentationHelper.TranslatePredicate<TId, TData, IDataRepresentation<TId, TData>>(predicate);
+                var translatedPredicate = query.Compile();
 
-                var lamda = BuildPredicate(predicate);
-                var queryExpression = BuildQueryExpression(predicate);
-                var compiledLambda = lamda.Compile();
-                var idEqualityComparer = new IdEqualityComparer<TId>();
-                var result = new Dictionary<TId, IEntrySnapshot<TId, TData>>(idEqualityComparer);
+                // Prevent phantom reads when other transactions deleted an entry.
+                foreach (var entry in _snapshots.Where(p => translatedPredicate(p.Value)))
+                {
+                    await yield.Return(entry.Value.Data);
+                }
 
-                // This is not parallelized with Task.WhenAll with care.
-                var entries = _entryStorage.GetEntriesAsync(queryExpression, cancellation);
+                // This is not parallelized with Task.WhenAll on purpose.
+                var entries = _entryStorage.GetEntriesAsync(TranslateQuery(query), cancellation);
                 IAsyncEnumerator<IEntryState<TId, TData>> entriesEnumerator = null;
 
                 try
@@ -1367,15 +1375,34 @@ BUILD_RESULT:
                     while (await entriesEnumerator.MoveNext(cancellation))
                     {
                         var entry = entriesEnumerator.Current;
-                        var snapshot = await ProcessEntryAsync(entry, compiledLambda, cancellation);
 
-                        if (snapshot != null)
+                        // We are in the recording state and therefore cannot have created an entry already.
+                        Assert(entry.CreatingTransaction != _transaction.Id);
+
+                        // Prevent phantom reads. We ignore all entries that were created of a transaction with a greater transaction id than our transaction's id.
+                        if (entry.CreatingTransaction > _transaction.Id)
                         {
-                            if (result.TryAdd(snapshot.Id, snapshot))
-                            {
-                                await yield.Return(snapshot.Data);
-                            }
+                            var creatingTransaction = await _transactionManager.GetTransactionAsync(entry.CreatingTransaction, cancellation);
+                            _nonCommittedTransactions.Add(creatingTransaction);
+                            continue;
                         }
+
+                        // It is not neccessary to check entries of the id map because we already processed the complete id map.
+                        if (_snapshots.ContainsKey(entry.Id))
+                        {
+                            continue;
+                        }
+
+                        var snapshot = await GetCommittedSnapshotAsync(entry, translatedPredicate, checkEntry: false, cancellation);
+
+                        if (snapshot == null)
+                        {
+                            continue;
+                        }
+
+                        Assert(snapshot.Data != null);
+                        _snapshots.Add(snapshot.Id, snapshot);
+                        await yield.Return(snapshot.Data);
                     }
                 }
                 finally
@@ -1383,16 +1410,16 @@ BUILD_RESULT:
                     entriesEnumerator?.Dispose();
                 }
 
-                // Prevent phantom reads when other transactions deleted an entry.
-                foreach (var entry in _snapshots.Where(p => compiledLambda(p.Value)))
-                {
-                    if (result.TryAdd(entry.Key, entry.Value))
-                    {
-                        await yield.Return(entry.Value.Data);
-                    }
-                }
+                // It is possible that there are entries that actually match our query but are not
+                // contained in the set of entries we get from the database as result.
+                // This is possible if another transaction concurrently aplies its operations to the
+                // respective entries.
+                // We therefore process all not-yet committed transactions to check whether any
+                // operates on an entries that matches our query in the original version.
 
-                // ProcessNonCommittedTransactionsAsync
+                // TODO: Is it a problem that the db-query of the entries and of the non-committed transactions are two distinct operations?
+                //       Are there any race conditions?
+
                 var transactions = LoadNonCommittedTransactionsAsync(cancellation);
                 var transactionsEnumerator = transactions.GetEnumerator();
 
@@ -1401,7 +1428,10 @@ BUILD_RESULT:
                     while (await transactionsEnumerator.MoveNext(cancellation))
                     {
                         var transaction = transactionsEnumerator.Current;
-                        await transaction.UpdateAsync(cancellation);
+
+                        // We cannot check for Pending/AbortRequested, as the transactions may have transitioned into another state already.
+                        Assert(transaction.Status != TransactionStatus.Initial && transaction.Status != TransactionStatus.Prepare);
+
                         var operations = transaction.Operations.Where(p => p.EntryType == typeof(TData));
 
                         foreach (var operation in operations)
@@ -1410,33 +1440,48 @@ BUILD_RESULT:
 
                             var id = DataPropertyHelper.GetId<TId, TData>(operation.Entry as TData);
 
-                            if (result.ContainsKey(id))
+                            // It is not neccessary to check entries of the id map because we already processed the complete id map.
+                            if (_snapshots.ContainsKey(id))
                             {
                                 continue;
                             }
 
-                            // It is not neccessary to check entries of the id map because ProcessEntriesAsync already processed the complete id map.
-                            if (!_snapshots.TryGetValue(id, out _))
+                            var entry = await _entryStorage.GetEntryAsync(id, cancellation);
+
+                            // If we cannot load the entry, there are two possible cases:
+                            // 1) The transaction creates the entry.
+                            // 2) Another transaction deleted the entry.
+                            // We may check for case (1) by comparand the expected version of the transaction operation to be zero.
+                            // In case of (2), the transaction that deleted the entry is already committed. The case that it is contained in our list
+                            // of non-committed transactions is handled separately.
+                            // In either case, we can just skip the entry.
+                            if (entry == null)
                             {
-                                var entry = await _entryStorage.GetEntryAsync(id, cancellation);
-
-                                //Assert(entry != null);
-
-                                if (entry != null && // TODO: Is this the correct behavior?
-                                    entry.CreatingTransaction < _transaction.Id)
-                                {
-                                    // TODO: Do we need to reload added transactions?
-                                    var snapshot = await GetCommittedSnapshotAsync(entry, compiledLambda, cancellation);
-
-                                    if (snapshot != null)
-                                    {
-                                        if (result.TryAdd(id, snapshot))
-                                        {
-                                            await yield.Return(snapshot.Data);
-                                        }
-                                    }
-                                }
+                                continue;
                             }
+
+                            // We are in the recording state and therefore cannot have created an entry already.
+                            Assert(entry.CreatingTransaction != _transaction.Id);
+
+                            // Prevent phantom reads. We ignore all entries that were created of a transaction with a greater transaction id than our transaction's id.
+                            if (entry.CreatingTransaction > _transaction.Id)
+                            {
+                                _nonCommittedTransactions.Add(transaction);
+                                continue;
+                            }
+
+                            // TODO: Do we need to reload added transactions?
+                            var snapshot = await GetCommittedSnapshotAsync(entry, translatedPredicate, checkEntry: true, cancellation);
+
+                            if (snapshot == null)
+                            {
+                                continue;
+                            }
+
+                            Assert(snapshot.Data != null);
+                            _snapshots.Add(snapshot.Id, snapshot);
+                            _nonCommittedTransactions.Add(transaction);
+                            await yield.Return(snapshot.Data);
                         }
                     }
                 }
@@ -1448,117 +1493,58 @@ BUILD_RESULT:
                 return yield.Break();
             }
 
+            private Expression<Func<IEntryState<TId, TData>, bool>> TranslateQuery(Expression<Func<IDataRepresentation<TId, TData>, bool>> query)
+            {
+                var parameter = Expression.Parameter(typeof(IEntryState<TId, TData>));
+                var body = ParameterExpressionReplacer.ReplaceParameter(query.Body, query.Parameters.First(), parameter);
+                return Expression.Lambda<Func<IEntryState<TId, TData>, bool>>(body, parameter);
+            }
+
             private IAsyncEnumerable<Transaction> LoadNonCommittedTransactionsAsync(CancellationToken cancellation)
             {
-                return new AsyncEnumerable<Transaction>(() => LoadNonCommittedTransactionsCoreAsync(cancellation));
+                return _transactionManager.GetNonCommittedTransactionsAsync(cancellation).Concat(_nonCommittedTransactions.ToAsyncEnumerable()).Distinct();
             }
 
-            private async AsyncEnumerator<Transaction> LoadNonCommittedTransactionsCoreAsync(CancellationToken cancellation)
-            {
-                var yield = await AsyncEnumerator<Transaction>.Capture();
-
-                foreach (var transaction in _nonCommittedTransactions)
-                {
-                    await yield.Return(transaction);
-                }
-
-                var transactions = _transactionManager.GetNonCommittedTransactionsAsync(cancellation);
-
-                await transactions.ForeachAsync(async transaction =>
-                {
-                    if (_nonCommittedTransactions.Add(transaction))
-                    {
-                        await yield.Return(transaction);
-                    }
-                });
-
-                return yield.Break();
-            }
-
-
-            private Expression<Func<IEntryState<TId, TData>, bool>> BuildQueryExpression(Expression<Func<TData, bool>> predicate)
-            {
-                // The resulting predicate checks
-                // 1) If the id of the transaction that created the entry is smaller than the current transactions id
-                //    to prevent phantom reads when other transactions add an entry.
-                // 2) If the entries payload matches the specified predicate.
-                // 3) If the entries data is not null (The entry is not deleted)
-                var parameter = Expression.Parameter(typeof(IEntryState<TId, TData>));
-
-                var creationTransactionAccessor = GetCreationTransactionAccessor();
-                var creationTransaction = ParameterExpressionReplacer.ReplaceParameter(creationTransactionAccessor.Body, creationTransactionAccessor.Parameters.First(), parameter);
-                var transactionComparison = Expression.LessThan(creationTransaction, Expression.Constant(_transaction.Id));
-
-                var dataAccessor = GetDataAccessor();
-                var data = ParameterExpressionReplacer.ReplaceParameter(dataAccessor.Body, dataAccessor.Parameters.First(), parameter);
-                var isDeleted = Expression.ReferenceEqual(data, Expression.Constant(null, typeof(TData)));
-                var body = ParameterExpressionReplacer.ReplaceParameter(predicate.Body, predicate.Parameters.First(), data);
-                return Expression.Lambda<Func<IEntryState<TId, TData>, bool>>(Expression.AndAlso(Expression.Not(isDeleted), Expression.AndAlso(transactionComparison, body)), parameter);
-            }
-
-            private static Expression<Func<IEntryState<TId, TData>, long>> GetCreationTransactionAccessor()
-            {
-                return p => p.CreatingTransaction;
-            }
-
-            private static Expression<Func<IEntryState<TId, TData>, TData>> GetDataAccessor()
-            {
-                return p => p.Data;
-            }
-
-            // We have to process the entries for the following reason.
-            // One / several transactions modified the entry but the transactions are not fully committed yet and the entry MATCHED the predicate.
-            // We have to check whether the entry also matched without the changes that the transactions produced to prevent a dirty read.
-            private async ValueTask<IEntrySnapshot<TId, TData>> ProcessEntryAsync(IEntryState<TId, TData> entry,
-                                                                                  Func<IDataRepresentation<TId, TData>, bool> predicate,
-                                                                                  CancellationToken cancellation)
-            {
-                Assert(entry != null);
-
-                IEntrySnapshot<TId, TData> result;
-
-                // Prevent phantom reads when other transactions modify an entry.
-                if (_snapshots.ContainsKey(entry.Id))
-                {
-                    // ProcessEntriesAsync will check all cached entries to match the predicate => We can skip this here.
-                    result = null;
-                }
-                else
-                {
-                    result = await GetCommittedSnapshotAsync(entry, predicate, cancellation);
-                }
-
-                if (result != null)
-                {
-                    Assert(result.Data != null);
-
-                    _snapshots.Add(result.Id, result);
-                }
-
-                return result;
-            }
-
-            // One / several transactions may have modified the entry but the transactions are not fully committed yet and the entry MATCHED the predicate.
-            // We have to check whether the entry also matched without the changes that the transactions produced to prevent a dirty read.
+            // Get the latest committed snapshot for the specified entry that matches the predicate with respect to the set of non-committed transactions.
+            // Walk back the history of operations on the entry till we find the latest committed state.
             private async ValueTask<IEntrySnapshot<TId, TData>> GetCommittedSnapshotAsync(IEntryState<TId, TData> entry,
                                                                                           Func<IDataRepresentation<TId, TData>, bool> predicate,
+                                                                                          bool checkEntry,
                                                                                           CancellationToken cancellation)
             {
-                var committedTransactions = new List<long>();
+                var committedTransactions = new List<Transaction>();
                 var result = _entryStateTransformer.ToSnapshot(entry);
-
                 Assert(result != null);
+
+                if (checkEntry)
+                {
+                    result = result.MatchPredicate(predicate);
+                }
+#if DEBUG
+                else
+                {
+                    Assert(predicate(result));
+                }
+#endif
 
                 // PendingOperations are ordered by OriginalDataVersion
                 for (var i = 0; i < entry.PendingOperations.Count; i++)
                 {
                     var pendingOperation = entry.PendingOperations[i];
-                    var transaction = await _transactionManager.GetTransactionAsync(pendingOperation.TransactionId, cancellation);
                     var originalData = pendingOperation.OriginalData;
 
+                    // Load the transaction that issued the pending operation.
+                    var transaction = await _transactionManager.GetTransactionAsync(pendingOperation.TransactionId, cancellation);
+
+                    // The transaction that issued the pending operation is in our list of non-committed transaction.
+                    // Even if the transaction is committed in the mean-time, we have to take the entry's data before the transaction committed
+                    // in order guarantee atomicity of transactions.
                     if (_nonCommittedTransactions.Contains(transaction))
                     {
-                        result = originalData.Data != null && predicate(originalData) ? originalData : null;
+                        // Check whether originalData also matches our predicate.
+                        // If either the transaction creates the entry (originalData.Data == 0) or
+                        // the original data does not match our predicate, we return null.
+                        result = originalData.MatchPredicate(predicate);
 
                         break;
                     }
@@ -1566,14 +1552,17 @@ BUILD_RESULT:
                     await transaction.UpdateAsync(cancellation);
                     var transactionState = transaction.Status;
 
-                    // If the transaction is not present or its state is committed, the transaction is already committed, it is just not removed from the collection.
+                    // If the transaction is not present or its state is committed,
+                    // the transaction is already committed, it is just not removed from the collection.
                     if (!transactionState.IsCommitted())
                     {
                         // An initial transaction must not have pending operations.
                         Assert(transactionState != TransactionStatus.Initial);
 
-                        // The pending operation does no create the entry and the previous data matches the predicate.
-                        result = originalData.Data != null && predicate(originalData) ? originalData : null;
+                        // Check whether originalData also matches our predicate.
+                        // If either the transaction creates the entry (originalData.Data == 0) or
+                        // the original data does not match our predicate, we return null.
+                        result = originalData.MatchPredicate(predicate);
 
                         if (transactionState == TransactionStatus.AbortRequested || transactionState == TransactionStatus.Aborted)
                         {
@@ -1582,87 +1571,91 @@ BUILD_RESULT:
                             // The transaction commit operation must ensure this. 
                             // Because of this, it is the same case than it were if the operation belongs to a pending transaction.
 
-                            if (i < entry.PendingOperations.Count - 1)
+                            for (var j = i + 1; j < entry.PendingOperations.Count; j++)
                             {
-                                var nextOperation = entry.PendingOperations[i + 1];
+                                var nextOperation = entry.PendingOperations[j];
                                 var nextOperationTransaction = await _transactionManager.GetTransactionAsync(nextOperation.TransactionId, cancellation);
 
                                 await nextOperationTransaction.UpdateAsync(cancellation);
-                                var nextOperationTransactionState = nextOperationTransaction.Status;
 
                                 // TODO: Assert failed nextOperationTransactionState == TransactionStatus.CleanedUp
-                                Assert(nextOperationTransactionState != null &&
-                                       nextOperationTransactionState != TransactionStatus.CleanedUp &&
-                                       nextOperationTransactionState != TransactionStatus.Initial &&
-                                       nextOperationTransactionState != TransactionStatus.Committed);
+                                Assert(nextOperationTransaction.Status != null &&
+                                       nextOperationTransaction.Status != TransactionStatus.CleanedUp &&
+                                       nextOperationTransaction.Status != TransactionStatus.Initial &&
+                                       nextOperationTransaction.Status != TransactionStatus.Committed);
                             }
 #endif
 
-                            await AbortAsync(entry, transaction, cancellation);
+                            await AbortPendingOperationForTransactionAsync(entry, transaction, cancellation);
                         }
 
+                        // We decided for the transaction to be non-committed now.
+                        // We have to remember this decision for the future, even if the transaction commits in the mean-time.
                         _nonCommittedTransactions.Add(transaction);
 
                         break;
                     }
 
-                    committedTransactions.Add(pendingOperation.TransactionId);
+                    committedTransactions.Add(transaction);
                 }
 
-                var byIdSelector = DataPropertyHelper.CompilePredicate(typeof(TData), entry.Data);
+                var byIdSelector = DataPropertyHelper.CompilePredicate(entry.Data);
 
+                // Check all transaction in our list of non-committed transactions if they operate on the current entry.
+                // If they do, we have to obtain the original data before the transaction was applied,
+                // even if the transaction is committed in the mean-time, in order guarantee atomicity of transactions.
                 foreach (var transaction in _nonCommittedTransactions)
                 {
                     var operations = transaction.Operations;
+                    Assert(!operations.Any(p => p == null || p.EntryType == null || p.Entry == null));
 
-                    // TODO: Why does the == on the type objects does not work here?
-                    /*p.EntryType == typeof(TData)*/
-                    if (!operations.Any(p => AreEqual(p.EntryType, typeof(TData)) && byIdSelector(p))) // TODO: ArgumentNullException for p
+                    // TODO: ArgumentNullException occured for p
+                    // TODO: Why does the == operator on the type objects not work here?
+                    if (!operations.Any(p => AreEqual(p.EntryType, typeof(TData)) && byIdSelector((TData)p.Entry)))
+                    {
                         continue;
+                    }
 
-                    // The transaction is either non-committed or viewed as non-committed by the current transaction.
-                    // If the operation aborts or completed in the meantime, all pending operation belongin to the repspective
-                    // transaction may be removed. We do not known whether the transaction is aborted or committed in the described case and
-                    // We cannot obtain the original data of the entry.
+                    // The transaction operates on the current entry. => Obtain the original data, before the transaction was applied.
+                    // The transaction may already be aborted or committed and cleaned-up in the meantime.
+                    // All pending operation belonging to the repspective transaction may have been removed.
+                    // We do not known whether the transaction is aborted or committed in the described case and
+                    // we cannot obtain the original data of the entry.
                     // We must abort the current transaction as we cannot ensure consistency.
                     // We cannot prevent this situation without disturbing the more major case that this relatively rare case
-                    // does not occur but we can investigate with saving the original data when we save the transaction in the
+                    // does not occur but we can investigate with saving the original data when we store the transaction in the
                     // non-committed collection.
-                    if (!entry.PendingOperations.Any(p => p.TransactionId == _transaction.Id))
+                    if (!entry.PendingOperations.Any(p => p.TransactionId == transaction.Id))
                     {
                         await _transaction.AbortAsync(cancellation);
                         throw new TransactionAbortedException();
                     }
                 }
 
+                // Commit the pending operations of all committed transactions.
                 if (committedTransactions.Any())
                 {
-                    await CommitAllAsync(entry, committedTransactions, cancellation);
+                    await CommitPendingOperationsForTransactionsAsync(entry, committedTransactions, cancellation);
                 }
 
                 return result;
             }
 
-            private static bool AreEqual(Type left, Type right)
-            {
-                return left.IsAssignableFrom(right) && right.IsAssignableFrom(left);
-            }
-
-            private ValueTask<IEntryState<TId, TData>> CommitAllAsync(IEntryState<TId, TData> entry,
-                                                            IEnumerable<long> transactionIds,
-                                                            CancellationToken cancellation)
+            private ValueTask<IEntryState<TId, TData>> CommitPendingOperationsForTransactionsAsync(IEntryState<TId, TData> entry,
+                                                                                                   IEnumerable<Transaction> transactions,
+                                                                                                   CancellationToken cancellation)
             {
                 IEntryState<TId, TData> Update(IEntryState<TId, TData> c)
                 {
-                    return _entryStateTransformer.CommitAll(c, transactionIds);
+                    return _entryStateTransformer.CommitAll(c, transactions.Select(p => p.Id));
                 }
 
                 return _entryStorage.UpdateEntryAsync(entry, Update, cancellation);
             }
 
-            private async ValueTask<IEntryState<TId, TData>> AbortAsync(IEntryState<TId, TData> entry,
-                                                              Transaction transaction,
-                                                              CancellationToken cancellation)
+            private async ValueTask<IEntryState<TId, TData>> AbortPendingOperationForTransactionAsync(IEntryState<TId, TData> entry,
+                                                                                                      Transaction transaction,
+                                                                                                      CancellationToken cancellation)
             {
                 IEntryState<TId, TData> Update(IEntryState<TId, TData> c)
                 {
@@ -1676,12 +1669,11 @@ BUILD_RESULT:
                 return entry;
             }
 
-            private static Expression<Func<IDataRepresentation<TId, TData>, bool>> BuildPredicate(Expression<Func<TData, bool>> predicate)
+            private static bool AreEqual(Type left, Type right)
             {
-                Expression<Func<IDataRepresentation<TId, TData>, TData>> dataSelector = entry => entry.Data;
-                var body = ParameterExpressionReplacer.ReplaceParameter(predicate.Body, predicate.Parameters.First(), dataSelector.Body);
-                var parameter = dataSelector.Parameters.First();
-                return Expression.Lambda<Func<IDataRepresentation<TId, TData>, bool>>(body, parameter);
+                Assert(left == right);
+
+                return left.IsAssignableFrom(right) && right.IsAssignableFrom(left);
             }
 
             private sealed class UpdatedSnapshot : IEntrySnapshot<TId, TData>
