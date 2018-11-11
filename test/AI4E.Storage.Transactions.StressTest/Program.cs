@@ -192,28 +192,29 @@ namespace AI4E.Storage.Transactions.StressTest
 
         private static void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton<IMongoClient>(provider => new MongoClient("mongodb://localhost:27017"));
+            services.AddStorage().UseMongoDB("AI4E-Transactions-DB", useNativeTransactions: true);
 
-            services.AddSingleton(provider =>
-                provider.GetRequiredService<IMongoClient>().GetDatabase("AI4E-Transactions-DB"));
+            //services.AddSingleton<IMongoClient>(provider => new MongoClient("mongodb://localhost:27017"));
+            //services.AddSingleton(provider =>
+            //    provider.GetRequiredService<IMongoClient>().GetDatabase("AI4E-Transactions-DB"));
 
-            services.AddSingleton<IFilterableDatabase, MongoDatabase>();
+            //services.AddSingleton<IFilterableDatabase, MongoDatabase>();
 
-            // services.AddSingleton<IFilterableDatabase, InMemoryDatabase>();
-            services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
-            services.AddSingleton<IEntryStateTransformerFactory, EntryStateTransformerFactory>();
-            services.AddSingleton<IEntryStateStorageFactory, EntryStateStorageFactory>();
-            services.AddSingleton<ITransactionStateTransformer, TransactionStateTransformer>();
-            services.AddSingleton<ITransactionStateStorage, TransactionStateStorage>();
-            services.AddSingleton<ITransactionManager, TransactionManager>();
-            services.AddSingleton<ITransactionalDatabase, TransactionalDatabase>();
+            //// services.AddSingleton<IFilterableDatabase, InMemoryDatabase>();
+            //services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+            //services.AddSingleton<IEntryStateTransformerFactory, EntryStateTransformerFactory>();
+            //services.AddSingleton<IEntryStateStorageFactory, EntryStateStorageFactory>();
+            //services.AddSingleton<ITransactionStateTransformer, TransactionStateTransformer>();
+            //services.AddSingleton<ITransactionStateStorage, TransactionStateStorage>();
+            //services.AddSingleton<ITransactionManager, TransactionManager>();
+            //services.AddSingleton<ITransactionalDatabase, TransactionalDatabase>();
             services.AddTransient(provider => provider.GetRequiredService<ITransactionalDatabase>().CreateScope());
 
             services.AddLogging(builder =>
             {
-                builder.SetMinimumLevel(LogLevel.Trace);
+                builder.SetMinimumLevel(LogLevel.Debug);
                 builder.AddConsole();
-                builder.AddFile("app.log");
+                //builder.AddFile("app.log");
             });
         }
     }

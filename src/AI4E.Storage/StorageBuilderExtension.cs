@@ -65,23 +65,25 @@ namespace AI4E.Storage
         }
 
         public static IStorageBuilder UseTransactionalDatabase<TDatabase>(this IStorageBuilder builder)
-            where TDatabase : class, ITransactionalDatabase
+            where TDatabase : class, IDatabase, ITransactionalDatabase
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
 
             var services = builder.Services;
 
-            services.AddSingleton<ITransactionalDatabase, TDatabase>();
-            services.AddSingleton(p => p.GetRequiredService<ITransactionalDatabase>() as IQueryableTransactionalDatabase);
+            services.AddSingleton<IDatabase, TDatabase>();
+            services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IFilterableDatabase);
+            services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IQueryableDatabase);
 
-            // TODO: Provide a wrapper for IDatabase, IFilterableDatabase, IQueryableDatabase
+            services.AddSingleton<ITransactionalDatabase, TDatabase>(p => p.GetRequiredService<IDatabase>() as TDatabase);
+            services.AddSingleton(p => p.GetRequiredService<ITransactionalDatabase>() as IQueryableTransactionalDatabase);
 
             return builder;
         }
 
         public static IStorageBuilder UseTransactionalDatabase<TDatabase>(this IStorageBuilder builder, Func<IServiceProvider, TDatabase> factory)
-            where TDatabase : class, ITransactionalDatabase
+            where TDatabase : class, IDatabase, ITransactionalDatabase
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
@@ -91,10 +93,12 @@ namespace AI4E.Storage
 
             var services = builder.Services;
 
-            services.AddSingleton<ITransactionalDatabase, TDatabase>(factory);
-            services.AddSingleton(p => p.GetRequiredService<ITransactionalDatabase>() as IQueryableTransactionalDatabase);
+            services.AddSingleton<IDatabase, TDatabase>(factory);
+            services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IFilterableDatabase);
+            services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IQueryableDatabase);
 
-            // TODO: Provide a wrapper for IDatabase, IFilterableDatabase, IQueryableDatabase
+            services.AddSingleton<ITransactionalDatabase, TDatabase>(p => p.GetRequiredService<IDatabase>() as TDatabase);
+            services.AddSingleton(p => p.GetRequiredService<ITransactionalDatabase>() as IQueryableTransactionalDatabase);
 
             return builder;
         }
