@@ -40,7 +40,7 @@ namespace AI4E
         private static ConcurrentDictionary<Type, object> _isEnumValueLookup = new ConcurrentDictionary<Type, object>();
 
         public static bool IsFlagsEnum<TEnum>()
-            where TEnum : Enum
+            where TEnum : struct, Enum
         {
             var type = typeof(TEnum);
 
@@ -48,7 +48,7 @@ namespace AI4E
         }
 
         public static bool IsFlag<TEnum>(this TEnum value)
-            where TEnum : Enum
+            where TEnum : struct, Enum
         {
             var enumType = typeof(TEnum);
             var evaluator = _isFlagLookup.GetOrAdd(enumType, _ => GetFlagEvaluator<TEnum>()) as Func<TEnum, bool>;
@@ -57,7 +57,7 @@ namespace AI4E
         }
 
         public static bool IsEnumValue<TEnum>(this TEnum value)
-            where TEnum : Enum
+            where TEnum : struct, Enum
         {
             var enumType = typeof(TEnum);
             var evaluator = _isEnumValueLookup.GetOrAdd(enumType, _ => GetEnumValueEvaluator<TEnum>()) as Func<TEnum, bool>;
@@ -66,7 +66,7 @@ namespace AI4E
         }
 
         public static bool IsValid<TEnum>(this TEnum value)
-            where TEnum : Enum
+            where TEnum : struct, Enum
         {
             if (IsFlagsEnum<TEnum>())
             {
@@ -84,7 +84,7 @@ namespace AI4E
         }
 
         private static Func<TEnum, bool> GetFlagEvaluator<TEnum>()
-            where TEnum : Enum
+            where TEnum : struct, Enum
         {
             var enumType = typeof(TEnum);
             Assert(enumType != null);
@@ -124,7 +124,7 @@ foreach(var underlyingType in underlyingTypes.Keys)
         }
 
         private static Func<TEnum, bool> GetEnumValueEvaluator<TEnum>()
-            where TEnum : Enum
+            where TEnum : struct, Enum
         {
             var enumType = typeof(TEnum);
             Assert(enumType != null);
