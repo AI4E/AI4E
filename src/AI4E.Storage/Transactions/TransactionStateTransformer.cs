@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using AI4E.Internal;
@@ -220,7 +220,6 @@ namespace AI4E.Storage.Transactions
             {
                 throw new InvalidOperationException();
             }
-
 
             return new TransactionState(convertedState.Id, convertedState.Version + 1, TransactionStatus.CleanedUp, convertedState.Operations);
         }

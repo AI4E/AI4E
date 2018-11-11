@@ -1,22 +1,13 @@
-﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace AI4E.Storage.Transactions
 {
-    public interface ITransactionManager : IDisposable
+    public interface ITransactionManager
     {
-        //IScopedTransactionalDatabase CreateStore();
-
-        ValueTask<ProcessingState> ProcessTransactionAsync(ITransaction transaction, CancellationToken cancellation);
-
-        ITransaction GetTransaction(long id);
-
-        ITransaction CreateTransaction();
-
-        IAsyncEnumerable<ITransaction> GetNonCommittedTransactionsAsync(CancellationToken cancellation = default);
+        ValueTask<ITransaction> CreateTransactionAsync(CancellationToken cancellation);
+        IAsyncEnumerable<ITransaction> GetNonCommittedTransactionsAsync(CancellationToken cancellation);
+        ValueTask<ITransaction> GetTransactionAsync(long id, CancellationToken cancellation);
     }
-
-    public enum ProcessingState { Committed, Aborted };
 }

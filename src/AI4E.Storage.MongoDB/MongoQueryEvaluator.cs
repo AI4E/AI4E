@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -51,6 +51,23 @@ namespace AI4E.Storage.MongoDB
                 throw new ArgumentNullException(nameof(predicate));
 
             _asyncCursorSource = async () => await (await collection).FindAsync<T>(predicate, cancellationToken: cancellation);
+        }
+
+        public MongoQueryEvaluator(ValueTask<IMongoCollection<T>> collection,
+                                   Expression<Func<T, bool>> predicate,
+                                   Task<IClientSessionHandle> session,
+                                   CancellationToken cancellation = default)
+        {
+            if (collection == null)
+                throw new ArgumentNullException(nameof(collection));
+
+            if (predicate == null)
+                throw new ArgumentNullException(nameof(predicate));
+
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+
+            _asyncCursorSource = async () => await (await collection).FindAsync<T>(await session, predicate, cancellationToken: cancellation);
         }
 
         public IAsyncEnumerator<T> GetEnumerator()

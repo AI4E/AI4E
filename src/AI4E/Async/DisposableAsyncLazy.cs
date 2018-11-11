@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -191,6 +191,22 @@ namespace AI4E.Async
             }
         }
 
+        private bool IsNotYetStartedOrDisposed
+        {
+            get
+            {
+                if (_cancellationSource.Token.IsCancellationRequested)
+                {
+                    return true;
+                }
+
+                lock (_lock)
+                {
+                    return _instance.IsValueCreated;
+                }
+            }
+        }
+
         /// <summary>
         /// Starts the asynchronous factory method, if it has not already started, and returns the resulting task.
         /// </summary>
@@ -261,7 +277,7 @@ namespace AI4E.Async
         {
             try
             {
-                if (IsStarted)
+                if (!IsNotYetStartedOrDisposed)
                 {
                     T result;
                     try
