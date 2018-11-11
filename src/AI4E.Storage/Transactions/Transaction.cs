@@ -553,7 +553,7 @@ namespace AI4E.Storage.Transactions
                 return await AbortInternalAsync(originalTransaction, Operations, cancellation);
             }
 
-            if (dependencies.Any())
+            if (_logger.IsEnabled(LogLevel.Trace) && dependencies.Any())
             {
                 var stringifiedDependencies = dependencies.Select(p => p.Id.ToString()).Aggregate((e, n) => e + ", " + n);
 
@@ -601,6 +601,12 @@ namespace AI4E.Storage.Transactions
             if (!await TryTransitionRequestAbortedStateAsync(cancellation))
             {
                 _logger?.LogTrace($"Processing transaction {originalTransaction.Id}. Transaction {Id} committed successfully.");
+
+#if DEBUG
+                await UpdateAsync(cancellation);
+                Assert(Status.IsCommitted());
+#endif
+
                 await CleanUpTransactionAsync(operations, cancellation);
                 return ProcessingState.Committed;
             }
@@ -1211,11 +1217,11 @@ namespace AI4E.Storage.Transactions
             {
                 var id = DataPropertyHelper.GetId<TId, TData>(data);
                 IEntryState<TId, TData> entry, desired = null;
-                ISet<long> dependencies;
+                ISet<long> dependencies = new HashSet<long>();
 
                 do
                 {
-                    dependencies = new HashSet<long>();
+                    dependencies.Clear();
                     entry = await _entryStorage.GetEntryAsync(DataPropertyHelper.BuildPredicate<TId, IEntryState<TId, TData>>(id, p => p.Id), cancellation);
 
                     if (entry == null)
@@ -1375,6 +1381,7 @@ BUILD_RESULT:
                     while (await entriesEnumerator.MoveNext(cancellation))
                     {
                         var entry = entriesEnumerator.Current;
+                        Assert(entry.Data != null);
 
                         // We are in the recording state and therefore cannot have created an entry already.
                         Assert(entry.CreatingTransaction != _transaction.Id);
@@ -1448,7 +1455,7 @@ BUILD_RESULT:
 
                             var entry = await _entryStorage.GetEntryAsync(id, cancellation);
 
-                            // If we cannot load the entry, there are two possible cases:
+                            // If we cannot load the entry or its data, there are two possible cases:
                             // 1) The transaction creates the entry.
                             // 2) Another transaction deleted the entry.
                             // We may check for case (1) by comparand the expected version of the transaction operation to be zero.
@@ -1470,7 +1477,6 @@ BUILD_RESULT:
                                 continue;
                             }
 
-                            // TODO: Do we need to reload added transactions?
                             var snapshot = await GetCommittedSnapshotAsync(entry, translatedPredicate, checkEntry: true, cancellation);
 
                             if (snapshot == null)
@@ -1508,10 +1514,14 @@ BUILD_RESULT:
             // Get the latest committed snapshot for the specified entry that matches the predicate with respect to the set of non-committed transactions.
             // Walk back the history of operations on the entry till we find the latest committed state.
             private async ValueTask<IEntrySnapshot<TId, TData>> GetCommittedSnapshotAsync(IEntryState<TId, TData> entry,
+
                                                                                           Func<IDataRepresentation<TId, TData>, bool> predicate,
                                                                                           bool checkEntry,
                                                                                           CancellationToken cancellation)
             {
+                Assert(entry != null);
+                Assert(entry.Data != null);
+
                 var committedTransactions = new List<Transaction>();
                 var result = _entryStateTransformer.ToSnapshot(entry);
                 Assert(result != null);
@@ -1569,21 +1579,26 @@ BUILD_RESULT:
 #if DEBUG
                             // After an operation thats transaction is aborted MUST NOT follow an operation that belongs to a committed transaction.
                             // The transaction commit operation must ensure this. 
-                            // Because of this, it is the same case than it were if the operation belongs to a pending transaction.
+                            // Because of this, it is the same case than the operation belonging to a pending transaction.
 
-                            for (var j = i + 1; j < entry.PendingOperations.Count; j++)
-                            {
-                                var nextOperation = entry.PendingOperations[j];
-                                var nextOperationTransaction = await _transactionManager.GetTransactionAsync(nextOperation.TransactionId, cancellation);
+                            // We cannot just walk the operation list and check each transaction, as the transaction may have changed state in the mean-time
+                            // rendering our operation list obsolete.
 
-                                await nextOperationTransaction.UpdateAsync(cancellation);
+                            // TODO: Can we validate the condition by updating the operation list?
 
-                                // TODO: Assert failed nextOperationTransactionState == TransactionStatus.CleanedUp
-                                Assert(nextOperationTransaction.Status != null &&
-                                       nextOperationTransaction.Status != TransactionStatus.CleanedUp &&
-                                       nextOperationTransaction.Status != TransactionStatus.Initial &&
-                                       nextOperationTransaction.Status != TransactionStatus.Committed);
-                            }
+                            //for (var j = i + 1; j < entry.PendingOperations.Count; j++)
+                            //{
+                            //    var nextOperation = entry.PendingOperations[j];
+                            //    var nextOperationTransaction = await _transactionManager.GetTransactionAsync(nextOperation.TransactionId, cancellation);
+
+                            //    await nextOperationTransaction.UpdateAsync(cancellation);
+
+                            //    // TODO: Assert failed nextOperationTransactionState == TransactionStatus.CleanedUp
+                            //    Assert(nextOperationTransaction.Status != null &&
+                            //           nextOperationTransaction.Status != TransactionStatus.CleanedUp &&
+                            //           nextOperationTransaction.Status != TransactionStatus.Initial &&
+                            //           nextOperationTransaction.Status != TransactionStatus.Committed);
+                            //}
 #endif
 
                             await AbortPendingOperationForTransactionAsync(entry, transaction, cancellation);
@@ -1599,7 +1614,7 @@ BUILD_RESULT:
                     committedTransactions.Add(transaction);
                 }
 
-                var byIdSelector = DataPropertyHelper.CompilePredicate(entry.Data);
+                var byIdSelector = DataPropertyHelper.BuildPredicate<TId, TData>(entry.Id).Compile();
 
                 // Check all transaction in our list of non-committed transactions if they operate on the current entry.
                 // If they do, we have to obtain the original data before the transaction was applied,
@@ -1610,7 +1625,6 @@ BUILD_RESULT:
                     Assert(!operations.Any(p => p == null || p.EntryType == null || p.Entry == null));
 
                     // TODO: ArgumentNullException occured for p
-                    // TODO: Why does the == operator on the type objects not work here?
                     if (!operations.Any(p => AreEqual(p.EntryType, typeof(TData)) && byIdSelector((TData)p.Entry)))
                     {
                         continue;
@@ -1669,11 +1683,19 @@ BUILD_RESULT:
                 return entry;
             }
 
+            // TODO: Why does the == operator on the type objects not work here?
             private static bool AreEqual(Type left, Type right)
             {
-                Assert(left == right);
+                var result = left.IsAssignableFrom(right) && right.IsAssignableFrom(left);
 
-                return left.IsAssignableFrom(right) && right.IsAssignableFrom(left);
+#if DEBUG
+                if (result)
+                {
+                    Assert(left == right);
+                }
+#endif
+
+                return result;
             }
 
             private sealed class UpdatedSnapshot : IEntrySnapshot<TId, TData>

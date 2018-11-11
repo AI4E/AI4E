@@ -211,9 +211,9 @@ namespace AI4E.Storage.Transactions.StressTest
 
             services.AddLogging(builder =>
             {
-                builder.SetMinimumLevel(LogLevel.Debug);
-                //builder.AddFile(new FileLoggerContext(AppContext.BaseDirectory, "transactionTest.log"));
+                builder.SetMinimumLevel(LogLevel.Trace);
                 builder.AddConsole();
+                builder.AddFile("app.log");
             });
         }
     }
