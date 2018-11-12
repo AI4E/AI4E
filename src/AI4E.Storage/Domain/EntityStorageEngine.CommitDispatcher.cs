@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -166,7 +166,8 @@ namespace AI4E.Storage.Domain
                     }
                 }
 
-                events = commit.Events.Select(p => Deserialize(p.Body as byte[]));
+                // We need to evaluate the enumerable here, to ensure that the Deserialize method is not called outside the scope.
+                events = commit.Events.Select(p => Deserialize(p.Body as byte[])).ToList();
             }
 
             var dispatchResults = await Task.WhenAll(events.Select(p => DispatchEventAsync(p, cancellation)));
@@ -182,7 +183,8 @@ namespace AI4E.Storage.Domain
 
         private Task<IDispatchResult> DispatchEventAsync(object evt, CancellationToken cancellation)
         {
-            return _eventDispatcher.DispatchAsync(evt, publish: true);
+            var dispatchData = DispatchDataDictionary.Create(evt.GetType(), evt);
+            return _eventDispatcher.DispatchAsync(dispatchData, publish: true, cancellation);
         }
 
         private async Task ProjectAsync(string bucketId, string id, TaskCompletionSource<object> tcs, CancellationToken cancellation)
