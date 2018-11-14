@@ -258,12 +258,18 @@ namespace AI4E.Routing
                         {
                             foreach (var remoteAddress in remoteAddresses)
                             {
+                                var messageCopy = new Message();
+
+                                message.Trim();
+                                var messagePayload = message.ToArray();
+                                messageCopy.Read(messagePayload);
+
                                 if (timeout != null)
                                 {
                                     operations.Remove(timeout);
                                 }
 
-                                operations.Add(SendInternalAsync(message, remoteEndPoint, remoteAddress, cancellation));
+                                operations.Add(SendInternalAsync(messageCopy, remoteEndPoint, remoteAddress, cancellation));
                                 timeout = Task.Delay(5000); // TODO: This should be configurable
                                 operations.Add(timeout);
 
