@@ -1,11 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Transactions
 {
@@ -21,28 +20,27 @@ namespace AI4E.Storage.Transactions
             if (operation == null)
                 throw new ArgumentNullException(nameof(operation));
 
-            IScopedTransactionalDatabase transactionalDatabase = null;
-            try
+            using (var transactionalDatabase = database.CreateScope())
             {
                 do
                 {
-                    transactionalDatabase?.Dispose();
-
-                    transactionalDatabase = database.CreateScope();
                     try
                     {
                         await operation(transactionalDatabase, cancellation);
+
+                        if (await transactionalDatabase.TryCommitAsync(cancellation))
+                        {
+                            break;
+                        }
                     }
-                    catch (TransactionAbortedException)
+                    catch (TransactionAbortedException) { }
+                    catch (Exception)
                     {
-                        continue;
+                        // TODO: Log
+                        throw;
                     }
                 }
-                while (!await transactionalDatabase.TryCommitAsync(cancellation));
-            }
-            finally
-            {
-                transactionalDatabase?.Dispose();
+                while (true);
             }
         }
 
@@ -59,35 +57,32 @@ namespace AI4E.Storage.Transactions
 
             async Task<IEnumerable<TData>> PerformReadAsync()
             {
-                IScopedTransactionalDatabase transactionalDatabase = null;
-                IEnumerable<TData> result = null;
+                IEnumerable<TData> result;
 
-                try
+                using (var transactionalDatabase = database.CreateScope())
                 {
                     do
                     {
-                        transactionalDatabase?.Dispose();
-
-                        transactionalDatabase = database.CreateScope();
                         try
                         {
                             // We have to load all data to memory. 
                             // Otherwise the data would be queried lazily by the caller after the transaction ended.
                             result = await transactionalDatabase.GetAsync(predicate, cancellation);
+
+                            if (await transactionalDatabase.TryCommitAsync(cancellation))
+                            {
+                                break;
+                            }
                         }
-                        catch (TransactionAbortedException)
+                        catch (TransactionAbortedException) { }
+                        catch (Exception)
                         {
-                            continue;
+                            // TODO: Log
+                            throw;
                         }
                     }
-                    while (!await transactionalDatabase.TryCommitAsync(cancellation));
+                    while (true);
                 }
-                finally
-                {
-                    transactionalDatabase?.Dispose();
-                }
-
-                Assert(result != null);
 
                 return result;
             }

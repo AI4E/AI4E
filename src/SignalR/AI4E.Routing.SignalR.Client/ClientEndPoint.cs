@@ -144,9 +144,6 @@ namespace AI4E.Routing.SignalR.Client
                 {
                     using (var cancellationTokenSource = new TaskCancellationTokenSource(connectionLose, cancellation))
                     {
-                        // Resend all messages
-                        await Task.WhenAll(_txQueue.ToList().Select(p => PushToServerAsync(seqNum: p.Key, payload: p.Value.bytes, cancellation: cancellationTokenSource.CancellationToken)));
-
                         try
                         {
                             await PushToServerAsync(seqNum, memory, cancellationTokenSource.CancellationToken);

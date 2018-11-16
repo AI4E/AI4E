@@ -184,14 +184,10 @@ namespace AI4E.Routing
 
             foreach (var route in routes)
             {
-                List<(EndPointAddress endPoint, RouteOptions options)> matches;
-
-                var matchRouteTask = MatchRouteAsync(route, cancellation);
                 var matchRouteResult = await MatchRouteAsync(route, cancellation);
-                var matchCount = matchRouteResult.Count();
+                var matches = matchRouteResult.Where(p => !handledEndPoints.Contains(p.endPoint)).ToList();
 
-                matches = matchRouteResult.Where(p => !handledEndPoints.Contains(p.endPoint)).ToList();
-                _logger?.LogTrace($"Found {matchCount} ({matchRouteResult.Count()} considering handled end-points) matches for route '{route}'.");
+                _logger?.LogTrace($"Found {matchRouteResult.Count()} ({matches.Count()} considering handled end-points) matches for route '{route}'.");
 
                 var endPoints = matches.Select(p => p.endPoint);
                 handledEndPoints.UnionWith(endPoints);
@@ -249,7 +245,11 @@ namespace AI4E.Routing
                 }
             }
 
-            return (await Task.WhenAll(tasks.Select(p => p.AsTask()))).ToList(); // TODO: Use ValueTaskHelper.WhenAny
+            var result = (await Task.WhenAll(tasks.Select(p => p.AsTask()))).ToList(); // TODO: Use ValueTaskHelper.WhenAny
+
+            _logger?.LogTrace($"Successfully routed a message ({(publish ? "publish" : "p2p")}) with routes: {routes.Aggregate((e, n) => e + ", " + n)}");
+
+            return result;
         }
 
         private async ValueTask<IMessage> InternalRouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation)

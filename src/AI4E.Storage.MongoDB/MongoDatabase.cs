@@ -38,13 +38,12 @@ using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Internal;
 using AI4E.Storage.Transactions;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
-using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 using static AI4E.Storage.MongoDB.MongoWriteHelper;
 
@@ -59,7 +58,8 @@ namespace AI4E.Storage.MongoDB
         #region Fields
 
         private readonly IMongoDatabase _database;
-
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger<MongoDatabase> _logger;
         private readonly ConcurrentDictionary<Type, object> _collections = new ConcurrentDictionary<Type, object>();
 
         private readonly IMongoCollection<CounterEntry> _counterCollection;
@@ -74,13 +74,14 @@ namespace AI4E.Storage.MongoDB
             BsonSerializer.RegisterSerializationProvider(new StructSerializationProvider());
         }
 
-        public MongoDatabase(IMongoDatabase database)
+        public MongoDatabase(IMongoDatabase database, ILoggerFactory loggerFactory = null)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
 
             _database = database;
-
+            _loggerFactory = loggerFactory;
+            _logger = loggerFactory?.CreateLogger<MongoDatabase>();
             _counterCollection = _database.GetCollection<CounterEntry>(_counterEntryCollectionName);
             _collectionLookupCollection = _database.GetCollection<CollectionLookupEntry>(_collectionLookupCollectionName);
         }
@@ -118,13 +119,18 @@ namespace AI4E.Storage.MongoDB
 
         #region Collection lookup
 
-        private ValueTask<IMongoCollection<TEntry>> GetCollectionAsync<TEntry>(CancellationToken cancellation)
+        private Task<IMongoCollection<TEntry>> GetCollectionAsync<TEntry>(CancellationToken cancellation)
+        {
+            return GetCollectionAsync<TEntry>(isInTransaction: false, cancellation);
+        }
+
+        private Task<IMongoCollection<TEntry>> GetCollectionAsync<TEntry>(bool isInTransaction, CancellationToken cancellation)
         {
             var lookup = (CollectionLookup<TEntry>)_collections.GetOrAdd(typeof(TEntry), _ => BuildCollectionLookup<TEntry>());
 
             Assert(lookup != null);
 
-            return lookup.GetCollectionAsync(cancellation);
+            return lookup.GetCollectionAsync(isInTransaction, cancellation);
         }
 
         private CollectionLookup<TEntry> BuildCollectionLookup<TEntry>()
@@ -137,7 +143,7 @@ namespace AI4E.Storage.MongoDB
             return typeof(TEntry).ToString();
         }
 
-        private async Task<string> GetCollectionNameAsync(string collectionKey, CancellationToken cancellation)
+        private async Task<string> GetCollectionNameAsync(string collectionKey)
         {
             var lookupEntry = await _collectionLookupCollection.AsQueryable()
                                                                .FirstOrDefaultAsync(p => p.CollectionKey == collectionKey);
@@ -148,12 +154,12 @@ namespace AI4E.Storage.MongoDB
             }
 
             // There is no collection entry. We have to allocate one. Get a unique key.
-            var collectionId = await GetUniqueResourceIdAsync(_collectionLookupEntryResourceKey, cancellation);
+            var collectionId = await GetUniqueResourceIdAsync(_collectionLookupEntryResourceKey, cancellation: default); // TODO: Use the disposal token
 
             try
             {
                 lookupEntry = new CollectionLookupEntry { CollectionKey = collectionKey, CollectionName = "data-store#" + collectionId };
-                await TryWriteOperation(() => _collectionLookupCollection.InsertOneAsync(lookupEntry, default, cancellation));
+                await TryWriteOperation(() => _collectionLookupCollection.InsertOneAsync(lookupEntry, default, cancellationToken: default));// TODO: Use the disposal token
             }
             catch (DuplicateKeyException)
             {
@@ -173,20 +179,15 @@ namespace AI4E.Storage.MongoDB
             return await collections.AnyAsync();
         }
 
-        private async Task<IMongoCollection<TEntry>> GetCollectionAsync<TEntry>(string collectionName)
+        private async Task<IMongoCollection<TEntry>> GetCollectionCoreAsync<TEntry>(string collectionName)
         {
-            BsonClassMap.RegisterClassMap<TEntry>(map =>
-            {
-                map.AutoMap();
-                map.MapIdMember(DataPropertyHelper.GetIdMember<TEntry>());
-            });
-
             if (!await CollectionExistsAsync(collectionName))
             {
                 _database.CreateCollection(collectionName);
             }
 
-            return _database.GetCollection<TEntry>(collectionName);
+            var result = _database.GetCollection<TEntry>(collectionName);
+            return result;
         }
 
         private sealed class CollectionLookupEntry
@@ -201,8 +202,8 @@ namespace AI4E.Storage.MongoDB
         {
             private readonly MongoDatabase _database;
 
-            private volatile IMongoCollection<TEntry> _collection = null;
-            private readonly AsyncLock _lock = new AsyncLock();
+            private volatile Task<IMongoCollection<TEntry>> _collectionFuture = null;
+            private readonly object _lock = new object();
 
             public CollectionLookup(MongoDatabase database)
             {
@@ -211,36 +212,43 @@ namespace AI4E.Storage.MongoDB
                 _database = database;
             }
 
-            public async ValueTask<IMongoCollection<TEntry>> GetCollectionAsync(CancellationToken cancellation)
+            public Task<IMongoCollection<TEntry>> GetCollectionAsync(bool isInTransaction, CancellationToken cancellation)
             {
                 // Volatile read op.
-                var collection = _collection;
+                var collectionFuture = _collectionFuture;
 
-                if (collection != null)
+                if (collectionFuture == null)
                 {
-                    return collection;
-                }
-
-                using (await _lock.LockAsync(cancellation))
-                {
-                    // Volatile read op.
-                    collection = _collection;
-
-                    if (collection != null)
+                    lock (_lock)
                     {
-                        return collection;
+                        _collectionFuture = _collectionFuture ?? CreateCollectionAsync();
+                        collectionFuture = _collectionFuture;
                     }
-
-
-                    var collectionKey = GetCollectionKey<TEntry>();
-                    var collectionName = await _database.GetCollectionNameAsync(collectionKey, cancellation);
-
-                    // Volatile write op.
-                    _collection = collection = await _database.GetCollectionAsync<TEntry>(collectionName);
-
-                    Assert(collection != null);
-                    return collection;
                 }
+
+                // Cannot create a collection while beeing in a transaction.
+                if (isInTransaction && !collectionFuture.IsCompleted)
+                {
+                    return Task.FromResult<IMongoCollection<TEntry>>(null);
+                }
+
+                return collectionFuture;
+            }
+
+            private async Task<IMongoCollection<TEntry>> CreateCollectionAsync()
+            {
+                BsonClassMap.RegisterClassMap<TEntry>(map =>
+                {
+                    map.AutoMap();
+                    map.MapIdMember(DataPropertyHelper.GetIdMember<TEntry>());
+                });
+
+                var collectionKey = GetCollectionKey<TEntry>();
+                var collectionName = await _database.GetCollectionNameAsync(collectionKey);
+
+                // Volatile write op.
+                var collection = await _database.GetCollectionCoreAsync<TEntry>(collectionName);
+                return collection;
             }
         }
 
@@ -509,15 +517,17 @@ namespace AI4E.Storage.MongoDB
 
         private sealed class MongoScopedTransactionalDatabase : IScopedTransactionalDatabase
         {
-            private bool _isTransactionInProgress = false;
+            private volatile int _operationInProgress = 0;
 
             private readonly MongoDatabase _owner;
+            private readonly ILogger<MongoScopedTransactionalDatabase> _logger;
             private readonly DisposableAsyncLazy<IClientSessionHandle> _clientSessionHandle;
 
 
             public MongoScopedTransactionalDatabase(MongoDatabase owner)
             {
                 _owner = owner;
+                _logger = owner._loggerFactory?.CreateLogger<MongoScopedTransactionalDatabase>();
                 _clientSessionHandle = new DisposableAsyncLazy<IClientSessionHandle>(CreateClientSessionHandle, DisposeClientSessionHandle, DisposableAsyncLazyOptions.ExecuteOnCallingThread);
             }
 
@@ -528,10 +538,14 @@ namespace AI4E.Storage.MongoDB
                 return _clientSessionHandle.Task.WithCancellation(cancellation);
             }
 
-            private Task<IClientSessionHandle> CreateClientSessionHandle(CancellationToken cancellation)
+            private async Task<IClientSessionHandle> CreateClientSessionHandle(CancellationToken cancellation)
             {
                 var mongoClient = _owner._database.Client;
-                return mongoClient.StartSessionAsync(cancellationToken: cancellation);
+                var clientSessionHandle = await mongoClient.StartSessionAsync(cancellationToken: cancellation);
+
+                _logger.LogTrace("Created mongo client session handle with id " + clientSessionHandle.WrappedCoreSession.Id.ToString());
+
+                return clientSessionHandle;
             }
 
             private async Task DisposeClientSessionHandle(IClientSessionHandle clientSessionHandle)
@@ -545,6 +559,8 @@ namespace AI4E.Storage.MongoDB
                 {
                     clientSessionHandle.Dispose();
                 }
+
+                _logger.LogTrace("Released mongo client session handle with id " + clientSessionHandle.WrappedCoreSession.Id.ToString());
             }
 
             #endregion
@@ -557,27 +573,42 @@ namespace AI4E.Storage.MongoDB
                 if (data == null)
                     throw new ArgumentNullException(nameof(data));
 
-                var session = await EnsureTransactionAsync(cancellation);
-                var predicate = DataPropertyHelper.BuildPredicate(data);
-                var collection = await _owner.GetCollectionAsync<TData>(cancellation);
-
-                ReplaceOneResult updateResult;
+                if (Interlocked.Exchange(ref _operationInProgress, 1) != 0)
+                {
+                    throw new InvalidOperationException("MongoDB does not allow interlaced operations on a single transaction.");
+                }
 
                 try
                 {
-                    updateResult = await TryWriteOperation(() => collection.ReplaceOneAsync(session, predicate, data, options: new UpdateOptions { IsUpsert = true }, cancellationToken: cancellation));
-                }
-                catch (MongoCommandException exc) when (exc.Code == 112) // Write conflict.
-                {
-                    throw new TransactionAbortedException();
-                }
+                    var session = await EnsureTransactionAsync(cancellation);
+                    var predicate = DataPropertyHelper.BuildPredicate(data);
+                    var collection = await GetCollection<TData>(session, cancellation);
 
-                if (!updateResult.IsAcknowledged)
-                {
-                    throw new StorageException();
-                }
+                    _logger.LogTrace($"Storing an entry of type '{typeof(TData)}' via  mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
 
-                Assert(updateResult.MatchedCount == 0 || updateResult.MatchedCount == 1);
+                    ReplaceOneResult updateResult;
+
+                    try
+                    {
+                        updateResult = await TryWriteOperation(() => collection.ReplaceOneAsync(session, predicate, data, options: new UpdateOptions { IsUpsert = true }, cancellationToken: cancellation));
+                    }
+                    catch (MongoCommandException exc) when (exc.Code == 112) // Write conflict.
+                    {
+                        await AbortAsync(session, cancellation);
+                        throw new TransactionAbortedException();
+                    }
+
+                    if (!updateResult.IsAcknowledged)
+                    {
+                        throw new StorageException();
+                    }
+
+                    Assert(updateResult.MatchedCount == 0 || updateResult.MatchedCount == 1);
+                }
+                finally
+                {
+                    _operationInProgress = 0; // Volatile write op
+                }
             }
 
             public async Task RemoveAsync<TData>(TData data, CancellationToken cancellation = default)
@@ -586,45 +617,108 @@ namespace AI4E.Storage.MongoDB
                 if (data == null)
                     throw new ArgumentNullException(nameof(data));
 
-                var session = await EnsureTransactionAsync(cancellation);
-                var predicate = DataPropertyHelper.BuildPredicate(data);
-                var collection = await _owner.GetCollectionAsync<TData>(cancellation);
-
-                DeleteResult deleteResult;
-
+                if (Interlocked.Exchange(ref _operationInProgress, 1) != 0)
+                {
+                    throw new InvalidOperationException("MongoDB does not allow interlaced operations on a single transaction.");
+                }
                 try
                 {
-                    deleteResult = await TryWriteOperation(() => collection.DeleteOneAsync(session, predicate, cancellationToken: cancellation));
-                }
-                catch (MongoCommandException exc) when (exc.Code == 112) // Write conflict.
-                {
-                    throw new TransactionAbortedException();
-                }
+                    var session = await EnsureTransactionAsync(cancellation);
+                    var predicate = DataPropertyHelper.BuildPredicate(data);
+                    var collection = await GetCollection<TData>(session, cancellation);
 
-                if (!deleteResult.IsAcknowledged)
-                {
-                    throw new StorageException();
-                }
+                    _logger.LogTrace($"Removing an entry of type '{typeof(TData)}' via  mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
 
-                Assert(deleteResult.DeletedCount == 0 || deleteResult.DeletedCount == 1);
+                    DeleteResult deleteResult;
+
+                    try
+                    {
+                        deleteResult = await TryWriteOperation(() => collection.DeleteOneAsync(session, predicate, cancellationToken: cancellation));
+                    }
+                    catch (MongoCommandException exc) when (exc.Code == 112) // Write conflict.
+                    {
+                        await AbortAsync(session, cancellation);
+                        throw new TransactionAbortedException();
+                    }
+
+                    if (!deleteResult.IsAcknowledged)
+                    {
+                        throw new StorageException();
+                    }
+
+                    Assert(deleteResult.DeletedCount == 0 || deleteResult.DeletedCount == 1);
+                }
+                finally
+                {
+                    _operationInProgress = 0; // Volatile write op
+                }
             }
 
             public IAsyncEnumerable<TData> GetAsync<TData>(Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
                 where TData : class
             {
-                var sessionFuture = EnsureTransactionAsync(cancellation);
-                var collection = _owner.GetCollectionAsync<TData>(cancellation);
-                return new MongoQueryEvaluator<TData>(collection, predicate, sessionFuture, cancellation);
+                async Task<IAsyncCursor<TData>> BuildAsyncCursor()
+                {
+                    if (Interlocked.Exchange(ref _operationInProgress, 1) != 0)
+                    {
+                        throw new InvalidOperationException("MongoDB does not allow interlaced operations on a single transaction.");
+                    }
+
+                    var session = await EnsureTransactionAsync(cancellation);
+
+                    try
+                    {
+                        var collection = await GetCollection<TData>(session, cancellation);
+
+                        _logger.LogTrace($"Performing query via  mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
+
+                        return await collection.FindAsync<TData>(session, predicate, cancellationToken: cancellation);
+                    }
+                    catch (MongoCommandException exc) when (exc.Code == 251) // No such transaction
+                    {
+                        await AbortAsync(session, cancellation);
+                        throw new TransactionAbortedException();
+                    }
+                    catch
+                    {
+                        throw;
+                    }
+                }
+
+                void AsyncCursorDisposal(IAsyncCursor<TData> asyncCursor)
+                {
+                    asyncCursor.Dispose();
+
+                    _operationInProgress = 0; // Volatile write op
+                }
+
+                return new MongoQueryEvaluator<TData>(BuildAsyncCursor, AsyncCursorDisposal);
+            }
+
+            private async Task<IMongoCollection<TData>> GetCollection<TData>(IClientSessionHandle session, CancellationToken cancellation)
+                where TData : class
+            {
+                var collection = await _owner.GetCollectionAsync<TData>(isInTransaction: true, cancellation);
+
+                if (collection == null)
+                {
+                    _logger.LogTrace($"Trying to create a collection inside txn of mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
+
+                    await AbortAsync(session, cancellation);
+
+                    throw new TransactionAbortedException();
+                }
+
+                return collection;
             }
 
             private async Task<IClientSessionHandle> EnsureTransactionAsync(CancellationToken cancellation)
             {
                 var session = await GetClientSessionHandle(cancellation);
 
-                if (!_isTransactionInProgress)
+                if (!session.IsInTransaction)
                 {
                     session.StartTransaction();
-                    _isTransactionInProgress = true;
                 }
 
                 return session;
@@ -632,12 +726,16 @@ namespace AI4E.Storage.MongoDB
 
             public async Task<bool> TryCommitAsync(CancellationToken cancellation = default)
             {
-                if (!_isTransactionInProgress)
-                    return true;
-
                 var session = await GetClientSessionHandle(cancellation);
 
-                _isTransactionInProgress = false;
+                _logger.LogTrace($"Committing txn of mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
+
+                if (!session.IsInTransaction)
+                {
+                    return true;
+                }
+
+                _operationInProgress = 0; // Volatile write op
 
                 try
                 {
@@ -655,15 +753,26 @@ namespace AI4E.Storage.MongoDB
                 }
             }
 
-            public async Task RollbackAsync(CancellationToken cancellation = default)
+            public async Task RollbackAsync(CancellationToken cancellation)
             {
-                if (!_isTransactionInProgress)
-                    return;
-
                 var session = await GetClientSessionHandle(cancellation);
 
-                _isTransactionInProgress = false;
+                _logger.LogTrace($"Aborting txn of mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
+
+                await AbortAsync(session, cancellation);
+            }
+
+            private async Task AbortAsync(IClientSessionHandle session, CancellationToken cancellation)
+            {
+                if (!session.IsInTransaction)
+                {
+                    return;
+                }
+
+                _operationInProgress = 0; // Volatile write op
                 await session.AbortTransactionAsync(cancellation);
+
+                Assert(!session.IsInTransaction);
             }
 
             #endregion

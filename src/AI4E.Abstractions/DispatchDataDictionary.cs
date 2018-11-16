@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -20,11 +20,15 @@
 
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 using AI4E.Internal;
 using Newtonsoft.Json;
+using static System.Diagnostics.Debug;
 
 namespace AI4E
 {
@@ -34,6 +38,51 @@ namespace AI4E
     [JsonConverter(typeof(DispatchDataDictionaryConverter))]
     public abstract class DispatchDataDictionary : IReadOnlyDictionary<string, object>
     {
+        private static readonly Type _dispatchDataDictionaryTypeDefinition = typeof(DispatchDataDictionary<>);
+        private static readonly ConcurrentDictionary<Type, Func<object, IEnumerable<KeyValuePair<string, object>>, DispatchDataDictionary>> _factories
+            = new ConcurrentDictionary<Type, Func<object, IEnumerable<KeyValuePair<string, object>>, DispatchDataDictionary>>();
+
+        public static DispatchDataDictionary Create(Type messageType, object message)
+        {
+            return Create(messageType, message, ImmutableDictionary<string, object>.Empty);
+        }
+
+        public static DispatchDataDictionary Create(Type messageType, object message, IEnumerable<KeyValuePair<string, object>> data)
+        {
+            ValidateArguments(messageType, message, data);
+
+            var factory = _factories.GetOrAdd(messageType, BuildFactory);
+            return factory(message, data);
+        }
+
+        private static Func<object, IEnumerable<KeyValuePair<string, object>>, DispatchDataDictionary> BuildFactory(Type messageType)
+        {
+            var dispatchDataDictionaryType = _dispatchDataDictionaryTypeDefinition.MakeGenericType(messageType);
+
+            Assert(dispatchDataDictionaryType != null);
+
+            var ctor = dispatchDataDictionaryType.GetConstructor(
+                BindingFlags.Instance | BindingFlags.Public,
+                Type.DefaultBinder,
+                new Type[] { messageType, typeof(IEnumerable<KeyValuePair<string, object>>) },
+                modifiers: null);
+
+            Assert(ctor != null);
+
+            var messageParameter = Expression.Parameter(typeof(object), "message");
+            var dataParameter = Expression.Parameter(typeof(IEnumerable<KeyValuePair<string, object>>), "data");
+            var convertedMessage = Expression.Convert(messageParameter, messageType);
+            var ctorCall = Expression.New(ctor, convertedMessage, dataParameter);
+            var convertedResult = Expression.Convert(ctorCall, typeof(DispatchDataDictionary));
+            var lambda = Expression.Lambda<Func<object, IEnumerable<KeyValuePair<string, object>>, DispatchDataDictionary>>(
+                convertedResult,
+                messageParameter,
+                dataParameter);
+
+            return lambda.Compile();
+
+        }
+
         private readonly ImmutableDictionary<string, object> _data;
 
         #region C'tor
@@ -42,7 +91,16 @@ namespace AI4E
         // anyone could inherit from the type. We cannot ensure immutability in this case.
         // Normally this type is not created directly anyway but an instance of the derived (generic type is used) and this type is used 
         // only as cast target, if we do not know the message type.
-        private protected DispatchDataDictionary(object message, Type messageType, IEnumerable<KeyValuePair<string, object>> data)
+        private protected DispatchDataDictionary(Type messageType, object message, IEnumerable<KeyValuePair<string, object>> data)
+        {
+            ValidateArguments(messageType, message, data);
+
+            MessageType = messageType;
+            Message = message;
+            _data = data.ToImmutableDictionary();
+        }
+
+        private static void ValidateArguments(Type messageType, object message, IEnumerable<KeyValuePair<string, object>> data)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
@@ -84,10 +142,6 @@ namespace AI4E
                     throw new ArgumentException("The argument must not be a delegate.", nameof(message));
                 }
             }
-
-            MessageType = messageType;
-            Message = message;
-            _data = data.ToImmutableDictionary();
         }
 
         #endregion
@@ -158,11 +212,11 @@ namespace AI4E
         where TMessage : class
     {
         public DispatchDataDictionary(TMessage message, IEnumerable<KeyValuePair<string, object>> data)
-            : base(message, typeof(TMessage), data)
+            : base(typeof(TMessage), message, data)
         { }
 
         public DispatchDataDictionary(TMessage message)
-            : base(message, typeof(TMessage), ImmutableDictionary<string, object>.Empty)
+            : base(typeof(TMessage), message, ImmutableDictionary<string, object>.Empty)
         { }
 
         public new TMessage Message => (TMessage)base.Message;

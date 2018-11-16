@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -19,11 +19,13 @@
  */
 
 using System;
+using Newtonsoft.Json;
 
 namespace AI4E.DispatchResults
 {
     public class EntityAlreadyPresentDispatchResult : FailureDispatchResult
     {
+        [JsonConstructor]
         public EntityAlreadyPresentDispatchResult(Type entityType, string id)
             : base($"An entity of type'{(entityType ?? throw new ArgumentNullException(nameof(entityType))).FullName}' with the id '{id}' is already present.")
         {

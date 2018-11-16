@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -663,7 +663,7 @@ namespace AI4E.Storage.Domain
 
             IReadOnlyDictionary<string, object> ISnapshot.Headers => Headers ?? _emptyHeaders;
 
-            Dictionary<string, object> Headers { get; } = new Dictionary<string, object>();
+            public Dictionary<string, object> Headers { get; } = new Dictionary<string, object>();
         }
     }
 }
