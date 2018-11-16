@@ -65,25 +65,6 @@ namespace AI4E
         IHandlerRegistration Register(Type messageType, IContextualProvider<IMessageHandler> messageHandlerProvider);
     }
 
-    public static class MessagDispatcherExtension
-    {
-        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(
-            this IMessageDispatcher messageDispatcher,
-            IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
-            where TMessage : class
-        {
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
-            if (messageHandlerProvider == null)
-                throw new ArgumentNullException(nameof(messageHandlerProvider));
-
-            var messageType = typeof(TMessage);
-            var handlerRegistration = messageDispatcher.Register(typeof(TMessage), new TypedMessageHandlerProvider<TMessage>(messageHandlerProvider));
-
-            return new TypedHandleRegistration<TMessage>(messageHandlerProvider, handlerRegistration);
-        }
-    }
-
     public sealed class TypedMessageHandler<TMessage> : IMessageHandler
             where TMessage : class
     {
