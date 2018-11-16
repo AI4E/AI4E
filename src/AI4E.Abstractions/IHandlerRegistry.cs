@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IHandlerRegistry.cs 
  * Types:           AI4E.IHandlerRegistry'1

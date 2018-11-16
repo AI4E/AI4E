@@ -58,13 +58,34 @@ namespace AI4E.Routing
         /// <summary>
         /// Registers a message handler.
         /// </summary>
+        /// <param name="messageType">The type of message.</param>
         /// <param name="messageHandlerProvider">The message handler provider to register.</param>
-        /// <typeparam name="TMessage">The type of message.</typeparam>
+        /// <param name="options">The options used for handler registration. </param>
         /// <returns>
         /// A <see cref="IHandlerRegistration"/> that represents the handlers registration.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="messageHandlerProvider"/> is null.</exception>
-        IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider, RouteRegistrationOptions options)
-            where TMessage : class;
+        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="messageType"/> or <paramref name="messageHandlerProvider"/> is null.</exception>
+        IHandlerRegistration Register(Type messageType, IContextualProvider<IMessageHandler> messageHandlerProvider, RouteRegistrationOptions options);
+    }
+
+    public static class RemoteMessageDispatcherExtension
+    {
+        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(
+            this IRemoteMessageDispatcher messageDispatcher,
+            IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider,
+            RouteRegistrationOptions options)
+            where TMessage : class
+        {
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+
+            if (messageHandlerProvider == null)
+                throw new ArgumentNullException(nameof(messageHandlerProvider));
+
+            var messageType = typeof(TMessage);
+            var handlerRegistration = messageDispatcher.Register(typeof(TMessage), new TypedMessageHandlerProvider<TMessage>(messageHandlerProvider), options);
+
+            return new TypedHandleRegistration<TMessage>(messageHandlerProvider, handlerRegistration);
+        }
     }
 }

@@ -208,17 +208,13 @@ namespace AI4E
             foreach (var descriptor in descriptors)
             {
                 var messageType = descriptor.MessageType;
-                var provider = Activator.CreateInstance(typeof(MessageHandlerProvider<>).MakeGenericType(messageType),
-                                                        type,
-                                                        descriptor,
-                                                        processors);
+                var provider = (IContextualProvider<IMessageHandler>)Activator.CreateInstance(
+                    typeof(MessageHandlerProvider<>).MakeGenericType(messageType),
+                    type,
+                    descriptor,
+                    processors);
 
-                var registerMethodDefinition = typeof(IMessageDispatcher).GetMethods()
-                    .Single(p => p.Name == "Register" && p.IsGenericMethodDefinition && p.GetGenericArguments().Length == 1);
-
-                var registerMethod = registerMethodDefinition.MakeGenericMethod(messageType);
-
-                registerMethod.Invoke(messageDispatcher, new object[] { provider });
+                messageDispatcher.Register(messageType, provider);
             }
         }
 

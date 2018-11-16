@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IMessageDispatcher.cs
  * Types:           AI4E.IMessageDispatcher
@@ -28,8 +28,6 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-// TODO: Can we specify a non-generic register function?
-
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -58,13 +56,124 @@ namespace AI4E
         /// <summary>
         /// Registers a message handler.
         /// </summary>
+        /// <param name="messageType">The type of message.</param>
         /// <param name="messageHandlerProvider">The message handler provider to register.</param>
-        /// <typeparam name="TMessage">The type of message.</typeparam>
         /// <returns>
         /// A <see cref="IHandlerRegistration"/> that represents the handlers registration.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="messageHandlerProvider"/> is null.</exception>
-        IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
-            where TMessage : class;
+        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="messageType"/> or <paramref name="messageHandlerProvider"/> is null.</exception>
+        IHandlerRegistration Register(Type messageType, IContextualProvider<IMessageHandler> messageHandlerProvider);
+    }
+
+    public static class MessagDispatcherExtension
+    {
+        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(
+            this IMessageDispatcher messageDispatcher,
+            IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
+            where TMessage : class
+        {
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+            if (messageHandlerProvider == null)
+                throw new ArgumentNullException(nameof(messageHandlerProvider));
+
+            var messageType = typeof(TMessage);
+            var handlerRegistration = messageDispatcher.Register(typeof(TMessage), new TypedMessageHandlerProvider<TMessage>(messageHandlerProvider));
+
+            return new TypedHandleRegistration<TMessage>(messageHandlerProvider, handlerRegistration);
+        }
+    }
+
+    public sealed class TypedMessageHandler<TMessage> : IMessageHandler
+            where TMessage : class
+    {
+        private readonly IMessageHandler<TMessage> _messageHandler;
+
+        public TypedMessageHandler(IMessageHandler<TMessage> messageHandler)
+        {
+            if (messageHandler == null)
+                throw new ArgumentNullException(nameof(messageHandler));
+
+            _messageHandler = messageHandler;
+        }
+
+        public ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary dispatchData, CancellationToken cancellation)
+        {
+            if (!(dispatchData.Message is TMessage))
+                throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{MessageType}'.");
+
+            if (!(dispatchData is DispatchDataDictionary<TMessage> typedDispatchData))
+            {
+                typedDispatchData = new DispatchDataDictionary<TMessage>(dispatchData.Message as TMessage, dispatchData);
+            }
+
+            return _messageHandler.HandleAsync(typedDispatchData, cancellation);
+        }
+
+        public Type MessageType => typeof(TMessage);
+    }
+
+    public sealed class TypedMessageHandlerProvider<TMessage> : IContextualProvider<IMessageHandler>
+        where TMessage : class
+    {
+        private readonly IContextualProvider<IMessageHandler<TMessage>> _messageHandlerProvider;
+
+        public TypedMessageHandlerProvider(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
+        {
+            if (messageHandlerProvider == null)
+                throw new ArgumentNullException(nameof(messageHandlerProvider));
+
+            _messageHandlerProvider = messageHandlerProvider;
+        }
+
+
+        public IMessageHandler ProvideInstance(IServiceProvider serviceProvider)
+        {
+            var messageHandler = _messageHandlerProvider.ProvideInstance(serviceProvider);
+
+            return new TypedMessageHandler<TMessage>(messageHandler);
+        }
+    }
+
+    public sealed class TypedHandleRegistration<TMessage> : IHandlerRegistration<IMessageHandler<TMessage>>
+        where TMessage : class
+    {
+        private readonly IHandlerRegistration _handlerRegistration;
+
+        public TypedHandleRegistration(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider, IHandlerRegistration handlerRegistration)
+        {
+            if (messageHandlerProvider == null)
+                throw new ArgumentNullException(nameof(messageHandlerProvider));
+
+            if (handlerRegistration == null)
+                throw new ArgumentNullException(nameof(handlerRegistration));
+
+            _handlerRegistration = handlerRegistration;
+        }
+
+        public IContextualProvider<IMessageHandler<TMessage>> Handler { get; }
+
+        [Obsolete("Use AI4E.Async.IAsyncDisposable.Dispose")]
+        public Task Cancellation => Disposal;
+
+        [Obsolete("Use AI4E.Async.IAsyncDisposable.Dispose")]
+        public void Cancel()
+        {
+            Dispose();
+        }
+
+        public void Dispose()
+        {
+            _handlerRegistration.Dispose();
+        }
+
+        public Task DisposeAsync()
+        {
+            return _handlerRegistration.DisposeAsync();
+        }
+
+        public Task Disposal => _handlerRegistration.Disposal;
+
+        public Task Initialization => _handlerRegistration.Initialization;
     }
 }

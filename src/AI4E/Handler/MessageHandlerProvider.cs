@@ -1,12 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Immutable;
 using Microsoft.Extensions.DependencyInjection;
 using static System.Diagnostics.Debug;
 
-
 namespace AI4E.Handler
 {
-    public sealed class MessageHandlerProvider<TMessage> : IContextualProvider<IMessageHandler<TMessage>>
+    public sealed class MessageHandlerProvider<TMessage> : IContextualProvider<IMessageHandler<TMessage>>, IContextualProvider<IMessageHandler>
         where TMessage : class
     {
         private readonly Type _type;
@@ -28,6 +27,19 @@ namespace AI4E.Handler
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
+            return ProvideInstanceInternal(serviceProvider);
+        }
+
+        IMessageHandler IContextualProvider<IMessageHandler>.ProvideInstance(IServiceProvider serviceProvider)
+        {
+            if (serviceProvider == null)
+                throw new ArgumentNullException(nameof(serviceProvider));
+
+            return ProvideInstanceInternal(serviceProvider);
+        }
+
+        private MessageHandlerInvoker<TMessage> ProvideInstanceInternal(IServiceProvider serviceProvider)
+        {
             // Create a new instance of the handler type.
             var handler = ActivatorUtilities.CreateInstance(serviceProvider, _type);
 

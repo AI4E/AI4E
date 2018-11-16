@@ -1,10 +1,10 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IMessageHandler.cs
- * Types:           AI4E.IMessageHandler'1
+ * Types:           (1) AI4E.IMessageHandler'1
+ *                  (2) AI4E.IMessageHandler
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   09.09.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -28,6 +28,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -48,6 +49,30 @@ namespace AI4E
         /// A value task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the dispatch result.
         /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
         ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, CancellationToken cancellation);
+    }
+
+    /// <summary>
+    /// Represents a message handler.
+    /// </summary>
+    public interface IMessageHandler
+    {
+        /// <summary>
+        /// Asynchronously handles the specified message.
+        /// </summary>
+        /// <param name="dispatchData">The dispatch data that contains the message to handle and supporting data.</param>
+        /// <returns>
+        /// A value task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the dispatch result.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
+        /// <exception cref="InvalidOperationException">Thrown if the type of the specified message is not assignable to the handlers message type.</exception>
+        ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary dispatchData, CancellationToken cancellation);
+
+        /// <summary>
+        /// Gets the message type, the handler can handle.
+        /// </summary>
+        Type MessageType { get; }
     }
 }

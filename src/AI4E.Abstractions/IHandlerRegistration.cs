@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        HandlerRegistration.cs 
  * Types:           AI4E.HandlerRegistration
@@ -38,28 +38,29 @@ namespace AI4E
 {
     /// <summary>
     /// Represents a cancellable handler registration.
-    /// </summary>
-    [Obsolete("Use AI4E.Async.IAsyncDisposable")]
-    public interface IHandlerRegistration
+    /// </summary> 
+    public interface IHandlerRegistration : IAsyncDisposable, IAsyncInitialization
     {
         /// <summary>
         /// Gets a task that represents the asynchronous cancellation of the registration.
         /// </summary>
+        [Obsolete("Use AI4E.Async.IAsyncDisposable.Disposal")]
         Task Cancellation { get; }
 
         /// <summary>
         /// Cancels the registration.
         /// </summary>
+        [Obsolete("Use AI4E.Async.IAsyncDisposable.Dispose")]
         void Cancel();
+
+        // TODO: Add a message type property.
     }
 
-#pragma warning disable CS0618
     /// <summary>
     /// Represents a cancellable handler registration of the specified type of handler.
     /// </summary>
     /// <typeparam name="THandler">The type of handler.</typeparam>
-    public interface IHandlerRegistration<THandler> : IHandlerRegistration, IAsyncDisposable, IAsyncInitialization
-#pragma warning restore CS0618 
+    public interface IHandlerRegistration<THandler> : IHandlerRegistration
     {
         /// <summary>
         /// Gets a contextual provider that provides instances of the registered handler.

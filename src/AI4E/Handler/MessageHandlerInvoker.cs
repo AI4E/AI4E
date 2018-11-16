@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Threading;
@@ -10,7 +10,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Handler
 {
-    public sealed class MessageHandlerInvoker<TMessage> : IMessageHandler<TMessage>
+    public sealed class MessageHandlerInvoker<TMessage> : IMessageHandler<TMessage>, IMessageHandler
         where TMessage : class
     {
         private readonly object _handler;
@@ -49,6 +49,21 @@ namespace AI4E.Handler
 
             return next(dispatchData);
         }
+
+        public ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary dispatchData, CancellationToken cancellation)
+        {
+            if (!(dispatchData.Message is TMessage))
+                throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{MessageType}'.");
+
+            if (!(dispatchData is DispatchDataDictionary<TMessage> typedDispatchData))
+            {
+                typedDispatchData = new DispatchDataDictionary<TMessage>(dispatchData.Message as TMessage, dispatchData);
+            }
+
+            return HandleAsync(typedDispatchData, cancellation);
+        }
+
+        public Type MessageType => typeof(TMessage);
 
         private ValueTask<IDispatchResult> InvokeProcessorAsync(IMessageProcessor processor,
                                                                 DispatchDataDictionary<TMessage> dispatchData,
