@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IRemoteMessageDispatcher.cs 
  * Types:           AI4E.Routing.IRemoteMessageDispatcher
@@ -53,9 +53,18 @@ namespace AI4E.Routing
 
         Task<IDispatchResult> DispatchLocalAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation = default); // TODO: Return ValueTask<IDispatchResult>
 
-        [Obsolete("Use GetLocalEndPointAsync(CancellationToken)")]
-        EndPointAddress LocalEndPoint { get; }
-
         ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation = default);
+
+        /// <summary>
+        /// Registers a message handler.
+        /// </summary>
+        /// <param name="messageHandlerProvider">The message handler provider to register.</param>
+        /// <typeparam name="TMessage">The type of message.</typeparam>
+        /// <returns>
+        /// A <see cref="IHandlerRegistration"/> that represents the handlers registration.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="messageHandlerProvider"/> is null.</exception>
+        IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider, RouteRegistrationOptions options)
+            where TMessage : class;
     }
 }

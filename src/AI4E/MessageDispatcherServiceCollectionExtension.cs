@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        ServiceCollectionExtension.cs 
  * Types:           AI4E.ServiceCollectionExtension

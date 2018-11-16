@@ -157,6 +157,7 @@ namespace AI4E.Routing.SignalR.Client
 
         public Task RegisterRouteAsync(
             string route,
+            RouteRegistrationOptions options,
             CancellationToken cancellation)
         {
             using (CheckDisposal(ref cancellation, out var disposal))
@@ -164,7 +165,7 @@ namespace AI4E.Routing.SignalR.Client
                 try
                 {
                     var message = new Message();
-                    EncodeRegisterRouteRequest(message, route);
+                    EncodeRegisterRouteRequest(message, route, options);
                     return SendInternalAsync(message, cancellation);
                 }
                 catch (OperationCanceledException) when (disposal.IsCancellationRequested)
@@ -190,7 +191,24 @@ namespace AI4E.Routing.SignalR.Client
                 {
                     throw new ObjectDisposedException(GetType().FullName);
                 }
-            }        
+            }
+        }
+
+        public Task UnregisterRoutesAsync(bool removePersistentRoutes, CancellationToken cancellation)
+        {
+            using (CheckDisposal(ref cancellation, out var disposal))
+            {
+                try
+                {
+                    var message = new Message();
+                    EncodeUnregisterRouteRequest(message, removePersistentRoutes);
+                    return SendInternalAsync(message, cancellation);
+                }
+                catch (OperationCanceledException) when (disposal.IsCancellationRequested)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
+            }
         }
 
         #endregion
@@ -262,7 +280,7 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        private static void EncodeRegisterRouteRequest(IMessage message, string route)
+        private static void EncodeRegisterRouteRequest(IMessage message, string route, RouteRegistrationOptions options)
         {
             var routeBytes = Encoding.UTF8.GetBytes(route);
 
@@ -271,6 +289,7 @@ namespace AI4E.Routing.SignalR.Client
             {
                 writer.Write((short)MessageType.RegisterRoute);
                 writer.Write((short)0);
+                writer.Write((int)options);
                 writer.Write(routeBytes.Length);
                 writer.Write(routeBytes);
             }
@@ -287,6 +306,17 @@ namespace AI4E.Routing.SignalR.Client
                 writer.Write((short)0);
                 writer.Write(routeBytes.Length);
                 writer.Write(routeBytes);
+            }
+        }
+
+        private static void EncodeUnregisterRouteRequest(IMessage message, bool removePersistentRoutes)
+        {
+            using (var stream = message.PushFrame().OpenStream())
+            using (var writer = new BinaryWriter(stream))
+            {
+                writer.Write((short)MessageType.UnregisterRoute);
+                writer.Write((short)0);
+                writer.Write(removePersistentRoutes);
             }
         }
 
@@ -415,6 +445,7 @@ namespace AI4E.Routing.SignalR.Client
             RouteToEndPoint = 1,
             RegisterRoute = 2,
             UnregisterRoute = 3,
+            UnregisterRoutes = 4,
             Handle = 5
         }
     }

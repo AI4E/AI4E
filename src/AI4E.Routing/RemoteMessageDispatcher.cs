@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        RemoteMessageDispatcher.cs 
  * Types:           (1) AI4E.Routing.RemoteMessageDispatcher
@@ -111,12 +111,6 @@ namespace AI4E.Routing
                 return TypeLoadHelper.LoadTypeFromUnqualifiedName(typeName);
             }
         }
-
-        [Obsolete("Use GetLocalEndPointAsync(CancellationToken)")]
-        EndPointAddress IRemoteMessageDispatcher.LocalEndPoint => GetLocalEndPointAsync(cancellation: default)
-                                                .ConfigureAwait(false)
-                                                .GetAwaiter()
-                                                .GetResult();
 
         public ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)
         {
@@ -374,6 +368,13 @@ namespace AI4E.Routing
         public IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
             where TMessage : class
         {
+            // This needs to be persistent instead of default to support the persistent registration of message handlers via the message handler pattern without introduction of further dependencies.
+            return Register(messageHandlerProvider, RouteRegistrationOptions.Persistent);
+        }
+
+        public IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider, RouteRegistrationOptions options)
+            where TMessage : class
+        {
             if (messageHandlerProvider == null)
                 throw new ArgumentNullException(nameof(messageHandlerProvider));
 
@@ -381,7 +382,7 @@ namespace AI4E.Routing
 
             Assert(typedDispatcher != null);
 
-            return typedDispatcher.Register(messageHandlerProvider);
+            return typedDispatcher.Register(messageHandlerProvider, options);
         }
 
         #region Typed Dispatcher
@@ -517,40 +518,40 @@ namespace AI4E.Routing
                 }
             }
 
-            public IHandlerRegistration<IMessageHandler<TMessage>> Register(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
+            public IHandlerRegistration<IMessageHandler<TMessage>> Register(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider, RouteRegistrationOptions options)
             {
-                return new HandlerRegistration(messageHandlerProvider, RegisterInternalAsync, UnregisterInternalAsync);
-            }
-
-            private Task RegisterInternalAsync(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
-            {
-                async Task DoRegistrationAsync()
+                Task RegisterInternalAsync(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProviderNoCapture)
                 {
-                    using (await _lock.LockAsync())
+                    async Task DoRegistrationAsync()
                     {
-                        var handlerCount = _registry.Handlers.Count();
-                        _registry.Register(messageHandlerProvider);
-
-                        if (handlerCount == 0)
+                        using (await _lock.LockAsync())
                         {
-                            try
-                            {
-                                await _messageRouter.RegisterRouteAsync(SerializedMessageType, cancellation: default);
-                            }
-                            catch
-                            {
-                                _registry.Unregister(messageHandlerProvider);
+                            var handlerCount = _registry.Handlers.Count();
+                            _registry.Register(messageHandlerProviderNoCapture);
 
-                                throw;
+                            if (handlerCount == 0)
+                            {
+                                try
+                                {
+                                    await _messageRouter.RegisterRouteAsync(SerializedMessageType, options, cancellation: default);
+                                }
+                                catch
+                                {
+                                    _registry.Unregister(messageHandlerProviderNoCapture);
+
+                                    throw;
+                                }
                             }
                         }
                     }
+
+                    var registration = DoRegistrationAsync();
+                    AddRegistration(registration);
+                    var registrationAndCleanup = AwaitAndCleanupAsync(registration);
+                    return registrationAndCleanup;
                 }
 
-                var registration = DoRegistrationAsync();
-                AddRegistration(registration);
-                var registrationAndCleanup = AwaitAndCleanupAsync(registration);
-                return registrationAndCleanup;
+                return new HandlerRegistration(messageHandlerProvider, RegisterInternalAsync, UnregisterInternalAsync);
             }
 
             private Task UnregisterInternalAsync(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)

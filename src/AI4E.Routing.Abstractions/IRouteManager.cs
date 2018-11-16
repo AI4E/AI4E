@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IRouteManager.cs 
  * Types:           AI4E.Routing.IRouteManager
@@ -28,6 +28,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,10 +37,10 @@ namespace AI4E.Routing
 {
     public interface IRouteManager
     {
-        Task AddRouteAsync(EndPointAddress endPoint, string route, CancellationToken cancellation);
-        Task RemoveRouteAsync(EndPointAddress endPoint, string route, CancellationToken cancellation);
-        Task RemoveRoutesAsync(EndPointAddress endPoint, CancellationToken cancellation);
-        Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options)>> GetRoutesAsync(string route, CancellationToken cancellation);
+        Task AddRouteAsync(EndPointAddress endPoint, string route, RouteRegistrationOptions registrationOptions, CancellationToken cancellation = default);
+        Task RemoveRouteAsync(EndPointAddress endPoint, string route, CancellationToken cancellation = default);
+        Task RemoveRoutesAsync(EndPointAddress endPoint, bool removePersistentRoutes, CancellationToken cancellation = default);
+        Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options, RouteRegistrationOptions registrationOptions)>> GetRoutesAsync(string route, CancellationToken cancellation = default);
     }
 
     public interface IRouteManagerFactory

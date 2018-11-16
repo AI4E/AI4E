@@ -72,7 +72,7 @@ namespace AI4E.Routing
             // Cancel the initialization
             await _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
             _logicalEndPoint.Dispose();
-            await _routeManager.RemoveRoutesAsync(_logicalEndPoint.EndPoint, cancellation: default).HandleExceptionsAsync(_logger);
+            await _routeManager.RemoveRoutesAsync(_logicalEndPoint.EndPoint, removePersistentRoutes: false, cancellation: default).HandleExceptionsAsync(_logger);
         }
 
         public void Dispose()
@@ -327,11 +327,10 @@ namespace AI4E.Routing
             }
         }
 
-        public async Task RegisterRouteAsync(string route, CancellationToken cancellation)
+        public async Task RegisterRouteAsync(string route, RouteRegistrationOptions options, CancellationToken cancellation)
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
-
-            await _routeManager.AddRouteAsync(localEndPoint, route, cancellation);
+            await _routeManager.AddRouteAsync(localEndPoint, route, options, cancellation);
         }
 
         public async Task UnregisterRouteAsync(string route, CancellationToken cancellation)
@@ -341,9 +340,14 @@ namespace AI4E.Routing
             await _routeManager.RemoveRouteAsync(localEndPoint, route, cancellation);
         }
 
-        private Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options)>> MatchRouteAsync(string route, CancellationToken cancellation)
+        public Task UnregisterRoutesAsync(bool removePersistentRoutes, CancellationToken cancellation)
         {
-            return _routeManager.GetRoutesAsync(route, cancellation);
+            return _routeManager.RemoveRoutesAsync(_logicalEndPoint.EndPoint, removePersistentRoutes, cancellation);
+        }
+
+        private async Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options)>> MatchRouteAsync(string route, CancellationToken cancellation)
+        {
+            return (await _routeManager.GetRoutesAsync(route, cancellation)).Select(p => (p.endPoint, p.options));
         }
     }
 

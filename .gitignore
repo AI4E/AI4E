@@ -270,6 +270,8 @@ __pycache__/
 
 */project.lock.json
 
+# Generated source files
+*.g.cs
+
+
 /lib/SignalR/
-/src/AI4E/EnumHelper.cs
-/src/Blazor/AI4E.Routing.Blazor/HubConnectionExtension.Blazor.cs

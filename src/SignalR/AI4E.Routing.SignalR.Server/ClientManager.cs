@@ -125,6 +125,7 @@ namespace AI4E.Routing.SignalR.Server
                             _routers.Remove(endPoint);
                         }
 
+                        await router.UnregisterRoutesAsync(removePersistentRoutes: true);
                         router.Dispose();
                     }
                 }
@@ -260,21 +261,29 @@ namespace AI4E.Routing.SignalR.Server
                         }
 
                     case MessageType.RegisterRoute:
+                        {
+                            var options = (RouteRegistrationOptions)reader.ReadInt32();
+                            var routeBytesLength = reader.ReadInt32();
+                            var routeBytes = reader.ReadBytes(routeBytesLength);
+                            var route = Encoding.UTF8.GetString(routeBytes);
+                            await router.RegisterRouteAsync(route, options, cancellation);
+                            return null;
+                        }
+
                     case MessageType.UnregisterRoute:
                         {
                             var routeBytesLength = reader.ReadInt32();
                             var routeBytes = reader.ReadBytes(routeBytesLength);
                             var route = Encoding.UTF8.GetString(routeBytes);
+                            await router.UnregisterRouteAsync(route, cancellation);
 
-                            if (messageType == MessageType.RegisterRoute)
-                            {
-                                await router.RegisterRouteAsync(route, cancellation);
-                            }
-                            else
-                            {
-                                await router.UnregisterRouteAsync(route, cancellation);
-                            }
+                            return null;
+                        }
 
+                    case MessageType.UnregisterRoutes:
+                        {
+                            var removePersistentRoutes = reader.ReadBoolean();
+                            await router.UnregisterRoutesAsync(removePersistentRoutes, cancellation);
                             return null;
                         }
 
@@ -310,6 +319,7 @@ namespace AI4E.Routing.SignalR.Server
             RouteToEndPoint = 1,
             RegisterRoute = 2,
             UnregisterRoute = 3,
+            UnregisterRoutes = 4,
             Handle = 5
         }
     }

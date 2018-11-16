@@ -51,7 +51,7 @@
   </ItemGroup>
 
   <Target Name="AfterRestore" AfterTargets="Restore;CollectPackageReferences">
-    <Exec Command="dotnet tt $(ProjectDir)HubConnectionExtension.Blazor.tt" />
+    <Exec Command="dotnet tt $(ProjectDir)HubConnectionExtension.tt" />
   </Target>
 
 </Project>
