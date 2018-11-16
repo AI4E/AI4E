@@ -188,7 +188,7 @@ namespace AI4E.Routing
 
         public override EndPointAddress ReadJson(JsonReader reader, Type objectType, EndPointAddress existingValue, bool hasExistingValue, JsonSerializer serializer)
         {
-            var addressString = reader.ReadAsString();
+            var addressString = reader.Value as string;
 
             if (string.IsNullOrWhiteSpace(addressString))
             {
