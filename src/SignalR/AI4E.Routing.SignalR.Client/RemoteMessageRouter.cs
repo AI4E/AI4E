@@ -471,7 +471,7 @@ namespace AI4E.Routing.SignalR.Client
             _loggerFactory = loggerFactory;
         }
 
-        public IMessageRouter CreateMessageRouter(ISerializedMessageHandler serializedMessageHandler, RouteOptions options)
+        public IMessageRouter CreateMessageRouter(ISerializedMessageHandler serializedMessageHandler)
         {
             if (serializedMessageHandler == null)
                 throw new ArgumentNullException(nameof(serializedMessageHandler));
@@ -480,7 +480,7 @@ namespace AI4E.Routing.SignalR.Client
             return new RemoteMessageRouter(serializedMessageHandler, _logicalEndPoint, _dateTimeProvider, logger);
         }
 
-        public IMessageRouter CreateMessageRouter(EndPointAddress logicalEndPoint, ISerializedMessageHandler serializedMessageHandler, RouteOptions options)
+        public IMessageRouter CreateMessageRouter(EndPointAddress logicalEndPoint, ISerializedMessageHandler serializedMessageHandler)
         {
             throw new NotSupportedException();
         }

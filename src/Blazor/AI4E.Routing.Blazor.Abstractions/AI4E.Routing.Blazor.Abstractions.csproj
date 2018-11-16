@@ -18,7 +18,6 @@
     <Compile Include="..\..\AI4E.Routing.Abstractions\IRemoteMessageDispatcher.cs" Link="Routing\IRemoteMessageDispatcher.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\IRequestReplyEndPoint.cs" Link="Routing\IRequestReplyEndPoint.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\ISerializedMessageHandler.cs" Link="Routing\ISerializedMessageHandler.cs" />
-    <Compile Include="..\..\AI4E.Routing.Abstractions\RouteOptions.cs" Link="Routing\RouteOptions.cs" />
     <Compile Include="..\..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />
     <Compile Include="..\..\Common\MemoryExtensions.SequenceHashCode.cs" Link="Internal\MemoryExtensions.SequenceHashCode.cs" />
     <Compile Include="..\..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />

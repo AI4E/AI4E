@@ -1,4 +1,4 @@
-﻿namespace AI4E.Routing
+namespace AI4E.Routing
 {
     /// <summary>
     /// Represents a factory that can be used to create message routers.
@@ -11,7 +11,7 @@
         /// <param name="serializedMessageHandler">The message handler that is used to handle the messages routed to the caller.</param>
         /// <returns>The created message router.</returns>
         /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="serializedMessageHandler"/> is null.</exception>
-        IMessageRouter CreateMessageRouter(ISerializedMessageHandler serializedMessageHandler, RouteOptions options);
+        IMessageRouter CreateMessageRouter(ISerializedMessageHandler serializedMessageHandler);
 
         /// <summary>
         /// Creates a message router for the specified end point.
@@ -21,6 +21,6 @@
         /// <returns>The created message router.</returns>
         /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="serializedMessageHandler"/> is null.</exception>
         /// <exception cref="System.NotSupportedException">Thrown if the factory is unable to create message routers for end-points other than the default.</exception>
-        IMessageRouter CreateMessageRouter(EndPointAddress endPoint, ISerializedMessageHandler serializedMessageHandler, RouteOptions options);
+        IMessageRouter CreateMessageRouter(EndPointAddress endPoint, ISerializedMessageHandler serializedMessageHandler);
     }
 }

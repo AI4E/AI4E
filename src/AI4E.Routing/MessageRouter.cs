@@ -202,7 +202,7 @@ namespace AI4E.Routing
                             {
                                 var (endPoint, options) = matches[i];
 
-                                if ((options & RouteOptions.PublishOnly) != RouteOptions.PublishOnly)
+                                if ((options & RouteRegistrationOptions.PublishOnly) != RouteRegistrationOptions.PublishOnly)
                                 {
                                     return endPoint;
                                 }
@@ -345,9 +345,9 @@ namespace AI4E.Routing
             return _routeManager.RemoveRoutesAsync(_logicalEndPoint.EndPoint, removePersistentRoutes, cancellation);
         }
 
-        private async Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options)>> MatchRouteAsync(string route, CancellationToken cancellation)
+        private Task<IEnumerable<(EndPointAddress endPoint, RouteRegistrationOptions options)>> MatchRouteAsync(string route, CancellationToken cancellation)
         {
-            return (await _routeManager.GetRoutesAsync(route, cancellation)).Select(p => (p.endPoint, p.options));
+            return _routeManager.GetRoutesAsync(route, cancellation);
         }
     }
 
@@ -378,7 +378,7 @@ namespace AI4E.Routing
             _loggerFactory = loggerFactory;
         }
 
-        public IMessageRouter CreateMessageRouter(EndPointAddress endPoint, ISerializedMessageHandler serializedMessageHandler, RouteOptions options)
+        public IMessageRouter CreateMessageRouter(EndPointAddress endPoint, ISerializedMessageHandler serializedMessageHandler)
         {
             if (endPoint == default)
                 throw new ArgumentDefaultException(nameof(endPoint));
@@ -388,25 +388,25 @@ namespace AI4E.Routing
 
             if (_logicalEndPoint.EndPoint == endPoint)
             {
-                return CreateMessageRouterInternal(_logicalEndPoint, serializedMessageHandler, options);
+                return CreateMessageRouterInternal(_logicalEndPoint, serializedMessageHandler);
             }
 
             var logicalEndPoint = _endPointManager.CreateLogicalEndPoint(endPoint);
-            return CreateMessageRouterInternal(logicalEndPoint, serializedMessageHandler, options);
+            return CreateMessageRouterInternal(logicalEndPoint, serializedMessageHandler);
         }
 
-        public IMessageRouter CreateMessageRouter(ISerializedMessageHandler serializedMessageHandler, RouteOptions options)
+        public IMessageRouter CreateMessageRouter(ISerializedMessageHandler serializedMessageHandler)
         {
             if (serializedMessageHandler == null)
                 throw new ArgumentNullException(nameof(serializedMessageHandler));
 
-            return CreateMessageRouterInternal(_logicalEndPoint, serializedMessageHandler, options);
+            return CreateMessageRouterInternal(_logicalEndPoint, serializedMessageHandler);
         }
 
-        private IMessageRouter CreateMessageRouterInternal(ILogicalEndPoint endPoint, ISerializedMessageHandler serializedMessageHandler, RouteOptions options)
+        private IMessageRouter CreateMessageRouterInternal(ILogicalEndPoint endPoint, ISerializedMessageHandler serializedMessageHandler)
         {
             var logger = _loggerFactory?.CreateLogger<MessageRouter>();
-            var routeStore = _routeManagerFactory.CreateRouteManager(options);
+            var routeStore = _routeManagerFactory.CreateRouteManager();
 
             Assert(routeStore != null);
 

@@ -43,13 +43,18 @@ namespace AI4E.Routing
     public enum RouteRegistrationOptions
     {
         /// <summary>
-        /// The default route registration.
+        /// The default route registration. The registration shall survive end-point shutdown until explicitely unregistered.
         /// </summary>
         Default = 0,
 
         /// <summary>
-        /// The registration shall survive end-point shutdown until explicitely unregistered.
+        /// The registration will be removed automatically, when the message router is disposed or the session terminates.
         /// </summary>
-        Persistent = 1
+        Transient = 1,
+
+        /// <summary>
+        /// The handler shall only handle point to point messages, if the message is not sent to the end-point via its address.
+        /// </summary>
+        PublishOnly = 2
     }
 }

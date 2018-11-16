@@ -140,9 +140,7 @@ namespace AI4E.Routing.SignalR.Server
         {
             // TODO: Get the clients route options and combine them with RouteOptions.PublishOnly. 
             //       This is not necessary for now as there are no other options currently.
-            var messageRouter = _messageRouterFactory.CreateMessageRouter(endPoint,
-                                                                          new SerializedMessageHandlerProxy(this, endPoint),
-                                                                          RouteOptions.PublishOnly); // We allow publishing only.
+            var messageRouter = _messageRouterFactory.CreateMessageRouter(endPoint, new SerializedMessageHandlerProxy(this, endPoint)); 
             return messageRouter;
         }
 
@@ -266,7 +264,7 @@ namespace AI4E.Routing.SignalR.Server
                             var routeBytesLength = reader.ReadInt32();
                             var routeBytes = reader.ReadBytes(routeBytesLength);
                             var route = Encoding.UTF8.GetString(routeBytes);
-                            await router.RegisterRouteAsync(route, options, cancellation);
+                            await router.RegisterRouteAsync(route, options | RouteRegistrationOptions.PublishOnly, cancellation); // We allow publishing only.
                             return null;
                         }
 

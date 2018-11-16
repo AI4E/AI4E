@@ -87,8 +87,7 @@ namespace AI4E.Routing
                 SerializationBinder = new SerializationBinder()
             };
 
-            var routeOptions = RouteOptions.Default;
-            _messageRouter = messageRouterFactory.CreateMessageRouter(new SerializedMessageHandler(this), routeOptions);
+            _messageRouter = messageRouterFactory.CreateMessageRouter(new SerializedMessageHandler(this));
 
             _localMessageDispatcher = new MessageDispatcher(serviceProvider);
         }
@@ -348,7 +347,7 @@ namespace AI4E.Routing
         public IHandlerRegistration Register(Type messageType, IContextualProvider<IMessageHandler> messageHandlerProvider)
         {
             // This needs to be persistent instead of default to support the persistent registration of message handlers via the message handler pattern without introduction of further dependencies.
-            return Register(messageType, messageHandlerProvider, RouteRegistrationOptions.Persistent);
+            return Register(messageType, messageHandlerProvider, RouteRegistrationOptions.Default);
         }
 
         public IHandlerRegistration Register(Type messageType, IContextualProvider<IMessageHandler> messageHandlerProvider, RouteRegistrationOptions options)

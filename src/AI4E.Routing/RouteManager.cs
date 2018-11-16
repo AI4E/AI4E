@@ -20,15 +20,13 @@ namespace AI4E.Routing
         private static readonly CoordinationEntryPath _reverseRoutesRootPath = new CoordinationEntryPath("reverse-routes");
 
         private readonly ICoordinationManager _coordinationManager;
-        private readonly RouteOptions _options;
 
-        public RouteManager(ICoordinationManager coordinationManager, RouteOptions options)
+        public RouteManager(ICoordinationManager coordinationManager)
         {
             if (coordinationManager == null)
                 throw new ArgumentNullException(nameof(coordinationManager));
 
             _coordinationManager = coordinationManager;
-            _options = options;
         }
 
         #region IRouteStore
@@ -47,7 +45,7 @@ namespace AI4E.Routing
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var entryCreationMode = EntryCreationModes.Default;
 
-            if (!registrationOptions.IncludesFlag(RouteRegistrationOptions.Persistent))
+            if (registrationOptions.IncludesFlag(RouteRegistrationOptions.Transient))
             {
                 entryCreationMode |= EntryCreationModes.Ephemeral;
             }
@@ -70,7 +68,6 @@ namespace AI4E.Routing
             {
                 using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
                 {
-                    writer.Write((int)_options);
                     writer.Write((int)registrationOptions);
                     writer.Write(endPoint);
                 }
@@ -122,7 +119,7 @@ namespace AI4E.Routing
                     {
                         var registrationOptions = (RouteRegistrationOptions)reader.ReadInt32();
 
-                        if (registrationOptions.IncludesFlag(RouteRegistrationOptions.Persistent))
+                        if (!registrationOptions.IncludesFlag(RouteRegistrationOptions.Transient))
                         {
                             continue;
                         }
@@ -144,7 +141,7 @@ namespace AI4E.Routing
             }
         }
 
-        public async Task<IEnumerable<(EndPointAddress endPoint, RouteOptions options, RouteRegistrationOptions registrationOptions)>> GetRoutesAsync(string route, CancellationToken cancellation)
+        public async Task<IEnumerable<(EndPointAddress endPoint, RouteRegistrationOptions registrationOptions)>> GetRoutesAsync(string route, CancellationToken cancellation)
         {
             if (string.IsNullOrWhiteSpace(route))
                 throw new ArgumentNullOrWhiteSpaceException(nameof(route));
@@ -154,16 +151,15 @@ namespace AI4E.Routing
 
             Assert(entry != null);
 
-            (EndPointAddress endPoint, RouteOptions options, RouteRegistrationOptions registrationOptions) Extract(IEntry e)
+            (EndPointAddress endPoint, RouteRegistrationOptions registrationOptions) Extract(IEntry e)
             {
                 using (var stream = e.OpenStream())
                 using (var reader = new BinaryReader(stream))
                 {
-                    var options = (RouteOptions)reader.ReadInt32();
                     var registrationOptions = (RouteRegistrationOptions)reader.ReadInt32();
                     var endPoint = reader.ReadEndPointAddress();
 
-                    return (endPoint, options, registrationOptions);
+                    return (endPoint, registrationOptions);
                 }
             }
 
@@ -205,14 +201,13 @@ namespace AI4E.Routing
         {
             if (coordinationManager == null)
                 throw new ArgumentNullException(nameof(coordinationManager));
+
             _coordinationManager = coordinationManager;
         }
 
-        public IRouteManager CreateRouteManager(RouteOptions options)
+        public IRouteManager CreateRouteManager()
         {
-            // TODO: Validate options
-
-            return new RouteManager(_coordinationManager, options);
+            return new RouteManager(_coordinationManager);
         }
     }
 }
