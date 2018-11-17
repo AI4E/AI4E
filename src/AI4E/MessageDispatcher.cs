@@ -162,7 +162,7 @@ namespace AI4E
             }
         }
 
-        private ValueTask<IDispatchResult> DispatchSingleHandlerAsync(IContextualProvider<IMessageHandler> handler,
+        private async ValueTask<IDispatchResult> DispatchSingleHandlerAsync(IContextualProvider<IMessageHandler> handler,
                                                                       DispatchDataDictionary dispatchData,
                                                                       CancellationToken cancellation)
         {
@@ -175,20 +175,25 @@ namespace AI4E
                 {
                     var handlerInstance = handler.ProvideInstance(scope.ServiceProvider);
 
+                    if(handlerInstance == null)
+                    {
+                        throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that is null.");
+                    }
+
                     if (!handlerInstance.MessageType.IsAssignableFrom(dispatchData.MessageType))
                     {
                         throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{handlerInstance.MessageType}'.");
                     }
 
-                    return handlerInstance.HandleAsync(dispatchData, cancellation);
+                    return await handlerInstance.HandleAsync(dispatchData, cancellation);
                 }
                 catch (ConcurrencyException)
                 {
-                    return new ValueTask<IDispatchResult>(new ConcurrencyIssueDispatchResult());
+                    return new ConcurrencyIssueDispatchResult();
                 }
                 catch (Exception exc)
                 {
-                    return new ValueTask<IDispatchResult>(new FailureDispatchResult(exc));
+                    return new FailureDispatchResult(exc);
                 }
             }
         }
