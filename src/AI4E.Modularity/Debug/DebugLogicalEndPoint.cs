@@ -112,7 +112,7 @@ namespace AI4E.Modularity.Debug
                     var responseBuffer = await proxy.ExecuteAsync(p => p.SendAsync(buffer, remoteEndPoint, combinedCancellation));
                     var response = new Message();
 
-                    using (var stream = new MemoryStream(buffer))
+                    using (var stream = new MemoryStream(responseBuffer))
                     {
                         await response.ReadAsync(stream, cancellation);
                     }
