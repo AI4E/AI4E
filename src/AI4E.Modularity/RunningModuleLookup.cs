@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -28,6 +28,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
 using AI4E.Internal;
+using AI4E.Memory.Compatibility;
 using AI4E.Routing;
 using static System.Diagnostics.Debug;
 
@@ -41,8 +42,6 @@ namespace AI4E.Modularity
                                                                                             RegexOptions.Singleline |
                                                                                             RegexOptions.IgnoreCase |
                                                                                             RegexOptions.Compiled);
-
-
 
         private static readonly CoordinationEntryPath _rootPath = new CoordinationEntryPath("modules");
         private static readonly CoordinationEntryPath _rootPrefixesPath = _rootPath.GetChildPath("prefixes"); // prefix => end-point
@@ -81,48 +80,23 @@ namespace AI4E.Modularity
             if (prefixes.Any(p => string.IsNullOrWhiteSpace(p)))
                 throw new ArgumentException("The collection must not contain null entries or entries that are empty or contain whitespace only.", nameof(prefixes));
 
-            var prefixList = (prefixes as ICollection<string>) ?? prefixes.ToList();
+            var prefixCollection = (prefixes as ICollection<string>) ?? prefixes.ToList();
             var session = await _coordinationManager.GetSessionAsync(cancellation);
 
-            byte[] runningModulePayload;
-
-            using (var memoryStream = new MemoryStream())
+            var tasks = new List<Task>(capacity: 1 + prefixCollection.Count())
             {
-                using (var writer = new BinaryWriter(memoryStream))
-                {
-                    writer.Write(endPoint);
-           
-                    writer.Write(prefixes.Count());
+                WriteRunningModuleEntryAsync(module, endPoint, prefixCollection, session, cancellation)
+            };
 
-                    foreach (var prefix in prefixes)
-                    {
-                        var normalizedPrefix = NormalizePrefix(prefix);
-                        var normalizedPrefixBytes = Encoding.UTF8.GetBytes(normalizedPrefix);
-                        var prefixPath = GetPrefixPath(normalizedPrefix, endPoint, session, normalize: false);
-                        writer.Write(normalizedPrefixBytes.Length);
-                        writer.Write(normalizedPrefixBytes);
-
-                        using (var stream = new MemoryStream(capacity: 4 + endPoint.Utf8EncodedValue.Length))
-                        {
-                            using (var writer2 = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
-                            {
-                                writer.Write(endPoint);
-                            }
-
-                            var payload = stream.ToArray();
-                            var entry = await _coordinationManager.GetOrCreateAsync(prefixPath, payload, EntryCreationModes.Ephemeral, cancellation);
-
-                            Assert(entry.Value.SequenceEqual(payload));
-                        }
-                    }
-                }
-
-                runningModulePayload = memoryStream.ToArray();
+            foreach (var prefix in prefixCollection)
+            {
+                tasks.Add(WriteModulePrefixEntryAsync(prefix, endPoint, session, cancellation));
             }
 
-            var runningModulePath = GetRunningModulePath(module, session);
+            await Task.WhenAll(tasks);
 
-            await _coordinationManager.GetOrCreateAsync(runningModulePath, runningModulePayload, EntryCreationModes.Ephemeral, cancellation);
+            // TODO: When cancelled, alls completed operations should be reverted.
+            // TODO: The RemoveModuleAsync alogrithm assumes that there are no prefix entries, if the running module entry is not present. We should reflect this assumtion here.
         }
 
         public async Task RemoveModuleAsync(ModuleIdentifier module, CancellationToken cancellation)
@@ -140,21 +114,12 @@ namespace AI4E.Modularity
 
             await _coordinationManager.DeleteAsync(runningModulePath, cancellation: cancellation);
 
-            using (var stream = entry.OpenStream())
-            using (var reader = new BinaryReader(stream))
+            var (endPoint, prefixes) = ReadRunningModuleEntry(entry);
+
+            foreach (var prefix in prefixes)
             {
-                var endPoint = reader.ReadEndPointAddress();
-                var prefixesCount = reader.ReadInt32();
-
-                for (var i = 0; i < prefixesCount; i++)
-                {
-                    var prefixBytesLength = reader.ReadInt32();
-                    var prefixBytes = reader.ReadBytes(prefixBytesLength);
-                    var prefix = Encoding.UTF8.GetString(prefixBytes);
-                    var prefixPath = GetPrefixPath(prefix, endPoint, session, normalize: false);
-
-                    await _coordinationManager.DeleteAsync(prefixPath, cancellation: cancellation);
-                }
+                var prefixPath = GetPrefixPath(prefix, endPoint, session, normalize: false);
+                await _coordinationManager.DeleteAsync(prefixPath, cancellation: cancellation);
             }
         }
 
@@ -177,18 +142,12 @@ namespace AI4E.Modularity
             Assert(entry != null);
 
             var result = new List<EndPointAddress>(capacity: entry.Children.Count);
-
             var childEntries = (await entry.GetChildrenEntriesAsync(cancellation)).OrderBy(p => p.CreationTime);
 
             foreach (var childEntry in childEntries)
             {
-                using (var stream = childEntry.OpenStream())
-                using (var reader = new BinaryReader(stream))
-                {
-                    var endPointBytesLength = reader.ReadInt32();
-                    var endPointBytes = reader.ReadBytes(endPointBytesLength);
-                    result.Add(new EndPointAddress(Encoding.UTF8.GetString(endPointBytes)));
-                }
+                var endPoint = ReadModulePrefixEntry(childEntry);
+                result.Add(endPoint);
             }
 
             return result;
@@ -206,37 +165,111 @@ namespace AI4E.Modularity
             if (entry == null)
                 return Enumerable.Empty<string>();
 
-            IEnumerable<string> GetPrefixes(IEntry sessionEntry)
-            {
-                string[] result;
+            return await entry.GetChildrenEntries().SelectMany(p => ReadRunningModuleEntry(p).prefixes.ToAsyncEnumerable()).Distinct().ToList();
+        }
 
-                using (var stream = sessionEntry.OpenStream())
-                using (var reader = new BinaryReader(stream))
-                {
-                    var bytesToSkip = reader.ReadInt32();
-                    for (var i = 0; i < bytesToSkip; i++)
-                    {
-                        reader.ReadByte();
-                    }
+        public async ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(ModuleIdentifier module, CancellationToken cancellation)
+        {
+            if (module == default)
+                throw new ArgumentDefaultException(nameof(module));
 
-                    var prefixesCount = reader.ReadInt32();
-                    result = new string[prefixesCount];
+            var runningModulePath = GetRunningModulePath(module);
 
-                    for (var i = 0; i < prefixesCount; i++)
-                    {
-                        var prefixBytesLength = reader.ReadInt32();
-                        var prefixBytes = reader.ReadBytes(prefixBytesLength);
-                        result[i] = Encoding.UTF8.GetString(prefixBytes);
-                    }
-                }
+            var entry = await _coordinationManager.GetAsync(runningModulePath, cancellation);
 
-                return result;
-            }
+            if (entry == null)
+                return Enumerable.Empty<EndPointAddress>();
 
-            return await entry.GetChildrenEntries().SelectMany(p => GetPrefixes(p).ToAsyncEnumerable()).Distinct().ToList();
+            return await entry.GetChildrenEntries().Select(p => ReadRunningModuleEntry(p).endPoint).Distinct().ToList();
         }
 
         #endregion
+
+        private EndPointAddress ReadModulePrefixEntry(IEntry entry)
+        {
+            var reader = new BinarySpanReader(entry.Value.Span, ByteOrder.LittleEndian);
+            return ReadEndPointAddress(ref reader);
+        }
+
+        private (EndPointAddress endPoint, IReadOnlyCollection<string> prefixes) ReadRunningModuleEntry(IEntry entry)
+        {
+            var reader = new BinarySpanReader(entry.Value.Span, ByteOrder.LittleEndian);
+            var endPoint = ReadEndPointAddress(ref reader);
+            var prefixesCount = reader.ReadInt32();
+
+            var prefixes = new List<string>(capacity: prefixesCount);
+
+            for (var i = 0; i < prefixesCount; i++)
+            {
+                var prefix = reader.ReadString();
+                prefixes.Add(prefix);
+            }
+
+            return (endPoint, prefixes);
+        }
+
+        private async Task WriteRunningModuleEntryAsync(ModuleIdentifier module, EndPointAddress endPoint, ICollection<string> prefixes, Session session, CancellationToken cancellation)
+        {
+            var path = GetRunningModulePath(module, session);
+
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = new BinaryWriter(stream))
+                {
+                    writer.Write(endPoint);
+                    writer.Write(prefixes.Count());
+
+                    foreach (var prefix in prefixes)
+                    {
+                        WritePrefix(writer, prefix);
+                    }
+                }
+
+                var payload = stream.ToArray();
+                await _coordinationManager.GetOrCreateAsync(path, payload, EntryCreationModes.Ephemeral, cancellation);
+            }
+        }
+
+        private async Task WriteModulePrefixEntryAsync(string prefix, EndPointAddress endPoint, Session session, CancellationToken cancellation)
+        {
+            var normalizedPrefix = NormalizePrefix(prefix);
+            var path = GetPrefixPath(normalizedPrefix, endPoint, session, normalize: false);
+
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = new BinaryWriter(stream))
+                {
+                    writer.Write(endPoint);
+                }
+
+                var payload = stream.ToArray();
+                var entry = await _coordinationManager.GetOrCreateAsync(path, payload, EntryCreationModes.Ephemeral, cancellation);
+            }
+        }
+
+        private EndPointAddress ReadEndPointAddress(ref BinarySpanReader reader)
+        {
+            var localEndPointBytesLenght = reader.ReadInt32();
+
+            if (localEndPointBytesLenght == 0)
+            {
+                return EndPointAddress.UnknownAddress;
+            }
+
+            var utf8EncodedValue = reader.Read(localEndPointBytesLenght);
+            var copy = utf8EncodedValue.ToArray(); // TODO
+
+            return new EndPointAddress(copy);
+        }
+
+        private void WritePrefix(BinaryWriter writer, string prefix)
+        {
+            var normalizedPrefix = NormalizePrefix(prefix);
+            var normalizedPrefixBytes = Encoding.UTF8.GetBytes(prefix);
+
+            writer.Write(normalizedPrefixBytes.Length);
+            writer.Write(normalizedPrefixBytes);
+        }
 
         private static string NormalizePrefix(string prefix)
         {

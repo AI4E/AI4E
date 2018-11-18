@@ -261,9 +261,9 @@ namespace AI4E.Internal
 
         private void EnsureSpace(int count)
         {
-            if (CanAdvance(count))
+            if (!CanAdvance(count))
             {
-                throw new Exception("Not enought space left"); // TODO
+                throw new Exception("Not enough space left"); // TODO
             }
         }
     }
@@ -471,19 +471,15 @@ namespace AI4E.Internal
 
         public string ReadString()
         {
-            var count = ReadInt32();
-            var result = Encoding.UTF8.GetString(Span.Slice(_offset, count));
-
-            _offset += count;
-
-            return result;
+            var bytes = Read();
+            return Encoding.UTF8.GetString(bytes);
         }
 
         private void EnsureSpace(int count)
         {
-            if (CanAdvance(count))
+            if (!CanAdvance(count))
             {
-                throw new Exception("Not enought space left"); // TODO
+                throw new Exception("Not enough space left"); // TODO
             }
         }
     }

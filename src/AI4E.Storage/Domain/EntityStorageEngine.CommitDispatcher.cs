@@ -184,7 +184,7 @@ namespace AI4E.Storage.Domain
         private Task<IDispatchResult> DispatchEventAsync(object evt, CancellationToken cancellation)
         {
             var dispatchData = DispatchDataDictionary.Create(evt.GetType(), evt);
-            return _eventDispatcher.DispatchAsync(dispatchData, publish: true, cancellation);
+            return _eventDispatcher.DispatchLocalAsync(dispatchData, publish: true, cancellation);
         }
 
         private async Task ProjectAsync(string bucketId, string id, TaskCompletionSource<object> tcs, CancellationToken cancellation)

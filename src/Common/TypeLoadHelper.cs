@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using static System.Diagnostics.Debug;
@@ -7,16 +7,25 @@ namespace AI4E.Internal
 {
     internal static class TypeLoadHelper
     {
-        public static Type LoadTypeFromUnqualifiedName(string unqualifiedTypeName)
+        public static Type LoadTypeFromUnqualifiedName(string unqualifiedTypeName, bool throwIfNotFound = true)
         {
+            Type result;
+
             if (unqualifiedTypeName.IndexOf('`') >= 0)
             {
-                return LoadGenericType(unqualifiedTypeName);
+                result = LoadGenericType(unqualifiedTypeName);
             }
             else
             {
-                return LoadNonGenericOrTypeDefinition(unqualifiedTypeName);
+                result = LoadNonGenericOrTypeDefinition(unqualifiedTypeName);
             }
+
+            if (result == null && throwIfNotFound)
+            {
+                throw new ArgumentException($"Type '{unqualifiedTypeName}' could not be loaded.");
+            }
+
+            return result;
         }
 
         private static Type LoadNonGenericOrTypeDefinition(string unqualifiedTypeName)
@@ -33,7 +42,7 @@ namespace AI4E.Internal
                     return type;
             }
 
-            throw new ArgumentException($"Type '{unqualifiedTypeName}' could not be loaded.");
+            return null;
         }
 
         private static Type TryLoad(Assembly assembly, string unqualifiedTypeName)
@@ -49,6 +58,12 @@ namespace AI4E.Internal
             {
                 var genericTypeDefName = unqualifiedTypeName.Substring(0, openBracketIndex);
                 var genericTypeDef = LoadNonGenericOrTypeDefinition(genericTypeDefName);
+
+                if (genericTypeDef == null)
+                {
+                    return null;
+                }
+
                 if (genericTypeDef != null)
                 {
                     var genericTypeArguments = new List<Type>();
@@ -88,7 +103,7 @@ namespace AI4E.Internal
                         }
                     }
 
-                    X:
+X:
 
                     type = genericTypeDef.MakeGenericType(genericTypeArguments.ToArray());
 

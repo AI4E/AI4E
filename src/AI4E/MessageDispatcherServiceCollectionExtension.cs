@@ -55,6 +55,7 @@ using AI4E.ApplicationParts;
 using AI4E.Handler;
 using AI4E.Internal;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace AI4E
@@ -183,24 +184,29 @@ namespace AI4E
             var messageHandlerFeature = new MessageHandlerFeature();
 
             partManager.PopulateFeature(messageHandlerFeature);
-            RegisterMessageHandlerTypes(messageDispatcher, processors, messageHandlerFeature.MessageHandlers);
+
+            var logger = serviceProvider.GetService<ILogger<MessageDispatcher>>(); // TODO
+
+            RegisterMessageHandlerTypes(messageDispatcher, processors, messageHandlerFeature.MessageHandlers, logger);
 
             return messageDispatcher;
         }
 
         private static void RegisterMessageHandlerTypes(IMessageDispatcher messageDispatcher,
                                                         ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
-                                                        IEnumerable<Type> types)
+                                                        IEnumerable<Type> types,
+                                                        ILogger logger)
         {
             foreach (var type in types)
             {
-                RegisterMessageHandlerType(messageDispatcher, processors, type);
+                RegisterMessageHandlerType(messageDispatcher, processors, type, logger);
             }
         }
 
         private static void RegisterMessageHandlerType(IMessageDispatcher messageDispatcher,
                                                        ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
-                                                       Type type)
+                                                       Type type,
+                                                       ILogger logger)
         {
             var inspector = new MessageHandlerInspector(type);
             var descriptors = inspector.GetHandlerDescriptors();
@@ -215,6 +221,8 @@ namespace AI4E
                     processors);
 
                 messageDispatcher.Register(messageType, provider);
+
+                logger?.LogDebug($"Registered handler of type '{type}' for message-type '{messageType}'.");
             }
         }
 
