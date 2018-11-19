@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -57,8 +57,36 @@ namespace AI4E.Modularity.Debug
         private async Task<(IPEndPoint localAddress, ProxyHost proxyHost)> InitializeInternalAsync(CancellationToken cancellation)
         {
             // TODO: Is the tcp client closed on disposal?
-            var tcpClient = new TcpClient(_debugPort.AddressFamily); 
-            await tcpClient.ConnectAsync(_debugPort.Address, _debugPort.Port).WithCancellation(cancellation);
+            var tcpClient = new TcpClient(_debugPort.AddressFamily);
+
+            _logger?.LogDebug($"Trying to connect to debug port {_debugPort}.");
+
+            var delay = TimeSpan.FromSeconds(1);
+            var maxDelay = TimeSpan.FromSeconds(6);
+            var delayFactor = 1.1;
+
+            while (cancellation.ThrowOrContinue())
+            {
+                try
+                {
+                    await tcpClient.ConnectAsync(_debugPort.Address, _debugPort.Port).WithCancellation(cancellation);
+                    break;
+                }
+                catch (SocketException exc) when (exc.SocketErrorCode == SocketError.ConnectionRefused) { }
+
+                _logger?.LogWarning($"Debug port unreachable. Trying again in {delay.TotalSeconds.ToString("0.00")}sec.");
+
+                await Task.Delay(delay, cancellation);
+
+                delay = new TimeSpan((long)(delay.Ticks * delayFactor));
+
+                if (delay > maxDelay)
+                {
+                    delay = maxDelay;
+                }
+            }
+
+            _logger?.LogInformation($"Successfully established connection to debug port.");
 
             var localAddress = tcpClient.Client.LocalEndPoint as IPEndPoint;
             var logger = _loggerFactory?.CreateLogger<DisposeAwareStream>();
