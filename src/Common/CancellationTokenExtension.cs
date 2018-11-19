@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,9 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace AI4E.Internal
 {
@@ -31,17 +29,6 @@ namespace AI4E.Internal
             cancellationToken.ThrowIfCancellationRequested();
 
             return true;
-        }
-
-
-        [Obsolete] // This never deregisters the cancellation action.
-        public static Task AsTask(this CancellationToken cancellationToken)
-        {
-            var tcs = new TaskCompletionSource<object>();
-
-            cancellationToken.Register(() => tcs.SetCanceled());
-
-            return tcs.Task;
         }
     }
 }

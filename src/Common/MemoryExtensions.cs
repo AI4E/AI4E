@@ -68,18 +68,6 @@ namespace AI4E.Internal
             return true;
         }
 
-        [Obsolete("Use left.Span.SequenceEqual(right.Span)")]
-        public static bool SequenceEqual<T>(this ReadOnlyMemory<T> left, ReadOnlyMemory<T> right)
-        {
-            return SequenceEqual(left, right, EqualityComparer<T>.Default);
-        }
-
-        [Obsolete("Use 'IsEmptyOrWhiteSpace(ReadOnlySpan<char>)'")]
-        public static bool IsEmptyOrWhiteSpace(this ReadOnlyMemory<char> s)
-        {
-            return s.Span.IsEmptyOrWhiteSpace();
-        }
-
         public static bool IsEmptyOrWhiteSpace(this ReadOnlySpan<char> span)
         {
             if (span.IsEmpty)

@@ -62,7 +62,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\CancellationTokenExtension.cs = src\Common\CancellationTokenExtension.cs
 		src\Common\CastTo.cs = src\Common\CastTo.cs
 		src\Common\CompressionHelper.cs = src\Common\CompressionHelper.cs
-		src\Common\ConcurrentDictionaryExtension.cs = src\Common\ConcurrentDictionaryExtension.cs
 		src\Common\CustomAttributeProviderExtension.cs = src\Common\CustomAttributeProviderExtension.cs
 		src\Common\DataPropertyHelper.cs = src\Common\DataPropertyHelper.cs
 		src\Common\DebugEx.cs = src\Common\DebugEx.cs

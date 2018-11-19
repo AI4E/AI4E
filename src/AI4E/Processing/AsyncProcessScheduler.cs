@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -23,7 +23,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
 using Nito.AsyncEx;
 
 namespace AI4E.Processing
@@ -31,8 +30,11 @@ namespace AI4E.Processing
     internal sealed class AsyncProcessScheduler
     {
         private volatile ImmutableHashSet<ITrigger> _triggers = ImmutableHashSet<ITrigger>.Empty;
+        private readonly AsyncManualResetEvent _event = new AsyncManualResetEvent();
+
         private CancellationTokenSource _cancelSource = null;
-        private AsyncManualResetEvent _event = new AsyncManualResetEvent();
+        private bool _triggersTouched = false;
+        private readonly object _lock = new object();
 
         public AsyncProcessScheduler() { }
 
@@ -48,32 +50,59 @@ namespace AI4E.Processing
 
         private async Task InternalNextTrigger()
         {
-            Task completedTask;
-            Task cancellationTask;
-            ImmutableHashSet<ITrigger> triggers;
+            bool needsRerun;
 
             do
             {
                 // Reload all triggers
-                triggers = _triggers; // Volatile read op.
+                var triggers = _triggers; // Volatile read op.
+
+                needsRerun = false;
+
+                CancellationTokenSource cancellationSource;
+
+                lock (_lock)
+                {
+                    if (_triggersTouched)
+                    {
+                        _triggersTouched = false;
+                        needsRerun = true;
+                        continue;
+                    }
+
+                    _cancelSource = new CancellationTokenSource();
+                    cancellationSource = _cancelSource;
+                }
 
                 // Set a new cancellation source
-                _cancelSource = new CancellationTokenSource();
+                using (cancellationSource)
+                {
+                    // Get a list of all triggers
+                    var awaitedTasks = triggers.Select(p => p.NextTriggerAsync(_cancelSource.Token)).Append(_event.WaitAsync(_cancelSource.Token));
 
-                // Get a list of all trigger tasks plus a cancellation task
-                cancellationTask = _cancelSource.Token.AsTask();
-                var awaitedTasks = triggers.Select(p => p.NextTriggerAsync(_cancelSource.Token)).Append(_event.WaitAsync(_cancelSource.Token)).Append(cancellationTask);
+                    // Asynchronously wait for any tasks to complete.
+                    var completedTask = await Task.WhenAny(awaitedTasks);
 
-                // Asynchronously wait for any tasks to complete.
-                completedTask = await Task.WhenAny(awaitedTasks);
+                    try
+                    {
+                        // Trigger any thrown exceptions.
+                        await completedTask;
+                    }
+                    catch (OperationCanceledException) when (_cancelSource.IsCancellationRequested)
+                    {
+                        needsRerun = true;
+                    }
 
-                // Cancel all trigger tasks that were not completed.
-                _cancelSource.Cancel();
+                    // Cancel all trigger tasks that were not completed.
+                    _cancelSource.Cancel();
 
-                // Trigger any thrown exceptions.
-                await completedTask;
+                    lock (_lock)
+                    {
+                        _cancelSource = null;
+                    }
+                }
             }
-            while (completedTask == cancellationTask);
+            while (needsRerun);
 
             _event.Reset();
         }
@@ -97,7 +126,17 @@ namespace AI4E.Processing
 
             if (start != desired)
             {
-                _cancelSource.Cancel();
+                lock (_lock)
+                {
+                    if (_cancelSource == null)
+                    {
+                        _triggersTouched = true;
+                    }
+                    else
+                    {
+                        _cancelSource.Cancel();
+                    }
+                }
             }
         }
 
@@ -120,7 +159,17 @@ namespace AI4E.Processing
 
             if (start != desired)
             {
-                _cancelSource.Cancel();
+                lock (_lock)
+                {
+                    if (_cancelSource == null)
+                    {
+                        _triggersTouched = true;
+                    }
+                    else
+                    {
+                        _cancelSource.Cancel();
+                    }
+                }
             }
         }
     }

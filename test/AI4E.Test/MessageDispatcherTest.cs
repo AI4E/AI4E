@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
 using Microsoft.Extensions.DependencyInjection;
@@ -93,8 +93,8 @@ namespace AI4E.Test
             var baseHandler = new TestMessageBaseHandler();
             messageDispatcher.Register(ContextualProvider.Create(baseHandler));
 
-            registration.Cancel();
-            await registration.Cancellation;
+            registration.Dispose();
+            await registration.Disposal;
 
             var message = new TestMessage("x", 123);
 

@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -223,26 +223,6 @@ namespace AI4E.Storage
                 throw new ArgumentNullException(nameof(queryShaper));
 
             return dataStore.QueryAsync(queryShaper, cancellation);
-        }
-
-        [Obsolete("Use IDataStore.AllAsync()")]
-        public static IAsyncEnumerable<TData> FindAsync<TData>(this IDataStore dataStore, CancellationToken cancellation = default)
-             where TData : class
-        {
-            if (dataStore == null)
-                throw new ArgumentNullException(nameof(dataStore));
-
-            return dataStore.AllAsync<TData>(cancellation);
-        }
-
-        [Obsolete("Use IDataStore.OneAsync()")]
-        public static ValueTask<TData> FindOneAsync<TData>(this IDataStore dataStore, CancellationToken cancellation = default)
-            where TData : class
-        {
-            if (dataStore == null)
-                throw new ArgumentNullException(nameof(dataStore));
-
-            return dataStore.OneAsync<TData>(cancellation);
         }
     }
 }

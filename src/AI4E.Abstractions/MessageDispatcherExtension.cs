@@ -30,33 +30,6 @@ namespace AI4E
     /// </summary>
     public static class MessageDispatcherExtension
     {
-        [Obsolete("Use DispatchAsync(dispatchData, bool, CancellationToken) with publish set to true.")]
-        public static Task<IDispatchResult> PublishAsync(this IMessageDispatcher messageDispatcher,
-                                                         DispatchDataDictionary dispatchData,
-                                                         CancellationToken cancellation = default)
-        {
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
-
-            if (dispatchData == null)
-                throw new ArgumentNullException(nameof(dispatchData));
-
-            return messageDispatcher.DispatchAsync(dispatchData, publish: true, cancellation);
-        }
-
-        [Obsolete("Use DispatchAsync<TMessage>(TMessage, bool, CancellationToken) with publish set to true.")]
-        public static Task<IDispatchResult> PublishAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, CancellationToken cancellation = default)
-            where TMessage : class
-        {
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
-
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
-            return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message), publish: true, cancellation);
-        }
-
         public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, IEnumerable<KeyValuePair<string, object>> data, CancellationToken cancellation = default)
              where TMessage : class
         {

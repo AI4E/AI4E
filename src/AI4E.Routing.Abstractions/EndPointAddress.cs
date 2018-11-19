@@ -135,7 +135,7 @@ namespace AI4E.Routing
         /// <returns>The generated hash code.</returns>
         public override int GetHashCode()
         {
-            return Utf8EncodedValue.SequenceHashCode();
+            return Utf8EncodedValue.Span.SequenceHashCode();
         }
 
         /// <summary>

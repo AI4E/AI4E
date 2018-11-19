@@ -521,15 +521,6 @@ namespace AI4E.Routing
                 catch (OperationCanceledException) { }
             }
 
-            [Obsolete]
-            public Task Cancellation => Disposal;
-
-            [Obsolete]
-            public void Cancel()
-            {
-                Dispose();
-            }
-
             private async Task DisposeInternalAsync()
             {
                 try

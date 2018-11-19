@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -49,9 +49,6 @@ namespace AI4E.Modularity.Host
 
         [JsonIgnore]
         public ModuleVersion Version => _metadata.Version;
-
-        [JsonIgnore, Obsolete("Use GetSourcesAsync(CancellationToken)")]
-        public IEnumerable<Snapshot<IModuleSource>> Sources => _sources; // TODO: Create read-only wrapper
 
         [JsonIgnore]
         public DateTime ReleaseDate => _metadata.ReleaseDate;

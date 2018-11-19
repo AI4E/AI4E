@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Numerics;
@@ -25,12 +25,6 @@ namespace AI4E.Internal
                 throw new ArgumentException("The spans length must be at least the size of a single vector.", nameof(span));
 
             return ref MemoryMarshal.Cast<T, Vector<T>>(span).GetPinnableReference();
-        }
-
-        [Obsolete("Use SequenceHashCode(ReadOnlySpan<T>)")]
-        public static int SequenceHashCode<T>(this ReadOnlyMemory<T> memory)
-        {
-            return memory.Span.SequenceHashCode();
         }
 
         public static int SequenceHashCode<T>(this ReadOnlySpan<T> span)

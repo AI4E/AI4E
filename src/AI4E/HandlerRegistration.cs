@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        HandlerRegistration.cs 
  * Types:           AI4E.HandlerRegistration
@@ -78,14 +78,7 @@ namespace AI4E
 
             public Task Initialization => Task.CompletedTask;
 
-            Task IHandlerRegistration.Cancellation => Disposal;
-
             public IContextualProvider<THandler> Handler { get; }
-
-            void IHandlerRegistration.Cancel()
-            {
-                Dispose();
-            }
 
             public void Dispose()
             {
@@ -114,8 +107,6 @@ namespace AI4E
             }
 
             public Task Disposal => _cancellationSource.Task;
-
-
         }
     }
 }

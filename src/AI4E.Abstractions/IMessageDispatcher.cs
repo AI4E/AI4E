@@ -134,14 +134,6 @@ namespace AI4E
 
         public IContextualProvider<IMessageHandler<TMessage>> Handler { get; }
 
-        [Obsolete("Use AI4E.Async.IAsyncDisposable.Dispose")]
-        public Task Cancellation => Disposal;
-
-        [Obsolete("Use AI4E.Async.IAsyncDisposable.Dispose")]
-        public void Cancel()
-        {
-            Dispose();
-        }
 
         public void Dispose()
         {

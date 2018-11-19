@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -60,28 +60,6 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
             return messageDispatcher.Register(ContextualProvider.Create(eventHandler));
-        }
-
-        [Obsolete]
-        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher,
-                                                                                         Func<DispatchDataDictionary<TMessage>, Task<IDispatchResult>> messageHandler)
-            where TMessage : class
-        {
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
-
-            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((dispatchData, cancellation) => new ValueTask<IDispatchResult>(messageHandler(dispatchData))));
-        }
-
-        [Obsolete]
-        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher,
-                                                                                         Func<TMessage, Task<IDispatchResult>> messageHandler)
-            where TMessage : class
-        {
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
-
-            return messageDispatcher.Register(new AnonymousMessageHandler<TMessage>((dispatchData, cancellation) => new ValueTask<IDispatchResult>(messageHandler(dispatchData.Message))));
         }
 
         public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(this IMessageDispatcher messageDispatcher,

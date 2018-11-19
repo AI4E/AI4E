@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        CoordinationManager.cs 
  * Types:           (1) AI4E.Coordination.CoordinationManager'1
@@ -55,7 +55,6 @@ namespace AI4E.Coordination
         private readonly IStoredEntryManager _storedEntryManager;
         private readonly ISessionManager _sessionManager;
         private readonly ICoordinationSessionOwner _sessionOwner;
-        private readonly ISessionProvider _sessionProvider;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly CoordinationEntryCache _cache;
         private readonly ICoordinationLockManager _lockManager;

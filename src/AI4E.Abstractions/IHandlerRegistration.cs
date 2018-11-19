@@ -30,8 +30,6 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-using System.Threading.Tasks;
 using AI4E.Async;
 
 namespace AI4E
@@ -41,19 +39,6 @@ namespace AI4E
     /// </summary> 
     public interface IHandlerRegistration : IAsyncDisposable, IAsyncInitialization
     {
-        /// <summary>
-        /// Gets a task that represents the asynchronous cancellation of the registration.
-        /// </summary>
-        [Obsolete("Use AI4E.Async.IAsyncDisposable.Disposal")]
-        Task Cancellation { get; }
-
-        /// <summary>
-        /// Cancels the registration.
-        /// </summary>
-        [Obsolete("Use AI4E.Async.IAsyncDisposable.Dispose")]
-        void Cancel();
-
-        // TODO: Add a message type property.
     }
 
     /// <summary>

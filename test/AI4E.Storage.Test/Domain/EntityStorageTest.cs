@@ -88,11 +88,11 @@ namespace AI4E.Storage
             var messageDispatcher = services.GetRequiredService<IMessageDispatcher>();
             var messageHandlingSource = new TaskCompletionSource<TestOperationDoneEvent>();
 
-            messageDispatcher.Register<TestOperationDoneEvent>(message =>
+            messageDispatcher.Register<TestOperationDoneEvent>((message, cancellation) =>
             {
                 messageHandlingSource.SetResult(message);
 
-                return Task.FromResult<IDispatchResult>(new SuccessDispatchResult());
+                return new ValueTask<IDispatchResult>(Task.FromResult<IDispatchResult>(new SuccessDispatchResult()));
             });
 
             Guid id;

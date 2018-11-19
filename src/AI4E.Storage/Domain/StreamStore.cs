@@ -5,7 +5,7 @@
  *                  (2) AI4E.Storage.Domain.StreamStore.Stream
  *                  (3) AI4E.Storage.Domain.StreamStore.Snapshot
  * Version:         1.0
- * Author:          Andreas Trütschel
+ * Author:          Andreas TrÃ¼tschel
  * Last modified:   16.01.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
@@ -76,6 +76,7 @@ namespace AI4E.Storage.Domain
         private readonly IStreamPersistence _persistence;
         private readonly ICommitDispatcher _commitDispatcher;
         private readonly IEnumerable<IStorageExtension> _extensions;
+        private readonly IDateTimeProvider _dateTimeProvider;
         private readonly Dictionary<(string bucketId, string streamId, long revision), Stream> _streams;
         private bool _isDisposed;
 
@@ -85,7 +86,9 @@ namespace AI4E.Storage.Domain
 
         public StreamStore(IStreamPersistence persistence,
                            ICommitDispatcher commitDispatcher,
-                           IEnumerable<IStorageExtension> extensions)
+                           IEnumerable<IStorageExtension> extensions,
+                           IDateTimeProvider dateTimeProvider,
+                           ILogger<StreamStore> logger = null)
         {
             if (persistence == null)
                 throw new ArgumentNullException(nameof(persistence));
@@ -96,19 +99,17 @@ namespace AI4E.Storage.Domain
             if (extensions == null)
                 throw new ArgumentNullException(nameof(extensions));
 
+            if (dateTimeProvider == null)
+                throw new ArgumentNullException(nameof(dateTimeProvider));
+
             _persistence = persistence;
             _commitDispatcher = commitDispatcher;
             _extensions = extensions;
-            _streams = new Dictionary<(string bucketId, string streamId, long revision), Stream>();
-        }
-
-        public StreamStore(IStreamPersistence persistence,
-                          ICommitDispatcher commitDispatcher,
-                          IEnumerable<IStorageExtension> extensions,
-                          ILogger<StreamStore> logger)
-            : this(persistence, commitDispatcher, extensions)
-        {
+            _dateTimeProvider = dateTimeProvider;
             _logger = logger;
+
+            _streams = new Dictionary<(string bucketId, string streamId, long revision), Stream>();
+
         }
 
         #endregion
@@ -143,7 +144,7 @@ namespace AI4E.Storage.Domain
         {
             if (!_streams.TryGetValue((bucketId, streamId, revision), out var stream))
             {
-                stream = await Stream.OpenAsync(this, bucketId, streamId, revision, _logger, cancellation);
+                stream = await Stream.OpenAsync(this, bucketId, streamId, revision, _dateTimeProvider, _logger, cancellation);
 
                 _streams.Add((bucketId, streamId, revision), stream);
             }
@@ -200,11 +201,10 @@ namespace AI4E.Storage.Domain
 
             #region Fields
 
-            private ISnapshot _snapshot;
             private readonly List<ICommit> _commits = new List<ICommit>();
             private readonly StreamStore _streamStore;
+            private readonly IDateTimeProvider _dateTimeProvider;
             private readonly ILogger _logger;
-            private readonly bool _isFixedRevision = false;
 
             #endregion
 
@@ -216,6 +216,7 @@ namespace AI4E.Storage.Domain
                            ISnapshot snapshot,
                            IEnumerable<ICommit> commits,
                            bool isFixedRevision,
+                           IDateTimeProvider dateTimeProvider,
                            ILogger logger)
             {
                 if (streamStore == null)
@@ -225,14 +226,16 @@ namespace AI4E.Storage.Domain
                     throw new ArgumentNullException(nameof(commits));
 
                 _streamStore = streamStore;
-                ExecuteExtensions(commits);
-
                 BucketId = bucketId;
                 StreamId = streamId;
-                _snapshot = snapshot;
+                Snapshot = snapshot;
+                IsReadOnly = isFixedRevision;
+                _dateTimeProvider = dateTimeProvider;
                 _logger = logger;
+
+                ExecuteExtensions(commits);
                 _commits.AddRange(commits);
-                _isFixedRevision = isFixedRevision;
+
             }
 
             #endregion
@@ -241,6 +244,7 @@ namespace AI4E.Storage.Domain
                                                        string bucketId,
                                                        string streamId,
                                                        long revision,
+                                                       IDateTimeProvider dateTimeProvider,
                                                        ILogger logger,
                                                        CancellationToken cancellation)
             {
@@ -259,7 +263,7 @@ namespace AI4E.Storage.Domain
 
                 var isFixedRevision = revision != default;
 
-                var result = new Stream(streamStore, bucketId, streamId, snapshot, commits, isFixedRevision, logger);
+                var result = new Stream(streamStore, bucketId, streamId, snapshot, commits, isFixedRevision, dateTimeProvider, logger);
 
                 if (isFixedRevision && result.StreamRevision != revision)
                 {
@@ -271,8 +275,9 @@ namespace AI4E.Storage.Domain
 
             public string BucketId { get; }
             public string StreamId { get; }
+            public bool IsReadOnly { get; }
 
-            public ISnapshot Snapshot => _snapshot;
+            public ISnapshot Snapshot { get; private set; }
             public IEnumerable<ICommit> Commits => _commits.AsReadOnly();
 
             public long StreamRevision => Commits.LastOrDefault()?.StreamRevision ?? Snapshot?.StreamRevision ?? 0;
@@ -280,7 +285,7 @@ namespace AI4E.Storage.Domain
             public IReadOnlyDictionary<string, object> Headers => GetHeaders().ToImmutableDictionary();
             public IReadOnlyList<EventMessage> Events => Commits.SelectMany(commit => commit.Events ?? Enumerable.Empty<EventMessage>()).ToImmutableArray();
 
-            public bool IsReadOnly => _isFixedRevision;
+
 
             public IDictionary<string, object> GetHeaders()
             {
@@ -310,14 +315,14 @@ namespace AI4E.Storage.Domain
 
             public async Task AddSnapshotAsync(object body, CancellationToken cancellation = default)
             {
-                if (_isFixedRevision)
+                if (IsReadOnly)
                     throw new InvalidOperationException("Cannot modify a read-only stream view.");
 
                 var snapshot = new Snapshot(BucketId, StreamId, StreamRevision, body, Headers, ConcurrencyToken);
 
                 await _streamStore._persistence.AddSnapshotAsync(snapshot, cancellation);
 
-                _snapshot = snapshot;
+                Snapshot = snapshot;
                 _commits.Clear();
             }
 
@@ -327,7 +332,7 @@ namespace AI4E.Storage.Domain
                                                   Action<IDictionary<string, object>> headerGenerator,
                                                   CancellationToken cancellation)
             {
-                if (_isFixedRevision)
+                if (IsReadOnly)
                     throw new InvalidOperationException("Cannot modify a read-only stream view.");
 
                 _logger?.LogDebug(Resources.AttemptingToCommitChanges, StreamId);
@@ -378,7 +383,7 @@ namespace AI4E.Storage.Domain
 
             public async Task<bool> UpdateAsync(CancellationToken cancellation)
             {
-                if (_isFixedRevision)
+                if (IsReadOnly)
                     throw new InvalidOperationException("Cannot modify a read-only stream view.");
 
                 var commits = await _streamStore._persistence.GetCommitsAsync(BucketId, StreamId, StreamRevision + 1, cancellation: cancellation).ToList(cancellation);
@@ -479,7 +484,7 @@ namespace AI4E.Storage.Domain
                     StreamId,
                     newConcurrencyToken,
                     StreamRevision + 1,
-                    SystemTime.UtcNow,
+                    _dateTimeProvider.GetCurrentTime(),
                     headers.ToDictionary(x => x.Key, x => x.Value),
                     body,
                     events.ToList());

@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,7 +18,6 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -28,18 +27,5 @@ namespace AI4E.Coordination
     {
         Task<IStoredEntry> GetEntryAsync(CoordinationEntryPath path, CancellationToken cancellation);
         Task<IStoredEntry> UpdateEntryAsync(IStoredEntry value, IStoredEntry comparand, CancellationToken cancellation);
-    }
-
-    public static class CoordinationStorageExtension
-    {
-        [Obsolete("Use GetEntryAsync(CoordinationEntryPath, CancellationToken)")]
-        public static Task<IStoredEntry> GetEntryAsync(this ICoordinationStorage coordinationStorage, string path, CancellationToken cancellation)
-        {
-            if (coordinationStorage == null)
-                throw new ArgumentNullException(nameof(coordinationStorage));
-
-            return coordinationStorage.GetEntryAsync(CoordinationEntryPath.FromEscapedPath( path.AsMemory()),
-                                                     cancellation);
-        }
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using AI4E.ApplicationParts;
 using AI4E.Internal;
@@ -64,10 +64,6 @@ namespace AI4E.Storage.Domain
         {
             // Domain storage engine
             services.AddScoped<IEntityStorageEngine, EntityStorageEngine>();
-
-#pragma warning disable CS0618
-            services.AddScoped(typeof(IEntityStore<,,>), typeof(EntityStore<,,>));
-#pragma warning restore CS0618
 
             // Domain storage engine background worker
             services.AddSingleton<ICommitDispatcher, CommitDispatcher>();
