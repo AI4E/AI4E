@@ -17,7 +17,8 @@ namespace AI4E.Storage.Projection
         {
             private readonly ProjectionSourceDescriptor _sourceDescriptor;
             private readonly IProjector _projector;
-            private readonly IScopedTransactionalDatabase _database;
+            private readonly ITransactionalDatabase _transactionalDatabase;
+            private readonly IFilterableDatabase _database;
             private readonly IServiceProvider _serviceProvider;
 
             private readonly IDictionary<ProjectionSourceDescriptor, ProjectionSourceMetadataCacheEntry> _sourceMetadataCache;
@@ -25,16 +26,20 @@ namespace AI4E.Storage.Projection
 
             public SourceScopedProjectionEngine(in ProjectionSourceDescriptor sourceDescriptor,
                                                 IProjector projector,
-                                                IScopedTransactionalDatabase database,
+                                                ITransactionalDatabase transactionalDatabase,
+                                                IFilterableDatabase database,
                                                 IServiceProvider serviceProvider)
             {
                 Assert(sourceDescriptor != default);
                 Assert(projector != null);
+                Assert(sourceDescriptor != default);
+                Assert(transactionalDatabase != null);
                 Assert(database != null);
                 Assert(serviceProvider != null);
 
                 _sourceDescriptor = sourceDescriptor;
                 _projector = projector;
+                _transactionalDatabase = transactionalDatabase;
                 _database = database;
                 _serviceProvider = serviceProvider;
 
@@ -46,60 +51,116 @@ namespace AI4E.Storage.Projection
             // Projects the source entity and returns the descriptors of all dependent source entities. 
             public async Task<IEnumerable<ProjectionSourceDescriptor>> ProjectAsync(CancellationToken cancellation)
             {
-                do
+                using (var transactionalDatabase = _transactionalDatabase.CreateScope())
                 {
-                    using (var scope = _serviceProvider.CreateScope())
+                    do
                     {
-                        var scopedServiceProvider = scope.ServiceProvider;
-                        var projectionSourceLoader = scopedServiceProvider.GetRequiredService<IProjectionSourceLoader>();
-                        var (source, sourceRevision) = await projectionSourceLoader.LoadAsync(_sourceDescriptor.SourceType, _sourceDescriptor.SourceId, cancellation);
-
-                        var (updateNeeded, conflict) = await GetProjectionStateAsync(projectionSourceLoader, source, sourceRevision, cancellation);
-
-                        if (conflict)
+                        do
                         {
-                            // TODO: Log conflict
-                            // TODO: Currently we are allocating a completely new storage engine. It is more performant to reuse the current storageEngine. 
-                            //       For this to work, it needs a way to flush its cache and refresh all cached streams on entity load.
-                            continue;
-                        }
+                            _sourceMetadataCache.Clear();
+                            _targetScopedProjectionEngines.Clear();
 
-                        if (updateNeeded &&
-                            await ProjectCoreAsync(source, scopedServiceProvider, cancellation))
+                            using (var scope = _serviceProvider.CreateScope())
+                            {
+                                var scopedServiceProvider = scope.ServiceProvider;
+                                var projectionSourceLoader = scopedServiceProvider.GetRequiredService<IProjectionSourceLoader>();
+                                var (source, sourceRevision) = await projectionSourceLoader.LoadAsync(_sourceDescriptor.SourceType, _sourceDescriptor.SourceId, cancellation);
+
+                                var (updateNeeded, conflict) = await GetProjectionStateAsync(projectionSourceLoader, source, sourceRevision, cancellation);
+
+                                if (conflict)
+                                {
+                                    // TODO: Log conflict
+                                    // TODO: Currently we are allocating a completely new storage engine. It is more performant to reuse the current storageEngine. 
+                                    //       For this to work, it needs a way to flush its cache and refresh all cached streams on entity load.
+                                    continue;
+                                }
+
+                                if (updateNeeded &&
+                                    await ProjectCoreAsync(source, scopedServiceProvider, cancellation))
+                                {
+                                    // Only update dependencies if there are any projections.
+                                    var dependencies = GetDependencies(projectionSourceLoader);
+                                    await UpdateDependenciesAsync(dependencies, cancellation); // TODO: Do we have to clear the dependency list, if there are no projections?
+                                }
+
+                                break;
+                            }
+                        }
+                        while (true);
+
+                        var dependents = await GetDependentsAsync(cancellation);
+
+                        try
                         {
-                            // Only update dependencies if there are any projections.
-                            var dependencies = GetDependencies(projectionSourceLoader);
-                            await UpdateDependenciesAsync(dependencies, cancellation); // TODO: Do we have to clear the dependency list, if there are no projections?
-                        }
+                            if (!await WriteToDatabaseAsync(transactionalDatabase, cancellation))
+                            {
+                                await transactionalDatabase.RollbackAsync();
+                                continue;
+                            }
 
-                        break;
+                            if (await transactionalDatabase.TryCommitAsync(cancellation))
+                            {
+                                return dependents;
+                            }
+                        }
+                        catch (TransactionAbortedException) { }
+                        catch
+                        {
+                            await transactionalDatabase.RollbackAsync();
+                            throw;
+                        }
                     }
+                    while (true);
                 }
-                while (true);
+            }
 
-                var dependents = await GetDependentsAsync(cancellation);
-
+            private async Task<bool> WriteToDatabaseAsync(IScopedTransactionalDatabase transactionalDatabase, CancellationToken cancellation)
+            {
                 // Write touched source metadata to database
                 foreach (var (originalMetadata, touchedMetadata) in _sourceMetadataCache.Values.Where(p => p.Touched))
                 {
+                    var comparandMetdata = await transactionalDatabase.GetAsync<ProjectionSourceMetadata>(p => p.Id == (originalMetadata ?? touchedMetadata).Id).FirstOrDefault();
+
+                    if (!MatchesByRevision(originalMetadata, comparandMetdata))
+                    {
+                        return false;
+                    }
+
                     if (touchedMetadata == null)
                     {
                         Assert(originalMetadata != null);
 
-                        await _database.RemoveAsync(originalMetadata, cancellation);
+                        await transactionalDatabase.RemoveAsync(originalMetadata, cancellation);
                     }
                     else
                     {
-                        await _database.StoreAsync(touchedMetadata, cancellation);
+                        touchedMetadata.MetadataRevision = originalMetadata?.MetadataRevision ?? 1;
+
+                        await transactionalDatabase.StoreAsync(touchedMetadata, cancellation);
                     }
                 }
 
                 foreach (var targetTypedScopedEngine in _targetScopedProjectionEngines.Values)
                 {
-                    await targetTypedScopedEngine.WriteToDatabaseAsync(cancellation);
+                    if (!await targetTypedScopedEngine.WriteToDatabaseAsync(transactionalDatabase, cancellation))
+                    {
+                        return false;
+                    }
                 }
 
-                return dependents;
+                return true;
+            }
+
+            private bool MatchesByRevision(ProjectionSourceMetadata original, ProjectionSourceMetadata comparand)
+            {
+                if (original is null)
+                    return comparand is null;
+
+                if (comparand is null)
+                    return false;
+
+                return original.MetadataRevision == comparand.MetadataRevision;
             }
 
             // Checks whether the projection is up-to date our if we have to reproject.
@@ -291,16 +352,17 @@ namespace AI4E.Storage.Projection
                         projectionsPresent = true;
                         var projectionResult = projectionResultsEnumerator.Current;
                         var projection = new ProjectionTargetDescriptor(projectionResult.ResultType,
-                                                                                            projectionResult.ResultId.ToString());
+                                                                        projectionResult.ResultId.ToString());
                         projections.Add(projection);
 
                         // The target was not part of the last projection. Store ourself to the target metadata.
-                        if (!appliedProjections.Remove(projection))
-                        {
-                            await AddEntityToProjectionAsync(projectionResult, cancellation);
-                        }
+                        var addEntityToProjections = !appliedProjections.Remove(projection);
 
-                        await _database.StoreAsync(projectionResult.ResultType, projectionResult.Result, cancellation);
+                        //if (!appliedProjections.Remove(projection))
+                        //{
+                        await UpdateEntityToProjectionAsync(projectionResult, addEntityToProjections, cancellation);
+                        //}
+                        //await _database.StoreAsync(projectionResult.ResultType, projectionResult.Result, cancellation);
                     }
                 }
                 finally
@@ -344,12 +406,13 @@ namespace AI4E.Storage.Projection
                 return targetScopedProjectionEngine.RemoveEntityFromProjectionAsync(_sourceDescriptor, removedProjection, cancellation);
             }
 
-            private Task AddEntityToProjectionAsync(IProjectionResult projectionResult,
-                                                          CancellationToken cancellation)
+            private Task UpdateEntityToProjectionAsync(IProjectionResult projectionResult,
+                                                    bool addEntityToProjections,
+                                                    CancellationToken cancellation)
             {
                 var targetScopedProjectionEngine = GetTargetScopedProjectionEngine(projectionResult.ResultType);
 
-                return targetScopedProjectionEngine.AddEntityToProjectionAsync(_sourceDescriptor, projectionResult, cancellation);
+                return targetScopedProjectionEngine.UpdateEntityToProjectionAsync(_sourceDescriptor, projectionResult, addEntityToProjections, cancellation);
             }
 
             // Gets the projection targets that are currently in the db.
@@ -479,6 +542,8 @@ namespace AI4E.Storage.Projection
                     }
                     set => _id = value;
                 }
+
+                public long MetadataRevision { get; set; } = 1;
 
                 public string SourceId { get; set; }
                 public string SourceType { get; set; }

@@ -11,12 +11,14 @@ namespace AI4E.Storage.Projection
     public sealed partial class ProjectionEngine : IProjectionEngine
     {
         private readonly IProjector _projector;
-        private readonly ITransactionalDatabase _database;
+        private readonly IFilterableDatabase _database;
+        private readonly ITransactionalDatabase _transactionalDatabase;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ProjectionEngine> _logger;
 
         public ProjectionEngine(IProjector projector,
-                                ITransactionalDatabase database,
+                                IFilterableDatabase database,
+                                ITransactionalDatabase transactionalDatabase,
                                 IServiceProvider serviceProvider,
                                 ILogger<ProjectionEngine> logger = default)
         {
@@ -26,11 +28,15 @@ namespace AI4E.Storage.Projection
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
 
+            if (transactionalDatabase == null)
+                throw new ArgumentNullException(nameof(transactionalDatabase));
+
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
             _projector = projector;
             _database = database;
+            _transactionalDatabase = transactionalDatabase;
             _serviceProvider = serviceProvider;
             _logger = logger;
         }
@@ -56,31 +62,8 @@ namespace AI4E.Storage.Projection
                 return;
             }
 
-            IEnumerable<ProjectionSourceDescriptor> dependents;
-
-            using (var database = _database.CreateScope())
-            {
-                do
-                {
-                    try
-                    {
-                        var scopedEngine = new SourceScopedProjectionEngine(entityDescriptor, _projector, database, _serviceProvider);
-                        dependents = await scopedEngine.ProjectAsync(cancellation);
-
-                        if (await database.TryCommitAsync(cancellation))
-                        {
-                            break;
-                        }
-                    }
-                    catch (TransactionAbortedException) { }
-                    catch
-                    {
-                        await database.RollbackAsync();
-                        throw;
-                    }
-                }
-                while (true);
-            }
+            var scopedEngine = new SourceScopedProjectionEngine(entityDescriptor, _projector, _transactionalDatabase, _database, _serviceProvider);
+            var dependents = await scopedEngine.ProjectAsync(cancellation);
 
             processedEntities.Add(entityDescriptor);
 

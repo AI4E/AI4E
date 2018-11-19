@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -15,67 +14,107 @@ namespace AI4E.Storage.Projection
         {
             Task RemoveEntityFromProjectionAsync(ProjectionSourceDescriptor projectionSource, ProjectionTargetDescriptor removedProjection, CancellationToken cancellation);
 
-            Task AddEntityToProjectionAsync(ProjectionSourceDescriptor projectionSource, IProjectionResult projectionResult, CancellationToken cancellation);
+            Task UpdateEntityToProjectionAsync(ProjectionSourceDescriptor projectionSource, IProjectionResult projectionResult, bool addEntityToProjections, CancellationToken cancellation);
 
-            Task WriteToDatabaseAsync(CancellationToken cancellation);
+            Task<bool> WriteToDatabaseAsync(IScopedTransactionalDatabase transactionalDatabase, CancellationToken cancellation);
         }
 
         private sealed class TargetScopedProjectionEngine<TProjectionId, TProjection> : ITargetScopedProjectionEngine
             where TProjection : class
         {
+            private readonly IFilterableDatabase _database;
             private readonly IDictionary<ProjectionTargetDescriptor, ProjectionTargetMetadataCacheEntry> _targetMetadataCache;
-            private readonly IScopedTransactionalDatabase _database;
+            private readonly List<TProjection> _targetsToUpdate = new List<TProjection>();
+            private readonly List<TProjection> _targetsToDelete = new List<TProjection>();
 
-            public TargetScopedProjectionEngine(IScopedTransactionalDatabase database)
+            public TargetScopedProjectionEngine(IFilterableDatabase database)
             {
                 _targetMetadataCache = new Dictionary<ProjectionTargetDescriptor, ProjectionTargetMetadataCacheEntry>();
                 _database = database;
             }
 
-            public async Task WriteToDatabaseAsync(CancellationToken cancellation)
+            public async Task<bool> WriteToDatabaseAsync(IScopedTransactionalDatabase transactionalDatabase, CancellationToken cancellation)
             {
                 // Write touched target metadata to database
                 foreach (var (originalMetadata, touchedMetadata) in _targetMetadataCache.Values.Where(p => p.Touched))
                 {
+                    var comparandMetdata = await transactionalDatabase.GetAsync<ProjectionTargetMetadata>(p => p.Id == (originalMetadata ?? touchedMetadata).Id).FirstOrDefault();
+
+                    if (!MatchesByRevision(originalMetadata, comparandMetdata))
+                    {
+                        return false;
+                    }
+
                     if (touchedMetadata == null)
                     {
                         Assert(originalMetadata != null);
 
-                        await _database.RemoveAsync(originalMetadata, cancellation);
+                        await transactionalDatabase.RemoveAsync(originalMetadata, cancellation);
                     }
                     else
                     {
-                        await _database.StoreAsync(touchedMetadata, cancellation);
+                        touchedMetadata.MetadataRevision = originalMetadata?.MetadataRevision ?? 1;
+
+                        await transactionalDatabase.StoreAsync(touchedMetadata, cancellation);
                     }
                 }
+
+                // TODO: Do we have to check whether the targets were updated concurrently?
+
+                foreach (var targetToUpdate in _targetsToUpdate)
+                {
+                    await transactionalDatabase.StoreAsync(targetToUpdate, cancellation);
+                }
+
+                foreach (var targetToDelete in _targetsToDelete)
+                {
+                    await transactionalDatabase.RemoveAsync(targetToDelete, cancellation);
+                }
+
+                return true;
             }
 
-            public async Task AddEntityToProjectionAsync(ProjectionSourceDescriptor projectionSource,
+            private bool MatchesByRevision(ProjectionTargetMetadata original, ProjectionTargetMetadata comparand)
+            {
+                if (original is null)
+                    return comparand is null;
+
+                if (comparand is null)
+                    return false;
+
+                return original.MetadataRevision == comparand.MetadataRevision;
+            }
+
+            public async Task UpdateEntityToProjectionAsync(ProjectionSourceDescriptor projectionSource,
                                                          IProjectionResult projectionResult,
+                                                         bool addEntityToProjections,
                                                          CancellationToken cancellation)
             {
-                var projectionId = GetProjectionId(projectionResult);
-
-                var addedProjection = new ProjectionTargetDescriptor<TProjectionId>(typeof(TProjection), projectionId);
-                var (originalMetadata, metadata) = await GetMetadataAsync(addedProjection, cancellation);
-
-                Assert(!metadata.ProjectionSources.Any(p => p.Id == projectionSource.SourceId &&
-                                                            p.Type == projectionSource.SourceType.GetUnqualifiedTypeName()));
-
-                var storedProjectionSource = new ProjectionSource
+                if (addEntityToProjections)
                 {
-                    Id = projectionSource.SourceId,
-                    Type = projectionSource.SourceType.GetUnqualifiedTypeName()
-                };
+                    var projectionId = GetProjectionId(projectionResult);
 
-                metadata.ProjectionSources.Add(storedProjectionSource);
+                    var addedProjection = new ProjectionTargetDescriptor<TProjectionId>(typeof(TProjection), projectionId);
+                    var (originalMetadata, metadata) = await GetMetadataAsync(addedProjection, cancellation);
 
-                _targetMetadataCache[addedProjection] = new ProjectionTargetMetadataCacheEntry(originalMetadata,
-                                                                                               metadata,
-                                                                                               touched: true);
+                    Assert(!metadata.ProjectionSources.Any(p => p.Id == projectionSource.SourceId &&
+                                                                p.Type == projectionSource.SourceType.GetUnqualifiedTypeName()));
+
+                    var storedProjectionSource = new ProjectionSource
+                    {
+                        Id = projectionSource.SourceId,
+                        Type = projectionSource.SourceType.GetUnqualifiedTypeName()
+                    };
+
+                    metadata.ProjectionSources.Add(storedProjectionSource);
+
+                    _targetMetadataCache[addedProjection] = new ProjectionTargetMetadataCacheEntry(originalMetadata,
+                                                                                                   metadata,
+                                                                                                   touched: true);
+                }
+
+                _targetsToUpdate.Add((TProjection)projectionResult.Result);
             }
-
-
 
             public async Task RemoveEntityFromProjectionAsync(ProjectionSourceDescriptor projectionSource,
                                                               ProjectionTargetDescriptor removedProjection,
@@ -106,7 +145,8 @@ namespace AI4E.Storage.Projection
 
                     if (projection != null)
                     {
-                        await _database.RemoveAsync(projection, cancellation);
+                        _targetsToDelete.Add(projection);
+                        //await _database.RemoveAsync(projection, cancellation);
                     }
                 }
 
@@ -234,6 +274,8 @@ namespace AI4E.Storage.Projection
                     }
                     set => _id = value;
                 }
+
+                public long MetadataRevision { get; set; } = 1;
 
                 public TProjectionId TargetId { get; set; }
                 public string StringifiedTargetId
