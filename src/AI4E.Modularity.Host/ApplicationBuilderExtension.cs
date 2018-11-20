@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -89,7 +89,8 @@ namespace AI4E.Modularity.Host
 
                     if (response == null)
                     {
-                        throw new Exception(); // TODO
+                        await next?.Invoke();
+                        return;
                     }
 
                     var responseFeature = context.Features.FirstOrDefault(p => p.Key == typeof(IHttpResponseFeature)).Value as IHttpResponseFeature;
@@ -107,6 +108,12 @@ namespace AI4E.Modularity.Host
                     if (response.Body.Length > 0)
                     {
                         await responseFeature.Body.WriteAsync(response.Body, 0, response.Body.Length);
+                    }
+
+                    if(responseFeature.StatusCode == 404)
+                    {
+                        await next?.Invoke();
+                        return;
                     }
                 }
                 else

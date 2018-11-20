@@ -44,6 +44,7 @@ using Microsoft.AspNetCore.Blazor.Components;
 using Microsoft.AspNetCore.Blazor.Layouts;
 using Microsoft.AspNetCore.Blazor.RenderTree;
 using Microsoft.AspNetCore.Blazor.Services;
+using Microsoft.Extensions.Logging;
 using BlazorInject = Microsoft.AspNetCore.Blazor.Components.InjectAttribute;
 
 namespace AI4E.Blazor.Routing
@@ -63,6 +64,7 @@ namespace AI4E.Blazor.Routing
         [BlazorInject] private IUriHelper UriHelper { get; set; }
         [BlazorInject] private ApplicationPartManager PartManager { get; set; }
         [BlazorInject] private IInstallationSetManager InstallationSetManager { get; set; }
+        [BlazorInject] private ILogger<RouterX> Logger { get; set; }
 
         private RouteTable Routes { get; set; }
 
@@ -117,15 +119,21 @@ namespace AI4E.Blazor.Routing
             builder.CloseComponent();
         }
 
+        private bool _currentRouteNotFound = false;
+
         private void Refresh()
         {
+            Console.WriteLine("Dbg_out: RouterX::Refresh");
+
             var locationPath = UriHelper.ToBaseRelativePath(_baseUri, _locationAbsolute);
             locationPath = StringUntilAny(locationPath, _queryOrHashStartChar);
             var context = new RouteContext(locationPath);
             Routes.Route(context);
             if (context.Handler == null)
             {
-                throw new InvalidOperationException($"'{nameof(RouterX)}' cannot find any component with a route for '/{locationPath}'.");
+                _currentRouteNotFound = true;
+                Logger?.LogWarning($"'{nameof(RouterX)}' cannot find any component with a route for '/{locationPath}'.");
+                return;
             }
 
             if (!typeof(IComponent).IsAssignableFrom(context.Handler))
@@ -134,6 +142,7 @@ namespace AI4E.Blazor.Routing
                     $"does not implement {typeof(IComponent).FullName}.");
             }
 
+            _currentRouteNotFound = false;
             _renderHandle.Render(builder => Render(builder, context.Handler, context.Parameters));
         }
 
@@ -148,7 +157,12 @@ namespace AI4E.Blazor.Routing
 
         private void OnInstallationSetChanged(object sender, EventArgs e)
         {
+            Console.WriteLine("Dbg_out: RouterX::OnInstallationSetChanged");
             UpdateRouteTable();
+            if (_renderHandle.IsInitialized && _currentRouteNotFound)
+            {
+                Refresh();
+            }
         }
     }
 }
