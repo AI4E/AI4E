@@ -39,6 +39,7 @@ using System;
 using System.Collections.Generic;
 using AI4E.ApplicationParts;
 using AI4E.Blazor.Components;
+using AI4E.Blazor.Modularity;
 using Microsoft.AspNetCore.Blazor.Components;
 using Microsoft.AspNetCore.Blazor.Layouts;
 using Microsoft.AspNetCore.Blazor.RenderTree;
@@ -61,6 +62,7 @@ namespace AI4E.Blazor.Routing
 
         [BlazorInject] private IUriHelper UriHelper { get; set; }
         [BlazorInject] private ApplicationPartManager PartManager { get; set; }
+        [BlazorInject] private IInstallationSetManager InstallationSetManager { get; set; }
 
         private RouteTable Routes { get; set; }
 
@@ -71,7 +73,7 @@ namespace AI4E.Blazor.Routing
             _baseUri = UriHelper.GetBaseUri();
             _locationAbsolute = UriHelper.GetAbsoluteUri();
             UriHelper.OnLocationChanged += OnLocationChanged;
-            PartManager.ApplicationPartsChanged += OnApplicationPartsChanged;
+            InstallationSetManager.InstallationSetChanged += OnInstallationSetChanged;
         }
 
         /// <inheritdoc />
@@ -82,7 +84,7 @@ namespace AI4E.Blazor.Routing
             Refresh();
         }
 
-        private void UpdateRouteTable()
+        public void UpdateRouteTable()
         {
             var componentFeature = new ComponentFeature();
             PartManager.PopulateFeature(componentFeature);
@@ -95,7 +97,7 @@ namespace AI4E.Blazor.Routing
         public void Dispose()
         {
             UriHelper.OnLocationChanged -= OnLocationChanged;
-            PartManager.ApplicationPartsChanged -= OnApplicationPartsChanged;
+            InstallationSetManager.InstallationSetChanged -= OnInstallationSetChanged;
         }
 
         private string StringUntilAny(string str, char[] chars)
@@ -144,7 +146,7 @@ namespace AI4E.Blazor.Routing
             }
         }
 
-        private void OnApplicationPartsChanged(object sender, EventArgs e)
+        private void OnInstallationSetChanged(object sender, EventArgs e)
         {
             UpdateRouteTable();
         }

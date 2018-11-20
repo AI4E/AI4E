@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -45,6 +45,8 @@ namespace AI4E.Blazor.Modularity
             _partManager = partManager;
             _modulePrefixLookup = modulePrefixLookup;
         }
+
+        public event EventHandler InstallationSetChanged;
 
         public async Task UpdateInstallationSetAsync(IEnumerable<ModuleIdentifier> installationSet, CancellationToken cancellation)
         {
@@ -137,7 +139,9 @@ namespace AI4E.Blazor.Modularity
                 var assemblyBytes = localAssemblyStream.ToArray();
                 var assembly = Assembly.Load(assemblyBytes);
                 var assemblyPart = new AssemblyPart(assembly);
+
                 _partManager.ApplicationParts.Add(assemblyPart);
+                InstallationSetChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 
