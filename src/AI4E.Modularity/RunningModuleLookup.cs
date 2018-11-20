@@ -142,7 +142,7 @@ namespace AI4E.Modularity
             Assert(entry != null);
 
             var result = new List<EndPointAddress>(capacity: entry.Children.Count);
-            var childEntries = (await entry.GetChildrenEntriesAsync(cancellation)).OrderBy(p => p.CreationTime); // TODO: NullReferenceException occured here 
+            var childEntries = (await entry.GetChildrenEntriesAsync(cancellation)).OrderBy(p => p.CreationTime);
 
             foreach (var childEntry in childEntries)
             {

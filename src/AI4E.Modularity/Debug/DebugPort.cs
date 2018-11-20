@@ -238,6 +238,7 @@ namespace AI4E.Modularity.Debug
 
                 _debugServer = debugServer;
                 _tcpClient = tcpClient;
+                Address = tcpClient.Client.RemoteEndPoint as IPEndPoint;
                 _dateTimeProvider = dateTimeProvider;
                 _serviceProvider = serviceProvider;
                 _loggerFactory = loggerFactory;
@@ -248,7 +249,8 @@ namespace AI4E.Modularity.Debug
                 _rpcHost = new ProxyHost(_stream, serviceProvider);
             }
 
-            public IPEndPoint Address => _tcpClient.Client.RemoteEndPoint as IPEndPoint;
+            // Do not lazily lookup this from _tcpClient, as we need this in the disposal, but then, the _tcpClient is already disposed.
+            public IPEndPoint Address { get; }
 
             private Task OnDebugStreamsCloses()
             {

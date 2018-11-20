@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -18,7 +18,10 @@ namespace AI4E.Modularity.Debug
 
         public IEnumerable<DebugModule> Handle(Query<IEnumerable<DebugModule>> message)
         {
-            return _debugPort.DebugSessions.Select(p => new DebugModule(p.EndPoint, p.Module, p.ModuleVersion)).ToList();
+            return _debugPort.DebugSessions
+                             .Select(p => new DebugModule(p.EndPoint, p.Module, p.ModuleVersion))
+                             .Distinct(DebugModuleEqualityComparer.Instance)
+                             .ToList();
         }
     }
 }

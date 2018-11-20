@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -94,14 +94,19 @@ namespace AI4E.Coordination
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
 
-            var result = new IEntry[entry.Children.Count];
+            var result = new List<IEntry>(capacity: entry.Children.Count);
 
-            for (var i = 0; i < result.Length; i++)
+            for (var i = 0; i < entry.Children.Count; i++)
             {
                 var child = entry.Children[i];
                 var childFullName = entry.Path.GetChildPath(child);
 
-                result[i] = await entry.CoordinationManager.GetAsync(childFullName, cancellation);
+                var childEntry = await entry.CoordinationManager.GetAsync(childFullName, cancellation);
+
+                if (childEntry != null)
+                {
+                    result.Add(childEntry);
+                }
             }
 
             return result;
