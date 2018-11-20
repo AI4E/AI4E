@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using AI4E.Coordination;
 using AI4E.Internal;
@@ -26,7 +26,6 @@ namespace AI4E.Modularity.Module
             services.AddRemoteMessageDispatcher();
             services.AddSingleton(ConfigureLogicalEndPoint);
             services.AddSingleton(ConfigureCoordinationManager);
-            //services.AddSingleton(ConfigureProxyHost);
             services.AddSingleton(ConfigureDebugConnection);
             services.AddSingleton<IMetadataAccessor, MetadataAccessor>();
             services.AddSingleton<IRunningModuleLookup, RunningModuleLookup>();
@@ -40,7 +39,6 @@ namespace AI4E.Modularity.Module
         private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
         {
             serviceManager.AddService<IMessageDispatcher>();
-            //serviceManager.AddService<ProxyHost>(isRequiredService: false);
             serviceManager.AddService<DebugConnection>();
         }
 

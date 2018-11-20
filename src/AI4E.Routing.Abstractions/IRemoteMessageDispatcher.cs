@@ -66,6 +66,21 @@ namespace AI4E.Routing
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if either <paramref name="messageType"/> or <paramref name="messageHandlerProvider"/> is null.</exception>
         IHandlerRegistration Register(Type messageType, IContextualProvider<IMessageHandler> messageHandlerProvider, RouteRegistrationOptions options);
+
+        /// <summary>
+        /// Asynchronously waits for all pending handler registrations to gain globally consistent state.
+        /// </summary>
+        /// <param name="messageType">The message type for that and thats base types the pending handlers shall be considered.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>A value task representing the asynchronous operation.</returns>
+        ValueTask WaitPendingRegistrationsAsync(Type messageType, CancellationToken cancellation);
+
+        /// <summary>
+        /// Asynchronously waits for all pending handler registrations to gain globally consistent state.
+        /// </summary>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>A value task representing the asynchronous operation.</returns>
+        ValueTask WaitPendingRegistrationsAsync(CancellationToken cancellation);
     }
 
     public static class RemoteMessageDispatcherExtension

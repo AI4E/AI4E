@@ -309,30 +309,7 @@ namespace AI4E.Routing
 
             try
             {
-                List<Task> combinedPendingRegistrations = null;
-
-                var currType = dispatchData.MessageType;
-                do
-                {
-                    var typedDispatcher = GetTypedDispatcher(currType);
-                    var pendingRegistrations = typedDispatcher.PendingRegistrations;
-
-                    if (!pendingRegistrations.Any())
-                    {
-                        continue;
-                    }
-
-                    if (combinedPendingRegistrations == null)
-                        combinedPendingRegistrations = new List<Task>();
-
-                    combinedPendingRegistrations.AddRange(pendingRegistrations);
-                }
-                while (!currType.IsInterface && (currType = currType.BaseType) != null);
-
-                if (combinedPendingRegistrations != null)
-                {
-                    await Task.WhenAll(combinedPendingRegistrations).WithCancellation(cancellation);
-                }
+                await WaitPendingRegistrationsAsync(dispatchData.MessageType, cancellation);
 
                 return await _localMessageDispatcher.DispatchAsync(dispatchData, publish, cancellation);
             }
@@ -346,7 +323,7 @@ namespace AI4E.Routing
 
         public IHandlerRegistration Register(Type messageType, IContextualProvider<IMessageHandler> messageHandlerProvider)
         {
-            // This needs to be persistent instead of default to support the persistent registration of message handlers via the message handler pattern without introduction of further dependencies.
+            // This MUST NOT be transient to support the persistent registration of message handlers via the message handler pattern without introduction of further dependencies.
             return Register(messageType, messageHandlerProvider, RouteRegistrationOptions.Default);
         }
 
@@ -362,9 +339,73 @@ namespace AI4E.Routing
             return new HandlerRegistration(typedDispatcher, messageType, messageHandlerProvider, options);
         }
 
+        public ValueTask WaitPendingRegistrationsAsync(Type messageType, CancellationToken cancellation)
+        {
+            List<Task> combinedPendingRegistrations = null;
+
+            for (var currType = messageType; !currType.IsInterface && currType.BaseType != null; currType = currType.BaseType)
+            {
+                if(!TryGetTypedDispatcher(currType, out var typedDispatcher))
+                {
+                    continue;
+                }
+
+                var pendingRegistrations = typedDispatcher.PendingRegistrations;
+
+                if (!pendingRegistrations.Any())
+                {
+                    continue;
+                }
+
+                if (combinedPendingRegistrations == null)
+                    combinedPendingRegistrations = new List<Task>();
+
+                combinedPendingRegistrations.AddRange(pendingRegistrations);
+            }
+
+            if (combinedPendingRegistrations != null)
+            {
+                return new ValueTask(Task.WhenAll(combinedPendingRegistrations).WithCancellation(cancellation));
+            }
+
+            return new ValueTask(Task.CompletedTask); // TODO: Can we just return default(ValueTask)?
+        }
+
+        public ValueTask WaitPendingRegistrationsAsync(CancellationToken cancellation)
+        {
+            List<Task> combinedPendingRegistrations = null;
+
+            foreach (var typedDispatcher in _typedDispatchers.Values)
+            {
+                var pendingRegistrations = typedDispatcher.PendingRegistrations;
+
+                if (!pendingRegistrations.Any())
+                {
+                    continue;
+                }
+
+                if (combinedPendingRegistrations == null)
+                    combinedPendingRegistrations = new List<Task>();
+
+                combinedPendingRegistrations.AddRange(pendingRegistrations);
+            }
+
+            if (combinedPendingRegistrations != null)
+            {
+                return new ValueTask(Task.WhenAll(combinedPendingRegistrations).WithCancellation(cancellation));
+            }
+
+            return new ValueTask(Task.CompletedTask); // TODO: Can we just return default(ValueTask)?
+        }
+
         private TypedMessageDisaptcher GetTypedDispatcher(Type messageType)
         {
             return _typedDispatchers.GetOrAdd(messageType, t => new TypedMessageDisaptcher(_localMessageDispatcher, _messageRouter, _typeConversion, t));
+        }
+
+        private bool TryGetTypedDispatcher(Type messageType, out TypedMessageDisaptcher typedDispatcher)
+        {
+            return _typedDispatchers.TryGetValue(messageType, out typedDispatcher);
         }
 
         private sealed class TypedMessageDisaptcher

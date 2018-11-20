@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -233,6 +233,16 @@ namespace AI4E.Internal
                 throw new ArgumentNullException(nameof(t));
 
             return t.ContinueWith(_ => result);
+        }
+
+        public static ValueTask AsValueTask(this Task task)
+        {
+            return new ValueTask(task);
+        }
+
+        public static ValueTask<T> AsValueTask<T>(this Task<T> task)
+        {
+            return new ValueTask<T>(task);
         }
     }
 

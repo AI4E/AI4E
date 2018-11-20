@@ -185,7 +185,7 @@ namespace AI4E
 
             partManager.PopulateFeature(messageHandlerFeature);
 
-            var logger = serviceProvider.GetService<ILogger<MessageDispatcher>>(); // TODO
+            var logger = serviceProvider.GetService<ILogger<TMessageDispatcher>>();
 
             RegisterMessageHandlerTypes(messageDispatcher, processors, messageHandlerFeature.MessageHandlers, logger);
 

@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -49,8 +49,9 @@ namespace AI4E.Modularity.Debug
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<DebugPort> _logger;
+        private readonly IRemoteMessageDispatcher _messageDispatcher;
         private readonly AsyncDisposeHelper _disposeHelper;
-        private readonly AsyncInitializationHelper _initializationHelper;
+        private readonly AsyncInitializationHelper<IPEndPoint> _initializationHelper;
         private readonly ConcurrentDictionary<IPEndPoint, DebugSession> _debugSessions = new ConcurrentDictionary<IPEndPoint, DebugSession>(new IPEndPointEqualityComparer());
 
         #endregion
@@ -61,6 +62,7 @@ namespace AI4E.Modularity.Debug
                          IAddressConversion<IPEndPoint> addressConversion,
                          IOptions<ModularityOptions> optionsAccessor,
                          IDateTimeProvider dateTimeProvider,
+                         IRemoteMessageDispatcher messageDispatcher,
                          ILoggerFactory loggerFactory = null)
         {
             if (serviceProvider == null)
@@ -69,40 +71,52 @@ namespace AI4E.Modularity.Debug
             if (addressConversion == null)
                 throw new ArgumentNullException(nameof(addressConversion));
 
-
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
 
             if (dateTimeProvider == null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
 
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+
             var options = optionsAccessor.Value ?? new ModularityOptions();
 
             _serviceProvider = serviceProvider;
             _dateTimeProvider = dateTimeProvider;
+            _messageDispatcher = messageDispatcher;
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory?.CreateLogger<DebugPort>();
+
             var endPoint = addressConversion.Parse(options.DebugConnection);
 
             _tcpHost = new TcpListener(endPoint);
-            _tcpHost.Start();
-            LocalAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;
-            Assert(LocalAddress != null);
-
             _connectionProcess = new AsyncProcess(ConnectProcedure);
-            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
+            _initializationHelper = new AsyncInitializationHelper<IPEndPoint>(InitializeInternalAsync);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
         #endregion
 
-        public IPEndPoint LocalAddress { get; }
+        public ValueTask<IPEndPoint> GetLocalAddressAsync(CancellationToken cancellation)
+        {
+            return _initializationHelper.Initialization.WithCancellation(cancellation).AsValueTask();
+        }
 
         #region Initialization
 
-        private async Task InitializeInternalAsync(CancellationToken cancellation)
+        private async Task<IPEndPoint> InitializeInternalAsync(CancellationToken cancellation)
         {
+            // We MUST ensure that we only open the debug-port, if the handler for the debug messages are registered AND reached a globally consistent state (their routes are registered).
+            await _messageDispatcher.WaitPendingRegistrationsAsync(cancellation);
+
+            _tcpHost.Start();
+            var localAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;
+            Assert(localAddress != null);
+
             await _connectionProcess.StartAsync(cancellation);
+
+            return localAddress;
         }
 
         #endregion
@@ -164,6 +178,8 @@ namespace AI4E.Modularity.Debug
 
         private async Task ConnectProcedure(CancellationToken cancellation)
         {
+            await _initializationHelper.Initialization;
+
             _logger?.LogTrace("Started listening for debug connections.");
 
             while (cancellation.ThrowOrContinue())

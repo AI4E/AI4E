@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.Reflection;
-using AI4E.AspNetCore;
 using AI4E.Coordination;
 using AI4E.Internal;
 using AI4E.Remoting;
@@ -62,8 +61,8 @@ namespace AI4E.Routing
         public static void AddRemoteMessageDispatcher(this IServiceCollection services)
         {
             services.AddCoreServices();
-            services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
             services.AddSingleton<ITypeConversion, TypeSerializer>();
+            services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
         }
     }
 

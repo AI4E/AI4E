@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -96,7 +96,7 @@ namespace AI4E.Modularity.Host
             {
                 var dateTimeProvider = serviceProvider.GetRequiredService<IDateTimeProvider>();
                 var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
-                return new DebugPort(serviceProvider, serviceProvider.GetRequiredService<IAddressConversion<IPEndPoint>>(), optionsAccessor, dateTimeProvider, loggerFactory);
+                return ActivatorUtilities.CreateInstance<DebugPort>(serviceProvider, optionsAccessor);
             }
 
             return null;
