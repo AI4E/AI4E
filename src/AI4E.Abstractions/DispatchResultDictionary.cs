@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using AI4E.Internal;
 using Newtonsoft.Json;
 
 namespace AI4E
@@ -12,18 +13,43 @@ namespace AI4E
     {
         private readonly ImmutableDictionary<string, object> _data;
 
-        private protected DispatchResultDictionary(IDispatchResult dispatchResult,
-                                                   Type dispatchResultType,
-                                                   IEnumerable<KeyValuePair<string, object>> data)
+        private protected DispatchResultDictionary(
+            Type dispatchResultType,
+            IDispatchResult dispatchResult,
+            IEnumerable<KeyValuePair<string, object>> data)
+        {
+            ValidateArguments(dispatchResultType, dispatchResult, data);
+
+            DispatchResult = dispatchResult;
+            DispatchResultType = dispatchResultType;
+            _data = data.ToImmutableDictionary();
+        }
+
+        private static void ValidateArguments(Type dispatchResultType, IDispatchResult dispatchResult, IEnumerable<KeyValuePair<string, object>> data)
         {
             if (dispatchResult == null)
                 throw new ArgumentNullException(nameof(dispatchResult));
 
+            if (dispatchResultType == null)
+                throw new ArgumentNullException(nameof(dispatchResultType));
+
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
-            DispatchResult = dispatchResult;
-            _data = data.ToImmutableDictionary();
+            if (dispatchResultType.IsValueType)
+                throw new ArgumentException("The argument must specify a reference type.", nameof(dispatchResultType));
+
+            if (dispatchResultType.IsDelegate())
+                throw new ArgumentException("The argument must not specify a delegate type.", nameof(dispatchResultType));
+
+            if (dispatchResultType.IsGenericTypeDefinition)
+                throw new ArgumentException("The argument must not be an open generic type definition.", nameof(dispatchResultType));
+
+            if (!typeof(IDispatchResult).IsAssignableFrom(dispatchResultType))
+                throw new ArgumentException($"The argument must be a type that is assignable to '{typeof(IDispatchResult)}'.", nameof(dispatchResultType));
+
+            if (!dispatchResultType.IsAssignableFrom(dispatchResult.GetType()))
+                throw new ArgumentException($"The specified message must be of type '{ dispatchResultType }' or a derived type.");
         }
 
         public IDispatchResult DispatchResult { get; }
@@ -100,11 +126,11 @@ namespace AI4E
         where TDispatchResult : IDispatchResult
     {
         public DispatchResultDictionary(TDispatchResult dispatchResult)
-            : base(dispatchResult, typeof(TDispatchResult), ImmutableDictionary<string, object>.Empty)
+            : base(typeof(TDispatchResult), dispatchResult, ImmutableDictionary<string, object>.Empty)
         { }
 
         public DispatchResultDictionary(TDispatchResult dispatchResult, IEnumerable<KeyValuePair<string, object>> data)
-            : base(dispatchResult, typeof(TDispatchResult), data)
+            : base(typeof(TDispatchResult), dispatchResult, data)
         { }
 
         public new TDispatchResult DispatchResult => (TDispatchResult)base.DispatchResult;
