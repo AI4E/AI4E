@@ -28,7 +28,7 @@ namespace AI4E.Routing.SignalR.Server
         private readonly ILogger<ServerEndPoint> _logger;
 
         // Cluster-wide store of connected clients and their security tokens.
-        private readonly IConnectedClientLookup _connectedClients;
+        private readonly IClientConnectionManager _connectionManager;
 
         // Local lookup of a clients current physical address
         private readonly Dictionary<EndPointAddress, (string address, Task disonnectionTask)> _clientLookup;
@@ -40,15 +40,15 @@ namespace AI4E.Routing.SignalR.Server
 
         #region C'tor
 
-        public ServerEndPoint(IConnectedClientLookup connectedClients, IServiceProvider serviceProvider, ILogger<ServerEndPoint> logger = null)
+        public ServerEndPoint(IClientConnectionManager connectionManager, IServiceProvider serviceProvider, ILogger<ServerEndPoint> logger = null)
         {
-            if (connectedClients == null)
-                throw new ArgumentNullException(nameof(connectedClients));
+            if (connectionManager == null)
+                throw new ArgumentNullException(nameof(connectionManager));
 
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            _connectedClients = connectedClients;
+            _connectionManager = connectionManager;
             _serviceProvider = serviceProvider;
             _logger = logger;
 
@@ -87,8 +87,9 @@ namespace AI4E.Routing.SignalR.Server
 
                 if (address == null)
                 {
-                    // TODO
-                    throw null;
+                    _logger?.LogError($"Unable to send message to client {endPoint}: No such client.");
+
+                    return; // TODO: Throw an exception?
                 }
 
                 await PushToClientAsync(address, seqNum, bytes).WithCancellation(cancellation);
@@ -124,7 +125,7 @@ namespace AI4E.Routing.SignalR.Server
 
         private async Task<bool> ValidateAndUpdateTranslationAsync(string address, EndPointAddress endPoint, string securityToken, CancellationToken cancellation)
         {
-            var result = await _connectedClients.ValidateClientAsync(endPoint, securityToken, cancellation);
+            var result = await _connectionManager.ValidateClientAsync(endPoint, securityToken, cancellation);
 
             if (result)
             {
@@ -145,8 +146,8 @@ namespace AI4E.Routing.SignalR.Server
 
         private async Task<(EndPointAddress endPoint, string securityToken)> AddTranslationAsync(string address, CancellationToken cancellation)
         {
-            var (endPoint, securityToken) = await _connectedClients.AddClientAsync(cancellation: default);
-            var disonnectionTask = _connectedClients.WaitForDisconnectAsync(endPoint, cancellation: default);
+            var (endPoint, securityToken) = await _connectionManager.AddClientAsync(cancellation: default);
+            var disonnectionTask = _connectionManager.WaitForDisconnectAsync(endPoint, cancellation: default);
 
             Assert(!disonnectionTask.IsCompleted);
 
@@ -221,11 +222,14 @@ namespace AI4E.Routing.SignalR.Server
                 return;
             }
 
-            var message = new Message();
-            message.Read(payload.Span);
+            if (!payload.IsEmpty)
+            {
+                var message = new Message();
+                message.Read(payload.Span);
 
-            await _rxQueue.EnqueueAsync((message, endPoint));
-            await SendAckAsync(address, seqNum);
+                await _rxQueue.EnqueueAsync((message, endPoint));
+                await SendAckAsync(address, seqNum);
+            }
         }
 
         private void ReceiveAckAsync(int seqNum, string address)
@@ -247,26 +251,26 @@ namespace AI4E.Routing.SignalR.Server
         }
 
         // The client connects to the cluster for the first time.
-        private async Task<(string endPoint, string securityToken)> ConnectAsync(string address)
+        private async Task<(string endPoint, string securityToken, TimeSpan timeout)> ConnectAsync(string address)
         {
             var (endPoint, securityToken) = await AddTranslationAsync(address, cancellation: default);
 
-            return (endPoint.ToString(), securityToken);
+            return (endPoint.ToString(), securityToken, _connectionManager.Timeout);
         }
 
-        // The client does reconnect to the cluster, but may connect to this cluster node the first time (previousAddress is null or belongs to other cluster node.
-        private async Task ReconnectAsync(string address, EndPointAddress endPoint, string securityToken, string previousAddress)
+        // The client does reconnect to the cluster, but may connect to this cluster node the first time (previousAddress is null or belongs to other cluster node).
+        private async Task<TimeSpan> ReconnectAsync(string address, EndPointAddress endPoint, string securityToken, string previousAddress)
         {
             if (!await ValidateAndUpdateTranslationAsync(address, endPoint, securityToken, cancellation: default))
             {
                 await SendBadClientResponseAsync(address);
-                return;
+                return default;
             }
 
             if (previousAddress == null /* || previous address is from different cluster node*/) // TODO: Check whether the address is from our cluster node
             {
                 _logger?.LogDebug($"Client {address} initiated connection.");
-                return;
+                return _connectionManager.Timeout;
             }
 
             _logger?.LogDebug($"Client {address} with previous address {previousAddress} re-initiated connection.");
@@ -282,6 +286,8 @@ namespace AI4E.Routing.SignalR.Server
             }
 
             await Task.WhenAll(tasks);
+
+            return _connectionManager.Timeout;
         }
 
         #endregion
@@ -312,6 +318,12 @@ namespace AI4E.Routing.SignalR.Server
 
             public async Task PushAsync(int seqNum, string endPoint, string securityToken, string payload)
             {
+                if (payload == string.Empty)
+                {
+                    await _endPoint.ReceiveAsync(seqNum, Context.ConnectionId, new EndPointAddress(endPoint), securityToken, ReadOnlyMemory<byte>.Empty);
+                    return;
+                }
+
                 using (payload.Base64Decode(out var bytes))
                 {
                     await _endPoint.ReceiveAsync(seqNum, Context.ConnectionId, new EndPointAddress(endPoint), securityToken, bytes);
@@ -330,16 +342,16 @@ namespace AI4E.Routing.SignalR.Server
                 return Task.CompletedTask;
             }
 
-            public async Task<(string address, string endPoint, string securityToken)> ConnectAsync()
+            public async Task<(string address, string endPoint, string securityToken, TimeSpan timeout)> ConnectAsync()
             {
-                var (endPoint, securityToken) = await _endPoint.ConnectAsync(Context.ConnectionId);
-                return (Context.ConnectionId, endPoint, securityToken);
+                var (endPoint, securityToken, timeout) = await _endPoint.ConnectAsync(Context.ConnectionId);
+                return (Context.ConnectionId, endPoint, securityToken, timeout);
             }
 
-            public async Task<string> ReconnectAsync(string endPoint, string securityToken, string previousAddress)
+            public async Task<(string address, TimeSpan timeout)> ReconnectAsync(string endPoint, string securityToken, string previousAddress)
             {
-                await _endPoint.ReconnectAsync(Context.ConnectionId, new EndPointAddress(endPoint), securityToken, previousAddress);
-                return Context.ConnectionId;
+                var timeout = await _endPoint.ReconnectAsync(Context.ConnectionId, new EndPointAddress(endPoint), securityToken, previousAddress);
+                return (Context.ConnectionId, timeout);
             }
         }
 

@@ -10,6 +10,7 @@ using Nito.AsyncEx;
 using System.Buffers;
 using AI4E.Routing.SignalR.Server;
 using static System.Diagnostics.Debug;
+using AI4E.Processing;
 
 #if BLAZOR
 using Blazor.Extensions;
@@ -40,12 +41,17 @@ namespace AI4E.Routing.SignalR.Client
         private int _nextSeqNum;
 
         private string _address, _endPoint, _securityToken;
-
+        
         private readonly object _connectionLock = new object();
         private Task _connectionTask;
 
         private readonly AsyncManualResetEvent _connectionLost = new AsyncManualResetEvent(set: true);
         private readonly TaskCompletionSource<EndPointAddress> _localEndPointTaskSource = new TaskCompletionSource<EndPointAddress>();
+
+        private TimeSpan _timeout;
+        private DateTime _lastSendOperation;
+        private readonly object _lastSendOperationLock;
+        private readonly AsyncProcess _keepAliveProcess;
 
         #endregion
 
@@ -71,6 +77,9 @@ namespace AI4E.Routing.SignalR.Client
 
             // Intitially, we are unconnected and have to connect the fist time.
             EstablishConnectionAsync(isInitialConnection: true).HandleExceptions();
+
+            // The process is started when the connection is established.
+            _keepAliveProcess = new AsyncProcess(KeepAliveProcess, start: false);
         }
 
         #endregion
@@ -147,6 +156,7 @@ namespace AI4E.Routing.SignalR.Client
                         try
                         {
                             await PushToServerAsync(seqNum, memory, cancellationTokenSource.CancellationToken);
+                            SetLastSendOperation();
                         }
                         catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
                         {
@@ -221,6 +231,7 @@ namespace AI4E.Routing.SignalR.Client
 
             async Task Reconnect()
             {
+                await Task.Yield();
                 try
                 {
                     // Reconnect
@@ -250,13 +261,14 @@ namespace AI4E.Routing.SignalR.Client
                 await connectionTask;
             }
 
-            //  Cancel the resend, if the collection is lost in the meantime, as is done in the ordinary send operation.
+            //  Cancel the retransmission, if the collection is lost in the meantime, as is done in the ordinary send operation.
             if (IsConnected(out var connectionLose))
             {
                 using (var cancellationTokenSource = new TaskCancellationTokenSource(connectionLose, disposalSource.Token))
                 {
                     // Resend all messages
                     await Task.WhenAll(_txQueue.ToList().Select(p => PushToServerAsync(seqNum: p.Key, payload: p.Value.bytes, cancellation: cancellationTokenSource.CancellationToken)));
+                    SetLastSendOperation();
                 }
             }
         }
@@ -264,6 +276,8 @@ namespace AI4E.Routing.SignalR.Client
         private async Task EstablishConnectionCoreAsync(bool isInitialConnection, CancellationToken cancellation)
         {
             _logger?.LogDebug("Trying to (re)connect to server.");
+
+            await _keepAliveProcess?.TerminateAsync(cancellation);
 
             // We are waiting one second after the first failed attempt to connect.
             // For each failed attempt, we increase the waited time to the next connection attempt,
@@ -283,9 +297,11 @@ namespace AI4E.Routing.SignalR.Client
 #else
                     await _hubConnection.StartAsync(cancellation);
 #endif
+                    TimeSpan timeout;
+
                     if (isInitialConnection)
                     {
-                        (_address, _endPoint, _securityToken) = await _hubConnection.InvokeAsync<IServerCallStub, (string address, string endPoint, string securityToken)>(
+                        (_address, _endPoint, _securityToken, timeout) = await _hubConnection.InvokeAsync<IServerCallStub, (string address, string endPoint, string securityToken, TimeSpan timeout)>(
                             p => p.ConnectAsync(), cancellation);
 
                         _localEndPointTaskSource.SetResult(new EndPointAddress(_endPoint));
@@ -293,9 +309,16 @@ namespace AI4E.Routing.SignalR.Client
                     }
                     else
                     {
-                        _address = await _hubConnection.InvokeAsync<IServerCallStub, string>(
+                        (_address, timeout) = await _hubConnection.InvokeAsync<IServerCallStub, (string address, TimeSpan timeout)>(
                             p => p.ReconnectAsync(_endPoint, _securityToken, _address));
                     }
+
+                    SetLastSendOperation();
+
+                    // This is not synchronized.
+                    // It is not necessary.
+                    // The only ones that access this is we (here) and the keep-alive process. The keep-alive process is ensured to NOT run, when we access.
+                    _timeout = timeout;
 
                     // The underlying connection was not lost in the meantime.
                     if (!_connectionLost.IsSet)
@@ -315,6 +338,8 @@ namespace AI4E.Routing.SignalR.Client
                         timeToWait = new TimeSpan(timeToWait.Ticks * 2);
                 }
             }
+
+            await _keepAliveProcess?.StartAsync(cancellation);
         }
 
         #endregion
@@ -323,7 +348,7 @@ namespace AI4E.Routing.SignalR.Client
 
         private Task PushToServerAsync(int seqNum, ReadOnlyMemory<byte> payload, CancellationToken cancellation)
         {
-            var base64 = Base64Coder.ToBase64String(payload.Span);
+            var base64 = payload.IsEmpty ? string.Empty : Base64Coder.ToBase64String(payload.Span);
 
             return _hubConnection.InvokeAsync<IServerCallStub>(p => p.PushAsync(seqNum, _endPoint, _securityToken, base64), cancellation);
         }
@@ -364,6 +389,57 @@ namespace AI4E.Routing.SignalR.Client
 
         #endregion
 
+        #region KeepAliveProcess
+
+        // Ack and BadMessage MUST not call this, as these do not validate the client session on the server.
+        private void SetLastSendOperation()
+        {
+            var now = DateTime.UtcNow; // TODO: Use IDateTimeProvider
+
+            lock (_lastSendOperationLock)
+            {
+                if (now > _lastSendOperation)
+                    _lastSendOperation = now;
+            }
+        }
+
+        private async Task KeepAliveProcess(CancellationToken cancellation)
+        {
+            var timeout = _timeout;
+            var timoutHalf = new TimeSpan(timeout.Ticks / 2);
+
+            while (cancellation.ThrowOrContinue())
+            {
+                try
+                {
+                    var now = DateTime.UtcNow; // TODO: Use IDateTimeProvider
+                    DateTime lastSendOperation;
+
+                    lock (_lastSendOperationLock)
+                    {
+                        lastSendOperation = _lastSendOperation;
+                    }
+
+                    var delay = timoutHalf - (now - lastSendOperation);
+
+                    if (delay <= TimeSpan.Zero)
+                    {
+                        await PushToServerAsync(GetNextSeqNum(), ReadOnlyMemory<byte>.Empty, cancellation);
+                        SetLastSendOperation();
+                    }
+
+                    await Task.Delay(delay, cancellation);
+                }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
+                catch (Exception exc)
+                {
+                    // TODO: Log
+                }
+            }
+        }
+
+        #endregion
+
         #region Disposal
 
         public void Dispose()
@@ -379,6 +455,7 @@ namespace AI4E.Routing.SignalR.Client
 #endif
                 _hubConnection.StopAsync().HandleExceptions(); // TODO
                 _stubRegistration.Dispose();
+                _keepAliveProcess.Terminate();
                 disposalSource.Dispose();
             }
         }

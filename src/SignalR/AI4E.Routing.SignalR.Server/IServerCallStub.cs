@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 
 namespace AI4E.Routing.SignalR.Server
@@ -8,7 +9,7 @@ namespace AI4E.Routing.SignalR.Server
         Task AckAsync(int seqNum);
         Task BadMessageAsync(int seqNum);
 
-        Task<(string address, string endPoint, string securityToken)> ConnectAsync();
-        Task<string> ReconnectAsync(string endPoint, string securityToken, string previousAddress);
+        Task<(string address, string endPoint, string securityToken, TimeSpan timeout)> ConnectAsync();
+        Task<(string address, TimeSpan timeout)> ReconnectAsync(string endPoint, string securityToken, string previousAddress);
     }
 }

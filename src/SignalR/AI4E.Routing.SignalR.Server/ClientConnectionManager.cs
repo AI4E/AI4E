@@ -2,27 +2,32 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
 using AI4E.Internal;
+using AI4E.Memory.Compatibility;
 using AI4E.Processing;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing.SignalR.Server
 {
     // TODO: Rename
-    public sealed class ConnectedClientLookup : IConnectedClientLookup, IDisposable
+    public sealed class ClientConnectionManager : IClientConnectionManager, IDisposable
     {
         #region Fields
 
-        private static readonly CoordinationEntryPath _basePath = new CoordinationEntryPath("connectedClients"); // TODO: This should be configurable.
-        private static readonly TimeSpan _leaseLength = TimeSpan.FromMinutes(10); // TODO: This should be configurable.
-
         private readonly ICoordinationManager _coordinationManager;
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly ILogger<ConnectedClientLookup> _logger;
+        private readonly ILogger<ClientConnectionManager> _logger;
+
+        private readonly ClientConnectionOptions _clientConnectionOptions;
+        private readonly ClientConnectionManagerOptions _clientConnectionManagerOptions;
+
         private readonly IAsyncProcess _garbageCollectionProcess;
         private readonly Dictionary<EndPointAddress, Task> _clientDisconnectCache = new Dictionary<EndPointAddress, Task>();
         private readonly object _lock = new object();
@@ -32,9 +37,11 @@ namespace AI4E.Routing.SignalR.Server
 
         #region C'tor
 
-        public ConnectedClientLookup(ICoordinationManager coordinationManager,
-                                     IDateTimeProvider dateTimeProvider,
-                                     ILogger<ConnectedClientLookup> logger = null)
+        public ClientConnectionManager(ICoordinationManager coordinationManager,
+                                       IDateTimeProvider dateTimeProvider,
+                                       IOptions<ClientConnectionOptions> clientConnectionOptionsAccessor,
+                                       IOptions<ClientConnectionManagerOptions> clientConnectionManagerOptionsAccessor,
+                                       ILogger<ClientConnectionManager> logger = null)
         {
             if (coordinationManager == null)
                 throw new ArgumentNullException(nameof(coordinationManager));
@@ -42,13 +49,57 @@ namespace AI4E.Routing.SignalR.Server
             if (dateTimeProvider == null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
 
+            if (clientConnectionOptionsAccessor == null)
+                throw new ArgumentNullException(nameof(clientConnectionOptionsAccessor));
+
+            if (clientConnectionManagerOptionsAccessor == null)
+                throw new ArgumentNullException(nameof(clientConnectionManagerOptionsAccessor));
+
             _coordinationManager = coordinationManager;
             _dateTimeProvider = dateTimeProvider;
             _logger = logger;
+
+            _clientConnectionOptions = clientConnectionOptionsAccessor.Value ?? new ClientConnectionOptions();
+            _clientConnectionManagerOptions = clientConnectionManagerOptionsAccessor.Value ?? new ClientConnectionManagerOptions();
+
+            Timeout = _clientConnectionOptions.Timeout <= TimeSpan.Zero ? ClientConnectionOptions.DefaultTimeout : _clientConnectionOptions.Timeout;
+            BasePath = new CoordinationEntryPath(string.IsNullOrEmpty(_clientConnectionManagerOptions.BasePath) ? ClientConnectionManagerOptions.DefaultBasePath : _clientConnectionManagerOptions.BasePath);
+            GarbageCollectionDelayMax = _clientConnectionManagerOptions.GarbageCollectionDelayMax <= TimeSpan.Zero ? ClientConnectionManagerOptions.DefaultGarbageCollectionDelayMax : _clientConnectionManagerOptions.GarbageCollectionDelayMax;
+
+
             _garbageCollectionProcess = new AsyncProcess(GarbageCollection, start: true);
         }
 
         #endregion
+
+        public TimeSpan Timeout { get; }
+
+        private CoordinationEntryPath BasePath { get; }
+
+        private TimeSpan GarbageCollectionDelayMax { get; }
+
+        private EndPointAddress AllocateEndPointAddress()
+        {
+            var prefix = _clientConnectionManagerOptions.EndPointPrefix;
+
+            var prefixLength = string.IsNullOrEmpty(prefix) ? 0 : (Encoding.UTF8.GetByteCount(prefix) + 1);
+            var guid = new Guid();
+
+            var addressBytes = new byte[prefixLength + 16];
+
+            if (prefixLength > 0)
+            {
+                var bytesWritten = Encoding.UTF8.GetBytes(prefix.AsSpan(), addressBytes.AsSpan());
+
+                Assert(bytesWritten == prefixLength - 1);
+
+                addressBytes[bytesWritten] = 0x2F;
+            }
+
+            MemoryMarshal.Write(addressBytes.AsSpan().Slice(addressBytes.Length - 16), ref guid);
+
+            return new EndPointAddress(addressBytes);
+        }
 
         #region IConnectedClientLookup
 
@@ -134,7 +185,7 @@ namespace AI4E.Routing.SignalR.Server
         {
             var now = _dateTimeProvider.GetCurrentTime();
             var securityToken = Guid.NewGuid().ToString();
-            var leaseEnd = now + _leaseLength;
+            var leaseEnd = now + Timeout;
             var securityTokenBytesCount = Encoding.UTF8.GetByteCount(securityToken);
 
             using (ArrayPool<byte>.Shared.Rent(8 + 4 + securityTokenBytesCount, out var bytes))
@@ -145,7 +196,7 @@ namespace AI4E.Routing.SignalR.Server
                 EndPointAddress endPoint;
                 do
                 {
-                    endPoint = new EndPointAddress("client/" + Guid.NewGuid().ToString());
+                    endPoint = AllocateEndPointAddress();
                     var path = GetPath(endPoint);
 
                     try
@@ -203,7 +254,7 @@ namespace AI4E.Routing.SignalR.Server
                     return false;
                 }
 
-                var newLeaseEnd = now + _leaseLength;
+                var newLeaseEnd = now + Timeout;
 
                 if (newLeaseEnd > leaseEnd)
                 {
@@ -276,10 +327,10 @@ namespace AI4E.Routing.SignalR.Server
             {
                 try
                 {
-                    var delay = TimeSpan.FromSeconds(10);
+                    var delay = GarbageCollectionDelayMax;
                     disconnectedClients.Clear();
 
-                    var rootNode = await _coordinationManager.GetAsync(_basePath, cancellation);
+                    var rootNode = await _coordinationManager.GetAsync(BasePath, cancellation);
 
                     if (rootNode != null)
                     {
@@ -328,9 +379,9 @@ namespace AI4E.Routing.SignalR.Server
             }
         }
 
-        private static CoordinationEntryPath GetPath(EndPointAddress endPoint)
+        private CoordinationEntryPath GetPath(EndPointAddress endPoint)
         {
-            return _basePath.GetChildPath(endPoint.ToString());
+            return BasePath.GetChildPath(endPoint.ToString());
         }
 
         #region Coding

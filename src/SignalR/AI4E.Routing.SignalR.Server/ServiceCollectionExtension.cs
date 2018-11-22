@@ -18,7 +18,7 @@ namespace AI4E.Routing.SignalR.Server
             services.AddSingleton<IServerEndPoint>(p => p.GetRequiredService<ServerEndPoint>());
             services.AddSingleton<IRequestReplyServerEndPoint, RequestReplyServerEndPoint>();
             services.AddSingleton<ClientManager>();
-            services.AddSingleton<IConnectedClientLookup, ConnectedClientLookup>();
+            services.AddSingleton<IClientConnectionManager, ClientConnectionManager>();
             services.ConfigureApplicationServices(serviceManager => serviceManager.AddService<ClientManager>());
 
             return services;
