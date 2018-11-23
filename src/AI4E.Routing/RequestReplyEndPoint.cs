@@ -190,6 +190,7 @@ namespace AI4E.Routing
             var disposalSource = Interlocked.Exchange(ref _disposalSource, null);
             if (disposalSource != null)
             {
+                disposalSource.Cancel();
                 _receiveProcess.Terminate();
                 disposalSource.Dispose();
             }

@@ -592,6 +592,7 @@ namespace AI4E.Routing
                 if (disposalSource != null)
                 {
                     _logger?.LogDebug($"Unmap local end-point '{EndPoint}' from physical end-point {LocalAddress}.");
+                    disposalSource.Cancel();
                     _endPointManager._endPointMap.UnmapEndPointAsync(EndPoint, LocalAddress, cancellation: default).HandleExceptionsAsync(_logger).GetAwaiter().GetResult(); // TODO
                     _receiveProcess.Terminate();
                     _physicalEndPoint.Dispose();

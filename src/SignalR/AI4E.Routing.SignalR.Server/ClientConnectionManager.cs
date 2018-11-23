@@ -413,6 +413,7 @@ namespace AI4E.Routing.SignalR.Server
 
             if (disposalSource != null)
             {
+                disposalSource.Cancel();
                 _garbageCollectionProcess.Terminate();
                 disposalSource.Dispose();
             }

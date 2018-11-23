@@ -449,7 +449,7 @@ namespace AI4E.Routing.SignalR.Client
             if (disposalSource != null)
             {
                 // TODO: Log
-
+                disposalSource.Cancel();
 #if !BLAZOR
                 _hubConnection.Closed -= UnderlyingConnectionLostAsync;
 #endif

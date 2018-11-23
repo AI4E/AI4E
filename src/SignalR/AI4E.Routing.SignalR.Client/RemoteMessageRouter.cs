@@ -407,6 +407,7 @@ namespace AI4E.Routing.SignalR.Client
 
             if (disposalSource != null)
             {
+                disposalSource.Cancel();
                 _receiveProcess.Terminate();
                 disposalSource.Dispose();
             }
