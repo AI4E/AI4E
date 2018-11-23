@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
@@ -9,6 +9,8 @@ namespace AI4E.Async
     public sealed class AsyncDisposeHelper : IAsyncDisposable
     {
         private Task _disposal;
+        private volatile bool _disposalStarted = false;
+
         private readonly TaskCompletionSource<byte> _disposalSource;
         private readonly Func<Task> _asyncDisposal;
         private readonly AsyncReaderWriterLock _lock;
@@ -29,21 +31,27 @@ namespace AI4E.Async
 
         public void Dispose()
         {
-            if (_disposalSource == null)
+            // Volatile read op.
+            if (_disposalStarted)
                 return;
-
-            Assert(_asyncDisposal != null);
 
             lock (_disposalSource)
             {
-                if (_disposal == null)
-                {
-                    // The cancellation has to be done before locking, because this cancellation signals
-                    // holders of the prohibit disposal locks to cancel and allow disposal.
-                    _cts.Cancel();
+                // We use a dedicated flag for specifying whether the operation was already started 
+                // instead of simply check _executeTask for beeing set already to allow 
+                // recursive calls to Execute() in the executed operation.
+                if (_disposalStarted)
+                    return;
 
-                    _disposal = DisposeInternalAsync();
-                }
+                _disposalStarted = true;
+
+                // The cancellation has to be done before locking, because this cancellation signals
+                // holders of the prohibit disposal locks to cancel and allow disposal.
+                _cts.Cancel();
+
+                Assert(_disposal == null);
+
+                _disposal = DisposeInternalAsync();
             }
         }
 
