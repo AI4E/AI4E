@@ -83,10 +83,14 @@ namespace AI4E.Async
 
         #endregion
 
-        #region IDisposable
+        #region IAsyncDisposable
 
         public void Dispose()
         {
+            // Volatile read op.
+            if (_disposalCancellationSource == null)
+                return;
+
             var disposalCancellationSource = Interlocked.Exchange(ref _disposalCancellationSource, null);
             if (disposalCancellationSource != null)
             {
@@ -121,6 +125,19 @@ namespace AI4E.Async
             return DisposalGuard.CreateAsync(this, cancellation);
         }
 
+        public bool IsDisposed
+        {
+            get
+            {
+                // Volatile read op
+                var disposalCancellationSource = _disposalCancellationSource;
+
+                if (disposalCancellationSource == null)
+                    return true;
+
+                return disposalCancellationSource.IsCancellationRequested;
+            }
+        }
 
         private static Func<ValueTask> BuildDisposal(Func<Task> disposal)
         {
@@ -223,7 +240,14 @@ namespace AI4E.Async
 
                 if (asyncDisposeHelper._lock != null)
                 {
-                    asyncDisposeHelper._lock.ReaderLock(cancellation);
+                    _lockReleaser = asyncDisposeHelper._lock.ReaderLock(cancellation);
+
+                    if ((_combinedCancellationSource?.Token ?? _disposal).IsCancellationRequested)
+                    {
+                        _lockReleaser.Dispose();
+                        _combinedCancellationSource?.Dispose();
+                        throw new OperationCanceledException();
+                    }
                 }
             }
 
@@ -252,6 +276,13 @@ namespace AI4E.Async
                 if (asyncDisposeHelper._lock != null)
                 {
                     lockReleaser = await asyncDisposeHelper._lock.ReaderLockAsync(cancellation);
+
+                    if ((combinedCancellationSource?.Token ?? disposal).IsCancellationRequested)
+                    {
+                        lockReleaser.Dispose();
+                        combinedCancellationSource?.Dispose();
+                        throw new OperationCanceledException();
+                    }
                 }
 
                 return new DisposalGuard(combinedCancellationSource, lockReleaser, disposal, externalCancellation);
@@ -266,8 +297,12 @@ namespace AI4E.Async
             {
                 var disposalCancellationSource = asyncDisposeHelper._disposalCancellationSource; // Volatile read op
 
-                if (disposalCancellationSource == null || disposalCancellationSource.IsCancellationRequested)
+                if (cancellation.IsCancellationRequested ||
+                    disposalCancellationSource == null ||
+                    disposalCancellationSource.IsCancellationRequested)
+                {
                     throw new OperationCanceledException();
+                }
 
                 externalCancellation = cancellation;
                 disposal = disposalCancellationSource.Token;
