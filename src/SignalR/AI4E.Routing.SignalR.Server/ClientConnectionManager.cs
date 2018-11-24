@@ -83,9 +83,13 @@ namespace AI4E.Routing.SignalR.Server
             var prefix = _clientConnectionManagerOptions.EndPointPrefix;
 
             var prefixLength = string.IsNullOrEmpty(prefix) ? 0 : (Encoding.UTF8.GetByteCount(prefix) + 1);
-            var guid = new Guid();
+            var guid = Guid.NewGuid();
 
-            var addressBytes = new byte[prefixLength + 16];
+            // TODO: Optimize this.
+            var encodedGuidBytes = Encoding.UTF8.GetBytes(Convert.ToBase64String(guid.ToByteArray()).Substring(0, 22).Replace("/", "_").Replace("+", "-"));
+            Assert(encodedGuidBytes.Length == 22);
+
+            var addressBytes = new byte[prefixLength + 22];
 
             if (prefixLength > 0)
             {
@@ -96,7 +100,7 @@ namespace AI4E.Routing.SignalR.Server
                 addressBytes[bytesWritten] = 0x2F;
             }
 
-            MemoryMarshal.Write(addressBytes.AsSpan().Slice(addressBytes.Length - 16), ref guid);
+            encodedGuidBytes.CopyTo(addressBytes.AsSpan().Slice(addressBytes.Length - 22));
 
             return new EndPointAddress(addressBytes);
         }

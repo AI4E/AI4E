@@ -41,7 +41,7 @@ namespace AI4E.Routing.SignalR.Client
         private int _nextSeqNum;
 
         private string _address, _endPoint, _securityToken;
-        
+
         private readonly object _connectionLock = new object();
         private Task _connectionTask;
 
@@ -50,7 +50,7 @@ namespace AI4E.Routing.SignalR.Client
 
         private TimeSpan _timeout;
         private DateTime _lastSendOperation;
-        private readonly object _lastSendOperationLock;
+        private readonly object _lastSendOperationLock = new object();
         private readonly AsyncProcess _keepAliveProcess;
 
         #endregion
@@ -293,15 +293,19 @@ namespace AI4E.Routing.SignalR.Client
                     _connectionLost.Reset();
 
 #if BLAZOR
+                    await _hubConnection.StopAsync();
                     await _hubConnection.StartAsync();
 #else
+                    await _hubConnection.StopAsync(cancellation);
                     await _hubConnection.StartAsync(cancellation);
 #endif
-                    TimeSpan timeout;
 
+                    // _timeout is not synchronized.
+                    // It is not necessary.
+                    // The only ones that access this is we (here) and the keep-alive process. The keep-alive process is ensured to NOT run, when we access.
                     if (isInitialConnection)
                     {
-                        (_address, _endPoint, _securityToken, timeout) = await _hubConnection.InvokeAsync<IServerCallStub, (string address, string endPoint, string securityToken, TimeSpan timeout)>(
+                        (_address, _endPoint, _securityToken, _timeout) = await _hubConnection.InvokeAsync<IServerCallStub, (string address, string endPoint, string securityToken, TimeSpan timeout)>(
                             p => p.ConnectAsync(), cancellation);
 
                         _localEndPointTaskSource.SetResult(new EndPointAddress(_endPoint));
@@ -309,16 +313,12 @@ namespace AI4E.Routing.SignalR.Client
                     }
                     else
                     {
-                        (_address, timeout) = await _hubConnection.InvokeAsync<IServerCallStub, (string address, TimeSpan timeout)>(
+                        (_address, _timeout) = await _hubConnection.InvokeAsync<IServerCallStub, (string address, TimeSpan timeout)>(
                             p => p.ReconnectAsync(_endPoint, _securityToken, _address));
                     }
 
                     SetLastSendOperation();
 
-                    // This is not synchronized.
-                    // It is not necessary.
-                    // The only ones that access this is we (here) and the keep-alive process. The keep-alive process is ensured to NOT run, when we access.
-                    _timeout = timeout;
 
                     // The underlying connection was not lost in the meantime.
                     if (!_connectionLost.IsSet)
@@ -328,8 +328,9 @@ namespace AI4E.Routing.SignalR.Client
                 }
                 catch (ObjectDisposedException) { throw; }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception)
+                catch (Exception exc)
                 {
+                    Console.WriteLine("Error in ecc: " + exc.ToString()); // TODO: Log
                     _logger?.LogWarning($"Reconnection failed. Trying again in {timeToWait.TotalSeconds} sec.");
 
                     await Task.Delay(timeToWait, cancellation);
@@ -348,8 +349,7 @@ namespace AI4E.Routing.SignalR.Client
 
         private Task PushToServerAsync(int seqNum, ReadOnlyMemory<byte> payload, CancellationToken cancellation)
         {
-            var base64 = payload.IsEmpty ? string.Empty : Base64Coder.ToBase64String(payload.Span);
-
+            var base64 = Base64Coder.ToBase64String(payload.Span);
             return _hubConnection.InvokeAsync<IServerCallStub>(p => p.PushAsync(seqNum, _endPoint, _securityToken, base64), cancellation);
         }
 
@@ -433,6 +433,7 @@ namespace AI4E.Routing.SignalR.Client
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
                 {
+                    Console.WriteLine("Error in kap: " + exc.ToString());
                     // TODO: Log
                 }
             }
