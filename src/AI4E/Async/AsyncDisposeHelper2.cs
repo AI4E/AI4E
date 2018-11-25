@@ -22,6 +22,8 @@ namespace AI4E.Async
         // This is null if the disposal operation shall not be synced with the pending operations.
         private readonly AsyncReaderWriterLock _lock;
 
+        private readonly AsyncLocal<bool> _recursionDetection;
+
         #endregion
 
         #region C'tor
@@ -43,6 +45,11 @@ namespace AI4E.Async
             {
                 _lock = new AsyncReaderWriterLock();
             }
+
+            if(!options.IncludesFlag(AsyncDisposeHelperOptions.DisableRecursionDetection))
+            {
+                _recursionDetection = new AsyncLocal<bool>();
+            }
         }
 
         public AsyncDisposeHelper2(Func<ValueTask> disposal, AsyncDisposeHelperOptions options = default)
@@ -62,6 +69,11 @@ namespace AI4E.Async
             {
                 _lock = new AsyncReaderWriterLock();
             }
+
+            if (!options.IncludesFlag(AsyncDisposeHelperOptions.DisableRecursionDetection))
+            {
+                _recursionDetection = new AsyncLocal<bool>();
+            }
         }
 
         public AsyncDisposeHelper2(Action disposal, AsyncDisposeHelperOptions options = default)
@@ -78,6 +90,11 @@ namespace AI4E.Async
             if (options.IncludesFlag(AsyncDisposeHelperOptions.Synchronize))
             {
                 _lock = new AsyncReaderWriterLock();
+            }
+
+            if (!options.IncludesFlag(AsyncDisposeHelperOptions.DisableRecursionDetection))
+            {
+                _recursionDetection = new AsyncLocal<bool>();
             }
         }
 
@@ -103,7 +120,22 @@ namespace AI4E.Async
             }
         }
 
-        public Task Disposal => GetOrCreateDisposalTaskSource().Task;
+        public Task Disposal
+        {
+            get
+            {
+                // Recursion detection is enabled and we are trying to retrieve the Disposal in the _dispose operation.
+                if (_recursionDetection != null && _recursionDetection.Value)
+                {
+
+                    // Fake the disposal in order to prevent deadlocks.
+                    // This behavior can be changed by specifying the 'DisableRecursionDetection' option.
+                    return Task.CompletedTask;
+                }
+
+                return GetOrCreateDisposalTaskSource().Task;
+            }
+        }
 
         public Task DisposeAsync()
         {
@@ -195,12 +227,12 @@ namespace AI4E.Async
                 {
                     using (await _lock.WriterLockAsync())
                     {
-                        await _disposal();
+                        await DisposalWithRecursionDetection();
                     }
                 }
                 else
                 {
-                    await _disposal();
+                    await DisposalWithRecursionDetection();
                 }
             }
             catch (Exception exc) when (!(exc is OperationCanceledException))
@@ -215,6 +247,20 @@ namespace AI4E.Async
             // as this would lead to a lost wakeup, when the Disposal task is retrieved afterwards.
             // This is optimized by setting a singleton instance if there is no instance present yet.
             GetOrCreateDisposalTaskSource(() => CompletedTaskCompletionSource).TrySetResult(null);
+        }
+
+        private async Task DisposalWithRecursionDetection()
+        {
+            if (_recursionDetection != null)
+            {
+                _recursionDetection.Value = true;
+                await _disposal();
+                _recursionDetection.Value = false;
+            }
+            else
+            {
+                await _disposal();
+            }
         }
 
         public readonly struct DisposalGuard : IDisposable
@@ -330,7 +376,8 @@ namespace AI4E.Async
     public enum AsyncDisposeHelperOptions
     {
         Default = 0,
-        Synchronize = 1
+        Synchronize = 1,
+        DisableRecursionDetection = 2
     }
 
     public static class AsyncDisposeHelperExtension
