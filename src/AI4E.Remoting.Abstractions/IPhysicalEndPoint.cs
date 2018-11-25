@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IPhysicalEndPoint.cs 
  * Types:           (1) AI4E.Remoting.IPhysicalEndPoint'1
@@ -69,7 +69,7 @@ namespace AI4E.Remoting
         /// When evaluated, the tasks result contains the received message and the address of the remote physical end-point.
         /// </returns>
         /// <exception cref="System.OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
-        Task<(IMessage message, TAddress remoteAddress)> ReceiveAsync(CancellationToken cancellation = default);
+        Task<(IMessage message, TAddress remoteAddress)> ReceiveAsync(CancellationToken cancellation = default); // TODO: Return ValueTask<(IMessage message, TAddress remoteAddress)>
 
         /// <summary>
         /// Gets the physical address of the local physical end-point.
@@ -96,7 +96,7 @@ namespace AI4E.Remoting
         /// <exception cref="System.ArgumentNullException">Thrown if either <paramref name="message"/> or <paramref name="remoteAddress"/> is null.</exception>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="remoteAddress"/> is the default value of type <see cref="TAddress"/>.</exception>
         /// <exception cref="System.OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
-        Task SendAsync(IMessage message, TAddress remoteAddress, CancellationToken cancellation = default);
+        Task SendAsync(IMessage message, TAddress remoteAddress, CancellationToken cancellation = default); // TODO: Return ValueTask
 
         /// <summary>
         /// Gets the physical address of the local physical end-point.

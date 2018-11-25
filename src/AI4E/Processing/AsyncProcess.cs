@@ -105,11 +105,15 @@ namespace AI4E.Processing
             }
         }
 
-        public Task TerminateAsync(CancellationToken cancellation)
+        public Task TerminateAsync()
         {
             Terminate();
+            return _terminationNotificationSource?.Task ?? Task.CompletedTask;
+        }
 
-            var result = _terminationNotificationSource?.Task ?? Task.CompletedTask;
+        public Task TerminateAsync(CancellationToken cancellation)
+        {
+            var result = TerminateAsync();
 
             if (cancellation.CanBeCanceled)
             {
