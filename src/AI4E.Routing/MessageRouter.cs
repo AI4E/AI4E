@@ -22,7 +22,7 @@ namespace AI4E.Routing
         private readonly ILogger<MessageRouter> _logger;
 
         private readonly AsyncProcess _receiveProcess;
-        private readonly AsyncDisposeHelper2 _disposeHelper;
+        private readonly AsyncDisposeHelper _disposeHelper;
 
         public MessageRouter(ISerializedMessageHandler serializedMessageHandler,
                              ILogicalEndPoint logicalEndPoint,
@@ -44,7 +44,7 @@ namespace AI4E.Routing
             _logger = logger;
 
             _receiveProcess = new AsyncProcess(ReceiveProcedure, start: true);
-            _disposeHelper = new AsyncDisposeHelper2(DisposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
         }
 
         public ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)

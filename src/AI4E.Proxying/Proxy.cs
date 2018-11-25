@@ -42,7 +42,7 @@ namespace AI4E.Proxying
         private Action _unregisterAction;
         private readonly Type _remoteType;
         private readonly bool _ownsInstance;
-        private readonly AsyncDisposeHelper2 _disposeHelper;
+        private readonly AsyncDisposeHelper _disposeHelper;
 
         #region C'tor
 
@@ -53,7 +53,7 @@ namespace AI4E.Proxying
 
             LocalInstance = instance;
 
-            _disposeHelper = new AsyncDisposeHelper2(DisposeInternalAsync);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
         public Proxy(TRemote instance, bool ownsInstance) : this(instance)
@@ -69,7 +69,7 @@ namespace AI4E.Proxying
             _host = host;
             Id = id;
             _remoteType = remoteType;
-            _disposeHelper = new AsyncDisposeHelper2(DisposeInternalAsync);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
         #endregion

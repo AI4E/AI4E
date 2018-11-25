@@ -58,7 +58,7 @@ namespace AI4E.Remoting
         private readonly ILogger<PhysicalEndPointMultiplexer<TAddress>> _logger;
         private readonly WeakDictionary<string, AsyncProducerConsumerQueue<(IMessage message, TAddress remoteAddress)>> _rxQueues;
         private readonly AsyncProcess _receiveProcess;
-        private readonly AsyncDisposeHelper2 _disposeHelper;
+        private readonly AsyncDisposeHelper _disposeHelper;
 
         #endregion
 
@@ -79,7 +79,7 @@ namespace AI4E.Remoting
 
             _rxQueues = new WeakDictionary<string, AsyncProducerConsumerQueue<(IMessage message, TAddress remoteAddress)>>();
             _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
-            _disposeHelper = new AsyncDisposeHelper2(_receiveProcess.TerminateAsync);
+            _disposeHelper = new AsyncDisposeHelper(_receiveProcess.TerminateAsync);
         }
 
         #endregion

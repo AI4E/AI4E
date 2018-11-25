@@ -50,7 +50,7 @@ namespace AI4E.Modularity.Debug
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<DebugPort> _logger;
         private readonly IRemoteMessageDispatcher _messageDispatcher;
-        private readonly AsyncDisposeHelper2 _disposeHelper;
+        private readonly AsyncDisposeHelper _disposeHelper;
         private readonly AsyncInitializationHelper<IPEndPoint> _initializationHelper;
         private readonly ConcurrentDictionary<IPEndPoint, DebugSession> _debugSessions = new ConcurrentDictionary<IPEndPoint, DebugSession>(new IPEndPointEqualityComparer());
 
@@ -93,7 +93,7 @@ namespace AI4E.Modularity.Debug
             _tcpHost = new TcpListener(endPoint);
             _connectionProcess = new AsyncProcess(ConnectProcedure);
             _initializationHelper = new AsyncInitializationHelper<IPEndPoint>(InitializeInternalAsync);
-            _disposeHelper = new AsyncDisposeHelper2(DisposeInternalAsync);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
         #endregion

@@ -66,7 +66,7 @@ namespace AI4E.Proxying
         private readonly Dictionary<object, IProxy> _proxyLookup = new Dictionary<object, IProxy>();
         private readonly Dictionary<int, IProxy> _proxies = new Dictionary<int, IProxy>();
         private readonly object _proxyLock = new object();
-        private readonly AsyncDisposeHelper2 _disposeHelper;
+        private readonly AsyncDisposeHelper _disposeHelper;
 
         private int _nextSeqNum = 0;
         private int _nextProxyId = 0;
@@ -87,7 +87,7 @@ namespace AI4E.Proxying
             _serviceProvider = serviceProvider;
 
             _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
-            _disposeHelper = new AsyncDisposeHelper2(DisposeInternalAsync);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
         #endregion

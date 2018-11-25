@@ -56,7 +56,7 @@ namespace AI4E.Remoting
         private readonly ConcurrentDictionary<IPEndPoint, ImmutableList<Connection>> _physicalConnections;
         private readonly ILogger<TcpEndPoint> _logger;
         private readonly AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)> _rxQueue;
-        private readonly AsyncDisposeHelper2 _disposeHelper;
+        private readonly AsyncDisposeHelper _disposeHelper;
 
         public TcpEndPoint(ILogger<TcpEndPoint> logger)
         {
@@ -70,7 +70,7 @@ namespace AI4E.Remoting
             Assert(LocalAddress != null);
 
             _connectionProcess = new AsyncProcess(ConnectProcedure, start: true);
-            _disposeHelper = new AsyncDisposeHelper2(DisposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
         }
 
         #region Disposal
@@ -198,7 +198,7 @@ namespace AI4E.Remoting
             private readonly TcpEndPoint _endPoint;
             private readonly Stream _stream;
             private readonly AsyncProcess _receiveProcess;
-            private readonly AsyncDisposeHelper2 _disposeHelper;
+            private readonly AsyncDisposeHelper _disposeHelper;
             private readonly AsyncLock _sendLock = new AsyncLock();
 
             public Connection(TcpEndPoint endPoint, IPEndPoint address, Stream stream)
@@ -216,7 +216,7 @@ namespace AI4E.Remoting
                 RemoteAddress = address;
                 _stream = stream;
                 _receiveProcess = new AsyncProcess(ReceiveProcedure, start: true);
-                _disposeHelper = new AsyncDisposeHelper2(DisposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
+                _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
             }
 
             public IPEndPoint LocalAddress => _endPoint.LocalAddress;

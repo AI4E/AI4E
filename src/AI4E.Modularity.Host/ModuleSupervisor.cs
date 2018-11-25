@@ -20,7 +20,7 @@ namespace AI4E.Modularity.Host
         private readonly ILogger<ModuleSupervisor> _logger;
 
         private readonly DisposableAsyncLazy<IModuleMetadata> _metadataLazy;
-        private readonly AsyncDisposeHelper2 _disposeHelper;
+        private readonly AsyncDisposeHelper _disposeHelper;
         private readonly AsyncProcess _supervisorProcess;
 
         private readonly TimeSpan _moduleTerminateTimeout = TimeSpan.FromMilliseconds(2500); // TODO: This should be configurable
@@ -52,7 +52,7 @@ namespace AI4E.Modularity.Host
                 options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread | DisposableAsyncLazyOptions.RetryOnFailure);
 
             _supervisorProcess = new AsyncProcess(SupervisorProcessRoutine, start: true);
-            _disposeHelper = new AsyncDisposeHelper2(DisposeInternalAsync);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
         #region IModuleSupervisor

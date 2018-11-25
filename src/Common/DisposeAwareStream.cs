@@ -35,7 +35,7 @@ namespace AI4E.Internal
         private readonly Func<Task> _disposeOperation;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILogger<DisposeAwareStream> _logger;
-        private readonly AsyncDisposeHelper2 _disposeHelper;
+        private readonly AsyncDisposeHelper _disposeHelper;
         private readonly AsyncLock _writeLock = new AsyncLock();
         private DateTime _lastWriteTime;
         private static readonly byte[] _emptyBytes = new byte[0];
@@ -60,7 +60,7 @@ namespace AI4E.Internal
             _logger = logger;
 
             _lastWriteTime = _dateTimeProvider.GetCurrentTime();
-            _disposeHelper = new AsyncDisposeHelper2(DisposeInternalAsync);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
         #region Looped through ops
