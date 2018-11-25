@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -48,7 +48,7 @@ namespace AI4E.Modularity.Module
         private readonly IRunningModuleLookup _runningModules;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ModuleServer> _logger;
-        private readonly AsyncDisposeHelper _disposeHelper;
+        private readonly AsyncDisposeHelper2 _disposeHelper;
 
         private readonly string _prefix;
         private readonly bool _isDebuggingConnection;
@@ -89,7 +89,7 @@ namespace AI4E.Modularity.Module
             _serviceProvider = serviceProvider;
             _logger = logger;
 
-            _disposeHelper = new AsyncDisposeHelper(DiposeInternalAsync);
+            _disposeHelper = new AsyncDisposeHelper2(DiposeInternalAsync);
             _prefix = options.Prefix;
             _isDebuggingConnection = options.UseDebugConnection;
             Features.Set<IHttpRequestFeature>(new HttpRequestFeature());
