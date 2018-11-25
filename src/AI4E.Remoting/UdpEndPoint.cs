@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -7,7 +8,9 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using AI4E.Processing;
 using Microsoft.Extensions.Logging;
+using Nito.AsyncEx;
 
 namespace AI4E.Remoting
 {
@@ -20,14 +23,18 @@ namespace AI4E.Remoting
 
         private readonly ILogger<UdpEndPoint> _logger;
         private readonly UdpClient _udpClient;
-        private readonly ConcurrentBag<(IMessage message, IPEndPoint remoteAddress)> _rxQueue;
+
+        private readonly AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)> _rxQueue;
+        private readonly AsyncManualResetEvent _event = new AsyncManualResetEvent(set: false);
+
+        private readonly AsyncProcess _receiveProcess;
 
         private bool _isDisposed = false;
 
         public UdpEndPoint(ILogger<UdpEndPoint> logger)
         {
             _logger = logger;
-            _rxQueue = new ConcurrentBag<(IMessage message, IPEndPoint remoteAddress)>();
+            _rxQueue = new AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)>();
 
             var localAddress = GetLocalAddress();
 
@@ -44,7 +51,7 @@ namespace AI4E.Remoting
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                // TODO: Does this thing work in linux/unix too?
+                // TODO: Does this work in linux/unix too?
                 //       https://github.com/AI4E/AI4E/issues/29
                 // See: https://stackoverflow.com/questions/7201862/an-existing-connection-was-forcibly-closed-by-the-remote-host
                 uint IOC_IN = 0x80000000,
@@ -53,6 +60,7 @@ namespace AI4E.Remoting
                 _udpClient.Client.IOControl(unchecked((int)SIO_UDP_CONNRESET), new byte[] { Convert.ToByte(false) }, null);
             }
 
+            _receiveProcess = new AsyncProcess(ReceiveProcedure, start: true);
         }
 
         public async Task SendAsync(IMessage message, IPEndPoint remoteAddress, CancellationToken cancellation)
@@ -65,7 +73,8 @@ namespace AI4E.Remoting
 
             if (remoteAddress.Equals(LocalAddress))
             {
-                _rxQueue.Add((message, LocalAddress));
+                await _rxQueue.EnqueueAsync((message, LocalAddress), cancellation);
+                _event.Set();
                 return;
             }
 
@@ -78,39 +87,51 @@ namespace AI4E.Remoting
             await _udpClient.SendAsync(buffer, buffer.Length, remoteAddress).WithCancellation(cancellation);
         }
 
-        public async Task<(IMessage message, IPEndPoint remoteAddress)> ReceiveAsync(CancellationToken cancellation)
+        public Task<(IMessage message, IPEndPoint remoteAddress)> ReceiveAsync(CancellationToken cancellation)
         {
-            if (_rxQueue.TryTake(out var entry))
-            {
-                return entry;
-            }
+            return _rxQueue.DequeueAsync(cancellation);
+        }
 
-            UdpReceiveResult receiveResult;
-            while (true)
+        private async Task ReceiveProcedure(CancellationToken cancellation)
+        {
+            _logger?.LogDebug($"Physical-end-point {LocalAddress}: Receive process started.");
+
+            while (cancellation.ThrowOrContinue())
             {
                 try
                 {
-                    receiveResult = await _udpClient.ReceiveAsync().WithCancellation(cancellation);
+                    UdpReceiveResult receiveResult;
+                    try
+                    {
+                        receiveResult = await _udpClient.ReceiveAsync().WithCancellation(cancellation);
+                    }
+                    // Apparently, the udp socket does receive ICMP messages that a remote host was unreachable on sending
+                    // and throws an exception on the next receive call. We just ignore this currently.
+                    // https://msdn.microsoft.com/en-us/library/windows/desktop/ms740120%28v=vs.85%29.aspx
+                    catch (SocketException exc) when (exc.ErrorCode == WSAECONNRESET)
+                    {
+                        continue;
+                    }
+                    catch (ObjectDisposedException) when (cancellation.IsCancellationRequested) { return; }
+
+                    var message = new Message();
+
+                    using (var memoryStream = new MemoryStream(receiveResult.Buffer))
+                    {
+                        await message.ReadAsync(memoryStream, cancellation);
+                    }
+
+                    await _rxQueue.EnqueueAsync((message, receiveResult.RemoteEndPoint), cancellation);
                 }
-                // Apparently, the udp socket does receive ICMP messages that a remote host was unreachable on sending
-                // and throws an exception on the next receive call. We just ignore this currently.
-                // https://msdn.microsoft.com/en-us/library/windows/desktop/ms740120%28v=vs.85%29.aspx
-                catch (SocketException exc) when (exc.ErrorCode == WSAECONNRESET)
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
+
+                // TODO: https://github.com/AI4E/AI4E/issues/33
+                //       This can end in an infinite loop, f.e. if the socket is down.
+                catch (Exception exc)
                 {
-                    continue;
+                    _logger?.LogWarning(exc, $"Physical-end-point {LocalAddress}: Failure on receiving incoming message.");
                 }
-
-                break;
             }
-
-            var message = new Message();
-
-            using (var memoryStream = new MemoryStream(receiveResult.Buffer))
-            {
-                await message.ReadAsync(memoryStream, cancellation);
-            }
-
-            return (message, receiveResult.RemoteEndPoint);
         }
 
         public IPEndPoint LocalAddress { get; }
@@ -135,6 +156,7 @@ namespace AI4E.Remoting
             if (!_isDisposed)
             {
                 _isDisposed = true;
+                _receiveProcess.Terminate();
                 _udpClient.Close();
             }
         }
