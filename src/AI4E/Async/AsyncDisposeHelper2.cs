@@ -20,6 +20,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
@@ -41,10 +42,12 @@ namespace AI4E.Async
         // -- OR --
         // we request the completion task explicitly.
         private TaskCompletionSource<object> _disposalTaskSource;
+        private volatile Exception _exception;
 
         // This is null if the disposal operation shall not be synced with the pending operations.
         private readonly AsyncReaderWriterLock _lock;
 
+        // This is null if recursion detection is disabled.
         private readonly AsyncLocal<bool> _recursionDetection;
 
         #endregion
@@ -161,7 +164,9 @@ namespace AI4E.Async
             if (_disposalCancellationSource == null)
                 return;
 
+#pragma warning disable 420
             var disposalCancellationSource = Interlocked.Exchange(ref _disposalCancellationSource, null);
+#pragma warning restore 420
             if (disposalCancellationSource != null)
             {
                 disposalCancellationSource.Cancel();
@@ -195,7 +200,19 @@ namespace AI4E.Async
                     return Task.CompletedTask;
                 }
 
-                return GetOrCreateDisposalTaskSource().Task;
+                var disposalTaskSource = GetOrCreateDisposalTaskSource();
+
+                if (disposalTaskSource == CompletedTaskCompletionSource)
+                {
+                    var exception = _exception; // Volatile read op.
+                    if (exception != null)
+                    {
+                        // Rethrow the exception preserving stack-trace information.
+                        ExceptionDispatchInfo.Capture(exception).Throw();
+                    }
+                }
+
+                return disposalTaskSource.Task;
             }
         }
 
@@ -329,8 +346,11 @@ namespace AI4E.Async
             catch (Exception exc) when (!(exc is OperationCanceledException))
             {
                 // If the operation throws an exception we need to allocate a task completion source to allow for passing the exception to the outside.
-                // TODO: Can we prevent the allocation by setting the excpetion to a dedicated field?
-                GetOrCreateDisposalTaskSource().TrySetException(exc);
+                // We prevent the allocation by setting the excpetion to a dedicated field.
+
+                // The exception MUST be written volatile to prevent a sitatuation that _exception is written after _disposalTaskSource.
+                _exception = exc; // Volatile write op.
+                GetOrCreateDisposalTaskSource(() => CompletedTaskCompletionSource).TrySetException(exc);
                 return;
             }
 
