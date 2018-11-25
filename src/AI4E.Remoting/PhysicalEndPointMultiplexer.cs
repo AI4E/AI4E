@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        PhysicalEndPointMultiplexer.cs 
  * Types:           (1) AI4E.Remoting.PhysicalEndPointMultiplexer'1
@@ -50,17 +50,15 @@ namespace AI4E.Remoting
     /// <remarks>
     /// This type is not meant to be consumed directly but is part of the infrastructure to enable the remote message dispatching system.
     /// </remarks>
-    public sealed class PhysicalEndPointMultiplexer<TAddress> : IPhysicalEndPointMultiplexer<TAddress>, IAsyncDisposable
+    public sealed class PhysicalEndPointMultiplexer<TAddress> : IPhysicalEndPointMultiplexer<TAddress>
     {
         #region Fields
 
         private readonly IPhysicalEndPoint<TAddress> _physicalEndPoint;
         private readonly ILogger<PhysicalEndPointMultiplexer<TAddress>> _logger;
-
         private readonly WeakDictionary<string, AsyncProducerConsumerQueue<(IMessage message, TAddress remoteAddress)>> _rxQueues;
-        private readonly IAsyncProcess _receiveProcess;
-        private readonly AsyncInitializationHelper _initializationHelper;
-        private readonly AsyncDisposeHelper _disposeHelper;
+        private readonly AsyncProcess _receiveProcess;
+        private readonly AsyncDisposeHelper2 _disposeHelper;
 
         #endregion
 
@@ -80,9 +78,8 @@ namespace AI4E.Remoting
             _logger = logger;
 
             _rxQueues = new WeakDictionary<string, AsyncProducerConsumerQueue<(IMessage message, TAddress remoteAddress)>>();
-            _receiveProcess = new AsyncProcess(ReceiveProcess);
-            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
-            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+            _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
+            _disposeHelper = new AsyncDisposeHelper2(_receiveProcess.TerminateAsync);
         }
 
         #endregion
@@ -125,23 +122,7 @@ namespace AI4E.Remoting
 
         #endregion
 
-        #region Initialization
-
-        private Task Initialization => _initializationHelper.Initialization;
-
-        private Task InitializeInternalAsync(CancellationToken cancellation)
-        {
-            return _receiveProcess.StartAsync(cancellation);
-        }
-
-        #endregion
-
         #region Disposal
-
-        /// <summary>
-        /// Gets a task that represents the disposal of the type.
-        /// </summary>
-        public Task Disposal => _disposeHelper.Disposal;
 
         /// <summary>
         /// Disposes of the type.
@@ -152,23 +133,6 @@ namespace AI4E.Remoting
         public void Dispose()
         {
             _disposeHelper.Dispose();
-        }
-
-        /// <summary>
-        /// Asynchronously disposes of the type.
-        /// </summary>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        /// <remarks>
-        /// This method initiates the disposal and returns a task that represents the disposal of the type.
-        /// </remarks>
-        public Task DisposeAsync()
-        {
-            return _disposeHelper.DisposeAsync();
-        }
-
-        private Task DisposeInternalAsync()
-        {
-            return _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
         }
 
         #endregion
@@ -283,23 +247,16 @@ namespace AI4E.Remoting
 
             public async Task<(IMessage message, TAddress remoteAddress)> ReceiveAsync(CancellationToken cancellation = default)
             {
-                await _multiplexer.Initialization.WithCancellation(cancellation);
-
-                using (await _multiplexer._disposeHelper.ProhibitDisposalAsync(cancellation))
+                try
                 {
-                    if (_multiplexer._disposeHelper.IsDisposed)
-                        throw new ObjectDisposedException(_multiplexer.GetType().FullName);
-
-                    var combinedCancellation = _multiplexer._disposeHelper.CancelledOrDisposed(cancellation);
-
-                    try
+                    using (var guard = _multiplexer._disposeHelper.GuardDisposal(cancellation))
                     {
-                        return await _rxQueue.DequeueAsync(combinedCancellation);
+                        return await _rxQueue.DequeueAsync(guard.Cancellation);
                     }
-                    catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
-                    {
-                        throw new ObjectDisposedException(_multiplexer.GetType().FullName);
-                    }
+                }
+                catch (OperationCanceledException) when (_multiplexer._disposeHelper.IsDisposed)
+                {
+                    throw new ObjectDisposedException(_multiplexer.GetType().FullName);
                 }
             }
 
@@ -314,23 +271,16 @@ namespace AI4E.Remoting
                 if (remoteAddress.Equals(default))
                     throw new ArgumentDefaultException(nameof(message));
 
-                await _multiplexer.Initialization.WithCancellation(cancellation);
-
-                using (await _multiplexer._disposeHelper.ProhibitDisposalAsync(cancellation))
+                try
                 {
-                    if (_multiplexer._disposeHelper.IsDisposed)
-                        throw new ObjectDisposedException(_multiplexer.GetType().FullName);
-
-                    var combinedCancellation = _multiplexer._disposeHelper.CancelledOrDisposed(cancellation);
-
-                    try
+                    using (var guard = _multiplexer._disposeHelper.GuardDisposal(cancellation))
                     {
-                        await SendInternalAsync(message, remoteAddress, combinedCancellation);
+                        await SendInternalAsync(message, remoteAddress, guard.Cancellation);
                     }
-                    catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
-                    {
-                        throw new ObjectDisposedException(_multiplexer.GetType().FullName);
-                    }
+                }
+                catch (OperationCanceledException) when (_multiplexer._disposeHelper.IsDisposed)
+                {
+                    throw new ObjectDisposedException(_multiplexer.GetType().FullName);
                 }
             }
 
