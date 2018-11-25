@@ -1,11 +1,12 @@
-﻿using System;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
 using AI4E.Internal;
 using AI4E.Processing;
 using Microsoft.Extensions.Logging;
@@ -22,10 +23,13 @@ namespace AI4E.Remoting
 
         private readonly ILogger<UdpEndPoint> _logger;
         private readonly UdpClient _udpClient;
+
         private readonly AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)> _rxQueue;
-        private readonly IAsyncProcess _receiveProcess;
-        private readonly AsyncInitializationHelper _initializationHelper;
-        private readonly AsyncDisposeHelper _disposeHelper;
+        private readonly AsyncManualResetEvent _event = new AsyncManualResetEvent(set: false);
+
+        private readonly AsyncProcess _receiveProcess;
+
+        private bool _isDisposed = false;
 
         public UdpEndPoint(ILogger<UdpEndPoint> logger)
         {
@@ -47,7 +51,7 @@ namespace AI4E.Remoting
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                // TODO: Does this thing work in linux/unix too?
+                // TODO: Does this work in linux/unix too?
                 //       https://github.com/AI4E/AI4E/issues/29
                 // See: https://stackoverflow.com/questions/7201862/an-existing-connection-was-forcibly-closed-by-the-remote-host
                 uint IOC_IN = 0x80000000,
@@ -56,68 +60,37 @@ namespace AI4E.Remoting
                 _udpClient.Client.IOControl(unchecked((int)SIO_UDP_CONNRESET), new byte[] { Convert.ToByte(false) }, null);
             }
 
-            _receiveProcess = new AsyncProcess(ReceiveProcedure);
-            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
-            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+            _receiveProcess = new AsyncProcess(ReceiveProcedure, start: true);
         }
 
-        private IPAddress GetLocalAddress()
+        public async Task SendAsync(IMessage message, IPEndPoint remoteAddress, CancellationToken cancellation)
         {
-            var host = Dns.GetHostEntry(Dns.GetHostName());
-            foreach (var ip in host.AddressList)
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
+
+            if (remoteAddress == null)
+                throw new ArgumentNullException(nameof(remoteAddress));
+
+            if (remoteAddress.Equals(LocalAddress))
             {
-                // TODO: https://github.com/AI4E/AI4E/issues/31
-                // TODO: https://github.com/AI4E/AI4E/issues/30
-                if (ip.AddressFamily == AddressFamily.InterNetwork)
-                {
-                    return ip;
-                }
+                await _rxQueue.EnqueueAsync((message, LocalAddress), cancellation);
+                _event.Set();
+                return;
             }
 
-            return null;
-        }
-
-        #region Initialization
-
-        public Task Initialization => _initializationHelper.Initialization;
-
-        private async Task InitializeInternalAsync(CancellationToken cancellation)
-        {
-            await _receiveProcess.StartAsync(cancellation);
-
-            _logger?.LogDebug($"Started physical-end-point on local address '{LocalAddress}'.");
-        }
-
-        #endregion
-
-        #region Disposal
-
-        public Task Disposal => _disposeHelper.Disposal;
-
-        public void Dispose()
-        {
-            _disposeHelper.Dispose();
-        }
-
-        public Task DisposeAsync()
-        {
-            return _disposeHelper.DisposeAsync();
-        }
-
-        private async Task DisposeInternalAsync()
-        {
-            try
+            var buffer = new byte[message.Length];
+            using (var memoryStream = new MemoryStream(buffer, writable: true))
             {
-                _udpClient.Close();
+                await message.WriteAsync(memoryStream, cancellation);
             }
-            finally
-            {
-                await _initializationHelper.CancelAsync().HandleExceptionsAsync();
-                await _receiveProcess.TerminateAsync().HandleExceptionsAsync();
-            }
+
+            await _udpClient.SendAsync(buffer, buffer.Length, remoteAddress).WithCancellation(cancellation);
         }
 
-        #endregion
+        public Task<(IMessage message, IPEndPoint remoteAddress)> ReceiveAsync(CancellationToken cancellation)
+        {
+            return _rxQueue.DequeueAsync(cancellation);
+        }
 
         private async Task ReceiveProcedure(CancellationToken cancellation)
         {
@@ -161,34 +134,31 @@ namespace AI4E.Remoting
             }
         }
 
-        public async Task SendAsync(IMessage message, IPEndPoint remoteAddress, CancellationToken cancellation)
-        {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
-            if (remoteAddress == null)
-                throw new ArgumentNullException(nameof(remoteAddress));
-
-            if (remoteAddress.Equals(LocalAddress))
-            {
-                await _rxQueue.EnqueueAsync((message, LocalAddress), cancellation);
-                return;
-            }
-
-            var buffer = new byte[message.Length];
-            using (var memoryStream = new MemoryStream(buffer, writable: true))
-            {
-                await message.WriteAsync(memoryStream, cancellation);
-            }
-
-            await _udpClient.SendAsync(buffer, buffer.Length, remoteAddress).WithCancellation(cancellation);
-        }
-
-        public Task<(IMessage message, IPEndPoint remoteAddress)> ReceiveAsync(CancellationToken cancellation)
-        {
-            return _rxQueue.DequeueAsync(cancellation);
-        }
-
         public IPEndPoint LocalAddress { get; }
+        private IPAddress GetLocalAddress()
+        {
+            var host = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (var ip in host.AddressList)
+            {
+                // TODO: https://github.com/AI4E/AI4E/issues/31
+                // TODO: https://github.com/AI4E/AI4E/issues/30
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    return ip;
+                }
+            }
+
+            return null;
+        }
+
+        public void Dispose()
+        {
+            if (!_isDisposed)
+            {
+                _isDisposed = true;
+                _receiveProcess.Terminate();
+                _udpClient.Close();
+            }
+        }
     }
 }

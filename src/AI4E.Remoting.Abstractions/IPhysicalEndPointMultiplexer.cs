@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IPhysicalEndPointMultiplexer.cs 
  * Types:           (1) AI4E.Remoting.IPhysicalEndPointMultiplexer'1
@@ -29,13 +29,15 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+
 namespace AI4E.Remoting
 {
     /// <summary>
     /// Multiplexes a single physical end point to multiple end points, each distinguished by a multiplex name.
     /// </summary>
     /// <typeparam name="TAddress">The type of physical address used.</typeparam>
-    public interface IPhysicalEndPointMultiplexer<TAddress>
+    public interface IPhysicalEndPointMultiplexer<TAddress> : IDisposable
     {
         /// <summary>
         /// Returns a physical end point that is identified by the specified multiplex name.

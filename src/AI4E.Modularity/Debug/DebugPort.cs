@@ -44,7 +44,7 @@ namespace AI4E.Modularity.Debug
         #region Fields
 
         private readonly TcpListener _tcpHost;
-        private readonly IAsyncProcess _connectionProcess;
+        private readonly AsyncProcess _connectionProcess;
         private readonly IServiceProvider _serviceProvider;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILoggerFactory _loggerFactory;

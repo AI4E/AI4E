@@ -8,16 +8,15 @@ using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
 using Microsoft.Extensions.Logging;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Debug
 {
     public sealed class DebugLogicalEndPoint : ILogicalEndPoint
     {
-        private readonly AsyncInitializationHelper<(ProxyHost proxyHost, IProxy<LogicalEndPointSkeleton> proxy)> _initializationHelper;
-        private readonly AsyncDisposeHelper _disposeHelper;
         private readonly DebugConnection _debugConnection;
         private readonly ILogger<DebugLogicalEndPoint> _logger;
+
+        private readonly DisposableAsyncLazy<IProxy<LogicalEndPointSkeleton>> _proxyLazy;
 
         public DebugLogicalEndPoint(DebugConnection debugConnection, EndPointAddress endPoint, ILogger<DebugLogicalEndPoint> logger = null)
         {
@@ -30,11 +29,14 @@ namespace AI4E.Modularity.Debug
             _debugConnection = debugConnection;
             EndPoint = endPoint;
             _logger = logger;
-            _initializationHelper = new AsyncInitializationHelper<(ProxyHost proxyHost, IProxy<LogicalEndPointSkeleton> proxy)>(InitializeInternalAsync);
-            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+
+            _proxyLazy = new DisposableAsyncLazy<IProxy<LogicalEndPointSkeleton>>(
+                factory: CreateProxyAsync,
+                disposal: p => p.DisposeAsync(),
+                options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
         }
 
-        private async Task<(ProxyHost proxyHost, IProxy<LogicalEndPointSkeleton> proxy)> InitializeInternalAsync(CancellationToken cancellation)
+        private async Task<IProxy<LogicalEndPointSkeleton>> CreateProxyAsync(CancellationToken cancellation)
         {
             ProxyHost proxyHost = null;
             IProxy<LogicalEndPointSkeleton> proxy;
@@ -49,19 +51,12 @@ namespace AI4E.Modularity.Debug
                 throw;
             }
 
-            return (proxyHost, proxy);
-        }
-
-        private async ValueTask<ProxyHost> GetProxyHostAsync(CancellationToken cancellation)
-        {
-            var (proxyHost, _) = await _initializationHelper.Initialization.WithCancellation(cancellation);
-            return proxyHost;
-        }
-
-        private async ValueTask<IProxy<LogicalEndPointSkeleton>> GetProxyAsync(CancellationToken cancellation)
-        {
-            var (_, proxy) = await _initializationHelper.Initialization.WithCancellation(cancellation);
             return proxy;
+        }
+
+        private Task<IProxy<LogicalEndPointSkeleton>> GetProxyAsync(CancellationToken cancellation)
+        {
+            return _proxyLazy.Task.WithCancellation(cancellation);
         }
 
         public EndPointAddress EndPoint { get; }
@@ -70,24 +65,10 @@ namespace AI4E.Modularity.Debug
         {
             var proxy = await GetProxyAsync(cancellation);
 
-            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
-            {
-                CheckDisposal();
+            var resultProxy = await proxy.ExecuteAsync(p => p.ReceiveAsync(cancellation));
+            var resultValues = await resultProxy.ExecuteAsync(p => p.GetResultValues());
 
-                var combinedCancellation = _disposeHelper.CancelledOrDisposed(cancellation);
-
-                try
-                {
-                    var resultProxy = await proxy.ExecuteAsync(p => p.ReceiveAsync(combinedCancellation));
-                    var resultValues = await resultProxy.ExecuteAsync(p => p.GetResultValues());
-
-                    return new DebugMessageReceiveResult(resultProxy, resultValues);
-                }
-                catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
-                {
-                    throw new ObjectDisposedException(GetType().FullName);
-                }
-            }
+            return new DebugMessageReceiveResult(resultProxy, resultValues);
         }
 
         public async Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation = default)
@@ -101,63 +82,22 @@ namespace AI4E.Modularity.Debug
                 await message.WriteAsync(stream, cancellation);
             }
 
-            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            var responseBuffer = await proxy.ExecuteAsync(p => p.SendAsync(buffer, remoteEndPoint, cancellation));
+            var response = new Message();
+
+            using (var stream = new MemoryStream(responseBuffer))
             {
-                CheckDisposal();
-
-                var combinedCancellation = _disposeHelper.CancelledOrDisposed(cancellation);
-
-                try
-                {
-                    var responseBuffer = await proxy.ExecuteAsync(p => p.SendAsync(buffer, remoteEndPoint, combinedCancellation));
-                    var response = new Message();
-
-                    using (var stream = new MemoryStream(responseBuffer))
-                    {
-                        await response.ReadAsync(stream, cancellation);
-                    }
-
-                    return response;
-                }
-                catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
-                {
-                    throw new ObjectDisposedException(GetType().FullName);
-                }
+                await response.ReadAsync(stream, cancellation);
             }
-        }
 
-        public Task Initialization => _initializationHelper.Initialization;
+            return response;
+        }
 
         #region Disposal
 
-        public Task Disposal => _disposeHelper.Disposal;
-
         public void Dispose()
         {
-            _disposeHelper.Dispose();
-        }
-
-        public Task DisposeAsync()
-        {
-            return _disposeHelper.DisposeAsync();
-        }
-
-        private async Task DisposeInternalAsync()
-        {
-            var (success, (_, proxy)) = await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
-
-            if (success)
-            {
-                Assert(proxy != null);
-
-                await proxy.DisposeAsync();
-            }
-        }
-
-        private void CheckDisposal()
-        {
-            if (_disposeHelper.IsDisposed)
-                throw new ObjectDisposedException(GetType().FullName);
+            _proxyLazy.Dispose();
         }
 
         #endregion

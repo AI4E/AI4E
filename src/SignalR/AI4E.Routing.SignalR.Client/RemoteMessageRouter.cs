@@ -18,7 +18,7 @@ namespace AI4E.Routing.SignalR.Client
 #endif
 {
     // TODO: Logging   
-    public sealed class RemoteMessageRouter : IMessageRouter, IDisposable
+    public sealed class RemoteMessageRouter : IMessageRouter
     {
         private readonly ISerializedMessageHandler _serializedMessageHandler;
         private readonly IRequestReplyClientEndPoint _logicalEndPoint;

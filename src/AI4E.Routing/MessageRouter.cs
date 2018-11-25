@@ -14,16 +14,14 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing
 {
-    public sealed class MessageRouter : IMessageRouter, IAsyncDisposable
+    public sealed class MessageRouter : IMessageRouter
     {
-        private static readonly byte[] _emptyBytes = new byte[0];
-
         private readonly ISerializedMessageHandler _serializedMessageHandler;
         private readonly ILogicalEndPoint _logicalEndPoint;
         private readonly IRouteManager _routeManager;
         private readonly ILogger<MessageRouter> _logger;
 
-        private readonly IAsyncProcess _receiveProcess;
+        private readonly AsyncProcess _receiveProcess;
         private readonly AsyncDisposeHelper _disposeHelper;
 
         public MessageRouter(ISerializedMessageHandler serializedMessageHandler,
@@ -46,7 +44,7 @@ namespace AI4E.Routing
             _logger = logger;
 
             _receiveProcess = new AsyncProcess(ReceiveProcedure, start: true);
-            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
         }
 
         public ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)
@@ -54,22 +52,10 @@ namespace AI4E.Routing
             return new ValueTask<EndPointAddress>(_logicalEndPoint.EndPoint);
         }
 
-        #region Initialization
-
-        private Task InitializeInternalAsync(CancellationToken cancellation)
-        {
-            return _receiveProcess.StartAsync();
-        }
-
-        #endregion
-
         #region Disposal
-
-        public Task Disposal => _disposeHelper.Disposal;
 
         private async Task DisposeInternalAsync()
         {
-            // Cancel the initialization
             await _receiveProcess.TerminateAsync().HandleExceptionsAsync(_logger);
             _logicalEndPoint.Dispose();
             await _routeManager.RemoveRoutesAsync(_logicalEndPoint.EndPoint, removePersistentRoutes: false, cancellation: default).HandleExceptionsAsync(_logger);
@@ -78,11 +64,6 @@ namespace AI4E.Routing
         public void Dispose()
         {
             _disposeHelper.Dispose();
-        }
-
-        public Task DisposeAsync()
-        {
-            return _disposeHelper.DisposeAsync();
         }
 
         #endregion
@@ -143,7 +124,7 @@ namespace AI4E.Routing
             return response;
         }
 
-        public ValueTask<IMessage> RouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation)
+        public async ValueTask<IMessage> RouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation)
         {
             if (route == null)
                 throw new ArgumentNullException(nameof(route));
@@ -154,10 +135,20 @@ namespace AI4E.Routing
             if (endPoint == default)
                 throw new ArgumentDefaultException(nameof(endPoint));
 
-            return InternalRouteAsync(route, serializedMessage, publish, endPoint, cancellation);
+            try
+            {
+                using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
+                {
+                    return await InternalRouteAsync(route, serializedMessage, publish, endPoint, cancellation);
+                }
+            }
+            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
+            }
         }
 
-        public ValueTask<IReadOnlyCollection<IMessage>> RouteAsync(IEnumerable<string> routes, IMessage serializedMessage, bool publish, CancellationToken cancellation)
+        public async ValueTask<IReadOnlyCollection<IMessage>> RouteAsync(IEnumerable<string> routes, IMessage serializedMessage, bool publish, CancellationToken cancellation)
         {
             if (routes == null)
                 throw new ArgumentNullException(nameof(routes));
@@ -171,7 +162,17 @@ namespace AI4E.Routing
             if (routes.Any(p => p == null))
                 throw new ArgumentException("The collection must not contain null values.", nameof(routes));
 
-            return InternalRouteAsync(routes, serializedMessage, publish, cancellation);
+            try
+            {
+                using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
+                {
+                    return await InternalRouteAsync(routes, serializedMessage, publish, cancellation);
+                }
+            }
+            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
+            }
         }
 
         private async ValueTask<IReadOnlyCollection<IMessage>> InternalRouteAsync(IEnumerable<string> routes, IMessage serializedMessage, bool publish, CancellationToken cancellation)
@@ -287,7 +288,7 @@ namespace AI4E.Routing
 
         private static void EncodeMessage(IMessage message, bool publish, string route)
         {
-            var routeBytes = route != null ? Encoding.UTF8.GetBytes(route) : _emptyBytes;
+            var routeBytes = route != null ? Encoding.UTF8.GetBytes(route) : Array.Empty<byte>();
 
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(stream))
@@ -329,20 +330,49 @@ namespace AI4E.Routing
 
         public async Task RegisterRouteAsync(string route, RouteRegistrationOptions options, CancellationToken cancellation)
         {
-            var localEndPoint = await GetLocalEndPointAsync(cancellation);
-            await _routeManager.AddRouteAsync(localEndPoint, route, options, cancellation);
+            try
+            {
+                using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
+                {
+                    var localEndPoint = await GetLocalEndPointAsync(cancellation);
+                    await _routeManager.AddRouteAsync(localEndPoint, route, options, cancellation);
+                }
+            }
+            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
+            }
         }
 
         public async Task UnregisterRouteAsync(string route, CancellationToken cancellation)
         {
-            var localEndPoint = await GetLocalEndPointAsync(cancellation);
-
-            await _routeManager.RemoveRouteAsync(localEndPoint, route, cancellation);
+            try
+            {
+                using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
+                {
+                    var localEndPoint = await GetLocalEndPointAsync(cancellation);
+                    await _routeManager.RemoveRouteAsync(localEndPoint, route, cancellation);
+                }
+            }
+            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
+            }
         }
 
-        public Task UnregisterRoutesAsync(bool removePersistentRoutes, CancellationToken cancellation)
+        public async Task UnregisterRoutesAsync(bool removePersistentRoutes, CancellationToken cancellation)
         {
-            return _routeManager.RemoveRoutesAsync(_logicalEndPoint.EndPoint, removePersistentRoutes, cancellation);
+            try
+            {
+                using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
+                {
+                    await _routeManager.RemoveRoutesAsync(_logicalEndPoint.EndPoint, removePersistentRoutes, cancellation);
+                }
+            }
+            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
+            }
         }
 
         private Task<IEnumerable<(EndPointAddress endPoint, RouteRegistrationOptions options)>> MatchRouteAsync(string route, CancellationToken cancellation)

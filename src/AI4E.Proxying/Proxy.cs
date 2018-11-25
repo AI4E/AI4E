@@ -1,10 +1,9 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        Proxy.cs
  * Types:           AI4E.Proxying.Proxy'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -138,75 +137,89 @@ namespace AI4E.Proxying
 
         public async Task ExecuteAsync(Expression<Action<TRemote>> expression)
         {
-            using (await _disposeHelper.ProhibitDisposalAsync())
+            try
             {
-                if (_disposeHelper.IsDisposed)
-                    throw new ObjectDisposedException(GetType().FullName);
-
-                if (IsRemoteProxy)
+                using (var guard = _disposeHelper.GuardDisposal(cancellation: default))
                 {
-                    await _host.SendMethodCallAsync<object>(expression.Body, Id, false);
+                    if (IsRemoteProxy)
+                    {
+                        await _host.SendMethodCallAsync<object>(expression.Body, Id, false);
+                    }
+
+                    var compiled = expression.Compile();
+
+                    compiled.Invoke(LocalInstance);
                 }
-
-                var compiled = expression.Compile();
-
-                compiled.Invoke(LocalInstance);
+            }
+            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
             }
         }
 
         public async Task ExecuteAsync(Expression<Func<TRemote, Task>> expression)
         {
-            using (await _disposeHelper.ProhibitDisposalAsync())
+            try
             {
-                if (_disposeHelper.IsDisposed)
-                    throw new ObjectDisposedException(GetType().FullName);
-
-                if (IsRemoteProxy)
+                using (var guard = _disposeHelper.GuardDisposal(cancellation: default))
                 {
-                    await _host.SendMethodCallAsync<object>(expression.Body, Id, true);
-                    return;
+                    if (IsRemoteProxy)
+                    {
+                        await _host.SendMethodCallAsync<object>(expression.Body, Id, true);
+                        return;
+                    }
+
+                    var compiled = expression.Compile();
+
+                    await compiled.Invoke(LocalInstance);
                 }
-
-                var compiled = expression.Compile();
-
-                await compiled.Invoke(LocalInstance);
+            }
+            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
             }
         }
 
         public async Task<TResult> ExecuteAsync<TResult>(Expression<Func<TRemote, TResult>> expression)
         {
-            using (await _disposeHelper.ProhibitDisposalAsync())
+            try
             {
-                if (_disposeHelper.IsDisposed)
-                    throw new ObjectDisposedException(GetType().FullName);
-
-                if (IsRemoteProxy)
+                using (var guard = _disposeHelper.GuardDisposal(cancellation: default))
                 {
-                    return await _host.SendMethodCallAsync<TResult>(expression.Body, Id, false);
+                    if (IsRemoteProxy)
+                    {
+                        return await _host.SendMethodCallAsync<TResult>(expression.Body, Id, false);
+                    }
+
+                    var compiled = expression.Compile();
+                    return compiled.Invoke(LocalInstance);
                 }
-
-                var compiled = expression.Compile();
-
-                var result = compiled.Invoke(LocalInstance);
-                return result;
+            }
+            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
             }
         }
 
         public async Task<TResult> ExecuteAsync<TResult>(Expression<Func<TRemote, Task<TResult>>> expression)
         {
-            using (await _disposeHelper.ProhibitDisposalAsync())
+            try
             {
-                if (_disposeHelper.IsDisposed)
-                    throw new ObjectDisposedException(GetType().FullName);
-
-                if (IsRemoteProxy)
+                using (var guard = _disposeHelper.GuardDisposal(cancellation: default))
                 {
-                    return await _host.SendMethodCallAsync<TResult>(expression.Body, Id, true);
+                    if (IsRemoteProxy)
+                    {
+                        return await _host.SendMethodCallAsync<TResult>(expression.Body, Id, true);
+                    }
+
+                    var compiled = expression.Compile();
+
+                    return await compiled.Invoke(LocalInstance);
                 }
-
-                var compiled = expression.Compile();
-
-                return await compiled.Invoke(LocalInstance);
+            }
+            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
             }
         }
 
@@ -235,6 +248,8 @@ namespace AI4E.Proxying
             {
                 throw new InvalidCastException();
             }
+
+            // TODO: Should we also copy over the dispose-helper?
 
             if (IsRemoteProxy)
             {

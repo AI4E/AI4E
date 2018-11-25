@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        ProxyHost.cs
  * Types:           (1) AI4E.Proxying.ProxyHost
@@ -54,7 +54,7 @@ using Nito.AsyncEx;
 
 namespace AI4E.Proxying
 {
-    public sealed class ProxyHost : IAsyncInitialization, IAsyncDisposable
+    public sealed class ProxyHost : IAsyncDisposable
     {
         #region Fields
 
@@ -67,7 +67,7 @@ namespace AI4E.Proxying
         private readonly Dictionary<int, IProxy> _proxies = new Dictionary<int, IProxy>();
         private readonly object _proxyLock = new object();
         private readonly AsyncDisposeHelper _disposeHelper;
-        private readonly AsyncInitializationHelper _initializationHelper;
+
         private int _nextSeqNum = 0;
         private int _nextProxyId = 0;
 
@@ -86,8 +86,7 @@ namespace AI4E.Proxying
             _stream = stream;
             _serviceProvider = serviceProvider;
 
-            _receiveProcess = new AsyncProcess(ReceiveProcess);
-            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
+            _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
@@ -158,17 +157,6 @@ namespace AI4E.Proxying
 
         #endregion
 
-        #region Initialization
-
-        public Task Initialization => _initializationHelper.Initialization;
-
-        private async Task InitializeInternalAsync(CancellationToken cancellation)
-        {
-            await _receiveProcess.StartAsync(cancellation);
-        }
-
-        #endregion
-
         #region Disposal
 
         public Task Disposal => _disposeHelper.Disposal;
@@ -185,8 +173,6 @@ namespace AI4E.Proxying
 
         private async Task DisposeInternalAsync()
         {
-            await _initializationHelper.CancelAsync().HandleExceptionsAsync();
-
             await _receiveProcess.TerminateAsync().HandleExceptionsAsync();
 
             IEnumerable<IProxy> proxies;

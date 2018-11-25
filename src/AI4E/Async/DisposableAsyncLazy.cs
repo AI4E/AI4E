@@ -67,6 +67,8 @@ namespace AI4E.Async
 
     public sealed class DisposableAsyncLazy<T> : IAsyncDisposable
     {
+        private static readonly Func<T, Task> _noDisposal = _ => System.Threading.Tasks.Task.CompletedTask;
+
         private readonly Func<Task<T>> _factory;
         private readonly Func<T, Task> _disposal;
         private readonly CancellationTokenSource _cancellationSource;
@@ -75,6 +77,8 @@ namespace AI4E.Async
 
         private Lazy<Task<T>> _instance;
         private Task _disposeTask;
+
+        #region C'tor
 
         public DisposableAsyncLazy(Func<Task<T>> factory, Func<T, Task> disposal, DisposableAsyncLazyOptions options = default)
         {
@@ -136,6 +140,16 @@ namespace AI4E.Async
             if ((options & DisposableAsyncLazyOptions.Autostart) != DisposableAsyncLazyOptions.Autostart)
                 Start();
         }
+
+        public DisposableAsyncLazy(Func<Task<T>> factory, DisposableAsyncLazyOptions options = default)
+            : this(factory, _noDisposal, options)
+        { }
+
+        public DisposableAsyncLazy(Func<CancellationToken, Task<T>> factory, DisposableAsyncLazyOptions options = default)
+            : this(factory, _noDisposal, options)
+        { }
+
+        #endregion
 
         private Func<Task<T>> RetryOnFailure(Func<Task<T>> factory)
         {

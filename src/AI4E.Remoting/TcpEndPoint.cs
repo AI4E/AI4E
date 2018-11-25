@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        TcpEndPoint.cs 
  * Types:           (1) AI4E.Remoting.TcpEndPoint
@@ -32,6 +32,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
@@ -50,12 +51,11 @@ namespace AI4E.Remoting
 {
     public sealed class TcpEndPoint : IPhysicalEndPoint<IPEndPoint>
     {
-        private readonly IAsyncProcess _connectionProcess;
+        private readonly AsyncProcess _connectionProcess;
         private readonly TcpListener _tcpHost;
         private readonly ConcurrentDictionary<IPEndPoint, ImmutableList<Connection>> _physicalConnections;
         private readonly ILogger<TcpEndPoint> _logger;
         private readonly AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)> _rxQueue;
-        private readonly AsyncInitializationHelper _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
         public TcpEndPoint(ILogger<TcpEndPoint> logger)
@@ -69,23 +69,9 @@ namespace AI4E.Remoting
             LocalAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;
             Assert(LocalAddress != null);
 
-            _connectionProcess = new AsyncProcess(ConnectProcedure);
-            _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
-            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+            _connectionProcess = new AsyncProcess(ConnectProcedure, start: true);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
         }
-
-        #region Initialization
-
-        public Task Initialization => _initializationHelper.Initialization;
-
-        private async Task InitializeInternalAsync(CancellationToken cancellation)
-        {
-            await _connectionProcess.StartAsync(cancellation);
-
-            _logger?.LogDebug($"Started physical-end-point on local address '{LocalAddress}'.");
-        }
-
-        #endregion
 
         #region Disposal
 
@@ -103,9 +89,16 @@ namespace AI4E.Remoting
 
         private async Task DisposeInternalAsync()
         {
-            await _initializationHelper.CancelAsync();
-
             await _connectionProcess.TerminateAsync();
+
+            var disposalTasks = new List<Task>();
+
+            foreach (var connection in _physicalConnections.Values.SelectMany(_ => _))
+            {
+                disposalTasks.Add(connection.DisposeAsync());
+            }
+
+            await Task.WhenAll(disposalTasks);
         }
 
         #endregion
@@ -114,7 +107,7 @@ namespace AI4E.Remoting
 
         private async Task ConnectProcedure(CancellationToken cancellation)
         {
-            _logger?.LogDebug($"Physical-end-point {LocalAddress}: Connection process started.");
+            _logger?.LogDebug($"Started physical-end-point on local address '{LocalAddress}'.");
 
             while (cancellation.ThrowOrContinue())
             {
@@ -149,21 +142,33 @@ namespace AI4E.Remoting
 
         public async Task<(IMessage message, IPEndPoint remoteAddress)> ReceiveAsync(CancellationToken cancellation)
         {
-            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            try
             {
-                return await _rxQueue.DequeueAsync(cancellation);
+                using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
+                {
+                    return await _rxQueue.DequeueAsync(guard.Cancellation);
+                }
+            }
+            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
             }
         }
 
         public async Task SendAsync(IMessage message, IPEndPoint remoteAddress, CancellationToken cancellation)
         {
-            using (await _disposeHelper.ProhibitDisposalAsync(cancellation))
+            try
             {
-                var connection = await GetConnectionAsync(remoteAddress, cancellation);
-
-                Assert(connection != null);
-
-                await connection.SendAsync(message, cancellation);
+                using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
+                {
+                    var connection = await GetConnectionAsync(remoteAddress, guard.Cancellation);
+                    Assert(connection != null);
+                    await connection.SendAsync(message, guard.Cancellation);
+                }
+            }
+            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
             }
         }
 
@@ -192,8 +197,7 @@ namespace AI4E.Remoting
         {
             private readonly TcpEndPoint _endPoint;
             private readonly Stream _stream;
-            private readonly IAsyncProcess _receiveProcess;
-            private readonly AsyncInitializationHelper _initializationHelper;
+            private readonly AsyncProcess _receiveProcess;
             private readonly AsyncDisposeHelper _disposeHelper;
             private readonly AsyncLock _sendLock = new AsyncLock();
 
@@ -211,25 +215,13 @@ namespace AI4E.Remoting
                 _endPoint = endPoint;
                 RemoteAddress = address;
                 _stream = stream;
-                _receiveProcess = new AsyncProcess(ReceiveProcedure);
-                _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
-                _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
+                _receiveProcess = new AsyncProcess(ReceiveProcedure, start: true);
+                _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
             }
 
             public IPEndPoint LocalAddress => _endPoint.LocalAddress;
             public IPEndPoint RemoteAddress { get; }
             private ILogger Logger => _endPoint._logger;
-
-            #region Initialization
-
-            public Task Initialization => _initializationHelper.Initialization;
-
-            private async Task InitializeInternalAsync(CancellationToken cancellation)
-            {
-                await _receiveProcess.StartAsync(cancellation);
-            }
-
-            #endregion
 
             #region Disposal
 
@@ -247,8 +239,6 @@ namespace AI4E.Remoting
 
             private async Task DisposeInternalAsync()
             {
-                await _initializationHelper.CancelAsync();
-
                 await _receiveProcess.TerminateAsync();
                 _stream.Close();
 
@@ -288,23 +278,27 @@ namespace AI4E.Remoting
 
             public async Task SendAsync(IMessage message, CancellationToken cancellation)
             {
-                using (await _disposeHelper.ProhibitDisposalAsync())
+                try
                 {
-                    if (_disposeHelper.IsDisposed)
-                        throw new ObjectDisposedException(GetType().FullName);
-
-                    try
+                    using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
                     {
-                        using (await _sendLock.LockAsync())
+                        try
                         {
-                            await message.WriteAsync(_stream, cancellation);
+                            using (await _sendLock.LockAsync())
+                            {
+                                await message.WriteAsync(_stream, guard.Cancellation);
+                            }
+                        }
+                        catch (IOException)
+                        {
+                            Dispose();
+                            throw;
                         }
                     }
-                    catch (IOException)
-                    {
-                        Dispose();
-                        throw;
-                    }
+                }
+                catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+                {
+                    throw new ObjectDisposedException(_endPoint.GetType().FullName);
                 }
             }
 

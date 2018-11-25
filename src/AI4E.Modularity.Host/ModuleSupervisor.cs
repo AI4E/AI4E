@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -11,20 +11,23 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Host
 {
-    // TODO: When the host crashed and is newly swaning now, there are running modules. 
+    // TODO: https://github.com/AI4E/AI4E/issues/34
+    //       When the host crashed and is newly swaning now, there are modules running. 
     //       How can we recognize them und use them instead of starting a new process?
     public sealed class ModuleSupervisor : IAsyncDisposable, IModuleSupervisor
     {
-        private readonly AsyncInitializationHelper<IModuleMetadata> _initializationHelper;
-        private readonly AsyncDisposeHelper _disposeHelper;
-        private readonly IAsyncProcess _supervisorProcess;
         private readonly IMetadataReader _metadataReader;
         private readonly ILogger<ModuleSupervisor> _logger;
+
+        private readonly DisposableAsyncLazy<IModuleMetadata> _metadataLazy;
+        private readonly AsyncDisposeHelper _disposeHelper;
+        private readonly AsyncProcess _supervisorProcess;
 
         private readonly TimeSpan _moduleTerminateTimeout = TimeSpan.FromMilliseconds(2500); // TODO: This should be configurable
 
 #pragma warning disable IDE0032
         private volatile ModuleSupervisorState _state;
+
 #pragma warning restore IDE0032
 
         public ModuleSupervisor(DirectoryInfo directory,
@@ -44,8 +47,11 @@ namespace AI4E.Modularity.Host
             // Volatile write op (Is avtually not necessary here, because the CLR enforces thread-safety.)
             _state = ModuleSupervisorState.Initializing;
 
-            _supervisorProcess = new AsyncProcess(SupervisorProcessRoutine);
-            _initializationHelper = new AsyncInitializationHelper<IModuleMetadata>(InitializeInternalAsync);
+            _metadataLazy = new DisposableAsyncLazy<IModuleMetadata>(
+                factory: LookupMetadataAsync,
+                options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread | DisposableAsyncLazyOptions.RetryOnFailure);
+
+            _supervisorProcess = new AsyncProcess(SupervisorProcessRoutine, start: true);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
@@ -77,10 +83,10 @@ namespace AI4E.Modularity.Host
 
         private Task<IModuleMetadata> GetMetadataAsync(CancellationToken cancellation)
         {
-            return _initializationHelper.Initialization.WithCancellation(cancellation);
+            return _metadataLazy.Task.WithCancellation(cancellation);
         }
 
-        private async Task<IModuleMetadata> InitializeInternalAsync(CancellationToken cancellation)
+        private async Task<IModuleMetadata> LookupMetadataAsync(CancellationToken cancellation)
         {
             IModuleMetadata result;
 
@@ -91,10 +97,9 @@ namespace AI4E.Modularity.Host
                 result = await _metadataReader.ReadMetadataAsync(fileStream, cancellation);
             }
 
-            await _supervisorProcess.StartAsync(cancellation);
-
             return result;
         }
+
 
         private async Task SupervisorProcessRoutine(CancellationToken cancellation)
         {
@@ -115,9 +120,7 @@ namespace AI4E.Modularity.Host
             // This is a meta-module and cannot be started.
             if (string.IsNullOrWhiteSpace(metadata.EntryAssemblyCommand))
             {
-#pragma warning disable CS4014
-                _supervisorProcess.TerminateAsync();
-#pragma warning restore CS4014
+                _supervisorProcess.Terminate();
                 Assert(cancellation.IsCancellationRequested);
 
                 return;
@@ -175,7 +178,7 @@ namespace AI4E.Modularity.Host
 
         private async Task DisposeInternalAsync()
         {
-            var (success, result) = await _initializationHelper.CancelAsync();
+            await _metadataLazy.DisposeAsync().HandleExceptionsAsync(_logger);
             await _supervisorProcess.TerminateAsync().HandleExceptionsAsync(_logger);
         }
 
