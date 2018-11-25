@@ -1,3 +1,23 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -6,6 +26,9 @@ using Nito.AsyncEx;
 
 namespace AI4E.Async
 {
+    /// <summary>
+    /// A helper that can be used to safely dispose of objects in a thread-safe way.
+    /// </summary>
     public sealed class AsyncDisposeHelper2 : IAsyncDisposable
     {
         #region Fields
@@ -28,6 +51,15 @@ namespace AI4E.Async
 
         #region C'tor
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="AsyncDisposeHelper2"/> type.
+        /// </summary>
+        /// <param name="disposal">The dispose operation that shall be invoked on dispose.</param>
+        /// <param name="options">A combination of options that specify the behavior.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="disposal"/> is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="options"/> is not a valid combination of flags as specified in <see cref="AsyncDisposeHelperOptions"/>.
+        /// </exception>
         public AsyncDisposeHelper2(Func<Task> disposal, AsyncDisposeHelperOptions options = default)
         {
             if (disposal == null)
@@ -46,12 +78,21 @@ namespace AI4E.Async
                 _lock = new AsyncReaderWriterLock();
             }
 
-            if(!options.IncludesFlag(AsyncDisposeHelperOptions.DisableRecursionDetection))
+            if (!options.IncludesFlag(AsyncDisposeHelperOptions.DisableRecursionDetection))
             {
                 _recursionDetection = new AsyncLocal<bool>();
             }
         }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="AsyncDisposeHelper2"/> type.
+        /// </summary>
+        /// <param name="disposal">The dispose operation that shall be invoked on dispose.</param>
+        /// <param name="options">A combination of options that specify the behavior.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="disposal"/> is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="options"/> is not a valid combination of flags as specified in <see cref="AsyncDisposeHelperOptions"/>.
+        /// </exception>
         public AsyncDisposeHelper2(Func<ValueTask> disposal, AsyncDisposeHelperOptions options = default)
         {
             if (disposal == null)
@@ -76,6 +117,15 @@ namespace AI4E.Async
             }
         }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="AsyncDisposeHelper2"/> type.
+        /// </summary>
+        /// <param name="disposal">The dispose operation that shall be invoked on dispose.</param>
+        /// <param name="options">A combination of options that specify the behavior.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="disposal"/> is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="options"/> is not a valid combination of flags as specified in <see cref="AsyncDisposeHelperOptions"/>.
+        /// </exception>
         public AsyncDisposeHelper2(Action disposal, AsyncDisposeHelperOptions options = default)
         {
             if (disposal == null)
@@ -102,6 +152,9 @@ namespace AI4E.Async
 
         #region IAsyncDisposable
 
+        /// <summary>
+        /// Starts the dispose of the object and does not wait for the end of the dispose operation.
+        /// </summary>
         public void Dispose()
         {
             // Volatile read op.
@@ -120,6 +173,15 @@ namespace AI4E.Async
             }
         }
 
+        /// <summary>
+        /// Gets a task that represents the asnchronous dispose operation.
+        /// </summary>
+        /// <remarks>
+        /// The value cannot be retrieved in the dispose operation itself,
+        /// as this would lead to deadlock situations if the returning task is awaited.
+        /// Instead, a completed task is returned.
+        /// This behaviour can be changed by specifying the <see cref="AsyncDisposeHelperOptions.DisableRecursionDetection"/> option on creation.
+        /// </remarks>
         public Task Disposal
         {
             get
@@ -137,6 +199,15 @@ namespace AI4E.Async
             }
         }
 
+        /// <summary>
+        /// Starts the dispose of the object and returns a task that represents the asynchronous dispose operation.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous dispose operation.</returns>
+        /// <remarks>
+        /// When this operation is called in the dipose operation itself,
+        /// the returned task is always completed, to prevent deadlock sitatuations if awaited.
+        /// This behaviour can be changed by specifying the <see cref="AsyncDisposeHelperOptions.DisableRecursionDetection"/> option on creation.
+        /// </remarks>
         public Task DisposeAsync()
         {
             Dispose();
@@ -145,18 +216,38 @@ namespace AI4E.Async
 
         #endregion
 
+        /// <summary>
+        /// Gets the options that were used to create this object.
+        /// </summary>
         public AsyncDisposeHelperOptions Options { get; }
 
+        /// <summary>
+        /// Guards agains disposal and returns a <see cref="DisposalGuard"/>.
+        /// </summary>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> that is passed to the guard to get the combined cancellation.</param>
+        /// <returns>A disposal guard.</returns>
         public DisposalGuard GuardDisposal(CancellationToken cancellation = default)
         {
             return new DisposalGuard(this, cancellation);
         }
 
+        /// <summary>
+        /// Asynchronously guards agains disposal and returns a <see cref="DisposalGuard"/>.
+        /// </summary>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> that is passed to the guard to get the combined cancellation.</param>
+        /// <returns>A task represeting the asynchronous operation. When evaluated, the tasks result contains the diposal guard.</returns>
         public ValueTask<DisposalGuard> GuardDisposalAsync(CancellationToken cancellation = default)
         {
             return DisposalGuard.CreateAsync(this, cancellation);
         }
 
+        /// <summary>
+        /// Gets a boolean value indicating whether the object is disposed.
+        /// </summary>
+        /// <remarks>
+        /// Be aware that the returned value is just a snapshot in time and may already be invalid if returned.
+        /// If this returns true, it is guaranteed that the value will never change again in the future.
+        /// </remarks>
         public bool IsDisposed
         {
             get
@@ -237,7 +328,7 @@ namespace AI4E.Async
             }
             catch (Exception exc) when (!(exc is OperationCanceledException))
             {
-                // If the operation throws an exception we need to allocate a task completion source to allow for passing the excpetion to the outside.
+                // If the operation throws an exception we need to allocate a task completion source to allow for passing the exception to the outside.
                 // TODO: Can we prevent the allocation by setting the excpetion to a dedicated field?
                 GetOrCreateDisposalTaskSource().TrySetException(exc);
                 return;
