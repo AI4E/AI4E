@@ -49,7 +49,6 @@ namespace AI4E.Modularity.Host
 
             _metadataLazy = new DisposableAsyncLazy<IModuleMetadata>(
                 factory: LookupMetadataAsync,
-                disposal: _ => Task.CompletedTask,
                 options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread | DisposableAsyncLazyOptions.RetryOnFailure);
 
             _supervisorProcess = new AsyncProcess(SupervisorProcessRoutine, start: true);
