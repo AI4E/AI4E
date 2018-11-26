@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IDispatchResult.cs 
  * Types:           (1) AI4E.IDispatchResult
@@ -49,6 +49,8 @@ namespace AI4E
         /// Gets a description of the dispatch result.
         /// </summary>
         string Message { get; }
+
+        IReadOnlyDictionary<string, object> ResultData { get; }
     }
 
     /// <summary>

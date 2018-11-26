@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -30,41 +30,21 @@ namespace AI4E
     {
         public static bool IsNotAuthorized(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult is NotAuthenticatedDispatchResult;
         }
 
         public static bool IsNotAuthenticated(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult is NotAuthenticatedDispatchResult;
         }
 
         public static bool IsValidationFailed(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult is ValidationFailureDispatchResult;
         }
 
         public static bool IsValidationFailed(this IDispatchResult dispatchResult, out IEnumerable<ValidationResult> validationResults)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             if (dispatchResult is ValidationFailureDispatchResult validationFailureDispatchResult)
             {
                 validationResults = validationFailureDispatchResult.ValidationResults;
@@ -77,31 +57,16 @@ namespace AI4E
 
         public static bool IsConcurrencyIssue(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult is ConcurrencyIssueDispatchResult;
         }
 
         public static bool IsEntityNotFound(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult is EntityNotFoundDispatchResult;
         }
 
         public static bool IsEntityNotFound(this IDispatchResult dispatchResult, out Type entityType, out string id)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             if (dispatchResult is EntityNotFoundDispatchResult entityNotFoundDispatchResult)
             {
                 entityType = entityNotFoundDispatchResult.EntityType;
@@ -117,21 +82,11 @@ namespace AI4E
 
         public static bool IsEntityAlreadPresent(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult is EntityAlreadyPresentDispatchResult;
         }
 
         public static bool IsEntityAlreadPresent(this IDispatchResult dispatchResult, out Type entityType, out string id)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             if (dispatchResult is EntityAlreadyPresentDispatchResult entityAlreadyPresentDispatchResult)
             {
                 entityType = entityAlreadyPresentDispatchResult.EntityType;
@@ -147,21 +102,11 @@ namespace AI4E
 
         public static bool IsTimeout(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult is TimeoutDispatchResult;
         }
 
         public static bool IsTimeout(this IDispatchResult dispatchResult, out DateTime dueTime)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             if (dispatchResult is TimeoutDispatchResult timeoutDispatchResult)
             {
                 dueTime = timeoutDispatchResult.DueTime;
@@ -172,24 +117,13 @@ namespace AI4E
             return false;
         }
 
-
         public static bool IsAggregateResult(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult is IAggregateDispatchResult;
         }
 
         public static bool IsAggregateResult(this IDispatchResult dispatchResult, out IAggregateDispatchResult aggregateDispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             if (dispatchResult is IAggregateDispatchResult aggregateDispatchResult2)
             {
                 aggregateDispatchResult = aggregateDispatchResult2;
@@ -205,105 +139,41 @@ namespace AI4E
             if (aggregateDispatchResult == null)
                 throw new ArgumentNullException(nameof(aggregateDispatchResult));
 
-            var results = new List<IDispatchResult>();
-            var resultsData = new List<IReadOnlyDictionary<string, object>>();
-            FlattenInternal(aggregateDispatchResult, results, resultsData);
+            var combinedDispatchResultData = aggregateDispatchResult.ResultData;
+            var dispatchResults = new List<IDispatchResult>();
 
-            if (resultsData.Any())
-            {
-                var resultDataBuilder = ImmutableDictionary.CreateBuilder<string, object>();
-                var combinedResultDataEntries = new Dictionary<string, List<object>>();
+            FlattenInternal(aggregateDispatchResult, dispatchResults);
 
-                foreach (var resultData in resultsData)
-                {
-                    foreach (var kvp in resultData)
-                    {
-                        var key = kvp.Key;
-                        var value = kvp.Value;
-
-                        if (combinedResultDataEntries.TryGetValue(key, out var list))
-                        {
-                            list.Add(value);
-                        }
-                        else if (resultDataBuilder.TryGetValue(key, out var existingEntry))
-                        {
-                            list = new List<object> { value, existingEntry };
-
-                            combinedResultDataEntries.Add(key, list);
-                            resultDataBuilder[key] = list;
-                        }
-                        else
-                        {
-                            resultDataBuilder.Add(key, value);
-                        }
-                    }
-                }
-
-                if (resultDataBuilder.Any())
-                {
-                    return new DispatchResultDictionary<AggregateDispatchResult>(
-                        new AggregateDispatchResult(results),
-                        resultDataBuilder.ToImmutable());
-                }
-            }
-
-            return new AggregateDispatchResult(results);
+            return new AggregateDispatchResult(dispatchResults, combinedDispatchResultData);
         }
 
-        private static void FlattenInternal(IAggregateDispatchResult aggregateDispatchResult,
-                                            List<IDispatchResult> results,
-                                            List<IReadOnlyDictionary<string, object>> resultsData)
+        private static void FlattenInternal(IAggregateDispatchResult aggregateDispatchResult, List<IDispatchResult> dispatchResults)
         {
-            //if (aggregateDispatchResult is AggregateDispatchResultDictionary aggregateResultData)
-            //{
-            //    resultsData.Add(aggregateResultData);
-            //}
-
-            foreach (var dispatchResult in aggregateDispatchResult.DispatchResults)
+            foreach (var child in aggregateDispatchResult.DispatchResults)
             {
-                if (dispatchResult is IAggregateDispatchResult innerAggregateEventResult)
+                if (child is IAggregateDispatchResult childAggregateDispatchResult)
                 {
-                    FlattenInternal(innerAggregateEventResult, results, resultsData);
-                }
-                else if (dispatchResult is DispatchResultDictionary resultData)
-                {
-                    resultsData.Add(resultData);
-                    results.Add(resultData.DispatchResult);
+                    FlattenInternal(childAggregateDispatchResult, dispatchResults);
                 }
                 else
                 {
-                    results.Add(dispatchResult);
+                    dispatchResults.Add(child);
                 }
             }
         }
 
         public static bool IsNotFound(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult is NotFoundDispatchResult;
         }
 
         public static bool IsSuccess(this IDispatchResult dispatchResult, out object result)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult.IsSuccess<object>(out result);
         }
 
         public static bool IsSuccess<TResult>(this IDispatchResult dispatchResult, out TResult result)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             if (dispatchResult.IsSuccess)
             {
                 if (dispatchResult is IDispatchResult<TResult> typedDispatchResult)
@@ -324,21 +194,11 @@ namespace AI4E
 
         public static bool IsSuccessWithResult(this IDispatchResult dispatchResult, out object result)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult.IsSuccessWithResult<object>(out result);
         }
 
         public static bool IsSuccessWithResult<TResult>(this IDispatchResult dispatchResult, out TResult result)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             if (dispatchResult.IsSuccess && dispatchResult is IDispatchResult<TResult> typedDispatchResult)
             {
                 result = typedDispatchResult.Result;
@@ -351,11 +211,6 @@ namespace AI4E
 
         public static IEnumerable<TResult> GetResults<TResult>(this IDispatchResult dispatchResult, bool throwOnFailure)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             if (dispatchResult.IsAggregateResult(out var aggregateDispatchResult))
             {
                 var flattenedDispatchResult = aggregateDispatchResult.Flatten();

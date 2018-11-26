@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,35 +18,46 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Text;
 using Newtonsoft.Json;
 
 namespace AI4E.DispatchResults
 {
-    public class SuccessDispatchResult : IDispatchResult
+    public class SuccessDispatchResult : DispatchResult
     {
         [JsonConstructor]
+        public SuccessDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+            : base(true, message, resultData) { }
+
         public SuccessDispatchResult(string message)
-        {
-            Message = message;
-        }
+            : this(message, ImmutableDictionary<string, object>.Empty) { }
 
-        public SuccessDispatchResult() : this("Success") { }
+        public SuccessDispatchResult()
+            : this("Success") { }
 
-        public bool IsSuccess => true;
-
-        public string Message { get; }
-
-        public override string ToString()
-        {
-            return Message;
-        }
+        [JsonIgnore]
+        public override bool IsSuccess => true;
     }
 
     public class SuccessDispatchResult<TResult> : SuccessDispatchResult, IDispatchResult<TResult>
     {
         [JsonConstructor]
+        public SuccessDispatchResult(TResult result, string message, IReadOnlyDictionary<string, object> resultData) : base(message, resultData)
+        {
+            if (result == null)
+                throw new ArgumentNullException(nameof(result));
+
+            Result = result;
+        }
+
         public SuccessDispatchResult(TResult result, string message) : base(message)
         {
+            if (result == null)
+                throw new ArgumentNullException(nameof(result));
+
             Result = result;
         }
 
@@ -54,9 +65,13 @@ namespace AI4E.DispatchResults
 
         public TResult Result { get; }
 
-        public override string ToString()
+        protected override void FormatString(StringBuilder stringBuilder)
         {
-            return $"{Message} [Result: {Result}]";
+            base.FormatString(stringBuilder);
+
+            stringBuilder.Append("[Result: ");
+            stringBuilder.Append(Result.ToString());
+            stringBuilder.Append("]");
         }
     }
 }
