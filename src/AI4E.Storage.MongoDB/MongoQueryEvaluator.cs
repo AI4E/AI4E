@@ -120,16 +120,13 @@ namespace AI4E.Storage.MongoDB
 
                 _currentBatch?.Dispose();
 
-                if (_asyncCursorInstance != null)
+                if (_asyncCursorDisposal != null)
                 {
-                    if (_asyncCursorDisposal != null)
-                    {
-                        _asyncCursorDisposal(_asyncCursorInstance);
-                    }
-                    else
-                    {
-                        _asyncCursorInstance.Dispose();
-                    }
+                    _asyncCursorDisposal(_asyncCursorInstance);
+                }
+                else if (_asyncCursorInstance != null)
+                {
+                    _asyncCursorInstance.Dispose();
                 }
             }
         }
@@ -145,6 +142,12 @@ namespace AI4E.Storage.MongoDB
             if (_asyncCursorInstance == null)
             {
                 _asyncCursorInstance = await _asyncCursor;
+
+                if (_asyncCursorInstance == null)
+                {
+                    _endOfSeq = true;
+                    return false;
+                }
             }
 
             while (_currentBatch == null || !_currentBatch.MoveNext())
