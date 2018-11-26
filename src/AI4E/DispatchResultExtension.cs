@@ -20,7 +20,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using AI4E.DispatchResults;
 
@@ -30,21 +29,52 @@ namespace AI4E
     {
         public static bool IsNotAuthorized(this IDispatchResult dispatchResult)
         {
-            return dispatchResult is NotAuthenticatedDispatchResult;
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is NotAuthorizedDispatchResult);
+            }
+
+            return dispatchResult is NotAuthorizedDispatchResult;
         }
 
         public static bool IsNotAuthenticated(this IDispatchResult dispatchResult)
         {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is NotAuthenticatedDispatchResult);
+            }
+
             return dispatchResult is NotAuthenticatedDispatchResult;
         }
 
         public static bool IsValidationFailed(this IDispatchResult dispatchResult)
         {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is ValidationFailureDispatchResult);
+            }
+
             return dispatchResult is ValidationFailureDispatchResult;
         }
 
         public static bool IsValidationFailed(this IDispatchResult dispatchResult, out IEnumerable<ValidationResult> validationResults)
         {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                var innerResults = aggregateDispatchResult.Flatten().DispatchResults;
+
+                if (!innerResults.Any(p => p is ValidationFailureDispatchResult))
+                {
+                    validationResults = Enumerable.Empty<ValidationResult>();
+                    return false;
+                }
+
+                var validationFailureDispatchResults = innerResults.Select(p => p is ValidationFailureDispatchResult);
+
+                validationResults = validationFailureDispatchResults.OfType<ValidationFailureDispatchResult>().SelectMany(p => p.ValidationResults);
+                return true;
+            }
+
             if (dispatchResult is ValidationFailureDispatchResult validationFailureDispatchResult)
             {
                 validationResults = validationFailureDispatchResult.ValidationResults;
@@ -57,16 +87,34 @@ namespace AI4E
 
         public static bool IsConcurrencyIssue(this IDispatchResult dispatchResult)
         {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is ConcurrencyIssueDispatchResult);
+            }
+
             return dispatchResult is ConcurrencyIssueDispatchResult;
         }
 
         public static bool IsEntityNotFound(this IDispatchResult dispatchResult)
         {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is EntityNotFoundDispatchResult);
+            }
+
             return dispatchResult is EntityNotFoundDispatchResult;
         }
 
         public static bool IsEntityNotFound(this IDispatchResult dispatchResult, out Type entityType, out string id)
         {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                dispatchResult = aggregateDispatchResult.Flatten()
+                                                        .DispatchResults
+                                                        .OfType<EntityNotFoundDispatchResult>()
+                                                        .FirstOrDefault();
+            }
+
             if (dispatchResult is EntityNotFoundDispatchResult entityNotFoundDispatchResult)
             {
                 entityType = entityNotFoundDispatchResult.EntityType;
@@ -82,11 +130,24 @@ namespace AI4E
 
         public static bool IsEntityAlreadPresent(this IDispatchResult dispatchResult)
         {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is EntityAlreadyPresentDispatchResult);
+            }
+
             return dispatchResult is EntityAlreadyPresentDispatchResult;
         }
 
         public static bool IsEntityAlreadPresent(this IDispatchResult dispatchResult, out Type entityType, out string id)
         {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                dispatchResult = aggregateDispatchResult.Flatten()
+                                                        .DispatchResults
+                                                        .OfType<EntityAlreadyPresentDispatchResult>()
+                                                        .FirstOrDefault();
+            }
+
             if (dispatchResult is EntityAlreadyPresentDispatchResult entityAlreadyPresentDispatchResult)
             {
                 entityType = entityAlreadyPresentDispatchResult.EntityType;
@@ -102,11 +163,24 @@ namespace AI4E
 
         public static bool IsTimeout(this IDispatchResult dispatchResult)
         {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is TimeoutDispatchResult);
+            }
+
             return dispatchResult is TimeoutDispatchResult;
         }
 
         public static bool IsTimeout(this IDispatchResult dispatchResult, out DateTime dueTime)
         {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                dispatchResult = aggregateDispatchResult.Flatten()
+                                                        .DispatchResults
+                                                        .OfType<TimeoutDispatchResult>()
+                                                        .FirstOrDefault();
+            }
+
             if (dispatchResult is TimeoutDispatchResult timeoutDispatchResult)
             {
                 dueTime = timeoutDispatchResult.DueTime;
@@ -134,7 +208,7 @@ namespace AI4E
             return false;
         }
 
-        public static IDispatchResult Flatten(this IAggregateDispatchResult aggregateDispatchResult)
+        public static IAggregateDispatchResult Flatten(this IAggregateDispatchResult aggregateDispatchResult)
         {
             if (aggregateDispatchResult == null)
                 throw new ArgumentNullException(nameof(aggregateDispatchResult));
@@ -142,18 +216,27 @@ namespace AI4E
             var combinedDispatchResultData = aggregateDispatchResult.ResultData;
             var dispatchResults = new List<IDispatchResult>();
 
-            FlattenInternal(aggregateDispatchResult, dispatchResults);
+
+            FlattenInternal(aggregateDispatchResult, dispatchResults, out var needsFlattening);
+
+            if (!needsFlattening)
+            {
+                return aggregateDispatchResult;
+            }
 
             return new AggregateDispatchResult(dispatchResults, combinedDispatchResultData);
         }
 
-        private static void FlattenInternal(IAggregateDispatchResult aggregateDispatchResult, List<IDispatchResult> dispatchResults)
+        private static void FlattenInternal(IAggregateDispatchResult aggregateDispatchResult, List<IDispatchResult> dispatchResults, out bool needsFlattening)
         {
+            needsFlattening = false;
+
             foreach (var child in aggregateDispatchResult.DispatchResults)
             {
                 if (child is IAggregateDispatchResult childAggregateDispatchResult)
                 {
-                    FlattenInternal(childAggregateDispatchResult, dispatchResults);
+                    needsFlattening = true;
+                    FlattenInternal(childAggregateDispatchResult, dispatchResults, out _);
                 }
                 else
                 {
@@ -164,6 +247,11 @@ namespace AI4E
 
         public static bool IsNotFound(this IDispatchResult dispatchResult)
         {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is NotFoundDispatchResult);
+            }
+
             return dispatchResult is NotFoundDispatchResult;
         }
 
@@ -174,6 +262,28 @@ namespace AI4E
 
         public static bool IsSuccess<TResult>(this IDispatchResult dispatchResult, out TResult result)
         {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                var dispatchResults = aggregateDispatchResult.Flatten()
+                                                             .DispatchResults
+                                                             .Where(p => p.IsSuccess);
+
+                result = default;
+                if (dispatchResults.Any())
+                {
+                    var typedDispatchResult = dispatchResults.OfType<IDispatchResult<TResult>>().FirstOrDefault();
+
+                    if (typedDispatchResult != null)
+                    {
+                        result = typedDispatchResult.Result;
+                    }
+
+                    return true;
+                }
+
+                return false;
+            }
+
             if (dispatchResult.IsSuccess)
             {
                 if (dispatchResult is IDispatchResult<TResult> typedDispatchResult)
@@ -199,6 +309,14 @@ namespace AI4E
 
         public static bool IsSuccessWithResult<TResult>(this IDispatchResult dispatchResult, out TResult result)
         {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                dispatchResult = aggregateDispatchResult.Flatten()
+                                                        .DispatchResults
+                                                        .OfType<IDispatchResult<TResult>>()
+                                                        .FirstOrDefault();
+            }
+
             if (dispatchResult.IsSuccess && dispatchResult is IDispatchResult<TResult> typedDispatchResult)
             {
                 result = typedDispatchResult.Result;
@@ -230,21 +348,14 @@ namespace AI4E
             return Enumerable.Empty<TResult>();
         }
 
-        private static IEnumerable<TResult> GetResultsFromFlattened<TResult>(IDispatchResult dispatchResult,
+        private static IEnumerable<TResult> GetResultsFromFlattened<TResult>(IAggregateDispatchResult dispatchResult,
                                                                              bool throwOnFailure)
         {
             var results = new List<TResult>();
 
-            if (dispatchResult is IAggregateDispatchResult aggregateDispatchResult)
+            foreach (var singleDispatchResult in dispatchResult.DispatchResults)
             {
-                foreach (var singleDispatchResult in aggregateDispatchResult.DispatchResults)
-                {
-                    GetResultFromNonAggregate(singleDispatchResult, throwOnFailure, results);
-                }
-            }
-            else
-            {
-                GetResultFromNonAggregate(dispatchResult, throwOnFailure, results);
+                GetResultFromNonAggregate(singleDispatchResult, throwOnFailure, results);
             }
 
             return results;

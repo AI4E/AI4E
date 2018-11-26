@@ -97,27 +97,7 @@ namespace AI4E.DispatchResults
 
             public bool ContainsKey(string key)
             {
-                if (key == null)
-                    return false;
-
-                if (_combinedResultData.IsValueCreated)
-                {
-                    return _combinedResultData.Value.ContainsKey(key);
-                }
-
-                if (_resultData != null && _resultData.ContainsKey(key))
-                    return true;
-
-                foreach (var dispatchResult in _dispatchResults)
-                {
-                    var resultData = dispatchResult.ResultData;
-                    if (resultData != null && resultData.ContainsKey(key))
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
+                return TryGetValue(key, out _);
             }
 
             public bool TryGetValue(string key, out object value)
@@ -132,7 +112,7 @@ namespace AI4E.DispatchResults
                     return _combinedResultData.Value.TryGetValue(key, out value);
                 }
 
-                if (_resultData != null && _resultData.TryGetValue(key, out value))
+                if (_resultData != null && _resultData.TryGetValue(key, out value) && value != null)
                 {
                     return true;
                 }
@@ -140,7 +120,7 @@ namespace AI4E.DispatchResults
                 foreach (var dispatchResult in _dispatchResults)
                 {
                     var resultData = dispatchResult.ResultData;
-                    if (resultData != null && resultData.TryGetValue(key, out value))
+                    if (resultData != null && resultData.TryGetValue(key, out value) && value != null)
                     {
                         return true;
                     }
@@ -197,9 +177,20 @@ namespace AI4E.DispatchResults
                             continue;
                         }
 
+                        if (kvp.Value == null)
+                        {
+                            continue;
+                        }
+
                         builder.Add(kvp);
                     }
                 }
+
+                builder.RemoveRange((_resultData ?? ImmutableDictionary<string, object>.Empty).Where(p => p.Value == null).Select(p => p.Key));
+
+#if DEBUG
+                Assert(!builder.Any(p => p.Value == null));
+#endif
 
                 return builder.ToImmutable();
             }
