@@ -1,6 +1,11 @@
-﻿namespace AI4E.Modularity.Host
+namespace AI4E.Modularity.Host
 {
-    public sealed class InstallationSetChanged
+#if BLAZOR
+    internal
+#else
+    public
+#endif
+    sealed class InstallationSetChanged
     {
         public InstallationSetChanged(ResolvedInstallationSet installationSet)
         {

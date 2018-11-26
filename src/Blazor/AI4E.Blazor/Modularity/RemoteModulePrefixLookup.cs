@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +8,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Blazor.Modularity
 {
-    public sealed class RemoteModulePrefixLookup : IModulePrefixLookup
+    internal sealed class RemoteModulePrefixLookup : IModulePrefixLookup
     {
         private readonly ConcurrentDictionary<ModuleIdentifier, string> _cache;
         private readonly IMessageDispatcher _messageDispatcher;

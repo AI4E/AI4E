@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -63,7 +63,6 @@ namespace AI4E.Blazor.Server
                 ClientAssemblyPath = clientAssemblyInServerBinDir.Location,
             });
         }
-
 
         // TODO: Test if publishing works correctly.
         public static void UseBlazorModule(this IApplicationBuilder applicationBuilder, BlazorOptions options)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using AI4E.Modularity.Debug;
@@ -6,7 +6,8 @@ using AI4E.Modularity.Host;
 
 namespace AI4E.Blazor.Modularity
 {
-    public sealed class InstallationSetChangedEventHandler
+    [MessageHandler]
+    internal sealed class InstallationSetChangedEventHandler
     {
         private readonly IInstallationSetManager _installationSetManager;
 
@@ -26,7 +27,8 @@ namespace AI4E.Blazor.Modularity
         }
     }
 
-    public sealed class DebugModuleEventHandler
+    [MessageHandler]
+    internal sealed class DebugModuleEventHandler
     {
         private readonly IInstallationSetManager _installationSetManager;
 
@@ -50,7 +52,6 @@ namespace AI4E.Blazor.Modularity
             {
                 Console.WriteLine(exc.ToString());
             }
-
         }
     }
 }

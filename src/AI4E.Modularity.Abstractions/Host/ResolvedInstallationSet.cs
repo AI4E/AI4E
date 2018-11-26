@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -6,7 +6,12 @@ using Newtonsoft.Json;
 
 namespace AI4E.Modularity.Host
 {
-    public readonly struct ResolvedInstallationSet : IComparable<ResolvedInstallationSet>
+#if BLAZOR
+    internal
+#else
+    public
+#endif
+    readonly struct ResolvedInstallationSet : IComparable<ResolvedInstallationSet>
     {
         public static ResolvedInstallationSet EmptyInstallationSet { get; } = default;
 

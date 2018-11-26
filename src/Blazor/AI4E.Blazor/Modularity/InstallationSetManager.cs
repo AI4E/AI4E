@@ -14,7 +14,7 @@ using Nito.AsyncEx;
 
 namespace AI4E.Blazor.Modularity
 {
-    public sealed class InstallationSetManager : IInstallationSetManager
+    internal sealed class InstallationSetManager : IInstallationSetManager
     {
         private static readonly string _manifestName = "blazor.app.json";
 
@@ -196,8 +196,6 @@ namespace AI4E.Blazor.Modularity
         private ValueTask<string> GetPrefixAsync(ModuleIdentifier module, CancellationToken cancellation)
         {
             return _modulePrefixLookup.LookupPrefixAsync(module, cancellation);
-
-            //return Task.FromResult("/module"); // TODO: Implement prefix lookup
         }
 
         private sealed class BlazorModuleManifest

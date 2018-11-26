@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -23,7 +23,12 @@ using Newtonsoft.Json;
 
 namespace AI4E.Modularity
 {
-    public readonly struct ModuleReleaseIdentifier : IEquatable<ModuleReleaseIdentifier>
+#if BLAZOR
+    internal
+#else
+    public
+#endif
+    readonly struct ModuleReleaseIdentifier : IEquatable<ModuleReleaseIdentifier>
     {
         public static ModuleReleaseIdentifier UnknownModuleRelease { get; } = default;
 

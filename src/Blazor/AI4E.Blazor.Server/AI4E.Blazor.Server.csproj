@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <Compile Include="..\..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
+    <Compile Include="..\AI4E.Blazor\Modularity\LookupModulePrefix.cs" Link="LookupModulePrefix.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -14,7 +15,6 @@
     <ProjectReference Include="..\..\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
     <ProjectReference Include="..\..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
     <ProjectReference Include="..\..\AI4E\AI4E.csproj" />
-    <ProjectReference Include="..\AI4E.Blazor\AI4E.Blazor.csproj" />
   </ItemGroup>
 
   <ItemGroup>

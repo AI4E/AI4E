@@ -1,12 +1,12 @@
 ﻿@page "/"
 @using AI4E.Modularity
-@inject IInstallationSetManager installationSetManager
+@*@inject IInstallationSetManager installationSetManager*@
 @functions{
     private async Task InstallAsync()
     {
-        var module = new ModuleIdentifier("sample-module");
-        var installationSet = new[] { module };
-        await installationSetManager.UpdateInstallationSetAsync(installationSet, cancellation: default);
+        //var module = new ModuleIdentifier("sample-module");
+        //var installationSet = new[] { module };
+        //await installationSetManager.UpdateInstallationSetAsync(installationSet, cancellation: default);
     }
 }
 
