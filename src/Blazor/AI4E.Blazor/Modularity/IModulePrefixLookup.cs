@@ -5,13 +5,9 @@ using AI4E.Routing;
 
 namespace AI4E.Blazor.Modularity
 {
-    internal interface IModulePrefixLookup
+    internal interface IModulePrefixLookup // TODO: Rename
     {
         ValueTask<string> LookupPrefixAsync(ModuleIdentifier module, CancellationToken cancellation);
-    }
-
-    internal interface IModuleEndPointLookup
-    {
         ValueTask<EndPointAddress> LookupEndPointAsync(ModuleIdentifier module, CancellationToken cancellation);
     }
 }

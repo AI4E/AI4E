@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
@@ -9,7 +8,6 @@ using System.Threading.Tasks;
 using AI4E.ApplicationParts;
 using AI4E.Internal;
 using AI4E.Modularity;
-using Newtonsoft.Json;
 using Nito.AsyncEx;
 
 namespace AI4E.Blazor.Modularity
@@ -21,6 +19,7 @@ namespace AI4E.Blazor.Modularity
         private readonly HttpClient _httpClient;
         private readonly ApplicationPartManager _partManager;
         private readonly IModulePrefixLookup _modulePrefixLookup;
+        private readonly IModuleManifestProvider _moduleManifestProvider;
         private readonly AsyncLock _lock = new AsyncLock();
 
         private ISet<ModuleIdentifier> _running = new HashSet<ModuleIdentifier>();
@@ -30,7 +29,8 @@ namespace AI4E.Blazor.Modularity
 
         public InstallationSetManager(HttpClient httpClient,
                                       ApplicationPartManager partManager,
-                                      IModulePrefixLookup modulePrefixLookup)
+                                      IModulePrefixLookup modulePrefixLookup,
+                                      IModuleManifestProvider moduleManifestProvider)
         {
             if (httpClient == null)
                 throw new ArgumentNullException(nameof(httpClient));
@@ -41,9 +41,14 @@ namespace AI4E.Blazor.Modularity
             if (modulePrefixLookup == null)
                 throw new ArgumentNullException(nameof(modulePrefixLookup));
 
+            if (moduleManifestProvider == null)
+                throw new ArgumentNullException(nameof(moduleManifestProvider));
+
+
             _httpClient = httpClient;
             _partManager = partManager;
             _modulePrefixLookup = modulePrefixLookup;
+            _moduleManifestProvider = moduleManifestProvider;
         }
 
         public event EventHandler InstallationSetChanged;
@@ -116,7 +121,7 @@ namespace AI4E.Blazor.Modularity
 
         private async Task InternalInstallAsync(ModuleIdentifier module, CancellationToken cancellation)
         {
-            var manifest = await GetManifestAsync(module, cancellation);
+            var manifest = await _moduleManifestProvider.GetModuleManifestAsync(module, cancellation);
 
             if (manifest == null ||
                 manifest.Assemblies == null ||
@@ -145,42 +150,6 @@ namespace AI4E.Blazor.Modularity
             }
         }
 
-        private async Task<BlazorModuleManifest> GetManifestAsync(ModuleIdentifier module, CancellationToken cancellation)
-        {
-            var prefix = await GetNormalizedPrefixAsync(module, cancellation);
-            var manifestUri = GetManifestUri(prefix);
-            var serializer = JsonSerializer.CreateDefault();
-
-            var response = await _httpClient.GetAsync(manifestUri, cancellation);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return null;
-            }
-
-            using (var manifestStream = await response.Content.ReadAsStreamAsync())
-            using (var localManifestStream = await manifestStream.ReadToMemoryAsync(cancellation))
-            using (var streamReader = new StreamReader(localManifestStream))
-            using (var reader = new JsonTextReader(streamReader))
-            {
-                return serializer.Deserialize<BlazorModuleManifest>(reader);
-            }
-        }
-
-        private string GetManifestUri(string normalizedPrefix)
-        {
-            var manifestUri = normalizedPrefix;
-
-            if (!manifestUri.EndsWith("/", StringComparison.OrdinalIgnoreCase))
-            {
-                manifestUri = manifestUri + "/";
-            }
-
-            manifestUri = manifestUri + _manifestName;
-
-            return manifestUri;
-        }
-
         private async Task<string> GetNormalizedPrefixAsync(ModuleIdentifier module, CancellationToken cancellation)
         {
             var prefix = await GetPrefixAsync(module, cancellation);
@@ -196,15 +165,6 @@ namespace AI4E.Blazor.Modularity
         private ValueTask<string> GetPrefixAsync(ModuleIdentifier module, CancellationToken cancellation)
         {
             return _modulePrefixLookup.LookupPrefixAsync(module, cancellation);
-        }
-
-        private sealed class BlazorModuleManifest
-        {
-            [JsonProperty("name")]
-            public string Name { get; set; }
-
-            [JsonProperty("assemblies")]
-            public List<string> Assemblies { get; set; } = new List<string>();
         }
     }
 }

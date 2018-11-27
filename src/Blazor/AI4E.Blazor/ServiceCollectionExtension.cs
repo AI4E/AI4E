@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -21,6 +21,7 @@ namespace AI4E.Blazor
 
             services.AddBlazorMessageDispatcher();
             services.AddSingleton<IModulePrefixLookup, RemoteModulePrefixLookup>();
+            services.AddSingleton<IModuleManifestProvider, ModuleManifestProvider>();
             services.AddSingleton<IInstallationSetManager, InstallationSetManager>();
             services.AddSingleton<ViewExtensionRenderer>();
 
