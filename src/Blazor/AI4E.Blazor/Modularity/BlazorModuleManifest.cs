@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace AI4E.Blazor.Modularity
 {
@@ -10,10 +12,22 @@ namespace AI4E.Blazor.Modularity
 #endif
         sealed class BlazorModuleManifest
     {
-        [JsonProperty("name")]
         public string Name { get; set; }
 
-        [JsonProperty("assemblies")]
-        public List<string> Assemblies { get; set; } = new List<string>();
+        public List<BlazorModuleManifestAssemblyEntry> Assemblies { get; set; } = new List<BlazorModuleManifestAssemblyEntry>();
+    }
+
+#if BLAZOR
+    internal
+#else
+    public
+#endif
+        sealed class BlazorModuleManifestAssemblyEntry
+    {
+        public string AssemblyName { get; set; }
+
+        [JsonConverter(typeof(VersionConverter))]
+        public Version AssemblyVersion { get; set; }
+        public bool IsAppPart { get; set; }
     }
 }

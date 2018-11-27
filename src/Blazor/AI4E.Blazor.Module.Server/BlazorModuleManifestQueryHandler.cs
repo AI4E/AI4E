@@ -1,4 +1,6 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using AI4E.Blazor.Modularity;
 
 namespace AI4E.Blazor.Server
@@ -16,9 +18,9 @@ namespace AI4E.Blazor.Server
             _manifestProvider = manifestProvider;
         }
 
-        public BlazorModuleManifest Handle(Query<BlazorModuleManifest> query)
+        public ValueTask<BlazorModuleManifest> HandleAsync(Query<BlazorModuleManifest> query, CancellationToken cancellation)
         {
-            return _manifestProvider.GetBlazorModuleManifest();
+            return _manifestProvider.GetBlazorModuleManifestAsync(cancellation);
         }
     }
 }

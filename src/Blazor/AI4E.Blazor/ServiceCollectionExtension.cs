@@ -22,6 +22,7 @@ namespace AI4E.Blazor
             services.AddBlazorMessageDispatcher();
             services.AddSingleton<IModulePrefixLookup, RemoteModulePrefixLookup>();
             services.AddSingleton<IModuleManifestProvider, ModuleManifestProvider>();
+            services.AddSingleton<IModuleAssemblyDownloader, ModuleAssemblyDownloader>();
             services.AddSingleton<IInstallationSetManager, InstallationSetManager>();
             services.AddSingleton<ViewExtensionRenderer>();
 

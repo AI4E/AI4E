@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Modularity;
 using AI4E.Routing;
+using Microsoft.Extensions.Logging;
 
 namespace AI4E.Blazor.Modularity
 {
@@ -11,10 +12,10 @@ namespace AI4E.Blazor.Modularity
     {
         private readonly IModulePrefixLookup _modulePrefixLookup;
         private readonly IRemoteMessageDispatcher _messageDispatcher;
-
+        private readonly ILogger<ModuleManifestProvider> _logger;
         private readonly ConcurrentDictionary<ModuleIdentifier, BlazorModuleManifest> _manifestCache;
 
-        public ModuleManifestProvider(IModulePrefixLookup modulePrefixLookup, IRemoteMessageDispatcher messageDispatcher)
+        public ModuleManifestProvider(IModulePrefixLookup modulePrefixLookup, IRemoteMessageDispatcher messageDispatcher, ILogger<ModuleManifestProvider> logger = null)
         {
             if (modulePrefixLookup == null)
                 throw new ArgumentNullException(nameof(modulePrefixLookup));
@@ -24,16 +25,21 @@ namespace AI4E.Blazor.Modularity
 
             _modulePrefixLookup = modulePrefixLookup;
             _messageDispatcher = messageDispatcher;
+            _logger = logger;
 
             _manifestCache = new ConcurrentDictionary<ModuleIdentifier, BlazorModuleManifest>();
         }
 
         public ValueTask<BlazorModuleManifest> GetModuleManifestAsync(ModuleIdentifier module, CancellationToken cancellation)
         {
+            _logger.LogDebug($"Requesting manifest for module {module}.");
+
             if (_manifestCache.TryGetValue(module, out var result))
             {
+                _logger.LogTrace($"Successfully loaded manifest for module {module} from the cache.");
                 return new ValueTask<BlazorModuleManifest>(result);
             }
+
 
             return GetModuleManifestCoreAsync(module, cancellation);
         }
@@ -51,6 +57,8 @@ namespace AI4E.Blazor.Modularity
             }
 
             _manifestCache.TryAdd(module, manifest);
+
+            _logger.LogTrace($"Successfully loaded manifest for module {module}.");
 
             return manifest;
         }
