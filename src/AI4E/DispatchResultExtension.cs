@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -20,7 +20,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using AI4E.DispatchResults;
 
@@ -30,19 +29,19 @@ namespace AI4E
     {
         public static bool IsNotAuthorized(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is NotAuthorizedDispatchResult);
             }
 
-            return dispatchResult is NotAuthenticatedDispatchResult;
+            return dispatchResult is NotAuthorizedDispatchResult;
         }
 
         public static bool IsNotAuthenticated(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is NotAuthenticatedDispatchResult);
             }
 
             return dispatchResult is NotAuthenticatedDispatchResult;
@@ -50,9 +49,9 @@ namespace AI4E
 
         public static bool IsValidationFailed(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is ValidationFailureDispatchResult);
             }
 
             return dispatchResult is ValidationFailureDispatchResult;
@@ -60,9 +59,20 @@ namespace AI4E
 
         public static bool IsValidationFailed(this IDispatchResult dispatchResult, out IEnumerable<ValidationResult> validationResults)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                var innerResults = aggregateDispatchResult.Flatten().DispatchResults;
+
+                if (!innerResults.Any(p => p is ValidationFailureDispatchResult))
+                {
+                    validationResults = Enumerable.Empty<ValidationResult>();
+                    return false;
+                }
+
+                var validationFailureDispatchResults = innerResults.Select(p => p is ValidationFailureDispatchResult);
+
+                validationResults = validationFailureDispatchResults.OfType<ValidationFailureDispatchResult>().SelectMany(p => p.ValidationResults);
+                return true;
             }
 
             if (dispatchResult is ValidationFailureDispatchResult validationFailureDispatchResult)
@@ -77,9 +87,9 @@ namespace AI4E
 
         public static bool IsConcurrencyIssue(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is ConcurrencyIssueDispatchResult);
             }
 
             return dispatchResult is ConcurrencyIssueDispatchResult;
@@ -87,9 +97,9 @@ namespace AI4E
 
         public static bool IsEntityNotFound(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is EntityNotFoundDispatchResult);
             }
 
             return dispatchResult is EntityNotFoundDispatchResult;
@@ -97,9 +107,12 @@ namespace AI4E
 
         public static bool IsEntityNotFound(this IDispatchResult dispatchResult, out Type entityType, out string id)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                dispatchResult = aggregateDispatchResult.Flatten()
+                                                        .DispatchResults
+                                                        .OfType<EntityNotFoundDispatchResult>()
+                                                        .FirstOrDefault();
             }
 
             if (dispatchResult is EntityNotFoundDispatchResult entityNotFoundDispatchResult)
@@ -117,9 +130,9 @@ namespace AI4E
 
         public static bool IsEntityAlreadPresent(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is EntityAlreadyPresentDispatchResult);
             }
 
             return dispatchResult is EntityAlreadyPresentDispatchResult;
@@ -127,9 +140,12 @@ namespace AI4E
 
         public static bool IsEntityAlreadPresent(this IDispatchResult dispatchResult, out Type entityType, out string id)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                dispatchResult = aggregateDispatchResult.Flatten()
+                                                        .DispatchResults
+                                                        .OfType<EntityAlreadyPresentDispatchResult>()
+                                                        .FirstOrDefault();
             }
 
             if (dispatchResult is EntityAlreadyPresentDispatchResult entityAlreadyPresentDispatchResult)
@@ -147,9 +163,9 @@ namespace AI4E
 
         public static bool IsTimeout(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is TimeoutDispatchResult);
             }
 
             return dispatchResult is TimeoutDispatchResult;
@@ -157,9 +173,12 @@ namespace AI4E
 
         public static bool IsTimeout(this IDispatchResult dispatchResult, out DateTime dueTime)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                dispatchResult = aggregateDispatchResult.Flatten()
+                                                        .DispatchResults
+                                                        .OfType<TimeoutDispatchResult>()
+                                                        .FirstOrDefault();
             }
 
             if (dispatchResult is TimeoutDispatchResult timeoutDispatchResult)
@@ -172,24 +191,13 @@ namespace AI4E
             return false;
         }
 
-
         public static bool IsAggregateResult(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult is IAggregateDispatchResult;
         }
 
         public static bool IsAggregateResult(this IDispatchResult dispatchResult, out IAggregateDispatchResult aggregateDispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             if (dispatchResult is IAggregateDispatchResult aggregateDispatchResult2)
             {
                 aggregateDispatchResult = aggregateDispatchResult2;
@@ -200,88 +208,48 @@ namespace AI4E
             return false;
         }
 
-        public static IDispatchResult Flatten(this IAggregateDispatchResult aggregateDispatchResult)
+        public static IAggregateDispatchResult Flatten(this IAggregateDispatchResult aggregateDispatchResult)
         {
             if (aggregateDispatchResult == null)
                 throw new ArgumentNullException(nameof(aggregateDispatchResult));
 
-            var results = new List<IDispatchResult>();
-            var resultsData = new List<IReadOnlyDictionary<string, object>>();
-            FlattenInternal(aggregateDispatchResult, results, resultsData);
+            var combinedDispatchResultData = aggregateDispatchResult.ResultData;
+            var dispatchResults = new List<IDispatchResult>();
 
-            if (resultsData.Any())
+
+            FlattenInternal(aggregateDispatchResult, dispatchResults, out var needsFlattening);
+
+            if (!needsFlattening)
             {
-                var resultDataBuilder = ImmutableDictionary.CreateBuilder<string, object>();
-                var combinedResultDataEntries = new Dictionary<string, List<object>>();
-
-                foreach (var resultData in resultsData)
-                {
-                    foreach (var kvp in resultData)
-                    {
-                        var key = kvp.Key;
-                        var value = kvp.Value;
-
-                        if (combinedResultDataEntries.TryGetValue(key, out var list))
-                        {
-                            list.Add(value);
-                        }
-                        else if (resultDataBuilder.TryGetValue(key, out var existingEntry))
-                        {
-                            list = new List<object> { value, existingEntry };
-
-                            combinedResultDataEntries.Add(key, list);
-                            resultDataBuilder[key] = list;
-                        }
-                        else
-                        {
-                            resultDataBuilder.Add(key, value);
-                        }
-                    }
-                }
-
-                if (resultDataBuilder.Any())
-                {
-                    return new DispatchResultDictionary<AggregateDispatchResult>(
-                        new AggregateDispatchResult(results),
-                        resultDataBuilder.ToImmutable());
-                }
+                return aggregateDispatchResult;
             }
 
-            return new AggregateDispatchResult(results);
+            return new AggregateDispatchResult(dispatchResults, combinedDispatchResultData);
         }
 
-        private static void FlattenInternal(IAggregateDispatchResult aggregateDispatchResult,
-                                            List<IDispatchResult> results,
-                                            List<IReadOnlyDictionary<string, object>> resultsData)
+        private static void FlattenInternal(IAggregateDispatchResult aggregateDispatchResult, List<IDispatchResult> dispatchResults, out bool needsFlattening)
         {
-            //if (aggregateDispatchResult is AggregateDispatchResultDictionary aggregateResultData)
-            //{
-            //    resultsData.Add(aggregateResultData);
-            //}
+            needsFlattening = false;
 
-            foreach (var dispatchResult in aggregateDispatchResult.DispatchResults)
+            foreach (var child in aggregateDispatchResult.DispatchResults)
             {
-                if (dispatchResult is IAggregateDispatchResult innerAggregateEventResult)
+                if (child is IAggregateDispatchResult childAggregateDispatchResult)
                 {
-                    FlattenInternal(innerAggregateEventResult, results, resultsData);
-                }
-                else if (dispatchResult is DispatchResultDictionary resultData)
-                {
-                    resultsData.Add(resultData);
-                    results.Add(resultData.DispatchResult);
+                    needsFlattening = true;
+                    FlattenInternal(childAggregateDispatchResult, dispatchResults, out _);
                 }
                 else
                 {
-                    results.Add(dispatchResult);
+                    dispatchResults.Add(child);
                 }
             }
         }
 
         public static bool IsNotFound(this IDispatchResult dispatchResult)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                return aggregateDispatchResult.Flatten().DispatchResults.Any(p => p is NotFoundDispatchResult);
             }
 
             return dispatchResult is NotFoundDispatchResult;
@@ -289,19 +257,31 @@ namespace AI4E
 
         public static bool IsSuccess(this IDispatchResult dispatchResult, out object result)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult.IsSuccess<object>(out result);
         }
 
         public static bool IsSuccess<TResult>(this IDispatchResult dispatchResult, out TResult result)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                var dispatchResults = aggregateDispatchResult.Flatten()
+                                                             .DispatchResults
+                                                             .Where(p => p.IsSuccess);
+
+                result = default;
+                if (dispatchResults.Any())
+                {
+                    var typedDispatchResult = dispatchResults.OfType<IDispatchResult<TResult>>().FirstOrDefault();
+
+                    if (typedDispatchResult != null)
+                    {
+                        result = typedDispatchResult.Result;
+                    }
+
+                    return true;
+                }
+
+                return false;
             }
 
             if (dispatchResult.IsSuccess)
@@ -324,19 +304,17 @@ namespace AI4E
 
         public static bool IsSuccessWithResult(this IDispatchResult dispatchResult, out object result)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             return dispatchResult.IsSuccessWithResult<object>(out result);
         }
 
         public static bool IsSuccessWithResult<TResult>(this IDispatchResult dispatchResult, out TResult result)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                dispatchResult = resultData.DispatchResult;
+                dispatchResult = aggregateDispatchResult.Flatten()
+                                                        .DispatchResults
+                                                        .OfType<IDispatchResult<TResult>>()
+                                                        .FirstOrDefault();
             }
 
             if (dispatchResult.IsSuccess && dispatchResult is IDispatchResult<TResult> typedDispatchResult)
@@ -351,11 +329,6 @@ namespace AI4E
 
         public static IEnumerable<TResult> GetResults<TResult>(this IDispatchResult dispatchResult, bool throwOnFailure)
         {
-            if (dispatchResult is DispatchResultDictionary resultData)
-            {
-                dispatchResult = resultData.DispatchResult;
-            }
-
             if (dispatchResult.IsAggregateResult(out var aggregateDispatchResult))
             {
                 var flattenedDispatchResult = aggregateDispatchResult.Flatten();
@@ -375,21 +348,14 @@ namespace AI4E
             return Enumerable.Empty<TResult>();
         }
 
-        private static IEnumerable<TResult> GetResultsFromFlattened<TResult>(IDispatchResult dispatchResult,
+        private static IEnumerable<TResult> GetResultsFromFlattened<TResult>(IAggregateDispatchResult dispatchResult,
                                                                              bool throwOnFailure)
         {
             var results = new List<TResult>();
 
-            if (dispatchResult is IAggregateDispatchResult aggregateDispatchResult)
+            foreach (var singleDispatchResult in dispatchResult.DispatchResults)
             {
-                foreach (var singleDispatchResult in aggregateDispatchResult.DispatchResults)
-                {
-                    GetResultFromNonAggregate(singleDispatchResult, throwOnFailure, results);
-                }
-            }
-            else
-            {
-                GetResultFromNonAggregate(dispatchResult, throwOnFailure, results);
+                GetResultFromNonAggregate(singleDispatchResult, throwOnFailure, results);
             }
 
             return results;

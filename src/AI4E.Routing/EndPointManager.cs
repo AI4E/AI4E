@@ -258,6 +258,7 @@ namespace AI4E.Routing
                         {
                             foreach (var remoteAddress in remoteAddresses)
                             {
+                                // TODO: Optimize this
                                 var messageCopy = new Message();
 
                                 message.Trim();
