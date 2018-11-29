@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using AI4E.ApplicationParts;
@@ -31,10 +31,9 @@ namespace AI4E.Handler
         {
             return (type.IsClass || type.IsValueType && !type.IsEnum) &&
                    !type.IsAbstract &&
-                   type.IsPublic &&
                    !type.ContainsGenericParameters &&
                    !type.IsDefined<NoMessageHandlerAttribute>(inherit: false) &&
-                   (type.Name.EndsWith("Handler", StringComparison.OrdinalIgnoreCase) || type.IsDefined<MessageHandlerAttribute>(inherit: true));
+                   (type.Name.EndsWith("Handler", StringComparison.OrdinalIgnoreCase) && type.IsPublic || type.IsDefined<MessageHandlerAttribute>(inherit: true));
         }
     }
 }

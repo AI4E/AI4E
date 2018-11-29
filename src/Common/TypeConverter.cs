@@ -18,21 +18,27 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using AI4E.Routing;
+using System;
+using AI4E.Internal;
+using Newtonsoft.Json;
 
-namespace AI4E.Modularity
+namespace AI4E.Internal
 {
-    public interface IRunningModuleLookup
+    public sealed class TypeConverter : JsonConverter<Type>
     {
-        Task AddModuleAsync(ModuleIdentifier module, EndPointAddress endPoint, IEnumerable<string> prefixes, CancellationToken cancellation = default);
-        Task RemoveModuleAsync(ModuleIdentifier module, CancellationToken cancellation);
+        public override void WriteJson(JsonWriter writer, Type value, JsonSerializer serializer)
+        {
+            writer.WriteValue(value.GetUnqualifiedTypeName());
+        }
 
-        ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(string prefix, CancellationToken cancellation = default);
-        ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(ModuleIdentifier module, CancellationToken cancellation = default);
+        public override Type ReadJson(JsonReader reader, Type objectType, Type existingValue, bool hasExistingValue, JsonSerializer serializer)
+        {
+            if (reader.Value is string unqualifiedTypeName)
+            {
+                return TypeLoadHelper.LoadTypeFromUnqualifiedName(unqualifiedTypeName);
+            }
 
-        ValueTask<IEnumerable<string>> GetPrefixesAsync(ModuleIdentifier module, CancellationToken cancellation = default);
+            return null;
+        }
     }
 }

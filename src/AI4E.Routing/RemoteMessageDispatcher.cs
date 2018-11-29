@@ -33,6 +33,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
@@ -55,7 +56,6 @@ namespace AI4E.Routing
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<RemoteMessageDispatcher> _logger;
 
-        private readonly JsonSerializer _serializer;
         private readonly IMessageDispatcher _localMessageDispatcher;
         private readonly ConcurrentDictionary<Type, TypedMessageDisaptcher> _typedDispatchers = new ConcurrentDictionary<Type, TypedMessageDisaptcher>();
 
@@ -81,18 +81,31 @@ namespace AI4E.Routing
             _serviceProvider = serviceProvider;
             _logger = logger;
 
-            _serializer = new JsonSerializer
-            {
-                TypeNameHandling = TypeNameHandling.Auto,
-                SerializationBinder = new SerializationBinder()
-            };
-
             _messageRouter = messageRouterFactory.CreateMessageRouter(new SerializedMessageHandler(this));
 
             _localMessageDispatcher = new MessageDispatcher(serviceProvider);
         }
 
         #endregion
+
+        #region Serializer
+
+        private readonly ThreadLocal<JsonSerializer> _serializer = new ThreadLocal<JsonSerializer>(BuildSerializer, trackAllValues: false);
+
+        private static JsonSerializer BuildSerializer()
+        {
+            var result = new JsonSerializer
+            {
+                TypeNameHandling = TypeNameHandling.Auto,
+                SerializationBinder = new SerializationBinder()
+            };
+
+            result.Converters.Add(new TypeConverter());
+
+            return result;
+        }
+
+        private JsonSerializer Serializer => _serializer.Value;
 
         private sealed class SerializationBinder : ISerializationBinder
         {
@@ -107,6 +120,8 @@ namespace AI4E.Routing
                 return TypeLoadHelper.LoadTypeFromUnqualifiedName(typeName);
             }
         }
+
+        #endregion
 
         public ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)
         {
@@ -161,7 +176,7 @@ namespace AI4E.Routing
             using (var writer = new StreamWriter(stream))
             using (var jsonWriter = new JsonTextWriter(writer))
             {
-                _serializer.Serialize(jsonWriter, dispatchResult, typeof(IDispatchResult));
+                Serializer.Serialize(jsonWriter, dispatchResult, typeof(IDispatchResult));
             }
         }
 
@@ -169,11 +184,25 @@ namespace AI4E.Routing
         {
             Assert(message != null);
 
+            if (_logger.IsEnabled(LogLevel.Trace))
+            {
+                var frameIdx = message.FrameIndex;
+
+                using (var stream = message.PopFrame().OpenStream())
+                using (var reader = new StreamReader(stream))
+                {
+                    _logger.LogTrace($"Received message: {reader.ReadToEnd()}");
+                }
+
+                message.PushFrame();
+                Assert(message.FrameIndex == frameIdx);
+            }
+
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new StreamReader(stream))
             using (var jsonReader = new JsonTextReader(reader))
             {
-                return _serializer.Deserialize<IDispatchResult>(jsonReader);
+                return Serializer.Deserialize<IDispatchResult>(jsonReader);
             }
         }
 
@@ -182,11 +211,24 @@ namespace AI4E.Routing
             Assert(message != null);
             Assert(dispatchData != null);
 
+            if (_logger.IsEnabled(LogLevel.Trace))
+            {
+                var stringBuffer = new StringBuilder();
+
+                using (var loggerWriter = new StringWriter(stringBuffer))
+                using (var loggerJsonWriter = new JsonTextWriter(loggerWriter))
+                {
+                    Serializer.Serialize(loggerJsonWriter, dispatchData, typeof(DispatchDataDictionary));
+                }
+
+                _logger.LogTrace($"Sending message: {stringBuffer.ToString()}");
+            }
+
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new StreamWriter(stream))
             using (var jsonWriter = new JsonTextWriter(writer))
             {
-                _serializer.Serialize(jsonWriter, dispatchData, typeof(DispatchDataDictionary));
+                Serializer.Serialize(jsonWriter, dispatchData, typeof(DispatchDataDictionary));
             }
         }
 
@@ -198,7 +240,7 @@ namespace AI4E.Routing
             using (var reader = new StreamReader(stream))
             using (var jsonReader = new JsonTextReader(reader))
             {
-                return _serializer.Deserialize<DispatchDataDictionary>(jsonReader);
+                return Serializer.Deserialize<DispatchDataDictionary>(jsonReader);
             }
         }
 
@@ -345,7 +387,7 @@ namespace AI4E.Routing
 
             for (var currType = messageType; !currType.IsInterface && currType.BaseType != null; currType = currType.BaseType)
             {
-                if(!TryGetTypedDispatcher(currType, out var typedDispatcher))
+                if (!TryGetTypedDispatcher(currType, out var typedDispatcher))
                 {
                     continue;
                 }

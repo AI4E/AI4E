@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -22,7 +22,12 @@ using AI4E.Routing;
 
 namespace AI4E.Modularity.Debug
 {
-    public sealed class DebugModuleConnected
+#if BLAZOR
+    internal
+#else
+    public
+#endif
+    sealed class DebugModuleConnected
     {
         public DebugModuleConnected(byte[] address, EndPointAddress endPoint, ModuleIdentifier module, ModuleVersion moduleVersion)
         {

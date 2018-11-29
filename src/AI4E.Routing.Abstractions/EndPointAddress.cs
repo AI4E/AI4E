@@ -147,7 +147,20 @@ namespace AI4E.Routing
             if (Utf8EncodedValue.IsEmpty)
                 return null;
 
+#if BLAZOR
+            // We need this workaround, as the compat shim does generate a delegate that causes the span to be boxed.
+            //This seems to be the case, because Mono running on WASM interprets the 'compiled' expression.
+
+            unsafe
+            {
+                fixed (byte* bytesPtr = Utf8EncodedValue.Span)
+                {
+                    return Encoding.UTF8.GetString(bytesPtr, Utf8EncodedValue.Span.Length);
+                }
+            }
+#else
             return Encoding.UTF8.GetString(Utf8EncodedValue.Span);
+#endif
         }
 
         /// <summary>

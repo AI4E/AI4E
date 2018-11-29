@@ -6,7 +6,7 @@ using AI4E.Modularity;
 
 namespace AI4E.Blazor.Modularity
 {
-    public interface IInstallationSetManager
+    internal interface IInstallationSetManager
     {
         event EventHandler InstallationSetChanged;
 

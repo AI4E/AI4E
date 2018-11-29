@@ -6,6 +6,10 @@
     <DefineConstants>BLAZOR;Blazor</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="..\..\AI4E.Remoting.Abstractions\IMessage.cs" Link="Remoting\IMessage.cs" />
     <Compile Include="..\..\AI4E.Remoting.Abstractions\IMessageFrame.cs" Link="Remoting\IMessageFrame.cs" />

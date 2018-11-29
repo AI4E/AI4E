@@ -23,6 +23,7 @@
     <Compile Include="..\..\Common\ArrayPoolExtension.cs" Link="Internal\ArrayPoolExtension.cs" />
     <Compile Include="..\..\Common\MemoryExtensions.Base64Decode.cs" Link="Internal\MemoryExtensions.Base64Decode.cs" />
     <Compile Include="..\..\Common\TaskCompletionSourceExtension.cs" Link="Internal\TaskCompletionSourceExtension.cs" />
+    <Compile Include="..\..\Common\TypeConverter.cs" Link="Internal\TypeConverter.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\ClientEndPoint.cs" Link="ClientEndPoint.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\HubConnectionExtension.cs" Link="HubConnectionExtension.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\IClientCallStub.cs" Link="IClientCallStub.cs" />

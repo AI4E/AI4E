@@ -4,7 +4,13 @@ using AI4E.Routing;
 
 namespace AI4E.Modularity.Debug
 {
-    public sealed class DebugModule
+#if BLAZOR
+    internal
+#else
+    public
+#endif
+
+         sealed class DebugModule
     {
         public DebugModule(EndPointAddress endPoint, ModuleIdentifier module, ModuleVersion moduleVersion)
         {
@@ -18,7 +24,13 @@ namespace AI4E.Modularity.Debug
         public ModuleVersion ModuleVersion { get; }
     }
 
-    public sealed class DebugModuleEqualityComparer : IEqualityComparer<DebugModule>
+#if BLAZOR
+    internal
+#else
+    public
+#endif
+
+    sealed class DebugModuleEqualityComparer : IEqualityComparer<DebugModule>
     {
         private DebugModuleEqualityComparer() { }
 

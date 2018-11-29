@@ -28,6 +28,7 @@
     <ProjectReference Include="..\..\..\src\AI4E.Storage.MongoDB\AI4E.Storage.MongoDB.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E\AI4E.csproj" />
+    <ProjectReference Include="..\..\..\src\Blazor\AI4E.Blazor.Module.Server\AI4E.Blazor.Module.Server.csproj" />
     <ProjectReference Include="..\AI4E.Blazor.Modularity.Sample.Module.App\AI4E.Blazor.Modularity.Sample.Module.App.csproj" />
   </ItemGroup>
 
