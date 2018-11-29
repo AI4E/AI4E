@@ -8,6 +8,7 @@ using AI4E.ApplicationParts;
 using AI4E.Internal;
 using AI4E.Modularity;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 
@@ -15,6 +16,7 @@ namespace AI4E.Blazor.Modularity
 {
     internal sealed class InstallationSetManager : IInstallationSetManager
     {
+        private const string _reloadBrowserMethod = "ai4e.reloadBrowser";
         private readonly IModuleAssemblyDownloader _moduleAssemblyDownloader;
 
         #region Fields
@@ -140,8 +142,8 @@ namespace AI4E.Blazor.Modularity
 
             if (uninstalledModules.Any())
             {
-                // TODO: Reload browser
                 _logger.LogWarning("Uninstalling module. As we cannot uninstall modules, we are reloading now.");
+                ReloadBrowser();
                 Environment.Exit(0);
             }
 
@@ -253,6 +255,8 @@ namespace AI4E.Blazor.Modularity
                         _logger?.LogWarning($"Cannnot install assembly {assembly.AssemblyName} {assembly.AssemblyVersion} as required by module {installedModule} " +
                             $"as a minor version of the assembly is already installed that cannot be unloaded. " +
                             $"We are reloading now.");
+
+                        ReloadBrowser();
                         Environment.Exit(0);
                     }
                 }
@@ -283,6 +287,18 @@ namespace AI4E.Blazor.Modularity
             }
 
             _installedAssemblies = installedAssemblies.ToImmutable();
+        }
+
+        private void ReloadBrowser()
+        {
+            if (JSRuntime.Current is IJSInProcessRuntime jSInProcessRuntime)
+            {
+                jSInProcessRuntime.Invoke<object>(_reloadBrowserMethod);
+            }
+            else
+            {
+                JSRuntime.Current.InvokeAsync<object>(_reloadBrowserMethod).GetAwaiter().GetResult();
+            }
         }
     }
 }
