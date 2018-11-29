@@ -53,7 +53,7 @@ namespace AI4E.Blazor.Modularity
 
             if (!queryResult.IsSuccessWithResult<BlazorModuleManifest>(out var manifest))
             {
-                throw new Exception(); // TODO
+                throw new Exception($"Unable to load manifest for {module}."); // TODO
             }
 
             _manifestCache.TryAdd(module, manifest);
