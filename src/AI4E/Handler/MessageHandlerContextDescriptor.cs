@@ -1,5 +1,4 @@
-﻿using System;
-using static System.Diagnostics.Debug;
+using System;
 
 namespace AI4E.Handler
 {
@@ -11,9 +10,6 @@ namespace AI4E.Handler
         internal MessageHandlerContextDescriptor(Action<object, IMessageDispatchContext> contextSetter,
                                                  Action<object, IMessageDispatcher> dispatcherSetter)
         {
-            Assert(contextSetter != null);
-            Assert(dispatcherSetter != null);
-
             _contextSetter = contextSetter;
             _dispatcherSetter = dispatcherSetter;
         }

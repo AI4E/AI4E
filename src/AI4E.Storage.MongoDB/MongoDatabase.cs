@@ -523,6 +523,7 @@ namespace AI4E.Storage.MongoDB
             private readonly ILogger<MongoScopedTransactionalDatabase> _logger;
             private readonly DisposableAsyncLazy<IClientSessionHandle> _clientSessionHandle;
 
+            private bool _abortTransaction = false;
 
             public MongoScopedTransactionalDatabase(MongoDatabase owner)
             {
@@ -580,9 +581,24 @@ namespace AI4E.Storage.MongoDB
 
                 try
                 {
+                    if (_abortTransaction)
+                    {
+#if DEBUG
+                        Assert(!(await GetClientSessionHandle(cancellation)).IsInTransaction);
+#endif
+                        return;
+                    }
+
                     var session = await EnsureTransactionAsync(cancellation);
                     var predicate = DataPropertyHelper.BuildPredicate(data);
                     var collection = await GetCollection<TData>(session, cancellation);
+
+                    if (collection == null)
+                    {
+                        Assert(_abortTransaction);
+                        Assert(!session.IsInTransaction);
+                        return;
+                    }
 
                     _logger.LogTrace($"Storing an entry of type '{typeof(TData)}' via  mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
 
@@ -595,7 +611,7 @@ namespace AI4E.Storage.MongoDB
                     catch (MongoCommandException exc) when (exc.Code == 112) // Write conflict.
                     {
                         await AbortAsync(session, cancellation);
-                        throw new TransactionAbortedException();
+                        return;
                     }
 
                     if (!updateResult.IsAcknowledged)
@@ -623,9 +639,24 @@ namespace AI4E.Storage.MongoDB
                 }
                 try
                 {
+                    if (_abortTransaction)
+                    {
+#if DEBUG
+                        Assert(!(await GetClientSessionHandle(cancellation)).IsInTransaction);
+#endif
+                        return;
+                    }
+
                     var session = await EnsureTransactionAsync(cancellation);
                     var predicate = DataPropertyHelper.BuildPredicate(data);
                     var collection = await GetCollection<TData>(session, cancellation);
+
+                    if (collection == null)
+                    {
+                        Assert(_abortTransaction);
+                        Assert(!session.IsInTransaction);
+                        return;
+                    }
 
                     _logger.LogTrace($"Removing an entry of type '{typeof(TData)}' via  mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
 
@@ -638,7 +669,7 @@ namespace AI4E.Storage.MongoDB
                     catch (MongoCommandException exc) when (exc.Code == 112) // Write conflict.
                     {
                         await AbortAsync(session, cancellation);
-                        throw new TransactionAbortedException();
+                        return;
                     }
 
                     if (!deleteResult.IsAcknowledged)
@@ -659,25 +690,38 @@ namespace AI4E.Storage.MongoDB
             {
                 async Task<IAsyncCursor<TData>> BuildAsyncCursor()
                 {
+                    var session = await GetClientSessionHandle(cancellation);
+
                     if (Interlocked.Exchange(ref _operationInProgress, 1) != 0)
                     {
                         throw new InvalidOperationException("MongoDB does not allow interlaced operations on a single transaction.");
                     }
 
-                    var session = await EnsureTransactionAsync(cancellation);
-
                     try
                     {
-                        var collection = await GetCollection<TData>(session, cancellation);
+                        if (_abortTransaction)
+                        {
+                            Assert(!session.IsInTransaction);
+                            return null;
+                        }
 
-                        _logger.LogTrace($"Performing query via  mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
+                        EnsureTransaction(session);
+                        var collection = await GetCollection<TData>(session, cancellation);
+                        if (collection == null)
+                        {
+                            Assert(_abortTransaction);
+                            Assert(!session.IsInTransaction);
+                            return null;
+                        }
+
+                        _logger.LogTrace($"Performing query via mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
 
                         return await collection.FindAsync<TData>(session, predicate, cancellationToken: cancellation);
                     }
                     catch (MongoCommandException exc) when (exc.Code == 251) // No such transaction
                     {
                         await AbortAsync(session, cancellation);
-                        throw new TransactionAbortedException();
+                        return null;
                     }
                     catch
                     {
@@ -687,7 +731,7 @@ namespace AI4E.Storage.MongoDB
 
                 void AsyncCursorDisposal(IAsyncCursor<TData> asyncCursor)
                 {
-                    asyncCursor.Dispose();
+                    asyncCursor?.Dispose();
 
                     _operationInProgress = 0; // Volatile write op
                 }
@@ -706,7 +750,9 @@ namespace AI4E.Storage.MongoDB
 
                     await AbortAsync(session, cancellation);
 
-                    throw new TransactionAbortedException();
+                    // We are not in a transaction any more any can freely create the collection and
+                    // await its creation in order that the collection is already there if the transaction is re-executed.
+                    await _owner.GetCollectionAsync<TData>(isInTransaction: false, cancellation);
                 }
 
                 return collection;
@@ -716,12 +762,19 @@ namespace AI4E.Storage.MongoDB
             {
                 var session = await GetClientSessionHandle(cancellation);
 
+                EnsureTransaction(session);
+
+                return session;
+            }
+
+            private void EnsureTransaction(IClientSessionHandle session)
+            {
+                Assert(!_abortTransaction);
+
                 if (!session.IsInTransaction)
                 {
                     session.StartTransaction();
                 }
-
-                return session;
             }
 
             public async Task<bool> TryCommitAsync(CancellationToken cancellation = default)
@@ -730,12 +783,20 @@ namespace AI4E.Storage.MongoDB
 
                 _logger.LogTrace($"Committing txn of mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
 
+                _operationInProgress = 0; // Volatile write op
+
+                if (_abortTransaction)
+                {
+                    // Reset this to allocate a new transaction when calling any read/write operation.
+                    _abortTransaction = false;
+                    Assert(!session.IsInTransaction);
+                    return false;
+                }
+
                 if (!session.IsInTransaction)
                 {
                     return true;
                 }
-
-                _operationInProgress = 0; // Volatile write op
 
                 try
                 {
@@ -746,7 +807,7 @@ namespace AI4E.Storage.MongoDB
                 {
                     return false;
                 }
-                catch (Exception exc) // TODO: Specify exception type
+                catch (Exception) // TODO: Specify exception type
                 {
                     //await session.AbortTransactionAsync();
                     return false;
@@ -760,16 +821,21 @@ namespace AI4E.Storage.MongoDB
                 _logger.LogTrace($"Aborting txn of mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
 
                 await AbortAsync(session, cancellation);
+
+                // Reset this to allocate a new transaction when calling any read/write operation.
+                _abortTransaction = false;
             }
 
             private async Task AbortAsync(IClientSessionHandle session, CancellationToken cancellation)
             {
+                _abortTransaction = true;
+                _operationInProgress = 0; // Volatile write op
+
                 if (!session.IsInTransaction)
                 {
                     return;
                 }
 
-                _operationInProgress = 0; // Volatile write op
                 await session.AbortTransactionAsync(cancellation);
 
                 Assert(!session.IsInTransaction);

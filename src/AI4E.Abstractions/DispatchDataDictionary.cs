@@ -236,7 +236,7 @@ namespace AI4E
 
             // Write message type
             writer.WritePropertyName("message-type");
-            serializer.Serialize(writer, dispatchData.MessageType, typeof(Type));
+            writer.WriteValue(dispatchData.MessageType.GetUnqualifiedTypeName());
 
             // Write message
             writer.WritePropertyName("message");
@@ -271,7 +271,6 @@ namespace AI4E
             if (reader.TokenType != JsonToken.StartObject)
                 throw new InvalidOperationException();
 
-
             var messageType = objectType.IsGenericTypeDefinition ? objectType.GetGenericArguments().First() : null;
             object message = null;
             ImmutableDictionary<string, object>.Builder data = null;
@@ -288,7 +287,7 @@ namespace AI4E
                     if ((string)reader.Value == "message-type")
                     {
                         reader.Read();
-                        var deserializedMessageType = (Type)serializer.Deserialize(reader, typeof(Type));
+                        var deserializedMessageType = TypeLoadHelper.LoadTypeFromUnqualifiedName(reader.Value as string);
 
                         if (messageType != null && messageType != deserializedMessageType)
                         {
@@ -320,9 +319,7 @@ namespace AI4E
             if (messageType == null || message == null)
                 throw new InvalidOperationException();
 
-            var resultType = typeof(DispatchDataDictionary<>).MakeGenericType(messageType);
-
-            return Activator.CreateInstance(resultType, message, data?.ToImmutable() ?? ImmutableDictionary<string, object>.Empty);
+            return DispatchDataDictionary.Create(messageType, message, data?.ToImmutable() ?? ImmutableDictionary<string, object>.Empty);
         }
 
         private ImmutableDictionary<string, object>.Builder ReadData(JsonReader reader, JsonSerializer serializer)

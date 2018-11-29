@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using AI4E.Blazor.Modularity;
@@ -6,7 +6,8 @@ using AI4E.Modularity;
 
 namespace AI4E.Blazor.Server
 {
-    public sealed class LookupModulePrefixHandler : MessageHandler
+    [MessageHandler]
+    internal sealed class LookupModulePrefixHandler : MessageHandler
     {
         private readonly IRunningModuleLookup _runningModules;
 

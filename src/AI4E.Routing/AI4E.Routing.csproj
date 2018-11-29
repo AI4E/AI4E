@@ -16,6 +16,7 @@
     <Compile Include="..\Common\TypeLoadHelper.cs" Link="Internal\TypeLoadHelper.cs" />
     <Compile Include="..\Common\DictionaryExtension.cs" Link="Internal\DictionaryExtension.cs" />
     <Compile Include="..\Common\NoOpDisposable.cs" Link="Internal\NoOpDisposable.cs" />
+    <Compile Include="..\Common\TypeConverter.cs" Link="Internal\TypeConverter.cs" />
   </ItemGroup>
 
   <ItemGroup>

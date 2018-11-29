@@ -17,6 +17,8 @@
     <Compile Include="..\Common\StringBuilderExtension.cs" Link="Internal\StringBuilderExtension.cs" />
     <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
     <Compile Include="..\Common\CastTo.cs" Link="Internal\CastTo.cs" />
+    <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
+    <Compile Include="..\Common\TypeLoadHelper.cs" Link="Internal\TypeLoadHelper.cs" />
   </ItemGroup>
 
   <ItemGroup>

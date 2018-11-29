@@ -1,10 +1,10 @@
-using AI4E.Modularity;
+﻿using AI4E.Modularity;
 
 namespace AI4E.Blazor.Modularity
 {
-    internal sealed class LookupModulePrefix
+    internal sealed class LookupModuleEndPoint
     {
-        public LookupModulePrefix(ModuleIdentifier module)
+        public LookupModuleEndPoint(ModuleIdentifier module)
         {
             Module = module;
         }
