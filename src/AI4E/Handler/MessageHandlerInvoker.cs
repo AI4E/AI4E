@@ -159,8 +159,12 @@ namespace AI4E.Handler
                     return new SuccessDispatchResult();
                 }
 
-                // https://github.com/AI4E/AI4E/issues/19
                 return new NotFoundDispatchResult();
+            }
+
+            if (result is IDispatchResult dispatchResult)
+            {
+                return dispatchResult;
             }
 
             return SuccessDispatchResultBuilder.GetSuccessDispatchResult(invoker.ReturnTypeDescriptor.ResultType, result);

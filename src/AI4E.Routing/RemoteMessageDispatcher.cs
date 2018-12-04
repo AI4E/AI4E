@@ -184,20 +184,6 @@ namespace AI4E.Routing
         {
             Assert(message != null);
 
-            if (_logger.IsEnabled(LogLevel.Trace))
-            {
-                var frameIdx = message.FrameIndex;
-
-                using (var stream = message.PopFrame().OpenStream())
-                using (var reader = new StreamReader(stream))
-                {
-                    _logger.LogTrace($"Received message: {reader.ReadToEnd()}");
-                }
-
-                message.PushFrame();
-                Assert(message.FrameIndex == frameIdx);
-            }
-
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new StreamReader(stream))
             using (var jsonReader = new JsonTextReader(reader))
@@ -235,6 +221,20 @@ namespace AI4E.Routing
         private DispatchDataDictionary DeserializeDispatchData(IMessage message)
         {
             Assert(message != null);
+
+            if (_logger.IsEnabled(LogLevel.Trace))
+            {
+                var frameIdx = message.FrameIndex;
+
+                using (var stream = message.PopFrame().OpenStream())
+                using (var reader = new StreamReader(stream))
+                {
+                    _logger.LogTrace($"Received message: {reader.ReadToEnd()}");
+                }
+
+                message.PushFrame();
+                Assert(message.FrameIndex == frameIdx);
+            }
 
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new StreamReader(stream))

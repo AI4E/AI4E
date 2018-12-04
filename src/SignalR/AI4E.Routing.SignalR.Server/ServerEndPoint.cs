@@ -133,8 +133,14 @@ namespace AI4E.Routing.SignalR.Server
         {
             _logger?.LogDebug($"Received acknowledgment for seq-num {seqNum} from client {address}.");
 
-            var success = _ackLookup.TryRemove(seqNum, out var entry) && entry.AckSource.TrySetResult(null);
-            Assert(success);
+            // We cannot assume that this is successful,
+            // as the client may already have received a message,
+            // when we abort the transmission and therefore sends an ack,
+            // altough we already removed the entry from the ack-lookup.
+            if (_ackLookup.TryRemove(seqNum, out var entry))
+            {
+                entry.AckSource.TrySetResult(null);
+            }
 
             // We cannot assume that the ack of a message is received from the client, that we are currently connected with.
             //Assert(LookupAddress(endPoint) == address);
