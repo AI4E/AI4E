@@ -53,7 +53,7 @@ namespace AI4E.Routing
         Transient = 1,
 
         /// <summary>
-        /// The handler shall only handle point to point messages, if the message is not sent to the end-point via its address.
+        /// The handler shall not handle point to point messages, unless the message is not sent to the end-point via its address.
         /// </summary>
         PublishOnly = 2
     }

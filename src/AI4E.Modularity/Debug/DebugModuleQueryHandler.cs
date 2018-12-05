@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace AI4E.Modularity.Debug
 {
-    public sealed class DebugModuleQueryHandler : MessageHandler
+    [MessageHandler]
+    internal sealed class DebugModuleQueryHandler : MessageHandler
     {
         private readonly DebugPort _debugPort;
 
@@ -16,12 +16,9 @@ namespace AI4E.Modularity.Debug
             _debugPort = debugPort;
         }
 
-        public IEnumerable<DebugModule> Handle(Query<IEnumerable<DebugModule>> message)
+        public IEnumerable<DebugModuleProperties> Handle(Query<IEnumerable<DebugModuleProperties>> message)
         {
-            return _debugPort.DebugSessions
-                             .Select(p => new DebugModule(p.EndPoint, p.Module, p.ModuleVersion))
-                             .Distinct(DebugModuleEqualityComparer.Instance)
-                             .ToList();
+            return _debugPort.ConnectedDebugModules;
         }
     }
 }

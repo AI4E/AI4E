@@ -107,7 +107,9 @@ namespace AI4E.Modularity.Debug
 
         private async Task<IPEndPoint> InitializeInternalAsync(CancellationToken cancellation)
         {
-            // We MUST ensure that we only open the debug-port, if the handler for the debug messages are registered AND reached a globally consistent state (their routes are registered).
+            // We MUST ensure that we only open the debug-port if
+            // - the handler for the debug messages are registered AND
+            // - reached a globally consistent state (their routes are registered).
             await _messageDispatcher.WaitPendingRegistrationsAsync(cancellation);
 
             _tcpHost.Start();
@@ -150,31 +152,9 @@ namespace AI4E.Modularity.Debug
 
         #endregion
 
-        public IReadOnlyCollection<IDebugSession> DebugSessions => _debugSessions.Values.Where(p => p.IsMetadataSet).ToList();
-
-        public void DebugSessionConnected(IPEndPoint address,
-                                          EndPointAddress endPoint,
-                                          ModuleIdentifier module,
-                                          ModuleVersion moduleVersion)
-        {
-            if (address == null)
-                throw new ArgumentNullException(nameof(address));
-
-            if (endPoint == default)
-                throw new ArgumentDefaultException(nameof(endPoint));
-
-            if (module == default)
-                throw new ArgumentDefaultException(nameof(module));
-
-            if (!_debugSessions.TryGetValue(address, out var session))
-            {
-                return; // TODO: Do we throw here?
-            }
-
-            // TODO: There is a race condition if this is hte metadata for an older debug session that had the same address coincidentally.
-            session.SetMetadata(endPoint, module, moduleVersion);
-            _logger?.LogTrace($"The metadata for debug session '{endPoint}' were set.");
-        }
+        // TODO: We should guarantee that there are no two debug modules that are equal. We can omit the Distinct call here.
+        public IReadOnlyCollection<DebugModuleProperties> ConnectedDebugModules =>
+            _debugSessions.Values.Where(p => p.IsMetadataSet).Select(p => p.ModuleProperties).Distinct().ToList();
 
         private async Task ConnectProcedure(CancellationToken cancellation)
         {
@@ -207,7 +187,7 @@ namespace AI4E.Modularity.Debug
             }
         }
 
-        private sealed class DebugSession : IDebugSession, IDisposable
+        private sealed class DebugSession : IDisposable
         {
             private readonly DebugPort _debugServer;
             private readonly TcpClient _tcpClient;
@@ -216,7 +196,9 @@ namespace AI4E.Modularity.Debug
             private readonly ILoggerFactory _loggerFactory;
             private readonly ILogger<DebugSession> _logger;
             private readonly DisposeAwareStream _stream;
-            private readonly ProxyHost _rpcHost;
+
+            private readonly DisposableAsyncLazy<DebugModuleProperties> _propertiesLazy;
+            private readonly DisposableAsyncLazy<ProxyHost> _proxyHostLazy;
 
             public DebugSession(DebugPort debugServer,
                                 TcpClient tcpClient,
@@ -246,7 +228,43 @@ namespace AI4E.Modularity.Debug
                 _logger = _loggerFactory?.CreateLogger<DebugSession>();
                 var streamLogger = _loggerFactory?.CreateLogger<DisposeAwareStream>();
                 _stream = new DisposeAwareStream(_tcpClient.GetStream(), _dateTimeProvider, OnDebugStreamsCloses, streamLogger);
-                _rpcHost = new ProxyHost(_stream, serviceProvider);
+
+                _propertiesLazy = new DisposableAsyncLazy<DebugModuleProperties>(
+                    factory: c => DebugModuleProperties.ReadAsync(_stream, c),
+                    options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
+
+                _proxyHostLazy = new DisposableAsyncLazy<ProxyHost>(
+                    factory: CreateProxyHostAsync,
+                    disposal: proxyHost => proxyHost.DisposeAsync(),
+                    options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
+            }
+
+            private async Task<DebugModuleProperties> CreatePropertiesAsync(CancellationToken cancellation)
+            {
+                var properties = await DebugModuleProperties.ReadAsync(_stream, cancellation);
+
+                _debugServer._messageDispatcher
+                    .DispatchAsync(new DebugModuleConnected(properties), publish: true, cancellation)
+                    .HandleExceptions(_logger); // Do NOT wait for the messages to be dispatched (fire and forget)
+
+                return properties;
+            }
+
+            private Task DisposePropertiesAsync(DebugModuleProperties properties)
+            {
+                _debugServer._messageDispatcher
+                    .DispatchAsync(new DebugModuleDisconnected(properties), publish: true)
+                    .HandleExceptions(_logger); // Do NOT wait for the messages to be dispatched (fire and forget)
+
+                return Task.CompletedTask;
+            }
+
+            private async Task<ProxyHost> CreateProxyHostAsync(CancellationToken cancellation)
+            {
+                // We have to wait until the properties are read from the stream.
+                await _propertiesLazy.Task.WithCancellation(cancellation);
+
+                return new ProxyHost(_stream, _serviceProvider);
             }
 
             // Do not lazily lookup this from _tcpClient, as we need this in the disposal, but then, the _tcpClient is already disposed.
@@ -261,7 +279,10 @@ namespace AI4E.Modularity.Debug
             public void Dispose()
             {
                 ExceptionHelper.HandleExceptions(() => _stream.Dispose(), _logger);
-                ExceptionHelper.HandleExceptions(() => _rpcHost.Dispose(), _logger);
+
+                _proxyHostLazy.Dispose();
+                _propertiesLazy.Dispose();
+
                 ExceptionHelper.HandleExceptions(() =>
                 {
                     if (!_debugServer._debugSessions.Remove(Address, this))
@@ -271,38 +292,15 @@ namespace AI4E.Modularity.Debug
                 }, _logger);
             }
 
-            private readonly object _lock = new object();
-            private volatile bool _isMetadataSet = false;
-
-            public void SetMetadata(EndPointAddress endPoint, ModuleIdentifier module, ModuleVersion moduleVersion)
+            public Task<DebugModuleProperties> GetModulePropertiesAsync(CancellationToken cancellation)
             {
-                // Volatile read op.
-                if (_isMetadataSet)
-                    return;
-
-                lock (_lock)
-                {
-                    // Volatile read op.
-                    if (_isMetadataSet)
-                        return;
-
-                    EndPoint = endPoint;
-                    Module = module;
-                    ModuleVersion = moduleVersion;
-
-                    // This must be set AFTER the actual metadata, because is is read from outside unsynchronized.
-                    // Volatile protects us from the compiler, the runtime or the cpu reordering this operation with the operations above.
-                    // Volatile write op.
-                    _isMetadataSet = true;
-                }
+                return _propertiesLazy.Task.WithCancellation(cancellation);
             }
 
-            // Reading any of these props before MetadataSet returns true is UNSAFE and vulnerable to threading issues.
-            public EndPointAddress EndPoint { get; private set; }
-            public ModuleIdentifier Module { get; private set; }
-            public ModuleVersion ModuleVersion { get; private set; }
+            // TODO: Rename
+            public bool IsMetadataSet => _propertiesLazy.IsStarted && _propertiesLazy.Task.IsCompleted;
 
-            public bool IsMetadataSet => _isMetadataSet; // Volatile read op.
+            public DebugModuleProperties ModuleProperties => _propertiesLazy.ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         private sealed class IPEndPointEqualityComparer : IEqualityComparer<IPEndPoint>

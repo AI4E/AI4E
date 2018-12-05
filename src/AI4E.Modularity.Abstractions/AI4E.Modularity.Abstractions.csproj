@@ -6,7 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\Common\ArrayPoolExtension.cs" Link="Internal\ArrayPoolExtension.cs" />
+    <Compile Include="..\Common\MemoryWriter.cs" Link="Internal\MemoryWriter.cs" />
     <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
+    <Compile Include="..\Common\StreamExtension.Memory.cs" Link="Internal\StreamExtension.Memory.cs" />
   </ItemGroup>
 
   <ItemGroup>

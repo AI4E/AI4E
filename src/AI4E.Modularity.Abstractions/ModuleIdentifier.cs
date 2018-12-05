@@ -27,12 +27,7 @@ namespace AI4E.Modularity
 {
     // A handle for a module (f.e. AI4E.Clustering)
     [TypeConverter(typeof(ModuleIdentifierTypeConverter))]
-#if BLAZOR
-    internal
-#else
-    public
-#endif
-    readonly struct ModuleIdentifier : IEquatable<ModuleIdentifier>
+    public readonly struct ModuleIdentifier : IEquatable<ModuleIdentifier>
     {
         public static ModuleIdentifier UnknownModule { get; } = new ModuleIdentifier();
 
@@ -81,12 +76,8 @@ namespace AI4E.Modularity
         }
     }
 
-#if BLAZOR
-    internal
-#else
-    public
-#endif
-    sealed class ModuleIdentifierTypeConverter : TypeConverter
+
+    public sealed class ModuleIdentifierTypeConverter : TypeConverter
     {
         public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
         {

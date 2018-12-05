@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AI4E;
 using AI4E.Domain.Services;
 using AI4E.Modularity;
+using AI4E.Modularity.Debug;
 using AI4E.Modularity.Module;
 using AI4E.Routing;
 using AI4E.Validation;
@@ -39,6 +40,10 @@ namespace Module
             services.Configure<ModuleServerOptions>(options =>
             {
                 options.Prefix = _prefix;
+            });
+
+            services.Configure<ModuleDebugOptions>(options =>
+            {
                 options.UseDebugConnection = true;
                 options.DebugConnection = "localhost:8080";
             });

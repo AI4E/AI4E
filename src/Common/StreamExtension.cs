@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -26,10 +26,8 @@ using System.Threading.Tasks;
 
 namespace AI4E.Internal
 {
-    internal static class StreamExtension
+    internal static partial class StreamExtension
     {
-        private static readonly byte[] _emptyArray = new byte[0];
-
         public static async Task ReadExactAsync(this Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellation)
         {
             if (stream == null)
@@ -75,7 +73,7 @@ namespace AI4E.Internal
 
             if (stream == Stream.Null)
             {
-                return _emptyArray;
+                return Array.Empty<byte>();
             }
 
             if (stream is MemoryStream memoryStream)
@@ -114,5 +112,5 @@ namespace AI4E.Internal
             result.Position = 0;
             return result;
         }
-    }
+    }   
 }

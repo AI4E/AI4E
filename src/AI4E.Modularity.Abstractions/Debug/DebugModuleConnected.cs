@@ -18,8 +18,6 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using AI4E.Routing;
-
 namespace AI4E.Modularity.Debug
 {
 #if BLAZOR
@@ -29,20 +27,11 @@ namespace AI4E.Modularity.Debug
 #endif
     sealed class DebugModuleConnected
     {
-        public DebugModuleConnected(byte[] address, EndPointAddress endPoint, ModuleIdentifier module, ModuleVersion moduleVersion)
+        public DebugModuleConnected(DebugModuleProperties moduleProperties)
         {
-            EndPoint = endPoint;
-            Module = module;
-            ModuleVersion = moduleVersion;
-            Address = address;
+            ModuleProperties = moduleProperties;
         }
 
-        public byte[] Address { get; }
-
-        public EndPointAddress EndPoint { get; }
-
-        public ModuleIdentifier Module { get; }
-
-        public ModuleVersion ModuleVersion { get; }
+        public DebugModuleProperties ModuleProperties { get; }
     }
 }

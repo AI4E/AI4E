@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AI4E.Modularity.Debug
 {
-    public sealed class DebugCoordinationManager : ICoordinationManager, IDisposable
+    public sealed class DebugCoordinationManager : ICoordinationManager
     {
         private readonly DebugConnection _debugConnection;
         private readonly ILogger<DebugCoordinationManager> _logger;

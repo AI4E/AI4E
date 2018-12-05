@@ -21,20 +21,15 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
-using AI4E.Coordination;
 using AI4E.DispatchResults;
 using AI4E.Internal;
-using AI4E.Modularity.Debug;
-using AI4E.Remoting;
 using AI4E.Routing;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
@@ -51,8 +46,7 @@ namespace AI4E.Modularity.Module
         private readonly AsyncDisposeHelper _disposeHelper;
 
         private readonly string _prefix;
-        private readonly bool _isDebuggingConnection;
-        private IAsyncDisposable _handlerRegistration;
+        private IHandlerRegistration _handlerRegistration;
 
         public ModuleServer(IRemoteMessageDispatcher messageDispatcher,
                             IMetadataAccessor metadataAccessor,
@@ -91,7 +85,6 @@ namespace AI4E.Modularity.Module
 
             _disposeHelper = new AsyncDisposeHelper(DiposeInternalAsync);
             _prefix = options.Prefix;
-            _isDebuggingConnection = options.UseDebugConnection;
             Features.Set<IHttpRequestFeature>(new HttpRequestFeature());
             Features.Set<IHttpResponseFeature>(new HttpResponseFeature());
         }
@@ -102,36 +95,6 @@ namespace AI4E.Modularity.Module
         {
             if (application == null)
                 throw new ArgumentNullException(nameof(application));
-
-            if (_isDebuggingConnection)
-            {
-                var tasks = new List<Task>();
-
-                if (_serviceProvider.GetRequiredService<ILogicalEndPoint>() is IAsyncInitialization logicalEndPoint)
-                {
-                    tasks.Add(logicalEndPoint.Initialization.WithCancellation(cancellationToken));
-                }
-
-                if (_serviceProvider.GetRequiredService<ICoordinationManager>() is IAsyncInitialization coordinationManager)
-                {
-                    tasks.Add(coordinationManager.Initialization.WithCancellation(cancellationToken));
-                }
-
-                await Task.WhenAll(tasks);
-            }
-
-            async Task DispatchDebugModuleConnected()
-            {
-                var endPoint = await _messageDispatcher.GetLocalEndPointAsync(cancellationToken);
-                var metadata = await _metadataAccessor.GetMetadataAsync(cancellationToken);
-                var debugConnection = _serviceProvider.GetRequiredService<DebugConnection>();
-                var address = await debugConnection.GetLocalAddressAync(cancellationToken);
-                var addressConversion = _serviceProvider.GetRequiredService<IAddressConversion<IPEndPoint>>();
-                var addressBytes = addressConversion.SerializeAddress(address);
-                var message = new DebugModuleConnected(addressBytes, endPoint, metadata.Module, metadata.Version);
-
-                await _messageDispatcher.DispatchAsync(message, publish: true, cancellationToken);
-            }
 
             async Task RegisterModuleAsync()
             {
@@ -144,23 +107,15 @@ namespace AI4E.Modularity.Module
                 await moduleRegistrationOperation;
             }
 
-            async Task RegisterHandlerAsync()
+            Task RegisterHandlerAsync()
             {
                 var handler = Provider.Create(() => new HttpRequestForwardingHandler<TContext>(application, _logger));
                 _handlerRegistration = _messageDispatcher.Register(handler);
 
-                if (_handlerRegistration is IAsyncInitialization asyncInitialization)
-                {
-                    await asyncInitialization.Initialization.WithCancellation(cancellationToken);
-                }
+                return _handlerRegistration.Initialization.WithCancellation(cancellationToken);
             }
 
             await Task.WhenAll(RegisterHandlerAsync(), RegisterModuleAsync());
-
-            if (_isDebuggingConnection)
-            {
-                DispatchDebugModuleConnected().HandleExceptions(_logger);
-            }
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
