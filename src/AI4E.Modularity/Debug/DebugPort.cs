@@ -230,7 +230,8 @@ namespace AI4E.Modularity.Debug
                 _stream = new DisposeAwareStream(_tcpClient.GetStream(), _dateTimeProvider, OnDebugStreamsCloses, streamLogger);
 
                 _propertiesLazy = new DisposableAsyncLazy<DebugModuleProperties>(
-                    factory: c => DebugModuleProperties.ReadAsync(_stream, c),
+                    factory: CreatePropertiesAsync,
+                    disposal: DisposePropertiesAsync,
                     options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
 
                 _proxyHostLazy = new DisposableAsyncLazy<ProxyHost>(

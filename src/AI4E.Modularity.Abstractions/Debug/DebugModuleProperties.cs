@@ -65,7 +65,7 @@ namespace AI4E.Modularity.Debug
 
             using (ArrayPool<byte>.Shared.RentExact(4, out var memory))
             {
-                BinaryPrimitives.WriteInt32LittleEndian(memory.Span, memory.Length + 4);
+                BinaryPrimitives.WriteInt32LittleEndian(memory.Span, bufferSize + 4);
                 await stream.WriteAsync(memory, cancellation);
             }
 
