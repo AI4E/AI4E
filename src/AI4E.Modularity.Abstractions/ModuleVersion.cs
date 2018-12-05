@@ -27,7 +27,12 @@ using Newtonsoft.Json;
 namespace AI4E.Modularity
 {
     [TypeConverter(typeof(ModuleVersionConverter))]
-    public readonly struct ModuleVersion : IEquatable<ModuleVersion>, IComparable<ModuleVersion>
+#if BLAZOR
+    internal
+#else
+    public
+#endif
+        readonly struct ModuleVersion : IEquatable<ModuleVersion>, IComparable<ModuleVersion>
     {
         public static ModuleVersion Unknown { get; } = new ModuleVersion();
 
@@ -200,7 +205,12 @@ namespace AI4E.Modularity
         }
     }
 
-    public sealed class ModuleVersionConverter : TypeConverter
+#if BLAZOR
+    internal
+#else
+    public
+#endif
+    sealed class ModuleVersionConverter : TypeConverter
     {
         public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
         {

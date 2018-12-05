@@ -36,7 +36,12 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Debug
 {
-    public readonly struct DebugModuleProperties : IEquatable<DebugModuleProperties>
+#if BLAZOR
+    internal
+#else
+    public
+#endif
+    readonly struct DebugModuleProperties : IEquatable<DebugModuleProperties>
     {
         public DebugModuleProperties(EndPointAddress endPoint, ModuleIdentifier module, ModuleVersion version)
         {
