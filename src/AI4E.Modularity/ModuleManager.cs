@@ -139,20 +139,10 @@ namespace AI4E.Modularity
             var path = GetPrefixPath(normalizedPrefix, normalize: false);
             var entry = await _coordinationManager.GetOrCreateAsync(path, _emptyPayload, EntryCreationModes.Default, cancellation);
 
-            Console.WriteLine(" ----> GetEndPointsAsync: " + entry.Children.Count + " entries found for prefix: "+ prefix.ConvertToString() + ".");
-
             Assert(entry != null);
 
             var result = new List<EndPointAddress>(capacity: entry.Children.Count);
             var childEntries = (await entry.GetChildrenEntriesAsync(cancellation)).OrderBy(p => p.CreationTime).ToList();
-
-            //if(childEntries.Count == 0)
-            //{
-            //    entry = await _coordinationManager.GetOrCreateAsync(path, _emptyPayload, EntryCreationModes.Default, cancellation);
-            //    childEntries = (await entry.GetChildrenEntriesAsync(cancellation)).OrderBy(p => p.CreationTime).ToList();
-            //}
-
-            Console.WriteLine(" ----> GetEndPointsAsync: " + childEntries.Count + " entries for prefix: " + prefix.ConvertToString() + " are valid.");
 
             foreach (var childEntry in childEntries)
             {
@@ -260,8 +250,6 @@ namespace AI4E.Modularity
                 var payload = stream.ToArray();
                 var entry = await _coordinationManager.GetOrCreateAsync(path, payload, EntryCreationModes.Ephemeral, cancellation);
             }
-
-            Console.WriteLine(" ----> WriteModulePrefixEntryAsync: " + prefix.ConvertToString() + " End-point: " + endPoint.ToString());
         }
 
         private EndPointAddress ReadEndPointAddress(ref BinarySpanReader reader)
