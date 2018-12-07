@@ -19,14 +19,11 @@
  */
 
 using System;
-using System.Net;
 using System.Reflection;
-using System.Threading.Tasks;
 using AI4E.ApplicationParts;
 using AI4E.Domain.Services;
 using AI4E.Internal;
 using AI4E.Modularity.Debug;
-using AI4E.Modularity.Module;
 using AI4E.Remoting;
 using AI4E.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,7 +50,8 @@ namespace AI4E.Modularity.Host
             services.AddSingleton(ConfigureDebugPort);
             services.ConfigureApplicationServices(ConfigureApplicationServices);
 
-            services.AddSingleton<IRunningModuleLookup, RunningModuleLookup>();
+            services.AddSingleton<IModuleManager, ModuleManager>();
+            services.AddSingleton<IPathMapper, PathMapper>();
 
             return new ModularityBuilder(services);
         }
@@ -64,7 +62,7 @@ namespace AI4E.Modularity.Host
             services.AddScoped<IDependencyResolver, DependencyResolver>();
             services.AddSingleton<IModuleInstaller, ModuleInstaller>();
             services.AddSingleton<IModuleSupervisorFactory, ModuleSupervisorFactory>();
-            services.AddSingleton<IModuleManager, ModuleManager>();
+            services.AddSingleton<IModuleInstallationManager, ModuleInstallationManager>();
             services.AddSingleton<IMetadataReader, MetadataReader>();
             services.AddDomainServices();
             services.ConfigureApplicationParts(ConfigureApplicationParts);

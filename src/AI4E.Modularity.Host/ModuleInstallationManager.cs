@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -14,7 +14,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Host
 {
-    public sealed class ModuleManager : IModuleManager
+    public sealed class ModuleInstallationManager : IModuleInstallationManager
     {
         private readonly IMetadataReader _metadataReader;
         private readonly IModuleInstaller _moduleInstaller;
@@ -25,7 +25,7 @@ namespace AI4E.Modularity.Host
         private readonly DirectoryInfo _installationDirectory;
         private readonly AsyncInitializationHelper _initializationHelper;
 
-        public ModuleManager(IMetadataReader metadataReader,
+        public ModuleInstallationManager(IMetadataReader metadataReader,
                              IModuleInstaller moduleInstaller,
                              IModuleSupervisorFactory moduleSupervisorFactory,
                              IServiceProvider serviceProvider,

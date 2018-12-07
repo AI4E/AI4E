@@ -49,12 +49,12 @@ namespace AI4E.Modularity.Host
 
             // Initialize the module-host.
             var dispatcher = serviceProvider.GetRequiredService<IRemoteMessageDispatcher>();
-            var runningModuleLookup = serviceProvider.GetRequiredService<IRunningModuleLookup>();
+            var pathMapper = serviceProvider.GetRequiredService<IPathMapper>();
 
             applicationBuilder.Use(async (context, next) =>
             {
                 var cancellation = context?.RequestAborted ?? default;
-                var endPoint = await runningModuleLookup.MapHttpPathAsync(context.Features.Get<IHttpRequestFeature>().Path, cancellation);
+                var endPoint = await pathMapper.MapHttpPathAsync(context.Features.Get<IHttpRequestFeature>().Path.AsMemory(), cancellation);
 
                 if (endPoint != EndPointAddress.UnknownAddress)
                 {
@@ -110,7 +110,7 @@ namespace AI4E.Modularity.Host
                         await responseFeature.Body.WriteAsync(response.Body, 0, response.Body.Length);
                     }
 
-                    if(responseFeature.StatusCode == 404)
+                    if (responseFeature.StatusCode == 404)
                     {
                         await next?.Invoke();
                         return;

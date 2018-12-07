@@ -28,7 +28,7 @@ namespace AI4E.Modularity.Module
             services.AddSingleton(ConfigureCoordinationManager);
             services.AddSingleton(ConfigureDebugConnection);
             services.AddSingleton<IMetadataAccessor, MetadataAccessor>();
-            services.AddSingleton<IRunningModuleLookup, RunningModuleLookup>();
+            services.AddSingleton<IModuleManager, ModuleManager>();
             services.AddSingleton<IMetadataReader, MetadataReader>();
 
             services.ConfigureApplicationServices(ConfigureApplicationServices);

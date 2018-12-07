@@ -40,7 +40,7 @@ namespace AI4E.Modularity.Module
     {
         private readonly IRemoteMessageDispatcher _messageDispatcher;
         private readonly IMetadataAccessor _metadataAccessor;
-        private readonly IRunningModuleLookup _runningModules;
+        private readonly IModuleManager _runningModules;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ModuleServer> _logger;
         private readonly AsyncDisposeHelper _disposeHelper;
@@ -50,7 +50,7 @@ namespace AI4E.Modularity.Module
 
         public ModuleServer(IRemoteMessageDispatcher messageDispatcher,
                             IMetadataAccessor metadataAccessor,
-                            IRunningModuleLookup runningModules,
+                            IModuleManager runningModules,
                             IServiceProvider serviceProvider,
                             IOptions<ModuleServerOptions> optionsAccessor,
                             ILogger<ModuleServer> logger)
@@ -102,7 +102,7 @@ namespace AI4E.Modularity.Module
                 var metadata = await _metadataAccessor.GetMetadataAsync(cancellationToken);
                 var module = metadata.Module;
 
-                var moduleRegistrationOperation = _runningModules.AddModuleAsync(module, endPoint, _prefix.Yield(), cancellationToken);
+                var moduleRegistrationOperation = _runningModules.AddModuleAsync(module, endPoint, _prefix.AsMemory().Yield(), cancellationToken);
 
                 await moduleRegistrationOperation;
             }

@@ -19,6 +19,7 @@
  */
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -34,7 +35,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity
 {
-    public sealed class RunningModuleLookup : IRunningModuleLookup
+    public sealed class ModuleManager : IModuleManager
     {
         private static readonly byte[] _emptyPayload = new byte[0];
         private const string _whitespaceRegexPattern = @"\s+";
@@ -51,7 +52,7 @@ namespace AI4E.Modularity
 
         #region C'tor
 
-        public RunningModuleLookup(ICoordinationManager coordinationManager)
+        public ModuleManager(ICoordinationManager coordinationManager)
         {
             if (coordinationManager == null)
                 throw new ArgumentNullException(nameof(coordinationManager));
@@ -63,7 +64,7 @@ namespace AI4E.Modularity
 
         #region IRunningModuleLookup
 
-        public async Task AddModuleAsync(ModuleIdentifier module, EndPointAddress endPoint, IEnumerable<string> prefixes, CancellationToken cancellation)
+        public async Task AddModuleAsync(ModuleIdentifier module, EndPointAddress endPoint, IEnumerable<ReadOnlyMemory<char>> prefixes, CancellationToken cancellation)
         {
             if (module == default)
                 throw new ArgumentDefaultException(nameof(module));
@@ -77,10 +78,10 @@ namespace AI4E.Modularity
             if (!prefixes.Any())
                 throw new ArgumentException("The collection must not be empty.", nameof(prefixes));
 
-            if (prefixes.Any(p => string.IsNullOrWhiteSpace(p)))
+            if (prefixes.Any(prefix => prefix.Span.IsEmptyOrWhiteSpace()))
                 throw new ArgumentException("The collection must not contain null entries or entries that are empty or contain whitespace only.", nameof(prefixes));
 
-            var prefixCollection = (prefixes as ICollection<string>) ?? prefixes.ToList();
+            var prefixCollection = (prefixes as ICollection<ReadOnlyMemory<char>>) ?? prefixes.ToList();
             var session = await _coordinationManager.GetSessionAsync(cancellation);
 
             var tasks = new List<Task>(capacity: 1 + prefixCollection.Count())
@@ -123,15 +124,15 @@ namespace AI4E.Modularity
             }
         }
 
-        public async ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(string prefix, CancellationToken cancellation)
+        public async ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(ReadOnlyMemory<char> prefix, CancellationToken cancellation)
         {
-            if (string.IsNullOrWhiteSpace(prefix))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(prefix));
+            if (prefix.Span.IsEmptyOrWhiteSpace())
+                throw new ArgumentException("The argument must not be empty, not consist of whitespace only.", nameof(prefix));
 
             var normalizedPrefix = NormalizePrefix(prefix);
 
             // It is not possible to register an end-point address for the root path.
-            if (string.IsNullOrWhiteSpace(normalizedPrefix))
+            if (normalizedPrefix.IsEmpty)
             {
                 return Enumerable.Empty<EndPointAddress>();
             }
@@ -153,7 +154,7 @@ namespace AI4E.Modularity
             return result;
         }
 
-        public async ValueTask<IEnumerable<string>> GetPrefixesAsync(ModuleIdentifier module, CancellationToken cancellation)
+        public async ValueTask<IEnumerable<ReadOnlyMemory<char>>> GetPrefixesAsync(ModuleIdentifier module, CancellationToken cancellation)
         {
             if (module == default)
                 throw new ArgumentDefaultException(nameof(module));
@@ -163,7 +164,7 @@ namespace AI4E.Modularity
             var entry = await _coordinationManager.GetAsync(runningModulePath, cancellation);
 
             if (entry == null)
-                return Enumerable.Empty<string>();
+                return Enumerable.Empty<ReadOnlyMemory<char>>();
 
             return await entry.GetChildrenEntries().SelectMany(p => ReadRunningModuleEntry(p).prefixes.ToAsyncEnumerable()).Distinct().ToList();
         }
@@ -191,24 +192,24 @@ namespace AI4E.Modularity
             return ReadEndPointAddress(ref reader);
         }
 
-        private (EndPointAddress endPoint, IReadOnlyCollection<string> prefixes) ReadRunningModuleEntry(IEntry entry)
+        private (EndPointAddress endPoint, IReadOnlyCollection<ReadOnlyMemory<char>> prefixes) ReadRunningModuleEntry(IEntry entry)
         {
             var reader = new BinarySpanReader(entry.Value.Span, ByteOrder.LittleEndian);
             var endPoint = ReadEndPointAddress(ref reader);
             var prefixesCount = reader.ReadInt32();
 
-            var prefixes = new List<string>(capacity: prefixesCount);
+            var prefixes = new List<ReadOnlyMemory<char>>(capacity: prefixesCount);
 
             for (var i = 0; i < prefixesCount; i++)
             {
-                var prefix = reader.ReadString();
+                var prefix = reader.ReadString().AsMemory();
                 prefixes.Add(prefix);
             }
 
             return (endPoint, prefixes);
         }
 
-        private async Task WriteRunningModuleEntryAsync(ModuleIdentifier module, EndPointAddress endPoint, ICollection<string> prefixes, Session session, CancellationToken cancellation)
+        private async Task WriteRunningModuleEntryAsync(ModuleIdentifier module, EndPointAddress endPoint, ICollection<ReadOnlyMemory<char>> prefixes, Session session, CancellationToken cancellation)
         {
             var path = GetRunningModulePath(module, session);
 
@@ -230,7 +231,7 @@ namespace AI4E.Modularity
             }
         }
 
-        private async Task WriteModulePrefixEntryAsync(string prefix, EndPointAddress endPoint, Session session, CancellationToken cancellation)
+        private async Task WriteModulePrefixEntryAsync(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, Session session, CancellationToken cancellation)
         {
             var normalizedPrefix = NormalizePrefix(prefix);
             var path = GetPrefixPath(normalizedPrefix, endPoint, session, normalize: false);
@@ -262,42 +263,52 @@ namespace AI4E.Modularity
             return new EndPointAddress(copy);
         }
 
-        private void WritePrefix(BinaryWriter writer, string prefix)
+        private void WritePrefix(BinaryWriter writer, ReadOnlyMemory<char> prefix)
         {
             var normalizedPrefix = NormalizePrefix(prefix);
-            var normalizedPrefixBytes = Encoding.UTF8.GetBytes(prefix);
 
-            writer.Write(normalizedPrefixBytes.Length);
-            writer.Write(normalizedPrefixBytes);
+            using (ArrayPool<byte>.Shared.RentExact(Encoding.UTF8.GetByteCount(prefix.Span), out var memory))
+            {
+                var byteCount = Encoding.UTF8.GetBytes(prefix.Span, memory.Span);
+                Assert(byteCount == memory.Length);
+
+                writer.Write(byteCount);
+                writer.Write(memory.Span);
+            }
         }
 
-        private static string NormalizePrefix(string prefix)
+        private static ReadOnlyMemory<char> NormalizePrefix(ReadOnlyMemory<char> prefix)
         {
-            prefix = _whitespaceRegex.Replace(prefix, "");
+            prefix = _whitespaceRegex.Replace(prefix.ToString(), "").AsMemory(); // TODO: This does take a copy
 
-            if (prefix.StartsWith("/"))
+            if (prefix.Span.StartsWith("/".AsSpan()))
             {
-                prefix = prefix.Substring(1);
+                prefix = prefix.Slice(1);
             }
 
             return prefix;
         }
 
-        private static CoordinationEntryPath GetPrefixPath(string prefix, bool normalize = true)
+        private static CoordinationEntryPath GetPrefixPath(ReadOnlyMemory<char> prefix, bool normalize = true)
         {
             if (normalize)
+            {
                 prefix = NormalizePrefix(prefix);
+            }
 
             return _rootPrefixesPath.GetChildPath(prefix);
         }
 
-        private static CoordinationEntryPath GetPrefixPath(string prefix, EndPointAddress endPoint, Session session, bool normalize = true)
+        private static CoordinationEntryPath GetPrefixPath(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, Session session, bool normalize = true)
         {
             if (normalize)
+            {
                 prefix = NormalizePrefix(prefix);
+            }
+
 
             var uniqueEntryName = IdGenerator.GenerateId(endPoint.ToString(), session.ToString());
-            return _rootPrefixesPath.GetChildPath(prefix, uniqueEntryName);
+            return _rootPrefixesPath.GetChildPath(prefix, uniqueEntryName.AsMemory());
         }
 
         private static CoordinationEntryPath GetRunningModulePath(ModuleIdentifier module)

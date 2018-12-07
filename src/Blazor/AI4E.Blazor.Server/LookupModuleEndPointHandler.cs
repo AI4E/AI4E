@@ -11,9 +11,9 @@ namespace AI4E.Blazor.Server
     [MessageHandler]
     internal sealed class LookupModuleEndPointHandler : MessageHandler
     {
-        private readonly IRunningModuleLookup _runningModules;
+        private readonly IModuleManager _runningModules;
 
-        public LookupModuleEndPointHandler(IRunningModuleLookup runningModules)
+        public LookupModuleEndPointHandler(IModuleManager runningModules)
         {
             if (runningModules == null)
                 throw new ArgumentNullException(nameof(runningModules));
