@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Net.Mime;
 using AI4E.Blazor.Server;
+using AI4E.Modularity.Debug;
 using AI4E.Modularity.Module;
 using AI4E.Storage;
 using AI4E.Storage.MongoDB;
@@ -38,7 +39,11 @@ namespace AI4E.Blazor.Modularity.Sample.Module.Server
 
             services.Configure<ModuleServerOptions>(options =>
             {
-                options.Prefix = _prefix;
+                options.Prefix = _prefix;  
+            });
+
+            services.Configure<ModuleDebugOptions>(options =>
+            {
                 options.UseDebugConnection = true;
                 options.DebugConnection = "localhost:8080";
             });

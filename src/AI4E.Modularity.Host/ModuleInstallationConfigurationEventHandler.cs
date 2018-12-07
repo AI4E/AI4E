@@ -1,14 +1,14 @@
-﻿using System;
+using System;
+using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Modularity.Host;
 
 namespace AI4E.Modularity.Host
 {
     public sealed class ModuleInstallationConfigurationEventHandler : MessageHandler
     {
-        private readonly IModuleManager _moduleManager;
+        private readonly IModuleInstallationManager _moduleManager;
 
-        public ModuleInstallationConfigurationEventHandler(IModuleManager moduleManager)
+        public ModuleInstallationConfigurationEventHandler(IModuleInstallationManager moduleManager)
         {
             if (moduleManager == null)
                 throw new ArgumentNullException(nameof(moduleManager));
@@ -17,11 +17,11 @@ namespace AI4E.Modularity.Host
         }
 
         // TODO: Message de-duplication and ordering
-        public Task HandleAsync(InstallationSetChanged message)
+        public Task HandleAsync(InstallationSetChanged message, CancellationToken cancellation)
         {
             var installationSet = message.InstallationSet;
 
-            return _moduleManager.ConfigureInstallationSetAsync(installationSet, cancellation: default);
+            return _moduleManager.ConfigureInstallationSetAsync(installationSet, cancellation);
         }
     }
 }

@@ -275,3 +275,5 @@ __pycache__/
 
 
 /lib/SignalR/
+
+!/src/**/[Dd]ebug/

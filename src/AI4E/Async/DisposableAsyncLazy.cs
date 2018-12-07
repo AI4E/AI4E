@@ -137,7 +137,7 @@ namespace AI4E.Async
 
             _instance = new Lazy<Task<T>>(_factory);
 
-            if ((options & DisposableAsyncLazyOptions.Autostart) != DisposableAsyncLazyOptions.Autostart)
+            if ((options & DisposableAsyncLazyOptions.Autostart) == DisposableAsyncLazyOptions.Autostart)
                 Start();
         }
 

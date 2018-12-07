@@ -5,39 +5,68 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Internal;
+using AI4E.Modularity.Module;
 using AI4E.Proxying;
+using AI4E.Remoting;
+using AI4E.Routing;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AI4E.Modularity.Debug
 {
     public sealed class DebugConnection : IDisposable
     {
-        private readonly IPEndPoint _debugPort;
+        private readonly IAddressConversion<IPEndPoint> _addressConversion;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IMetadataAccessor _metadataAccessor;
+        private readonly ModuleDebugOptions _options;
+        private readonly RemoteMessagingOptions _remoteOptions;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<DebugConnection> _logger;
 
+        private readonly Lazy<IPEndPoint> _debugPort; // TODO: Rename
+
         private readonly DisposableAsyncLazy<TcpClient> _tcpClientLazy;
         private readonly DisposableAsyncLazy<ProxyHost> _proxyHostLazy;
 
-        public DebugConnection(IPEndPoint debugPort, IDateTimeProvider dateTimeProvider, IServiceProvider serviceProvider, ILoggerFactory loggerFactory = null)
+        public DebugConnection(IAddressConversion<IPEndPoint> addressConversion,
+                               IDateTimeProvider dateTimeProvider,
+                               IMetadataAccessor metadataAccessor,
+                               IOptions<ModuleDebugOptions> optionsAccessor,
+                               IOptions<RemoteMessagingOptions> remoteOptionsAccessor,
+                               IServiceProvider serviceProvider,
+                               ILoggerFactory loggerFactory = null)
         {
-            if (debugPort == null)
-                throw new ArgumentNullException(nameof(debugPort));
+
+            if (addressConversion == null)
+                throw new ArgumentNullException(nameof(addressConversion));
 
             if (dateTimeProvider == null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
 
+            if (metadataAccessor == null)
+                throw new ArgumentNullException(nameof(metadataAccessor));
+
+            if (optionsAccessor == null)
+                throw new ArgumentNullException(nameof(optionsAccessor));
+
+            if (remoteOptionsAccessor == null)
+                throw new ArgumentNullException(nameof(remoteOptionsAccessor));
+
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            _debugPort = debugPort;
+            _addressConversion = addressConversion;
             _dateTimeProvider = dateTimeProvider;
+            _metadataAccessor = metadataAccessor;
+            _options = optionsAccessor.Value ?? new ModuleDebugOptions();
+            _remoteOptions = remoteOptionsAccessor.Value ?? new RemoteMessagingOptions();
             _serviceProvider = serviceProvider;
             _loggerFactory = loggerFactory;
 
             _logger = _loggerFactory?.CreateLogger<DebugConnection>();
+            _debugPort = new Lazy<IPEndPoint>(() => _addressConversion.Parse(_options.DebugConnection), LazyThreadSafetyMode.PublicationOnly);
 
             _tcpClientLazy = new DisposableAsyncLazy<TcpClient>(
                 factory: CreateTcpClientAsync,
@@ -50,10 +79,13 @@ namespace AI4E.Modularity.Debug
                 options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
         }
 
+
+        public IPEndPoint DebugPort => _debugPort.Value; // TODO: Rename
+
         private async Task<TcpClient> CreateTcpClientAsync(CancellationToken cancellation)
         {
-            _logger?.LogDebug($"Trying to connect to debug port {_debugPort}.");
-            var tcpClient = new TcpClient(_debugPort.AddressFamily);
+            _logger?.LogDebug($"Trying to connect to debug port {DebugPort}.");
+            var tcpClient = new TcpClient(DebugPort.AddressFamily);
             try
             {
                 var delay = TimeSpan.FromSeconds(1);
@@ -64,7 +96,7 @@ namespace AI4E.Modularity.Debug
                 {
                     try
                     {
-                        await tcpClient.ConnectAsync(_debugPort.Address, _debugPort.Port).WithCancellation(cancellation);
+                        await tcpClient.ConnectAsync(DebugPort.Address, DebugPort.Port).WithCancellation(cancellation);
                         break;
                     }
                     catch (SocketException exc) when (exc.SocketErrorCode == SocketError.ConnectionRefused) { }
@@ -98,9 +130,15 @@ namespace AI4E.Modularity.Debug
 
             // TODO: Graceful shutdown
             var stream = new DisposeAwareStream(tcpClient.GetStream(), _dateTimeProvider, () => { Environment.FailFast(""); return Task.CompletedTask; }, logger);
-            var proxyHost = new ProxyHost(stream, _serviceProvider);
 
-            return proxyHost;
+            var endPoint = _remoteOptions.LocalEndPoint;
+            var metadata = await _metadataAccessor.GetMetadataAsync(cancellation);
+            var module = metadata.Module;
+            var version = metadata.Version;
+
+            var properties = new DebugModuleProperties(endPoint, module, version);
+            await properties.WriteAsync(stream, cancellation);
+            return new ProxyHost(stream, _serviceProvider);
         }
 
         public async ValueTask<IPEndPoint> GetLocalAddressAync(CancellationToken cancellation)

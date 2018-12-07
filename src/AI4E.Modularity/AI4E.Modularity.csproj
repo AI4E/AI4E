@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\Common\ArrayPoolExtension.cs" Link="Internal\ArrayPoolExtension.cs" />
     <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
     <Compile Include="..\Common\DictionaryExtension.cs" Link="Internal\DictionaryExtension.cs" />
     <Compile Include="..\Common\DisposeAwareStream.cs" Link="Internal\DisposeAwareStream.cs" />
@@ -12,6 +13,7 @@
     <Compile Include="..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />
     <Compile Include="..\Common\MemoryWriter.cs" Link="Internal\MemoryWriter.cs" />
     <Compile Include="..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
+    <Compile Include="..\Common\StreamExtension.Memory.cs" Link="Internal\StreamExtension.Memory.cs" />
     <Compile Include="..\Common\StringBuilderExtension.cs" Link="Internal\StringBuilderExtension.cs" />
     <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
   </ItemGroup>
@@ -37,10 +39,6 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftExtensionsLoggingAbstractionsVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="$(MicrosoftExtensionsLoggingConsoleVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="$(MicrosoftExtensionsLoggingDebugVersion)" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal\" />
   </ItemGroup>
 
 </Project>

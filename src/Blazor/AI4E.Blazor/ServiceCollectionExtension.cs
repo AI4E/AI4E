@@ -50,9 +50,9 @@ namespace AI4E.Blazor
                 var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
 
                 Console.WriteLine("Performing query for running debug modules.");
-                var queryResult = await messageDispatcher.QueryAsync<IEnumerable<DebugModule>>(cancellation: default);
+                var queryResult = await messageDispatcher.QueryAsync<IEnumerable<DebugModuleProperties>>(cancellation: default);
 
-                if (!queryResult.IsSuccessWithResult<IEnumerable<DebugModule>>(out var debugModules))
+                if (!queryResult.IsSuccessWithResult<IEnumerable<DebugModuleProperties>>(out var debugModules))
                 {
                     throw new Exception("Unable to query installation set."); // TODO: Exception type
                 }

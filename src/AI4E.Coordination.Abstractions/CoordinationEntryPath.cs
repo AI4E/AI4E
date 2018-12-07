@@ -244,6 +244,24 @@ namespace AI4E.Coordination
         {
             return path.GetChildPath(new CoordinationEntryPathSegment(segment));
         }
+
+        public static CoordinationEntryPath GetChildPath(this CoordinationEntryPath path, IEnumerable<ReadOnlyMemory<char>> segments)
+        {
+            if (segments == null)
+                throw new ArgumentNullException(nameof(segments));
+
+            return path.GetChildPath(segments.Select(p => new CoordinationEntryPathSegment(p)));
+        }
+
+        public static CoordinationEntryPath GetChildPath(this CoordinationEntryPath path, params ReadOnlyMemory<char>[] segments)
+        {
+            return path.GetChildPath(segments as IEnumerable<ReadOnlyMemory<char>>);
+        }
+
+        public static CoordinationEntryPath GetChildPath(this CoordinationEntryPath path, ReadOnlyMemory<char> segment)
+        {
+            return path.GetChildPath(new CoordinationEntryPathSegment(segment));
+        }
     }
 
     public readonly struct CoordinationEntryPathSegment : IEquatable<CoordinationEntryPathSegment>

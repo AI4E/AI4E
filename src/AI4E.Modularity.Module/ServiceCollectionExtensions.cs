@@ -28,7 +28,7 @@ namespace AI4E.Modularity.Module
             services.AddSingleton(ConfigureCoordinationManager);
             services.AddSingleton(ConfigureDebugConnection);
             services.AddSingleton<IMetadataAccessor, MetadataAccessor>();
-            services.AddSingleton<IRunningModuleLookup, RunningModuleLookup>();
+            services.AddSingleton<IModuleManager, ModuleManager>();
             services.AddSingleton<IMetadataReader, MetadataReader>();
 
             services.ConfigureApplicationServices(ConfigureApplicationServices);
@@ -44,8 +44,8 @@ namespace AI4E.Modularity.Module
 
         private static ICoordinationManager ConfigureCoordinationManager(IServiceProvider serviceProvider)
         {
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
-            var options = optionsAccessor.Value ?? new ModuleServerOptions();
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleDebugOptions>>();
+            var options = optionsAccessor.Value ?? new ModuleDebugOptions();
 
             if (options.UseDebugConnection)
             {
@@ -62,8 +62,8 @@ namespace AI4E.Modularity.Module
         {
             Assert(serviceProvider != null);
 
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
-            var options = optionsAccessor.Value ?? new ModuleServerOptions();
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleDebugOptions>>();
+            var options = optionsAccessor.Value ?? new ModuleDebugOptions();
             var remoteOptionsAccessor = serviceProvider.GetRequiredService<IOptions<RemoteMessagingOptions>>();
             var remoteOptions = remoteOptionsAccessor.Value ?? new RemoteMessagingOptions();
 
@@ -87,20 +87,15 @@ namespace AI4E.Modularity.Module
 
         private static DebugConnection ConfigureDebugConnection(IServiceProvider serviceProvider)
         {
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleServerOptions>>();
-            var options = optionsAccessor.Value ?? new ModuleServerOptions();
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleDebugOptions>>();
+            var options = optionsAccessor.Value ?? new ModuleDebugOptions();
 
             if (!options.UseDebugConnection)
             {
                 return null;
             }
 
-            var addressSerializer = serviceProvider.GetRequiredService<IAddressConversion<IPEndPoint>>();
-            var dateTimeProvider = serviceProvider.GetRequiredService<IDateTimeProvider>();
-            var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
-            var debugAddress = addressSerializer.Parse(options.DebugConnection);
-
-            return new DebugConnection(debugAddress, dateTimeProvider, serviceProvider, loggerFactory);
+            return ActivatorUtilities.CreateInstance<DebugConnection>(serviceProvider, optionsAccessor);
         }
     }
 

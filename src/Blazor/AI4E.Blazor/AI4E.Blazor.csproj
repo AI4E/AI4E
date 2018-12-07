@@ -20,8 +20,9 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Compile Include="..\..\AI4E.Modularity.Abstractions\Debug\DebugModule.cs" Link="Modularity\DebugModule.cs" />
     <Compile Include="..\..\AI4E.Modularity.Abstractions\Debug\DebugModuleConnected.cs" Link="Modularity\DebugModuleConnected.cs" />
+    <Compile Include="..\..\AI4E.Modularity.Abstractions\Debug\DebugModuleDisconnected.cs" Link="Modularity\DebugModuleDisconnected.cs" />
+    <Compile Include="..\..\AI4E.Modularity.Abstractions\Debug\DebugModuleProperties.cs" Link="Modularity\DebugModuleProperties.cs" />
     <Compile Include="..\..\AI4E.Modularity.Abstractions\Host\InstallationSetChanged.cs" Link="Modularity\InstallationSetChanged.cs" />
     <Compile Include="..\..\AI4E.Modularity.Abstractions\Host\ResolvedInstallationSet.cs" Link="Modularity\ResolvedInstallationSet.cs" />
     <Compile Include="..\..\AI4E.Modularity.Abstractions\ModuleIdentifier.cs" Link="Modularity\ModuleIdentifier.cs" />

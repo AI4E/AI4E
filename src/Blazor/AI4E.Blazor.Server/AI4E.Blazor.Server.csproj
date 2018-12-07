@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />
     <Compile Include="..\..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
     <Compile Include="..\AI4E.Blazor\Modularity\LookupModuleEndPoint.cs" Link="LookupModuleEndPoint.cs" />
     <Compile Include="..\AI4E.Blazor\Modularity\LookupModulePrefix.cs" Link="LookupModulePrefix.cs" />

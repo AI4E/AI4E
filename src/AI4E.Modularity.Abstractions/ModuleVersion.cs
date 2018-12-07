@@ -32,7 +32,7 @@ namespace AI4E.Modularity
 #else
     public
 #endif
-    readonly struct ModuleVersion : IEquatable<ModuleVersion>, IComparable<ModuleVersion>
+        readonly struct ModuleVersion : IEquatable<ModuleVersion>, IComparable<ModuleVersion>
     {
         public static ModuleVersion Unknown { get; } = new ModuleVersion();
 

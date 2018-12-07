@@ -18,21 +18,23 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Routing;
 
 namespace AI4E.Modularity
 {
-    public interface IRunningModuleLookup
+    public interface IModuleManager
     {
-        Task AddModuleAsync(ModuleIdentifier module, EndPointAddress endPoint, IEnumerable<string> prefixes, CancellationToken cancellation = default);
+        Task AddModuleAsync(ModuleIdentifier module, EndPointAddress endPoint, IEnumerable<ReadOnlyMemory<char>> prefixes, CancellationToken cancellation = default);
         Task RemoveModuleAsync(ModuleIdentifier module, CancellationToken cancellation);
 
-        ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(string prefix, CancellationToken cancellation = default);
+        ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(ReadOnlyMemory<char> prefix, CancellationToken cancellation = default);
         ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(ModuleIdentifier module, CancellationToken cancellation = default);
 
-        ValueTask<IEnumerable<string>> GetPrefixesAsync(ModuleIdentifier module, CancellationToken cancellation = default);
+        ValueTask<IEnumerable<ReadOnlyMemory<char>>> GetPrefixesAsync(ModuleIdentifier module, CancellationToken cancellation = default);
     }
 }

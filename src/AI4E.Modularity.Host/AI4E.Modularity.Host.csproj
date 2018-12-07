@@ -8,6 +8,7 @@
     <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
     <Compile Include="..\Common\DictionaryExtension.cs" Link="Internal\DictionaryExtension.cs" />
     <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
+    <Compile Include="..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />
     <Compile Include="..\Common\PathInternal.cs" Link="Internal\PathInternal.cs" />
     <Compile Include="..\Common\ProcessExtension.cs" Link="Internal\ProcessExtension.cs" />
     <Compile Include="..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />

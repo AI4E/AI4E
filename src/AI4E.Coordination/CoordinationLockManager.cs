@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -391,6 +391,7 @@ namespace AI4E.Coordination
                 {
                     _exchangeManager.NotifyWriteLockReleasedAsync(path, cancellation).HandleExceptions(_logger);
                     _logger?.LogTrace($"[{session}] Released write-lock for entry '{path}'.");
+                    _cache.InvalidateEntry(path);
                     return start;
                 }
 
@@ -414,7 +415,18 @@ namespace AI4E.Coordination
             entry = desired;
             Assert(entry != null);
             Assert(entry.WriteLock == null);
-            _cache.UpdateEntry(cacheEntry, entry);
+
+            if (entry.ReadLocks.Contains(session))
+            {
+                Assert(entry.ReadLocks.Contains(session));
+                _cache.UpdateEntry(cacheEntry, entry);
+            }
+            else
+            {
+                // TODO: We could allocate a read-lock, if we do not have one, instead of invalidating the cache-entry.
+                // The cache entry is behind the global state and has to be invalidated, if not updated, to be consistent.
+                _cache.InvalidateEntry(cacheEntry);
+            }
 
             if (entry != null)
             {

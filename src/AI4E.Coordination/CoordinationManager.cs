@@ -289,6 +289,10 @@ namespace AI4E.Coordination
 
                 try
                 {
+#if DEBUG
+                    var session = await GetSessionAsync(cancellation);
+                    Assert(entry.ReadLocks.Contains(session));
+#endif
                     var updatedCacheEntry = _cache.UpdateEntry(cacheEntry, entry);
 
                     // If we cannot update the cache, f.e. due to an old cache entry version, the cache is invalidated, and we do not need the read-lock. => Free it.
@@ -317,12 +321,12 @@ namespace AI4E.Coordination
                 await _lockManager.ReleaseLocalReadLockAsync(path, cancellation);
             }
 
-            // We do not want to do this under the local read-lock.
-            CleanupParentOfDeletedEntry:
+// We do not want to do this under the local read-lock.
+CleanupParentOfDeletedEntry:
 
-            // This operation is called for each child of an entry, when iterating the child collection.
-            // We are in the case that the requested entry cannot be found. 
-            // If this is part of the parents child collection, we clean this up now.
+// This operation is called for each child of an entry, when iterating the child collection.
+// We are in the case that the requested entry cannot be found. 
+// If this is part of the parents child collection, we clean this up now.
             await UpdateParentOfDeletedEntry(path, cancellation);
             return null;
         }
@@ -411,6 +415,10 @@ namespace AI4E.Coordination
 
                 try
                 {
+#if DEBUG
+                    var session = await GetSessionAsync(cancellation);
+                    Assert(entry.ReadLocks.Contains(session));
+#endif
                     _cache.AddEntry(entry);
 
                     return entry;
@@ -715,7 +723,9 @@ namespace AI4E.Coordination
 
                 // If this operation gets canceled, the parent entry is not cleaned up. 
                 // This is not of a problem, because the parent entry is not guaranteed to be strongly consistent anyway.
-                await UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, name, session), parent, cancellation);
+                var parentComparand = parent;
+                parent = _storedEntryManager.RemoveChild(parent, name, session);
+                await UpdateEntryAsync(parent, parentComparand, cancellation);
 
                 return version;
             }
@@ -833,7 +843,11 @@ namespace AI4E.Coordination
             // We must remove the entry from the cache by ourselves here, 
             // as we do allow the session to hold a read-lock and a write-lock at the same time 
             // and hence do not wipe the entry from the cache on write lock acquirement.
-            _cache.InvalidateEntry(entry.Path); // TODO: We actually want to remove the entry from the cache, but this also deletes the local write-lock, we own.
+
+            // TODO: We actually want to remove the entry from the cache, but this also deletes the local write-lock, we own.
+
+            // This is done now in 'ICoordinationLockManager.ReleaseWriteLockAsync' (called by the caller) and can be removed here.
+            //_cache.InvalidateEntry(entry.Path); 
             return (entry: null, deleted: true);
         }
 
