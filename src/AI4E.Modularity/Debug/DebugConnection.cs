@@ -84,7 +84,7 @@ namespace AI4E.Modularity.Debug
 
         private async Task<TcpClient> CreateTcpClientAsync(CancellationToken cancellation)
         {
-            _logger?.LogDebug($"Trying to connect to debug port {_debugPort}.");
+            _logger?.LogDebug($"Trying to connect to debug port {DebugPort}.");
             var tcpClient = new TcpClient(DebugPort.AddressFamily);
             try
             {

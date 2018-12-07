@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -32,7 +32,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Host
 {
-    public sealed class ModuleHostHttpMiddleware
+    internal sealed class ModuleHostHttpMiddleware
     {
         private readonly RequestDelegate _next;
         private readonly IRemoteMessageDispatcher _dispatcher;

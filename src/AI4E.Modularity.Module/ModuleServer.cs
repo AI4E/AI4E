@@ -19,20 +19,16 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
-using AI4E.DispatchResults;
 using AI4E.Internal;
 using AI4E.Routing;
 using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
+using Nito.AsyncEx;
 
 namespace AI4E.Modularity.Module
 {
@@ -40,20 +36,25 @@ namespace AI4E.Modularity.Module
     {
         private readonly IRemoteMessageDispatcher _messageDispatcher;
         private readonly IMetadataAccessor _metadataAccessor;
-        private readonly IModuleManager _runningModules;
+        private readonly IModuleManager _moduleManager;
         private readonly IServiceProvider _serviceProvider;
+        private readonly ILoggerFactory _loggerFactory;
+
         private readonly ILogger<ModuleServer> _logger;
         private readonly AsyncDisposeHelper _disposeHelper;
 
         private readonly string _prefix;
         private IHandlerRegistration _handlerRegistration;
 
+        private bool _isStarted = false;
+        private readonly AsyncLock _lock = new AsyncLock();
+
         public ModuleServer(IRemoteMessageDispatcher messageDispatcher,
                             IMetadataAccessor metadataAccessor,
                             IModuleManager runningModules,
                             IServiceProvider serviceProvider,
                             IOptions<ModuleServerOptions> optionsAccessor,
-                            ILogger<ModuleServer> logger)
+                            ILoggerFactory loggerFactory)
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -79,15 +80,18 @@ namespace AI4E.Modularity.Module
 
             _messageDispatcher = messageDispatcher;
             _metadataAccessor = metadataAccessor;
-            _runningModules = runningModules;
+            _moduleManager = runningModules;
             _serviceProvider = serviceProvider;
-            _logger = logger;
+            _loggerFactory = loggerFactory;
+            _logger = _loggerFactory?.CreateLogger<ModuleServer>();
 
-            _disposeHelper = new AsyncDisposeHelper(DiposeInternalAsync);
+            _disposeHelper = new AsyncDisposeHelper(DiposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
             _prefix = options.Prefix;
             Features.Set<IHttpRequestFeature>(new HttpRequestFeature());
             Features.Set<IHttpResponseFeature>(new HttpResponseFeature());
         }
+
+        #region IServer
 
         public IFeatureCollection Features { get; } = new FeatureCollection();
 
@@ -96,32 +100,42 @@ namespace AI4E.Modularity.Module
             if (application == null)
                 throw new ArgumentNullException(nameof(application));
 
-            async Task RegisterModuleAsync()
+            using (var guard = await _disposeHelper.GuardDisposalAsync(cancellationToken))
             {
-                var endPoint = await _messageDispatcher.GetLocalEndPointAsync(cancellationToken);
-                var metadata = await _metadataAccessor.GetMetadataAsync(cancellationToken);
-                var module = metadata.Module;
+                cancellationToken = guard.Cancellation;
 
-                var moduleRegistrationOperation = _runningModules.AddModuleAsync(module, endPoint, _prefix.AsMemory().Yield(), cancellationToken);
+                using (await _lock.LockAsync(cancellationToken))
+                {
+                    if (_isStarted)
+                    {
+                        return;
+                    }
 
-                await moduleRegistrationOperation;
+                    _isStarted = true;
+
+                    await RegisterHandlerAsync(application, cancellationToken);
+
+                    try
+                    {
+                        await RegisterModuleAsync(cancellationToken);
+                    }
+                    catch
+                    {
+                        await UnregisterModuleAsync().HandleExceptionsAsync(_logger);
+                        _isStarted = false;
+
+                        throw;
+                    }
+                }
             }
-
-            Task RegisterHandlerAsync()
-            {
-                var handler = Provider.Create(() => new HttpRequestForwardingHandler<TContext>(application, _logger));
-                _handlerRegistration = _messageDispatcher.Register(handler);
-
-                return _handlerRegistration.Initialization.WithCancellation(cancellationToken);
-            }
-
-            await Task.WhenAll(RegisterHandlerAsync(), RegisterModuleAsync());
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            return _disposeHelper.DisposeAsync().WithCancellation(cancellationToken);
+            return _disposeHelper.DisposeAsync();
         }
+
+        #endregion
 
         #region Disposal
 
@@ -132,134 +146,41 @@ namespace AI4E.Modularity.Module
 
         private async Task DiposeInternalAsync()
         {
-            async Task UnregisterModuleAsync()
-            {
-                var endPoint = await _messageDispatcher.GetLocalEndPointAsync(cancellation: default);
-                var metadata = await _metadataAccessor.GetMetadataAsync(cancellation: default);
-                var module = metadata.Module;
-                var moduleUnregistrationOperation = _runningModules.RemoveModuleAsync(module, cancellation: default);
-
-                await moduleUnregistrationOperation;
-            }
-
-            Task UnregisterHandlerAsync()
-            {
-                return _handlerRegistration?.DisposeAsync() ?? Task.CompletedTask;
-            }
-
-            await Task.WhenAll(UnregisterHandlerAsync().HandleExceptionsAsync(_logger),
-                               UnregisterModuleAsync().HandleExceptionsAsync(_logger));
+            await UnregisterModuleAsync().HandleExceptionsAsync(_logger);
+            await UnregisterHandlerAsync().HandleExceptionsAsync(_logger);
         }
 
         #endregion
 
-        private sealed class HttpRequestForwardingHandler<TContext> : IMessageHandler<ModuleHttpRequest>
+        private async Task RegisterHandlerAsync<TContext>(IHttpApplication<TContext> application, CancellationToken cancellation)
         {
-            private readonly IHttpApplication<TContext> _application;
-            private readonly ILogger<ModuleServer> _logger;
+            var handler = CreateHandlerProvider(application);
+            _handlerRegistration = _messageDispatcher.Register(handler);
 
-            public HttpRequestForwardingHandler(IHttpApplication<TContext> application, ILogger<ModuleServer> logger)
-            {
-                System.Diagnostics.Debug.Assert(application != null);
+            await _handlerRegistration.Initialization;
+        }
 
-                _application = application;
-                _logger = logger;
-            }
+        private IProvider<ModuleHttpHandler<TContext>> CreateHandlerProvider<TContext>(IHttpApplication<TContext> application)
+        {
+            return Provider.Create(() => new ModuleHttpHandler<TContext>(application, _loggerFactory.CreateLogger<ModuleHttpHandler<TContext>>()));
+        }
 
-            public async ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<ModuleHttpRequest> dispatchData,
-                                                                CancellationToken cancellation)
-            {
-                if (dispatchData == null)
-                    throw new ArgumentNullException(nameof(dispatchData));
+        private Task UnregisterHandlerAsync()
+        {
+            return _handlerRegistration.DisposeAsync();
+        }
 
-                var message = dispatchData.Message;
-                var responseStream = new MemoryStream();
-                var requestFeature = BuildRequestFeature(message);
-                var responseFeature = BuildResponseFeature(responseStream);
-                var features = BuildFeatureCollection(requestFeature, responseFeature);
-                var context = _application.CreateContext(features);
+        private async Task RegisterModuleAsync(CancellationToken cancellation)
+        {
+            var endPoint = await _messageDispatcher.GetLocalEndPointAsync(cancellation);
+            var metadata = await _metadataAccessor.GetMetadataAsync(cancellation);
+            await _moduleManager.AddModuleAsync(metadata.Module, endPoint, _prefix.AsMemory().Yield(), cancellation);
+        }
 
-                try
-                {
-                    await _application.ProcessRequestAsync(context);
-                    var response = BuildResponse(responseStream, responseFeature);
-
-                    DisposeContext(context);
-
-                    return new SuccessDispatchResult<ModuleHttpResponse>(response);
-                }
-                catch (Exception exc)
-                {
-                    DisposeContext(context, exc);
-                    throw;
-                }
-            }
-
-            private void DisposeContext(TContext context, Exception exc = null)
-            {
-                try
-                {
-                    _application.DisposeContext(context, exc);
-                }
-                catch (Exception exc2)
-                {
-                    _logger?.LogWarning(exc2, "Unable to dispose context.");
-                }
-            }
-
-            private static ModuleHttpResponse BuildResponse(MemoryStream responseStream, HttpResponseFeature responseFeature)
-            {
-                var response = new ModuleHttpResponse
-                {
-                    StatusCode = responseFeature.StatusCode,
-                    ReasonPhrase = responseFeature.ReasonPhrase,
-                    Body = responseStream.ToArray(),
-                    Headers = new Dictionary<string, string[]>()
-                };
-
-                foreach (var entry in responseFeature.Headers)
-                {
-                    response.Headers.Add(entry.Key, entry.Value.ToArray());
-                }
-
-                return response;
-            }
-
-            private static FeatureCollection BuildFeatureCollection(HttpRequestFeature requestFeature, HttpResponseFeature responseFeature)
-            {
-                var features = new FeatureCollection();
-                features.Set<IHttpRequestFeature>(requestFeature);
-                features.Set<IHttpResponseFeature>(responseFeature);
-                return features;
-            }
-
-            private HttpResponseFeature BuildResponseFeature(MemoryStream responseStream)
-            {
-                return new HttpResponseFeature() { Body = responseStream, Headers = new HeaderDictionary() };
-            }
-
-            private static HttpRequestFeature BuildRequestFeature(ModuleHttpRequest message)
-            {
-                var requestFeature = new HttpRequestFeature
-                {
-                    Method = message.Method,
-                    Path = message.Path,
-                    PathBase = message.PathBase,
-                    Protocol = message.Protocol,
-                    QueryString = message.QueryString,
-                    RawTarget = message.RawTarget,
-                    Scheme = message.Scheme,
-                    Body = new MemoryStream(message.Body),
-                    Headers = new HeaderDictionary()
-                };
-
-                foreach (var header in message.Headers)
-                {
-                    requestFeature.Headers.Add(header.Key, new StringValues(header.Value));
-                }
-
-                return requestFeature;
-            }
+        private async Task UnregisterModuleAsync()
+        {
+            var metadata = await _metadataAccessor.GetMetadataAsync(cancellation: default);
+            await _moduleManager.RemoveModuleAsync(metadata.Module, cancellation: default);
         }
     }
 }

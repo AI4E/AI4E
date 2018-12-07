@@ -84,10 +84,7 @@ namespace AI4E.Modularity
             var prefixCollection = (prefixes as ICollection<ReadOnlyMemory<char>>) ?? prefixes.ToList();
             var session = await _coordinationManager.GetSessionAsync(cancellation);
 
-            var tasks = new List<Task>(capacity: 1 + prefixCollection.Count())
-            {
-                WriteRunningModuleEntryAsync(module, endPoint, prefixCollection, session, cancellation)
-            };
+            var tasks = new List<Task>(capacity: prefixCollection.Count());
 
             foreach (var prefix in prefixCollection)
             {
@@ -95,6 +92,8 @@ namespace AI4E.Modularity
             }
 
             await Task.WhenAll(tasks);
+
+            await WriteRunningModuleEntryAsync(module, endPoint, prefixCollection, session, cancellation);
 
             // TODO: When cancelled, alls completed operations should be reverted.
             // TODO: The RemoveModuleAsync alogrithm assumes that there are no prefix entries, if the running module entry is not present. We should reflect this assumtion here.
@@ -140,10 +139,20 @@ namespace AI4E.Modularity
             var path = GetPrefixPath(normalizedPrefix, normalize: false);
             var entry = await _coordinationManager.GetOrCreateAsync(path, _emptyPayload, EntryCreationModes.Default, cancellation);
 
+            Console.WriteLine(" ----> GetEndPointsAsync: " + entry.Children.Count + " entries found for prefix: "+ prefix.ConvertToString() + ".");
+
             Assert(entry != null);
 
             var result = new List<EndPointAddress>(capacity: entry.Children.Count);
-            var childEntries = (await entry.GetChildrenEntriesAsync(cancellation)).OrderBy(p => p.CreationTime);
+            var childEntries = (await entry.GetChildrenEntriesAsync(cancellation)).OrderBy(p => p.CreationTime).ToList();
+
+            //if(childEntries.Count == 0)
+            //{
+            //    entry = await _coordinationManager.GetOrCreateAsync(path, _emptyPayload, EntryCreationModes.Default, cancellation);
+            //    childEntries = (await entry.GetChildrenEntriesAsync(cancellation)).OrderBy(p => p.CreationTime).ToList();
+            //}
+
+            Console.WriteLine(" ----> GetEndPointsAsync: " + childEntries.Count + " entries for prefix: " + prefix.ConvertToString() + " are valid.");
 
             foreach (var childEntry in childEntries)
             {
@@ -209,7 +218,12 @@ namespace AI4E.Modularity
             return (endPoint, prefixes);
         }
 
-        private async Task WriteRunningModuleEntryAsync(ModuleIdentifier module, EndPointAddress endPoint, ICollection<ReadOnlyMemory<char>> prefixes, Session session, CancellationToken cancellation)
+        private async Task WriteRunningModuleEntryAsync(
+            ModuleIdentifier module,
+            EndPointAddress endPoint,
+            ICollection<ReadOnlyMemory<char>> prefixes,
+            Session session,
+            CancellationToken cancellation)
         {
             var path = GetRunningModulePath(module, session);
 
@@ -246,6 +260,8 @@ namespace AI4E.Modularity
                 var payload = stream.ToArray();
                 var entry = await _coordinationManager.GetOrCreateAsync(path, payload, EntryCreationModes.Ephemeral, cancellation);
             }
+
+            Console.WriteLine(" ----> WriteModulePrefixEntryAsync: " + prefix.ConvertToString() + " End-point: " + endPoint.ToString());
         }
 
         private EndPointAddress ReadEndPointAddress(ref BinarySpanReader reader)
@@ -305,7 +321,6 @@ namespace AI4E.Modularity
             {
                 prefix = NormalizePrefix(prefix);
             }
-
 
             var uniqueEntryName = IdGenerator.GenerateId(endPoint.ToString(), session.ToString());
             return _rootPrefixesPath.GetChildPath(prefix, uniqueEntryName.AsMemory());
