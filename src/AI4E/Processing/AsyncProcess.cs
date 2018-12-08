@@ -21,7 +21,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
+using AI4E.Utils;
 
 namespace AI4E.Processing
 {

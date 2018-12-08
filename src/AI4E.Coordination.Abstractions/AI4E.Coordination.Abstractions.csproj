@@ -10,14 +10,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
-    <Compile Include="..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />
-    <Compile Include="..\Common\MemoryExtensions.SequenceHashCode.cs" Link="Internal\MemoryExtensions.SequenceHashCode.cs" />
-    <Compile Include="..\Common\MemoryWriter.cs" Link="Internal\MemoryWriter.cs" />
-    <Compile Include="..\Common\ReadOnlyStream.cs" Link="Internal\ReadOnlyStream.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="System.Numerics.Vectors" Version="$(SystemNumericsVectorsVersion)" />
     <PackageReference Include="System.Collections.Immutable" Version="$(SystemCollectionsImmutableVersion)" />
     <PackageReference Include="System.Interactive.Async" Version="$(SystemInteractiveAsyncVersion)" />
@@ -27,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils.Memory.Compatibility\AI4E.Utils.Memory.Compatibility.csproj" />
+    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
   </ItemGroup>

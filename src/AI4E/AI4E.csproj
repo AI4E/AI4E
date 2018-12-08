@@ -5,20 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\AsyncEnumerableExtensions.cs" Link="Internal\AsyncEnumerableExtensions.cs" />
-    <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
-    <Compile Include="..\Common\CustomAttributeProviderExtension.cs" Link="Internal\CustomAttributeProviderExtension.cs" />
-    <Compile Include="..\Common\DictionaryExtension.cs" Link="Internal\DictionaryExtension.cs" />
-    <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
-    <Compile Include="..\Common\FileInfoExtensions.cs" Link="Internal\FileInfoExtensions.cs" />
-    <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
-    <Compile Include="..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
-    <Compile Include="..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
-    <Compile Include="..\Common\StringBuilderExtension.cs" Link="Internal\StringBuilderExtension.cs" />
-    <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
-    <Compile Include="..\Common\CastTo.cs" Link="Internal\CastTo.cs" />
-    <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
-    <Compile Include="..\Common\TypeLoadHelper.cs" Link="Internal\TypeLoadHelper.cs" />
+    <Compile Include="..\Common\CoreServiceCollectionExtension.cs" Link="Internal\CoreServiceCollectionExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,6 +19,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\lib\AI4E.ApplicationParts\src\AI4E.ApplicationParts\AI4E.ApplicationParts.csproj" />
+    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils.AsyncEnumerable\AI4E.Utils.AsyncEnumerable.csproj" />
+    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils\AI4E.Utils.csproj" />
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
   </ItemGroup>
 
@@ -56,6 +45,10 @@
 
   <ItemGroup>
     <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Internal\" />
   </ItemGroup>
 
   <Target Name="AfterRestore" AfterTargets="Restore;CollectPackageReferences">

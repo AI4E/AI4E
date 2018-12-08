@@ -9,6 +9,7 @@ using AI4E.Modularity.Module;
 using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
+using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -17,7 +18,6 @@ namespace AI4E.Modularity.Debug
     public sealed class DebugConnection : IDisposable
     {
         private readonly IAddressConversion<IPEndPoint> _addressConversion;
-        private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IMetadataAccessor _metadataAccessor;
         private readonly ModuleDebugOptions _options;
         private readonly RemoteMessagingOptions _remoteOptions;
@@ -31,7 +31,6 @@ namespace AI4E.Modularity.Debug
         private readonly DisposableAsyncLazy<ProxyHost> _proxyHostLazy;
 
         public DebugConnection(IAddressConversion<IPEndPoint> addressConversion,
-                               IDateTimeProvider dateTimeProvider,
                                IMetadataAccessor metadataAccessor,
                                IOptions<ModuleDebugOptions> optionsAccessor,
                                IOptions<RemoteMessagingOptions> remoteOptionsAccessor,
@@ -41,9 +40,6 @@ namespace AI4E.Modularity.Debug
 
             if (addressConversion == null)
                 throw new ArgumentNullException(nameof(addressConversion));
-
-            if (dateTimeProvider == null)
-                throw new ArgumentNullException(nameof(dateTimeProvider));
 
             if (metadataAccessor == null)
                 throw new ArgumentNullException(nameof(metadataAccessor));
@@ -58,7 +54,6 @@ namespace AI4E.Modularity.Debug
                 throw new ArgumentNullException(nameof(serviceProvider));
 
             _addressConversion = addressConversion;
-            _dateTimeProvider = dateTimeProvider;
             _metadataAccessor = metadataAccessor;
             _options = optionsAccessor.Value ?? new ModuleDebugOptions();
             _remoteOptions = remoteOptionsAccessor.Value ?? new RemoteMessagingOptions();
@@ -129,7 +124,7 @@ namespace AI4E.Modularity.Debug
             var logger = _loggerFactory?.CreateLogger<DisposeAwareStream>();
 
             // TODO: Graceful shutdown
-            var stream = new DisposeAwareStream(tcpClient.GetStream(), _dateTimeProvider, () => { Environment.FailFast(""); return Task.CompletedTask; }, logger);
+            var stream = new DisposeAwareStream(tcpClient.GetStream(), () => { Environment.FailFast(""); return Task.CompletedTask; }, logger);
 
             var endPoint = _remoteOptions.LocalEndPoint;
             var metadata = await _metadataAccessor.GetMetadataAsync(cancellation);

@@ -3,8 +3,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Blazor.Modularity;
-using AI4E.Internal;
 using AI4E.Modularity;
+using AI4E.Utils.Memory;
 
 namespace AI4E.Blazor.Server
 {

@@ -1,25 +1,19 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
-    <Compile Include="..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
-    <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
-    <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
-    <Compile Include="..\Common\TypeLoadHelper.cs" Link="Internal\TypeLoadHelper.cs" />
+    <Compile Remove="Internal\**" />
+    <EmbeddedResource Remove="Internal\**" />
+    <None Remove="Internal\**" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal\" />
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        TypeSerializer.cs 
  * Types:           AI4E.Remoting.TypeSerializer
@@ -29,7 +29,7 @@
  */
 
 using System;
-using AI4E.Internal;
+using AI4E.Utils;
 
 namespace AI4E.Remoting
 {

@@ -5,18 +5,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
-    <Compile Include="..\Common\DisposeAwareStream.cs" Link="Internal\DisposeAwareStream.cs" />
-    <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
-    <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
+    <Compile Remove="Internal\**" />
+    <EmbeddedResource Remove="Internal\**" />
+    <None Remove="Internal\**" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Modularity\AI4E.Modularity.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal\" />
   </ItemGroup>
 
   <ItemGroup>

@@ -27,12 +27,12 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
-using AI4E.Internal;
 using AI4E.Modularity.Host;
 using AI4E.Processing;
 using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
+using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
@@ -46,7 +46,6 @@ namespace AI4E.Modularity.Debug
         private readonly TcpListener _tcpHost;
         private readonly AsyncProcess _connectionProcess;
         private readonly IServiceProvider _serviceProvider;
-        private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<DebugPort> _logger;
         private readonly IRemoteMessageDispatcher _messageDispatcher;
@@ -61,7 +60,6 @@ namespace AI4E.Modularity.Debug
         public DebugPort(IServiceProvider serviceProvider,
                          IAddressConversion<IPEndPoint> addressConversion,
                          IOptions<ModularityOptions> optionsAccessor,
-                         IDateTimeProvider dateTimeProvider,
                          IRemoteMessageDispatcher messageDispatcher,
                          ILoggerFactory loggerFactory = null)
         {
@@ -74,16 +72,12 @@ namespace AI4E.Modularity.Debug
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
 
-            if (dateTimeProvider == null)
-                throw new ArgumentNullException(nameof(dateTimeProvider));
-
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
             var options = optionsAccessor.Value ?? new ModularityOptions();
 
             _serviceProvider = serviceProvider;
-            _dateTimeProvider = dateTimeProvider;
             _messageDispatcher = messageDispatcher;
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory?.CreateLogger<DebugPort>();
@@ -169,7 +163,7 @@ namespace AI4E.Modularity.Debug
                     var client = await _tcpHost.AcceptTcpClientAsync().WithCancellation(cancellation);
                     _logger?.LogInformation($"Debug connection established for ip end-point '{(client.Client.RemoteEndPoint as IPEndPoint).ToString()}'.");
 
-                    var debugSession = new DebugSession(this, client, _dateTimeProvider, _serviceProvider, _loggerFactory);
+                    var debugSession = new DebugSession(this, client, _serviceProvider, _loggerFactory);
 
                     if (!_debugSessions.TryAdd(debugSession.Address, debugSession))
                     {
@@ -202,7 +196,6 @@ namespace AI4E.Modularity.Debug
 
             public DebugSession(DebugPort debugServer,
                                 TcpClient tcpClient,
-                                IDateTimeProvider dateTimeProvider,
                                 IServiceProvider serviceProvider,
                                 ILoggerFactory loggerFactory)
             {
@@ -212,22 +205,18 @@ namespace AI4E.Modularity.Debug
                 if (tcpClient == null)
                     throw new ArgumentNullException(nameof(tcpClient));
 
-                if (dateTimeProvider == null)
-                    throw new ArgumentNullException(nameof(dateTimeProvider));
-
                 if (serviceProvider == null)
                     throw new ArgumentNullException(nameof(serviceProvider));
 
                 _debugServer = debugServer;
                 _tcpClient = tcpClient;
                 Address = tcpClient.Client.RemoteEndPoint as IPEndPoint;
-                _dateTimeProvider = dateTimeProvider;
                 _serviceProvider = serviceProvider;
                 _loggerFactory = loggerFactory;
 
                 _logger = _loggerFactory?.CreateLogger<DebugSession>();
                 var streamLogger = _loggerFactory?.CreateLogger<DisposeAwareStream>();
-                _stream = new DisposeAwareStream(_tcpClient.GetStream(), _dateTimeProvider, OnDebugStreamsCloses, streamLogger);
+                _stream = new DisposeAwareStream(_tcpClient.GetStream(), OnDebugStreamsCloses, streamLogger);
 
                 _propertiesLazy = new DisposableAsyncLazy<DebugModuleProperties>(
                     factory: CreatePropertiesAsync,

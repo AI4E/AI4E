@@ -39,6 +39,7 @@ using System.Threading.Tasks;
 using AI4E.DispatchResults;
 using AI4E.Internal;
 using AI4E.Remoting;
+using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;

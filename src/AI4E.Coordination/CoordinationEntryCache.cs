@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -22,7 +22,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using static System.Diagnostics.Debug;
-using static AI4E.Internal.DebugEx;
+using static AI4E.Utils.DebugEx;
 
 namespace AI4E.Coordination
 {

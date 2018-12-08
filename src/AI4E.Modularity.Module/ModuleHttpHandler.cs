@@ -24,7 +24,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
-using AI4E.Internal;
+using AI4E.Utils;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;

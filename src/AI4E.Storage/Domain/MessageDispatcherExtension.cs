@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
+using AI4E.Utils;
 using static System.Diagnostics.Debug;
 
 /*

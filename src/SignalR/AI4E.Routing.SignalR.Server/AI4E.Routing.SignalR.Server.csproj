@@ -5,20 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\Common\ArrayPoolExtension.cs" Link="Internal\ArrayPoolExtension.cs" />
-    <Compile Include="..\..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
-    <Compile Include="..\..\Common\DictionaryExtension.cs" Link="Internal\DictionaryExtension.cs" />
-    <Compile Include="..\..\Common\MemoryExtensions.Base64Decode.cs" Link="Internal\MemoryExtensions.Base64Decode.cs" />
-    <Compile Include="..\..\Common\MemoryWriter.cs" Link="Internal\MemoryWriter.cs" />
-    <Compile Include="..\..\Common\NoOpDisposable.cs" Link="Internal\NoOpDisposable.cs" />
-    <Compile Include="..\..\Common\ReadOnlyStream.cs" Link="Internal\ReadOnlyStream.cs" />
-    <Compile Include="..\..\Common\TaskCompletionSourceExtension.cs" Link="Internal\TaskCompletionSourceExtension.cs" />
-    <Compile Include="..\..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
     <Compile Include="..\AI4E.Routing.SignalR.Client\IClientCallStub.cs" Link="IClientCallStub.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\lib\AI4E.Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
     <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\..\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
     <ProjectReference Include="..\..\AI4E.Remoting\AI4E.Remoting.csproj" />

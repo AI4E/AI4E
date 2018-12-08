@@ -6,7 +6,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
+    <Compile Remove="Internal\**" />
+    <EmbeddedResource Remove="Internal\**" />
+    <None Remove="Internal\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Common\CoreServiceCollectionExtension.cs" Link="Internal\CoreServiceCollectionExtension.cs" />
+  </ItemGroup>
+  
+  <ItemGroup>
     <Compile Include="..\AI4E.Blazor\Modularity\BlazorModuleManifest.cs" Link="BlazorModuleManifest.cs" />
     <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\..\AI4E\AI4E.csproj" />
@@ -17,10 +26,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Blazor.Server" Version="$(MicrosoftAspNetCoreBlazorServerVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="$(MicrosoftAspNetCoreStaticFilesVersion)" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal\" />
   </ItemGroup>
 
 </Project>

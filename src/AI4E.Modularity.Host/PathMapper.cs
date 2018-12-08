@@ -22,8 +22,8 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
 using AI4E.Routing;
+using AI4E.Utils.Memory;
 
 namespace AI4E.Modularity
 {

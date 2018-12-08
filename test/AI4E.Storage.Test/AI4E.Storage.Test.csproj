@@ -9,8 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\src\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
-    <Compile Include="..\..\src\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
+    <Compile Remove="Internal\**" />
+    <EmbeddedResource Remove="Internal\**" />
+    <None Remove="Internal\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -25,10 +26,6 @@
     <ProjectReference Include="..\..\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\..\src\AI4E\AI4E.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal\" />
   </ItemGroup>
 
 </Project>

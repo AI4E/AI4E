@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using AI4E.Internal;
+using AI4E.Utils;
 
 namespace AI4E.Handler
 {

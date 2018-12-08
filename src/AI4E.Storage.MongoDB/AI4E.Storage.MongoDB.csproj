@@ -6,9 +6,6 @@
 
   <ItemGroup>
     <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
-    <Compile Include="..\Common\ParameterExpressionReplacer.cs" Link="Internal\ParameterExpressionReplacer.cs" />
-    <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
-    <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -5,8 +5,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
-using AI4E.Internal;
 using AI4E.Storage.Domain;
+using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Nito.AsyncEx;
@@ -50,7 +50,7 @@ namespace AI4E.Modularity.Host
             _moduleInstaller = moduleInstaller;
             _moduleSupervisorFactory = moduleSupervisorFactory;
             _serviceProvider = serviceProvider;
-            var options = (optionsAccessor.Value ?? new ModuleManagementOptions());
+            var options = optionsAccessor.Value ?? new ModuleManagementOptions();
 
             _installationDirectory = new DirectoryInfo(options.ModuleInstallationDirectory);
             _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);

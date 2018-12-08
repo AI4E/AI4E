@@ -1,7 +1,7 @@
-﻿using System;
-using System.Linq;
+using System;
 using System.Reflection;
 using AI4E.ApplicationParts;
+using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using static System.Diagnostics.Debug;
@@ -10,16 +10,6 @@ namespace AI4E.Internal
 {
     internal static class ServiceCollectionExtension
     {
-        public static T GetService<T>(this IServiceCollection services)
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            var serviceDescriptor = services.LastOrDefault(d => d.ServiceType == typeof(T));
-
-            return (T)serviceDescriptor?.ImplementationInstance;
-        }
-
         public static IServiceCollection AddCoreServices(this IServiceCollection services)
         {
             if (services == null)

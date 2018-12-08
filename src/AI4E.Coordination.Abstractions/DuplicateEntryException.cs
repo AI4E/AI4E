@@ -1,6 +1,6 @@
-﻿using System;
+using System;
 using System.Runtime.Serialization;
-using AI4E.Internal;
+using AI4E.Utils.Memory;
 
 namespace AI4E.Coordination
 {

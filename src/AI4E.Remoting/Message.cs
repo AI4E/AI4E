@@ -39,7 +39,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
+using AI4E.Utils;
 using static System.Diagnostics.Debug;
 
 // TODO: Remove frame reverse on send and receive

@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        EntityStorageEngine.cs 
  * Types:           (1) AI4E.Storage.Domain.EntityStorageEngine
@@ -36,13 +36,14 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using AI4E.Utils;
 using JsonDiffPatchDotNet;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using static System.Diagnostics.Debug;
-using static AI4E.Internal.DebugEx;
+using static AI4E.Utils.DebugEx;
 
 namespace AI4E.Storage.Domain
 {

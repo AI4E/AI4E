@@ -6,6 +6,7 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using AI4E.Utils.AsyncEnumerable;
 
 namespace AI4E.Storage.Domain
 {

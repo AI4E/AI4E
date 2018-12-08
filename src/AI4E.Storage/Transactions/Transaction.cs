@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Async;
 using AI4E.Internal;
+using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;

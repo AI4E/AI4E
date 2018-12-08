@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -22,6 +22,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using AI4E.Utils;
 
 namespace AI4E.Processing
 {
