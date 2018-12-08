@@ -10,7 +10,6 @@
     <Compile Include="..\Common\EscapeHelper.cs" Link="Internal\EscapeHelper.cs" />
     <Compile Include="..\Common\IdEqualityComparer.cs" Link="Internal\IdEqualityComparer.cs" />
     <Compile Include="..\Common\IdGenerator.cs" Link="Internal\IdGenerator.cs" />
-    <Compile Include="..\Common\CoreServiceCollectionExtension.cs" Link="Internal\CoreServiceCollectionExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,68 +1,82 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        ServiceCollectionExtension.cs 
- * Types:           AI4E.ServiceCollectionExtension
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   19.01.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
-/* License
- * --------------------------------------------------------------------------------------------------------------------
- * This file is part of the AI4E distribution.
- *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
- * 
- * AI4E is free software: you can redistribute it and/or modify  
- * it under the terms of the GNU Lesser General Public License as   
- * published by the Free Software Foundation, version 3.
- *
- * AI4E is distributed in the hope that it will be useful, but 
- * WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- * --------------------------------------------------------------------------------------------------------------------
- */
-
-/* Based on
- * --------------------------------------------------------------------------------------------------------------------
- * Asp.Net Core MVC
- * Copyright (c) .NET Foundation. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
- * these files except in compliance with the License. You may obtain a copy of the
- * License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed
- * under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
- * CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using AI4E;
 using AI4E.ApplicationParts;
+using AI4E.ApplicationParts.Utils;
 using AI4E.Handler;
-using AI4E.Internal;
 using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static System.Diagnostics.Debug;
 
 namespace AI4E
 {
-    public static class MessageDispatcherServiceCollectionExtension
+    public static class ServiceCollectionExtension
     {
+        public static void ConfigureApplicationServices(this IServiceCollection services, Action<ApplicationServiceManager> configuration)
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            if (configuration == null)
+                throw new ArgumentNullException(nameof(configuration));
+
+            var serviceManager = services.GetService<ApplicationServiceManager>();
+
+            if (serviceManager == null)
+            {
+                serviceManager = new ApplicationServiceManager();
+            }
+
+            configuration(serviceManager);
+            services.TryAddSingleton(serviceManager);
+        }
+
+        public static IServiceCollection AddCoreServices(this IServiceCollection services)
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            // This must be registered as transient to allow retrieval of scoped services.
+            services.TryAddTransient(typeof(IProvider<>), typeof(Provider<>));
+            services.TryAddSingleton(typeof(IContextualProvider<>), typeof(ContextualProvider<>));
+            services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
+
+            return services;
+        }
+
+        private sealed class Provider<T> : IProvider<T>
+        {
+            private readonly IServiceProvider _serviceProvider;
+
+            public Provider(IServiceProvider serviceProvider)
+            {
+                Assert(serviceProvider != null);
+                _serviceProvider = serviceProvider;
+            }
+
+            public T ProvideInstance()
+            {
+                return _serviceProvider.GetRequiredService<T>();
+            }
+        }
+
+        private sealed class ContextualProvider<T> : IContextualProvider<T>
+        {
+            public ContextualProvider() { }
+
+            public T ProvideInstance(IServiceProvider serviceProvider)
+            {
+                if (serviceProvider == null)
+                    throw new ArgumentNullException(nameof(serviceProvider));
+
+                return serviceProvider.GetRequiredService<T>();
+            }
+        }
+
         public static IMessagingBuilder AddInMemoryMessaging(this IServiceCollection services)
         {
             if (services == null)

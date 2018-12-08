@@ -5,10 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\CoreServiceCollectionExtension.cs" Link="Internal\CoreServiceCollectionExtension.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="$(MicrosoftExtensionsDependencyModelVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="$(MicrosoftExtensionsLoggingVersion)" />   
     <PackageReference Include="Newtonsoft.Json.Bson" Version="$(NewtonsoftJsonBsonVersion)" />  
@@ -18,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\lib\AI4E.ApplicationParts\src\AI4E.ApplicationParts.Utils\AI4E.ApplicationParts.Utils.csproj" />
     <ProjectReference Include="..\..\lib\AI4E.ApplicationParts\src\AI4E.ApplicationParts\AI4E.ApplicationParts.csproj" />
     <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils.AsyncEnumerable\AI4E.Utils.AsyncEnumerable.csproj" />
     <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils\AI4E.Utils.csproj" />
@@ -45,10 +42,6 @@
 
   <ItemGroup>
     <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal\" />
   </ItemGroup>
 
   <Target Name="AfterRestore" AfterTargets="Restore;CollectPackageReferences">

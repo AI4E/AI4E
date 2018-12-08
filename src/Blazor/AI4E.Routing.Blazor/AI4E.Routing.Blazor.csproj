@@ -17,7 +17,6 @@
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\RemoteMessageRouter.cs" Link="RemoteMessageRouter.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\RequestReplyClientEndPoint.cs" Link="RequestReplyClientEndPoint.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Server\IServerCallStub.cs" Link="IServerCallStub.cs" />
-    <Compile Include="..\..\Common\CoreServiceCollectionExtension.cs" Link="Internal\CoreServiceCollectionExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>

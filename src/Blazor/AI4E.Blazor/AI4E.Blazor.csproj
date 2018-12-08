@@ -35,7 +35,6 @@
     <Compile Include="..\..\AI4E.Modularity.Abstractions\ModuleIdentifier.cs" Link="Modularity\ModuleIdentifier.cs" />
     <Compile Include="..\..\AI4E.Modularity.Abstractions\ModuleReleaseIdentifier.cs" Link="Modularity\ModuleReleaseIdentifier.cs" />
     <Compile Include="..\..\AI4E.Modularity.Abstractions\ModuleVersion.cs" Link="Modularity\ModuleVersion.cs" />
-    <Compile Include="..\..\Common\CoreServiceCollectionExtension.cs" Link="Internal\CoreServiceCollectionExtension.cs" />
   </ItemGroup>
   
   <ItemGroup>

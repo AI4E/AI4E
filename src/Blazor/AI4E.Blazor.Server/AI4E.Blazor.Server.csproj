@@ -10,10 +10,6 @@
     <EmbeddedResource Remove="Internal\**" />
     <None Remove="Internal\**" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="..\..\Common\CoreServiceCollectionExtension.cs" Link="Internal\CoreServiceCollectionExtension.cs" />
-  </ItemGroup>
   
   <ItemGroup>
     <Compile Include="..\AI4E.Blazor\Modularity\LookupModuleEndPoint.cs" Link="LookupModuleEndPoint.cs" />

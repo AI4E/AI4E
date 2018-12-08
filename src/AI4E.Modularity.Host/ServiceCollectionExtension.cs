@@ -21,8 +21,8 @@
 using System;
 using System.Reflection;
 using AI4E.ApplicationParts;
+using AI4E.ApplicationParts.Utils;
 using AI4E.Domain.Services;
-using AI4E.Internal;
 using AI4E.Modularity.Debug;
 using AI4E.Remoting;
 using AI4E.Routing;
