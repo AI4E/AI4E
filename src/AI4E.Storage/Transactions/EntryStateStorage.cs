@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -6,6 +6,8 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using AI4E.Utils;
+using AI4E.Utils.AsyncEnumerable;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Transactions

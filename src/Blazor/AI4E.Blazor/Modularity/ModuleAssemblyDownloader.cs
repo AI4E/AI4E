@@ -5,8 +5,8 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
 using AI4E.Modularity;
+using AI4E.Utils;
 
 namespace AI4E.Blazor.Modularity
 {

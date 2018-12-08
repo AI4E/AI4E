@@ -6,8 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
-    <Compile Include="..\Common\TypeLoadHelper.cs" Link="Internal\TypeLoadHelper.cs" />
+    <Compile Remove="Internal\**" />
+    <EmbeddedResource Remove="Internal\**" />
+    <None Remove="Internal\**" />
   </ItemGroup>
   
   <ItemGroup>
@@ -20,7 +21,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Folder Include="Internal\" />
+    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils\AI4E.Utils.csproj" />
   </ItemGroup> 
 
 </Project>

@@ -1,17 +1,18 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
-using AI4E.Internal;
-using AI4E.Processing;
+using AI4E.Utils.Async;
+using AI4E.Utils;
+using AI4E.Utils.Processing;
 using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
-using static AI4E.Internal.DebugEx;
+using static AI4E.Utils.DebugEx;
+using AI4E.Utils.Memory;
 
 namespace AI4E.Coordination
 {

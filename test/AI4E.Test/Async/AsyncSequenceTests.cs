@@ -47,7 +47,7 @@
 
 using System;
 using System.Threading.Tasks;
-using AI4E.Async;
+using AI4E.Utils.Async;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Test.Async

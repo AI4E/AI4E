@@ -10,19 +10,6 @@
     <Compile Include="..\..\AI4E.Remoting\TypeSerializer.cs" Link="Remoting\TypeSerializer.cs" />
     <Compile Include="..\..\AI4E.Routing\RemoteMessageDispatcher.cs" Link="Routing\RemoteMessageDispatcher.cs" />
     <Compile Include="..\..\AI4E.Routing\RequestReplyEndPoint.cs" Link="Routing\RequestReplyEndPoint.cs" />
-    <Compile Include="..\..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
-    <Compile Include="..\..\Common\DictionaryExtension.cs" Link="Internal\DictionaryExtension.cs" />
-    <Compile Include="..\..\Common\CustomAttributeProviderExtension.cs" Link="Internal\CustomAttributeProviderExtension.cs" />
-    <Compile Include="..\..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
-    <Compile Include="..\..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
-    <Compile Include="..\..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
-    <Compile Include="..\..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
-    <Compile Include="..\..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
-    <Compile Include="..\..\Common\TypeLoadHelper.cs" Link="Internal\TypeLoadHelper.cs" />
-    <Compile Include="..\..\Common\NoOpDisposable.cs" Link="Internal\NoOpDisposable.cs" />
-    <Compile Include="..\..\Common\ArrayPoolExtension.cs" Link="Internal\ArrayPoolExtension.cs" />
-    <Compile Include="..\..\Common\MemoryExtensions.Base64Decode.cs" Link="Internal\MemoryExtensions.Base64Decode.cs" />
-    <Compile Include="..\..\Common\TaskCompletionSourceExtension.cs" Link="Internal\TaskCompletionSourceExtension.cs" />
     <Compile Include="..\..\Common\TypeConverter.cs" Link="Internal\TypeConverter.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\ClientEndPoint.cs" Link="ClientEndPoint.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client\HubConnectionExtension.cs" Link="HubConnectionExtension.cs" />
@@ -42,6 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\lib\AI4E.Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
     <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\..\AI4E\AI4E.csproj" />
     <ProjectReference Include="..\AI4E.Routing.Blazor.Abstractions\AI4E.Routing.Blazor.Abstractions.csproj" />

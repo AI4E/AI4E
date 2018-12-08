@@ -3,14 +3,15 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
+using AI4E.Utils;
 using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 using System.Buffers;
 using AI4E.Routing.SignalR.Server;
 using static System.Diagnostics.Debug;
-using AI4E.Processing;
+using AI4E.Utils.Processing;
+using AI4E.Utils.Memory;
 
 #if BLAZOR
 using Blazor.Extensions;

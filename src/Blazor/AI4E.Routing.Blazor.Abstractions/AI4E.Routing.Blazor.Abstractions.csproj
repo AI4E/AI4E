@@ -11,6 +11,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Internal\**" />
+    <EmbeddedResource Remove="Internal\**" />
+    <None Remove="Internal\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="..\..\AI4E.Remoting.Abstractions\IMessage.cs" Link="Remoting\IMessage.cs" />
     <Compile Include="..\..\AI4E.Remoting.Abstractions\IMessageFrame.cs" Link="Remoting\IMessageFrame.cs" />
     <Compile Include="..\..\AI4E.Remoting.Abstractions\ITypeConversion.cs" Link="Remoting\ITypeConversion.cs" />
@@ -22,9 +28,6 @@
     <Compile Include="..\..\AI4E.Routing.Abstractions\IRemoteMessageDispatcher.cs" Link="Routing\IRemoteMessageDispatcher.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\IRequestReplyEndPoint.cs" Link="Routing\IRequestReplyEndPoint.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\ISerializedMessageHandler.cs" Link="Routing\ISerializedMessageHandler.cs" />
-    <Compile Include="..\..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />
-    <Compile Include="..\..\Common\MemoryExtensions.SequenceHashCode.cs" Link="Internal\MemoryExtensions.SequenceHashCode.cs" />
-    <Compile Include="..\..\Common\StreamExtension.cs" Link="Internal\StreamExtension.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client.Abstractions\IClientEndPoint.cs" Link="IClientEndPoint.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client.Abstractions\IRequestReplyClientEndPoint.cs" Link="IRequestReplyClientEndPoint.cs" />
   </ItemGroup>
@@ -35,13 +38,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Internal\" />
     <Folder Include="Routing\" />
     <Folder Include="Remoting\" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\lib\AI4E.Memory.Compatibility\src\AI4E.Memory.Compatibility\AI4E.Memory.Compatibility.csproj" />
+    <ProjectReference Include="..\..\..\lib\AI4E.Utils\src\AI4E.Utils.Memory.Compatibility\AI4E.Utils.Memory.Compatibility.csproj" />
+    <ProjectReference Include="..\..\..\lib\AI4E.Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
     <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
   </ItemGroup>
 

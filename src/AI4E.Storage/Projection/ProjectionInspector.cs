@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -23,7 +23,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using AI4E.Handler;
-using AI4E.Internal;
+using AI4E.Utils;
 
 namespace AI4E.Storage.Projection
 {
@@ -90,7 +90,7 @@ namespace AI4E.Storage.Projection
 
             var returnTypeDescriptor = TypeIntrospector.GetTypeDescriptor(member.ReturnType);
 
-            if (IsSynchronousHandler(member, memberAttribute, returnTypeDescriptor) || 
+            if (IsSynchronousHandler(member, memberAttribute, returnTypeDescriptor) ||
                 IsAsynchronousHandler(member, memberAttribute, returnTypeDescriptor))
             {
                 projectionType = returnTypeDescriptor.ResultType;

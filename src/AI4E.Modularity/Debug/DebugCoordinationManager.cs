@@ -1,10 +1,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
+using AI4E.Utils.Async;
 using AI4E.Coordination;
-using AI4E.Internal;
 using AI4E.Proxying;
+using AI4E.Utils;
+using AI4E.Utils.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace AI4E.Modularity.Debug

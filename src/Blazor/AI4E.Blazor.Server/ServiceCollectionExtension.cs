@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using System.Reflection;
 using AI4E.ApplicationParts;
-using AI4E.Internal;
+using AI4E.ApplicationParts.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Blazor.Server

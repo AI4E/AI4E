@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Linq.Expressions;
 using AI4E.Internal;
+using AI4E.Utils;
 
 namespace AI4E.Storage.Transactions
 {

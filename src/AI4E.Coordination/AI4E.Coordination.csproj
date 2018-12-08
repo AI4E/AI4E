@@ -3,21 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Include="..\Common\BinaryReaderExtension.cs" Link="Internal\BinaryReaderExtension.cs" />
-    <Compile Include="..\Common\BinaryWriterExtension.cs" Link="Internal\BinaryWriterExtension.cs" />
-    <Compile Include="..\Common\CancellationTokenExtension.cs" Link="Internal\CancellationTokenExtension.cs" />
-    <Compile Include="..\Common\DebugEx.cs" Link="Internal\DebugEx.cs" />
-    <Compile Include="..\Common\MemoryExtensions.cs" Link="Internal\MemoryExtensions.cs" />
-    <Compile Include="..\Common\MemoryExtensions.SequenceHashCode.cs" Link="Internal\MemoryExtensions.SequenceHashCode.cs" />
-    <Compile Include="..\Common\ObjectExtension.cs" Link="Internal\ObjectExtension.cs" />
-    <Compile Include="..\Common\TaskExtension.cs" Link="Internal\TaskExtension.cs" />
-    <Compile Include="..\Common\AsyncWaitDirectory.cs" Link="Internal\AsyncWaitDirectory.cs" />
-    <Compile Include="..\Common\ServiceCollectionExtension.cs" Link="Internal\ServiceCollectionExtension.cs" />
-    <Compile Include="..\Common\TaskCancellationTokenSource.cs" Link="Internal\TaskCancellationTokenSource.cs" />
-  </ItemGroup>
-
+  
   <ItemGroup>
     <PackageReference Include="System.Numerics.Vectors" Version="$(SystemNumericsVectorsVersion)" />
   </ItemGroup>

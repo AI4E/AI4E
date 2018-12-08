@@ -3,11 +3,11 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
-using AI4E.Internal;
+using AI4E.Utils.Async;
+using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
-using static AI4E.Internal.DebugEx;
+using static AI4E.Utils.DebugEx;
 
 namespace AI4E.Coordination
 {

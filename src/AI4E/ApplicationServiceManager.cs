@@ -1,12 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
-using AI4E.Internal;
+using AI4E.Utils.Async;
+using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AI4E
 {
@@ -191,28 +190,6 @@ namespace AI4E
             }
 
             applicationServiceManager.ApplicationServiceDescriptors.Add(new ApplicationServiceDescriptor(typeof(TService), ServiceInitialization, isRequiredService));
-        }
-    }
-
-    public static class ServiceCollectionExtension
-    {
-        public static void ConfigureApplicationServices(this IServiceCollection services, Action<ApplicationServiceManager> configuration)
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            if (configuration == null)
-                throw new ArgumentNullException(nameof(configuration));
-
-            var serviceManager = services.GetService<ApplicationServiceManager>();
-
-            if (serviceManager == null)
-            {
-                serviceManager = new ApplicationServiceManager();
-            }
-
-            configuration(serviceManager);
-            services.TryAddSingleton(serviceManager);
         }
     }
 }

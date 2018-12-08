@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using AI4E.Utils;
 
 namespace AI4E.Storage.Transactions
 {

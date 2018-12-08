@@ -5,10 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\AsyncEnumerableExtensions.cs" Link="Internal\AsyncEnumerableExtensions.cs" />
     <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
-    <Compile Include="..\Common\ParameterExpressionReplacer.cs" Link="Internal\ParameterExpressionReplacer.cs" />
-    <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -16,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\lib\AI4E.Utils.ObjectClone\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj" />
+    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />

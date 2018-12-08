@@ -34,8 +34,9 @@ using System.IO;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Text;
-using AI4E.Internal;
-using AI4E.Memory.Compatibility;
+using AI4E.Utils;
+using AI4E.Utils.Memory;
+using AI4E.Utils.Memory.Compatibility;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
 

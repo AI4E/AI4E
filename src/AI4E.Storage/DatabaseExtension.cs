@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using AI4E.Utils;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage
@@ -21,7 +22,7 @@ namespace AI4E.Storage
             Assert(success);
         }
 
-        public async static Task RemoveAsync<TEntry>(this IDatabase database, TEntry entry, CancellationToken cancellation = default)
+        public static async Task RemoveAsync<TEntry>(this IDatabase database, TEntry entry, CancellationToken cancellation = default)
             where TEntry : class
         {
             if (database == null)

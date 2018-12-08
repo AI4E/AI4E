@@ -19,7 +19,7 @@
  */
 
 using System;
-using AI4E.Internal;
+using AI4E.Utils;
 using Newtonsoft.Json;
 
 namespace AI4E.Internal

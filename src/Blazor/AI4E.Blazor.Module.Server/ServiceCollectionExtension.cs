@@ -1,8 +1,8 @@
 using System;
 using System.Reflection;
 using AI4E.ApplicationParts;
+using AI4E.ApplicationParts.Utils;
 using AI4E.Blazor.Server;
-using AI4E.Internal;
 using AI4E.Modularity.Module;
 using Microsoft.Extensions.DependencyInjection;
 

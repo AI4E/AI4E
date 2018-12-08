@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.InteropServices;
-using AI4E.Internal;
+using AI4E.Utils;
+using AI4E.Utils.Memory;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination

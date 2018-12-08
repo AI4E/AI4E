@@ -26,7 +26,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using AI4E.Internal;
+using AI4E.Utils;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
 

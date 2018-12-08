@@ -10,10 +10,6 @@
 
   <ItemGroup>
     <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
-    <Compile Include="..\Common\EnumerableExtension.cs" Link="Internal\EnumerableExtension.cs" />
-    <Compile Include="..\Common\ParameterExpressionReplacer.cs" Link="Internal\ParameterExpressionReplacer.cs" />
-    <Compile Include="..\Common\SGuid.cs" Link="SGuid.cs" />
-    <Compile Include="..\Common\TypeExtension.cs" Link="Internal\TypeExtension.cs" />
   </ItemGroup>
 
   <ItemGroup>
