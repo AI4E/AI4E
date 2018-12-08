@@ -2,7 +2,7 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
+using AI4E.Utils.Async;
 
 namespace AI4E.Modularity.Host
 {

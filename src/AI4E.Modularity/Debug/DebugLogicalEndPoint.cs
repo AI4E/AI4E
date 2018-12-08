@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
+using AI4E.Utils.Async;
 using AI4E.Internal;
 using AI4E.Proxying;
 using AI4E.Remoting;

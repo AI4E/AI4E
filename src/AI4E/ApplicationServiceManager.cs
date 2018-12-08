@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
+using AI4E.Utils.Async;
 using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 

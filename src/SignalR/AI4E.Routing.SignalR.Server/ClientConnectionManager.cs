@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
-using AI4E.Processing;
+using AI4E.Utils.Processing;
 using AI4E.Utils;
 using AI4E.Utils.Memory;
 using AI4E.Utils.Memory.Compatibility;

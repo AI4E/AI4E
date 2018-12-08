@@ -2,6 +2,7 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 using AI4E.Internal;
+using AI4E.Utils;
 using static System.Diagnostics.Debug;
 using static AI4E.Utils.DebugEx;
 

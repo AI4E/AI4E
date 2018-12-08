@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
+using AI4E.Utils.Async;
 using AI4E.Storage.Domain;
 using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;

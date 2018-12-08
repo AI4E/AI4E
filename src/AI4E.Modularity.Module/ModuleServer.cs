@@ -21,7 +21,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Async;
+using AI4E.Utils.Async;
 using AI4E.Routing;
 using AI4E.Utils;
 using Microsoft.AspNetCore.Hosting.Server;

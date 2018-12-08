@@ -22,10 +22,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <DotNetCliToolReference Include="T5.TextTransform.Tool" Version="1.1.0-*" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Update="Serialization\Messages.Designer.cs">
       <DependentUpon>Messages.resx</DependentUpon>
       <DesignTime>True</DesignTime>
@@ -43,8 +39,4 @@
   <ItemGroup>
     <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
   </ItemGroup>
-
-  <Target Name="AfterRestore" AfterTargets="Restore;CollectPackageReferences">
-    <Exec Command="dotnet tt $(ProjectDir)EnumHelper.tt" />
-  </Target>
 </Project>

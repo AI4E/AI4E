@@ -24,9 +24,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using AI4E.Async;
 using AI4E.Handler;
 using AI4E.Utils;
+using AI4E.Utils.AsyncEnumerable;
 using Microsoft.Extensions.DependencyInjection;
 using static System.Diagnostics.Debug;
 

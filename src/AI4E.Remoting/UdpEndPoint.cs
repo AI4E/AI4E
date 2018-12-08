@@ -7,7 +7,7 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Processing;
+using AI4E.Utils.Processing;
 using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
