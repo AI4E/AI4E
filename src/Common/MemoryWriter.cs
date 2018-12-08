@@ -1,7 +1,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Text;
-using AI4E.Memory.Compatibility;
+using AI4E.Utils.Memory.Compatibility;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Internal

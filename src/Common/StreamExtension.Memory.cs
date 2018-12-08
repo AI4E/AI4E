@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Memory.Compatibility;
+using AI4E.Utils.Memory.Compatibility;
 
 namespace AI4E.Internal
 {
@@ -17,7 +17,7 @@ namespace AI4E.Internal
             while (buffer.Length > 0)
             {
                 var readBytes = await stream.ReadAsync(buffer, cancellation);
-               
+
                 if (readBytes == 0)
                     throw new EndOfStreamException();
 

@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\lib\AI4E.Memory.Compatibility\src\AI4E.Memory.Compatibility\AI4E.Memory.Compatibility.csproj" />
+    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils.Memory.Compatibility\AI4E.Utils.Memory.Compatibility.csproj" />
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
   </ItemGroup>

@@ -30,7 +30,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
-using AI4E.Memory.Compatibility;
+using AI4E.Utils.Memory.Compatibility;
 using static System.Diagnostics.Debug;
 #endif
 
