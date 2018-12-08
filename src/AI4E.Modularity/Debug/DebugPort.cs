@@ -185,7 +185,6 @@ namespace AI4E.Modularity.Debug
         {
             private readonly DebugPort _debugServer;
             private readonly TcpClient _tcpClient;
-            private readonly IDateTimeProvider _dateTimeProvider;
             private readonly IServiceProvider _serviceProvider;
             private readonly ILoggerFactory _loggerFactory;
             private readonly ILogger<DebugSession> _logger;
