@@ -5,9 +5,9 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Blazor.Modularity;
-using AI4E.Modularity.Module;
+using AI4E.Modularity;
 
-namespace AI4E.Blazor.Server
+namespace AI4E.Blazor.Module.Server
 {
     public sealed class BlazorModuleManifestProvider : IBlazorModuleManifestProvider
     {

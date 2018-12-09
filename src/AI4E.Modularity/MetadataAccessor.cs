@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using static System.Diagnostics.Debug;
 
-namespace AI4E.Modularity.Module
+namespace AI4E.Modularity
 {
     public sealed class MetadataAccessor : IMetadataAccessor
     {
@@ -21,10 +19,12 @@ namespace AI4E.Modularity.Module
             _metadataReader = metadataReader;
         }
 
-        public ValueTask<IModuleMetadata> GetMetadataAsync(CancellationToken cancellation)
+        public ValueTask<IModuleMetadata> GetMetadataAsync(Assembly entryAssembly, CancellationToken cancellation)
         {
+            if (entryAssembly == null)
+                throw new ArgumentNullException(nameof(entryAssembly));
+
             // First we check if there is an embedded resource
-            var entryAssembly = Assembly.GetEntryAssembly();
             var entryPoint = entryAssembly.EntryPoint;
             var entryPointNamespace = entryPoint.DeclaringType.Namespace;
             var metadataName = "module.json";
@@ -70,46 +70,17 @@ namespace AI4E.Modularity.Module
                 }
                 catch (FileNotFoundException) { }
                 catch (DirectoryNotFoundException) { }
-
             }
+
             // If we reach this point, we cannot find a manifest resource/file.
             // We now assembly our own metadata
-            return new ModuleMetadata(entryAssembly);
-        }
+            var asmName = entryAssembly.GetName();
+            var asmVersion = asmName.Version;
 
-        private sealed class ModuleMetadata : IModuleMetadata
-        {
-            public ModuleMetadata(Assembly assembly)
-            {
-                Assert(assembly != null);
+            var module = new ModuleIdentifier(asmName.Name);
+            var version = new ModuleVersion(asmVersion.Major, asmVersion.Minor, asmVersion.Revision, isPreRelease: false);
 
-                var asmName = assembly.GetName();
-                var asmVersion = asmName.Version;
-
-                Module = new ModuleIdentifier(asmName.Name);
-                Version = new ModuleVersion(asmVersion.Major, asmVersion.Minor, asmVersion.Revision, isPreRelease: false);
-            }
-
-            public ModuleIdentifier Module { get; }
-            public ModuleVersion Version { get; }
-
-            ModuleReleaseIdentifier IModuleMetadata.Release => new ModuleReleaseIdentifier(Module, Version);
-
-            public DateTime ReleaseDate { get; }
-
-            public string Name => Module.Name;
-
-            public string Description { get; }
-
-            public string Author { get; }
-
-            public string EntryAssemblyCommand { get; }
-
-            public string EntryAssemblyArguments { get; }
-
-            IEnumerable<ModuleDependency> IModuleMetadata.Dependencies => Dependencies.Select(p => new ModuleDependency(p.Key, p.Value));
-
-            public Dictionary<ModuleIdentifier, ModuleVersionRange> Dependencies { get; } = new Dictionary<ModuleIdentifier, ModuleVersionRange>();
+            return new ModuleMetadata(module, version);
         }
     }
 }

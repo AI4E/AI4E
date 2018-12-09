@@ -1,6 +1,6 @@
 using System.Linq;
 using System.Net.Mime;
-using AI4E.Blazor.Server;
+using AI4E.Blazor.Module.Server;
 using AI4E.Modularity.Debug;
 using AI4E.Modularity.Module;
 using AI4E.Storage;

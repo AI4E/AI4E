@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -40,7 +40,7 @@ using System;
 using System.IO;
 using System.Linq;
 
-namespace AI4E.Blazor.Server
+namespace AI4E.Blazor.Module.Server
 {
     internal class BlazorConfig
     {

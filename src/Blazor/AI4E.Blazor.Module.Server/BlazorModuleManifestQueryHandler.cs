@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Blazor.Modularity;
 
-namespace AI4E.Blazor.Server
+namespace AI4E.Blazor.Module.Server
 {
     [MessageHandler]
     internal sealed class BlazorModuleManifestQueryHandler
