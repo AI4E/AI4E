@@ -132,7 +132,7 @@ namespace AI4E.Modularity
             var normalizedPrefix = NormalizePrefix(prefix);
 
             // It is not possible to register an end-point address for the root path.
-            if (normalizedPrefix.IsEmpty)
+            if (normalizedPrefix.IsEmpty || normalizedPrefix.Span[0] == '_')
             {
                 return Enumerable.Empty<EndPointAddress>();
             }
@@ -239,6 +239,10 @@ namespace AI4E.Modularity
         private async Task WriteModulePrefixEntryAsync(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, Session session, CancellationToken cancellation)
         {
             var normalizedPrefix = NormalizePrefix(prefix);
+
+            if (normalizedPrefix.Span[0] == '_')
+                throw new ArgumentException("A prefix must not begin with an underscore.");
+
             var path = GetPrefixPath(normalizedPrefix, endPoint, session, normalize: false);
 
             using (var stream = new MemoryStream())
