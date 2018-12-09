@@ -167,6 +167,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.ObjectClone", "l
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.ApplicationParts.Utils", "lib\AI4E.ApplicationParts\src\AI4E.ApplicationParts.Utils\AI4E.ApplicationParts.Utils.csproj", "{2545A515-27A2-430A-BA8A-DE48AA51F63B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Modularity.ModulePacker", "tools\AI4E.Modularity.ModulePacker\AI4E.Modularity.ModulePacker.csproj", "{DADC7AF4-04CD-4D48-9D9C-665402AB4F2A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -408,6 +410,10 @@ Global
 		{2545A515-27A2-430A-BA8A-DE48AA51F63B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2545A515-27A2-430A-BA8A-DE48AA51F63B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2545A515-27A2-430A-BA8A-DE48AA51F63B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DADC7AF4-04CD-4D48-9D9C-665402AB4F2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DADC7AF4-04CD-4D48-9D9C-665402AB4F2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DADC7AF4-04CD-4D48-9D9C-665402AB4F2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DADC7AF4-04CD-4D48-9D9C-665402AB4F2A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -480,6 +486,7 @@ Global
 		{03E11C3F-BA56-433C-8125-C12A8568F0BB} = {53CD5184-9DC7-4C02-90EB-41F7DA008702}
 		{191664A5-3522-4CDB-A92A-8A2559F6DBA9} = {53CD5184-9DC7-4C02-90EB-41F7DA008702}
 		{2545A515-27A2-430A-BA8A-DE48AA51F63B} = {03BEA7FD-C579-4548-B689-355D1557C9BB}
+		{DADC7AF4-04CD-4D48-9D9C-665402AB4F2A} = {391CBBDB-848A-472B-A4EE-BA542324983E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}
