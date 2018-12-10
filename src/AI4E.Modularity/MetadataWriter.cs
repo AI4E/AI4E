@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -33,7 +34,7 @@ namespace AI4E.Modularity
         {
             var serializer = JsonSerializer.CreateDefault();
 
-            using (var streamWriter = new StreamWriter(stream))
+            using (var streamWriter = new StreamWriter(stream, Encoding.UTF8, bufferSize: 4096, leaveOpen: true))
             using (var writer = new JsonTextWriter(streamWriter))
             {
                 try

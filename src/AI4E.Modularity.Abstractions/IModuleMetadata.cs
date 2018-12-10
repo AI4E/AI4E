@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace AI4E.Modularity
@@ -11,7 +11,7 @@ namespace AI4E.Modularity
 
         ModuleReleaseIdentifier Release { get; }
 
-        DateTime ReleaseDate { get; }
+        DateTime ReleaseDate { get; } // TODO: This should be DateTime? actually
 
         string Name { get; }
 

@@ -8,7 +8,7 @@ using AI4E.Utils;
 
 namespace AI4E.Modularity.ModulePacker
 {
-    // For the packer to work, there must be specified the following parameters:
+    // For the packer to work, there must be specified the following arguments:
     // The input assembly path (path to the entry assembly of the module.) The packer assumes that all dependencies are located in the same or a subdirectory.
     // The output assembly, where the package shall be put.
     internal static class Program
@@ -28,21 +28,9 @@ namespace AI4E.Modularity.ModulePacker
             {
                 Task.Run(() => RunWithExit(inputAssemblyPath, outputDir, cancellationSource.Token));
 
-                while (true)
-                {
-                    var key = Console.ReadKey();
+                Console.CancelKeyPress += (s, e) => cancellationSource.Cancel();
 
-                    if ((key.Modifiers & ConsoleModifiers.Shift) == ConsoleModifiers.Shift && key.Key == ConsoleKey.C)
-                    {
-                        cancellationSource.Cancel();
-                        break;
-                    }
-                }
-
-                while (true)
-                {
-                    Thread.Sleep(1000);
-                }
+                Thread.Sleep(Timeout.Infinite);
             }
         }
 
@@ -62,34 +50,52 @@ namespace AI4E.Modularity.ModulePacker
 
         private static async Task RunAsync(string inputAssemblyPath, string outputDir, CancellationToken cancellation)
         {
-            var assemblyResolver = new PathAssemblyResolver(inputAssemblyPath.Yield());
-            IModuleMetadata metadata;
-
-            using (var loadContext = new MetadataLoadContext(assemblyResolver))
-            {
-                var assemblyName = Path.GetFileNameWithoutExtension(inputAssemblyPath);
-                var assembly = loadContext.LoadFromAssemblyName(assemblyName);
-
-                metadata = await _metadataAccessor.GetMetadataAsync(assembly, cancellation);
-            }
-
+            var metadata = await GetMetadataAsync(inputAssemblyPath, cancellation);
             var inputDir = Path.GetDirectoryName(inputAssemblyPath);
             var outputFilePath = Path.Combine(outputDir, metadata.Release.ToString() + ".aep");
 
             using (var stream = new MemoryStream())
             {
-                using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
-                {
-                    await PackDirectoryAsync(archive, inputDir, cancellation);
+                await WritePackageToStreamAsync(metadata, inputDir, stream, cancellation);
+                await WriteToFileAsync(stream, outputFilePath, cancellation);
+            }
+        }
 
-                    var manifestEntry = archive.CreateEntry("module.json");
-                    using (var manifestEntryStream = manifestEntry.Open())
-                    {
-                        await _metadataWriter.WriteMetadataAsync(manifestEntryStream, metadata, cancellation);
-                    }
+        private static async Task<IModuleMetadata> GetMetadataAsync(string inputAssemblyPath, CancellationToken cancellation)
+        {
+            // We take our core assembly for now. 
+            var coreAssembly = typeof(object).Assembly; // TODO: Support specifying a different core assembly to support additional workloads.
+            var assemblyResolver = new PathAssemblyResolver(new string[] { inputAssemblyPath, coreAssembly.Location });
+
+            using (var loadContext = new MetadataLoadContext(assemblyResolver, coreAssembly.FullName))
+            {
+                var assemblyName = Path.GetFileNameWithoutExtension(inputAssemblyPath);
+                var assembly = loadContext.LoadFromAssemblyName(assemblyName);
+
+                var metadata = await _metadataAccessor.GetMetadataAsync(assembly, cancellation);
+
+                if (metadata.ReleaseDate == default)
+                {
+                    var editableMetadata = metadata as ModuleMetadata ?? new ModuleMetadata(metadata);
+                    editableMetadata.ReleaseDate = DateTime.Now;
+                    metadata = editableMetadata;
                 }
 
-                await WriteToFileAsync(stream, outputFilePath, cancellation);
+                return metadata;
+            }
+        }
+
+        private static async Task WritePackageToStreamAsync(IModuleMetadata metadata, string inputDir, MemoryStream stream, CancellationToken cancellation)
+        {
+            using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                await PackDirectoryAsync(archive, inputDir, cancellation);
+
+                var manifestEntry = archive.CreateEntry("module.json");
+                using (var manifestEntryStream = manifestEntry.Open())
+                {
+                    await _metadataWriter.WriteMetadataAsync(manifestEntryStream, metadata, cancellation);
+                }
             }
         }
 
@@ -105,8 +111,7 @@ namespace AI4E.Modularity.ModulePacker
                 }
 
                 var fullFilePath = Path.GetFullPath(file);
-                var entryName = fullFilePath.Substring(fullPath.Length);
-
+                var entryName = fullFilePath.Substring(fullPath.Length).TrimStart('/', '\\');
                 await archive.AddFileAsEntryAsync(entryName, fullFilePath, cancellation);
             }
         }
