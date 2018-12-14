@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
 
@@ -12,7 +13,7 @@ namespace AI4E.Modularity
         private SerializedModuleMetadata() { }
 
         public SerializedModuleMetadata(IModuleMetadata metadata)
-        {          
+        {
             Assert(metadata != null);
 
             if (metadata.Module == default || metadata.Version == default)
@@ -29,6 +30,9 @@ namespace AI4E.Modularity
 
             foreach (var (module, versionRange) in metadata.Dependencies)
             {
+                if (Dependencies == null)
+                    Dependencies = new Dictionary<ModuleIdentifier, ModuleVersionRange>();
+
                 Dependencies.Add(module, versionRange);
             }
         }
@@ -41,27 +45,41 @@ namespace AI4E.Modularity
 
         ModuleReleaseIdentifier IModuleMetadata.Release => new ModuleReleaseIdentifier(Module, Version);
 
-        [JsonProperty("release-date")]
+        [JsonProperty("release-date", NullValueHandling = NullValueHandling.Ignore)]
         public DateTime ReleaseDate { get; set; }
 
-        [JsonProperty("name")]
+        [JsonProperty("name", NullValueHandling = NullValueHandling.Ignore)]
         public string Name { get; set; }
 
-        [JsonProperty("description")]
+        [JsonProperty("description", NullValueHandling = NullValueHandling.Ignore)]
         public string Description { get; set; }
 
-        [JsonProperty("author")]
+        [JsonProperty("author", NullValueHandling = NullValueHandling.Ignore)]
         public string Author { get; set; }
 
-        [JsonProperty("entry-command")]
+        [JsonProperty("entry-command", NullValueHandling = NullValueHandling.Ignore)]
         public string EntryAssemblyCommand { get; set; }
 
-        [JsonProperty("entry-arguments")]
+        [JsonProperty("entry-arguments", NullValueHandling = NullValueHandling.Ignore)]
         public string EntryAssemblyArguments { get; set; }
 
-        IEnumerable<ModuleDependency> IModuleMetadata.Dependencies => Dependencies.Select(p => new ModuleDependency(p.Key, p.Value));
+        IEnumerable<ModuleDependency> IModuleMetadata.Dependencies => Dependencies?.Select(p => new ModuleDependency(p.Key, p.Value)) ?? Enumerable.Empty<ModuleDependency>();
 
-        [JsonProperty("dependencies")]
-        public Dictionary<ModuleIdentifier, ModuleVersionRange> Dependencies { get; } = new Dictionary<ModuleIdentifier, ModuleVersionRange>();
+        [JsonProperty("dependencies", NullValueHandling = NullValueHandling.Ignore)]
+        public Dictionary<ModuleIdentifier, ModuleVersionRange> Dependencies { get; private set; }
+
+        [OnDeserializing]
+        private void OnDeserializingMethod(StreamingContext context)
+        {
+            if (Dependencies == null)
+                Dependencies = new Dictionary<ModuleIdentifier, ModuleVersionRange>();
+        }
+
+        [OnDeserialized]
+        private void OnDeserializedMethod(StreamingContext context)
+        {
+            if (!Dependencies.Any())
+                Dependencies = null;
+        }
     }
 }
