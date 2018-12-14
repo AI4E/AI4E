@@ -88,7 +88,7 @@ namespace AI4E.Storage.Projection
 
             var projectionType = default(Type);
 
-            var returnTypeDescriptor = TypeIntrospector.GetTypeDescriptor(member.ReturnType);
+            var returnTypeDescriptor = TypeDescriptor.GetTypeDescriptor(member.ReturnType);
 
             if (IsSynchronousHandler(member, memberAttribute, returnTypeDescriptor) ||
                 IsAsynchronousHandler(member, memberAttribute, returnTypeDescriptor))

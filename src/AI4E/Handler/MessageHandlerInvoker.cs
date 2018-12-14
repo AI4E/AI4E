@@ -44,6 +44,7 @@ namespace AI4E.Handler
                 var processor = _processors[i].ProvideInstance(_serviceProvider);
                 Assert(processor != null);
                 var nextCopy = next; // This is needed because of the way, the variable values are captured in the lambda expression.
+
                 next = (nextDispatchData => InvokeProcessorAsync(processor, nextDispatchData, nextCopy, cancellation));
             }
 
@@ -85,7 +86,7 @@ namespace AI4E.Handler
         private async ValueTask<IDispatchResult> InvokeHandlerCore(DispatchDataDictionary<TMessage> dispatchData, CancellationToken cancellation)
         {
             IMessageDispatchContext context = null;
-            var contextDescriptor = MessageHandlerContext.GetDescriptor(_handler.GetType());
+            var contextDescriptor = MessageHandlerContextDescriptor.GetDescriptor(_handler.GetType());
 
             if (contextDescriptor.CanSetContext)
             {
@@ -167,7 +168,7 @@ namespace AI4E.Handler
                 return dispatchResult;
             }
 
-            return SuccessDispatchResultBuilder.GetSuccessDispatchResult(invoker.ReturnTypeDescriptor.ResultType, result);
+            return SuccessDispatchResult.FromResult(invoker.ReturnTypeDescriptor.ResultType, result);
         }
 
         private sealed class MessageDispatchContext : IMessageDispatchContext

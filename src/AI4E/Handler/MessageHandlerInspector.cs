@@ -76,7 +76,7 @@ namespace AI4E.Handler
                 messageType = actionAttribute.MessageType;
             }
 
-            var returnTypeDescriptor = TypeIntrospector.GetTypeDescriptor(member.ReturnType);
+            var returnTypeDescriptor = TypeDescriptor.GetTypeDescriptor(member.ReturnType);
 
             if (IsSychronousHandler(member, actionAttribute, returnTypeDescriptor) || 
                 IsAsynchronousHandler(member, actionAttribute, returnTypeDescriptor))

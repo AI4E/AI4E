@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Linq.Expressions;
@@ -23,7 +23,7 @@ namespace AI4E.Handler
                 throw new ArgumentException("The specified method must not be a generic type definition.", nameof(method));
 
             Method = method;
-            ReturnTypeDescriptor = TypeIntrospector.GetTypeDescriptor(method.ReturnType);
+            ReturnTypeDescriptor = TypeDescriptor.GetTypeDescriptor(method.ReturnType);
             var firstParameterType = method.GetParameters().Select(p => p.ParameterType).FirstOrDefault() ?? typeof(void);
             _invoker = BuildInvoker(method, firstParameterType);
             FirstParameterType = firstParameterType;

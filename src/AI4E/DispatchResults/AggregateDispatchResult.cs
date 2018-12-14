@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
+using AI4E.Utils;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
 
@@ -65,6 +66,10 @@ namespace AI4E.DispatchResults
 
         public AggregateDispatchResult(IEnumerable<IDispatchResult> dispatchResults)
             : this(dispatchResults, ImmutableDictionary<string, object>.Empty)
+        { }
+
+        public AggregateDispatchResult(IDispatchResult dispatchResult, IReadOnlyDictionary<string, object> resultData)
+            : this((dispatchResult ?? throw new ArgumentNullException(nameof(dispatchResult))).Yield(), resultData)
         { }
 
         public IEnumerable<IDispatchResult> DispatchResults { get; }

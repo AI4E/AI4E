@@ -5,10 +5,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
-using AI4E.Utils.Processing;
 using AI4E.Remoting;
 using AI4E.Utils;
+using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
@@ -95,7 +94,6 @@ namespace AI4E.Routing
                 throw new ObjectDisposedException(GetType().FullName);
 
             // We have to ensure that only a single logical end-point exists for each address at any given time.
-            // Event a concurrnet dictionary cannot ensure this => We have to lock.
             lock (_endPointsLock)
             {
                 if (_endPoints == null)

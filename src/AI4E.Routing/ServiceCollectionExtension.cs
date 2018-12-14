@@ -1,7 +1,6 @@
 using System;
 using System.Reflection;
 using AI4E.Coordination;
-using AI4E.Internal;
 using AI4E.Remoting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;

@@ -1,7 +1,6 @@
 using System;
 using System.Net;
 using AI4E.Coordination;
-using AI4E.Internal;
 using AI4E.Modularity.Debug;
 using AI4E.Remoting;
 using AI4E.Routing;

@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        ValidationResult.cs 
  * Types:           (1) AI4E.ValidationResult
@@ -183,5 +183,27 @@ namespace AI4E
         {
             return _validationResults;
         }
+    }
+
+    public static class ValidationResultsBuilderExtension
+    {
+        public static void Validate<T>(this ValidationResultsBuilder validationResultsBuilder,
+                                       ValidationFunction<T> validationFunction,
+                                       T value,
+                                       string member)
+        {
+            if (validationResultsBuilder == null)
+                throw new ArgumentNullException(nameof(validationResultsBuilder));
+
+            if (validationFunction == null)
+                throw new ArgumentNullException(nameof(validationFunction));
+
+            if (!validationFunction(value, out var message))
+            {
+                validationResultsBuilder.AddValidationResult(member, message);
+            }
+        }
+
+        public delegate bool ValidationFunction<T>(T value, out string message);
     }
 }

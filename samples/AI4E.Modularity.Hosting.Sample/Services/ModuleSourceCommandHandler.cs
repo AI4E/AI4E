@@ -1,4 +1,3 @@
-﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using AI4E.Modularity.Host;
@@ -95,27 +94,5 @@ namespace AI4E.Modularity.Hosting.Sample.Services
 
             return validationResultsBuilder.GetValidationResults();
         }
-    }
-
-    public static class ValidationResultsBuilderExtension
-    {
-        public static void Validate<T>(this ValidationResultsBuilder validationResultsBuilder,
-                                       ValidationFunction<T> validationFunction,
-                                       T value,
-                                       string member)
-        {
-            if (validationResultsBuilder == null)
-                throw new ArgumentNullException(nameof(validationResultsBuilder));
-
-            if (validationFunction == null)
-                throw new ArgumentNullException(nameof(validationFunction));
-
-            if (!validationFunction(value, out var message))
-            {
-                validationResultsBuilder.AddValidationResult(member, message);
-            }
-        }
-
-        public delegate bool ValidationFunction<T>(T value, out string message);
     }
 }

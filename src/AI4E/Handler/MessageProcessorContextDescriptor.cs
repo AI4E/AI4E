@@ -8,7 +8,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Handler
 {
-    public sealed class MessageProcessorContextDescriptor
+    public readonly struct MessageProcessorContextDescriptor
     {
         private static readonly ConcurrentDictionary<Type, MessageProcessorContextDescriptor> _descriptors
             = new ConcurrentDictionary<Type, MessageProcessorContextDescriptor>();
@@ -31,20 +31,20 @@ namespace AI4E.Handler
                                                                   p.GetIndexParameters().Length == 0 &&
                                                                   p.IsDefined<MessageProcessorContextAttribute>());
 
-            Action<object, IMessageProcessorContext> contextSetter = null;
-
-            if (contextProperty != null)
-            {
-                var processorParam = Expression.Parameter(typeof(object), "processor");
-                var processorConvert = Expression.Convert(processorParam, type);
-                var contextParam = Expression.Parameter(typeof(IMessageProcessorContext), "processorContext");
-                var propertyAccess = Expression.Property(processorConvert, contextProperty);
-                var propertyAssign = Expression.Assign(propertyAccess, contextParam);
-                var lambda = Expression.Lambda<Action<object, IMessageProcessorContext>>(propertyAssign, processorParam, contextParam);
-                contextSetter = lambda.Compile();
-            }
+            var contextSetter = contextProperty != null ? BuildContextSetter(type, contextProperty) : null;
 
             return new MessageProcessorContextDescriptor(contextSetter);
+        }
+
+        private static Action<object, IMessageProcessorContext> BuildContextSetter(Type type, PropertyInfo contextProperty)
+        {
+            var processorParam = Expression.Parameter(typeof(object), "processor");
+            var convertedProcessor = Expression.Convert(processorParam, type);
+            var contextParam = Expression.Parameter(typeof(IMessageProcessorContext), "processorContext");
+            var propertyAccess = Expression.Property(convertedProcessor, contextProperty);
+            var propertyAssign = Expression.Assign(propertyAccess, contextParam);
+            var lambda = Expression.Lambda<Action<object, IMessageProcessorContext>>(propertyAssign, processorParam, contextParam);
+            return lambda.Compile();
         }
 
         private readonly Action<object, IMessageProcessorContext> _contextSetter;
