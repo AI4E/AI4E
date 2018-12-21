@@ -22,6 +22,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Remoting;
+using AI4E.Utils;
 
 namespace AI4E.Routing
 {
@@ -56,5 +57,62 @@ namespace AI4E.Routing
         /// The handler shall not handle point to point messages, unless the message is not sent to the end-point via its address.
         /// </summary>
         PublishOnly = 2
+    }
+
+    // TODO: Rename to RouteTarget?
+    public readonly struct RouteRegistration : IEquatable<RouteRegistration>
+    {
+        public RouteRegistration(EndPointAddress endPoint, RouteRegistrationOptions registrationOptions)
+        {
+            if (endPoint == default)
+            {
+                this = default;
+                return;
+            }
+
+            if (!registrationOptions.IsValid())
+                throw new ArgumentException("Invalid enum valid.", nameof(registrationOptions));
+
+            EndPoint = endPoint;
+            RegistrationOptions = registrationOptions;
+        }
+
+        public EndPointAddress EndPoint { get; }
+        public RouteRegistrationOptions RegistrationOptions { get; }
+
+        public override bool Equals(object obj)
+        {
+            return obj is RouteRegistration routeRegistration && Equals(routeRegistration);
+        }
+
+        public bool Equals(RouteRegistration other)
+        {
+            return other.EndPoint == EndPoint &&
+                   other.RegistrationOptions == RegistrationOptions;
+        }
+
+        public override int GetHashCode()
+        {
+            var hashCode = 2033542754;
+            hashCode = hashCode * -1521134295 + EqualityComparer<EndPointAddress>.Default.GetHashCode(EndPoint);
+            hashCode = hashCode * -1521134295 + RegistrationOptions.GetHashCode();
+            return hashCode;
+        }
+
+        public static bool operator ==(RouteRegistration left, RouteRegistration right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(RouteRegistration left, RouteRegistration right)
+        {
+            return !left.Equals(right);
+        }
+
+        public void Deconstruct(out EndPointAddress endPoint, out RouteRegistrationOptions registrationOptions)
+        {
+            endPoint = EndPoint;
+            registrationOptions = RegistrationOptions;
+        }
     }
 }

@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -25,6 +25,6 @@ namespace AI4E.Routing
 {
     public interface ISerializedMessageHandler
     {
-        ValueTask<IMessage> HandleAsync(string route, IMessage serializedMessage, bool publish, CancellationToken cancellation = default);
+        ValueTask<(IMessage response, bool handled)> HandleAsync(string route, IMessage request, bool publish, CancellationToken cancellation = default);
     }
 }

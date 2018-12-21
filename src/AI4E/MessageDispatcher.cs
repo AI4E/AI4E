@@ -63,7 +63,9 @@ namespace AI4E
 
         #region IMessageDispatcher
 
-        public IHandlerRegistration Register(Type messageType, IContextualProvider<IMessageHandler> messageHandlerProvider)
+        public IHandlerRegistration Register(
+            Type messageType,
+            IContextualProvider<IMessageHandler> messageHandlerProvider)
         {
             if (messageType == null)
                 throw new ArgumentNullException(nameof(messageType));
@@ -74,7 +76,12 @@ namespace AI4E
             return GetHandlerRegistry(messageType).CreateRegistration(messageHandlerProvider);
         }
 
-        public async Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation)
+        public async ValueTask<(IDispatchResult result, bool handlersFound)> TryDispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            bool allowRouteDescend,
+            CancellationToken cancellation)
+
         {
             if (dispatchData == null)
                 throw new ArgumentNullException(nameof(dispatchData));
@@ -100,7 +107,7 @@ namespace AI4E
 
                         if (handlersFound)
                         {
-                            return result;
+                            return (result, handlersFound: true);
                         }
                         else
                         {
@@ -109,12 +116,12 @@ namespace AI4E
                     }
                 }
             }
-            while (!currType.IsInterface && (currType = currType.BaseType) != null);
+            while (allowRouteDescend && !currType.IsInterface && (currType = currType.BaseType) != null);
 
             // When dispatching a message and no handlers are available, this is a failure.
             if (!publish)
             {
-                return new DispatchFailureDispatchResult(dispatchData.MessageType);
+                return (new DispatchFailureDispatchResult(dispatchData.MessageType), handlersFound: false);
             }
 
             var filteredResult = (await Task.WhenAll(tasks)).Where(p => p.handlersFound).ToList();
@@ -122,18 +129,32 @@ namespace AI4E
             // When publishing a message and no handlers are available, this is a success.
             if (filteredResult.Count == 0)
             {
-                return new SuccessDispatchResult();
+                return (new SuccessDispatchResult(), handlersFound: false);
             }
 
             if (filteredResult.Count == 1)
             {
-                return (await tasks[0]).result;
+                return ((await tasks[0]).result, handlersFound: true);
             }
 
-            return new AggregateDispatchResult(filteredResult.Select(p => p.result));
+            return (new AggregateDispatchResult(filteredResult.Select(p => p.result)), handlersFound: true);
         }
 
-        public async Task<(IDispatchResult result, bool handlersFound)> DispatchAsync(IHandlerRegistry<IMessageHandler> handlerRegistry, DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation)
+        public async Task<IDispatchResult> DispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            CancellationToken cancellation)
+        {
+            var (dispatchResult, _) = await TryDispatchAsync(dispatchData, publish, allowRouteDescend: true, cancellation);
+
+            return dispatchResult;
+        }
+
+        private async Task<(IDispatchResult result, bool handlersFound)> DispatchAsync(
+            IHandlerRegistry<IMessageHandler> handlerRegistry,
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            CancellationToken cancellation)
         {
             Assert(dispatchData != null);
 
@@ -162,9 +183,10 @@ namespace AI4E
             }
         }
 
-        private async ValueTask<IDispatchResult> DispatchSingleHandlerAsync(IContextualProvider<IMessageHandler> handler,
-                                                                      DispatchDataDictionary dispatchData,
-                                                                      CancellationToken cancellation)
+        private async ValueTask<IDispatchResult> DispatchSingleHandlerAsync(
+            IContextualProvider<IMessageHandler> handler,
+            DispatchDataDictionary dispatchData,
+            CancellationToken cancellation)
         {
             Assert(handler != null);
             Assert(dispatchData != null);
@@ -175,7 +197,7 @@ namespace AI4E
                 {
                     var handlerInstance = handler.ProvideInstance(scope.ServiceProvider);
 
-                    if(handlerInstance == null)
+                    if (handlerInstance == null)
                     {
                         throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that is null.");
                     }

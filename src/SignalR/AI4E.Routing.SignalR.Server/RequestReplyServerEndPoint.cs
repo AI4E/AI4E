@@ -32,7 +32,7 @@ namespace AI4E.Routing.SignalR.Server
             return new RequestReplyServerReceiveResult(receiveResult);
         }
 
-        public Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation = default)
+        public Task<(IMessage message, bool handled)> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation = default)
         {
             return _reqRplyEndPoint.SendAsync(new Packet<EndPointAddress>(message, remoteEndPoint), cancellation);
         }
@@ -89,6 +89,11 @@ namespace AI4E.Routing.SignalR.Server
             public Task SendResponseAsync(IMessage response)
             {
                 return _receiveResult.SendResponseAsync(response);
+            }
+
+            public Task SendResponseAsync(IMessage response, bool handled)
+            {
+                return _receiveResult.SendResponseAsync(response, handled);
             }
 
             public Task SendCancellationAsync()

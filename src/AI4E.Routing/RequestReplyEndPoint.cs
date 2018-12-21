@@ -3,10 +3,9 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
-using AI4E.Utils.Processing;
 using AI4E.Remoting;
 using AI4E.Utils;
+using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
@@ -23,7 +22,7 @@ namespace AI4E.Routing
         private volatile CancellationTokenSource _disposalSource;
 
         private readonly AsyncProducerConsumerQueue<(int seqNum, TPacket packet)> _rxQueue;
-        private readonly ConcurrentDictionary<int, TaskCompletionSource<IMessage>> _responseTable;
+        private readonly ConcurrentDictionary<int, TaskCompletionSource<(IMessage response, bool handled)>> _responseTable;
         private readonly ConcurrentDictionary<int, CancellationTokenSource> _cancellationTable;
         private readonly AsyncProcess _receiveProcess;
 
@@ -43,7 +42,7 @@ namespace AI4E.Routing
 
             _disposalSource = new CancellationTokenSource();
             _rxQueue = new AsyncProducerConsumerQueue<(int seqNum, TPacket packet)>();
-            _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<IMessage>>();
+            _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<(IMessage response, bool handled)>>();
             _cancellationTable = new ConcurrentDictionary<int, CancellationTokenSource>();
 
             _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
@@ -74,9 +73,9 @@ namespace AI4E.Routing
         private async Task HandleMessageAsync(TPacket packet)
         {
             var message = packet.Message;
-            var (seqNum, messageType, corrId) = DecodeMessage(message);
+            var (seqNum, messageType, handled, corrId) = DecodeMessage(message);
 
-            TaskCompletionSource<IMessage> responseSource;
+            TaskCompletionSource<(IMessage response, bool handled)> responseSource;
             switch (messageType)
             {
                 case MessageType.Request:
@@ -90,7 +89,7 @@ namespace AI4E.Routing
                     // We did not already receive a response for this corr-id.
                     if (_responseTable.TryRemove(corrId, out responseSource))
                     {
-                        responseSource.SetResult(message);
+                        responseSource.SetResult((message, handled));
                     }
                     break;
 
@@ -119,7 +118,7 @@ namespace AI4E.Routing
 
         #region IRequestReplyEndPoint
 
-        public async Task<IMessage> SendAsync(TPacket packet, CancellationToken cancellation = default)
+        public async Task<(IMessage message, bool handled)> SendAsync(TPacket packet, CancellationToken cancellation = default)
         {
             if (packet == default)
             {
@@ -135,7 +134,7 @@ namespace AI4E.Routing
             {
                 try
                 {
-                    var responseSource = new TaskCompletionSource<IMessage>();
+                    var responseSource = new TaskCompletionSource<(IMessage response, bool handled)>();
                     var seqNum = GetNextSeqNum();
 
                     while (!_responseTable.TryAdd(seqNum, responseSource))
@@ -145,7 +144,7 @@ namespace AI4E.Routing
 
                     void RequestCancellation()
                     {
-                        SendInternalAsync(packet.WithMessage(new Message()), messageType: MessageType.CancellationRequest, corrId: seqNum, cancellation: default)
+                        SendInternalAsync(packet.WithMessage(new Message()), messageType: MessageType.CancellationRequest, handled: false, corrId: seqNum, cancellation: default)
                             .HandleExceptions(_logger);
                     }
 
@@ -153,7 +152,7 @@ namespace AI4E.Routing
 
                     using (cancellation.Register(RequestCancellation))
                     {
-                        await SendInternalAsync(packet, seqNum, MessageType.Request, corrId: 0, cancellation: cancellation);
+                        await SendInternalAsync(packet, seqNum, MessageType.Request, handled: false, corrId: 0, cancellation: cancellation);
 
                         // The tasks gets cancelled if cancellation is requested and we receive a cancellation response from the client.
                         return await responseSource.Task;
@@ -228,7 +227,7 @@ namespace AI4E.Routing
 
         #region Send
 
-        private async Task SendInternalAsync(TPacket packet, int seqNum, MessageType messageType, int corrId, CancellationToken cancellation)
+        private async Task SendInternalAsync(TPacket packet, int seqNum, MessageType messageType, bool handled, int corrId, CancellationToken cancellation)
         {
             var message = packet.Message;
 
@@ -240,7 +239,7 @@ namespace AI4E.Routing
 
             message = message ?? new Message();
             var frameIdx = message.FrameIndex;
-            EncodeMessage(message, seqNum, messageType, corrId);
+            EncodeMessage(message, seqNum, messageType, handled, corrId);
 
             try
             {
@@ -259,9 +258,9 @@ namespace AI4E.Routing
             }
         }
 
-        private Task SendInternalAsync(TPacket packet, MessageType messageType, int corrId, CancellationToken cancellation)
+        private Task SendInternalAsync(TPacket packet, MessageType messageType, bool handled, int corrId, CancellationToken cancellation)
         {
-            return SendInternalAsync(packet, GetNextSeqNum(), messageType, corrId, cancellation);
+            return SendInternalAsync(packet, GetNextSeqNum(), messageType, handled, corrId, cancellation);
         }
 
         #endregion
@@ -272,27 +271,33 @@ namespace AI4E.Routing
         }
 
         // TODO: Use SpanReader/Writer API
-        private static (int seqNum, MessageType messageType, int corrId) DecodeMessage(IMessage message)
+        private static (int seqNum, MessageType messageType, bool handled, int corrId) DecodeMessage(IMessage message)
         {
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
             {
                 var seqNum = reader.ReadInt32();
                 var messageType = (MessageType)reader.ReadInt32();
+                var handled = reader.ReadBoolean();
+                reader.ReadInt16();
+                reader.ReadByte();
                 var corrId = reader.ReadInt32();
 
-                return (seqNum, messageType, corrId);
+                return (seqNum, messageType, handled, corrId);
             }
         }
 
-        private static void EncodeMessage(IMessage message, int seqNum, MessageType messageType, int corrId)
+        private static void EncodeMessage(IMessage message, int seqNum, MessageType messageType, bool handled, int corrId)
         {
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(stream))
             {
-                writer.Write(seqNum);
-                writer.Write((int)messageType);
-                writer.Write(corrId);
+                writer.Write(seqNum);           // 4 bytes
+                writer.Write((int)messageType); // 4 bytes
+                writer.Write(handled);          // 1 byte
+                writer.Write((short)0);
+                writer.Write((byte)0);          // 3 bytes (padding)
+                writer.Write(corrId);           // 4 bytes
             }
         }
 
@@ -319,27 +324,44 @@ namespace AI4E.Routing
 
             public Task SendResponseAsync(IMessage response)
             {
+                return SendResponseAsync(response, handled: true);
+            }
+
+            public Task SendResponseAsync(IMessage response, bool handled)
+            {
                 if (response == null)
                 {
                     throw new ArgumentNullException(nameof(response));
                 }
 
-                return InternalSendResponseAsync(response);
+                return InternalSendResponseAsync(response, handled);
             }
 
             public Task SendAckAsync()
             {
-                return InternalSendResponseAsync(response: null);
+                // The handled parameter can be of any value here, as it is ignored by the receiver currently.
+                return InternalSendResponseAsync(response: null, handled: false);
             }
 
             public Task SendCancellationAsync()
             {
-                return _rqRplyEndPoint.SendInternalAsync(Packet.WithMessage(new Message()), messageType: MessageType.CancellationResponse, corrId: _seqNum, cancellation: default);
+                // The handled parameter can be of any value here, as it is ignored by the receiver currently.
+                return _rqRplyEndPoint.SendInternalAsync(
+                    Packet.WithMessage(new Message()),
+                    messageType: MessageType.CancellationResponse,
+                    handled: false,
+                    corrId: _seqNum,
+                    cancellation: default);
             }
 
-            private Task InternalSendResponseAsync(IMessage response)
+            private Task InternalSendResponseAsync(IMessage response, bool handled)
             {
-                return _rqRplyEndPoint.SendInternalAsync(Packet.WithMessage(response), MessageType.Response, corrId: _seqNum, cancellation: Cancellation);
+                return _rqRplyEndPoint.SendInternalAsync(
+                    Packet.WithMessage(response),
+                    MessageType.Response,
+                    handled,
+                    corrId: _seqNum,
+                    cancellation: Cancellation);
             }
 
             public void Dispose()

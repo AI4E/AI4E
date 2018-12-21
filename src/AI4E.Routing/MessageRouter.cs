@@ -73,7 +73,7 @@ namespace AI4E.Routing
         private async Task ReceiveProcedure(CancellationToken cancellation)
         {
             // We cache the delegate for perf reasons.
-            var handler = new Func<IMessage, EndPointAddress, CancellationToken, Task<IMessage>>(HandleAsync);
+            var handler = new Func<IMessage, EndPointAddress, CancellationToken, Task<(IMessage response, bool handled)>>(HandleAsync);
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
 
             while (cancellation.ThrowOrContinue())
@@ -91,37 +91,33 @@ namespace AI4E.Routing
             }
         }
 
-        private async Task<IMessage> HandleAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation)
+        private async Task<(IMessage response, bool handled)> HandleAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation)
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
             var (publish, route) = DecodeMessage(message);
 
             _logger?.LogDebug($"End-point '{localEndPoint}': Processing request message.");
-            var response = await RouteToLocalAsync(route, message, publish, cancellation);
-
-            // TODO: Do we want to send a message frame back to the initiator? This would be empty for now.
-
-            return response;
+            return await RouteToLocalAsync(route, message, publish, cancellation);
         }
 
         #endregion
 
-        private async ValueTask<IMessage> RouteToLocalAsync(string route, IMessage serializedMessage, bool publish, CancellationToken cancellation)
+        private async ValueTask<(IMessage response, bool handled)> RouteToLocalAsync(string route, IMessage request, bool publish, CancellationToken cancellation)
         {
-            var frameIdx = serializedMessage.FrameIndex;
-            var frameCount = serializedMessage.FrameCount;
+            var frameIdx = request.FrameIndex;
+            var frameCount = request.FrameCount;
 
-            var response = await _serializedMessageHandler.HandleAsync(route, serializedMessage, publish, cancellation);
+            var (response, handled) = await _serializedMessageHandler.HandleAsync(route, request, publish, cancellation);
 
             // Remove all frames from other protocol stacks.
             response.Trim(); // TODO
 
             // We do not want to override frames.
             Assert(response.FrameIndex == response.FrameCount - 1);
-            Assert(frameIdx == serializedMessage.FrameIndex);
-            Assert(frameCount == serializedMessage.FrameCount);
+            Assert(frameIdx == request.FrameIndex);
+            Assert(frameCount == request.FrameCount);
 
-            return response;
+            return (response, handled);
         }
 
         public async ValueTask<IMessage> RouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation)
@@ -139,7 +135,9 @@ namespace AI4E.Routing
             {
                 using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
                 {
-                    return await InternalRouteAsync(route, serializedMessage, publish, endPoint, cancellation);
+                    var (response, _) = await InternalRouteAsync(route, serializedMessage, publish, endPoint, cancellation);
+
+                    return response;
                 }
             }
             catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
@@ -178,82 +176,82 @@ namespace AI4E.Routing
         private async ValueTask<IReadOnlyCollection<IMessage>> InternalRouteAsync(IEnumerable<string> routes, IMessage serializedMessage, bool publish, CancellationToken cancellation)
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
-            var tasks = new List<ValueTask<IMessage>>();
+            var tasks = new List<ValueTask<(IMessage response, bool handled)>>();
             var handledEndPoints = new HashSet<EndPointAddress>();
 
             _logger?.LogTrace($"Routing a message ({(publish ? "publish" : "p2p")}) with routes: {routes.Aggregate((e, n) => e + ", " + n)}");
 
             foreach (var route in routes)
             {
-                var matchRouteResult = await MatchRouteAsync(route, cancellation);
-                var matches = matchRouteResult.Where(p => !handledEndPoints.Contains(p.endPoint)).ToList();
-
-                _logger?.LogTrace($"Found {matchRouteResult.Count()} ({matches.Count()} considering handled end-points) matches for route '{route}'.");
-
-                var endPoints = matches.Select(p => p.endPoint);
-                handledEndPoints.UnionWith(endPoints);
+                var matches = await MatchRouteAsync(route, publish, handledEndPoints, cancellation);
 
                 if (matches.Any())
                 {
                     if (!publish)
                     {
-                        EndPointAddress ResolveEndPoint()
-                        {
-                            for (var i = matches.Count - 1; i >= 0; i--)
-                            {
-                                var (endPoint, options) = matches[i];
+                        _logger?.LogTrace($"Found {matches.Count()} matches for route '{route}'.");
 
-                                if ((options & RouteRegistrationOptions.PublishOnly) != RouteRegistrationOptions.PublishOnly)
-                                {
-                                    return endPoint;
-                                }
+                        for (var i = matches.Count - 1; i >= 0; i--)
+                        {
+                            var (endPoint, options) = matches[i];
+
+                            if (endPoint == EndPointAddress.UnknownAddress)
+                            {
+                                continue;
                             }
 
-                            return EndPointAddress.UnknownAddress;
+                            if ((options & RouteRegistrationOptions.PublishOnly) == RouteRegistrationOptions.PublishOnly)
+                            {
+                                continue;
+                            }
+
+                            var (response, handled) = await InternalRouteAsync(route, serializedMessage, publish: false, endPoint, cancellation);
+
+                            if (handled)
+                            {
+                                return response.Yield().ToArray();
+                            }
                         }
-
-                        var resolvedEndPoint = ResolveEndPoint();
-
-                        // There is no (publish only) match for the current route.
-                        if (resolvedEndPoint == EndPointAddress.UnknownAddress)
-                        {
-                            continue;
-                        }
-
-                        if (resolvedEndPoint.Equals(localEndPoint))
-                        {
-                            return new[] { await RouteToLocalAsync(route, serializedMessage, publish: false, cancellation) };
-                        }
-
-                        return new[] { await InternalRouteAsync(route, serializedMessage, publish: false, resolvedEndPoint, cancellation) };
                     }
-
-                    foreach (var (endPoint, _) in matches)
+                    else
                     {
-                        if (endPoint.Equals(localEndPoint))
-                        {
-                            _logger?.LogTrace("Routing to end-point: " + endPoint + " (local end-point)");
+                        _logger?.LogTrace($"Found {matches.Count()} matches (considering handled end-points) for route '{route}'.");
 
-                            tasks.Add(RouteToLocalAsync(route, serializedMessage, publish: true, cancellation));
-                        }
-                        else
-                        {
-                            _logger?.LogTrace("Routing to end-point: " + endPoint);
+                        var endPoints = matches.Select(p => p.EndPoint);
+                        handledEndPoints.UnionWith(endPoints);
 
+                        foreach (var endPoint in endPoints)
+                        {
                             tasks.Add(InternalRouteAsync(route, serializedMessage, publish: true, endPoint, cancellation));
                         }
                     }
                 }
             }
 
-            var result = (await Task.WhenAll(tasks.Select(p => p.AsTask()))).ToList(); // TODO: Use ValueTaskHelper.WhenAny
+            var result = await ValueTaskHelper.WhenAll(tasks, preserveOrder: false);
 
             _logger?.LogTrace($"Successfully routed a message ({(publish ? "publish" : "p2p")}) with routes: {routes.Aggregate((e, n) => e + ", " + n)}");
 
-            return result;
+            return result.Where(p => p.handled).Select(p => p.response).ToArray();
         }
 
-        private async ValueTask<IMessage> InternalRouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation)
+        private async Task<List<RouteRegistration>> MatchRouteAsync(
+            string route,
+            bool publish,
+            ISet<EndPointAddress> handledEndPoints,
+            CancellationToken cancellation)
+        {
+            var routeResults = await _routeManager.GetRoutesAsync(route, cancellation);
+
+            if (publish)
+            {
+                routeResults = routeResults.Where(p => !handledEndPoints.Contains(p.EndPoint));
+            }
+
+            return routeResults.ToList();
+        }
+
+        private async ValueTask<(IMessage response, bool handled)> InternalRouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation)
         {
             Assert(endPoint != default);
 
@@ -264,6 +262,8 @@ namespace AI4E.Routing
             // => Requests are kept local to the machine.
             if (endPoint == localEndPoint)
             {
+                _logger?.LogDebug($"Message router for end-point '{localEndPoint}': Dispatching request message locally.");
+
                 return await RouteToLocalAsync(route, serializedMessage, publish, cancellation);
             }
 
@@ -277,13 +277,13 @@ namespace AI4E.Routing
 
             EncodeMessage(serializedMessage, publish, route);
 
-            var response = await _logicalEndPoint.SendAsync(serializedMessage, endPoint, cancellation);
+            var (response, handled) = await _logicalEndPoint.SendAsync(serializedMessage, endPoint, cancellation);
 
             _logger?.LogDebug($"Message router for end-point '{localEndPoint}': Processing response message."); // TODO
 
             response.Trim(); // TODO
 
-            return response;
+            return (response, handled);
         }
 
         private static void EncodeMessage(IMessage message, bool publish, string route)
@@ -375,10 +375,7 @@ namespace AI4E.Routing
             }
         }
 
-        private Task<IEnumerable<(EndPointAddress endPoint, RouteRegistrationOptions options)>> MatchRouteAsync(string route, CancellationToken cancellation)
-        {
-            return _routeManager.GetRoutesAsync(route, cancellation);
-        }
+
     }
 
     public sealed class MessageRouterFactory : IMessageRouterFactory

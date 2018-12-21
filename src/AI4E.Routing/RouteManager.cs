@@ -143,7 +143,7 @@ namespace AI4E.Routing
             }
         }
 
-        public async Task<IEnumerable<(EndPointAddress endPoint, RouteRegistrationOptions registrationOptions)>> GetRoutesAsync(string route, CancellationToken cancellation)
+        public async Task<IEnumerable<RouteRegistration>> GetRoutesAsync(string route, CancellationToken cancellation)
         {
             if (string.IsNullOrWhiteSpace(route))
                 throw new ArgumentNullOrWhiteSpaceException(nameof(route));
@@ -153,7 +153,7 @@ namespace AI4E.Routing
 
             Assert(entry != null);
 
-            (EndPointAddress endPoint, RouteRegistrationOptions registrationOptions) Extract(IEntry e)
+            RouteRegistration Extract(IEntry e)
             {
                 using (var stream = e.OpenStream())
                 using (var reader = new BinaryReader(stream))
@@ -161,13 +161,13 @@ namespace AI4E.Routing
                     var registrationOptions = (RouteRegistrationOptions)reader.ReadInt32();
                     var endPoint = reader.ReadEndPointAddress();
 
-                    return (endPoint, registrationOptions);
+                    return new RouteRegistration(endPoint, registrationOptions);
                 }
             }
 
             return await entry.GetChildrenEntries()
                               .Select(p => Extract(p))
-                              .Distinct(p => p.endPoint)
+                              .Distinct(p => p.EndPoint) // TODO: Can we do anything about the case, that an end-point is registered with different options for the route?
                               .ToArray();
         }
 

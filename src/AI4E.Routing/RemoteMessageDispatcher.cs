@@ -57,7 +57,7 @@ namespace AI4E.Routing
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<RemoteMessageDispatcher> _logger;
 
-        private readonly IMessageDispatcher _localMessageDispatcher;
+        private readonly MessageDispatcher _localMessageDispatcher;
         private readonly ConcurrentDictionary<Type, TypedMessageDisaptcher> _typedDispatchers = new ConcurrentDictionary<Type, TypedMessageDisaptcher>();
 
         #endregion
@@ -83,7 +83,6 @@ namespace AI4E.Routing
             _logger = logger;
 
             _messageRouter = messageRouterFactory.CreateMessageRouter(new SerializedMessageHandler(this));
-
             _localMessageDispatcher = new MessageDispatcher(serviceProvider);
         }
 
@@ -142,29 +141,32 @@ namespace AI4E.Routing
                 _typeConversion = _remoteMessageDispatcher._typeConversion;
             }
 
-            public async ValueTask<IMessage> HandleAsync(string route,
-                                                         IMessage serializedMessage,
-                                                         bool publish,
-                                                         CancellationToken cancellation)
+            public async ValueTask<(IMessage response, bool handled)> HandleAsync(
+                string route,
+                IMessage request,
+                bool publish,
+                CancellationToken cancellation)
             {
                 if (route == null)
                     throw new ArgumentNullException(nameof(route));
 
-                if (serializedMessage == null)
-                    throw new ArgumentNullException(nameof(serializedMessage));
+                if (request == null)
+                    throw new ArgumentNullException(nameof(request));
 
                 var messageType = _typeConversion.DeserializeType(route);
 
                 Assert(messageType != null);
 
-                var dispatchData = _remoteMessageDispatcher.DeserializeDispatchData(serializedMessage);
-                var dispatchResult = await _remoteMessageDispatcher.DispatchLocalAsync(dispatchData, publish, cancellation);
+                var dispatchData = _remoteMessageDispatcher.DeserializeDispatchData(request);
+
+                // We allow target route descend on publishing only (See https://github.com/AI4E/AI4E/issues/82#issuecomment-448269275)
+                var (dispatchResult, handlersFound) = await _remoteMessageDispatcher.TryDispatchLocalAsync(dispatchData, publish, allowRouteDescend: publish, cancellation);
 
                 var response = new Message();
                 _remoteMessageDispatcher.SerializeDispatchResult(response, dispatchResult);
-                serializedMessage.PushFrame();
+                request.PushFrame();
 
-                return response;
+                return (response, handled: handlersFound);
             }
         }
 
@@ -337,15 +339,12 @@ namespace AI4E.Routing
             return result;
         }
 
-
-
-        public async Task<IDispatchResult> DispatchLocalAsync(DispatchDataDictionary dispatchData,
-                                                              bool publish,
-                                                              CancellationToken cancellation)
+        private async ValueTask<(IDispatchResult result, bool handlersFound)> TryDispatchLocalAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            bool allowRouteDescend,
+            CancellationToken cancellation)
         {
-            if (dispatchData == null)
-                throw new ArgumentNullException(nameof(dispatchData));
-
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
 
             _logger?.LogInformation($"End-point '{localEndPoint}': Dispatching message of type {dispatchData.MessageType} locally.");
@@ -354,12 +353,23 @@ namespace AI4E.Routing
             {
                 await WaitPendingRegistrationsAsync(dispatchData.MessageType, cancellation);
 
-                return await _localMessageDispatcher.DispatchAsync(dispatchData, publish, cancellation);
+                return await _localMessageDispatcher.TryDispatchAsync(dispatchData, publish, allowRouteDescend, cancellation);
             }
             finally
             {
                 _logger?.LogDebug($"End-point '{localEndPoint}': Dispatched message of type {dispatchData.MessageType} locally.");
             }
+        }
+
+        public async Task<IDispatchResult> DispatchLocalAsync(DispatchDataDictionary dispatchData,
+                                                              bool publish,
+                                                              CancellationToken cancellation)
+        {
+            if (dispatchData == null)
+                throw new ArgumentNullException(nameof(dispatchData));
+
+            var (dispatchResult, _) = await TryDispatchLocalAsync(dispatchData, publish, allowRouteDescend: true, cancellation);
+            return dispatchResult;
         }
 
         #endregion
@@ -488,7 +498,7 @@ namespace AI4E.Routing
                 }
             }
 
-            private async Task<IHandlerRegistration> RegisterHandleInternalAsync(
+            private async Task<IHandlerRegistration> RegisterHandlerInternalAsync(
                 IContextualProvider<IMessageHandler> messageHandlerProvider,
                 RouteRegistrationOptions options)
             {
@@ -533,7 +543,7 @@ namespace AI4E.Routing
                 RouteRegistrationOptions options,
                 CancellationToken cancellation)
             {
-                var pendingRegistration = RegisterHandleInternalAsync(messageHandlerProvider, options);
+                var pendingRegistration = RegisterHandlerInternalAsync(messageHandlerProvider, options);
 
                 lock (_pendingRegistrations)
                 {

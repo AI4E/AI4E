@@ -4,9 +4,9 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Processing;
 using AI4E.Remoting;
 using AI4E.Utils;
+using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 
@@ -140,7 +140,7 @@ namespace AI4E.Routing.SignalR.Server
         {
             // TODO: Get the clients route options and combine them with RouteOptions.PublishOnly. 
             //       This is not necessary for now as there are no other options currently.
-            var messageRouter = _messageRouterFactory.CreateMessageRouter(endPoint, new SerializedMessageHandlerProxy(this, endPoint)); 
+            var messageRouter = _messageRouterFactory.CreateMessageRouter(endPoint, new SerializedMessageHandlerProxy(this, endPoint));
             return messageRouter;
         }
 
@@ -157,9 +157,9 @@ namespace AI4E.Routing.SignalR.Server
                 _endPoint = endPoint;
             }
 
-            public async ValueTask<IMessage> HandleAsync(string route, IMessage serializedMessage, bool publish, CancellationToken cancellation = default)
+            public async ValueTask<(IMessage response, bool handled)> HandleAsync(string route, IMessage request, bool publish, CancellationToken cancellation = default)
             {
-                var frameIdx = serializedMessage.FrameIndex;
+                var frameIdx = request.FrameIndex;
 
                 try
                 {
@@ -167,26 +167,26 @@ namespace AI4E.Routing.SignalR.Server
 
                     do
                     {
-                        using (var readStream = serializedMessage.PopFrame().OpenStream())
+                        using (var readStream = request.PopFrame().OpenStream())
                         using (var writeStream = message.PushFrame().OpenStream())
                         {
                             readStream.CopyTo(writeStream);
                         }
                     }
-                    while (serializedMessage.FrameIndex > -1);
+                    while (request.FrameIndex > -1);
 
                     EncodeHandleRequest(message, route, publish);
 
-                    var response = await _owner._endPoint.SendAsync(message, _endPoint, cancellation);
-                    return response;
+                    var (response, handled) = await _owner._endPoint.SendAsync(message, _endPoint, cancellation);
+                    return (response, handled);
                 }
                 finally
                 {
-                    Assert(serializedMessage.FrameIndex <= frameIdx);
+                    Assert(request.FrameIndex <= frameIdx);
 
-                    while (serializedMessage.FrameIndex < frameIdx)
+                    while (request.FrameIndex < frameIdx)
                     {
-                        serializedMessage.PushFrame();
+                        request.PushFrame();
                     }
                 }
             }

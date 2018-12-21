@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Processing;
 using AI4E.Remoting;
 using AI4E.Utils;
+using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 
@@ -343,7 +343,7 @@ namespace AI4E.Routing.SignalR.Client
         private async Task ReceiveProcess(CancellationToken cancellation)
         {
             // We cache the delegate for perf reasons.
-            var handler = new Func<IMessage, CancellationToken, Task<IMessage>>(HandleAsync);
+            var handler = new Func<IMessage, CancellationToken, Task<(IMessage message, bool handled)>>(HandleAsync);
 
             while (cancellation.ThrowOrContinue())
             {
@@ -360,7 +360,7 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        private async Task<IMessage> HandleAsync(IMessage message, CancellationToken cancellation)
+        private async Task<(IMessage message, bool handled)> HandleAsync(IMessage message, CancellationToken cancellation)
         {
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
@@ -376,9 +376,9 @@ namespace AI4E.Routing.SignalR.Client
                             var routeBytes = reader.ReadBytes(routeBytesLength);
                             var route = Encoding.UTF8.GetString(routeBytes);
                             var publish = reader.ReadBoolean();
-                            var response = await ReceiveHandleRequestAsync(message, route, publish, cancellation);
+                            var (response, handled) = await ReceiveHandleRequestAsync(message, route, publish, cancellation);
                             Assert(response.FrameIndex == response.FrameCount - 1);
-                            return response;
+                            return (response, handled);
                         }
 
                     default:
@@ -386,13 +386,13 @@ namespace AI4E.Routing.SignalR.Client
                             // TODO: Send bad request message
                             // TODO: Log
 
-                            return null;
+                            return default;
                         }
                 }
             }
         }
 
-        private ValueTask<IMessage> ReceiveHandleRequestAsync(IMessage message, string route, bool publish, CancellationToken cancellation)
+        private ValueTask<(IMessage message, bool handled)> ReceiveHandleRequestAsync(IMessage message, string route, bool publish, CancellationToken cancellation)
         {
             return _serializedMessageHandler.HandleAsync(route, message, publish, cancellation);
         }

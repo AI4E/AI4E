@@ -2,12 +2,12 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
 using AI4E.Internal;
 using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 using Microsoft.Extensions.Logging;
 
 namespace AI4E.Modularity.Debug
@@ -72,7 +72,7 @@ namespace AI4E.Modularity.Debug
             return new DebugMessageReceiveResult(resultProxy, resultValues);
         }
 
-        public async Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation = default)
+        public async Task<(IMessage response, bool handled)> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation = default)
         {
             var proxy = await GetProxyAsync(cancellation);
 
@@ -91,7 +91,17 @@ namespace AI4E.Modularity.Debug
                 await response.ReadAsync(stream, cancellation);
             }
 
-            return response;
+            bool handled;
+
+            using (var stream = response.PopFrame().OpenStream())
+            using (var reader = new BinaryReader(stream))
+            {
+                handled = reader.ReadBoolean();
+            }
+
+            response.Trim();
+
+            return (response, handled);
         }
 
         #region Disposal
@@ -140,6 +150,12 @@ namespace AI4E.Modularity.Debug
             {
                 var responseBuffer = response.ToArray();
                 await _proxy.ExecuteAsync(p => p.SendResponseAsync(responseBuffer));
+            }
+
+            public async Task SendResponseAsync(IMessage response, bool handled)
+            {
+                var responseBuffer = response.ToArray();
+                await _proxy.ExecuteAsync(p => p.SendResponseAsync(responseBuffer, handled));
             }
 
             public async Task SendCancellationAsync()
