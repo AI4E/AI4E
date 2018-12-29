@@ -26,13 +26,13 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
 using AI4E.Modularity.Host;
-using AI4E.Utils.Processing;
 using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
 using AI4E.Utils;
+using AI4E.Utils.Async;
+using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
@@ -102,9 +102,9 @@ namespace AI4E.Modularity.Debug
         private async Task<IPEndPoint> InitializeInternalAsync(CancellationToken cancellation)
         {
             // We MUST ensure that we only open the debug-port if
-            // - the handler for the debug messages are registered AND
-            // - reached a globally consistent state (their routes are registered).
-            await _messageDispatcher.WaitPendingRegistrationsAsync(cancellation);
+            // - the handler for the debug messages is registered AND
+            // - reached a globally consistent state (its routes are registered).
+            await ((_messageDispatcher as IAsyncInitialization)?.Initialization?.WithCancellation(cancellation) ?? Task.CompletedTask);
 
             _tcpHost.Start();
             var localAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;

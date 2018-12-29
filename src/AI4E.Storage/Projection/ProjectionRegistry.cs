@@ -1,10 +1,9 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        HandlerRegistry.cs 
- * Types:           AI4E.HandlerRegistry'1
+ * Types:           AI4E.Storage.Projection.HandlerRegistry'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   25.02.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -35,20 +34,20 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 
-namespace AI4E
+namespace AI4E.Storage.Projection
 {
     /// <summary>
     /// Represents an asychronous registry with multiple handlers activated at once.
     /// </summary>
     /// <typeparam name="THandler">The type of handler.</typeparam>
-    public sealed class HandlerRegistry<THandler> : IHandlerRegistry<THandler>
+    public sealed class ProjectionRegistry<THandler> : IProjectionRegistry<THandler>
     {
         private volatile ImmutableList<IContextualProvider<THandler>> _handlers = ImmutableList<IContextualProvider<THandler>>.Empty;
 
         /// <summary>
         /// Creates a new instance of the <see cref="AsyncSingleHandlerRegistry{THandler}"/> type.
         /// </summary>
-        public HandlerRegistry() { }
+        public ProjectionRegistry() { }
 
         /// <summary>
         /// Registers a handler.

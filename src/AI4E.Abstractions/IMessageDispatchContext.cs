@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -27,6 +27,7 @@ namespace AI4E
     {
         IServiceProvider DispatchServices { get; }
         DispatchDataDictionary DispatchData { get; }
+        bool Publish { get; }
     }
 
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]

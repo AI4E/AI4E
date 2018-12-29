@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,27 +18,12 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-using System.Threading;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting.Server;
 
-namespace AI4E
+namespace AI4E.Modularity.Module
 {
-    public interface IMessageProcessor
+    public interface IModuleServer : IServer
     {
-        ValueTask<IDispatchResult> ProcessAsync<TMessage>(DispatchDataDictionary<TMessage> dispatchData,
-                                                          Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
-                                                          CancellationToken cancellation)
-            where TMessage : class;
+        IHttpRequestExecutor RequestExecutor { get; }
     }
-
-    public interface IMessageProcessorContext
-    {
-        MessageHandlerActionDescriptor MessageHandlerAction { get; }
-        object MessageHandler { get; }
-        bool Publish { get; }
-    }
-
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-    public sealed class MessageProcessorContextAttribute : Attribute { }
 }

@@ -101,21 +101,5 @@ namespace AI4E
 
             return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(new TMessage()), publish, cancellation);
         }
-
-        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(
-           this IMessageDispatcher messageDispatcher,
-           IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
-           where TMessage : class
-        {
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
-            if (messageHandlerProvider == null)
-                throw new ArgumentNullException(nameof(messageHandlerProvider));
-
-            var messageType = typeof(TMessage);
-            var handlerRegistration = messageDispatcher.Register(typeof(TMessage), new TypedMessageHandlerProvider<TMessage>(messageHandlerProvider));
-
-            return new TypedHandleRegistration<TMessage>(messageHandlerProvider, handlerRegistration);
-        }
     }
 }

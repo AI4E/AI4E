@@ -1,8 +1,8 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IMessageHandler.cs
- * Types:           (1) AI4E.IMessageHandler'1
- *                  (2) AI4E.IMessageHandler
+ * Types:           (1) AI4E.IMessageHandler
+ *                  (2) AI4E.IMessageHandler'1
  * Version:         1.0
  * Author:          Andreas Trütschel
  * --------------------------------------------------------------------------------------------------------------------
@@ -35,25 +35,6 @@ using System.Threading.Tasks;
 namespace AI4E
 {
     /// <summary>
-    /// Represents a message handler that can handle messages of the specified type.
-    /// </summary>
-    /// <typeparam name="TMessage">The type of message.</typeparam>
-    public interface IMessageHandler<TMessage>
-        where TMessage : class
-    {
-        /// <summary>
-        /// Asynchronously handles the specified message.
-        /// </summary>
-        /// <param name="dispatchData">The dispatch data that contains the message to handle and supporting data.</param>
-        /// <returns>
-        /// A value task representing the asynchronous operation.
-        /// When evaluated, the tasks result contains the dispatch result.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
-        ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, CancellationToken cancellation);
-    }
-
-    /// <summary>
     /// Represents a message handler.
     /// </summary>
     public interface IMessageHandler
@@ -68,11 +49,30 @@ namespace AI4E
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the type of the specified message is not assignable to the handlers message type.</exception>
-        ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary dispatchData, CancellationToken cancellation);
+        ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation);
 
         /// <summary>
         /// Gets the message type, the handler can handle.
         /// </summary>
         Type MessageType { get; }
+    }
+
+    /// <summary>
+    /// Represents a message handler that can handle messages of the specified type.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of message.</typeparam>
+    public interface IMessageHandler<TMessage> : IMessageHandler
+        where TMessage : class
+    {
+        /// <summary>
+        /// Asynchronously handles the specified message.
+        /// </summary>
+        /// <param name="dispatchData">The dispatch data that contains the message to handle and supporting data.</param>
+        /// <returns>
+        /// A value task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the dispatch result.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
+        ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, bool publish, CancellationToken cancellation);
     }
 }

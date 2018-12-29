@@ -21,9 +21,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
 using AI4E.Routing;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging;
@@ -32,7 +32,7 @@ using Nito.AsyncEx;
 
 namespace AI4E.Modularity.Module
 {
-    public sealed class ModuleServer : IServer
+    public sealed class ModuleServer : IModuleServer
     {
         private readonly IRemoteMessageDispatcher _messageDispatcher;
         private readonly IMetadataAccessor _metadataAccessor;
@@ -44,7 +44,6 @@ namespace AI4E.Modularity.Module
         private readonly AsyncDisposeHelper _disposeHelper;
 
         private readonly string _prefix;
-        private IHandlerRegistration _handlerRegistration;
 
         private bool _isStarted = false;
         private readonly AsyncLock _lock = new AsyncLock();
@@ -91,7 +90,22 @@ namespace AI4E.Modularity.Module
             Features.Set<IHttpResponseFeature>(new HttpResponseFeature());
         }
 
-        #region IServer
+
+
+        #region IModuleServer
+
+        private IHttpRequestExecutor _requestExecutor;
+
+        public IHttpRequestExecutor RequestExecutor
+        {
+            get
+            {
+                using (_lock.Lock())
+                {
+                    return _requestExecutor;
+                }
+            }
+        }
 
         public IFeatureCollection Features { get; } = new FeatureCollection();
 
@@ -112,8 +126,7 @@ namespace AI4E.Modularity.Module
                     }
 
                     _isStarted = true;
-
-                    await RegisterHandlerAsync(application, cancellationToken);
+                    _requestExecutor = CreateRequestExecutor(application);
 
                     try
                     {
@@ -128,6 +141,12 @@ namespace AI4E.Modularity.Module
                     }
                 }
             }
+        }
+
+        private IHttpRequestExecutor CreateRequestExecutor<TContext>(IHttpApplication<TContext> application)
+        {
+            var requestExecutorLogger = _loggerFactory?.CreateLogger<HttpRequestExecutor<TContext>>();
+            return new HttpRequestExecutor<TContext>(application, requestExecutorLogger);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -147,28 +166,14 @@ namespace AI4E.Modularity.Module
         private async Task DiposeInternalAsync()
         {
             await UnregisterModuleAsync().HandleExceptionsAsync(_logger);
-            await UnregisterHandlerAsync().HandleExceptionsAsync(_logger);
+
+            using (await _lock.LockAsync())
+            {
+                _requestExecutor = null;
+            }
         }
 
         #endregion
-
-        private async Task RegisterHandlerAsync<TContext>(IHttpApplication<TContext> application, CancellationToken cancellation)
-        {
-            var handler = CreateHandlerProvider(application);
-            _handlerRegistration = _messageDispatcher.Register(handler);
-
-            await _handlerRegistration.Initialization;
-        }
-
-        private IProvider<ModuleHttpHandler<TContext>> CreateHandlerProvider<TContext>(IHttpApplication<TContext> application)
-        {
-            return Provider.Create(() => new ModuleHttpHandler<TContext>(application, _loggerFactory.CreateLogger<ModuleHttpHandler<TContext>>()));
-        }
-
-        private Task UnregisterHandlerAsync()
-        {
-            return _handlerRegistration.DisposeAsync();
-        }
 
         private async Task RegisterModuleAsync(CancellationToken cancellation)
         {

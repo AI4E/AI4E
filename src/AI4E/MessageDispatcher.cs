@@ -28,12 +28,12 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
+using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using static System.Diagnostics.Debug;
 
@@ -43,37 +43,68 @@ namespace AI4E
     {
         #region Fields
 
+        private readonly IMessageHandlerRegistry _messageHandlerRegistry;
         private readonly IServiceProvider _serviceProvider;
-        private readonly ConcurrentDictionary<Type, IHandlerRegistry<IMessageHandler>> _handlers;
+        private volatile IMessageHandlerProvider _messageHandlerProvider;
 
         #endregion
 
         #region C'tor
 
-        public MessageDispatcher(IServiceProvider serviceProvider)
+        public MessageDispatcher(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
         {
+            if (messageHandlerRegistry == null)
+                throw new ArgumentNullException(nameof(messageHandlerRegistry));
+
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            _handlers = new ConcurrentDictionary<Type, IHandlerRegistry<IMessageHandler>>();
+            _messageHandlerRegistry = messageHandlerRegistry;
             _serviceProvider = serviceProvider;
         }
 
         #endregion
 
+        // TODO: Do we allow handler reload? How can consistency be guaranteed for the remote routing system?
+        private ValueTask ReloadHandlersAsync()
+        {
+            _messageHandlerProvider = null; // Volatile write op.
+
+            return default;
+        }
+
         #region IMessageDispatcher
 
-        public IHandlerRegistration Register(
-            Type messageType,
-            IContextualProvider<IMessageHandler> messageHandlerProvider)
+        public async Task<IDispatchResult> DispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            CancellationToken cancellation)
         {
-            if (messageType == null)
-                throw new ArgumentNullException(nameof(messageType));
+            return (await TryDispatchAsync(dispatchData, publish, allowRouteDescend: true, cancellation)).result;
+        }
+
+        #endregion
+
+        public IMessageHandlerProvider MessageHandlerProvider => GetMessageHandlerProvider();
+
+        private IMessageHandlerProvider GetMessageHandlerProvider()
+        {
+            var messageHandlerProvider = _messageHandlerProvider; // Volatile read op.
 
             if (messageHandlerProvider == null)
-                throw new ArgumentNullException(nameof(messageHandlerProvider));
+            {
+                messageHandlerProvider = _messageHandlerRegistry.ToProvider();
+                var previous = Interlocked.CompareExchange(ref _messageHandlerProvider, messageHandlerProvider, null);
 
-            return GetHandlerRegistry(messageType).CreateRegistration(messageHandlerProvider);
+                if (previous != null)
+                {
+                    messageHandlerProvider = previous;
+                }
+            }
+
+            Assert(messageHandlerProvider != null);
+
+            return messageHandlerProvider;
         }
 
         public async ValueTask<(IDispatchResult result, bool handlersFound)> TryDispatchAsync(
@@ -86,6 +117,8 @@ namespace AI4E
             if (dispatchData == null)
                 throw new ArgumentNullException(nameof(dispatchData));
 
+            var messageHandlerProvider = GetMessageHandlerProvider();
+
             var currType = dispatchData.MessageType;
             var tasks = new List<Task<(IDispatchResult result, bool handlersFound)>>();
 
@@ -93,9 +126,11 @@ namespace AI4E
             {
                 Assert(currType != null);
 
-                if (TryGetHandlerRegistry(currType, out var handlerRegistry))
+                var handlerCollection = messageHandlerProvider.GetHandlers(currType);
+
+                if (handlerCollection.Any())
                 {
-                    var dispatchOperation = DispatchAsync(handlerRegistry, dispatchData, publish, cancellation);
+                    var dispatchOperation = DispatchAsync(handlerCollection, dispatchData, publish, cancellation);
 
                     if (publish)
                     {
@@ -140,43 +175,35 @@ namespace AI4E
             return (new AggregateDispatchResult(filteredResult.Select(p => p.result)), handlersFound: true);
         }
 
-        public async Task<IDispatchResult> DispatchAsync(
-            DispatchDataDictionary dispatchData,
-            bool publish,
-            CancellationToken cancellation)
-        {
-            var (dispatchResult, _) = await TryDispatchAsync(dispatchData, publish, allowRouteDescend: true, cancellation);
-
-            return dispatchResult;
-        }
 
         private async Task<(IDispatchResult result, bool handlersFound)> DispatchAsync(
-            IHandlerRegistry<IMessageHandler> handlerRegistry,
+            IEnumerable<IMessageHandlerFactory> handlerCollection,
             DispatchDataDictionary dispatchData,
             bool publish,
             CancellationToken cancellation)
         {
             Assert(dispatchData != null);
+            Assert(handlerCollection != null);
+            Assert(handlerCollection.Any());
 
             if (publish)
             {
-                var handlers = handlerRegistry.Handlers;
+                var dispatchResults = await ValueTaskHelper.WhenAll(handlerCollection.Select(p => DispatchSingleHandlerAsync(p, dispatchData, publish, cancellation)));
 
-                if (handlers.Any())
-                {
-                    // TODO: Use ValueTaskExtensions.WhenAll
-                    var dispatchResults = await Task.WhenAll(handlers.Select(p => DispatchSingleHandlerAsync(p, dispatchData, cancellation)).Select(p => p.AsTask()));
-
-                    return (result: new AggregateDispatchResult(dispatchResults), handlersFound: true);
-                }
-
-                return (result: default, handlersFound: false);
+                return (result: new AggregateDispatchResult(dispatchResults), handlersFound: true);
             }
             else
             {
-                if (handlerRegistry.TryGetHandler(out var handler))
+                foreach (var handlerFactory in handlerCollection)
                 {
-                    return (result: await DispatchSingleHandlerAsync(handler, dispatchData, cancellation), handlersFound: true);
+                    var result = await DispatchSingleHandlerAsync(handlerFactory, dispatchData, publish, cancellation);
+
+                    if (result.IsDispatchFailure())
+                    {
+                        continue;
+                    }
+
+                    return (result, handlersFound: true);
                 }
 
                 return (result: default, handlersFound: false);
@@ -184,18 +211,19 @@ namespace AI4E
         }
 
         private async ValueTask<IDispatchResult> DispatchSingleHandlerAsync(
-            IContextualProvider<IMessageHandler> handler,
+            IMessageHandlerFactory handlerFactory,
             DispatchDataDictionary dispatchData,
+            bool publish,
             CancellationToken cancellation)
         {
-            Assert(handler != null);
+            Assert(handlerFactory != null);
             Assert(dispatchData != null);
 
             using (var scope = _serviceProvider.CreateScope())
             {
                 try
                 {
-                    var handlerInstance = handler.ProvideInstance(scope.ServiceProvider);
+                    var handlerInstance = handlerFactory.CreateMessageHandler(scope.ServiceProvider);
 
                     if (handlerInstance == null)
                     {
@@ -207,7 +235,7 @@ namespace AI4E
                         throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{handlerInstance.MessageType}'.");
                     }
 
-                    return await handlerInstance.HandleAsync(dispatchData, cancellation);
+                    return await handlerInstance.HandleAsync(dispatchData, publish, cancellation);
                 }
                 catch (ConcurrencyException)
                 {
@@ -218,27 +246,6 @@ namespace AI4E
                     return new FailureDispatchResult(exc);
                 }
             }
-        }
-
-        #endregion
-
-        private bool TryGetHandlerRegistry(Type messageType, out IHandlerRegistry<IMessageHandler> handlerRegistry)
-        {
-            Assert(messageType != null);
-            if (_handlers.TryGetValue(messageType, out var handlers))
-            {
-                handlerRegistry = handlers;
-                return true;
-            }
-
-            handlerRegistry = default;
-            return false;
-        }
-
-        private IHandlerRegistry<IMessageHandler> GetHandlerRegistry(Type messageType)
-        {
-            Assert(messageType != null);
-            return _handlers.GetOrAdd(messageType, _ => new HandlerRegistry<IMessageHandler>());
         }
     }
 }

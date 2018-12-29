@@ -472,6 +472,11 @@ namespace AI4E.Routing.SignalR.Client
             _loggerFactory = loggerFactory;
         }
 
+        public ValueTask<EndPointAddress> GetDefaultEndPointAsync(CancellationToken cancellation)
+        {
+            return _logicalEndPoint.GetLocalEndPointAsync();
+        }
+
         public IMessageRouter CreateMessageRouter(ISerializedMessageHandler serializedMessageHandler)
         {
             if (serializedMessageHandler == null)

@@ -405,6 +405,11 @@ namespace AI4E.Routing
             _loggerFactory = loggerFactory;
         }
 
+        public ValueTask<EndPointAddress> GetDefaultEndPointAsync(CancellationToken cancellation)
+        {
+            return new ValueTask<EndPointAddress>(_logicalEndPoint.EndPoint);
+        }
+
         public IMessageRouter CreateMessageRouter(EndPointAddress endPoint, ISerializedMessageHandler serializedMessageHandler)
         {
             if (endPoint == default)

@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -25,7 +25,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Modularity.Module
 {
-    public static class IWebHostBuilderExtension
+    public static class WebHostBuilderExtension
     {
         public static IWebHostBuilder UseModuleServer(this IWebHostBuilder webHostBuilder)
         {

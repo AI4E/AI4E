@@ -87,11 +87,11 @@ namespace AI4E.Storage.Projection
             where TProjection : class
 
         {
-            private readonly HandlerRegistry<IProjection<TSource, TProjection>> _projections;
+            private readonly ProjectionRegistry<IProjection<TSource, TProjection>> _projections;
 
             public TypedProjector()
             {
-                _projections = new HandlerRegistry<IProjection<TSource, TProjection>>();
+                _projections = new ProjectionRegistry<IProjection<TSource, TProjection>>();
             }
 
             public Type SourceType => typeof(TSource);

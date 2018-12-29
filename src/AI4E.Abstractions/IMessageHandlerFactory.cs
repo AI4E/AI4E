@@ -1,3 +1,13 @@
+/* Summary
+ * --------------------------------------------------------------------------------------------------------------------
+ * Filename:        IMessageHandler.cs
+ * Types:           (1) AI4E.IMessageHandlerFactory
+ *                  (2) AI4E.IMessageHandlerFactory'1
+ * Version:         1.0
+ * Author:          Andreas Trütschel
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -19,26 +29,19 @@
  */
 
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace AI4E
 {
-    public interface IMessageProcessor
+    public interface IMessageHandlerFactory
     {
-        ValueTask<IDispatchResult> ProcessAsync<TMessage>(DispatchDataDictionary<TMessage> dispatchData,
-                                                          Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
-                                                          CancellationToken cancellation)
-            where TMessage : class;
+        IMessageHandler CreateMessageHandler(IServiceProvider serviceProvider);
+
+        Type MessageType { get; }
     }
 
-    public interface IMessageProcessorContext
+    public interface IMessageHandlerFactory<TMessage> : IMessageHandlerFactory
+            where TMessage : class
     {
-        MessageHandlerActionDescriptor MessageHandlerAction { get; }
-        object MessageHandler { get; }
-        bool Publish { get; }
+        new IMessageHandler<TMessage> CreateMessageHandler(IServiceProvider serviceProvider);
     }
-
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-    public sealed class MessageProcessorContextAttribute : Attribute { }
 }

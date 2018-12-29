@@ -1,10 +1,9 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IHandlerRegistry.cs 
- * Types:           AI4E.IHandlerRegistry'1
+ * Types:           AI4E.Storage.Projection.IHandlerRegistry'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   25.02.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -30,13 +29,13 @@
 
 using System.Collections.Generic;
 
-namespace AI4E
+namespace AI4E.Storage.Projection
 {
     /// <summary>
     /// Represents a handler registry.
     /// </summary>
     /// <typeparam name="THandler">The type of handler.</typeparam>
-    public interface IHandlerRegistry<THandler>
+    public interface IProjectionRegistry<THandler>
     {
         /// <summary>
         /// Registers a handler.

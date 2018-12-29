@@ -1,12 +1,11 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        HandlerRegistration.cs 
- * Types:           AI4E.HandlerRegistration
- *                  AI4E.HandlerRegistrationSource
- *                  AI4E.HandlerRegistrationSource'1
+ * Types:           AI4E.Storage.Projection.HandlerRegistration
+ *                  AI4E.Storage.Projection.HandlerRegistrationSource
+ *                  AI4E.Storage.Projection.HandlerRegistrationSource'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   25.02.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -34,7 +33,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AI4E
+namespace AI4E.Storage.Projection
 {
     /// <summary>
     /// Provides method for creating handler registrations.
@@ -49,7 +48,7 @@ namespace AI4E
         /// <param name="handlerProvider">A contextual provider that provides instances of the to be registered handler.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public static IHandlerRegistration<THandler> CreateRegistration<THandler>(
-            this IHandlerRegistry<THandler> handlerRegistry,
+            this IProjectionRegistry<THandler> handlerRegistry,
             IContextualProvider<THandler> handlerProvider)
         {
             return new TypedHandlerRegistration<THandler>(handlerRegistry, handlerProvider);
@@ -57,11 +56,11 @@ namespace AI4E
 
         private sealed class TypedHandlerRegistration<THandler> : IHandlerRegistration<THandler>
         {
-            private readonly IHandlerRegistry<THandler> _handlerRegistry;
+            private readonly IProjectionRegistry<THandler> _handlerRegistry;
             private readonly TaskCompletionSource<object> _cancellationSource = new TaskCompletionSource<object>();
             private int _isCancelling = 0;
 
-            public TypedHandlerRegistration(IHandlerRegistry<THandler> handlerRegistry,
+            public TypedHandlerRegistration(IProjectionRegistry<THandler> handlerRegistry,
                                             IContextualProvider<THandler> handlerProvider)
 
             {

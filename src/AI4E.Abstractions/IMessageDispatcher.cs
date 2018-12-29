@@ -4,7 +4,6 @@
  * Types:           AI4E.IMessageDispatcher
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   09.09.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -52,101 +51,5 @@ namespace AI4E
         /// <exception cref="ArgumentNullException">Thrown if either <paramref name="messageType"/> or <paramref name="message"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown if <paramref name="message"/> is not of type <paramref name="messageType"/> or a derived type.</exception>
         Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation = default); // TODO: Return ValueTask<IDispatchResult>
-
-        /// <summary>
-        /// Registers a message handler.
-        /// </summary>
-        /// <param name="messageType">The type of message.</param>
-        /// <param name="messageHandlerProvider">The message handler provider to register.</param>
-        /// <returns>
-        /// A <see cref="IHandlerRegistration"/> that represents the handlers registration.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="messageType"/> or <paramref name="messageHandlerProvider"/> is null.</exception>
-        IHandlerRegistration Register(Type messageType, IContextualProvider<IMessageHandler> messageHandlerProvider);
-    }
-
-    public sealed class TypedMessageHandler<TMessage> : IMessageHandler
-            where TMessage : class
-    {
-        private readonly IMessageHandler<TMessage> _messageHandler;
-
-        public TypedMessageHandler(IMessageHandler<TMessage> messageHandler)
-        {
-            if (messageHandler == null)
-                throw new ArgumentNullException(nameof(messageHandler));
-
-            _messageHandler = messageHandler;
-        }
-
-        public ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary dispatchData, CancellationToken cancellation)
-        {
-            if (!(dispatchData.Message is TMessage))
-                throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{MessageType}'.");
-
-            if (!(dispatchData is DispatchDataDictionary<TMessage> typedDispatchData))
-            {
-                typedDispatchData = new DispatchDataDictionary<TMessage>(dispatchData.Message as TMessage, dispatchData);
-            }
-
-            return _messageHandler.HandleAsync(typedDispatchData, cancellation);
-        }
-
-        public Type MessageType => typeof(TMessage);
-    }
-
-    public sealed class TypedMessageHandlerProvider<TMessage> : IContextualProvider<IMessageHandler>
-        where TMessage : class
-    {
-        private readonly IContextualProvider<IMessageHandler<TMessage>> _messageHandlerProvider;
-
-        public TypedMessageHandlerProvider(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
-        {
-            if (messageHandlerProvider == null)
-                throw new ArgumentNullException(nameof(messageHandlerProvider));
-
-            _messageHandlerProvider = messageHandlerProvider;
-        }
-
-
-        public IMessageHandler ProvideInstance(IServiceProvider serviceProvider)
-        {
-            var messageHandler = _messageHandlerProvider.ProvideInstance(serviceProvider);
-
-            return new TypedMessageHandler<TMessage>(messageHandler);
-        }
-    }
-
-    public sealed class TypedHandleRegistration<TMessage> : IHandlerRegistration<IMessageHandler<TMessage>>
-        where TMessage : class
-    {
-        private readonly IHandlerRegistration _handlerRegistration;
-
-        public TypedHandleRegistration(IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider, IHandlerRegistration handlerRegistration)
-        {
-            if (messageHandlerProvider == null)
-                throw new ArgumentNullException(nameof(messageHandlerProvider));
-
-            if (handlerRegistration == null)
-                throw new ArgumentNullException(nameof(handlerRegistration));
-
-            _handlerRegistration = handlerRegistration;
-        }
-
-        public IContextualProvider<IMessageHandler<TMessage>> Handler { get; }
-
-
-        public void Dispose()
-        {
-            _handlerRegistration.Dispose();
-        }
-
-        public Task DisposeAsync()
-        {
-            return _handlerRegistration.DisposeAsync();
-        }
-
-        public Task Disposal => _handlerRegistration.Disposal;
-
-        public Task Initialization => _handlerRegistration.Initialization;
     }
 }

@@ -4,7 +4,6 @@
  * Types:           AI4E.Routing.IRemoteMessageDispatcher
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -54,53 +53,5 @@ namespace AI4E.Routing
         Task<IDispatchResult> DispatchLocalAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation = default); // TODO: Return ValueTask<IDispatchResult>
 
         ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation = default);
-
-        /// <summary>
-        /// Registers a message handler.
-        /// </summary>
-        /// <param name="messageType">The type of message.</param>
-        /// <param name="messageHandlerProvider">The message handler provider to register.</param>
-        /// <param name="options">The options used for handler registration. </param>
-        /// <returns>
-        /// A <see cref="IHandlerRegistration"/> that represents the handlers registration.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="messageType"/> or <paramref name="messageHandlerProvider"/> is null.</exception>
-        IHandlerRegistration Register(Type messageType, IContextualProvider<IMessageHandler> messageHandlerProvider, RouteRegistrationOptions options);
-
-        /// <summary>
-        /// Asynchronously waits for all pending handler registrations to gain globally consistent state.
-        /// </summary>
-        /// <param name="messageType">The message type for that and thats base types the pending handlers shall be considered.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>A value task representing the asynchronous operation.</returns>
-        ValueTask WaitPendingRegistrationsAsync(Type messageType, CancellationToken cancellation);
-
-        /// <summary>
-        /// Asynchronously waits for all pending handler registrations to gain globally consistent state.
-        /// </summary>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>A value task representing the asynchronous operation.</returns>
-        ValueTask WaitPendingRegistrationsAsync(CancellationToken cancellation);
-    }
-
-    public static class RemoteMessageDispatcherExtension
-    {
-        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(
-            this IRemoteMessageDispatcher messageDispatcher,
-            IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider,
-            RouteRegistrationOptions options)
-            where TMessage : class
-        {
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
-
-            if (messageHandlerProvider == null)
-                throw new ArgumentNullException(nameof(messageHandlerProvider));
-
-            var messageType = typeof(TMessage);
-            var handlerRegistration = messageDispatcher.Register(typeof(TMessage), new TypedMessageHandlerProvider<TMessage>(messageHandlerProvider), options);
-
-            return new TypedHandleRegistration<TMessage>(messageHandlerProvider, handlerRegistration);
-        }
     }
 }

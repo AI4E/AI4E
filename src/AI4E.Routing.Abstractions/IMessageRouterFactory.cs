@@ -1,3 +1,6 @@
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace AI4E.Routing
 {
     /// <summary>
@@ -5,6 +8,8 @@ namespace AI4E.Routing
     /// </summary>
     public interface IMessageRouterFactory
     {
+        ValueTask<EndPointAddress> GetDefaultEndPointAsync(CancellationToken cancellation = default);
+
         /// <summary>
         /// Creates a message router for the default end point.
         /// </summary>

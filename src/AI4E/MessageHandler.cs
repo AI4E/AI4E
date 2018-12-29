@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -169,6 +169,13 @@ namespace AI4E
         public virtual NotFoundDispatchResult NotFound(string message)
         {
             return new NotFoundDispatchResult(message);
+        }
+
+        [NoAction]
+        public virtual DispatchFailureDispatchResult DispatchFailure()
+        {
+            var messageType = Context.DispatchData.MessageType;
+            return new DispatchFailureDispatchResult(messageType);
         }
     }
 
