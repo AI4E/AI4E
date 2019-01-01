@@ -33,13 +33,10 @@ namespace AI4E.Routing
 
         #region IRouteStore
 
-        public async Task AddRouteAsync(EndPointAddress endPoint, string route, RouteRegistrationOptions registrationOptions, CancellationToken cancellation)
+        public async Task AddRouteAsync(EndPointAddress endPoint, Route route, RouteRegistrationOptions registrationOptions, CancellationToken cancellation)
         {
             if (endPoint == default)
                 throw new ArgumentDefaultException(nameof(endPoint));
-
-            if (string.IsNullOrWhiteSpace(route))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(route));
 
             if (!registrationOptions.IsValid())
                 throw new ArgumentException("Invalid enum value.", nameof(registrationOptions));
@@ -79,13 +76,10 @@ namespace AI4E.Routing
             }
         }
 
-        public async Task RemoveRouteAsync(EndPointAddress endPoint, string route, CancellationToken cancellation)
+        public async Task RemoveRouteAsync(EndPointAddress endPoint, Route route, CancellationToken cancellation)
         {
             if (endPoint == default)
                 throw new ArgumentDefaultException(nameof(endPoint));
-
-            if (string.IsNullOrWhiteSpace(route))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(route));
 
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var path = GetPath(route, endPoint, session);
@@ -111,7 +105,7 @@ namespace AI4E.Routing
 
             foreach (var reverseRouteEntry in await reverseEntry.GetChildrenEntriesAsync(cancellation))
             {
-                var route = reverseRouteEntry.Name.Segment.ConvertToString();
+                var route = new Route(reverseRouteEntry.Name.Segment.ConvertToString());
                 var routePath = GetPath(route, endPoint, session);
 
                 if (!removePersistentRoutes)
@@ -143,11 +137,8 @@ namespace AI4E.Routing
             }
         }
 
-        public async Task<IEnumerable<RouteRegistration>> GetRoutesAsync(string route, CancellationToken cancellation)
+        public async Task<IEnumerable<RouteRegistration>> GetRoutesAsync(Route route, CancellationToken cancellation)
         {
-            if (string.IsNullOrWhiteSpace(route))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(route));
-
             var path = GetPath(route);
             var entry = await _coordinationManager.GetOrCreateAsync(path, _emptyPayload, EntryCreationModes.Default, cancellation);
 
@@ -173,15 +164,15 @@ namespace AI4E.Routing
 
         #endregion
 
-        private static CoordinationEntryPath GetPath(string route)
+        private static CoordinationEntryPath GetPath(Route route)
         {
-            return _routesRootPath.GetChildPath(route);
+            return _routesRootPath.GetChildPath(route.ToString());
         }
 
-        private static CoordinationEntryPath GetPath(string route, EndPointAddress endPoint, string session)
+        private static CoordinationEntryPath GetPath(Route route, EndPointAddress endPoint, string session)
         {
             var uniqueEntryName = IdGenerator.GenerateId(endPoint.ToString(), session);
-            return _routesRootPath.GetChildPath(route, uniqueEntryName);
+            return _routesRootPath.GetChildPath(route.ToString(), uniqueEntryName);
         }
 
         private static CoordinationEntryPath GetReversePath(string session, EndPointAddress endPoint)
@@ -189,9 +180,9 @@ namespace AI4E.Routing
             return _reverseRoutesRootPath.GetChildPath(session, endPoint.ToString());
         }
 
-        private static CoordinationEntryPath GetReversePath(string session, EndPointAddress endPoint, string route)
+        private static CoordinationEntryPath GetReversePath(string session, EndPointAddress endPoint, Route route)
         {
-            return _reverseRoutesRootPath.GetChildPath(session, endPoint.ToString(), route);
+            return _reverseRoutesRootPath.GetChildPath(session, endPoint.ToString(), route.ToString());
         }
     }
 

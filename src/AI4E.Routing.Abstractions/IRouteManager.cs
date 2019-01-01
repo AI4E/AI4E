@@ -36,12 +36,12 @@ namespace AI4E.Routing
 {
     public interface IRouteManager
     {
-        Task AddRouteAsync(EndPointAddress endPoint, string route, RouteRegistrationOptions registrationOptions, CancellationToken cancellation = default);
-        Task RemoveRouteAsync(EndPointAddress endPoint, string route, CancellationToken cancellation = default);
+        Task AddRouteAsync(EndPointAddress endPoint, Route route, RouteRegistrationOptions registrationOptions, CancellationToken cancellation = default);
+        Task RemoveRouteAsync(EndPointAddress endPoint, Route route, CancellationToken cancellation = default);
         Task RemoveRoutesAsync(EndPointAddress endPoint, bool removePersistentRoutes, CancellationToken cancellation = default);
 
         // TODO: Rename to GetRouteTargets?
-        Task<IEnumerable<RouteRegistration>> GetRoutesAsync(string route, CancellationToken cancellation = default);
+        Task<IEnumerable<RouteRegistration>> GetRoutesAsync(Route route, CancellationToken cancellation = default);
     }
 
     public interface IRouteManagerFactory

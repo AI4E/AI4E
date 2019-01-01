@@ -75,9 +75,9 @@ namespace AI4E.Routing.SignalR.Server
             }
         }
 
-        private static void EncodeHandleRequest(IMessage message, string route, bool publish)
+        private static void EncodeHandleRequest(IMessage message, Route route, bool publish)
         {
-            var routeBytes = Encoding.UTF8.GetBytes(route);
+            var routeBytes = Encoding.UTF8.GetBytes(route.ToString());
 
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(stream))
@@ -157,7 +157,7 @@ namespace AI4E.Routing.SignalR.Server
                 _endPoint = endPoint;
             }
 
-            public async ValueTask<(IMessage response, bool handled)> HandleAsync(string route, IMessage request, bool publish, CancellationToken cancellation = default)
+            public async ValueTask<(IMessage response, bool handled)> HandleAsync(Route route, IMessage request, bool publish, CancellationToken cancellation = default)
             {
                 var frameIdx = request.FrameIndex;
 
@@ -228,20 +228,19 @@ namespace AI4E.Routing.SignalR.Server
 
                 switch (messageType)
                 {
-                    // TODO: If a message cannot be routed, there seems to be no answer to the client sent.
                     case MessageType.Route:
                         {
                             var routesCount = reader.ReadInt32();
-                            var routes = new string[routesCount];
+                            var routes = new Route[routesCount];
                             for (var i = 0; i < routesCount; i++)
                             {
                                 var routeBytesLength = reader.ReadInt32();
                                 var routeBytes = reader.ReadBytes(routeBytesLength);
-                                routes[i] = Encoding.UTF8.GetString(routeBytes);
+                                routes[i] = new Route(Encoding.UTF8.GetString(routeBytes));
                             }
 
                             var publish = reader.ReadBoolean();
-                            var routeResponse = await router.RouteAsync(routes, message, publish, cancellation);
+                            var routeResponse = await router.RouteAsync(new RouteHierarchy(routes), message, publish, cancellation);
                             var response = new Message();
                             await EncodeRouteResponseAsync(response, routeResponse, cancellation);
                             return response;
@@ -254,7 +253,7 @@ namespace AI4E.Routing.SignalR.Server
                             var route = Encoding.UTF8.GetString(routeBytes);
                             var endPoint = reader.ReadEndPointAddress();
                             var publish = reader.ReadBoolean();
-                            var response = await router.RouteAsync(route, message, publish, endPoint, cancellation);
+                            var response = await router.RouteAsync(new Route(route), message, publish, endPoint, cancellation);
                             return response;
                         }
 
@@ -264,7 +263,7 @@ namespace AI4E.Routing.SignalR.Server
                             var routeBytesLength = reader.ReadInt32();
                             var routeBytes = reader.ReadBytes(routeBytesLength);
                             var route = Encoding.UTF8.GetString(routeBytes);
-                            await router.RegisterRouteAsync(route, options | RouteRegistrationOptions.PublishOnly, cancellation); // We allow publishing only.
+                            await router.RegisterRouteAsync(new Route(route), options | RouteRegistrationOptions.PublishOnly, cancellation); // We allow publishing only.
                             return null;
                         }
 
@@ -273,7 +272,7 @@ namespace AI4E.Routing.SignalR.Server
                             var routeBytesLength = reader.ReadInt32();
                             var routeBytes = reader.ReadBytes(routeBytesLength);
                             var route = Encoding.UTF8.GetString(routeBytes);
-                            await router.UnregisterRouteAsync(route, cancellation);
+                            await router.UnregisterRouteAsync(new Route(route), cancellation);
 
                             return null;
                         }

@@ -102,7 +102,7 @@ namespace AI4E.Routing
 
         #endregion
 
-        private async ValueTask<(IMessage response, bool handled)> RouteToLocalAsync(string route, IMessage request, bool publish, CancellationToken cancellation)
+        private async ValueTask<(IMessage response, bool handled)> RouteToLocalAsync(Route route, IMessage request, bool publish, CancellationToken cancellation)
         {
             var frameIdx = request.FrameIndex;
             var frameCount = request.FrameCount;
@@ -120,7 +120,7 @@ namespace AI4E.Routing
             return (response, handled);
         }
 
-        public async ValueTask<IMessage> RouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation)
+        public async ValueTask<IMessage> RouteAsync(Route route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation)
         {
             if (route == null)
                 throw new ArgumentNullException(nameof(route));
@@ -146,7 +146,7 @@ namespace AI4E.Routing
             }
         }
 
-        public async ValueTask<IReadOnlyCollection<IMessage>> RouteAsync(IEnumerable<string> routes, IMessage serializedMessage, bool publish, CancellationToken cancellation)
+        public async ValueTask<IReadOnlyCollection<IMessage>> RouteAsync(RouteHierarchy routes, IMessage serializedMessage, bool publish, CancellationToken cancellation)
         {
             if (routes == null)
                 throw new ArgumentNullException(nameof(routes));
@@ -173,13 +173,13 @@ namespace AI4E.Routing
             }
         }
 
-        private async ValueTask<IReadOnlyCollection<IMessage>> InternalRouteAsync(IEnumerable<string> routes, IMessage serializedMessage, bool publish, CancellationToken cancellation)
+        private async ValueTask<IReadOnlyCollection<IMessage>> InternalRouteAsync(RouteHierarchy routes, IMessage serializedMessage, bool publish, CancellationToken cancellation)
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
             var tasks = new List<ValueTask<(IMessage response, bool handled)>>();
             var handledEndPoints = new HashSet<EndPointAddress>();
 
-            _logger?.LogTrace($"Routing a message ({(publish ? "publish" : "p2p")}) with routes: {routes.Aggregate((e, n) => e + ", " + n)}");
+            _logger?.LogTrace($"Routing a message ({(publish ? "publish" : "p2p")}) with routes: {routes}");
 
             foreach (var route in routes)
             {
@@ -230,13 +230,13 @@ namespace AI4E.Routing
 
             var result = await ValueTaskHelper.WhenAll(tasks, preserveOrder: false);
 
-            _logger?.LogTrace($"Successfully routed a message ({(publish ? "publish" : "p2p")}) with routes: {routes.Aggregate((e, n) => e + ", " + n)}");
+            _logger?.LogTrace($"Successfully routed a message ({(publish ? "publish" : "p2p")}) with routes: {routes}");
 
             return result.Where(p => p.handled).Select(p => p.response).ToArray();
         }
 
         private async Task<List<RouteRegistration>> MatchRouteAsync(
-            string route,
+            Route route,
             bool publish,
             ISet<EndPointAddress> handledEndPoints,
             CancellationToken cancellation)
@@ -251,7 +251,7 @@ namespace AI4E.Routing
             return routeResults.ToList();
         }
 
-        private async ValueTask<(IMessage response, bool handled)> InternalRouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation)
+        private async ValueTask<(IMessage response, bool handled)> InternalRouteAsync(Route route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation)
         {
             Assert(endPoint != default);
 
@@ -286,9 +286,9 @@ namespace AI4E.Routing
             return (response, handled);
         }
 
-        private static void EncodeMessage(IMessage message, bool publish, string route)
+        private static void EncodeMessage(IMessage message, bool publish, Route route)
         {
-            var routeBytes = route != null ? Encoding.UTF8.GetBytes(route) : Array.Empty<byte>();
+            var routeBytes = Encoding.UTF8.GetBytes(route.ToString());
 
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(stream))
@@ -305,13 +305,13 @@ namespace AI4E.Routing
             }
         }
 
-        private static (bool publish, string route) DecodeMessage(IMessage message)
+        private static (bool publish, Route route) DecodeMessage(IMessage message)
         {
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
             {
                 var publish = false;
-                var route = default(string);
+                var route = default(Route);
 
                 publish = reader.ReadBoolean();                             // 1 Byte
                 reader.ReadInt16();                                         // 2 Byte (padding)
@@ -321,14 +321,14 @@ namespace AI4E.Routing
                 if (routeBytesLength > 0)
                 {
                     var routeBytes = reader.ReadBytes(routeBytesLength);    // Variable length
-                    route = Encoding.UTF8.GetString(routeBytes);
+                    route = new Route( Encoding.UTF8.GetString(routeBytes));
                 }
 
                 return (publish, route);
             }
         }
 
-        public async Task RegisterRouteAsync(string route, RouteRegistrationOptions options, CancellationToken cancellation)
+        public async Task RegisterRouteAsync(Route route, RouteRegistrationOptions options, CancellationToken cancellation)
         {
             try
             {
@@ -344,7 +344,7 @@ namespace AI4E.Routing
             }
         }
 
-        public async Task UnregisterRouteAsync(string route, CancellationToken cancellation)
+        public async Task UnregisterRouteAsync(Route route, CancellationToken cancellation)
         {
             try
             {
@@ -374,8 +374,6 @@ namespace AI4E.Routing
                 throw new ObjectDisposedException(GetType().FullName);
             }
         }
-
-
     }
 
     public sealed class MessageRouterFactory : IMessageRouterFactory

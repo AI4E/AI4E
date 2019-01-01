@@ -28,6 +28,8 @@
     <Compile Include="..\..\AI4E.Routing.Abstractions\IRemoteMessageDispatcher.cs" Link="Routing\IRemoteMessageDispatcher.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\IRequestReplyEndPoint.cs" Link="Routing\IRequestReplyEndPoint.cs" />
     <Compile Include="..\..\AI4E.Routing.Abstractions\ISerializedMessageHandler.cs" Link="Routing\ISerializedMessageHandler.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\Route.cs" Link="Routing\Route.cs" />
+    <Compile Include="..\..\AI4E.Routing.Abstractions\RouteHierarchy.cs" Link="Routing\RouteHierarchy.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client.Abstractions\IClientEndPoint.cs" Link="IClientEndPoint.cs" />
     <Compile Include="..\..\SignalR\AI4E.Routing.SignalR.Client.Abstractions\IRequestReplyClientEndPoint.cs" Link="IRequestReplyClientEndPoint.cs" />
   </ItemGroup>

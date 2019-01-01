@@ -31,6 +31,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -105,9 +106,9 @@ namespace AI4E.Routing
 
                 foreach (var handlerFactory in messageHandlerProvider.GetHandlers())
                 {
-                    var serializedMessageType = _typeConversion.SerializeType(handlerFactory.MessageType);
+                    var route = new Route(_typeConversion.SerializeType(handlerFactory.MessageType));
 
-                    await _messageRouter.RegisterRouteAsync(serializedMessageType, RouteRegistrationOptions.Default, cancellation: default);
+                    await _messageRouter.RegisterRouteAsync(route, RouteRegistrationOptions.Default, cancellation: default);
                 }
             }
 
@@ -191,7 +192,7 @@ namespace AI4E.Routing
             }
 
             public async ValueTask<(IMessage response, bool handled)> HandleAsync(
-                string route,
+                Route route,
                 IMessage request,
                 bool publish,
                 CancellationToken cancellation)
@@ -202,7 +203,7 @@ namespace AI4E.Routing
                 if (request == null)
                     throw new ArgumentNullException(nameof(request));
 
-                var messageType = _typeConversion.DeserializeType(route);
+                var messageType = _typeConversion.DeserializeType(route.ToString());
 
                 Assert(messageType != null);
 
@@ -329,7 +330,7 @@ namespace AI4E.Routing
                                                                   EndPointAddress endPoint,
                                                                   CancellationToken cancellation)
         {
-            var route = _typeConversion.SerializeType(dispatchData.MessageType);
+            var route = new Route(_typeConversion.SerializeType(dispatchData.MessageType));
             var serializedMessage = new Message();
 
             SerializeDispatchData(serializedMessage, dispatchData);
@@ -371,21 +372,23 @@ namespace AI4E.Routing
             return new AggregateDispatchResult(results);
         }
 
-        private IEnumerable<string> GetRoutes(Type messageType)
+        private RouteHierarchy GetRoutes(Type messageType)
         {
             if (messageType.IsInterface)
             {
-                return _typeConversion.SerializeType(messageType).Yield();
+                var route = new Route(_typeConversion.SerializeType(messageType));
+
+                return new RouteHierarchy(ImmutableArray.Create(route));
             }
 
-            var result = new List<string>();
+            var result = ImmutableArray.CreateBuilder<Route>();
 
             for (; messageType != null; messageType = messageType.BaseType)
             {
-                result.Add(_typeConversion.SerializeType(messageType));
+                result.Add(new Route(_typeConversion.SerializeType(messageType)));
             }
 
-            return result;
+            return new RouteHierarchy(result.ToImmutable());
         }
 
         private async ValueTask<(IDispatchResult result, bool handlersFound)> TryDispatchLocalAsync(

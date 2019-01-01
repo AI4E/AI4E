@@ -29,11 +29,11 @@ namespace AI4E.Routing
     public interface IMessageRouter : IDisposable
     {
         ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation = default);
-        ValueTask<IReadOnlyCollection<IMessage>> RouteAsync(IEnumerable<string> routes, IMessage serializedMessage, bool publish, CancellationToken cancellation = default);
-        ValueTask<IMessage> RouteAsync(string route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation = default);
+        ValueTask<IReadOnlyCollection<IMessage>> RouteAsync(RouteHierarchy routes, IMessage serializedMessage, bool publish, CancellationToken cancellation = default);
+        ValueTask<IMessage> RouteAsync(Route route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation = default);
 
-        Task RegisterRouteAsync(string route, RouteRegistrationOptions options, CancellationToken cancellation = default);
-        Task UnregisterRouteAsync(string route, CancellationToken cancellation = default);
+        Task RegisterRouteAsync(Route route, RouteRegistrationOptions options, CancellationToken cancellation = default);
+        Task UnregisterRouteAsync(Route route, CancellationToken cancellation = default);
         Task UnregisterRoutesAsync(bool removePersistentRoutes, CancellationToken cancellation = default);
     }
 
