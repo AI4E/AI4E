@@ -19,38 +19,80 @@
  */
 
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace AI4E
 {
     public static class MessageDispatcherExtension
     {
-        public static Task<IDispatchResult> QueryAsync<TResult>(this IMessageDispatcher messageDispatcher, CancellationToken cancellation = default)
+        public static ValueTask<IDispatchResult> QueryAsync<TResult>(this IMessageDispatcher messageDispatcher, CancellationToken cancellation = default)
         {
             return messageDispatcher.DispatchAsync(new Query<TResult>(), cancellation);
         }
 
-        public static Task<IDispatchResult> QueryByIdAsync<TId, TResult>(this IMessageDispatcher messageDispatcher, TId id, CancellationToken cancellation = default)
+        public static ValueTask<IDispatchResult> QueryByIdAsync<TId, TResult>(this IMessageDispatcher messageDispatcher, TId id, CancellationToken cancellation = default)
             where TId : struct, IEquatable<TId>
         {
             return messageDispatcher.DispatchAsync(new ByIdQuery<TId, TResult>(id), cancellation);
         }
 
-        public static Task<IDispatchResult> QueryByIdAsync<TResult>(this IMessageDispatcher messageDispatcher, Guid id, CancellationToken cancellation = default)
+        public static ValueTask<IDispatchResult> QueryByIdAsync<TResult>(this IMessageDispatcher messageDispatcher, Guid id, CancellationToken cancellation = default)
         {
             return messageDispatcher.DispatchAsync(new ByIdQuery<TResult>(id), cancellation);
         }
 
-        public static Task<IDispatchResult> QueryByParentAsync<TId, TResult>(this IMessageDispatcher messageDispatcher, TId parentId, CancellationToken cancellation = default)
+        public static ValueTask<IDispatchResult> QueryByParentAsync<TId, TResult>(this IMessageDispatcher messageDispatcher, TId parentId, CancellationToken cancellation = default)
             where TId : struct, IEquatable<TId>
         {
             return messageDispatcher.DispatchAsync(new ByParentQuery<TId, TResult>(parentId), cancellation);
         }
 
-        public static Task<IDispatchResult> QueryByParentAsync<TResult>(this IMessageDispatcher messageDispatcher, Guid parentId, CancellationToken cancellation = default)
+        public static ValueTask<IDispatchResult> QueryByParentAsync<TResult>(this IMessageDispatcher messageDispatcher, Guid parentId, CancellationToken cancellation = default)
         {
             return messageDispatcher.DispatchAsync(new ByParentQuery<TResult>(parentId), cancellation);
+        }
+
+        // Do NOT wait for the messages to be dispatched (fire and forget)
+        public static async void Dispatch(this IMessageDispatcher messageDispatcher, DispatchDataDictionary dispatchData, bool publish, bool retryOnFailure = true, ILogger logger = null)
+        {
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+
+            if (dispatchData == null)
+                throw new ArgumentNullException(nameof(dispatchData));
+            try
+            {
+                IDispatchResult dispatchResult;
+
+                do
+                {
+                    dispatchResult = await messageDispatcher.DispatchAsync(dispatchData, publish, cancellation: default);
+                }
+                while (!dispatchResult.IsSuccess && retryOnFailure);
+            }
+            catch (Exception exc)
+            {
+                ExceptionHelper.LogException(exc, logger);
+            }
+        }
+
+        // Do NOT wait for the messages to be dispatched (fire and forget)
+        public static void Dispatch<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, IEnumerable<KeyValuePair<string, object>> data, bool publish = false, bool retryOnFailure = true, ILogger logger = null)
+            where TMessage : class
+        {
+            Dispatch(messageDispatcher, new DispatchDataDictionary<TMessage>(message, data), publish, retryOnFailure, logger);
+        }
+
+        // Do NOT wait for the messages to be dispatched (fire and forget)
+        public static void Dispatch<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, bool publish = false, bool retryOnFailure = true, ILogger logger = null)
+             where TMessage : class
+        {
+            Dispatch(messageDispatcher, message, ImmutableDictionary<string, object>.Empty, publish, retryOnFailure, logger);
         }
     }
 }

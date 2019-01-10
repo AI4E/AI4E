@@ -139,7 +139,7 @@ namespace AI4E.Modularity.Debug
             }
             finally
             {
-                await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
+                await _initializationHelper.CancelAsync().HandleExceptionsAsync(logger: _logger);
                 await _connectionProcess.TerminateAsync().HandleExceptionsAsync(_logger);
             }
         }
@@ -232,18 +232,17 @@ namespace AI4E.Modularity.Debug
             {
                 var properties = await DebugModuleProperties.ReadAsync(_stream, cancellation);
 
-                _debugServer._messageDispatcher
-                    .DispatchAsync(new DebugModuleConnected(properties), publish: true, cancellation)
-                    .HandleExceptions(_logger); // Do NOT wait for the messages to be dispatched (fire and forget)
+                // TODO: https://github.com/AI4E/AI4E/issues/102
+                //       The messaging system does not guarantee message ordering.
+                //       The message may be delivered AFTER a DebugModuleDisconnected message for the same module that was sent thereafter.
+                _debugServer._messageDispatcher.Dispatch(new DebugModuleConnected(properties), publish: true);
 
                 return properties;
             }
 
             private Task DisposePropertiesAsync(DebugModuleProperties properties)
             {
-                _debugServer._messageDispatcher
-                    .DispatchAsync(new DebugModuleDisconnected(properties), publish: true)
-                    .HandleExceptions(_logger); // Do NOT wait for the messages to be dispatched (fire and forget)
+                _debugServer._messageDispatcher.Dispatch(new DebugModuleDisconnected(properties), publish: true);
 
                 return Task.CompletedTask;
             }

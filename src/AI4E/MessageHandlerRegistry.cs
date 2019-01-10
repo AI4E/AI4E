@@ -45,6 +45,22 @@ namespace AI4E
             _handlers = new Dictionary<Type, OrderedSet<IMessageHandlerFactory>>();
         }
 
+        public MessageHandlerRegistry(IEnumerable<IMessageHandlerFactory> factories) : this()
+        {
+            if (factories == null)
+                throw new ArgumentNullException(nameof(factories));
+
+            foreach (var factory in factories)
+            {
+                if (factory == null)
+                {
+                    throw new ArgumentException("The collection must not contain null entries.");
+                }
+
+                Register(factory);
+            }
+        }
+
         public bool Register(IMessageHandlerFactory messageHandlerFactory)
         {
             if (messageHandlerFactory == null)

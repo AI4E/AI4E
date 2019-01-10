@@ -26,6 +26,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 		.gitignore = .gitignore
 		Directory.Build.props = Directory.Build.props
+		NuGet.config = NuGet.config
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{8682A1B5-6D4B-4176-8BC8-9F93018B12CE}"
@@ -167,7 +168,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.ObjectClone", "l
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.ApplicationParts.Utils", "lib\AI4E.ApplicationParts\src\AI4E.ApplicationParts.Utils\AI4E.ApplicationParts.Utils.csproj", "{2545A515-27A2-430A-BA8A-DE48AA51F63B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Modularity.ModulePacker", "tools\AI4E.Modularity.ModulePacker\AI4E.Modularity.ModulePacker.csproj", "{DADC7AF4-04CD-4D48-9D9C-665402AB4F2A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.ModulePacker", "tools\AI4E.Modularity.ModulePacker\AI4E.Modularity.ModulePacker.csproj", "{DADC7AF4-04CD-4D48-9D9C-665402AB4F2A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

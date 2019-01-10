@@ -75,7 +75,7 @@ namespace AI4E
 
         #region IMessageDispatcher
 
-        public async Task<IDispatchResult> DispatchAsync(
+        public async ValueTask<IDispatchResult> DispatchAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
             CancellationToken cancellation)
@@ -120,7 +120,7 @@ namespace AI4E
             var messageHandlerProvider = GetMessageHandlerProvider();
 
             var currType = dispatchData.MessageType;
-            var tasks = new List<Task<(IDispatchResult result, bool handlersFound)>>();
+            var tasks = new List<ValueTask<(IDispatchResult result, bool handlersFound)>>();
 
             do
             {
@@ -159,7 +159,7 @@ namespace AI4E
                 return (new DispatchFailureDispatchResult(dispatchData.MessageType), handlersFound: false);
             }
 
-            var filteredResult = (await Task.WhenAll(tasks)).Where(p => p.handlersFound).ToList();
+            var filteredResult = (await ValueTaskHelper.WhenAll(tasks, preserveOrder: false)).Where(p => p.handlersFound).ToList();
 
             // When publishing a message and no handlers are available, this is a success.
             if (filteredResult.Count == 0)
@@ -176,7 +176,7 @@ namespace AI4E
         }
 
 
-        private async Task<(IDispatchResult result, bool handlersFound)> DispatchAsync(
+        private async ValueTask<(IDispatchResult result, bool handlersFound)> DispatchAsync(
             IEnumerable<IMessageHandlerFactory> handlerCollection,
             DispatchDataDictionary dispatchData,
             bool publish,

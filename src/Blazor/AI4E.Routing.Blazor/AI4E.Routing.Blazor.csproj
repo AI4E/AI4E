@@ -35,12 +35,31 @@
     <ProjectReference Include="..\AI4E.Routing.Blazor.Abstractions\AI4E.Routing.Blazor.Abstractions.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!--<ItemGroup>
     <DotNetCliToolReference Include="T5.TextTransform.Tool" Version="1.1.0-*" />
+  </ItemGroup>-->
+
+  <ItemGroup>
+    <None Update="HubConnectionExtension.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>HubConnectionExtension.g.cs</LastGenOutput>
+    </None>
   </ItemGroup>
 
-  <Target Name="AfterRestore" AfterTargets="Restore;CollectPackageReferences">
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="HubConnectionExtension.g.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>HubConnectionExtension.tt</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <!--<Target Name="AfterRestore" AfterTargets="Restore;CollectPackageReferences">
     <Exec Command="dotnet tt $(ProjectDir)HubConnectionExtension.tt" />
-  </Target>
+  </Target>-->
 
 </Project>

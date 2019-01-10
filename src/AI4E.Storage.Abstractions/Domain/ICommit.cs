@@ -3,7 +3,7 @@
  * Filename:        ICommit.cs 
  * Types:           (1) AI4E.Storage.Domain.ICommit
  * Version:         1.0
- * Author:          Andreas Trütschel
+ * Author:          Andreas TrÃ¼tschel
  * Last modified:   13.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
@@ -75,10 +75,10 @@ namespace AI4E.Storage.Domain
         /// </summary>
         string StreamId { get; }
 
-        /// <summary>
-        /// Gets the value which uniquely identifies the commit within the stream.
-        /// </summary>
-        string ConcurrencyToken { get; }
+        ///// <summary>
+        ///// Gets the value which uniquely identifies the commit within the stream.
+        ///// </summary>
+        //string ConcurrencyToken { get; }
 
         /// <summary>
         /// Gets the value which indicates the sequence (or position) in the stream to which this commit applies.

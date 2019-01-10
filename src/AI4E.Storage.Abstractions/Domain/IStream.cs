@@ -3,7 +3,7 @@
  * Filename:        IStream.cs 
  * Types:           AI4E.Storage.Domain.IStream
  * Version:         1.0
- * Author:          Andreas Trütschel
+ * Author:          Andreas TrÃ¼tschel
  * Last modified:   13.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
@@ -83,10 +83,10 @@ namespace AI4E.Storage.Domain
         /// </summary>
         long StreamRevision { get; }
 
-        /// <summary>
-        /// Gets the concurrency token to uniquely identify the most recent commit in the sequence.
-        /// </summary>
-        string ConcurrencyToken { get; }
+        ///// <summary>
+        ///// Gets the concurrency token to uniquely identify the most recent commit in the sequence.
+        ///// </summary>
+        //string ConcurrencyToken { get; }
 
         /// <summary>
         /// Gets a boolean value indicating whether this is a read-only view of the stream.
@@ -114,7 +114,7 @@ namespace AI4E.Storage.Domain
         ISnapshot Snapshot { get; }
 
         /// <summary>
-        /// Asynchronouly tries to add a commit to the sequence.
+        /// Asynchronously tries to add a commit to the sequence.
         /// </summary>
         /// <param name="concurrencyToken">The concurrency token used to ensure consistency.</param>
         /// <param name="events">The events, the commit contains.</param>
@@ -128,7 +128,7 @@ namespace AI4E.Storage.Domain
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="InvalidOperationException">Thrown if this is a read-only stream view.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
-        Task<bool> TryCommitAsync(string concurrencyToken,
+        Task<bool> TryCommitAsync(/*string concurrencyToken,*/
                                   IEnumerable<EventMessage> events,
                                   object body,
                                   Action<IDictionary<string, object>> headerGenerator,

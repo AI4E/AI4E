@@ -30,7 +30,6 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
@@ -299,10 +298,11 @@ namespace AI4E.Routing
 
         #region Dispatch
 
-        public Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData,
-                                                   bool publish,
-                                                   EndPointAddress endPoint,
-                                                   CancellationToken cancellation = default)
+        public ValueTask<IDispatchResult> DispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            EndPointAddress endPoint,
+            CancellationToken cancellation = default)
         {
             if (dispatchData == null)
                 throw new ArgumentNullException(nameof(dispatchData));
@@ -315,9 +315,10 @@ namespace AI4E.Routing
             return InternalDispatchAsync(dispatchData, publish, cancellation);
         }
 
-        public Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData,
-                                                   bool publish,
-                                                   CancellationToken cancellation = default)
+        public ValueTask<IDispatchResult> DispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            CancellationToken cancellation = default)
         {
             if (dispatchData == null)
                 throw new ArgumentNullException(nameof(dispatchData));
@@ -325,10 +326,11 @@ namespace AI4E.Routing
             return InternalDispatchAsync(dispatchData, publish, cancellation);
         }
 
-        private async Task<IDispatchResult> InternalDispatchAsync(DispatchDataDictionary dispatchData,
-                                                                  bool publish,
-                                                                  EndPointAddress endPoint,
-                                                                  CancellationToken cancellation)
+        private async ValueTask<IDispatchResult> InternalDispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            EndPointAddress endPoint,
+            CancellationToken cancellation)
         {
             var route = new Route(_typeConversion.SerializeType(dispatchData.MessageType));
             var serializedMessage = new Message();
@@ -341,9 +343,10 @@ namespace AI4E.Routing
             return result;
         }
 
-        private async Task<IDispatchResult> InternalDispatchAsync(DispatchDataDictionary dispatchData,
-                                                                  bool publish,
-                                                                  CancellationToken cancellation)
+        private async ValueTask<IDispatchResult> InternalDispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            CancellationToken cancellation)
         {
             var routes = GetRoutes(dispatchData.MessageType);
             var serializedMessage = new Message();
@@ -411,9 +414,10 @@ namespace AI4E.Routing
             }
         }
 
-        public async Task<IDispatchResult> DispatchLocalAsync(DispatchDataDictionary dispatchData,
-                                                              bool publish,
-                                                              CancellationToken cancellation)
+        public async ValueTask<IDispatchResult> DispatchLocalAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            CancellationToken cancellation)
         {
             if (dispatchData == null)
                 throw new ArgumentNullException(nameof(dispatchData));

@@ -49,6 +49,8 @@ namespace AI4E.Storage.Domain
 {
     public sealed partial class EntityStorageEngine : IEntityStorageEngine
     {
+        internal const string ConcurrencyTokenHeaderKey = "ConcurrencyToken";
+
         private readonly DomainStorageOptions _options;
         #region Fields
 
@@ -210,15 +212,24 @@ namespace AI4E.Storage.Domain
             var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, throwIfNotFound: false, cancellation);
 
             var (concurrencyToken, events) = GetEntityProperties(entityType, entity);
-            var commitBody = BuildCommitBody(entity, stream);
 
-            void HeaderGenerator(IDictionary<string, object> headers) { }
+            var success = await CheckConcurrencyAsync(stream, concurrencyToken, cancellation);
 
-            var success = await stream.TryCommitAsync(concurrencyToken,
-                                                      events,
-                                                      commitBody,
-                                                      HeaderGenerator,
-                                                      cancellation);
+            if (success)
+            {
+                var commitBody = BuildCommitBody(entity: null, stream);
+                var newConcurrencyToken = SGuid.NewGuid().ToString();
+
+                void GenerateHeaders(IDictionary<string, object> headers)
+                {
+                    headers[ConcurrencyTokenHeaderKey] = newConcurrencyToken;
+                }
+
+                if (!await stream.TryCommitAsync(events, commitBody, GenerateHeaders, cancellation))
+                {
+                    success = false;
+                }
+            }
 
             if (!success)
             {
@@ -228,7 +239,7 @@ namespace AI4E.Storage.Domain
             }
             else
             {
-                _entityPropertyAccessor.SetConcurrencyToken(entityType, entity, stream.ConcurrencyToken);
+                _entityPropertyAccessor.SetConcurrencyToken(entityType, entity, (string)stream.Headers[ConcurrencyTokenHeaderKey]);
                 _entityPropertyAccessor.SetRevision(entityType, entity, stream.StreamRevision);
                 _entityPropertyAccessor.CommitEvents(entityType, entity);
             }
@@ -283,15 +294,28 @@ namespace AI4E.Storage.Domain
             var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, throwIfNotFound: false, cancellation);
 
             var (concurrencyToken, events) = GetEntityProperties(entityType, entity);
-            var commitBody = BuildCommitBody(entity: null, stream);
 
-            void HeaderGenerator(IDictionary<string, object> headers) { }
+            var success = await CheckConcurrencyAsync(stream, concurrencyToken, cancellation);
 
-            var success = await stream.TryCommitAsync(concurrencyToken,
-                                                     events,
-                                                     commitBody,
-                                                     HeaderGenerator,
-                                                     cancellation);
+            if (success)
+            {
+                var commitBody = BuildCommitBody(entity: null, stream);
+                var newConcurrencyToken = SGuid.NewGuid().ToString();
+
+                void GenerateHeaders(IDictionary<string, object> headers)
+                {
+                    headers[ConcurrencyTokenHeaderKey] = newConcurrencyToken;
+                }
+
+                if (await stream.TryCommitAsync(events, commitBody, GenerateHeaders, cancellation))
+                {
+                    entity = null;
+                }
+                else
+                {
+                    success = false;
+                }
+            }
 
             if (!success)
             {
@@ -299,14 +323,34 @@ namespace AI4E.Storage.Domain
                 // but we need to reload the entity and put it in the cache.
                 entity = Deserialize(entityType, stream);
             }
-            else
-            {
-                entity = null;
-            }
 
             _lookup[(bucketId, streamId, requestedRevision: default)] = (entity, revision: stream.StreamRevision);
 
             return success;
+        }
+
+        private async Task<bool> CheckConcurrencyAsync(IStream stream, string concurrencyToken, CancellationToken cancellation)
+        {
+            Assert(!stream.IsReadOnly);
+
+            if (stream.StreamRevision == 0)
+                return true;
+
+            if (concurrencyToken == (string)stream.Headers[ConcurrencyTokenHeaderKey])
+                return true;
+
+            if (stream.Commits.TakeAllButLast().Any(p => (string)p.Headers[ConcurrencyTokenHeaderKey] == concurrencyToken))
+            {
+                return false;
+            }
+
+            if (await stream.UpdateAsync(cancellation) && concurrencyToken == (string)stream.Headers[ConcurrencyTokenHeaderKey])
+            {
+                return true;
+            }
+
+            // Either a concurrency token of a commit that is not present because of a snapshot or an unknown token 
+            return false;
         }
 
         #endregion
@@ -404,7 +448,7 @@ namespace AI4E.Storage.Domain
 
             if (result != null)
             {
-                _entityPropertyAccessor.SetConcurrencyToken(entityType, result, stream.ConcurrencyToken);
+                _entityPropertyAccessor.SetConcurrencyToken(entityType, result, (string)stream.Headers[ConcurrencyTokenHeaderKey]);
                 _entityPropertyAccessor.SetRevision(entityType, result, stream.StreamRevision);
                 _entityPropertyAccessor.CommitEvents(entityType, result);
             }

@@ -3,7 +3,7 @@
  * Filename:        ISnapshot.cs 
  * Types:           (1) AI4E.Storage.Domain.ISnapshot
  * Version:         1.0
- * Author:          Andreas Trütschel
+ * Author:          Andreas TrÃ¼tschel
  * Last modified:   13.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
@@ -84,7 +84,7 @@ namespace AI4E.Storage.Domain
         /// </summary>
         object Payload { get; }
 
-        string ConcurrencyToken { get; }
+        //string ConcurrencyToken { get; }
 
         IReadOnlyDictionary<string, object> Headers { get; }
     }
