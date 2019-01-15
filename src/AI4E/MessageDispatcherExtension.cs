@@ -57,14 +57,15 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(new ByParentQuery<TResult>(parentId), cancellation);
         }
 
-        // Do NOT wait for the messages to be dispatched (fire and forget)
-        public static async void Dispatch(this IMessageDispatcher messageDispatcher, DispatchDataDictionary dispatchData, bool publish, bool retryOnFailure = true, ILogger logger = null)
+        private static async void DispatchInternal(
+            IMessageDispatcher messageDispatcher,
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            bool retryOnFailure,
+            ILogger logger)
         {
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
+            // Assuming the argument are already checked.
 
-            if (dispatchData == null)
-                throw new ArgumentNullException(nameof(dispatchData));
             try
             {
                 IDispatchResult dispatchResult;
@@ -82,17 +83,44 @@ namespace AI4E
         }
 
         // Do NOT wait for the messages to be dispatched (fire and forget)
+        public static void Dispatch(this IMessageDispatcher messageDispatcher, DispatchDataDictionary dispatchData, bool publish, bool retryOnFailure = true, ILogger logger = null)
+        {
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+
+            if (dispatchData == null)
+                throw new ArgumentNullException(nameof(dispatchData));
+
+            DispatchInternal(messageDispatcher, dispatchData, publish, retryOnFailure, logger);
+        }
+
+        // Do NOT wait for the messages to be dispatched (fire and forget)
         public static void Dispatch<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, IEnumerable<KeyValuePair<string, object>> data, bool publish = false, bool retryOnFailure = true, ILogger logger = null)
             where TMessage : class
         {
-            Dispatch(messageDispatcher, new DispatchDataDictionary<TMessage>(message, data), publish, retryOnFailure, logger);
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
+
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            DispatchInternal(messageDispatcher, new DispatchDataDictionary<TMessage>(message, data), publish, retryOnFailure, logger);
         }
 
         // Do NOT wait for the messages to be dispatched (fire and forget)
         public static void Dispatch<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, bool publish = false, bool retryOnFailure = true, ILogger logger = null)
              where TMessage : class
         {
-            Dispatch(messageDispatcher, message, ImmutableDictionary<string, object>.Empty, publish, retryOnFailure, logger);
+            if (messageDispatcher == null)
+                throw new ArgumentNullException(nameof(messageDispatcher));
+
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
+
+            DispatchInternal(messageDispatcher, new DispatchDataDictionary<TMessage>(message), publish, retryOnFailure, logger);
         }
     }
 }

@@ -217,7 +217,7 @@ namespace AI4E.Storage.Domain
 
             if (success)
             {
-                var commitBody = BuildCommitBody(entity: null, stream);
+                var commitBody = BuildCommitBody(entity, stream);
                 var newConcurrencyToken = SGuid.NewGuid().ToString();
 
                 void GenerateHeaders(IDictionary<string, object> headers)
@@ -358,7 +358,7 @@ namespace AI4E.Storage.Domain
         private (string concurrencyToken, IEnumerable<EventMessage> events) GetEntityProperties(Type entityType, object entity)
         {
             var concurrencyToken = _entityPropertyAccessor.GetConcurrencyToken(entityType, entity);
-            var events = _entityPropertyAccessor.GetUncommittedEvents(entityType, entity).Select(p => new EventMessage { Body = Serialize(p) });
+            var events = _entityPropertyAccessor.GetUncommittedEvents(entityType, entity).Select(p => new EventMessage(Serialize(p)));
 
             return (concurrencyToken, events);
         }
@@ -383,6 +383,12 @@ namespace AI4E.Storage.Domain
             var baseToken = GetBaseToken(stream);
             var serializedEntity = GetSerializedEntity(entity);
             var diff = _differ.Diff(baseToken, serializedEntity);
+
+            if (diff == null)
+            {
+                return Array.Empty<byte>();
+            }
+
             return CompressionHelper.Zip(diff.ToString());
         }
 
@@ -400,26 +406,25 @@ namespace AI4E.Storage.Domain
         {
             Assert(stream != null);
 
-            JToken baseToken;
+            JToken token = null;
             if (stream.Snapshot == null)
             {
-                baseToken = StreamRoot;
+                token = StreamRoot;
             }
-            else
+            else if (stream.Snapshot.Payload is byte[] snapshotPayload && snapshotPayload.Length > 0)
             {
-                var snapshotPayload = stream.Snapshot.Payload as byte[];
-
-                baseToken = JToken.Parse(CompressionHelper.Unzip(snapshotPayload));
+                token = JToken.Parse(CompressionHelper.Unzip(snapshotPayload));
             }
 
             foreach (var commit in stream.Commits)
             {
-                var commitPayload = commit.Body as byte[];
-
-                baseToken = _differ.Patch(baseToken, JToken.Parse(CompressionHelper.Unzip(commitPayload)));
+                if (commit.Body is byte[] commitPayload && commitPayload.Length > 0)
+                {
+                    token = _differ.Patch(token, JToken.Parse(CompressionHelper.Unzip(commitPayload)));
+                }
             }
 
-            return baseToken;
+            return token;
         }
 
         private object Deserialize(Type entityType, IStream stream)
@@ -428,23 +433,8 @@ namespace AI4E.Storage.Domain
             if (stream.StreamRevision == default)
                 return null;
 
-            var serializedEntity = default(JToken);
-
-            if (stream.Snapshot == null)
-            {
-                serializedEntity = StreamRoot;
-            }
-            else
-            {
-                serializedEntity = JToken.Parse(CompressionHelper.Unzip(stream.Snapshot.Payload as byte[]));
-            }
-
-            foreach (var commit in stream.Commits)
-            {
-                serializedEntity = _differ.Patch(serializedEntity, JToken.Parse(CompressionHelper.Unzip(commit.Body as byte[])));
-            }
-
-            var result = serializedEntity.ToObject(entityType, _jsonSerializer);
+            var token = GetBaseToken(stream);
+            var result = token.ToObject(entityType, _jsonSerializer);
 
             if (result != null)
             {

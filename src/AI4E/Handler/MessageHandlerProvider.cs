@@ -8,19 +8,19 @@ namespace AI4E.Handler
     public sealed class MessageHandlerProvider<TMessage> : IMessageHandlerFactory<TMessage>
         where TMessage : class
     {
-        private readonly Type _messageType;
+        private readonly Type _handlerType;
         private readonly MessageHandlerActionDescriptor _actionDescriptor;
         private readonly ImmutableArray<IContextualProvider<IMessageProcessor>> _processors;
 
         public MessageHandlerProvider(
-            Type messageType,
+            Type handlerType,
             MessageHandlerActionDescriptor actionDescriptor,
             ImmutableArray<IContextualProvider<IMessageProcessor>> processors)
         {
-            if (messageType == null)
-                throw new ArgumentNullException(nameof(messageType));
+            if (handlerType == null)
+                throw new ArgumentNullException(nameof(handlerType));
 
-            _messageType = messageType;
+            _handlerType = handlerType;
             _actionDescriptor = actionDescriptor;
             _processors = processors;
         }
@@ -41,12 +41,12 @@ namespace AI4E.Handler
             return ProvideInstanceInternal(serviceProvider);
         }
 
-        Type IMessageHandlerFactory.MessageType => _messageType;
+        Type IMessageHandlerFactory.MessageType => typeof(TMessage);
 
         private MessageHandlerInvoker<TMessage> ProvideInstanceInternal(IServiceProvider serviceProvider)
         {
             // Create a new instance of the handler type.
-            var handler = ActivatorUtilities.CreateInstance(serviceProvider, _messageType);
+            var handler = ActivatorUtilities.CreateInstance(serviceProvider, _handlerType);
 
             Assert(handler != null);
 

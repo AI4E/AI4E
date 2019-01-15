@@ -30,6 +30,8 @@
  */
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
@@ -102,13 +104,9 @@ namespace AI4E.Routing
             async Task InitializeAsync(CancellationToken cancellation)
             {
                 var messageHandlerProvider = _localMessageDispatcher.MessageHandlerProvider;
-
-                foreach (var handlerFactory in messageHandlerProvider.GetHandlers())
-                {
-                    var route = new Route(_typeConversion.SerializeType(handlerFactory.MessageType));
-
-                    await _messageRouter.RegisterRouteAsync(route, RouteRegistrationOptions.Default, cancellation: default);
-                }
+                var routes = GetRoutes(messageHandlerProvider);
+                var registrations = routes.Select(p => _messageRouter.RegisterRouteAsync(p, RouteRegistrationOptions.Default, cancellation: default));
+                await Task.WhenAll(registrations);
             }
 
             async Task DisposeAsync()
@@ -124,6 +122,23 @@ namespace AI4E.Routing
             }
 
             return new AsyncLifetimeManager(InitializeAsync, DisposeAsync);
+        }
+
+        private static IEnumerable<Route> GetRoutes(IMessageHandlerProvider messageHandlerProvider)
+        {
+            if (messageHandlerProvider == null)
+                throw new ArgumentNullException(nameof(messageHandlerProvider));
+
+            var handlerFactories = messageHandlerProvider.GetHandlers();
+            return handlerFactories.Select(p => GetRoute(p)).Distinct();
+        }
+
+        private static Route GetRoute(IMessageHandlerFactory handlerFactory)
+        {
+            if (handlerFactory == null)
+                throw new ArgumentNullException(nameof(handlerFactory));
+
+            return new Route(handlerFactory.MessageType.GetUnqualifiedTypeName());
         }
 
         public Task Initialization => _lifetimeManager.Initialization;

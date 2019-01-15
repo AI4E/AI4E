@@ -41,30 +41,22 @@ namespace AI4E.Blazor
             serviceManager.AddService<IInstallationSetManager>(InitializeInstallationSetManagerAsync);
         }
 
-        private static Task InitializeInstallationSetManagerAsync(IInstallationSetManager installationSetManager, IServiceProvider serviceProvider)
+        private static async Task InitializeInstallationSetManagerAsync(IInstallationSetManager installationSetManager, IServiceProvider serviceProvider)
         {
-            // TODO: https://github.com/AI4E/AI4E/issues/39
-            //       There seems to be a dead-lock with the initialization of the messaging infrastructure if this is not off-loaded.
-            Task.Run(async () =>
+            var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
+
+            Console.WriteLine("Performing query for running debug modules.");
+            var queryResult = await messageDispatcher.QueryAsync<IEnumerable<DebugModuleProperties>>(cancellation: default);
+
+            if (!queryResult.IsSuccessWithResult<IEnumerable<DebugModuleProperties>>(out var debugModules))
             {
-                var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
+                throw new Exception("Unable to query installation set."); // TODO: Exception type
+            }
 
-                Console.WriteLine("Performing query for running debug modules.");
-                var queryResult = await messageDispatcher.QueryAsync<IEnumerable<DebugModuleProperties>>(cancellation: default);
-
-                if (!queryResult.IsSuccessWithResult<IEnumerable<DebugModuleProperties>>(out var debugModules))
-                {
-                    throw new Exception("Unable to query installation set."); // TODO: Exception type
-                }
-
-                foreach (var debugModule in debugModules)
-                {
-                    await installationSetManager.InstallAsync(debugModule.Module, cancellation: default);
-                }
-            });
-
-            return Task.CompletedTask;
-
+            foreach (var debugModule in debugModules)
+            {
+                await installationSetManager.InstallAsync(debugModule.Module, cancellation: default);
+            }
 
             //var queryResult = await messageDispatcher.QueryAsync<ResolvedInstallationSet>(cancellation: default);
 

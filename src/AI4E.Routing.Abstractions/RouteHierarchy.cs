@@ -117,42 +117,19 @@ namespace AI4E.Routing
             return !left.Equals(in right);
         }
 
-        public RouteHierarchyEnumerator GetEnumerator()
+        public ImmutableArray<Route>.Enumerator GetEnumerator()
         {
-            return new RouteHierarchyEnumerator(_routes.GetEnumerator());
+            return _routes.GetEnumerator();
         }
 
         IEnumerator<Route> IEnumerable<Route>.GetEnumerator()
         {
-            return GetEnumerator();
+            return ((IEnumerable<Route>)_routes).GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return GetEnumerator();
-        }
-
-        public struct RouteHierarchyEnumerator : IEnumerator<Route>
-        {
-            private readonly ImmutableArray<Route>.Enumerator _wrappedEnumerator;
-
-            internal RouteHierarchyEnumerator(ImmutableArray<Route>.Enumerator wrappedEnumerator)
-            {
-                _wrappedEnumerator = wrappedEnumerator;
-            }
-
-            public Route Current => _wrappedEnumerator.Current;
-
-            public bool MoveNext()
-            {
-                return _wrappedEnumerator.MoveNext();
-            }
-
-            void IEnumerator.Reset() { throw new NotSupportedException(); }
-
-            object IEnumerator.Current => Current;
-
-            public void Dispose() { }
+            return ((IEnumerable<Route>)_routes).GetEnumerator();
         }
     }
 }

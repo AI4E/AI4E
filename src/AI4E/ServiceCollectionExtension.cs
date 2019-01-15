@@ -217,6 +217,10 @@ namespace AI4E
 
             partManager.PopulateFeature(messageHandlerFeature);
 
+            var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+            var logger = loggerFactory?.CreateLogger("MessageHandlerRegistration");
+            RegisterMessageHandlerTypes(messageHandlerRegistry, processors, messageHandlerFeature.MessageHandlers, logger);
+
             return messageHandlerRegistry;
         }
 

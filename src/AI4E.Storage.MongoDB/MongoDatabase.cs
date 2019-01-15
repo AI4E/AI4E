@@ -35,10 +35,11 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
 using AI4E.Internal;
+using AI4E.Storage.MongoDB.Serializers;
 using AI4E.Storage.Transactions;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
@@ -73,6 +74,7 @@ namespace AI4E.Storage.MongoDB
         static MongoDatabase()
         {
             BsonSerializer.RegisterSerializationProvider(new StructSerializationProvider());
+            BsonSerializer.RegisterSerializationProvider(new DictionarySerializerProvider());
         }
 
         public MongoDatabase(IMongoDatabase database, ILoggerFactory loggerFactory = null)

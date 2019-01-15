@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        EventMessage.cs 
  * Types:           (1) AI4E.Storage.Domain.EventMessage
@@ -57,40 +57,49 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Runtime.Serialization;
+using Newtonsoft.Json;
 
 namespace AI4E.Storage.Domain
 {
     /// <summary>
     /// Represents a single element in a stream of events.
     /// </summary>
-    [Serializable]
-    [DataContract]
-    public class EventMessage
+    public sealed class EventMessage
     {
         /// <summary>
         /// Initializes a new instance of the EventMessage class.
         /// </summary>
-        public EventMessage()
+        [JsonConstructor]
+        public EventMessage(object body, ImmutableDictionary<string, object> headers)
         {
-            Headers = new Dictionary<string, object>();
+            if (body == null)
+                throw new ArgumentNullException(nameof(body));
+
+            if (headers == null)
+                throw new ArgumentNullException(nameof(headers));
+
+            Body = body;
+            Headers = headers;
         }
 
-        public EventMessage(Dictionary<string, object> headers)
-        {
-            Headers = new Dictionary<string, object>(headers);
-        }
+        public EventMessage(object body, IEnumerable<KeyValuePair<string, object>> headers)
+            : this(body, headers as ImmutableDictionary<string, object> ?? headers?.ToImmutableDictionary())
+        { }
+
+        public EventMessage(object body) : this(body, ImmutableDictionary<string, object>.Empty) { }
 
         /// <summary>
         /// Gets the metadata which provides additional, unstructured information about this message.
         /// </summary>
-        [DataMember]
-        public Dictionary<string, object> Headers { get; private set; }
+        [JsonProperty]
+        public ImmutableDictionary<string, object> Headers { get; }
 
         /// <summary>
         /// Gets or sets the actual event message body.
         /// </summary>
-        [DataMember]
-        public object Body { get; set; }
+        [JsonProperty]
+        public object Body { get; }
     }
 }

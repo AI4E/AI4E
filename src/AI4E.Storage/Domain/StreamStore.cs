@@ -6,7 +6,6 @@
  *                  (3) AI4E.Storage.Domain.StreamStore.Snapshot
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   16.01.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -282,7 +281,6 @@ namespace AI4E.Storage.Domain
             public IEnumerable<ICommit> Commits => _commits.AsReadOnly();
 
             public long StreamRevision => Commits.LastOrDefault()?.StreamRevision ?? Snapshot?.StreamRevision ?? 0;
-            //public string ConcurrencyToken => Commits.LastOrDefault()?.ConcurrencyToken ?? Snapshot?.ConcurrencyToken ?? _emptyConcurrencyToken;
             public IReadOnlyDictionary<string, object> Headers => GetHeaders().ToImmutableDictionary();
             public IReadOnlyList<EventMessage> Events => Commits.SelectMany(commit => commit.Events ?? Enumerable.Empty<EventMessage>()).ToImmutableArray();
 
@@ -325,57 +323,39 @@ namespace AI4E.Storage.Domain
                 _commits.Clear();
             }
 
-            public async Task<bool> TryCommitAsync(/*string concurrencyToken,*/
-                                                  IEnumerable<EventMessage> events,
-                                                  object body,
-                                                  Action<IDictionary<string, object>> headerGenerator,
-                                                  CancellationToken cancellation)
+            public async Task<bool> TryCommitAsync(IEnumerable<EventMessage> events,
+                                                   object body,
+                                                   Action<IDictionary<string, object>> headerGenerator,
+                                                   CancellationToken cancellation)
             {
                 if (IsReadOnly)
                     throw new InvalidOperationException("Cannot modify a read-only stream view.");
 
                 _logger?.LogDebug(Resources.AttemptingToCommitChanges, StreamId);
-                //if (!await CheckConcurrencyAsync(concurrencyToken, cancellation))
-                //{
-                //    return false;
-                //}
 
-                //string newToken;
+                var headers = GetHeaders();
+                headerGenerator(headers);
 
-                //for (var i = 0; i < 10; i++)
-                //{
-                //    newToken = SGuid.NewGuid().Value;
+                var commit = await PersistChangesAsync(events,
+                                                       body,
+                                                       (headers as IReadOnlyDictionary<string, object>) ?? headers.ToImmutableDictionary(),
+                                                       cancellation);
 
-                //    if (Commits.Any(p => p.ConcurrencyToken == newToken))
-                //    {
-                //        continue;
-                //    }
+                // A concurrency conflict occured
+                if (commit == null)
+                {
+                    await UpdateAsync(cancellation);
 
-                    var headers = GetHeaders();
-                    headerGenerator(headers);
+                    return false;
+                }
 
-                    var commit = await PersistChangesAsync(/*newToken,*/
-                                                           events,
-                                                           body,
-                                                           (headers as IReadOnlyDictionary<string, object>) ?? headers.ToImmutableDictionary(),
-                                                           cancellation);
+                _logger?.LogDebug($"Commit successfully appended to stream {StreamId}. Dispatching commit.");
 
-                    // A concurrency conflict occured
-                    if (commit == null)
-                    {
-                        await UpdateAsync(cancellation);
+                await _streamStore._commitDispatcher.DispatchAsync(commit);
 
-                        return false;
-                    }
+                _logger?.LogDebug($"Commit of stream {StreamId} dispatched successfully.");
 
-                    _logger?.LogDebug($"Commit successfully appended to stream {StreamId}. Dispatching commit.");
-
-                    await _streamStore._commitDispatcher.DispatchAsync(commit);
-
-                    _logger?.LogDebug($"Commit of stream {StreamId} dispatched successfully.");
-
-                    return true;
-                //}
+                return true;
 
                 throw new StorageException("Gived up on unique concurrency token generation.");
             }
@@ -399,28 +379,6 @@ namespace AI4E.Storage.Domain
                 return false;
             }
 
-            //private async Task<bool> CheckConcurrencyAsync(string concurrencyToken, CancellationToken cancellation)
-            //{
-            //    if (StreamRevision == 0)
-            //        return true;
-
-            //    if (concurrencyToken == ConcurrencyToken)
-            //        return true;
-
-            //    if (Commits.TakeAllButLast().Any(p => p.ConcurrencyToken == concurrencyToken))
-            //    {
-            //        return false;
-            //    }
-
-            //    if (await UpdateAsync(cancellation) && concurrencyToken == ConcurrencyToken)
-            //    {
-            //        return true;
-            //    }
-
-            //    // Either a concurrency token of a commit that is not present because of a snapshot or an unknown token 
-            //    return false;
-            //}
-
             private void ExecuteExtensions(IEnumerable<ICommit> commits)
             {
                 foreach (var commit in commits)
@@ -432,25 +390,24 @@ namespace AI4E.Storage.Domain
                 }
             }
 
-            private async Task<ICommit> PersistChangesAsync(/*string newConcurrencyToken,*/
-                                                            IEnumerable<EventMessage> events,
+            private async Task<ICommit> PersistChangesAsync(IEnumerable<EventMessage> events,
                                                             object body,
                                                             IReadOnlyDictionary<string, object> headers,
                                                             CancellationToken cancellation)
             {
-                var attempt = BuildCommitAttempt(/*newConcurrencyToken,*/ events, body, headers);
+                var attempt = BuildCommitAttempt(events, body, headers);
 
                 foreach (var extension in _streamStore._extensions)
                 {
-                    _logger?.LogDebug(Resources.InvokingPreCommitHooks, /*attempt.ConcurrencyToken,*/ extension.GetType());
+                    _logger?.LogDebug("Pushing commit to pre-commit hook of type '{0}'.", /*attempt.ConcurrencyToken,*/ extension.GetType());
                     if (!extension.OnCommit(attempt))
                     {
-                        _logger?.LogInformation(Resources.CommitRejectedByPipelineHook, extension.GetType()/*, attempt.ConcurrencyToken*/);
+                        _logger?.LogInformation("Pipeline hook of type '{0}' rejected commit attempt.", extension.GetType()/*, attempt.ConcurrencyToken*/);
                         return null; // TODO: This will cause the caller to assume a concurrency conflict.
                     }
                 }
 
-                _logger?.LogDebug(Resources.PersistingCommit, /*newConcurrencyToken,*/ StreamId);
+                _logger?.LogDebug("Pushing attempt on stream '{0}' to the underlying store.", /*newConcurrencyToken,*/ StreamId);
                 var commit = await _streamStore._persistence.CommitAsync(attempt, cancellation);
 
                 if (commit != null)
@@ -459,7 +416,7 @@ namespace AI4E.Storage.Domain
                     {
                         foreach (var extension in _streamStore._extensions)
                         {
-                            _logger?.LogDebug(Resources.InvokingPostCommitPipelineHooks, /*attempt.ConcurrencyToken,*/ extension.GetType());
+                            _logger?.LogDebug("Pushing commit to post-commit hook of type '{0}'.", /*attempt.ConcurrencyToken,*/ extension.GetType());
                             extension.OnCommited(commit);
                         }
                     }
@@ -472,16 +429,14 @@ namespace AI4E.Storage.Domain
                 return commit;
             }
 
-            private CommitAttempt BuildCommitAttempt(/*string newConcurrencyToken,*/
-                                                     IEnumerable<EventMessage> events,
+            private CommitAttempt BuildCommitAttempt(IEnumerable<EventMessage> events,
                                                      object body,
                                                      IReadOnlyDictionary<string, object> headers)
             {
-                _logger?.LogDebug(Resources.BuildingCommitAttempt, /*newConcurrencyToken,*/ StreamId);
+                _logger?.LogDebug("Building a commit attempt on stream '{0}'.", StreamId);
                 return new CommitAttempt(
                     BucketId,
                     StreamId,
-                    //newConcurrencyToken,
                     StreamRevision + 1,
                     _dateTimeProvider.GetCurrentTime(),
                     headers.ToDictionary(x => x.Key, x => x.Value),
@@ -496,16 +451,13 @@ namespace AI4E.Storage.Domain
                             string streamId,
                             long streamRevision,
                             object payload,
-                            IReadOnlyDictionary<string, object> headers//,
-                            //string concurrencyToken
-                            )
+                            IReadOnlyDictionary<string, object> headers)
             {
                 BucketId = bucketId;
                 StreamId = streamId;
                 Payload = payload;
                 Headers = headers;
                 StreamRevision = streamRevision;
-                //ConcurrencyToken = concurrencyToken;
             }
 
             public string BucketId { get; }
@@ -517,8 +469,6 @@ namespace AI4E.Storage.Domain
             public IReadOnlyDictionary<string, object> Headers { get; }
 
             public long StreamRevision { get; }
-
-            //public string ConcurrencyToken { get; }
         }
     }
 }

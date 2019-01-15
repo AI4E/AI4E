@@ -123,12 +123,11 @@ namespace AI4E.Blazor.Routing
 
         private void Refresh()
         {
-            Console.WriteLine("Dbg_out: RouterX::Refresh");
-
             var locationPath = UriHelper.ToBaseRelativePath(_baseUri, _locationAbsolute);
             locationPath = StringUntilAny(locationPath, _queryOrHashStartChar);
             var context = new RouteContext(locationPath);
             Routes.Route(context);
+
             if (context.Handler == null)
             {
                 _currentRouteNotFound = true;

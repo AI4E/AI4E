@@ -529,7 +529,6 @@ namespace AI4E.Storage.Domain
 
             public Commit(string bucketId,
                           string streamId,
-                          //string concurrencyToken,
                           long streamRevision,
                           DateTime commitStamp,
                           IReadOnlyDictionary<string, object> headers,
@@ -539,7 +538,6 @@ namespace AI4E.Storage.Domain
             {
                 BucketId = bucketId;
                 StreamId = streamId;
-                //ConcurrencyToken = concurrencyToken;
                 StreamRevision = streamRevision;
                 CommitStamp = commitStamp;
 
@@ -573,15 +571,13 @@ namespace AI4E.Storage.Domain
 
             public string StreamId { get; private set; }
 
-            //public string ConcurrencyToken { get; private set; }
-
             public long StreamRevision { get; private set; }
 
             public DateTime CommitStamp { get; private set; }
 
-            IReadOnlyDictionary<string, object> ICommit.Headers => Headers ?? _emptyHeaders;
+            IReadOnlyDictionary<string, object> ICommit.Headers => Headers;
 
-            public Dictionary<string, object> Headers { get; } = new Dictionary<string, object>();
+            public Dictionary<string, object> Headers { get; private set; } = new Dictionary<string, object>();
 
             public object Body { get; private set; }
 
@@ -662,9 +658,10 @@ namespace AI4E.Storage.Domain
 
             public string ConcurrencyToken { get; private set; }
 
-            IReadOnlyDictionary<string, object> ISnapshot.Headers => Headers ?? _emptyHeaders;
+            IReadOnlyDictionary<string, object> ISnapshot.Headers => Headers;
 
-            public Dictionary<string, object> Headers { get; } = new Dictionary<string, object>();
+            public Dictionary<string, object> Headers { get; private set; } = new Dictionary<string, object>();
         }
+
     }
 }
