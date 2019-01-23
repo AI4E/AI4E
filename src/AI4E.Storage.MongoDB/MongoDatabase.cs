@@ -187,20 +187,6 @@ namespace AI4E.Storage.MongoDB
 
         private async Task<IMongoCollection<TEntry>> CreateCollectionAsync<TEntry>()
         {
-            //try
-            //{
-            //    BsonClassMap.RegisterClassMap<TEntry>(map =>
-            //                {
-            //                    map.AutoMap();
-            //                    map.MapIdMember(DataPropertyHelper.GetIdMember<TEntry>());
-            //                });
-            //}
-            //catch
-            //{
-
-            //}
-
-
             var collectionKey = GetCollectionKey<TEntry>();
             var collectionName = await GetCollectionNameAsync(collectionKey);
 
