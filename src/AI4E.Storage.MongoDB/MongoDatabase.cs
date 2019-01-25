@@ -4,7 +4,6 @@
  * Types:           (1) AI4E.Storage.MongoDB.MongoDatabase
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   04.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -29,22 +28,24 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
 using AI4E.Internal;
 using AI4E.Storage.Transactions;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson.Serialization.Conventions;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
+using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 using static AI4E.Storage.MongoDB.MongoWriteHelper;
 
@@ -61,7 +62,9 @@ namespace AI4E.Storage.MongoDB
         private readonly IMongoDatabase _database;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<MongoDatabase> _logger;
-        private readonly ConcurrentDictionary<Type, object> _collections = new ConcurrentDictionary<Type, object>();
+
+        private volatile ImmutableDictionary<Type, Task> _collections = ImmutableDictionary<Type, Task>.Empty;
+        private readonly object _collectionsLock = new object();
 
         private readonly IMongoCollection<CounterEntry> _counterCollection;
         private readonly IMongoCollection<CollectionLookupEntry> _collectionLookupCollection;
@@ -73,6 +76,26 @@ namespace AI4E.Storage.MongoDB
         static MongoDatabase()
         {
             BsonSerializer.RegisterSerializationProvider(new StructSerializationProvider());
+            var conventionPack = new ConventionPack
+            {
+                new ClassMapConvention()
+            };
+            ConventionRegistry.Register("AI4E default convention pack", conventionPack, _ => true);
+        }
+
+        private sealed class ClassMapConvention : IClassMapConvention
+        {
+            public string Name => typeof(ClassMapConvention).ToString();
+
+            public void Apply(BsonClassMap classMap)
+            {
+                var idMember = DataPropertyHelper.GetIdMember(classMap.ClassType);
+
+                if (idMember != null)
+                {
+                    classMap.MapIdMember(idMember);
+                }
+            }
         }
 
         public MongoDatabase(IMongoDatabase database, ILoggerFactory loggerFactory = null)
@@ -127,16 +150,49 @@ namespace AI4E.Storage.MongoDB
 
         private Task<IMongoCollection<TEntry>> GetCollectionAsync<TEntry>(bool isInTransaction, CancellationToken cancellation)
         {
-            var lookup = (CollectionLookup<TEntry>)_collections.GetOrAdd(typeof(TEntry), _ => BuildCollectionLookup<TEntry>());
+            Task<IMongoCollection<TEntry>> result;
 
-            Assert(lookup != null);
+            if (_collections.TryGetValue(typeof(TEntry), out var entry))
+            {
+                result = (Task<IMongoCollection<TEntry>>)entry;
+            }
+            else
+            {
+                lock (_collectionsLock)
+                {
+                    if (_collections.TryGetValue(typeof(TEntry), out entry))
+                    {
+                        result = (Task<IMongoCollection<TEntry>>)entry;
+                    }
+                    else
+                    {
+                        var lazy = new AsyncLazy<IMongoCollection<TEntry>>(
+                                            CreateCollectionAsync<TEntry>,
+                                            AsyncLazyFlags.ExecuteOnCallingThread | AsyncLazyFlags.RetryOnFailure);
 
-            return lookup.GetCollectionAsync(isInTransaction, cancellation);
+                        result = lazy.Task;
+                        _collections = _collections.Add(typeof(TEntry), result);
+                    }
+                }
+            }
+
+            // Cannot create a collection while beeing in a transaction.
+            if (isInTransaction && !result.IsCompleted)
+            {
+                return Task.FromResult<IMongoCollection<TEntry>>(null);
+            }
+
+            return result;
         }
 
-        private CollectionLookup<TEntry> BuildCollectionLookup<TEntry>()
+        private async Task<IMongoCollection<TEntry>> CreateCollectionAsync<TEntry>()
         {
-            return new CollectionLookup<TEntry>(this);
+            var collectionKey = GetCollectionKey<TEntry>();
+            var collectionName = await GetCollectionNameAsync(collectionKey);
+
+            // Volatile write op.
+            var collection = await GetCollectionCoreAsync<TEntry>(collectionName);
+            return collection;
         }
 
         private static string GetCollectionKey<TEntry>()
@@ -197,60 +253,6 @@ namespace AI4E.Storage.MongoDB
             public string CollectionKey { get; set; }
 
             public string CollectionName { get; set; }
-        }
-
-        private sealed class CollectionLookup<TEntry>
-        {
-            private readonly MongoDatabase _database;
-
-            private volatile Task<IMongoCollection<TEntry>> _collectionFuture = null;
-            private readonly object _lock = new object();
-
-            public CollectionLookup(MongoDatabase database)
-            {
-                Assert(database != null);
-
-                _database = database;
-            }
-
-            public Task<IMongoCollection<TEntry>> GetCollectionAsync(bool isInTransaction, CancellationToken cancellation)
-            {
-                // Volatile read op.
-                var collectionFuture = _collectionFuture;
-
-                if (collectionFuture == null)
-                {
-                    lock (_lock)
-                    {
-                        _collectionFuture = _collectionFuture ?? CreateCollectionAsync();
-                        collectionFuture = _collectionFuture;
-                    }
-                }
-
-                // Cannot create a collection while beeing in a transaction.
-                if (isInTransaction && !collectionFuture.IsCompleted)
-                {
-                    return Task.FromResult<IMongoCollection<TEntry>>(null);
-                }
-
-                return collectionFuture;
-            }
-
-            private async Task<IMongoCollection<TEntry>> CreateCollectionAsync()
-            {
-                BsonClassMap.RegisterClassMap<TEntry>(map =>
-                {
-                    map.AutoMap();
-                    map.MapIdMember(DataPropertyHelper.GetIdMember<TEntry>());
-                });
-
-                var collectionKey = GetCollectionKey<TEntry>();
-                var collectionName = await _database.GetCollectionNameAsync(collectionKey);
-
-                // Volatile write op.
-                var collection = await _database.GetCollectionCoreAsync<TEntry>(collectionName);
-                return collection;
-            }
         }
 
         #endregion
