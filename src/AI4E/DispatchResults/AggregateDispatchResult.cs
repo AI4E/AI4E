@@ -49,8 +49,6 @@ namespace AI4E.DispatchResults
                 immutableResults = dispatchResults.ToImmutableArray();
             }
 
-            Assert(immutableResults != null);
-
             DispatchResults = immutableResults;
 
             if (!(resultData is ImmutableDictionary<string, object> immutableData))
