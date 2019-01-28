@@ -1,12 +1,10 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        HandlerRegistration.cs 
- * Types:           AI4E.HandlerRegistration
- *                  AI4E.HandlerRegistrationSource
- *                  AI4E.HandlerRegistrationSource'1
+ * Filename:        IProjectionRegistration.cs 
+ * Types:           AI4E.Storage.Projection.IProjectionRegistration
+ *                  AI4E.Storage.Projection.IProjectionRegistration'1
  * Version:         1.0
  * Author:          Andreas Trütschel
- * Last modified:   25.02.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
 
@@ -32,24 +30,24 @@
 
 using AI4E.Utils.Async;
 
-namespace AI4E
+namespace AI4E.Storage.Projection
 {
     /// <summary>
     /// Represents a cancellable handler registration.
     /// </summary> 
-    public interface IHandlerRegistration : IAsyncDisposable, IAsyncInitialization
+    public interface IProjectionRegistration : IAsyncDisposable, IAsyncInitialization
     {
     }
 
     /// <summary>
     /// Represents a cancellable handler registration of the specified type of handler.
     /// </summary>
-    /// <typeparam name="THandler">The type of handler.</typeparam>
-    public interface IHandlerRegistration<THandler> : IHandlerRegistration
+    /// <typeparam name="TProjection">The type of projection.</typeparam>
+    public interface IProjectionRegistration<TProjection> : IProjectionRegistration
     {
         /// <summary>
         /// Gets a contextual provider that provides instances of the registered handler.
         /// </summary>
-        IContextualProvider<THandler> Handler { get; }
+        IContextualProvider<TProjection> Projection { get; }
     }
 }

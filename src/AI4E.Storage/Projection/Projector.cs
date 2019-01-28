@@ -19,7 +19,7 @@ namespace AI4E.Storage.Projection
             _typedProjectors = new TypedProjectorLookup();
         }
 
-        public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection<TSource, TProjection>(
+        public IProjectionRegistration<IProjection<TSource, TProjection>> RegisterProjection<TSource, TProjection>(
             IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
             where TSource : class
             where TProjection : class
@@ -78,7 +78,7 @@ namespace AI4E.Storage.Projection
             where TSource : class
             where TProjection : class
         {
-            IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection(
+            IProjectionRegistration<IProjection<TSource, TProjection>> RegisterProjection(
                 IContextualProvider<IProjection<TSource, TProjection>> projectionProvider);
         }
 
@@ -129,10 +129,10 @@ namespace AI4E.Storage.Projection
                 return ProjectAsync(source as TSource, serviceProvider, cancellation);
             }
 
-            public IHandlerRegistration<IProjection<TSource, TProjection>> RegisterProjection(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
+            public IProjectionRegistration<IProjection<TSource, TProjection>> RegisterProjection(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
             {
                 Assert(projectionProvider != null);
-                return HandlerRegistration.CreateRegistration(_projections, projectionProvider);
+                return ProjectionRegistration.CreateRegistration(_projections, projectionProvider);
             }
         }
 
