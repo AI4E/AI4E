@@ -30,7 +30,6 @@
  */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -137,6 +136,11 @@ namespace AI4E.Routing
             RouteRegistrationOptions GetRouteOptions(IMessageHandlerRegistration handlerRegistration)
             {
                 var result = RouteRegistrationOptions.Default;
+
+                if (handlerRegistration.IsTransient())
+                {
+                    result |= RouteRegistrationOptions.Transient;
+                }
 
                 return result;
             }
