@@ -104,7 +104,7 @@ namespace AI4E.Routing
             {
                 var messageHandlerProvider = _localMessageDispatcher.MessageHandlerProvider;
                 var routeRegistrations = GetRouteRegistrations(messageHandlerProvider);
-                var registrationOperations = routeRegistrations.Select(p => _messageRouter.RegisterRouteAsync(p.route, p.options, cancellation: default));
+                var registrationOperations = routeRegistrations.Select(p => _messageRouter.RegisterRouteAsync(p, cancellation: default));
                 await Task.WhenAll(registrationOperations);
             }
 
@@ -123,7 +123,7 @@ namespace AI4E.Routing
             return new AsyncLifetimeManager(InitializeAsync, DisposeAsync);
         }
 
-        private static IEnumerable<(Route route, RouteRegistrationOptions options)> GetRouteRegistrations(IMessageHandlerProvider messageHandlerProvider)
+        private static IEnumerable<RouteRegistration> GetRouteRegistrations(IMessageHandlerProvider messageHandlerProvider)
         {
             if (messageHandlerProvider == null)
                 throw new ArgumentNullException(nameof(messageHandlerProvider));
@@ -179,7 +179,7 @@ namespace AI4E.Routing
 
             return messageHandlerProvider
                 .GetHandlerRegistrations()
-                .GroupBy(GetRoute, (route, handlerRegistrations) => (route, CombineRouteOptions(handlerRegistrations.Select(GetRouteOptions))));
+                .GroupBy(GetRoute, (route, handlerRegistrations) => new RouteRegistration(route, CombineRouteOptions(handlerRegistrations.Select(GetRouteOptions))));
         }
 
         public Task Initialization => _lifetimeManager.Initialization;

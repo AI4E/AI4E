@@ -156,8 +156,7 @@ namespace AI4E.Routing.SignalR.Client
         }
 
         public Task RegisterRouteAsync(
-            Route route,
-            RouteRegistrationOptions options,
+            RouteRegistration routeRegistration,
             CancellationToken cancellation)
         {
             using (CheckDisposal(ref cancellation, out var disposal))
@@ -165,7 +164,7 @@ namespace AI4E.Routing.SignalR.Client
                 try
                 {
                     var message = new Message();
-                    EncodeRegisterRouteRequest(message, route, options);
+                    EncodeRegisterRouteRequest(message, routeRegistration.Route, routeRegistration.RegistrationOptions);
                     return SendInternalAsync(message, cancellation);
                 }
                 catch (OperationCanceledException) when (disposal.IsCancellationRequested)

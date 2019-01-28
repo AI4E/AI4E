@@ -325,14 +325,14 @@ namespace AI4E.Routing
             }
         }
 
-        public async Task RegisterRouteAsync(Route route, RouteRegistrationOptions options, CancellationToken cancellation)
+        public async Task RegisterRouteAsync(RouteRegistration routeRegistration, CancellationToken cancellation)
         {
             try
             {
                 using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
                 {
                     var localEndPoint = await GetLocalEndPointAsync(cancellation);
-                    await _routeManager.AddRouteAsync(localEndPoint, route, options, cancellation);
+                    await _routeManager.AddRouteAsync(localEndPoint, routeRegistration, cancellation);
                 }
             }
             catch (OperationCanceledException) when (_disposeHelper.IsDisposed)

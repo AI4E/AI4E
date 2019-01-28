@@ -262,7 +262,7 @@ namespace AI4E.Routing.SignalR.Server
                             var routeBytesLength = reader.ReadInt32();
                             var routeBytes = reader.ReadBytes(routeBytesLength);
                             var route = Encoding.UTF8.GetString(routeBytes);
-                            await router.RegisterRouteAsync(new Route(route), options | RouteRegistrationOptions.PublishOnly, cancellation); // We allow publishing only.
+                            await router.RegisterRouteAsync(new RouteRegistration(new Route(route), options | RouteRegistrationOptions.PublishOnly), cancellation); // We allow publishing only.
                             return null;
                         }
 

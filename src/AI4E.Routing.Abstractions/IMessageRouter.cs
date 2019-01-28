@@ -31,7 +31,7 @@ namespace AI4E.Routing
         ValueTask<IReadOnlyCollection<IMessage>> RouteAsync(RouteHierarchy routes, IMessage serializedMessage, bool publish, CancellationToken cancellation = default);
         ValueTask<IMessage> RouteAsync(Route route, IMessage serializedMessage, bool publish, EndPointAddress endPoint, CancellationToken cancellation = default);
 
-        Task RegisterRouteAsync(Route route, RouteRegistrationOptions options, CancellationToken cancellation = default);
+        Task RegisterRouteAsync(RouteRegistration routeRegistration, CancellationToken cancellation = default);
         Task UnregisterRouteAsync(Route route, CancellationToken cancellation = default);
         Task UnregisterRoutesAsync(bool removePersistentRoutes, CancellationToken cancellation = default);
     }

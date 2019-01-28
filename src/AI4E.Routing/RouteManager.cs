@@ -33,41 +33,41 @@ namespace AI4E.Routing
 
         #region IRouteStore
 
-        public async Task AddRouteAsync(EndPointAddress endPoint, Route route, RouteRegistrationOptions registrationOptions, CancellationToken cancellation)
+        public async Task AddRouteAsync(EndPointAddress endPoint, RouteRegistration routeRegistration, CancellationToken cancellation)
         {
             if (endPoint == default)
                 throw new ArgumentDefaultException(nameof(endPoint));
 
-            if (!registrationOptions.IsValid())
-                throw new ArgumentException("Invalid enum value.", nameof(registrationOptions));
+            if (routeRegistration == default)
+                throw new ArgumentDefaultException(nameof(routeRegistration));
 
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var entryCreationMode = EntryCreationModes.Default;
 
-            if (registrationOptions.IncludesFlag(RouteRegistrationOptions.Transient))
+            if (routeRegistration.RegistrationOptions.IncludesFlag(RouteRegistrationOptions.Transient))
             {
                 entryCreationMode |= EntryCreationModes.Ephemeral;
             }
 
-            var reversePath = GetReversePath(session, endPoint, route);
+            var reversePath = GetReversePath(session, endPoint, routeRegistration.Route);
 
             using (var stream = new MemoryStream(capacity: 4))
             {
                 using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
                 {
-                    writer.Write((int)registrationOptions);
+                    writer.Write((int)routeRegistration.RegistrationOptions);
                 }
                 var payload = stream.ToArray();
                 await _coordinationManager.CreateAsync(reversePath, payload, entryCreationMode, cancellation);
             }
 
-            var path = GetPath(route, endPoint, session);
+            var path = GetPath(routeRegistration.Route, endPoint, session);
 
             using (var stream = new MemoryStream(capacity: 4 + 4 + endPoint.Utf8EncodedValue.Length))
             {
                 using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
                 {
-                    writer.Write((int)registrationOptions);
+                    writer.Write((int)routeRegistration.RegistrationOptions);
                     writer.Write(endPoint);
                 }
                 var payload = stream.ToArray();
