@@ -194,6 +194,11 @@ namespace AI4E
 
                 foreach (var handlerRegistration in handlerRegistrations)
                 {
+                    if (!localDispatch && handlerRegistration.IsLocalDispatchOnly())
+                    {
+                        continue;
+                    }
+
                     var dispatchOperation = DispatchSingleHandlerAsync(handlerRegistration, dispatchData, publish, localDispatch, cancellation);
 
                     dispatchOperations.Add(dispatchOperation);
@@ -217,6 +222,16 @@ namespace AI4E
             {
                 foreach (var handlerRegistration in handlerRegistrations)
                 {
+                    if (handlerRegistration.IsPublishOnly())
+                    {
+                        continue;
+                    }
+
+                    if (!localDispatch && handlerRegistration.IsLocalDispatchOnly())
+                    {
+                        continue;
+                    }
+
                     var result = await DispatchSingleHandlerAsync(handlerRegistration, dispatchData, publish, localDispatch, cancellation);
 
                     if (result.IsDispatchFailure())

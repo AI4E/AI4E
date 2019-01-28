@@ -137,9 +137,19 @@ namespace AI4E.Routing
             {
                 var result = RouteRegistrationOptions.Default;
 
+                if (handlerRegistration.IsPublishOnly())
+                {
+                    result |= RouteRegistrationOptions.PublishOnly;
+                }
+
                 if (handlerRegistration.IsTransient())
                 {
                     result |= RouteRegistrationOptions.Transient;
+                }
+
+                if (handlerRegistration.IsLocalDispatchOnly())
+                {
+                    result |= RouteRegistrationOptions.LocalDispatchOnly;
                 }
 
                 return result;
