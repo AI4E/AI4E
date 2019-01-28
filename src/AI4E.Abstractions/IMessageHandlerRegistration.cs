@@ -1,6 +1,6 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IMessageHandler.cs
+ * Filename:        IMessageHandlerRegistration.cs
  * Types:           (1) AI4E.IMessageHandlerRegistration
  *                  (2) AI4E.IMessageHandlerRegistration'1
  * Version:         1.0
@@ -29,6 +29,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 
 namespace AI4E
 {
@@ -49,6 +50,8 @@ namespace AI4E
         /// Gets the type of message the registered handler is registered for.
         /// </summary>
         Type MessageType { get; }
+
+        IReadOnlyList<object> Configuration { get; }
     }
 
     /// <summary>

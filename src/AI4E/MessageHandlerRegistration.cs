@@ -29,6 +29,8 @@
  */
 
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 
 namespace AI4E
 {
@@ -46,6 +48,16 @@ namespace AI4E
 
             MessageType = messageType;
             _factory = factory;
+            Configuration = ImmutableList<object>.Empty;
+        }
+
+        public MessageHandlerRegistration(Type messageType, IEnumerable<object> configuration, Func<IServiceProvider, IMessageHandler> factory)
+          : this(messageType, factory)
+        {
+            if (configuration == null)
+                throw new ArgumentNullException(nameof(configuration));
+
+            Configuration = configuration as ImmutableList<object> ?? configuration.ToImmutableList();
         }
 
         public IMessageHandler CreateMessageHandler(IServiceProvider serviceProvider)
@@ -65,6 +77,8 @@ namespace AI4E
         }
 
         public Type MessageType { get; }
+
+        public IReadOnlyList<object> Configuration { get; }
     }
 
     public sealed class MessageHandlerRegistration<TMessage> : IMessageHandlerRegistration<TMessage>
@@ -79,6 +93,16 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(factory));
 
             _factory = factory;
+            Configuration = ImmutableList<object>.Empty;
+        }
+
+        public MessageHandlerRegistration(IEnumerable<object> configuration, Func<IServiceProvider, IMessageHandler<TMessage>> factory)
+           : this(factory)
+        {
+            if (configuration == null)
+                throw new ArgumentNullException(nameof(configuration));
+
+            Configuration = configuration as ImmutableList<object> ?? configuration.ToImmutableList();
         }
 
         public IMessageHandler<TMessage> CreateMessageHandler(IServiceProvider serviceProvider)
@@ -100,5 +124,7 @@ namespace AI4E
         }
 
         Type IMessageHandlerRegistration.MessageType => _messageType;
+
+        public IReadOnlyList<object> Configuration { get; }
     }
 }

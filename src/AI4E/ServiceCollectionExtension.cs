@@ -261,9 +261,33 @@ namespace AI4E
             MessageHandlerActionDescriptor memberDescriptor,
             ImmutableArray<IContextualProvider<IMessageProcessor>> processors)
         {
+            var configuration = BuildConfiguration(memberDescriptor);
+
             return new MessageHandlerRegistration(
                 memberDescriptor.MessageType,
+                configuration,
                 serviceProvider => MessageHandlerInvoker.CreateInvoker(memberDescriptor, processors, serviceProvider));
+        }
+
+        private static ImmutableList<object> BuildConfiguration(in MessageHandlerActionDescriptor memberDescriptor)
+        {
+            var configurationBuilder = ImmutableList.CreateBuilder<object>();
+            var typeConfigAttributes = memberDescriptor.MessageHandlerType.GetCustomAttributes<ConfigureMessageHandlerAttribute>(inherit: true);
+
+            foreach (var typeConfigAttribute in typeConfigAttributes)
+            {
+                typeConfigAttribute.ExecuteConfigureMessageHandler(memberDescriptor, configurationBuilder);
+            }
+
+            var actionConfigAttributes = memberDescriptor.Member.GetCustomAttributes<ConfigureMessageHandlerAttribute>(inherit: true);
+
+            foreach (var actionConfigAttribute in actionConfigAttributes)
+            {
+                actionConfigAttribute.ExecuteConfigureMessageHandler(memberDescriptor, configurationBuilder);
+            }
+
+            var configuration = configurationBuilder.ToImmutable();
+            return configuration;
         }
 
         private static void ConfigureFeatureProviders(ApplicationPartManager partManager)
