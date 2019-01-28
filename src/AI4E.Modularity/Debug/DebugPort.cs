@@ -104,7 +104,9 @@ namespace AI4E.Modularity.Debug
             // We MUST ensure that we only open the debug-port if
             // - the handler for the debug messages is registered AND
             // - reached a globally consistent state (its routes are registered).
-            await ((_messageDispatcher as IAsyncInitialization)?.Initialization?.WithCancellation(cancellation) ?? Task.CompletedTask);
+
+            // TODO: https://github.com/AI4E/AI4E/issues/111
+            //await ((_messageDispatcher as IAsyncInitialization)?.Initialization?.WithCancellation(cancellation) ?? Task.CompletedTask);
 
             _tcpHost.Start();
             var localAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;

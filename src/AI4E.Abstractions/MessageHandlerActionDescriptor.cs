@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        MessageHandlerActionDescriptor.cs 
  * Types:           AI4E.MessageHandlerActionDescriptor
@@ -29,7 +29,9 @@
  */
 
 using System;
+using System.Linq;
 using System.Reflection;
+using AI4E.Utils;
 
 namespace AI4E
 {
@@ -42,16 +44,43 @@ namespace AI4E
         /// Creates a new instance of the <see cref="MessageHandlerActionDescriptor"/> type.
         /// </summary>
         /// <param name="messageType">A <see cref="Type"/> that specifies the type of message.</param>
+        /// <param name="messageHandlerType">A <see cref="Type"/> that specifies that shall be instanciated to create a message handler.</param>
         /// <param name="member">A <see cref="MethodInfo"/> instance that specifies the member.</param>
-        public MessageHandlerActionDescriptor(Type messageType, MethodInfo member)
+        public MessageHandlerActionDescriptor(Type messageType, Type messageHandlerType, MethodInfo member)
         {
             if (messageType == null)
                 throw new ArgumentNullException(nameof(messageType));
 
+            if (messageHandlerType == null)
+                throw new ArgumentNullException(nameof(messageHandlerType));
+
             if (member == null)
                 throw new ArgumentNullException(nameof(member));
 
+            if (!messageType.IsOrdinaryClass())
+                throw new ArgumentException("That argument must specify an ordinary class.", nameof(messageType));
+
+            if (!messageHandlerType.IsOrdinaryClass())
+                throw new ArgumentException("The argument must specify an ordinary class.", nameof(messageHandlerType));
+
+            if (member.IsGenericMethodDefinition || member.ContainsGenericParameters)
+                throw new ArgumentException("The member must neither be an open method definition nor must it contain generic parameters.");
+
+            var firstParameter = member.GetParameters().Select(p => p.ParameterType).FirstOrDefault();
+
+            if (firstParameter == null)
+                throw new ArgumentException("The member must not be parameterless", nameof(member));
+
+            if (!firstParameter.IsAssignableFrom(messageType))
+                throw new ArgumentException("The specified message type must be assignable the type of the members first parameter.");
+
+            if (!member.DeclaringType.IsAssignableFrom(messageHandlerType))
+                throw new ArgumentException("The specififed message handler type must be assignable to the type that declares the specified member.");
+
+            // TODO: Do we also check wheter any parameter/messageType/messageHandlerType is by ref or is a pointer, etc.
+
             MessageType = messageType;
+            MessageHandlerType = messageHandlerType;
             Member = member;
         }
 
@@ -59,6 +88,11 @@ namespace AI4E
         /// Gets the type of message that is handled.
         /// </summary>
         public Type MessageType { get; }
+
+        /// <summary>
+        /// Gets the message handler type.
+        /// </summary>
+        public Type MessageHandlerType { get; }
 
         /// <summary>
         /// Gets a <see cref="MethodInfo"/> that specifies the message handler action (method).

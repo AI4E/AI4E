@@ -21,7 +21,6 @@ namespace AI4E.Handler
         private static readonly Func<Type, Func<object, MessageHandlerActionDescriptor, ImmutableArray<IContextualProvider<IMessageProcessor>>, IServiceProvider, IMessageHandler>> _factoryBuilderCache = BuildFactory;
 
         public static IMessageHandler CreateInvoker(
-            Type handlerType,
             MessageHandlerActionDescriptor memberDescriptor,
             ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
             IServiceProvider serviceProvider)
@@ -29,6 +28,7 @@ namespace AI4E.Handler
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
+            var handlerType = memberDescriptor.MessageHandlerType;
             var handler = ActivatorUtilities.CreateInstance(serviceProvider, handlerType);
             Assert(handler != null);
 
@@ -43,6 +43,9 @@ namespace AI4E.Handler
         {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
+
+            if (handler.GetType() != memberDescriptor.MessageHandlerType)
+                throw new ArgumentException($"The object must be of type {memberDescriptor.MessageHandlerType}", nameof(handler));
 
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
@@ -100,6 +103,9 @@ namespace AI4E.Handler
         {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
+
+            if (handler.GetType() != memberDescriptor.MessageHandlerType)
+                throw new ArgumentException($"The object must be of type {memberDescriptor.MessageHandlerType}", nameof(handler));
 
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));

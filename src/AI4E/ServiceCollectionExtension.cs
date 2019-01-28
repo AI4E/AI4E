@@ -250,7 +250,7 @@ namespace AI4E
 
             foreach (var memberDescriptor in memberDescriptors)
             {
-                var registration = CreateMessageHandlerRegistration(handlerType, memberDescriptor, processors);
+                var registration = CreateMessageHandlerRegistration(memberDescriptor, processors);
                 messageHandlerRegistry.Register(registration);
 
                 logger?.LogDebug($"Registered handler of type '{handlerType}' for message-type '{memberDescriptor.MessageType}'.");
@@ -258,13 +258,12 @@ namespace AI4E
         }
 
         private static IMessageHandlerRegistration CreateMessageHandlerRegistration(
-            Type handlerType,
             MessageHandlerActionDescriptor memberDescriptor,
             ImmutableArray<IContextualProvider<IMessageProcessor>> processors)
         {
             return new MessageHandlerRegistration(
                 memberDescriptor.MessageType,
-                serviceProvider => MessageHandlerInvoker.CreateInvoker(handlerType, memberDescriptor, processors, serviceProvider));
+                serviceProvider => MessageHandlerInvoker.CreateInvoker(memberDescriptor, processors, serviceProvider));
         }
 
         private static void ConfigureFeatureProviders(ApplicationPartManager partManager)
