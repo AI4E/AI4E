@@ -27,7 +27,7 @@ namespace AI4E
     {
         IServiceProvider DispatchServices { get; }
         DispatchDataDictionary DispatchData { get; }
-        bool Publish { get; }  // TODO: Rename to IsPublish
+        bool IsPublish { get; }
         bool IsLocalDispatch { get; }
     }
 

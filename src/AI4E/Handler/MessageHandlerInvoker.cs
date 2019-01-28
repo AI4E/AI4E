@@ -285,13 +285,13 @@ namespace AI4E.Handler
 
                 DispatchServices = dispatchServices;
                 DispatchData = dispatchData;
-                Publish = publish;
+                IsPublish = publish;
                 IsLocalDispatch = isLocalDispatch;
             }
 
             public IServiceProvider DispatchServices { get; }
             public DispatchDataDictionary DispatchData { get; }
-            public bool Publish { get; }
+            public bool IsPublish { get; }
             public bool IsLocalDispatch { get; }
         }
 
@@ -308,13 +308,13 @@ namespace AI4E.Handler
 
                 MessageHandler = messageHandler;
                 MessageHandlerAction = messageHandlerAction;
-                Publish = publish;
+                IsPublish = publish;
                 IsLocalDispatch = isLocalDispatch;
             }
 
             public object MessageHandler { get; }
             public MessageHandlerActionDescriptor MessageHandlerAction { get; }
-            public bool Publish { get; }
+            public bool IsPublish { get; }
             public bool IsLocalDispatch { get; }
         }
     }
