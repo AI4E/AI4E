@@ -1,8 +1,8 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IMessageHandler.cs
- * Types:           (1) AI4E.MessageHandlerFactory
- *                  (2) AI4E.MessageHandlerFactory'1
+ * Filename:        MessageHandlerRegistration.cs
+ * Types:           (1) AI4E.MessageHandlerRegistration
+ *                  (2) AI4E.MessageHandlerRegistration'1
  * Version:         1.0
  * Author:          Andreas Trütschel
  * --------------------------------------------------------------------------------------------------------------------
@@ -32,17 +32,18 @@ using System;
 
 namespace AI4E
 {
-    public sealed class MessageHandlerFactory : IMessageHandlerFactory
+    public sealed class MessageHandlerRegistration : IMessageHandlerRegistration
     {
         private readonly Func<IServiceProvider, IMessageHandler> _factory;
 
-        public MessageHandlerFactory(Type messageType, Func<IServiceProvider, IMessageHandler> factory)
+        public MessageHandlerRegistration(Type messageType, Func<IServiceProvider, IMessageHandler> factory)
         {
             if (messageType == null)
                 throw new ArgumentNullException(nameof(messageType));
 
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
+
             MessageType = messageType;
             _factory = factory;
         }
@@ -66,16 +67,17 @@ namespace AI4E
         public Type MessageType { get; }
     }
 
-    public sealed class MessageHandlerFactory<TMessage> : IMessageHandlerFactory<TMessage>
+    public sealed class MessageHandlerRegistration<TMessage> : IMessageHandlerRegistration<TMessage>
         where TMessage : class
     {
         private static readonly Type _messageType = typeof(TMessage);
         private readonly Func<IServiceProvider, IMessageHandler<TMessage>> _factory;
 
-        public MessageHandlerFactory(Func<IServiceProvider, IMessageHandler<TMessage>> factory)
+        public MessageHandlerRegistration(Func<IServiceProvider, IMessageHandler<TMessage>> factory)
         {
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
+
             _factory = factory;
         }
 
@@ -92,11 +94,11 @@ namespace AI4E
             return result;
         }
 
-        IMessageHandler IMessageHandlerFactory.CreateMessageHandler(IServiceProvider serviceProvider)
+        IMessageHandler IMessageHandlerRegistration.CreateMessageHandler(IServiceProvider serviceProvider)
         {
             return CreateMessageHandler(serviceProvider);
         }
 
-        Type IMessageHandlerFactory.MessageType => _messageType;
+        Type IMessageHandlerRegistration.MessageType => _messageType;
     }
 }

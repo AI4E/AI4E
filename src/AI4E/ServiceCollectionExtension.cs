@@ -257,12 +257,12 @@ namespace AI4E
             }
         }
 
-        private static IMessageHandlerFactory CreateMessageHandlerRegistration(
+        private static IMessageHandlerRegistration CreateMessageHandlerRegistration(
             Type handlerType,
             MessageHandlerActionDescriptor memberDescriptor,
             ImmutableArray<IContextualProvider<IMessageProcessor>> processors)
         {
-            return new MessageHandlerFactory(
+            return new MessageHandlerRegistration(
                 memberDescriptor.MessageType,
                 serviceProvider => MessageHandlerInvoker.CreateInvoker(handlerType, memberDescriptor, processors, serviceProvider));
         }

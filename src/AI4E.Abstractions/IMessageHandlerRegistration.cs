@@ -1,8 +1,8 @@
 /* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IMessageHandler.cs
- * Types:           (1) AI4E.IMessageHandlerFactory
- *                  (2) AI4E.IMessageHandlerFactory'1
+ * Types:           (1) AI4E.IMessageHandlerRegistration
+ *                  (2) AI4E.IMessageHandlerRegistration'1
  * Version:         1.0
  * Author:          Andreas Trütschel
  * --------------------------------------------------------------------------------------------------------------------
@@ -32,16 +32,38 @@ using System;
 
 namespace AI4E
 {
-    public interface IMessageHandlerFactory
+    /// <summary>
+    /// Represents the registration of a message handler.
+    /// </summary>
+    public interface IMessageHandlerRegistration
     {
+        /// <summary>
+        /// Creates an instance of the registered message handler within the scope of the specified service provider.
+        /// </summary>
+        /// <param name="serviceProvider">The service provider that is used to obtain handler specific services.</param>
+        /// <returns>The created instance.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
         IMessageHandler CreateMessageHandler(IServiceProvider serviceProvider);
 
+        /// <summary>
+        /// Gets the type of message the registered handler is registered for.
+        /// </summary>
         Type MessageType { get; }
     }
 
-    public interface IMessageHandlerFactory<TMessage> : IMessageHandlerFactory
+    /// <summary>
+    /// Represents the registration of a message handler for the specified type of message.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of message the handler is registered for.</typeparam>
+    public interface IMessageHandlerRegistration<TMessage> : IMessageHandlerRegistration
             where TMessage : class
     {
+        /// <summary>
+        /// Creates an instance of the registered message handler within the scope of the specified service provider.
+        /// </summary>
+        /// <param name="serviceProvider">The service provider that is used to obtain handler specific services.</param>
+        /// <returns>The created instance.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
         new IMessageHandler<TMessage> CreateMessageHandler(IServiceProvider serviceProvider);
     }
 }

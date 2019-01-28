@@ -133,12 +133,12 @@ namespace AI4E.Routing
             return handlerFactories.Select(p => GetRoute(p)).Distinct();
         }
 
-        private static Route GetRoute(IMessageHandlerFactory handlerFactory)
+        private static Route GetRoute(IMessageHandlerRegistration handlerRegistration)
         {
-            if (handlerFactory == null)
-                throw new ArgumentNullException(nameof(handlerFactory));
+            if (handlerRegistration == null)
+                throw new ArgumentNullException(nameof(handlerRegistration));
 
-            return new Route(handlerFactory.MessageType.GetUnqualifiedTypeName());
+            return new Route(handlerRegistration.MessageType.GetUnqualifiedTypeName());
         }
 
         public Task Initialization => _lifetimeManager.Initialization;

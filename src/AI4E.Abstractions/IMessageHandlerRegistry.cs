@@ -32,8 +32,8 @@ namespace AI4E
 {
     public interface IMessageHandlerRegistry
     {
-        bool Register(IMessageHandlerFactory messageHandlerFactory);
-        bool Unregister(IMessageHandlerFactory messageHandlerFactory);
+        bool Register(IMessageHandlerRegistration handlerRegistration);
+        bool Unregister(IMessageHandlerRegistration handlerRegistration);
 
         IMessageHandlerProvider ToProvider();
     }

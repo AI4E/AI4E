@@ -38,64 +38,64 @@ namespace AI4E
 {
     public sealed class MessageHandlerRegistry : IMessageHandlerRegistry
     {
-        private readonly Dictionary<Type, OrderedSet<IMessageHandlerFactory>> _handlers;
+        private readonly Dictionary<Type, OrderedSet<IMessageHandlerRegistration>> _handlerRegistrations;
 
         public MessageHandlerRegistry()
         {
-            _handlers = new Dictionary<Type, OrderedSet<IMessageHandlerFactory>>();
+            _handlerRegistrations = new Dictionary<Type, OrderedSet<IMessageHandlerRegistration>>();
         }
 
-        public MessageHandlerRegistry(IEnumerable<IMessageHandlerFactory> factories) : this()
+        public MessageHandlerRegistry(IEnumerable<IMessageHandlerRegistration> handlerRegistrations) : this()
         {
-            if (factories == null)
-                throw new ArgumentNullException(nameof(factories));
+            if (handlerRegistrations == null)
+                throw new ArgumentNullException(nameof(handlerRegistrations));
 
-            foreach (var factory in factories)
+            foreach (var handlerRegistration in handlerRegistrations)
             {
-                if (factory == null)
+                if (handlerRegistration == null)
                 {
                     throw new ArgumentException("The collection must not contain null entries.");
                 }
 
-                Register(factory);
+                Register(handlerRegistration);
             }
         }
 
-        public bool Register(IMessageHandlerFactory messageHandlerFactory)
+        public bool Register(IMessageHandlerRegistration handlerRegistration)
         {
-            if (messageHandlerFactory == null)
-                throw new ArgumentNullException(nameof(messageHandlerFactory));
+            if (handlerRegistration == null)
+                throw new ArgumentNullException(nameof(handlerRegistration));
 
-            var handlerCollection = _handlers.GetOrAdd(messageHandlerFactory.MessageType, _ => new OrderedSet<IMessageHandlerFactory>());
+            var handlerCollection = _handlerRegistrations.GetOrAdd(handlerRegistration.MessageType, _ => new OrderedSet<IMessageHandlerRegistration>());
 
-            if (handlerCollection.Contains(messageHandlerFactory))
+            if (handlerCollection.Contains(handlerRegistration))
             {
                 return false;
             }
 
-            handlerCollection.Add(messageHandlerFactory);
+            handlerCollection.Add(handlerRegistration);
 
             return true;
         }
 
-        public bool Unregister(IMessageHandlerFactory messageHandlerFactory)
+        public bool Unregister(IMessageHandlerRegistration handlerRegistration)
         {
-            if (messageHandlerFactory == null)
-                throw new ArgumentNullException(nameof(messageHandlerFactory));
+            if (handlerRegistration == null)
+                throw new ArgumentNullException(nameof(handlerRegistration));
 
-            if (!_handlers.TryGetValue(messageHandlerFactory.MessageType, out var handlerCollection))
+            if (!_handlerRegistrations.TryGetValue(handlerRegistration.MessageType, out var handlerCollection))
             {
                 return false;
             }
 
-            if (!handlerCollection.Remove(messageHandlerFactory))
+            if (!handlerCollection.Remove(handlerRegistration))
             {
                 return false;
             }
 
             if (!handlerCollection.Any())
             {
-                _handlers.Remove(messageHandlerFactory.MessageType);
+                _handlerRegistrations.Remove(handlerRegistration.MessageType);
             }
 
             return true;
@@ -103,33 +103,33 @@ namespace AI4E
 
         public IMessageHandlerProvider ToProvider()
         {
-            return new MessageHandlerProvider(_handlers);
+            return new MessageHandlerProvider(_handlerRegistrations);
         }
 
         private sealed class MessageHandlerProvider : IMessageHandlerProvider
         {
-            private readonly ImmutableDictionary<Type, ImmutableList<IMessageHandlerFactory>> _handlers;
+            private readonly ImmutableDictionary<Type, ImmutableList<IMessageHandlerRegistration>> _handlerRegistrations;
 
-            public MessageHandlerProvider(Dictionary<Type, OrderedSet<IMessageHandlerFactory>> handlers)
+            public MessageHandlerProvider(Dictionary<Type, OrderedSet<IMessageHandlerRegistration>> handlerRegistrations)
             {
-                _handlers = handlers.ToImmutableDictionary(
+                _handlerRegistrations = handlerRegistrations.ToImmutableDictionary(
                     keySelector: kvp => kvp.Key,
                     elementSelector: kvp => kvp.Value.Reverse().ToImmutableList()); // TODO: Reverse is not very performant
             }
 
-            public IEnumerable<IMessageHandlerFactory> GetHandlers(Type messageType)
+            public IEnumerable<IMessageHandlerRegistration> GetHandlers(Type messageType)
             {
-                if (!_handlers.TryGetValue(messageType, out var result))
+                if (!_handlerRegistrations.TryGetValue(messageType, out var result))
                 {
-                    result = ImmutableList<IMessageHandlerFactory>.Empty;
+                    result = ImmutableList<IMessageHandlerRegistration>.Empty;
                 }
 
                 return result;
             }
 
-            public IEnumerable<IMessageHandlerFactory> GetHandlers()
+            public IEnumerable<IMessageHandlerRegistration> GetHandlers()
             {
-                foreach (var type in _handlers.Keys)
+                foreach (var type in _handlerRegistrations.Keys)
                 {
                     foreach (var handler in GetHandlers(type))
                     {

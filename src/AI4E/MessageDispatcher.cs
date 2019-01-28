@@ -177,26 +177,26 @@ namespace AI4E
 
 
         private async ValueTask<(IDispatchResult result, bool handlersFound)> DispatchAsync(
-            IEnumerable<IMessageHandlerFactory> handlerCollection,
+            IEnumerable<IMessageHandlerRegistration> handlerRegistrations,
             DispatchDataDictionary dispatchData,
             bool publish,
             CancellationToken cancellation)
         {
             Assert(dispatchData != null);
-            Assert(handlerCollection != null);
-            Assert(handlerCollection.Any());
+            Assert(handlerRegistrations != null);
+            Assert(handlerRegistrations.Any());
 
             if (publish)
             {
-                var dispatchResults = await ValueTaskHelper.WhenAll(handlerCollection.Select(p => DispatchSingleHandlerAsync(p, dispatchData, publish, cancellation)));
+                var dispatchResults = await ValueTaskHelper.WhenAll(handlerRegistrations.Select(p => DispatchSingleHandlerAsync(p, dispatchData, publish, cancellation)));
 
                 return (result: new AggregateDispatchResult(dispatchResults), handlersFound: true);
             }
             else
             {
-                foreach (var handlerFactory in handlerCollection)
+                foreach (var handlerRegistration in handlerRegistrations)
                 {
-                    var result = await DispatchSingleHandlerAsync(handlerFactory, dispatchData, publish, cancellation);
+                    var result = await DispatchSingleHandlerAsync(handlerRegistration, dispatchData, publish, cancellation);
 
                     if (result.IsDispatchFailure())
                     {
@@ -211,19 +211,19 @@ namespace AI4E
         }
 
         private async ValueTask<IDispatchResult> DispatchSingleHandlerAsync(
-            IMessageHandlerFactory handlerFactory,
+            IMessageHandlerRegistration handlerRegistration,
             DispatchDataDictionary dispatchData,
             bool publish,
             CancellationToken cancellation)
         {
-            Assert(handlerFactory != null);
+            Assert(handlerRegistration != null);
             Assert(dispatchData != null);
 
             using (var scope = _serviceProvider.CreateScope())
             {
                 try
                 {
-                    var handlerInstance = handlerFactory.CreateMessageHandler(scope.ServiceProvider);
+                    var handlerInstance = handlerRegistration.CreateMessageHandler(scope.ServiceProvider);
 
                     if (handlerInstance == null)
                     {
