@@ -94,20 +94,20 @@ namespace AI4E.Routing
         private async Task<(IMessage response, bool handled)> HandleAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation)
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
-            var (publish, route) = DecodeMessage(message);
+            var (publish, localDispatch, route) = DecodeMessage(message);
 
             _logger?.LogDebug($"End-point '{localEndPoint}': Processing request message.");
-            return await RouteToLocalAsync(route, message, publish, cancellation);
+            return await RouteToLocalAsync(route, message, publish, localDispatch, cancellation);
         }
 
         #endregion
 
-        private async ValueTask<(IMessage response, bool handled)> RouteToLocalAsync(Route route, IMessage request, bool publish, CancellationToken cancellation)
+        private async ValueTask<(IMessage response, bool handled)> RouteToLocalAsync(Route route, IMessage request, bool publish, bool localDispatch, CancellationToken cancellation)
         {
             var frameIdx = request.FrameIndex;
             var frameCount = request.FrameCount;
 
-            var (response, handled) = await _serializedMessageHandler.HandleAsync(route, request, publish, cancellation);
+            var (response, handled) = await _serializedMessageHandler.HandleAsync(route, request, publish, localDispatch, cancellation);
 
             // Remove all frames from other protocol stacks.
             response.Trim(); // TODO
@@ -219,11 +219,7 @@ namespace AI4E.Routing
 
                         var endPoints = matches.Select(p => p.EndPoint);
                         handledEndPoints.UnionWith(endPoints);
-
-                        foreach (var endPoint in endPoints)
-                        {
-                            tasks.Add(InternalRouteAsync(route, serializedMessage, publish: true, endPoint, cancellation));
-                        }
+                        tasks.AddRange(endPoints.Select(endPoint => InternalRouteAsync(route, serializedMessage, publish: true, endPoint, cancellation)));
                     }
                 }
             }
@@ -248,6 +244,8 @@ namespace AI4E.Routing
                 routeResults = routeResults.Where(p => !handledEndPoints.Contains(p.EndPoint));
             }
 
+            var localEndPoint = await GetLocalEndPointAsync(cancellation);
+            routeResults = routeResults.Where(p => localEndPoint == p.EndPoint || !p.RegistrationOptions.IncludesFlag(RouteRegistrationOptions.LocalDispatchOnly));
             return routeResults.ToList();
         }
 
@@ -257,14 +255,14 @@ namespace AI4E.Routing
 
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
 
-            // This does short-curcuit the dispatch to the remote end-point. 
+            // This does short-circuit the dispatch to the remote end-point. 
             // Any possible replicates do not get any chance to receive the message. 
             // => Requests are kept local to the machine.
             if (endPoint == localEndPoint)
             {
                 _logger?.LogDebug($"Message router for end-point '{localEndPoint}': Dispatching request message locally.");
 
-                return await RouteToLocalAsync(route, serializedMessage, publish, cancellation);
+                return await RouteToLocalAsync(route, serializedMessage, publish, localDispatch: true, cancellation);
             }
 
             _logger?.LogDebug($"Message router for end-point '{localEndPoint}': Dispatching request message to remote end point '{endPoint}'.");
@@ -275,7 +273,7 @@ namespace AI4E.Routing
             // We do not want to override frames.
             Assert(serializedMessage.FrameIndex == serializedMessage.FrameCount - 1);
 
-            EncodeMessage(serializedMessage, publish, route);
+            EncodeMessage(serializedMessage, publish, localDispatch: false, route);
 
             var (response, handled) = await _logicalEndPoint.SendAsync(serializedMessage, endPoint, cancellation);
 
@@ -286,7 +284,7 @@ namespace AI4E.Routing
             return (response, handled);
         }
 
-        private static void EncodeMessage(IMessage message, bool publish, Route route)
+        private static void EncodeMessage(IMessage message, bool publish, bool localDispatch, Route route)
         {
             var routeBytes = Encoding.UTF8.GetBytes(route.ToString());
 
@@ -294,8 +292,8 @@ namespace AI4E.Routing
             using (var writer = new BinaryWriter(stream))
             {
                 writer.Write(publish);              // 1 Byte
+                writer.Write(localDispatch);        // 1 Byte
                 writer.Write((short)0);             // 2 Byte (padding)
-                writer.Write((byte)0);              // 1 Byte (padding)
                 writer.Write(routeBytes.Length);    // 4 Bytes
 
                 if (routeBytes.Length > 0)
@@ -305,26 +303,25 @@ namespace AI4E.Routing
             }
         }
 
-        private static (bool publish, Route route) DecodeMessage(IMessage message)
+        private static (bool publish, bool localDispatch, Route route) DecodeMessage(IMessage message)
         {
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
             {
-                var publish = false;
                 var route = default(Route);
 
-                publish = reader.ReadBoolean();                             // 1 Byte
+                var publish = reader.ReadBoolean();                         // 1 Byte
+                var localDispatch = reader.ReadBoolean();                   // 1 Byte
                 reader.ReadInt16();                                         // 2 Byte (padding)
-                reader.ReadByte();                                          // 1 Byte (padding)
 
                 var routeBytesLength = reader.ReadInt32();                  // 4 Byte
                 if (routeBytesLength > 0)
                 {
                     var routeBytes = reader.ReadBytes(routeBytesLength);    // Variable length
-                    route = new Route( Encoding.UTF8.GetString(routeBytes));
+                    route = new Route(Encoding.UTF8.GetString(routeBytes));
                 }
 
-                return (publish, route);
+                return (publish, localDispatch, route);
             }
         }
 

@@ -27,7 +27,8 @@ namespace AI4E
     {
         IServiceProvider DispatchServices { get; }
         DispatchDataDictionary DispatchData { get; }
-        bool Publish { get; }
+        bool Publish { get; }  // TODO: Rename to IsPublish
+        bool IsLocalDispatch { get; }
     }
 
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]

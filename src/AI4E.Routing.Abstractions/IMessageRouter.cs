@@ -56,7 +56,12 @@ namespace AI4E.Routing
         /// <summary>
         /// The handler shall not handle point to point messages, unless the message is not sent to the end-point via its address.
         /// </summary>
-        PublishOnly = 2
+        PublishOnly = 2,
+
+        /// <summary>
+        /// The handler is target for messages that are dispatched from the same end-point only.
+        /// </summary>
+        LocalDispatchOnly = 3
     }
 
     // TODO: Rename to RouteTarget?

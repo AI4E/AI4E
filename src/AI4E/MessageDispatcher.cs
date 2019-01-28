@@ -80,7 +80,7 @@ namespace AI4E
             bool publish,
             CancellationToken cancellation)
         {
-            return (await TryDispatchAsync(dispatchData, publish, allowRouteDescend: true, cancellation)).result;
+            return (await TryDispatchAsync(dispatchData, publish, localDispatch: true, allowRouteDescend: true, cancellation: cancellation)).result;
         }
 
         #endregion
@@ -110,6 +110,7 @@ namespace AI4E
         public async ValueTask<(IDispatchResult result, bool handlersFound)> TryDispatchAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
+            bool localDispatch,
             bool allowRouteDescend,
             CancellationToken cancellation)
 
@@ -130,7 +131,7 @@ namespace AI4E
 
                 if (handlerCollection.Any())
                 {
-                    var dispatchOperation = DispatchAsync(handlerCollection, dispatchData, publish, cancellation);
+                    var dispatchOperation = DispatchAsync(handlerCollection, dispatchData, publish, localDispatch, cancellation);
 
                     if (publish)
                     {
@@ -177,9 +178,10 @@ namespace AI4E
 
 
         private async ValueTask<(IDispatchResult result, bool handlersFound)> DispatchAsync(
-            IEnumerable<IMessageHandlerRegistration> handlerRegistrations,
+            IReadOnlyCollection<IMessageHandlerRegistration> handlerRegistrations,
             DispatchDataDictionary dispatchData,
             bool publish,
+            bool localDispatch,
             CancellationToken cancellation)
         {
             Assert(dispatchData != null);
@@ -188,7 +190,26 @@ namespace AI4E
 
             if (publish)
             {
-                var dispatchResults = await ValueTaskHelper.WhenAll(handlerRegistrations.Select(p => DispatchSingleHandlerAsync(p, dispatchData, publish, cancellation)));
+                var dispatchOperations = new List<ValueTask<IDispatchResult>>(capacity: handlerRegistrations.Count);
+
+                foreach (var handlerRegistration in handlerRegistrations)
+                {
+                    var dispatchOperation = DispatchSingleHandlerAsync(handlerRegistration, dispatchData, publish, localDispatch, cancellation);
+
+                    dispatchOperations.Add(dispatchOperation);
+                }
+
+                if (!dispatchOperations.Any())
+                {
+                    return (result: new SuccessDispatchResult(), handlersFound: false);
+                }
+
+                var dispatchResults = await ValueTaskHelper.WhenAll(dispatchOperations, preserveOrder: false);
+
+                if (dispatchResults.Count() == 1)
+                {
+                    return (result: dispatchResults.First(), handlersFound: true);
+                }
 
                 return (result: new AggregateDispatchResult(dispatchResults), handlersFound: true);
             }
@@ -196,7 +217,7 @@ namespace AI4E
             {
                 foreach (var handlerRegistration in handlerRegistrations)
                 {
-                    var result = await DispatchSingleHandlerAsync(handlerRegistration, dispatchData, publish, cancellation);
+                    var result = await DispatchSingleHandlerAsync(handlerRegistration, dispatchData, publish, localDispatch, cancellation);
 
                     if (result.IsDispatchFailure())
                     {
@@ -214,6 +235,7 @@ namespace AI4E
             IMessageHandlerRegistration handlerRegistration,
             DispatchDataDictionary dispatchData,
             bool publish,
+            bool localDispatch,
             CancellationToken cancellation)
         {
             Assert(handlerRegistration != null);
@@ -223,19 +245,19 @@ namespace AI4E
             {
                 try
                 {
-                    var handlerInstance = handlerRegistration.CreateMessageHandler(scope.ServiceProvider);
+                    var handler = handlerRegistration.CreateMessageHandler(scope.ServiceProvider);
 
-                    if (handlerInstance == null)
+                    if (handler == null)
                     {
                         throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that is null.");
                     }
 
-                    if (!handlerInstance.MessageType.IsAssignableFrom(dispatchData.MessageType))
+                    if (!handler.MessageType.IsAssignableFrom(dispatchData.MessageType))
                     {
-                        throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{handlerInstance.MessageType}'.");
+                        throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{handler.MessageType}'.");
                     }
 
-                    return await handlerInstance.HandleAsync(dispatchData, publish, cancellation);
+                    return await handler.HandleAsync(dispatchData, publish, localDispatch, cancellation);
                 }
                 catch (ConcurrencyException)
                 {

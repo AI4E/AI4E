@@ -377,7 +377,8 @@ namespace AI4E.Routing.SignalR.Client
                             var routeBytes = reader.ReadBytes(routeBytesLength);
                             var route = Encoding.UTF8.GetString(routeBytes);
                             var publish = reader.ReadBoolean();
-                            var (response, handled) = await ReceiveHandleRequestAsync(message, new Route(route), publish, cancellation);
+                            var isLocalDispatch = reader.ReadBoolean();
+                            var (response, handled) = await ReceiveHandleRequestAsync(message, new Route(route), publish, isLocalDispatch, cancellation);
                             Assert(response.FrameIndex == response.FrameCount - 1);
                             return (response, handled);
                         }
@@ -393,9 +394,9 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        private ValueTask<(IMessage message, bool handled)> ReceiveHandleRequestAsync(IMessage message, Route route, bool publish, CancellationToken cancellation)
+        private ValueTask<(IMessage message, bool handled)> ReceiveHandleRequestAsync(IMessage message, Route route, bool publish, bool isLocalDispatch, CancellationToken cancellation)
         {
-            return _serializedMessageHandler.HandleAsync(route, message, publish, cancellation);
+            return _serializedMessageHandler.HandleAsync(route, message, publish, isLocalDispatch, cancellation);
         }
 
         #endregion

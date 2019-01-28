@@ -36,7 +36,8 @@ namespace AI4E
     {
         MessageHandlerActionDescriptor MessageHandlerAction { get; }
         object MessageHandler { get; }
-        bool Publish { get; }
+        bool Publish { get; } // TODO: Rename to IsPublish
+        bool IsLocalDispatch { get; }
     }
 
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]

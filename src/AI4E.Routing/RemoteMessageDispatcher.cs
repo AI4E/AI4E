@@ -104,9 +104,9 @@ namespace AI4E.Routing
             async Task InitializeAsync(CancellationToken cancellation)
             {
                 var messageHandlerProvider = _localMessageDispatcher.MessageHandlerProvider;
-                var routes = GetRoutes(messageHandlerProvider);
-                var registrations = routes.Select(p => _messageRouter.RegisterRouteAsync(p, RouteRegistrationOptions.Default, cancellation: default));
-                await Task.WhenAll(registrations);
+                var routeRegistrations = GetRouteRegistrations(messageHandlerProvider);
+                var registrationOperations = routeRegistrations.Select(p => _messageRouter.RegisterRouteAsync(p.route, p.options, cancellation: default));
+                await Task.WhenAll(registrationOperations);
             }
 
             async Task DisposeAsync()
@@ -124,21 +124,48 @@ namespace AI4E.Routing
             return new AsyncLifetimeManager(InitializeAsync, DisposeAsync);
         }
 
-        private static IEnumerable<Route> GetRoutes(IMessageHandlerProvider messageHandlerProvider)
+        private static IEnumerable<(Route route, RouteRegistrationOptions options)> GetRouteRegistrations(IMessageHandlerProvider messageHandlerProvider)
         {
             if (messageHandlerProvider == null)
                 throw new ArgumentNullException(nameof(messageHandlerProvider));
 
-            var handlerFactories = messageHandlerProvider.GetHandlers();
-            return handlerFactories.Select(p => GetRoute(p)).Distinct();
-        }
+            Route GetRoute(IMessageHandlerRegistration handlerRegistration)
+            {
+                return new Route(handlerRegistration.MessageType.GetUnqualifiedTypeName());
+            }
 
-        private static Route GetRoute(IMessageHandlerRegistration handlerRegistration)
-        {
-            if (handlerRegistration == null)
-                throw new ArgumentNullException(nameof(handlerRegistration));
+            RouteRegistrationOptions GetRouteOptions(IMessageHandlerRegistration handlerRegistration)
+            {
+                var result = RouteRegistrationOptions.Default;
 
-            return new Route(handlerRegistration.MessageType.GetUnqualifiedTypeName());
+                return result;
+            }
+
+            RouteRegistrationOptions CombineRouteOptions(IEnumerable<RouteRegistrationOptions> options)
+            {
+                var result = RouteRegistrationOptions.Default;
+
+                var firstOption = true;
+                foreach (var option in options)
+                {
+                    if (firstOption)
+                    {
+                        result = option;
+                    }
+                    else
+                    {
+                        result &= option;
+                    }
+
+                    firstOption = false;
+                }
+
+                return result;
+            }
+
+            return messageHandlerProvider
+                .GetHandlers()
+                .GroupBy(GetRoute, (route, handlerRegistrations) => (route, CombineRouteOptions(handlerRegistrations.Select(GetRouteOptions))));
         }
 
         public Task Initialization => _lifetimeManager.Initialization;
@@ -209,6 +236,7 @@ namespace AI4E.Routing
                 Route route,
                 IMessage request,
                 bool publish,
+                 bool localDispatch,
                 CancellationToken cancellation)
             {
                 if (route == null)
@@ -224,7 +252,12 @@ namespace AI4E.Routing
                 var dispatchData = _remoteMessageDispatcher.DeserializeDispatchData(request);
 
                 // We allow target route descend on publishing only (See https://github.com/AI4E/AI4E/issues/82#issuecomment-448269275)
-                var (dispatchResult, handlersFound) = await _remoteMessageDispatcher.TryDispatchLocalAsync(dispatchData, publish, allowRouteDescend: publish, cancellation);
+                var (dispatchResult, handlersFound) = await _remoteMessageDispatcher.TryDispatchLocalAsync(
+                    dispatchData,
+                    publish,
+                    allowRouteDescend: publish,
+                    localDispatch,
+                    cancellation);
 
                 var response = new Message();
                 _remoteMessageDispatcher.SerializeDispatchResult(response, dispatchResult);
@@ -347,15 +380,23 @@ namespace AI4E.Routing
             EndPointAddress endPoint,
             CancellationToken cancellation)
         {
-            var route = new Route(_typeConversion.SerializeType(dispatchData.MessageType));
-            var serializedMessage = new Message();
+            if (endPoint == await GetLocalEndPointAsync(cancellation))
+            {
+                var (result, _) = await TryDispatchLocalAsync(dispatchData, publish, allowRouteDescend: true, localDispatch: true, cancellation);
+                return result;
+            }
+            else
+            {
+                var route = new Route(_typeConversion.SerializeType(dispatchData.MessageType));
+                var serializedMessage = new Message();
 
-            SerializeDispatchData(serializedMessage, dispatchData);
+                SerializeDispatchData(serializedMessage, dispatchData);
 
-            var serializedResult = await _messageRouter.RouteAsync(route, serializedMessage, publish, endPoint, cancellation);
-            var result = DeserializeDispatchResult(serializedResult);
+                var serializedResult = await _messageRouter.RouteAsync(route, serializedMessage, publish, endPoint, cancellation);
+                var result = DeserializeDispatchResult(serializedResult);
 
-            return result;
+                return result;
+            }
         }
 
         private async ValueTask<IDispatchResult> InternalDispatchAsync(
@@ -413,6 +454,7 @@ namespace AI4E.Routing
             DispatchDataDictionary dispatchData,
             bool publish,
             bool allowRouteDescend,
+            bool localDispatch,
             CancellationToken cancellation)
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
@@ -421,7 +463,7 @@ namespace AI4E.Routing
 
             try
             {
-                return await _localMessageDispatcher.TryDispatchAsync(dispatchData, publish, allowRouteDescend, cancellation);
+                return await _localMessageDispatcher.TryDispatchAsync(dispatchData, publish, localDispatch, allowRouteDescend, cancellation);
             }
             finally
             {
@@ -437,7 +479,7 @@ namespace AI4E.Routing
             if (dispatchData == null)
                 throw new ArgumentNullException(nameof(dispatchData));
 
-            var (dispatchResult, _) = await TryDispatchLocalAsync(dispatchData, publish, allowRouteDescend: true, cancellation);
+            var (dispatchResult, _) = await TryDispatchLocalAsync(dispatchData, publish, allowRouteDescend: true, localDispatch: true, cancellation);
             return dispatchResult;
         }
 

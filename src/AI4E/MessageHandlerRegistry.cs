@@ -109,15 +109,29 @@ namespace AI4E
         private sealed class MessageHandlerProvider : IMessageHandlerProvider
         {
             private readonly ImmutableDictionary<Type, ImmutableList<IMessageHandlerRegistration>> _handlerRegistrations;
+            private readonly ImmutableList<IMessageHandlerRegistration> _combinedRegistrations;
 
             public MessageHandlerProvider(Dictionary<Type, OrderedSet<IMessageHandlerRegistration>> handlerRegistrations)
             {
                 _handlerRegistrations = handlerRegistrations.ToImmutableDictionary(
                     keySelector: kvp => kvp.Key,
                     elementSelector: kvp => kvp.Value.Reverse().ToImmutableList()); // TODO: Reverse is not very performant
+
+                _combinedRegistrations = BuildCombinedCollection().ToImmutableList();
             }
 
-            public IEnumerable<IMessageHandlerRegistration> GetHandlers(Type messageType)
+            private IEnumerable<IMessageHandlerRegistration> BuildCombinedCollection()
+            {
+                foreach (var type in _handlerRegistrations.Keys)
+                {
+                    foreach (var handler in GetHandlers(type))
+                    {
+                        yield return handler;
+                    }
+                }
+            }
+
+            public IReadOnlyList<IMessageHandlerRegistration> GetHandlers(Type messageType)
             {
                 if (!_handlerRegistrations.TryGetValue(messageType, out var result))
                 {
@@ -127,15 +141,9 @@ namespace AI4E
                 return result;
             }
 
-            public IEnumerable<IMessageHandlerRegistration> GetHandlers()
+            public IReadOnlyList<IMessageHandlerRegistration> GetHandlers()
             {
-                foreach (var type in _handlerRegistrations.Keys)
-                {
-                    foreach (var handler in GetHandlers(type))
-                    {
-                        yield return handler;
-                    }
-                }
+                return _combinedRegistrations;
             }
         }
     }

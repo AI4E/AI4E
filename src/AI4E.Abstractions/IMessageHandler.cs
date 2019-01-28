@@ -49,7 +49,7 @@ namespace AI4E
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the type of the specified message is not assignable to the handlers message type.</exception>
-        ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation);
+        ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary dispatchData, bool publish, bool localDispatch, CancellationToken cancellation);
 
         /// <summary>
         /// Gets the message type, the handler can handle.
@@ -73,6 +73,6 @@ namespace AI4E
         /// When evaluated, the tasks result contains the dispatch result.
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
-        ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, bool publish, CancellationToken cancellation);
+        ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, bool publish, bool localDispatch, CancellationToken cancellation);
     }
 }

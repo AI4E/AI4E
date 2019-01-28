@@ -75,7 +75,7 @@ namespace AI4E.Routing.SignalR.Server
             }
         }
 
-        private static void EncodeHandleRequest(IMessage message, Route route, bool publish)
+        private static void EncodeHandleRequest(IMessage message, Route route, bool publish, bool isLocalDispatch)
         {
             var routeBytes = Encoding.UTF8.GetBytes(route.ToString());
 
@@ -87,6 +87,7 @@ namespace AI4E.Routing.SignalR.Server
                 writer.Write(routeBytes.Length);
                 writer.Write(routeBytes);
                 writer.Write(publish);
+                writer.Write(isLocalDispatch);
             }
         }
 
@@ -155,7 +156,7 @@ namespace AI4E.Routing.SignalR.Server
                 _endPoint = endPoint;
             }
 
-            public async ValueTask<(IMessage response, bool handled)> HandleAsync(Route route, IMessage request, bool publish, CancellationToken cancellation = default)
+            public async ValueTask<(IMessage response, bool handled)> HandleAsync(Route route, IMessage request, bool publish, bool isLocalDispatch, CancellationToken cancellation = default)
             {
                 var frameIdx = request.FrameIndex;
 
@@ -173,7 +174,7 @@ namespace AI4E.Routing.SignalR.Server
                     }
                     while (request.FrameIndex > -1);
 
-                    EncodeHandleRequest(message, route, publish);
+                    EncodeHandleRequest(message, route, publish, isLocalDispatch);
 
                     var (response, handled) = await _owner._endPoint.SendAsync(message, _endPoint, cancellation);
                     return (response, handled);
