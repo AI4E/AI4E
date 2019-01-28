@@ -124,14 +124,14 @@ namespace AI4E
             {
                 foreach (var type in _handlerRegistrations.Keys)
                 {
-                    foreach (var handler in GetHandlers(type))
+                    foreach (var handler in GetHandlerRegistrations(type))
                     {
                         yield return handler;
                     }
                 }
             }
 
-            public IReadOnlyList<IMessageHandlerRegistration> GetHandlers(Type messageType)
+            public IReadOnlyList<IMessageHandlerRegistration> GetHandlerRegistrations(Type messageType)
             {
                 if (!_handlerRegistrations.TryGetValue(messageType, out var result))
                 {
@@ -141,7 +141,7 @@ namespace AI4E
                 return result;
             }
 
-            public IReadOnlyList<IMessageHandlerRegistration> GetHandlers()
+            public IReadOnlyList<IMessageHandlerRegistration> GetHandlerRegistrations()
             {
                 return _combinedRegistrations;
             }

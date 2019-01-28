@@ -127,7 +127,7 @@ namespace AI4E
             {
                 Assert(currType != null);
 
-                var handlerCollection = messageHandlerProvider.GetHandlers(currType);
+                var handlerCollection = messageHandlerProvider.GetHandlerRegistrations(currType);
 
                 if (handlerCollection.Any())
                 {

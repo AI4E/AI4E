@@ -164,7 +164,7 @@ namespace AI4E.Routing
             }
 
             return messageHandlerProvider
-                .GetHandlers()
+                .GetHandlerRegistrations()
                 .GroupBy(GetRoute, (route, handlerRegistrations) => (route, CombineRouteOptions(handlerRegistrations.Select(GetRouteOptions))));
         }
 

@@ -34,7 +34,7 @@ namespace AI4E
 {
     public interface IMessageHandlerProvider
     {
-        IReadOnlyList<IMessageHandlerRegistration> GetHandlers(Type messageType);
-        IReadOnlyList<IMessageHandlerRegistration> GetHandlers();
+        IReadOnlyList<IMessageHandlerRegistration> GetHandlerRegistrations(Type messageType);
+        IReadOnlyList<IMessageHandlerRegistration> GetHandlerRegistrations();
     }
 }
