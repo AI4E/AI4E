@@ -183,7 +183,10 @@ namespace AI4E
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
         }
 
-        public static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(this IServiceCollection services, Func<IServiceProvider, TMessageDispatcherImpl> factory)
+        public static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(
+            this IServiceCollection services,
+            Func<IServiceProvider,
+            TMessageDispatcherImpl> factory)
             where TMessageDispatcher : class, IMessageDispatcher
             where TMessageDispatcherImpl : class, TMessageDispatcher
         {
@@ -219,43 +222,49 @@ namespace AI4E
 
             var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
             var logger = loggerFactory?.CreateLogger("MessageHandlerRegistration");
-            RegisterMessageHandlerTypes(messageHandlerRegistry, processors, messageHandlerFeature.MessageHandlers, logger);
+            RegisterMessageHandlerTypes(messageHandlerFeature.MessageHandlers, messageHandlerRegistry, processors, logger);
 
             return messageHandlerRegistry;
         }
 
-        private static void RegisterMessageHandlerTypes(IMessageHandlerRegistry messageHandlerRegistry,
-                                                        ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
-                                                        IEnumerable<Type> types,
-                                                        ILogger logger)
+        private static void RegisterMessageHandlerTypes(
+            IEnumerable<Type> types,
+            IMessageHandlerRegistry messageHandlerRegistry,
+            ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+            ILogger logger)
         {
             foreach (var type in types)
             {
-                RegisterMessageHandlerType(messageHandlerRegistry, processors, type, logger);
+                RegisterMessageHandlerType(type, messageHandlerRegistry, processors, logger);
             }
         }
 
-        private static void RegisterMessageHandlerType(IMessageHandlerRegistry messageHandlerRegistry,
-                                                       ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
-                                                       Type type,
-                                                       ILogger logger)
+        private static void RegisterMessageHandlerType(
+            Type handlerType,
+            IMessageHandlerRegistry messageHandlerRegistry,
+            ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+            ILogger logger)
         {
-            var inspector = new MessageHandlerInspector(type);
-            var descriptors = inspector.GetHandlerDescriptors();
+            var inspector = new MessageHandlerInspector(handlerType);
+            var memberDescriptors = inspector.GetHandlerDescriptors();
 
-            foreach (var descriptor in descriptors)
+            foreach (var memberDescriptor in memberDescriptors)
             {
-                var messageType = descriptor.MessageType;
-                var factory = (IMessageHandlerFactory)Activator.CreateInstance(
-                    typeof(MessageHandlerProvider<>).MakeGenericType(messageType),
-                    type,
-                    descriptor,
-                    processors);
+                var registration = CreateMessageHandlerRegistration(handlerType, memberDescriptor, processors);
+                messageHandlerRegistry.Register(registration);
 
-                messageHandlerRegistry.Register(factory);
-
-                logger?.LogDebug($"Registered handler of type '{type}' for message-type '{messageType}'.");
+                logger?.LogDebug($"Registered handler of type '{handlerType}' for message-type '{memberDescriptor.MessageType}'.");
             }
+        }
+
+        private static IMessageHandlerFactory CreateMessageHandlerRegistration(
+            Type handlerType,
+            MessageHandlerActionDescriptor memberDescriptor,
+            ImmutableArray<IContextualProvider<IMessageProcessor>> processors)
+        {
+            return new MessageHandlerFactory(
+                memberDescriptor.MessageType,
+                serviceProvider => MessageHandlerInvoker.CreateInvoker(handlerType, memberDescriptor, processors, serviceProvider));
         }
 
         private static void ConfigureFeatureProviders(ApplicationPartManager partManager)
