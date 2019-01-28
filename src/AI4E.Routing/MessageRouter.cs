@@ -231,7 +231,7 @@ namespace AI4E.Routing
             return result.Where(p => p.handled).Select(p => p.response).ToArray();
         }
 
-        private async Task<List<RouteRegistration>> MatchRouteAsync(
+        private async Task<List<RouteTarget>> MatchRouteAsync(
             Route route,
             bool publish,
             ISet<EndPointAddress> handledEndPoints,

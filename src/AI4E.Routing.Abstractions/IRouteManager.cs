@@ -41,7 +41,7 @@ namespace AI4E.Routing
         Task RemoveRoutesAsync(EndPointAddress endPoint, bool removePersistentRoutes, CancellationToken cancellation = default);
 
         // TODO: Rename to GetRouteTargets?
-        Task<IEnumerable<RouteRegistration>> GetRoutesAsync(Route route, CancellationToken cancellation = default);
+        Task<IEnumerable<RouteTarget>> GetRoutesAsync(Route route, CancellationToken cancellation = default);
     }
 
     public interface IRouteManagerFactory

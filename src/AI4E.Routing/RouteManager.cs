@@ -137,14 +137,14 @@ namespace AI4E.Routing
             }
         }
 
-        public async Task<IEnumerable<RouteRegistration>> GetRoutesAsync(Route route, CancellationToken cancellation)
+        public async Task<IEnumerable<RouteTarget>> GetRoutesAsync(Route route, CancellationToken cancellation)
         {
             var path = GetPath(route);
             var entry = await _coordinationManager.GetOrCreateAsync(path, _emptyPayload, EntryCreationModes.Default, cancellation);
 
             Assert(entry != null);
 
-            RouteRegistration Extract(IEntry e)
+            RouteTarget Extract(IEntry e)
             {
                 using (var stream = e.OpenStream())
                 using (var reader = new BinaryReader(stream))
@@ -152,7 +152,7 @@ namespace AI4E.Routing
                     var registrationOptions = (RouteRegistrationOptions)reader.ReadInt32();
                     var endPoint = reader.ReadEndPointAddress();
 
-                    return new RouteRegistration(endPoint, registrationOptions);
+                    return new RouteTarget(endPoint, registrationOptions);
                 }
             }
 
