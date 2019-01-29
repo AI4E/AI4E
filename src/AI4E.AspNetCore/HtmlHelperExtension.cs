@@ -152,7 +152,7 @@ namespace AI4E.AspNetCore
 
             try
             {
-                dispatchResult = await dispatcher.DispatchAsync(viewExtension, publish: true, cancellation).WithCancellation(cancellation);
+                dispatchResult = await dispatcher.DispatchAsync(viewExtension, publish: true, cancellation).AsTask().WithCancellation(cancellation);
             }
             catch (OperationCanceledException)
             {

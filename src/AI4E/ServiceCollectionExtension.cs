@@ -108,7 +108,10 @@ namespace AI4E
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
-            services.AddSingleton<IMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, ActivatorUtilities.CreateInstance<TMessageDispatcher>(serviceProvider)));
+            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
+            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+
+            services.AddSingleton<IMessageDispatcher, TMessageDispatcher>();
         }
 
         public static void AddMessageDispatcher<TMessageDispatcher>(this IServiceCollection services, TMessageDispatcher instance)
@@ -122,7 +125,10 @@ namespace AI4E
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
-            services.AddSingleton<IMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, instance));
+            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
+            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+
+            services.AddSingleton<IMessageDispatcher>(instance);
         }
 
         public static void AddMessageDispatcher<TMessageDispatcher>(this IServiceCollection services, Func<IServiceProvider, TMessageDispatcher> factory)
@@ -136,7 +142,10 @@ namespace AI4E
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
-            services.AddSingleton<IMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, factory(serviceProvider)));
+            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
+            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+
+            services.AddSingleton<IMessageDispatcher>(factory);
         }
 
         public static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(this IServiceCollection services)
@@ -148,7 +157,10 @@ namespace AI4E
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
-            services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, ActivatorUtilities.CreateInstance<TMessageDispatcherImpl>(serviceProvider)));
+            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
+            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+
+            services.AddSingleton<TMessageDispatcher, TMessageDispatcherImpl>();
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
         }
 
@@ -164,11 +176,17 @@ namespace AI4E
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
-            services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, instance));
+            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
+            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+
+            services.AddSingleton<TMessageDispatcher>(instance);
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
         }
 
-        public static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(this IServiceCollection services, Func<IServiceProvider, TMessageDispatcherImpl> factory)
+        public static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(
+            this IServiceCollection services,
+            Func<IServiceProvider,
+            TMessageDispatcherImpl> factory)
             where TMessageDispatcher : class, IMessageDispatcher
             where TMessageDispatcherImpl : class, TMessageDispatcher
         {
@@ -180,18 +198,20 @@ namespace AI4E
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
-            services.AddSingleton<TMessageDispatcher>(serviceProvider => BuildMessageDispatcher(serviceProvider, factory(serviceProvider)));
+            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
+            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+
+            services.AddSingleton<TMessageDispatcher>(factory);
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
         }
 
-        public static TMessageDispatcher BuildMessageDispatcher<TMessageDispatcher>(IServiceProvider serviceProvider, TMessageDispatcher messageDispatcher)
-            where TMessageDispatcher : class, IMessageDispatcher
+        public static IMessageHandlerRegistry BuildMessageHandlerRegistry(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
         {
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
+            if (messageHandlerRegistry == null)
+                throw new ArgumentNullException(nameof(messageHandlerRegistry));
 
             var options = serviceProvider.GetService<IOptions<MessagingOptions>>()?.Value ?? new MessagingOptions();
             var processors = options.MessageProcessors.ToImmutableArray();
@@ -200,45 +220,74 @@ namespace AI4E
 
             partManager.PopulateFeature(messageHandlerFeature);
 
-            var logger = serviceProvider.GetService<ILogger<TMessageDispatcher>>();
+            var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+            var logger = loggerFactory?.CreateLogger("MessageHandlerRegistration");
+            RegisterMessageHandlerTypes(messageHandlerFeature.MessageHandlers, messageHandlerRegistry, processors, logger);
 
-            RegisterMessageHandlerTypes(messageDispatcher, processors, messageHandlerFeature.MessageHandlers, logger);
-
-            return messageDispatcher;
+            return messageHandlerRegistry;
         }
 
-        private static void RegisterMessageHandlerTypes(IMessageDispatcher messageDispatcher,
-                                                        ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
-                                                        IEnumerable<Type> types,
-                                                        ILogger logger)
+        private static void RegisterMessageHandlerTypes(
+            IEnumerable<Type> types,
+            IMessageHandlerRegistry messageHandlerRegistry,
+            ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+            ILogger logger)
         {
             foreach (var type in types)
             {
-                RegisterMessageHandlerType(messageDispatcher, processors, type, logger);
+                RegisterMessageHandlerType(type, messageHandlerRegistry, processors, logger);
             }
         }
 
-        private static void RegisterMessageHandlerType(IMessageDispatcher messageDispatcher,
-                                                       ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
-                                                       Type type,
-                                                       ILogger logger)
+        private static void RegisterMessageHandlerType(
+            Type handlerType,
+            IMessageHandlerRegistry messageHandlerRegistry,
+            ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+            ILogger logger)
         {
-            var inspector = new MessageHandlerInspector(type);
-            var descriptors = inspector.GetHandlerDescriptors();
+            var inspector = new MessageHandlerInspector(handlerType);
+            var memberDescriptors = inspector.GetHandlerDescriptors();
 
-            foreach (var descriptor in descriptors)
+            foreach (var memberDescriptor in memberDescriptors)
             {
-                var messageType = descriptor.MessageType;
-                var provider = (IContextualProvider<IMessageHandler>)Activator.CreateInstance(
-                    typeof(MessageHandlerProvider<>).MakeGenericType(messageType),
-                    type,
-                    descriptor,
-                    processors);
+                var registration = CreateMessageHandlerRegistration(memberDescriptor, processors);
+                messageHandlerRegistry.Register(registration);
 
-                messageDispatcher.Register(messageType, provider);
-
-                logger?.LogDebug($"Registered handler of type '{type}' for message-type '{messageType}'.");
+                logger?.LogDebug($"Registered handler of type '{handlerType}' for message-type '{memberDescriptor.MessageType}'.");
             }
+        }
+
+        private static IMessageHandlerRegistration CreateMessageHandlerRegistration(
+            MessageHandlerActionDescriptor memberDescriptor,
+            ImmutableArray<IContextualProvider<IMessageProcessor>> processors)
+        {
+            var configuration = BuildConfiguration(memberDescriptor);
+
+            return new MessageHandlerRegistration(
+                memberDescriptor.MessageType,
+                configuration,
+                serviceProvider => MessageHandlerInvoker.CreateInvoker(memberDescriptor, processors, serviceProvider));
+        }
+
+        private static ImmutableList<object> BuildConfiguration(in MessageHandlerActionDescriptor memberDescriptor)
+        {
+            var configurationBuilder = ImmutableList.CreateBuilder<object>();
+            var typeConfigAttributes = memberDescriptor.MessageHandlerType.GetCustomAttributes<ConfigureMessageHandlerAttribute>(inherit: true);
+
+            foreach (var typeConfigAttribute in typeConfigAttributes)
+            {
+                typeConfigAttribute.ExecuteConfigureMessageHandler(memberDescriptor, configurationBuilder);
+            }
+
+            var actionConfigAttributes = memberDescriptor.Member.GetCustomAttributes<ConfigureMessageHandlerAttribute>(inherit: true);
+
+            foreach (var actionConfigAttribute in actionConfigAttributes)
+            {
+                actionConfigAttribute.ExecuteConfigureMessageHandler(memberDescriptor, configurationBuilder);
+            }
+
+            var configuration = configurationBuilder.ToImmutable();
+            return configuration;
         }
 
         private static void ConfigureFeatureProviders(ApplicationPartManager partManager)

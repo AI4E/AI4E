@@ -43,7 +43,15 @@ namespace AI4E.Modularity.Debug
                 await message.ReadAsync(stream, cancellation);
             }
 
-            var response = await _logicalEndPoint.SendAsync(message, remoteEndPoint, cancellation);
+            var (response, handled) = await _logicalEndPoint.SendAsync(message, remoteEndPoint, cancellation);
+
+            response.Trim();
+
+            using (var stream = response.PushFrame().OpenStream())
+            using (var writer = new BinaryWriter(stream))
+            {
+                writer.Write(handled);
+            }
 
             return response.ToArray();
         }
@@ -98,6 +106,20 @@ namespace AI4E.Modularity.Debug
             }
 
             await _receiveResult.SendResponseAsync(response);
+        }
+
+        public async Task SendResponseAsync(byte[] responseBuffer, bool handled)
+        {
+            Assert(responseBuffer != null);
+
+            var response = new Message();
+
+            using (var stream = new MemoryStream(responseBuffer))
+            {
+                await response.ReadAsync(stream, cancellation: default);
+            }
+
+            await _receiveResult.SendResponseAsync(response, handled);
         }
 
         public Task SendCancellationAsync()

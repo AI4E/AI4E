@@ -33,44 +33,41 @@ namespace AI4E.Routing
 
         #region IRouteStore
 
-        public async Task AddRouteAsync(EndPointAddress endPoint, string route, RouteRegistrationOptions registrationOptions, CancellationToken cancellation)
+        public async Task AddRouteAsync(EndPointAddress endPoint, RouteRegistration routeRegistration, CancellationToken cancellation)
         {
             if (endPoint == default)
                 throw new ArgumentDefaultException(nameof(endPoint));
 
-            if (string.IsNullOrWhiteSpace(route))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(route));
-
-            if (!registrationOptions.IsValid())
-                throw new ArgumentException("Invalid enum value.", nameof(registrationOptions));
+            if (routeRegistration == default)
+                throw new ArgumentDefaultException(nameof(routeRegistration));
 
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var entryCreationMode = EntryCreationModes.Default;
 
-            if (registrationOptions.IncludesFlag(RouteRegistrationOptions.Transient))
+            if (routeRegistration.RegistrationOptions.IncludesFlag(RouteRegistrationOptions.Transient))
             {
                 entryCreationMode |= EntryCreationModes.Ephemeral;
             }
 
-            var reversePath = GetReversePath(session, endPoint, route);
+            var reversePath = GetReversePath(session, endPoint, routeRegistration.Route);
 
             using (var stream = new MemoryStream(capacity: 4))
             {
                 using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
                 {
-                    writer.Write((int)registrationOptions);
+                    writer.Write((int)routeRegistration.RegistrationOptions);
                 }
                 var payload = stream.ToArray();
                 await _coordinationManager.CreateAsync(reversePath, payload, entryCreationMode, cancellation);
             }
 
-            var path = GetPath(route, endPoint, session);
+            var path = GetPath(routeRegistration.Route, endPoint, session);
 
             using (var stream = new MemoryStream(capacity: 4 + 4 + endPoint.Utf8EncodedValue.Length))
             {
                 using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
                 {
-                    writer.Write((int)registrationOptions);
+                    writer.Write((int)routeRegistration.RegistrationOptions);
                     writer.Write(endPoint);
                 }
                 var payload = stream.ToArray();
@@ -79,13 +76,10 @@ namespace AI4E.Routing
             }
         }
 
-        public async Task RemoveRouteAsync(EndPointAddress endPoint, string route, CancellationToken cancellation)
+        public async Task RemoveRouteAsync(EndPointAddress endPoint, Route route, CancellationToken cancellation)
         {
             if (endPoint == default)
                 throw new ArgumentDefaultException(nameof(endPoint));
-
-            if (string.IsNullOrWhiteSpace(route))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(route));
 
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var path = GetPath(route, endPoint, session);
@@ -111,7 +105,7 @@ namespace AI4E.Routing
 
             foreach (var reverseRouteEntry in await reverseEntry.GetChildrenEntriesAsync(cancellation))
             {
-                var route = reverseRouteEntry.Name.Segment.ConvertToString();
+                var route = new Route(reverseRouteEntry.Name.Segment.ConvertToString());
                 var routePath = GetPath(route, endPoint, session);
 
                 if (!removePersistentRoutes)
@@ -143,17 +137,14 @@ namespace AI4E.Routing
             }
         }
 
-        public async Task<IEnumerable<(EndPointAddress endPoint, RouteRegistrationOptions registrationOptions)>> GetRoutesAsync(string route, CancellationToken cancellation)
+        public async Task<IEnumerable<RouteTarget>> GetRoutesAsync(Route route, CancellationToken cancellation)
         {
-            if (string.IsNullOrWhiteSpace(route))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(route));
-
             var path = GetPath(route);
             var entry = await _coordinationManager.GetOrCreateAsync(path, _emptyPayload, EntryCreationModes.Default, cancellation);
 
             Assert(entry != null);
 
-            (EndPointAddress endPoint, RouteRegistrationOptions registrationOptions) Extract(IEntry e)
+            RouteTarget Extract(IEntry e)
             {
                 using (var stream = e.OpenStream())
                 using (var reader = new BinaryReader(stream))
@@ -161,27 +152,27 @@ namespace AI4E.Routing
                     var registrationOptions = (RouteRegistrationOptions)reader.ReadInt32();
                     var endPoint = reader.ReadEndPointAddress();
 
-                    return (endPoint, registrationOptions);
+                    return new RouteTarget(endPoint, registrationOptions);
                 }
             }
 
             return await entry.GetChildrenEntries()
                               .Select(p => Extract(p))
-                              .Distinct(p => p.endPoint)
+                              .Distinct(p => p.EndPoint) // TODO: Can we do anything about the case, that an end-point is registered with different options for the route?
                               .ToArray();
         }
 
         #endregion
 
-        private static CoordinationEntryPath GetPath(string route)
+        private static CoordinationEntryPath GetPath(Route route)
         {
-            return _routesRootPath.GetChildPath(route);
+            return _routesRootPath.GetChildPath(route.ToString());
         }
 
-        private static CoordinationEntryPath GetPath(string route, EndPointAddress endPoint, string session)
+        private static CoordinationEntryPath GetPath(Route route, EndPointAddress endPoint, string session)
         {
             var uniqueEntryName = IdGenerator.GenerateId(endPoint.ToString(), session);
-            return _routesRootPath.GetChildPath(route, uniqueEntryName);
+            return _routesRootPath.GetChildPath(route.ToString(), uniqueEntryName);
         }
 
         private static CoordinationEntryPath GetReversePath(string session, EndPointAddress endPoint)
@@ -189,9 +180,9 @@ namespace AI4E.Routing
             return _reverseRoutesRootPath.GetChildPath(session, endPoint.ToString());
         }
 
-        private static CoordinationEntryPath GetReversePath(string session, EndPointAddress endPoint, string route)
+        private static CoordinationEntryPath GetReversePath(string session, EndPointAddress endPoint, Route route)
         {
-            return _reverseRoutesRootPath.GetChildPath(session, endPoint.ToString(), route);
+            return _reverseRoutesRootPath.GetChildPath(session, endPoint.ToString(), route.ToString());
         }
     }
 

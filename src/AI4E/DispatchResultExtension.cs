@@ -374,5 +374,22 @@ namespace AI4E
                 throw new FailureOrTypeMismatchException();
             }
         }
+
+        public static bool IsDispatchFailure(this IDispatchResult dispatchResult)
+        {
+            return dispatchResult is DispatchFailureDispatchResult;
+        }
+
+        public static bool IsDispatchFailure(this IDispatchResult dispatchResult, out Type messageType)
+        {
+            if (dispatchResult is DispatchFailureDispatchResult dispatchFailure)
+            {
+                messageType = dispatchFailure.MessageType;
+                return true;
+            }
+
+            messageType = default;
+            return false;
+        }
     }
 }

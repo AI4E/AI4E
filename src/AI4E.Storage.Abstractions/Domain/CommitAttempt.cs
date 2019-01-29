@@ -3,7 +3,7 @@
  * Filename:        CommitAttempt.cs 
  * Types:           (1) AI4E.Storage.Domain.CommitAttempt
  * Version:         1.0
- * Author:          Andreas Trütschel
+ * Author:          Andreas TrÃ¼tschel
  * Last modified:   13.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
@@ -77,7 +77,7 @@ namespace AI4E.Storage.Domain
         public CommitAttempt(
             string bucketId,
             string streamId,
-            string concurrencyToken,
+            //string concurrencyToken,
             long streamRevision,
             DateTime commitStamp,
             IReadOnlyDictionary<string, object> headers,
@@ -90,15 +90,15 @@ namespace AI4E.Storage.Domain
             if (string.IsNullOrWhiteSpace(streamId))
                 throw new ArgumentNullOrWhiteSpaceException(nameof(streamId));
 
-            if (string.IsNullOrWhiteSpace(concurrencyToken))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(concurrencyToken));
+            //if (string.IsNullOrWhiteSpace(concurrencyToken))
+            //    throw new ArgumentNullOrWhiteSpaceException(nameof(concurrencyToken));
 
             if (streamRevision <= 0)
                 throw new ArgumentOutOfRangeException(nameof(streamRevision));
 
             BucketId = bucketId;
             StreamId = streamId;
-            ConcurrencyToken = concurrencyToken;
+            //ConcurrencyToken = concurrencyToken;
             StreamRevision = streamRevision;
             CommitStamp = commitStamp;
             Body = body;
@@ -116,10 +116,10 @@ namespace AI4E.Storage.Domain
         /// </summary>
         public string StreamId { get; }
 
-        /// <summary>
-        /// Gets the value which uniquely identifies the commit within the stream.
-        /// </summary>
-        public string ConcurrencyToken { get; }
+        ///// <summary>
+        ///// Gets the value which uniquely identifies the commit within the stream.
+        ///// </summary>
+        //public string ConcurrencyToken { get; }
 
         /// <summary>
         /// Gets the value which indicates the sequence (or position) in the stream to which this commit applies.

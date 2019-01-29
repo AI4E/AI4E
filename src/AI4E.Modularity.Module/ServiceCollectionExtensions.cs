@@ -1,5 +1,8 @@
 using System;
 using System.Net;
+using System.Reflection;
+using AI4E.ApplicationParts;
+using AI4E.ApplicationParts.Utils;
 using AI4E.Coordination;
 using AI4E.Modularity.Debug;
 using AI4E.Remoting;
@@ -30,9 +33,15 @@ namespace AI4E.Modularity.Module
             services.AddSingleton<IModuleManager, ModuleManager>();
             services.AddSingleton<IMetadataReader, MetadataReader>();
 
+            services.ConfigureApplicationParts(ConfigureApplicationParts);
             services.ConfigureApplicationServices(ConfigureApplicationServices);
 
             return services;
+        }
+
+        private static void ConfigureApplicationParts(ApplicationPartManager partManager)
+        {
+            partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
         }
 
         private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)

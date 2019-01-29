@@ -81,7 +81,7 @@ namespace AI4E.Handler
             if (IsSychronousHandler(member, actionAttribute, returnTypeDescriptor) || 
                 IsAsynchronousHandler(member, actionAttribute, returnTypeDescriptor))
             {
-                descriptor = new MessageHandlerActionDescriptor(messageType, member);
+                descriptor = new MessageHandlerActionDescriptor(messageType, _type, member);
                 return true;
             }
 

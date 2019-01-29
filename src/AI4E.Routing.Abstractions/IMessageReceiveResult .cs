@@ -12,6 +12,7 @@ namespace AI4E.Routing
 
         // Send the specified response and end the request.
         Task SendResponseAsync(IMessage response);
+        Task SendResponseAsync(IMessage response, bool handled);
         Task SendCancellationAsync();
         Task SendAckAsync();
     }
@@ -88,6 +89,41 @@ namespace AI4E.Routing
 
     public static partial class MessageReceiveResultExtensions
     {
+        public static async Task HandleAsync(
+            this IMessageReceiveResult messageReceiveResult,
+            Func<IMessage, CancellationToken, Task<(IMessage message, bool handled)>> handler,
+            CancellationToken cancellation)
+        {
+            if (messageReceiveResult == null)
+                throw new ArgumentNullException(nameof(messageReceiveResult));
+
+            if (handler == null)
+                throw new ArgumentNullException(nameof(handler));
+
+            using (var combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, messageReceiveResult.Cancellation))
+            {
+                cancellation = combinedCancellationSource.Token;
+
+                try
+                {
+                    var (response, handled) = await handler(messageReceiveResult.Message, cancellation);
+
+                    if (response != null)
+                    {
+                        await messageReceiveResult.SendResponseAsync(response, handled);
+                    }
+                    else
+                    {
+                        await messageReceiveResult.SendAckAsync();
+                    }
+                }
+                catch (OperationCanceledException) when (messageReceiveResult.Cancellation.IsCancellationRequested)
+                {
+                    await messageReceiveResult.SendCancellationAsync();
+                }
+            }
+        }
+
         public static async Task HandleAsync(
             this IMessageReceiveResult messageReceiveResult,
             Func<IMessage, CancellationToken, Task<IMessage>> handler,

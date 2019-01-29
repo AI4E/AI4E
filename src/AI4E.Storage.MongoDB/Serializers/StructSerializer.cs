@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -30,7 +30,7 @@ using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Storage.MongoDB
+namespace AI4E.Storage.MongoDB.Serializers
 {
     // Based on: 
     // https://stackoverflow.com/questions/16501145/serializing-immutable-value-types-with-mongo-c-sharp-driver#answer-39613579
@@ -164,7 +164,7 @@ namespace AI4E.Storage.MongoDB
         }
     }
 
-    public class StructSerializer<T> : StructSerializerBase<T> where T : struct
+    public sealed class StructSerializer<T> : StructSerializerBase<T> where T : struct
     {
         private static readonly PropertyInfo[] _emtptyProperties = new PropertyInfo[0];
 

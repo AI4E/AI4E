@@ -30,7 +30,7 @@ namespace AI4E
     /// </summary>
     public static class MessageDispatcherExtension
     {
-        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, IEnumerable<KeyValuePair<string, object>> data, CancellationToken cancellation = default)
+        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, IEnumerable<KeyValuePair<string, object>> data, CancellationToken cancellation = default)
              where TMessage : class
         {
             if (messageDispatcher == null)
@@ -45,7 +45,7 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message, data), publish: false, cancellation);
         }
 
-        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, CancellationToken cancellation = default)
+        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, CancellationToken cancellation = default)
              where TMessage : class
         {
             if (messageDispatcher == null)
@@ -57,7 +57,7 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message), publish: false, cancellation);
         }
 
-        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, CancellationToken cancellation = default)
+        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, CancellationToken cancellation = default)
              where TMessage : class, new()
         {
             if (messageDispatcher == null)
@@ -66,7 +66,7 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(new TMessage()), publish: false, cancellation);
         }
 
-        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, IEnumerable<KeyValuePair<string, object>> data, bool publish, CancellationToken cancellation = default)
+        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, IEnumerable<KeyValuePair<string, object>> data, bool publish, CancellationToken cancellation = default)
              where TMessage : class
         {
             if (messageDispatcher == null)
@@ -81,7 +81,7 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message, data), publish, cancellation);
         }
 
-        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, bool publish, CancellationToken cancellation = default)
+        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, bool publish, CancellationToken cancellation = default)
              where TMessage : class
         {
             if (messageDispatcher == null)
@@ -93,29 +93,13 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message), publish, cancellation);
         }
 
-        public static Task<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, bool publish, CancellationToken cancellation = default)
+        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, bool publish, CancellationToken cancellation = default)
              where TMessage : class, new()
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
             return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(new TMessage()), publish, cancellation);
-        }
-
-        public static IHandlerRegistration<IMessageHandler<TMessage>> Register<TMessage>(
-           this IMessageDispatcher messageDispatcher,
-           IContextualProvider<IMessageHandler<TMessage>> messageHandlerProvider)
-           where TMessage : class
-        {
-            if (messageDispatcher == null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
-            if (messageHandlerProvider == null)
-                throw new ArgumentNullException(nameof(messageHandlerProvider));
-
-            var messageType = typeof(TMessage);
-            var handlerRegistration = messageDispatcher.Register(typeof(TMessage), new TypedMessageHandlerProvider<TMessage>(messageHandlerProvider));
-
-            return new TypedHandleRegistration<TMessage>(messageHandlerProvider, handlerRegistration);
         }
     }
 }

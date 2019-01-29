@@ -4,11 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
 using AI4E.DispatchResults;
 using AI4E.Internal;
 using AI4E.Storage.Projection;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 using AI4E.Utils.AsyncEnumerable;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -107,11 +107,11 @@ namespace AI4E.Storage.Domain
                 {
                     if (attempt == 1)
                     {
-                        _logger?.LogDebug($"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}'.");
+                        _logger?.LogDebug($"Dispatching commit '{commit.Headers[EntityStorageEngine.ConcurrencyTokenHeaderKey]}' of stream '{commit.StreamId}'.");
                     }
                     else
                     {
-                        _logger?.LogDebug($"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}' ({attempt}. attempt).");
+                        _logger?.LogDebug($"Dispatching commit '{commit.Headers[EntityStorageEngine.ConcurrencyTokenHeaderKey]}' of stream '{commit.StreamId}' ({attempt}. attempt).");
                     }
 
                     var projection = ProjectAsync(typeName, commit.StreamId, tcs, cancellation);
@@ -131,7 +131,7 @@ namespace AI4E.Storage.Domain
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
                 {
-                    _logger?.LogWarning(exc, $"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}' failed.");
+                    _logger?.LogWarning(exc, $"Dispatching commit '{commit.Headers[EntityStorageEngine.ConcurrencyTokenHeaderKey]}' of stream '{commit.StreamId}' failed.");
 
                     Task.Run(() => tcs?.TrySetException(exc)).HandleExceptions();
                 }
@@ -142,7 +142,7 @@ namespace AI4E.Storage.Domain
                 await Task.Delay(timeToWait);
             }
 
-            _logger?.LogError($"Dispatching commit '{commit.ConcurrencyToken}' of stream '{commit.StreamId}' finally failed.");
+            _logger?.LogError($"Dispatching commit '{commit.Headers[EntityStorageEngine.ConcurrencyTokenHeaderKey]}' of stream '{commit.StreamId}' finally failed.");
         }
 
         private async Task<bool> DispatchCoreAsync(ICommit commit, CancellationToken cancellation)
@@ -172,18 +172,18 @@ namespace AI4E.Storage.Domain
                 events = commit.Events.Select(p => Deserialize(p.Body as byte[])).ToList();
             }
 
-            var dispatchResults = await Task.WhenAll(events.Select(p => DispatchEventAsync(p, cancellation)));
+            var dispatchResults = await ValueTaskHelper.WhenAll(events.Select(p => DispatchEventAsync(p, cancellation)), preserveOrder: false);
             var dispatchResult = new AggregateDispatchResult(dispatchResults);
 
             if (!dispatchResult.IsSuccess)
             {
-                _logger?.LogWarning($"Dispatching commit {commit.ConcurrencyToken} of stream {commit.StreamId} failed for reason: {dispatchResult.Message}.");
+                _logger?.LogWarning($"Dispatching commit {commit.Headers[EntityStorageEngine.ConcurrencyTokenHeaderKey]} of stream {commit.StreamId} failed for reason: {dispatchResult.Message}.");
             }
 
             return dispatchResult.IsSuccess;
         }
 
-        private Task<IDispatchResult> DispatchEventAsync(object evt, CancellationToken cancellation)
+        private ValueTask<IDispatchResult> DispatchEventAsync(object evt, CancellationToken cancellation)
         {
             var dispatchData = DispatchDataDictionary.Create(evt.GetType(), evt);
             return _eventDispatcher.DispatchLocalAsync(dispatchData, publish: true, cancellation);

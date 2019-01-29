@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -36,6 +36,8 @@ namespace AI4E
     {
         MessageHandlerActionDescriptor MessageHandlerAction { get; }
         object MessageHandler { get; }
+        bool IsPublish { get; }
+        bool IsLocalDispatch { get; }
     }
 
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]

@@ -150,13 +150,13 @@ namespace AI4E.Blazor.Module.Server
         private static IContentTypeProvider CreateContentTypeProvider(bool enableDebugging)
         {
             var result = new FileExtensionContentTypeProvider();
-            result.Mappings.Add(".dll", MediaTypeNames.Application.Octet);
-            result.Mappings.Add(".mem", MediaTypeNames.Application.Octet);
-            result.Mappings.Add(".wasm", WasmMediaTypeNames.Application.Wasm);
+            result.Mappings[".dll"] = MediaTypeNames.Application.Octet;
+            result.Mappings[".mem"] = MediaTypeNames.Application.Octet;
+            result.Mappings[".wasm"] = WasmMediaTypeNames.Application.Wasm;
 
             if (enableDebugging)
             {
-                result.Mappings.Add(".pdb", MediaTypeNames.Application.Octet);
+                result.Mappings[".pdb"] = MediaTypeNames.Application.Octet;
             }
 
             return result;

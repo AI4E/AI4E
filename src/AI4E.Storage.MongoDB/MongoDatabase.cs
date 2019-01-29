@@ -35,6 +35,7 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using AI4E.Storage.MongoDB.Serializers;
 using AI4E.Storage.Transactions;
 using AI4E.Utils;
 using AI4E.Utils.Async;
@@ -76,6 +77,7 @@ namespace AI4E.Storage.MongoDB
         static MongoDatabase()
         {
             BsonSerializer.RegisterSerializationProvider(new StructSerializationProvider());
+            BsonSerializer.RegisterSerializationProvider(new DictionarySerializerProvider());
             var conventionPack = new ConventionPack
             {
                 new ClassMapConvention()

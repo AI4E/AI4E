@@ -30,9 +30,9 @@ namespace AI4E.Routing.SignalR.Client
             _reqRplyEndPoint = new RequestReplyEndPoint<Packet>(wrapper, logger);
         }
 
-        public Task<IMessage> SendAsync(IMessage message, CancellationToken cancellation = default)
+        public async Task<IMessage> SendAsync(IMessage message, CancellationToken cancellation = default)
         {
-            return _reqRplyEndPoint.SendAsync(new Packet(message), cancellation);
+            return (await _reqRplyEndPoint.SendAsync(new Packet(message), cancellation)).message;
         }
 
         // TODO: Can we downcast here, without an async state machine? (See also: EndPointManager)

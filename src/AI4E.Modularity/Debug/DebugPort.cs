@@ -26,13 +26,13 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
 using AI4E.Modularity.Host;
-using AI4E.Utils.Processing;
 using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
 using AI4E.Utils;
+using AI4E.Utils.Async;
+using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
@@ -102,9 +102,11 @@ namespace AI4E.Modularity.Debug
         private async Task<IPEndPoint> InitializeInternalAsync(CancellationToken cancellation)
         {
             // We MUST ensure that we only open the debug-port if
-            // - the handler for the debug messages are registered AND
-            // - reached a globally consistent state (their routes are registered).
-            await _messageDispatcher.WaitPendingRegistrationsAsync(cancellation);
+            // - the handler for the debug messages is registered AND
+            // - reached a globally consistent state (its routes are registered).
+
+            // TODO: https://github.com/AI4E/AI4E/issues/111
+            //await ((_messageDispatcher as IAsyncInitialization)?.Initialization?.WithCancellation(cancellation) ?? Task.CompletedTask);
 
             _tcpHost.Start();
             var localAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;
@@ -139,7 +141,7 @@ namespace AI4E.Modularity.Debug
             }
             finally
             {
-                await _initializationHelper.CancelAsync().HandleExceptionsAsync(_logger);
+                await _initializationHelper.CancelAsync().HandleExceptionsAsync(logger: _logger);
                 await _connectionProcess.TerminateAsync().HandleExceptionsAsync(_logger);
             }
         }
@@ -232,18 +234,17 @@ namespace AI4E.Modularity.Debug
             {
                 var properties = await DebugModuleProperties.ReadAsync(_stream, cancellation);
 
-                _debugServer._messageDispatcher
-                    .DispatchAsync(new DebugModuleConnected(properties), publish: true, cancellation)
-                    .HandleExceptions(_logger); // Do NOT wait for the messages to be dispatched (fire and forget)
+                // TODO: https://github.com/AI4E/AI4E/issues/102
+                //       The messaging system does not guarantee message ordering.
+                //       The message may be delivered AFTER a DebugModuleDisconnected message for the same module that was sent thereafter.
+                _debugServer._messageDispatcher.Dispatch(new DebugModuleConnected(properties), publish: true);
 
                 return properties;
             }
 
             private Task DisposePropertiesAsync(DebugModuleProperties properties)
             {
-                _debugServer._messageDispatcher
-                    .DispatchAsync(new DebugModuleDisconnected(properties), publish: true)
-                    .HandleExceptions(_logger); // Do NOT wait for the messages to be dispatched (fire and forget)
+                _debugServer._messageDispatcher.Dispatch(new DebugModuleDisconnected(properties), publish: true);
 
                 return Task.CompletedTask;
             }

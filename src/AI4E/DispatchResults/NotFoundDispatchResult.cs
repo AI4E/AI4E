@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,10 +18,13 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using Newtonsoft.Json;
+
 namespace AI4E.DispatchResults
 {
     public class NotFoundDispatchResult : FailureDispatchResult
     {
+        [JsonConstructor]
         public NotFoundDispatchResult(string message) : base(message) { }
 
         public NotFoundDispatchResult() : base("Not found") { }

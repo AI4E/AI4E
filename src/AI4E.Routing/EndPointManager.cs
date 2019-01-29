@@ -227,7 +227,7 @@ namespace AI4E.Routing
                 return await ReceiveAsync(cancellation);
             }
 
-            public async Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
+            public async Task<(IMessage response, bool handled)> SendAsync(IMessage message, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
             {
                 using (CheckDisposal(ref cancellation, out var externalCancellation, out var disposal))
                 {
@@ -242,7 +242,7 @@ namespace AI4E.Routing
                 }
             }
 
-            public async Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation)
+            public async Task<(IMessage response, bool handled)> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation)
             {
                 using (CheckDisposal(ref cancellation, out var externalCancellation, out var disposal))
                 {
@@ -255,6 +255,8 @@ namespace AI4E.Routing
 
                         try
                         {
+                            IMessage lastReceivedResponse = null;
+
                             foreach (var remoteAddress in remoteAddresses)
                             {
                                 // TODO: Optimize this
@@ -269,7 +271,8 @@ namespace AI4E.Routing
                                     operations.Remove(timeout);
                                 }
 
-                                operations.Add(SendInternalAsync(messageCopy, remoteEndPoint, remoteAddress, cancellation));
+                                var sendOperation = SendInternalAsync(messageCopy, remoteEndPoint, remoteAddress, cancellation);
+                                operations.Add(sendOperation);
                                 timeout = Task.Delay(5000); // TODO: This should be configurable
                                 operations.Add(timeout);
 
@@ -277,14 +280,33 @@ namespace AI4E.Routing
 
                                 if (completedOperation != timeout)
                                 {
-                                    return await (completedOperation as Task<IMessage>);
+                                    var (response, handled) = await (completedOperation as Task<(IMessage message, bool handled)>);
+
+                                    if (handled)
+                                    {
+                                        return (response, handled: true);
+                                    }
+                                    else
+                                    {
+                                        Interlocked.Exchange(ref lastReceivedResponse, response);
+
+                                        operations.Remove(completedOperation);
+                                    }
                                 }
                             }
 
                             Assert(timeout != null);
                             operations.Remove(timeout);
 
-                            return await (await Task.WhenAny(operations) as Task<IMessage>);
+                            if (operations.Any())
+                            {
+                                return await (await Task.WhenAny(operations) as Task<(IMessage message, bool handled)>);
+                            }
+                            else
+                            {
+                                return (lastReceivedResponse, handled: false);
+                            }
+
                         }
                         finally
                         {
@@ -301,10 +323,10 @@ namespace AI4E.Routing
                 }
             }
 
-            private async Task<IMessage> SendInternalAsync(IMessage message, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
+            private async Task<(IMessage response, bool handled)> SendInternalAsync(IMessage message, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
             {
                 var responseSource = EncodeRequestMessage(message, remoteEndPoint, out var seqNum);
-                var response = responseSource.Task;
+                var responseTask = responseSource.Task;
 
                 void RequestCancellation()
                 {
@@ -313,10 +335,11 @@ namespace AI4E.Routing
 
                 using (cancellation.Register(RequestCancellation))
                 {
-                    await Task.WhenAll(SendEncodedMessageInternalAsync(message, remoteEndPoint, remoteAddress, cancellation), response);
+                    await Task.WhenAll(SendEncodedMessageInternalAsync(message, remoteEndPoint, remoteAddress, cancellation), responseTask);
                 }
 
-                return (await response).message;
+                var response = await responseTask;
+                return (response.message, response.decodedMessage.Handled);
             }
 
             private async ValueTask<IEnumerable<TAddress>> GetAddressesAsync(EndPointAddress remoteEndPoint, CancellationToken cancellation)
@@ -348,7 +371,7 @@ namespace AI4E.Routing
             private Task RequestCancellationAsync(int corr, EndPointAddress remoteEndPoint, TAddress remoteAddress)
             {
                 var message = new Message();
-                EncodeMessage(message, new DecodedMessage(MessageType.CancellationRequest, GetNextSeqNum(), corr, EndPoint, remoteEndPoint));
+                EncodeMessage(message, new DecodedMessage(MessageType.CancellationRequest, handled: false, GetNextSeqNum(), corr, EndPoint, remoteEndPoint));
 
                 return SendEncodedMessageInternalAsync(message, remoteEndPoint, remoteAddress, cancellation: default);
             }
@@ -414,7 +437,7 @@ namespace AI4E.Routing
             private Task SendMisroutedAsync(TAddress remoteAddress, EndPointAddress rxEndPoint, int seqNum, CancellationToken cancellation)
             {
                 var message = new Message();
-                EncodeMessage(message, new DecodedMessage(MessageType.Misrouted, GetNextSeqNum(), seqNum, EndPoint, rxEndPoint));
+                EncodeMessage(message, new DecodedMessage(MessageType.Misrouted, handled: false, GetNextSeqNum(), seqNum, EndPoint, rxEndPoint));
 
                 return SendEncodedMessageInternalAsync(message, rxEndPoint, remoteAddress, cancellation);
             }
@@ -465,18 +488,21 @@ namespace AI4E.Routing
             private readonly struct DecodedMessage // TODO: Rename
             {
                 public DecodedMessage(MessageType messageType,
+                                      bool handled,
                                       int seqNum,
                                       int corr,
                                       EndPointAddress txEndPoint,
                                       EndPointAddress rxEndPoint)
                 {
                     MessageType = messageType;
+                    Handled = handled;
                     SeqNum = seqNum;
                     Corr = corr;
                     TxEndPoint = txEndPoint;
                     RxEndPoint = rxEndPoint;
                 }
                 public MessageType MessageType { get; }
+                public bool Handled { get; }
                 public int SeqNum { get; }
                 public int Corr { get; }
                 public EndPointAddress TxEndPoint { get; }
@@ -516,6 +542,7 @@ namespace AI4E.Routing
 
                 var frameIdx = message.FrameIndex;
                 MessageType messageType;
+                bool handled;
                 int seqNum, corr;
                 EndPointAddress txEndPoint, rxEndPoint;
 
@@ -525,6 +552,9 @@ namespace AI4E.Routing
                     using (var reader = new BinaryReader(frameStream))
                     {
                         messageType = (MessageType)reader.ReadInt32();
+                        handled = reader.ReadBoolean();
+                        reader.ReadInt16();
+                        reader.ReadByte();
                         seqNum = reader.ReadInt32();
                         corr = reader.ReadInt32();
 
@@ -539,7 +569,7 @@ namespace AI4E.Routing
                     throw;
                 }
 
-                decodedMessage = new DecodedMessage(messageType, seqNum, corr, txEndPoint, rxEndPoint);
+                decodedMessage = new DecodedMessage(messageType, handled, seqNum, corr, txEndPoint, rxEndPoint);
             }
 
             private void EncodeMessage(IMessage message, in DecodedMessage decodedMessage)
@@ -555,6 +585,9 @@ namespace AI4E.Routing
                     using (var writer = new BinaryWriter(frameStream))
                     {
                         writer.Write((int)decodedMessage.MessageType);  // Message type        -- 4 Byte
+                        writer.Write(decodedMessage.Handled);
+                        writer.Write((short)0);
+                        writer.Write((byte)0);
                         writer.Write(decodedMessage.SeqNum);            // Seq num             -- 4 Byte
                         writer.Write(decodedMessage.Corr);              // Coor num            -- 4 Byte
                         writer.Write(decodedMessage.TxEndPoint);
@@ -577,7 +610,7 @@ namespace AI4E.Routing
                 var responseSource = new TaskCompletionSource<(IMessage message, DecodedMessage decodedMessage, TAddress remoteAddress)>();
                 seqNum = AllocateResponseTableSlot(responseSource);
 
-                EncodeMessage(message, new DecodedMessage(MessageType.Request, seqNum, corr: 0, EndPoint, remoteEndPoint));
+                EncodeMessage(message, new DecodedMessage(MessageType.Request, handled: false, seqNum, corr: 0, EndPoint, remoteEndPoint));
                 return responseSource;
             }
 
@@ -691,33 +724,54 @@ namespace AI4E.Routing
 
                 public Task SendResponseAsync(IMessage response)
                 {
+                    return SendResponseAsync(response, handled: true);
+                }
+
+                public Task SendResponseAsync(IMessage response, bool handled)
+                {
                     if (response == null)
                         throw new ArgumentNullException(nameof(response));
 
-                    return SendResponseInternalAsync(response);
+                    return SendResponseInternalAsync(response, handled);
                 }
 
                 public Task SendCancellationAsync()
                 {
                     var message = new Message();
-                    _logicalEndPoint.EncodeMessage(message, new DecodedMessage(MessageType.CancellationResponse, _logicalEndPoint.GetNextSeqNum(), _seqNum, _logicalEndPoint.EndPoint, RemoteEndPoint));
+                    var decodedMessage = new DecodedMessage(
+                        MessageType.CancellationResponse,
+                        handled: false,
+                        _logicalEndPoint.GetNextSeqNum(),
+                        _seqNum,
+                        _logicalEndPoint.EndPoint,
+                        RemoteEndPoint);
+
+                    _logicalEndPoint.EncodeMessage(message, decodedMessage);
 
                     return _logicalEndPoint.SendEncodedMessageInternalAsync(message, RemoteEndPoint, RemoteAddress, Cancellation); // TODO: Can we pass Cancellation here?
                 }
 
                 public Task SendAckAsync()
                 {
-                    return SendResponseInternalAsync(null);
+                    return SendResponseInternalAsync(null, handled: false);
                 }
 
-                private Task SendResponseInternalAsync(IMessage response)
+                private Task SendResponseInternalAsync(IMessage response, bool handled)
                 {
                     if (response == null)
                     {
                         response = new Message();
                     }
 
-                    _logicalEndPoint.EncodeMessage(response, new DecodedMessage(MessageType.Response, _logicalEndPoint.GetNextSeqNum(), _seqNum, _logicalEndPoint.EndPoint, RemoteEndPoint));
+                    var decodedMessage = new DecodedMessage(
+                        MessageType.Response,
+                        handled,
+                        _logicalEndPoint.GetNextSeqNum(),
+                        _seqNum,
+                        _logicalEndPoint.EndPoint,
+                        RemoteEndPoint);
+
+                    _logicalEndPoint.EncodeMessage(response, decodedMessage);
 
                     return _logicalEndPoint.SendEncodedMessageInternalAsync(response, RemoteEndPoint, RemoteAddress, Cancellation); // TODO: Can we pass Cancellation here?
                 }

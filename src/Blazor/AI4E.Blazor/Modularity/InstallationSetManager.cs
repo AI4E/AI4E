@@ -152,19 +152,19 @@ namespace AI4E.Blazor.Modularity
 
             foreach (var installedModule in installedModules)
             {
-                _logger?.LogTrace($"Processing newly installed module {installedModule}.");
+                _logger?.LogDebug($"Processing newly installed module {installedModule}.");
 
                 var manifest = await _moduleManifestProvider.GetModuleManifestAsync(installedModule, cancellation);
                 var assemblies = manifest.Assemblies;
 
                 foreach (var assembly in assemblies)
                 {
-                    _logger?.LogTrace($"Processing assembly {assembly.AssemblyName} {assembly.AssemblyVersion} as required by module {installedModule}.");
+                    _logger?.LogDebug($"Processing assembly {assembly.AssemblyName} {assembly.AssemblyVersion} as required by module {installedModule}.");
 
                     // If no assembly with the same name name exists, we can just add it.
                     if (!installedAssemblies.TryGetValue(assembly.AssemblyName, out var existing))
                     {
-                        _logger?.LogTrace($"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. The assembly is {(!assembly.IsAppPart ? "not " : "")} an app-part.");
+                        _logger?.LogDebug($"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. The assembly is {(!assembly.IsAppPart ? "not " : "")} an app-part.");
 
                         installedAssemblies[assembly.AssemblyName] = (assembly.AssemblyVersion, assembly.IsAppPart, installedModule);
 
@@ -179,7 +179,7 @@ namespace AI4E.Blazor.Modularity
                     // The version of the existing assembly is greater or equal than the one, we try to install.
                     if (existing.version >= assembly.AssemblyVersion)
                     {
-                        _logger?.LogTrace($"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. " +
+                        _logger?.LogDebug($"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. " +
                             $"It is not necessary to install the assembly as it will already be installed in version {existing.version}. " +
                             $"The assembly is {(!(existing.isAppPart || assembly.IsAppPart) ? "not " : "")} an app-part.");
 
@@ -197,7 +197,7 @@ namespace AI4E.Blazor.Modularity
                     // If the existing assembly is not yet installed.
                     if (!_installedAssemblies.TryGetValue(assembly.AssemblyName, out var existingInstalled))
                     {
-                        _logger?.LogTrace($"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. " +
+                        _logger?.LogDebug($"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. " +
                             $"Assembly will replace version {existing.version} in the future installation set. " +
                             $"The assembly is {(!(existing.isAppPart || assembly.IsAppPart) ? "not " : "")} an app-part.");
 
@@ -275,6 +275,8 @@ namespace AI4E.Blazor.Modularity
 
             foreach (var asmName in registerAsAppPart)
             {
+                _logger?.LogDebug($"Installing {asmName} as app part.");
+
                 var asm = _moduleAssemblyDownloader.GetAssembly(asmName);
 
                 Assert(asm != null);

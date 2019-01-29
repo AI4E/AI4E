@@ -1,15 +1,3 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        HandlerRegistration.cs 
- * Types:           AI4E.HandlerRegistration
- *                  AI4E.HandlerRegistrationSource
- *                  AI4E.HandlerRegistrationSource'1
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   25.02.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -34,12 +22,12 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AI4E
+namespace AI4E.Storage.Projection
 {
     /// <summary>
     /// Provides method for creating handler registrations.
     /// </summary>
-    public static class HandlerRegistration
+    public static class ProjectionRegistration
     {
         /// <summary>
         /// Asynchronously registers the specified handler in the specified handler registry and returns a handler registration.
@@ -48,37 +36,37 @@ namespace AI4E
         /// <param name="handlerRegistry">The handler registry that the handler shall be registered to.</param>
         /// <param name="handlerProvider">A contextual provider that provides instances of the to be registered handler.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public static IHandlerRegistration<THandler> CreateRegistration<THandler>(
-            this IHandlerRegistry<THandler> handlerRegistry,
+        public static IProjectionRegistration<THandler> CreateRegistration<THandler>(
+            this IProjectionRegistry<THandler> handlerRegistry,
             IContextualProvider<THandler> handlerProvider)
         {
-            return new TypedHandlerRegistration<THandler>(handlerRegistry, handlerProvider);
+            return new TypedProjectionRegistration<THandler>(handlerRegistry, handlerProvider);
         }
 
-        private sealed class TypedHandlerRegistration<THandler> : IHandlerRegistration<THandler>
+        private sealed class TypedProjectionRegistration<TProjection> : IProjectionRegistration<TProjection>
         {
-            private readonly IHandlerRegistry<THandler> _handlerRegistry;
+            private readonly IProjectionRegistry<TProjection> _handlerRegistry;
             private readonly TaskCompletionSource<object> _cancellationSource = new TaskCompletionSource<object>();
             private int _isCancelling = 0;
 
-            public TypedHandlerRegistration(IHandlerRegistry<THandler> handlerRegistry,
-                                            IContextualProvider<THandler> handlerProvider)
+            public TypedProjectionRegistration(IProjectionRegistry<TProjection> projectionRegistry,
+                                               IContextualProvider<TProjection> projectionProvider)
 
             {
-                if (handlerRegistry == null)
-                    throw new ArgumentNullException(nameof(handlerRegistry));
+                if (projectionRegistry == null)
+                    throw new ArgumentNullException(nameof(projectionRegistry));
 
-                if (handlerProvider == null)
-                    throw new ArgumentNullException(nameof(handlerProvider));
+                if (projectionProvider == null)
+                    throw new ArgumentNullException(nameof(projectionProvider));
 
-                _handlerRegistry = handlerRegistry;
-                Handler = handlerProvider;
-                _handlerRegistry.Register(Handler);
+                _handlerRegistry = projectionRegistry;
+                Projection = projectionProvider;
+                _handlerRegistry.Register(Projection);
             }
 
             public Task Initialization => Task.CompletedTask;
 
-            public IContextualProvider<THandler> Handler { get; }
+            public IContextualProvider<TProjection> Projection { get; }
 
             public void Dispose()
             {
@@ -87,7 +75,7 @@ namespace AI4E
 
                 try
                 {
-                    _handlerRegistry.Unregister(Handler);
+                    _handlerRegistry.Unregister(Projection);
                     _cancellationSource.SetResult(null);
                 }
                 catch (TaskCanceledException)

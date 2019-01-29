@@ -49,6 +49,8 @@ namespace AI4E.Storage.Domain
 {
     public sealed partial class EntityStorageEngine : IEntityStorageEngine
     {
+        internal const string ConcurrencyTokenHeaderKey = "ConcurrencyToken";
+
         private readonly DomainStorageOptions _options;
         #region Fields
 
@@ -210,15 +212,24 @@ namespace AI4E.Storage.Domain
             var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, throwIfNotFound: false, cancellation);
 
             var (concurrencyToken, events) = GetEntityProperties(entityType, entity);
-            var commitBody = BuildCommitBody(entity, stream);
 
-            void HeaderGenerator(IDictionary<string, object> headers) { }
+            var success = await CheckConcurrencyAsync(stream, concurrencyToken, cancellation);
 
-            var success = await stream.TryCommitAsync(concurrencyToken,
-                                                      events,
-                                                      commitBody,
-                                                      HeaderGenerator,
-                                                      cancellation);
+            if (success)
+            {
+                var commitBody = BuildCommitBody(entity, stream);
+                var newConcurrencyToken = SGuid.NewGuid().ToString();
+
+                void GenerateHeaders(IDictionary<string, object> headers)
+                {
+                    headers[ConcurrencyTokenHeaderKey] = newConcurrencyToken;
+                }
+
+                if (!await stream.TryCommitAsync(events, commitBody, GenerateHeaders, cancellation))
+                {
+                    success = false;
+                }
+            }
 
             if (!success)
             {
@@ -228,7 +239,7 @@ namespace AI4E.Storage.Domain
             }
             else
             {
-                _entityPropertyAccessor.SetConcurrencyToken(entityType, entity, stream.ConcurrencyToken);
+                _entityPropertyAccessor.SetConcurrencyToken(entityType, entity, (string)stream.Headers[ConcurrencyTokenHeaderKey]);
                 _entityPropertyAccessor.SetRevision(entityType, entity, stream.StreamRevision);
                 _entityPropertyAccessor.CommitEvents(entityType, entity);
             }
@@ -283,15 +294,28 @@ namespace AI4E.Storage.Domain
             var stream = await _streamStore.OpenStreamAsync(bucketId, streamId, throwIfNotFound: false, cancellation);
 
             var (concurrencyToken, events) = GetEntityProperties(entityType, entity);
-            var commitBody = BuildCommitBody(entity: null, stream);
 
-            void HeaderGenerator(IDictionary<string, object> headers) { }
+            var success = await CheckConcurrencyAsync(stream, concurrencyToken, cancellation);
 
-            var success = await stream.TryCommitAsync(concurrencyToken,
-                                                     events,
-                                                     commitBody,
-                                                     HeaderGenerator,
-                                                     cancellation);
+            if (success)
+            {
+                var commitBody = BuildCommitBody(entity: null, stream);
+                var newConcurrencyToken = SGuid.NewGuid().ToString();
+
+                void GenerateHeaders(IDictionary<string, object> headers)
+                {
+                    headers[ConcurrencyTokenHeaderKey] = newConcurrencyToken;
+                }
+
+                if (await stream.TryCommitAsync(events, commitBody, GenerateHeaders, cancellation))
+                {
+                    entity = null;
+                }
+                else
+                {
+                    success = false;
+                }
+            }
 
             if (!success)
             {
@@ -299,14 +323,34 @@ namespace AI4E.Storage.Domain
                 // but we need to reload the entity and put it in the cache.
                 entity = Deserialize(entityType, stream);
             }
-            else
-            {
-                entity = null;
-            }
 
             _lookup[(bucketId, streamId, requestedRevision: default)] = (entity, revision: stream.StreamRevision);
 
             return success;
+        }
+
+        private async Task<bool> CheckConcurrencyAsync(IStream stream, string concurrencyToken, CancellationToken cancellation)
+        {
+            Assert(!stream.IsReadOnly);
+
+            if (stream.StreamRevision == 0)
+                return true;
+
+            if (concurrencyToken == (string)stream.Headers[ConcurrencyTokenHeaderKey])
+                return true;
+
+            if (stream.Commits.TakeAllButLast().Any(p => (string)p.Headers[ConcurrencyTokenHeaderKey] == concurrencyToken))
+            {
+                return false;
+            }
+
+            if (await stream.UpdateAsync(cancellation) && concurrencyToken == (string)stream.Headers[ConcurrencyTokenHeaderKey])
+            {
+                return true;
+            }
+
+            // Either a concurrency token of a commit that is not present because of a snapshot or an unknown token 
+            return false;
         }
 
         #endregion
@@ -314,7 +358,7 @@ namespace AI4E.Storage.Domain
         private (string concurrencyToken, IEnumerable<EventMessage> events) GetEntityProperties(Type entityType, object entity)
         {
             var concurrencyToken = _entityPropertyAccessor.GetConcurrencyToken(entityType, entity);
-            var events = _entityPropertyAccessor.GetUncommittedEvents(entityType, entity).Select(p => new EventMessage { Body = Serialize(p) });
+            var events = _entityPropertyAccessor.GetUncommittedEvents(entityType, entity).Select(p => new EventMessage(Serialize(p)));
 
             return (concurrencyToken, events);
         }
@@ -339,6 +383,12 @@ namespace AI4E.Storage.Domain
             var baseToken = GetBaseToken(stream);
             var serializedEntity = GetSerializedEntity(entity);
             var diff = _differ.Diff(baseToken, serializedEntity);
+
+            if (diff == null)
+            {
+                return Array.Empty<byte>();
+            }
+
             return CompressionHelper.Zip(diff.ToString());
         }
 
@@ -356,26 +406,25 @@ namespace AI4E.Storage.Domain
         {
             Assert(stream != null);
 
-            JToken baseToken;
+            JToken token = null;
             if (stream.Snapshot == null)
             {
-                baseToken = StreamRoot;
+                token = StreamRoot;
             }
-            else
+            else if (stream.Snapshot.Payload is byte[] snapshotPayload && snapshotPayload.Length > 0)
             {
-                var snapshotPayload = stream.Snapshot.Payload as byte[];
-
-                baseToken = JToken.Parse(CompressionHelper.Unzip(snapshotPayload));
+                token = JToken.Parse(CompressionHelper.Unzip(snapshotPayload));
             }
 
             foreach (var commit in stream.Commits)
             {
-                var commitPayload = commit.Body as byte[];
-
-                baseToken = _differ.Patch(baseToken, JToken.Parse(CompressionHelper.Unzip(commitPayload)));
+                if (commit.Body is byte[] commitPayload && commitPayload.Length > 0)
+                {
+                    token = _differ.Patch(token, JToken.Parse(CompressionHelper.Unzip(commitPayload)));
+                }
             }
 
-            return baseToken;
+            return token;
         }
 
         private object Deserialize(Type entityType, IStream stream)
@@ -384,27 +433,12 @@ namespace AI4E.Storage.Domain
             if (stream.StreamRevision == default)
                 return null;
 
-            var serializedEntity = default(JToken);
-
-            if (stream.Snapshot == null)
-            {
-                serializedEntity = StreamRoot;
-            }
-            else
-            {
-                serializedEntity = JToken.Parse(CompressionHelper.Unzip(stream.Snapshot.Payload as byte[]));
-            }
-
-            foreach (var commit in stream.Commits)
-            {
-                serializedEntity = _differ.Patch(serializedEntity, JToken.Parse(CompressionHelper.Unzip(commit.Body as byte[])));
-            }
-
-            var result = serializedEntity.ToObject(entityType, _jsonSerializer);
+            var token = GetBaseToken(stream);
+            var result = token.ToObject(entityType, _jsonSerializer);
 
             if (result != null)
             {
-                _entityPropertyAccessor.SetConcurrencyToken(entityType, result, stream.ConcurrencyToken);
+                _entityPropertyAccessor.SetConcurrencyToken(entityType, result, (string)stream.Headers[ConcurrencyTokenHeaderKey]);
                 _entityPropertyAccessor.SetRevision(entityType, result, stream.StreamRevision);
                 _entityPropertyAccessor.CommitEvents(entityType, result);
             }

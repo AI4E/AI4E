@@ -9,7 +9,7 @@ namespace AI4E.Routing
     public interface IRequestReplyEndPoint<TPacket> : IDisposable
         where TPacket : IPacket
     {
-        Task<IMessage> SendAsync(TPacket packet, CancellationToken cancellation = default);
+        Task<(IMessage message, bool handled)> SendAsync(TPacket packet, CancellationToken cancellation = default);
         Task<IMessageReceiveResult<TPacket>> ReceiveAsync(CancellationToken cancellation = default);
     }
 }

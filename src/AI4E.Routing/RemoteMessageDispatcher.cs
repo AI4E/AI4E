@@ -2,6 +2,8 @@
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        RemoteMessageDispatcher.cs 
  * Types:           (1) AI4E.Routing.RemoteMessageDispatcher
+ *                  (2) AI4E.Routing.RemoteMessageDispatcher.SerializationBinder
+ *                  (3) AI4E.Routing.RemoteMessageDispatcher.SerializedMessageHandler
  * Version:         1.0
  * Author:          Andreas Trütschel
  * --------------------------------------------------------------------------------------------------------------------
@@ -28,7 +30,6 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -40,35 +41,41 @@ using AI4E.DispatchResults;
 using AI4E.Internal;
 using AI4E.Remoting;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing
 {
-    public sealed class RemoteMessageDispatcher : IRemoteMessageDispatcher
+    public sealed class RemoteMessageDispatcher : IRemoteMessageDispatcher, IAsyncInitialization, IDisposable
     {
         #region Fields
 
-        private readonly IMessageRouter _messageRouter;
+        private readonly IMessageRouterFactory _messageRouterFactory;
         private readonly ITypeConversion _typeConversion;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<RemoteMessageDispatcher> _logger;
 
-        private readonly IMessageDispatcher _localMessageDispatcher;
-        private readonly ConcurrentDictionary<Type, TypedMessageDisaptcher> _typedDispatchers = new ConcurrentDictionary<Type, TypedMessageDisaptcher>();
+        private readonly MessageDispatcher _localMessageDispatcher;
+        private readonly IMessageRouter _messageRouter;
+
+        private readonly AsyncLifetimeManager _lifetimeManager;
 
         #endregion
 
         #region C'tor
 
-        public RemoteMessageDispatcher(IMessageRouterFactory messageRouterFactory,
+        public RemoteMessageDispatcher(IMessageHandlerRegistry messageHandlerRegistry,
+                                       IMessageRouterFactory messageRouterFactory,
                                        ITypeConversion typeConversion,
                                        IServiceProvider serviceProvider,
                                        ILogger<RemoteMessageDispatcher> logger)
         {
+            if (messageHandlerRegistry == null)
+                throw new ArgumentNullException(nameof(messageHandlerRegistry));
+
             if (messageRouterFactory == null)
                 throw new ArgumentNullException(nameof(messageRouterFactory));
 
@@ -78,13 +85,110 @@ namespace AI4E.Routing
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
+            _messageRouterFactory = messageRouterFactory;
             _typeConversion = typeConversion;
             _serviceProvider = serviceProvider;
             _logger = logger;
 
-            _messageRouter = messageRouterFactory.CreateMessageRouter(new SerializedMessageHandler(this));
+            _localMessageDispatcher = new MessageDispatcher(messageHandlerRegistry, serviceProvider);
+            _messageRouter = _messageRouterFactory.CreateMessageRouter(new SerializedMessageHandler(this));
 
-            _localMessageDispatcher = new MessageDispatcher(serviceProvider);
+            _lifetimeManager = BuildLifetimeManager();
+        }
+
+        #endregion
+
+        private AsyncLifetimeManager BuildLifetimeManager()
+        {
+            async Task InitializeAsync(CancellationToken cancellation)
+            {
+                var messageHandlerProvider = _localMessageDispatcher.MessageHandlerProvider;
+                var routeRegistrations = GetRouteRegistrations(messageHandlerProvider);
+                var registrationOperations = routeRegistrations.Select(p => _messageRouter.RegisterRouteAsync(p, cancellation: default));
+                await Task.WhenAll(registrationOperations);
+            }
+
+            async Task DisposeAsync()
+            {
+                try
+                {
+                    await _messageRouter.UnregisterRoutesAsync(removePersistentRoutes: false);
+                }
+                finally
+                {
+                    _messageRouter.Dispose();
+                }
+            }
+
+            return new AsyncLifetimeManager(InitializeAsync, DisposeAsync);
+        }
+
+        private static IEnumerable<RouteRegistration> GetRouteRegistrations(IMessageHandlerProvider messageHandlerProvider)
+        {
+            if (messageHandlerProvider == null)
+                throw new ArgumentNullException(nameof(messageHandlerProvider));
+
+            Route GetRoute(IMessageHandlerRegistration handlerRegistration)
+            {
+                return new Route(handlerRegistration.MessageType.GetUnqualifiedTypeName());
+            }
+
+            RouteRegistrationOptions GetRouteOptions(IMessageHandlerRegistration handlerRegistration)
+            {
+                var result = RouteRegistrationOptions.Default;
+
+                if (handlerRegistration.IsPublishOnly())
+                {
+                    result |= RouteRegistrationOptions.PublishOnly;
+                }
+
+                if (handlerRegistration.IsTransient())
+                {
+                    result |= RouteRegistrationOptions.Transient;
+                }
+
+                if (handlerRegistration.IsLocalDispatchOnly())
+                {
+                    result |= RouteRegistrationOptions.LocalDispatchOnly;
+                }
+
+                return result;
+            }
+
+            RouteRegistrationOptions CombineRouteOptions(IEnumerable<RouteRegistrationOptions> options)
+            {
+                var result = RouteRegistrationOptions.Default;
+
+                var firstOption = true;
+                foreach (var option in options)
+                {
+                    if (firstOption)
+                    {
+                        result = option;
+                    }
+                    else
+                    {
+                        result &= option;
+                    }
+
+                    firstOption = false;
+                }
+
+                return result;
+            }
+
+            return messageHandlerProvider
+                .GetHandlerRegistrations()
+                .GroupBy(GetRoute, (route, handlerRegistrations) => new RouteRegistration(route, CombineRouteOptions(handlerRegistrations.Select(GetRouteOptions))));
+        }
+
+        public Task Initialization => _lifetimeManager.Initialization;
+
+        #region Disposal
+
+        public void Dispose()
+        {
+            _lifetimeManager.Dispose();
         }
 
         #endregion
@@ -126,7 +230,7 @@ namespace AI4E.Routing
 
         public ValueTask<EndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)
         {
-            return _messageRouter.GetLocalEndPointAsync(cancellation);
+            return _messageRouterFactory.GetDefaultEndPointAsync(cancellation);
         }
 
         private sealed class SerializedMessageHandler : ISerializedMessageHandler
@@ -142,29 +246,38 @@ namespace AI4E.Routing
                 _typeConversion = _remoteMessageDispatcher._typeConversion;
             }
 
-            public async ValueTask<IMessage> HandleAsync(string route,
-                                                         IMessage serializedMessage,
-                                                         bool publish,
-                                                         CancellationToken cancellation)
+            public async ValueTask<(IMessage response, bool handled)> HandleAsync(
+                Route route,
+                IMessage request,
+                bool publish,
+                 bool localDispatch,
+                CancellationToken cancellation)
             {
                 if (route == null)
                     throw new ArgumentNullException(nameof(route));
 
-                if (serializedMessage == null)
-                    throw new ArgumentNullException(nameof(serializedMessage));
+                if (request == null)
+                    throw new ArgumentNullException(nameof(request));
 
-                var messageType = _typeConversion.DeserializeType(route);
+                var messageType = _typeConversion.DeserializeType(route.ToString());
 
                 Assert(messageType != null);
 
-                var dispatchData = _remoteMessageDispatcher.DeserializeDispatchData(serializedMessage);
-                var dispatchResult = await _remoteMessageDispatcher.DispatchLocalAsync(dispatchData, publish, cancellation);
+                var dispatchData = _remoteMessageDispatcher.DeserializeDispatchData(request);
+
+                // We allow target route descend on publishing only (See https://github.com/AI4E/AI4E/issues/82#issuecomment-448269275)
+                var (dispatchResult, handlersFound) = await _remoteMessageDispatcher.TryDispatchLocalAsync(
+                    dispatchData,
+                    publish,
+                    allowRouteDescend: publish,
+                    localDispatch,
+                    cancellation);
 
                 var response = new Message();
                 _remoteMessageDispatcher.SerializeDispatchResult(response, dispatchResult);
-                serializedMessage.PushFrame();
+                request.PushFrame();
 
-                return response;
+                return (response, handled: handlersFound);
             }
         }
 
@@ -247,10 +360,11 @@ namespace AI4E.Routing
 
         #region Dispatch
 
-        public Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData,
-                                                   bool publish,
-                                                   EndPointAddress endPoint,
-                                                   CancellationToken cancellation = default)
+        public ValueTask<IDispatchResult> DispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            EndPointAddress endPoint,
+            CancellationToken cancellation = default)
         {
             if (dispatchData == null)
                 throw new ArgumentNullException(nameof(dispatchData));
@@ -263,9 +377,10 @@ namespace AI4E.Routing
             return InternalDispatchAsync(dispatchData, publish, cancellation);
         }
 
-        public Task<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData,
-                                                   bool publish,
-                                                   CancellationToken cancellation = default)
+        public ValueTask<IDispatchResult> DispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            CancellationToken cancellation = default)
         {
             if (dispatchData == null)
                 throw new ArgumentNullException(nameof(dispatchData));
@@ -273,25 +388,35 @@ namespace AI4E.Routing
             return InternalDispatchAsync(dispatchData, publish, cancellation);
         }
 
-        private async Task<IDispatchResult> InternalDispatchAsync(DispatchDataDictionary dispatchData,
-                                                                  bool publish,
-                                                                  EndPointAddress endPoint,
-                                                                  CancellationToken cancellation)
+        private async ValueTask<IDispatchResult> InternalDispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            EndPointAddress endPoint,
+            CancellationToken cancellation)
         {
-            var route = _typeConversion.SerializeType(dispatchData.MessageType);
-            var serializedMessage = new Message();
+            if (endPoint == await GetLocalEndPointAsync(cancellation))
+            {
+                var (result, _) = await TryDispatchLocalAsync(dispatchData, publish, allowRouteDescend: true, localDispatch: true, cancellation);
+                return result;
+            }
+            else
+            {
+                var route = new Route(_typeConversion.SerializeType(dispatchData.MessageType));
+                var serializedMessage = new Message();
 
-            SerializeDispatchData(serializedMessage, dispatchData);
+                SerializeDispatchData(serializedMessage, dispatchData);
 
-            var serializedResult = await _messageRouter.RouteAsync(route, serializedMessage, publish, endPoint, cancellation);
-            var result = DeserializeDispatchResult(serializedResult);
+                var serializedResult = await _messageRouter.RouteAsync(route, serializedMessage, publish, endPoint, cancellation);
+                var result = DeserializeDispatchResult(serializedResult);
 
-            return result;
+                return result;
+            }
         }
 
-        private async Task<IDispatchResult> InternalDispatchAsync(DispatchDataDictionary dispatchData,
-                                                                  bool publish,
-                                                                  CancellationToken cancellation)
+        private async ValueTask<IDispatchResult> InternalDispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            CancellationToken cancellation)
         {
             var routes = GetRoutes(dispatchData.MessageType);
             var serializedMessage = new Message();
@@ -320,41 +445,39 @@ namespace AI4E.Routing
             return new AggregateDispatchResult(results);
         }
 
-        private IEnumerable<string> GetRoutes(Type messageType)
+        private RouteHierarchy GetRoutes(Type messageType)
         {
             if (messageType.IsInterface)
             {
-                return _typeConversion.SerializeType(messageType).Yield();
+                var route = new Route(_typeConversion.SerializeType(messageType));
+
+                return new RouteHierarchy(ImmutableArray.Create(route));
             }
 
-            var result = new List<string>();
+            var result = ImmutableArray.CreateBuilder<Route>();
 
             for (; messageType != null; messageType = messageType.BaseType)
             {
-                result.Add(_typeConversion.SerializeType(messageType));
+                result.Add(new Route(_typeConversion.SerializeType(messageType)));
             }
 
-            return result;
+            return new RouteHierarchy(result.ToImmutable());
         }
 
-
-
-        public async Task<IDispatchResult> DispatchLocalAsync(DispatchDataDictionary dispatchData,
-                                                              bool publish,
-                                                              CancellationToken cancellation)
+        private async ValueTask<(IDispatchResult result, bool handlersFound)> TryDispatchLocalAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            bool allowRouteDescend,
+            bool localDispatch,
+            CancellationToken cancellation)
         {
-            if (dispatchData == null)
-                throw new ArgumentNullException(nameof(dispatchData));
-
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
 
             _logger?.LogInformation($"End-point '{localEndPoint}': Dispatching message of type {dispatchData.MessageType} locally.");
 
             try
             {
-                await WaitPendingRegistrationsAsync(dispatchData.MessageType, cancellation);
-
-                return await _localMessageDispatcher.DispatchAsync(dispatchData, publish, cancellation);
+                return await _localMessageDispatcher.TryDispatchAsync(dispatchData, publish, localDispatch, allowRouteDescend, cancellation);
             }
             finally
             {
@@ -362,295 +485,18 @@ namespace AI4E.Routing
             }
         }
 
+        public async ValueTask<IDispatchResult> DispatchLocalAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            CancellationToken cancellation)
+        {
+            if (dispatchData == null)
+                throw new ArgumentNullException(nameof(dispatchData));
+
+            var (dispatchResult, _) = await TryDispatchLocalAsync(dispatchData, publish, allowRouteDescend: true, localDispatch: true, cancellation);
+            return dispatchResult;
+        }
+
         #endregion
-
-        public IHandlerRegistration Register(Type messageType, IContextualProvider<IMessageHandler> messageHandlerProvider)
-        {
-            // This MUST NOT be transient to support the persistent registration of message handlers via the message handler pattern without introduction of further dependencies.
-            return Register(messageType, messageHandlerProvider, RouteRegistrationOptions.Default);
-        }
-
-        public IHandlerRegistration Register(Type messageType, IContextualProvider<IMessageHandler> messageHandlerProvider, RouteRegistrationOptions options)
-        {
-            if (messageType == null)
-                throw new ArgumentNullException(nameof(messageType));
-
-            if (messageHandlerProvider == null)
-                throw new ArgumentNullException(nameof(messageHandlerProvider));
-
-            var typedDispatcher = GetTypedDispatcher(messageType);
-            return new HandlerRegistration(typedDispatcher, messageType, messageHandlerProvider, options);
-        }
-
-        public ValueTask WaitPendingRegistrationsAsync(Type messageType, CancellationToken cancellation)
-        {
-            List<Task> combinedPendingRegistrations = null;
-
-            for (var currType = messageType; !currType.IsInterface && currType.BaseType != null; currType = currType.BaseType)
-            {
-                if (!TryGetTypedDispatcher(currType, out var typedDispatcher))
-                {
-                    continue;
-                }
-
-                var pendingRegistrations = typedDispatcher.PendingRegistrations;
-
-                if (!pendingRegistrations.Any())
-                {
-                    continue;
-                }
-
-                if (combinedPendingRegistrations == null)
-                    combinedPendingRegistrations = new List<Task>();
-
-                combinedPendingRegistrations.AddRange(pendingRegistrations);
-            }
-
-            if (combinedPendingRegistrations != null)
-            {
-                return new ValueTask(Task.WhenAll(combinedPendingRegistrations).WithCancellation(cancellation));
-            }
-
-            return new ValueTask(Task.CompletedTask); // TODO: Can we just return default(ValueTask)?
-        }
-
-        public ValueTask WaitPendingRegistrationsAsync(CancellationToken cancellation)
-        {
-            List<Task> combinedPendingRegistrations = null;
-
-            foreach (var typedDispatcher in _typedDispatchers.Values)
-            {
-                var pendingRegistrations = typedDispatcher.PendingRegistrations;
-
-                if (!pendingRegistrations.Any())
-                {
-                    continue;
-                }
-
-                if (combinedPendingRegistrations == null)
-                    combinedPendingRegistrations = new List<Task>();
-
-                combinedPendingRegistrations.AddRange(pendingRegistrations);
-            }
-
-            if (combinedPendingRegistrations != null)
-            {
-                return new ValueTask(Task.WhenAll(combinedPendingRegistrations).WithCancellation(cancellation));
-            }
-
-            return new ValueTask(Task.CompletedTask); // TODO: Can we just return default(ValueTask)?
-        }
-
-        private TypedMessageDisaptcher GetTypedDispatcher(Type messageType)
-        {
-            return _typedDispatchers.GetOrAdd(messageType, t => new TypedMessageDisaptcher(_localMessageDispatcher, _messageRouter, _typeConversion, t));
-        }
-
-        private bool TryGetTypedDispatcher(Type messageType, out TypedMessageDisaptcher typedDispatcher)
-        {
-            return _typedDispatchers.TryGetValue(messageType, out typedDispatcher);
-        }
-
-        private sealed class TypedMessageDisaptcher
-        {
-            private readonly IMessageDispatcher _localMessageDispatcher;
-            private readonly IMessageRouter _messageRouter;
-            private readonly ITypeConversion _typeConversion;
-            private readonly Type _messageType;
-            private readonly string _serializedMessageType;
-            private readonly AsyncLock _lock = new AsyncLock();
-            private int _count = 0;
-            private Task _routeRegistration = null;
-            private readonly List<Task> _pendingRegistrations = new List<Task>();
-
-            public TypedMessageDisaptcher(IMessageDispatcher localMessageDispatcher, IMessageRouter messageRouter, ITypeConversion typeConversion, Type messageType)
-            {
-                _localMessageDispatcher = localMessageDispatcher;
-                _messageRouter = messageRouter;
-                _typeConversion = typeConversion;
-                _messageType = messageType;
-                _serializedMessageType = _typeConversion.SerializeType(_messageType);
-            }
-
-            public ImmutableList<Task> PendingRegistrations
-            {
-                get
-                {
-                    lock (_pendingRegistrations)
-                    {
-                        if (!_pendingRegistrations.Any())
-                        {
-                            return ImmutableList<Task>.Empty;
-                        }
-
-                        return _pendingRegistrations.ToImmutableList();
-                    }
-                }
-            }
-
-            private async Task<IHandlerRegistration> RegisterHandleInternalAsync(
-                IContextualProvider<IMessageHandler> messageHandlerProvider,
-                RouteRegistrationOptions options)
-            {
-                var registration = _localMessageDispatcher.Register(_messageType, messageHandlerProvider);
-
-                try
-                {
-                    await registration.Initialization;
-
-                    async Task RegisterRouteAsync()
-                    {
-                        // TODO: Can we cancel this, if the last handler registration cancels?
-                        await _messageRouter.RegisterRouteAsync(_serializedMessageType, options, default);
-                    }
-
-                    Task routeRegistration;
-
-                    using (await _lock.LockAsync())
-                    {
-                        if (_count++ == 0)
-                        {
-                            _routeRegistration = RegisterRouteAsync();
-                        }
-
-                        routeRegistration = _routeRegistration;
-                    }
-
-                    await routeRegistration;
-
-                    return registration;
-                }
-                catch
-                {
-                    await registration.DisposeAsync();
-
-                    throw;
-                }
-            }
-
-            public async Task<IHandlerRegistration> RegisterHandlerAsync(
-                IContextualProvider<IMessageHandler> messageHandlerProvider,
-                RouteRegistrationOptions options,
-                CancellationToken cancellation)
-            {
-                var pendingRegistration = RegisterHandleInternalAsync(messageHandlerProvider, options);
-
-                lock (_pendingRegistrations)
-                {
-                    _pendingRegistrations.Add(pendingRegistration);
-                }
-
-                try
-                {
-                    return await pendingRegistration;
-                }
-                finally
-                {
-                    lock (_pendingRegistrations)
-                    {
-                        _pendingRegistrations.Remove(pendingRegistration);
-                    }
-                }
-            }
-
-            public async Task UnregisterHandlerAsync()
-            {
-                using (await _lock.LockAsync())
-                {
-                    if (_count-- == 1)
-                    {
-                        await _messageRouter.UnregisterRouteAsync(_serializedMessageType, cancellation: default);
-                    }
-                }
-            }
-        }
-
-        private sealed class HandlerRegistration : IHandlerRegistration<IMessageHandler>
-        {
-            private readonly TypedMessageDisaptcher _typedMessageDispatcher;
-            private readonly Type _messageType;
-            private readonly RouteRegistrationOptions _options;
-
-            private readonly Task<IHandlerRegistration> _initialization;
-            private readonly CancellationTokenSource _disposalSource;
-            private readonly TaskCompletionSource<object> _disposalTaskSource;
-            private volatile Task _disposalTask;
-            private readonly object _disposalTaskLock = new object();
-
-            public HandlerRegistration(TypedMessageDisaptcher typedMessageDispatcher,
-                                       Type messageType,
-                                       IContextualProvider<IMessageHandler> messageHandlerProvider,
-                                       RouteRegistrationOptions options)
-            {
-                _typedMessageDispatcher = typedMessageDispatcher;
-                _messageType = messageType;
-                Handler = messageHandlerProvider;
-                _options = options;
-
-                _disposalSource = new CancellationTokenSource();
-                _disposalTaskSource = new TaskCompletionSource<object>();
-
-                _initialization = _typedMessageDispatcher.RegisterHandlerAsync(messageHandlerProvider, options, _disposalSource.Token);
-            }
-
-            public Task Initialization => GetExternalInitialization();
-            public IContextualProvider<IMessageHandler> Handler { get; }
-
-            private async Task GetExternalInitialization()
-            {
-                try
-                {
-                    await _initialization;
-                }
-                catch (OperationCanceledException) { }
-            }
-
-            private async Task DisposeInternalAsync()
-            {
-                try
-                {
-                    try
-                    {
-                        var handlerRegistration = await _initialization;
-                        await _typedMessageDispatcher.UnregisterHandlerAsync();
-                        await handlerRegistration.DisposeAsync();
-                    }
-                    catch (OperationCanceledException) { }
-                }
-                catch (Exception exc)
-                {
-                    _disposalTaskSource.TrySetException(exc);
-                }
-                finally
-                {
-                    _disposalTaskSource.TrySetResult(null);
-                    _disposalSource.Dispose();
-                }
-            }
-
-            public void Dispose()
-            {
-                if (_disposalTask != null)
-                    return;
-
-                lock (_disposalTaskLock)
-                {
-                    if (_disposalTask == null)
-                    {
-                        _disposalSource.Cancel();
-                        _disposalTask = DisposeInternalAsync();
-                    }
-                }
-            }
-
-            public Task DisposeAsync()
-            {
-                Dispose();
-
-                return Disposal;
-            }
-
-            public Task Disposal => _disposalTaskSource.Task;
-        }
     }
 }

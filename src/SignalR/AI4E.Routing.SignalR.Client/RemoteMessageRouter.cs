@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Processing;
 using AI4E.Remoting;
 using AI4E.Utils;
+using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 
@@ -58,7 +58,7 @@ namespace AI4E.Routing.SignalR.Client
         }
 
         public async ValueTask<IReadOnlyCollection<IMessage>> RouteAsync(
-            IEnumerable<string> routes,
+            RouteHierarchy routes,
             IMessage serializedMessage,
             bool publish,
             CancellationToken cancellation)
@@ -107,7 +107,7 @@ namespace AI4E.Routing.SignalR.Client
         }
 
         public async ValueTask<IMessage> RouteAsync(
-            string route,
+            Route route,
             IMessage serializedMessage,
             bool publish,
             EndPointAddress endPoint,
@@ -156,8 +156,7 @@ namespace AI4E.Routing.SignalR.Client
         }
 
         public Task RegisterRouteAsync(
-            string route,
-            RouteRegistrationOptions options,
+            RouteRegistration routeRegistration,
             CancellationToken cancellation)
         {
             using (CheckDisposal(ref cancellation, out var disposal))
@@ -165,7 +164,7 @@ namespace AI4E.Routing.SignalR.Client
                 try
                 {
                     var message = new Message();
-                    EncodeRegisterRouteRequest(message, route, options);
+                    EncodeRegisterRouteRequest(message, routeRegistration.Route, routeRegistration.RegistrationOptions);
                     return SendInternalAsync(message, cancellation);
                 }
                 catch (OperationCanceledException) when (disposal.IsCancellationRequested)
@@ -176,7 +175,7 @@ namespace AI4E.Routing.SignalR.Client
         }
 
         public Task UnregisterRouteAsync(
-            string route,
+            Route route,
             CancellationToken cancellation)
         {
             using (CheckDisposal(ref cancellation, out var disposal))
@@ -244,28 +243,29 @@ namespace AI4E.Routing.SignalR.Client
             return result;
         }
 
-        private static void EncodeRouteRequest(IMessage message, IEnumerable<string> routes, bool publish)
+        private static void EncodeRouteRequest(IMessage message, RouteHierarchy routes, bool publish)
         {
-            var routesBytes = routes.Select(route => Encoding.UTF8.GetBytes(route)).ToList();
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(stream))
             {
                 writer.Write((short)MessageType.Route);
                 writer.Write((short)0); // Padding
-                writer.Write(routesBytes.Count);
+                writer.Write(routes.Count);
 
-                for (var i = 0; i < routesBytes.Count; i++)
+                for (var i = 0; i < routes.Count; i++)
                 {
-                    writer.Write(routesBytes[i].Length);
-                    writer.Write(routesBytes[i]);
+                    var routeBytes = Encoding.UTF8.GetBytes(routes[i].ToString());
+
+                    writer.Write(routeBytes.Length);
+                    writer.Write(routeBytes);
                 }
                 writer.Write(publish);
             }
         }
 
-        private static void EncodeRouteRequest(IMessage message, string route, bool publish, EndPointAddress endPoint)
+        private static void EncodeRouteRequest(IMessage message, Route route, bool publish, EndPointAddress endPoint)
         {
-            var routeBytes = Encoding.UTF8.GetBytes(route);
+            var routeBytes = Encoding.UTF8.GetBytes(route.ToString());
 
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(stream))
@@ -280,9 +280,9 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        private static void EncodeRegisterRouteRequest(IMessage message, string route, RouteRegistrationOptions options)
+        private static void EncodeRegisterRouteRequest(IMessage message, Route route, RouteRegistrationOptions options)
         {
-            var routeBytes = Encoding.UTF8.GetBytes(route);
+            var routeBytes = Encoding.UTF8.GetBytes(route.ToString());
 
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(stream))
@@ -295,9 +295,9 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        private static void EncodeUnregisterRouteRequest(IMessage message, string route)
+        private static void EncodeUnregisterRouteRequest(IMessage message, Route route)
         {
-            var routeBytes = Encoding.UTF8.GetBytes(route);
+            var routeBytes = Encoding.UTF8.GetBytes(route.ToString());
 
             using (var stream = message.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(stream))
@@ -343,7 +343,7 @@ namespace AI4E.Routing.SignalR.Client
         private async Task ReceiveProcess(CancellationToken cancellation)
         {
             // We cache the delegate for perf reasons.
-            var handler = new Func<IMessage, CancellationToken, Task<IMessage>>(HandleAsync);
+            var handler = new Func<IMessage, CancellationToken, Task<(IMessage message, bool handled)>>(HandleAsync);
 
             while (cancellation.ThrowOrContinue())
             {
@@ -360,7 +360,7 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        private async Task<IMessage> HandleAsync(IMessage message, CancellationToken cancellation)
+        private async Task<(IMessage message, bool handled)> HandleAsync(IMessage message, CancellationToken cancellation)
         {
             using (var stream = message.PopFrame().OpenStream())
             using (var reader = new BinaryReader(stream))
@@ -376,9 +376,10 @@ namespace AI4E.Routing.SignalR.Client
                             var routeBytes = reader.ReadBytes(routeBytesLength);
                             var route = Encoding.UTF8.GetString(routeBytes);
                             var publish = reader.ReadBoolean();
-                            var response = await ReceiveHandleRequestAsync(message, route, publish, cancellation);
+                            var isLocalDispatch = reader.ReadBoolean();
+                            var (response, handled) = await ReceiveHandleRequestAsync(message, new Route(route), publish, isLocalDispatch, cancellation);
                             Assert(response.FrameIndex == response.FrameCount - 1);
-                            return response;
+                            return (response, handled);
                         }
 
                     default:
@@ -386,15 +387,15 @@ namespace AI4E.Routing.SignalR.Client
                             // TODO: Send bad request message
                             // TODO: Log
 
-                            return null;
+                            return default;
                         }
                 }
             }
         }
 
-        private ValueTask<IMessage> ReceiveHandleRequestAsync(IMessage message, string route, bool publish, CancellationToken cancellation)
+        private ValueTask<(IMessage message, bool handled)> ReceiveHandleRequestAsync(IMessage message, Route route, bool publish, bool isLocalDispatch, CancellationToken cancellation)
         {
-            return _serializedMessageHandler.HandleAsync(route, message, publish, cancellation);
+            return _serializedMessageHandler.HandleAsync(route, message, publish, isLocalDispatch, cancellation);
         }
 
         #endregion
@@ -470,6 +471,11 @@ namespace AI4E.Routing.SignalR.Client
             _logicalEndPoint = logicalEndPoint;
             _dateTimeProvider = dateTimeProvider;
             _loggerFactory = loggerFactory;
+        }
+
+        public ValueTask<EndPointAddress> GetDefaultEndPointAsync(CancellationToken cancellation)
+        {
+            return _logicalEndPoint.GetLocalEndPointAsync();
         }
 
         public IMessageRouter CreateMessageRouter(ISerializedMessageHandler serializedMessageHandler)

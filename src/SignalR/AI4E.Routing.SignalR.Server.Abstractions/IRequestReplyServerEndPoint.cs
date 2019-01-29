@@ -8,7 +8,7 @@ namespace AI4E.Routing.SignalR.Server
     public interface IRequestReplyServerEndPoint : IDisposable
     {
         Task<IRequestReplyServerReceiveResult> ReceiveAsync(CancellationToken cancellation = default);
-        Task<IMessage> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation = default);
+        Task<(IMessage message, bool handled)> SendAsync(IMessage message, EndPointAddress remoteEndPoint, CancellationToken cancellation = default);
     }
 
     public interface IRequestReplyServerReceiveResult : IMessageReceiveResult<Packet<EndPointAddress>>
