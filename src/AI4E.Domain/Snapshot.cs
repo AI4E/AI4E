@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        Reference.cs 
  * Types:           (1) AI4E.Domain.Reference'1
@@ -80,22 +80,12 @@ namespace AI4E.Domain
 
         public Snapshot(T aggregate)
         {
-            if (aggregate == null)
+            Id = GetId(aggregate);
+            Revision = GetRevision(aggregate);
+
+            if (aggregate != null && string.IsNullOrEmpty(Id))
             {
-                Id = string.Empty;
-                Revision = default;
-            }
-            else
-            {
-                Id = GetId(aggregate);
-
-                if (string.IsNullOrEmpty(Id))
-                {
-                    throw new ArgumentException("Cannot get a reference to an aggregate without an id specified.");
-                }
-
-
-                Revision = GetRevision(aggregate);
+                throw new ArgumentException("Cannot get a reference to an aggregate without an id specified.");
             }
 
             _aggregate = new Lazy<ValueTask<T>>(() => new ValueTask<T>(aggregate), isThreadSafe: true);

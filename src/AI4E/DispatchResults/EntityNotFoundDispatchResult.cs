@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -19,26 +19,65 @@
  */
 
 using System;
+using System.Text;
+using AI4E.Utils;
+using Newtonsoft.Json;
 
 namespace AI4E.DispatchResults
 {
     public class EntityNotFoundDispatchResult : NotFoundDispatchResult
     {
-        public EntityNotFoundDispatchResult(Type entityType, string id)
-           : base($"The entity '{(entityType ?? throw new ArgumentNullException(nameof(entityType))).FullName}' with the id '{id}' was not found.")
+        public EntityNotFoundDispatchResult(Type entityType, string id) : this(entityType?.GetUnqualifiedTypeName(), id) { }
+
+        public EntityNotFoundDispatchResult(Type entityType) : this(entityType?.GetUnqualifiedTypeName(), id: null) { }
+
+        [JsonConstructor]
+        public EntityNotFoundDispatchResult(string entityTypeName, string id) : base(BuildMessage(entityTypeName, id: null))
         {
-            EntityType = entityType;
+            EntityTypeName = entityTypeName;
             Id = id;
         }
 
-        public EntityNotFoundDispatchResult(Type entityType)
-           : base($"The entity of type '{(entityType ?? throw new ArgumentNullException(nameof(entityType))).FullName}' with the specified id was not found.")
+        private const string _messagePart1 = "The entity of type '";
+        private const string _messagePart2A = "' with the specified id was not found.";
+        private const string _messagePart2B = "' with the id '";
+        private const string _messagePart3 = "' was not found.";
+
+        private static string BuildMessage(string entityTypeName, string id)
         {
-            EntityType = entityType;
+            if (entityTypeName == null)
+                throw new ArgumentNullException(nameof(entityTypeName));
+
+            StringBuilder resultBuilder;
+
+            if (id == null)
+            {
+                resultBuilder = new StringBuilder(_messagePart1.Length + _messagePart2A.Length + entityTypeName.Length);
+                resultBuilder.Append(_messagePart1);
+                resultBuilder.Append(entityTypeName);
+                resultBuilder.Append(_messagePart2A);
+            }
+            else
+            {
+                resultBuilder = new StringBuilder(_messagePart1.Length + _messagePart2B.Length + _messagePart3.Length + entityTypeName.Length + id.Length);
+                resultBuilder.Append(_messagePart1);
+                resultBuilder.Append(entityTypeName);
+                resultBuilder.Append(_messagePart2B);
+                resultBuilder.Append(id);
+                resultBuilder.Append(_messagePart3);
+            }
+
+            return resultBuilder.ToString();
         }
 
-        public Type EntityType { get; }
+        public string EntityTypeName { get; }
 
         public string Id { get; }
+
+        public bool TryGetEntityType(out Type entityType)
+        {
+            entityType = TypeLoadHelper.LoadTypeFromUnqualifiedName(EntityTypeName, throwIfNotFound: false);
+            return entityType != null;
+        }
     }
 }

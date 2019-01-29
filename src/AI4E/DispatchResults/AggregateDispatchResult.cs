@@ -76,7 +76,25 @@ namespace AI4E.DispatchResults
         public override bool IsSuccess => DispatchResults.Count() == 0 || DispatchResults.All(p => p.IsSuccess);
 
         [JsonIgnore]
-        public override string Message => DispatchResults.SingleOrDefault()?.Message ?? "{ Multiple results }";
+        public override string Message
+        {
+            get
+            {
+                var count = DispatchResults.Count();
+
+                if(count == 0)
+                {
+                    return "{ No results }";
+                }
+
+                if(count == 1)
+                {
+                    return DispatchResults.First().Message;
+                }
+
+                return "{ Multiple results }";
+            }
+        }
 
         [JsonIgnore]
         public override IReadOnlyDictionary<string, object> ResultData { get; }

@@ -105,7 +105,7 @@ namespace AI4E
             return dispatchResult is EntityNotFoundDispatchResult;
         }
 
-        public static bool IsEntityNotFound(this IDispatchResult dispatchResult, out Type entityType, out string id)
+        public static bool IsEntityNotFound(this IDispatchResult dispatchResult, out string entityType, out string id)
         {
             if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
@@ -117,7 +117,7 @@ namespace AI4E
 
             if (dispatchResult is EntityNotFoundDispatchResult entityNotFoundDispatchResult)
             {
-                entityType = entityNotFoundDispatchResult.EntityType;
+                entityType = entityNotFoundDispatchResult.EntityTypeName;
                 id = entityNotFoundDispatchResult.Id;
                 return true;
             }
