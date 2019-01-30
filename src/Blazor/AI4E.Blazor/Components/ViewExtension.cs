@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -162,6 +162,7 @@ namespace AI4E.Blazor.Components
 
                 _component = (TViewExtension)componentFactory.InstantiateComponent(typeof(TViewExtension));
                 _component.Init(_renderHandle);
+                Configuration?.Invoke(_component);
             }
 
             _component.SetParameters(ParameterCollection.Empty);
