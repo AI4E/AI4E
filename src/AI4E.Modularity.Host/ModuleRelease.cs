@@ -54,7 +54,7 @@ namespace AI4E.Modularity.Host
         public DateTime ReleaseDate => _metadata.ReleaseDate;
 
         [JsonIgnore]
-        public string Name => _metadata.Name;
+        public string Name => !string.IsNullOrWhiteSpace(_metadata.Name) ? _metadata.Name : Module.Id.Name;
 
         [JsonIgnore]
         public string Description => _metadata.Description;
