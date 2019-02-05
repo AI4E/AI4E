@@ -23,12 +23,7 @@ using Newtonsoft.Json;
 
 namespace AI4E.Modularity
 {
-#if BLAZOR
-    internal
-#else
-    public
-#endif
-    readonly struct ModuleReleaseIdentifier : IEquatable<ModuleReleaseIdentifier>
+    public readonly struct ModuleReleaseIdentifier : IEquatable<ModuleReleaseIdentifier>
     {
         public static ModuleReleaseIdentifier UnknownModuleRelease { get; } = default;
 

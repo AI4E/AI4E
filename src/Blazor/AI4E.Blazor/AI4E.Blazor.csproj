@@ -27,18 +27,8 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Compile Include="..\..\AI4E.Modularity.Abstractions\Debug\DebugModuleConnected.cs" Link="Modularity\DebugModuleConnected.cs" />
-    <Compile Include="..\..\AI4E.Modularity.Abstractions\Debug\DebugModuleDisconnected.cs" Link="Modularity\DebugModuleDisconnected.cs" />
-    <Compile Include="..\..\AI4E.Modularity.Abstractions\Debug\DebugModuleProperties.cs" Link="Modularity\DebugModuleProperties.cs" />
-    <Compile Include="..\..\AI4E.Modularity.Abstractions\Host\InstallationSetChanged.cs" Link="Modularity\InstallationSetChanged.cs" />
-    <Compile Include="..\..\AI4E.Modularity.Abstractions\Host\ResolvedInstallationSet.cs" Link="Modularity\ResolvedInstallationSet.cs" />
-    <Compile Include="..\..\AI4E.Modularity.Abstractions\ModuleIdentifier.cs" Link="Modularity\ModuleIdentifier.cs" />
-    <Compile Include="..\..\AI4E.Modularity.Abstractions\ModuleReleaseIdentifier.cs" Link="Modularity\ModuleReleaseIdentifier.cs" />
-    <Compile Include="..\..\AI4E.Modularity.Abstractions\ModuleVersion.cs" Link="Modularity\ModuleVersion.cs" />
-  </ItemGroup>
-  
-  <ItemGroup>
     <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
     <ProjectReference Include="..\..\AI4E\AI4E.csproj" />
     <ProjectReference Include="..\..\SignalR\AI4E.Routing.SignalR.Client\AI4E.Routing.SignalR.Client.csproj" />
   </ItemGroup>
