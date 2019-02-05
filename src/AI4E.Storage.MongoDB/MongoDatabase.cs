@@ -192,7 +192,6 @@ namespace AI4E.Storage.MongoDB
             var collectionKey = GetCollectionKey<TEntry>();
             var collectionName = await GetCollectionNameAsync(collectionKey);
 
-            // Volatile write op.
             var collection = await GetCollectionCoreAsync<TEntry>(collectionName);
             return collection;
         }
@@ -240,9 +239,13 @@ namespace AI4E.Storage.MongoDB
 
         private async Task<IMongoCollection<TEntry>> GetCollectionCoreAsync<TEntry>(string collectionName)
         {
-            if (!await CollectionExistsAsync(collectionName))
+            while (!await CollectionExistsAsync(collectionName))
             {
-                _database.CreateCollection(collectionName);
+                try
+                {
+                    _database.CreateCollection(collectionName);
+                }
+                catch (MongoCommandException exc) { } // TODO: Check error code
             }
 
             var result = _database.GetCollection<TEntry>(collectionName);
