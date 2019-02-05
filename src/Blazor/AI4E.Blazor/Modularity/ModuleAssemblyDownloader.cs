@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Modularity;
+using AI4E.Modularity.Host;
 using AI4E.Utils;
 
 namespace AI4E.Blazor.Modularity
@@ -13,20 +14,20 @@ namespace AI4E.Blazor.Modularity
     internal sealed class ModuleAssemblyDownloader : IModuleAssemblyDownloader
     {
         private readonly HttpClient _httpClient;
-        private readonly IModulePrefixLookup _modulePrefixLookup;
+        private readonly IModulePropertiesLookup _modulePropertiesLookup;
 
         private readonly ConcurrentDictionary<string, Assembly> _assemblies = new ConcurrentDictionary<string, Assembly>();
 
-        public ModuleAssemblyDownloader(HttpClient httpClient, IModulePrefixLookup modulePrefixLookup)
+        public ModuleAssemblyDownloader(HttpClient httpClient, IModulePropertiesLookup modulePropertiesLookup)
         {
             if (httpClient == null)
                 throw new ArgumentNullException(nameof(httpClient));
 
-            if (modulePrefixLookup == null)
-                throw new ArgumentNullException(nameof(modulePrefixLookup));
+            if (modulePropertiesLookup == null)
+                throw new ArgumentNullException(nameof(modulePropertiesLookup));
 
             _httpClient = httpClient;
-            _modulePrefixLookup = modulePrefixLookup;
+            _modulePropertiesLookup = modulePropertiesLookup;
         }
 
         public Assembly GetAssembly(string assemblyName)
@@ -81,7 +82,7 @@ namespace AI4E.Blazor.Modularity
 
         private ValueTask<string> GetPrefixAsync(ModuleIdentifier module, CancellationToken cancellation)
         {
-            return _modulePrefixLookup.LookupPrefixAsync(module, cancellation);
+            return _modulePropertiesLookup.LookupPrefixAsync(module, cancellation);
         }
     }
 }

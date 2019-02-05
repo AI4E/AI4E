@@ -7,6 +7,7 @@ using AI4E.ApplicationParts.Utils;
 using AI4E.Blazor.Components;
 using AI4E.Blazor.Modularity;
 using AI4E.Modularity.Debug;
+using AI4E.Modularity.Host;
 using AI4E.Routing.SignalR.Client;
 using BlazorSignalR;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,7 +35,7 @@ namespace AI4E.Blazor
                 throw new ArgumentNullException(nameof(services));
 
             services.AddBlazorMessageDispatcher();
-            services.AddSingleton<IModulePrefixLookup, RemoteModulePrefixLookup>();
+            services.AddSingleton<IModulePropertiesLookup, RemoteModulePropertiesLookup>();
             services.AddSingleton<IModuleManifestProvider, ModuleManifestProvider>();
             services.AddSingleton<IModuleAssemblyDownloader, ModuleAssemblyDownloader>();
             services.AddSingleton<IInstallationSetManager, InstallationSetManager>();

@@ -49,14 +49,17 @@ namespace AI4E.Modularity.Host
             services.AddRemoteMessageDispatcher();
             services.AddUdpEndPoint();
             services.AddSingleton(ConfigureDebugPort);
-            services.ConfigureApplicationServices(ConfigureApplicationServices);
 
             services.AddSingleton<IModuleManager, ModuleManager>();
+            services.AddSingleton<IModulePropertiesLookup, ModulePropertiesLookup>();
             services.AddSingleton<IPathMapper, PathMapper>();
 
             services.AddSingleton<IRouteManagerFactory, RouteManagerFactory>();
             services.AddSingleton(typeof(IEndPointMap<>), typeof(EndPointMap<>));
             services.AddCoordinationService();
+
+            services.ConfigureApplicationServices(ConfigureApplicationServices);
+            services.ConfigureApplicationParts(ConfigureApplicationParts);
 
             return new ModularityBuilder(services);
         }
@@ -70,8 +73,6 @@ namespace AI4E.Modularity.Host
             services.AddSingleton<IModuleInstallationManager, ModuleInstallationManager>();
             services.AddSingleton<IMetadataReader, MetadataReader>();
             services.AddDomainServices();
-            services.ConfigureApplicationParts(ConfigureApplicationParts);
-            services.ConfigureApplicationServices(ConfigureApplicationServices);
         }
 
         private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
