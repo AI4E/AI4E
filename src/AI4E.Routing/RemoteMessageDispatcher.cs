@@ -394,6 +394,8 @@ namespace AI4E.Routing
             EndPointAddress endPoint,
             CancellationToken cancellation)
         {
+            await Initialization.WithCancellation(cancellation);
+
             if (endPoint == await GetLocalEndPointAsync(cancellation))
             {
                 var (result, _) = await TryDispatchLocalAsync(dispatchData, publish, allowRouteDescend: true, localDispatch: true, cancellation);
@@ -418,6 +420,8 @@ namespace AI4E.Routing
             bool publish,
             CancellationToken cancellation)
         {
+            await Initialization.WithCancellation(cancellation);
+
             var routes = GetRoutes(dispatchData.MessageType);
             var serializedMessage = new Message();
             SerializeDispatchData(serializedMessage, dispatchData);
@@ -492,6 +496,8 @@ namespace AI4E.Routing
         {
             if (dispatchData == null)
                 throw new ArgumentNullException(nameof(dispatchData));
+
+            await Initialization.WithCancellation(cancellation);
 
             var (dispatchResult, _) = await TryDispatchLocalAsync(dispatchData, publish, allowRouteDescend: true, localDispatch: true, cancellation);
             return dispatchResult;
