@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 using AI4E.ApplicationParts;
@@ -10,6 +12,7 @@ using AI4E.Modularity.Debug;
 using AI4E.Modularity.Host;
 using AI4E.Routing.SignalR.Client;
 using BlazorSignalR;
+using Microsoft.AspNetCore.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Blazor
@@ -29,25 +32,55 @@ namespace AI4E.Blazor
             });
         }
 
-        public static void AddBlazorModularity(this IServiceCollection services, Assembly entryAssembly)
+        public static void AddBlazorModularity(this IServiceCollection services, Assembly entryAssembly, bool isServerSide)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            services.AddBlazorMessageDispatcher();
-            services.AddSingleton<IModulePropertiesLookup, RemoteModulePropertiesLookup>();
-            services.AddSingleton<IModuleManifestProvider, ModuleManifestProvider>();
-            services.AddSingleton<IModuleAssemblyDownloader, ModuleAssemblyDownloader>();
-            services.AddSingleton<IInstallationSetManager, InstallationSetManager>();
+            if (!isServerSide)
+            {
+                services.AddBlazorMessageDispatcher();
+
+                services.AddScoped<IModulePropertiesLookup, RemoteModulePropertiesLookup>();
+                services.AddSingleton<IInstallationSetManager, ClientInstallationSetManager>();
+            }
+            else
+            {
+                services.AddHttpClient();
+
+                // The module host already installs a service of type IModulePropertiesLookup
+                services.AddSingleton<IInstallationSetManager, ServerInstallationSetManager>();
+            }
+
+            services.AddScoped<IModuleAssemblyDownloader, ModuleAssemblyDownloader>();
+            services.AddScoped<IModuleManifestProvider, ModuleManifestProvider>();
             services.AddSingleton<ViewExtensionRenderer>();
 
             services.ConfigureApplicationParts(partManager => ConfigureApplicationParts(partManager, entryAssembly));
             services.ConfigureApplicationServices(ConfigureApplicationServices);
         }
 
-        public static void AddBlazorModularity(this IServiceCollection services)
+        public static void AddBlazorModularity(this IServiceCollection services, bool isServerSide)
         {
-            AddBlazorModularity(services, Assembly.GetCallingAssembly());
+            AddBlazorModularity(services, Assembly.GetCallingAssembly(), isServerSide);
+        }
+
+        // https://github.com/Suchiman/BlazorDualMode
+        private static void AddHttpClient(this IServiceCollection services)
+        {
+            if (!services.Any(x => x.ServiceType == typeof(HttpClient)))
+            {
+                // Setup HttpClient for server side in a client side compatible fashion
+                services.AddScoped(s =>
+                {
+                    // Creating the URI helper needs to wait until the JS Runtime is initialized, so defer it.
+                    var uriHelper = s.GetRequiredService<IUriHelper>();
+                    return new HttpClient
+                    {
+                        BaseAddress = new Uri(uriHelper.GetBaseUri() ?? "http://localhost:5050/") // TODO
+                    };
+                });
+            }
         }
 
         private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)

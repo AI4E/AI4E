@@ -16,7 +16,7 @@ namespace AI4E.Blazor.Modularity.Sample.App
                 builder.SetMinimumLevel(LogLevel.Trace);
             });
 
-            services.AddBlazorModularity();
+            services.AddBlazorModularity(isServerSide: false);
         }
 
         public void Configure(IBlazorApplicationBuilder app)

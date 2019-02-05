@@ -40,7 +40,7 @@ namespace AI4E.Blazor.Modularity
             return assembly;
         }
 
-        public async Task InstallAssemblyAsync(ModuleIdentifier module, string assemblyName, CancellationToken cancellation)
+        public async Task<byte[]> DownloadAssemblyAsync(ModuleIdentifier module, string assemblyName, CancellationToken cancellation)
         {
             Console.WriteLine("Loading assembly: " + assemblyName);
 
@@ -49,9 +49,14 @@ namespace AI4E.Blazor.Modularity
             using (var assemblyStream = await _httpClient.GetStreamAsync(assemblyUri))
             using (var localAssemblyStream = await assemblyStream.ReadToMemoryAsync(cancellation))
             {
-                var assemblyBytes = localAssemblyStream.ToArray();
-                var assembly = Assembly.Load(assemblyBytes);
+                return localAssemblyStream.ToArray();
             }
+        }
+
+        public async Task InstallAssemblyAsync(ModuleIdentifier module, string assemblyName, CancellationToken cancellation)
+        {
+            var assemblyBytes = await DownloadAssemblyAsync(module, assemblyName, cancellation);
+            var assembly = Assembly.Load(assemblyBytes);
         }
 
         private string GetAssemblyUri(string normalizedPrefix, string assemblyName)
