@@ -7,13 +7,27 @@ using AI4E.ApplicationParts.Utils;
 using AI4E.Blazor.Components;
 using AI4E.Blazor.Modularity;
 using AI4E.Modularity.Debug;
-using AI4E.Routing.Blazor;
+using AI4E.Routing.SignalR.Client;
+using BlazorSignalR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Blazor
 {
     public static class ServiceCollectionExtension
     {
+        internal static readonly string _defaultHubUrl = "/MessageDispatcherHub"; // TODO: This should be configured only once.
+
+        public static void AddBlazorMessageDispatcher(this IServiceCollection services)
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            services.AddSignalRMessageDispatcher(hubConnectionBuilder =>
+            {
+                hubConnectionBuilder.WithUrlBlazor(_defaultHubUrl);
+            });
+        }
+
         public static void AddBlazorModularity(this IServiceCollection services, Assembly entryAssembly)
         {
             if (services == null)

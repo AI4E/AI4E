@@ -40,10 +40,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\..\AI4E\AI4E.csproj" />
-    <ProjectReference Include="..\AI4E.Routing.Blazor\AI4E.Routing.Blazor.csproj" />
+    <ProjectReference Include="..\..\SignalR\AI4E.Routing.SignalR.Client\AI4E.Routing.SignalR.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BlazorSignalR" Version="0.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Blazor.Browser" Version="$(MicrosoftAspNetCoreBlazorBrowserVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="$(MicrosoftAspNetCoreBlazorBuildVersion)" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsDependencyInjectionVersion)" />
