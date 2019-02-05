@@ -11,8 +11,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
-    <ProjectReference Include="..\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
-    <ProjectReference Include="..\AI4E.Coordination\AI4E.Coordination.csproj" />
     <ProjectReference Include="..\AI4E.Remoting\AI4E.Remoting.csproj" />
     <ProjectReference Include="..\AI4E.Routing.Abstractions\AI4E.Routing.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />

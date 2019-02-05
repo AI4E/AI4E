@@ -1,13 +1,14 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
 using AI4E.Remoting;
+using AI4E.Routing;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Routing
+namespace AI4E.Modularity
 {
     public sealed class EndPointMap<TAddress> : IEndPointMap<TAddress>
     {

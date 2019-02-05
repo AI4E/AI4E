@@ -22,6 +22,7 @@ using System;
 using System.Reflection;
 using AI4E.ApplicationParts;
 using AI4E.ApplicationParts.Utils;
+using AI4E.Coordination;
 using AI4E.Domain.Services;
 using AI4E.Modularity.Debug;
 using AI4E.Remoting;
@@ -52,6 +53,10 @@ namespace AI4E.Modularity.Host
 
             services.AddSingleton<IModuleManager, ModuleManager>();
             services.AddSingleton<IPathMapper, PathMapper>();
+
+            services.AddSingleton<IRouteManagerFactory, RouteManagerFactory>();
+            services.AddSingleton(typeof(IEndPointMap<>), typeof(EndPointMap<>));
+            services.AddCoordinationService();
 
             return new ModularityBuilder(services);
         }
