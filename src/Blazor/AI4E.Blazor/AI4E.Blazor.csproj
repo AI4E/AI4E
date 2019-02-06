@@ -16,13 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Internal\**" />
-    <Content Remove="Internal\**" />
-    <EmbeddedResource Remove="Internal\**" />
-    <None Remove="Internal\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Remove="content\ai4e.js" />
   </ItemGroup>
   

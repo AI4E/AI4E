@@ -20,18 +20,5 @@ namespace AI4E.Modularity.Host
             var props = await propertiesLookup.LookupAsync(module, cancellation);
             return props?.Prefixes.FirstOrDefault();
         }
-
-        public static async ValueTask<EndPointAddress?> LookupEndPointAsync(
-            this IModulePropertiesLookup propertiesLookup,
-            ModuleIdentifier module,
-            CancellationToken cancellation)
-        {
-            var props = await propertiesLookup.LookupAsync(module, cancellation);
-
-            if (props == null || props.EndPoints.Count == 0)
-                return null;
-
-            return props.EndPoints[0];
-        }
     }
 }

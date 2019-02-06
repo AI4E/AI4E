@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using AI4E.Modularity;
 using AI4E.Modularity.Host;
 using AI4E.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace AI4E.Blazor.Modularity
 {
@@ -15,10 +16,13 @@ namespace AI4E.Blazor.Modularity
     {
         private readonly HttpClient _httpClient;
         private readonly IModulePropertiesLookup _modulePropertiesLookup;
-
+        private readonly ILogger<ModuleAssemblyDownloader> _logger;
         private readonly ConcurrentDictionary<string, Assembly> _assemblies = new ConcurrentDictionary<string, Assembly>();
 
-        public ModuleAssemblyDownloader(HttpClient httpClient, IModulePropertiesLookup modulePropertiesLookup)
+        public ModuleAssemblyDownloader(
+            HttpClient httpClient,
+            IModulePropertiesLookup modulePropertiesLookup,
+            ILogger<ModuleAssemblyDownloader> logger = null)
         {
             if (httpClient == null)
                 throw new ArgumentNullException(nameof(httpClient));
@@ -28,6 +32,7 @@ namespace AI4E.Blazor.Modularity
 
             _httpClient = httpClient;
             _modulePropertiesLookup = modulePropertiesLookup;
+            _logger = logger;
         }
 
         public Assembly GetAssembly(string assemblyName)
@@ -40,23 +45,77 @@ namespace AI4E.Blazor.Modularity
             return assembly;
         }
 
-        public async Task InstallAssemblyAsync(ModuleIdentifier module, string assemblyName, CancellationToken cancellation)
+        public async ValueTask<Assembly> InstallAssemblyAsync(ModuleIdentifier module, string assemblyName, CancellationToken cancellation)
         {
-            Console.WriteLine("Loading assembly: " + assemblyName);
-
-            var assemblyUri = GetAssemblyUri(await GetNormalizedPrefixAsync(module, cancellation), assemblyName);
-
-            using (var assemblyStream = await _httpClient.GetStreamAsync(assemblyUri))
-            using (var localAssemblyStream = await assemblyStream.ReadToMemoryAsync(cancellation))
+            var result = GetAssembly(assemblyName);
+            if (result != null)
             {
-                var assemblyBytes = localAssemblyStream.ToArray();
-                var assembly = Assembly.Load(assemblyBytes);
+                _logger?.LogDebug($"Installing assembly {assemblyName} for module {module}: Already installed.");
+                return result;
             }
+
+            _logger?.LogDebug($"Installing assembly {assemblyName} for module {module}.");
+
+            var moduleProperties = await _modulePropertiesLookup.LookupAsync(module, cancellation);
+
+            if (moduleProperties == null)
+            {
+                _logger?.LogError($"Unable to install assembly {assemblyName} for module {module}. The module properties could not be fetched.");
+                return null;
+            }
+
+            foreach (var prefix in moduleProperties.Prefixes)
+            {
+                var assemblyUri = GetAssemblyUri(prefix, assemblyName);
+                HttpResponseMessage response;
+
+                try
+                {
+                    response = await _httpClient.GetAsync(assemblyUri, cancellation);
+                }
+                catch (Exception exc)
+                {
+                    _logger?.LogWarning(exc, $"Unable to load assembly {assemblyName} from source {assemblyUri}.");
+                    continue;
+                }
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var assemblyBytes = await response.Content.ReadAsByteArrayAsync();
+
+                    try
+                    {
+                        result = Assembly.Load(assemblyBytes);
+                    }
+                    catch (Exception exc)
+                    {
+                        _logger?.LogWarning(exc, $"Unable to install loaded assembly {assemblyName}.");
+                        continue;
+                    }
+
+                    _logger?.LogDebug($"Successfully installed assembly {assemblyName}. Response status was: {response.StatusCode} {response?.ReasonPhrase ?? string.Empty}.");
+
+                    return result;
+                }
+
+                _logger?.LogWarning($"Unable to load assembly {assemblyName} from source {assemblyUri}.");
+            }
+
+            if (moduleProperties.Prefixes.Any())
+            {
+                _logger?.LogError($"Unable to load assembly {assemblyName}. No source successful.");
+            }
+            else
+            {
+                _logger?.LogError($"Unable to load assembly {assemblyName}. No sources available.");
+            }
+
+            return null;
         }
 
-        private string GetAssemblyUri(string normalizedPrefix, string assemblyName)
+        private string GetAssemblyUri(string prefix, string assemblyName)
         {
-            var assemblyUri = normalizedPrefix;
+            var assemblyUri = NormalizePrefix(prefix);
 
             if (!assemblyUri.EndsWith("/", StringComparison.OrdinalIgnoreCase))
             {
@@ -68,10 +127,8 @@ namespace AI4E.Blazor.Modularity
             return assemblyUri;
         }
 
-        private async Task<string> GetNormalizedPrefixAsync(ModuleIdentifier module, CancellationToken cancellation)
+        private string NormalizePrefix(string prefix)
         {
-            var prefix = await GetPrefixAsync(module, cancellation);
-
             if (!prefix.StartsWith("/", StringComparison.OrdinalIgnoreCase))
             {
                 prefix = "/" + prefix;
