@@ -1,9 +1,6 @@
 using System;
-using System.Collections.Immutable;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Memory;
 
 namespace AI4E.Modularity.Host
 {
@@ -19,14 +16,9 @@ namespace AI4E.Modularity.Host
             _runningModules = runningModules;
         }
 
-        public async ValueTask<ModuleProperties> LookupAsync(ModuleIdentifier module, CancellationToken cancellation)
+        public ValueTask<ModuleProperties> LookupAsync(ModuleIdentifier module, CancellationToken cancellation)
         {
-            var prefixes = await _runningModules.GetPrefixesAsync(module, cancellation);
-            var endPoints = await _runningModules.GetEndPointsAsync(module, cancellation);
-
-            return new ModuleProperties(
-                prefixes.Select(p => p.ConvertToString()).ToImmutableList(),
-                endPoints.ToImmutableList());
+            return _runningModules.GetPropertiesAsync(module, cancellation);
         }
     }
 }

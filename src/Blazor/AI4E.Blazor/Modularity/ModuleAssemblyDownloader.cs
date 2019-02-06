@@ -136,10 +136,5 @@ namespace AI4E.Blazor.Modularity
 
             return prefix;
         }
-
-        private ValueTask<string> GetPrefixAsync(ModuleIdentifier module, CancellationToken cancellation)
-        {
-            return _modulePropertiesLookup.LookupPrefixAsync(module, cancellation);
-        }
     }
 }
