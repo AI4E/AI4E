@@ -36,9 +36,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Processing;
 using AI4E.Utils;
 using AI4E.Utils.Memory;
+using AI4E.Utils.Processing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -57,8 +57,7 @@ namespace AI4E.Coordination
         private readonly ISessionManager _sessionManager;
         private readonly ICoordinationSessionOwner _sessionOwner;
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly CoordinationEntryCache _cache;
-        private readonly ICoordinationLockManager _lockManager;
+        private readonly ICoordinationCacheManager _cacheManager;
         private readonly ILogger<CoordinationManager<TAddress>> _logger;
 
         private readonly CoordinationManagerOptions _options;
@@ -76,8 +75,7 @@ namespace AI4E.Coordination
                                    ISessionManager sessionManager,
                                    ICoordinationSessionOwner sessionOwner,
                                    IDateTimeProvider dateTimeProvider,
-                                   CoordinationEntryCache cache,
-                                   ICoordinationLockManager lockManager,
+                                   ICoordinationCacheManager cacheManager,
                                    IOptions<CoordinationManagerOptions> optionsAccessor,
                                    ILogger<CoordinationManager<TAddress>> logger = null)
         {
@@ -99,11 +97,8 @@ namespace AI4E.Coordination
             if (dateTimeProvider == null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
 
-            if (cache == null)
-                throw new ArgumentNullException(nameof(cache));
-
-            if (lockManager == null)
-                throw new ArgumentNullException(nameof(lockManager));
+            if (cacheManager == null)
+                throw new ArgumentNullException(nameof(cacheManager));
 
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
@@ -114,8 +109,7 @@ namespace AI4E.Coordination
             _sessionManager = sessionManager;
             _sessionOwner = sessionOwner;
             _dateTimeProvider = dateTimeProvider;
-            _cache = cache;
-            _lockManager = lockManager;
+            _cacheManager = cacheManager;
             _logger = logger;
 
             _options = optionsAccessor.Value ?? new CoordinationManagerOptions();
@@ -234,7 +228,6 @@ namespace AI4E.Coordination
             await _sessionManager.EndSessionAsync(session, cancellation);
         }
 
-
         #endregion
 
         public void Dispose()
@@ -261,75 +254,17 @@ namespace AI4E.Coordination
 
         private async ValueTask<IStoredEntry> GetEntryAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
-            // First try to load the entry from the cache.
-            var cacheEntry = _cache.GetEntry(path);
+            var result = await _cacheManager.GetEntryAsync(path, cancellation);
 
-            // We have to check whether the cache entry is (still) valid.
-            if (cacheEntry.IsValid)
+            if (result == null)
             {
-                return cacheEntry.Entry;
+                // This operation is called for each child of an entry, when iterating the child collection.
+                // We are in the case that the requested entry cannot be found. 
+                // If this is part of the parents child collection, we clean this up now.
+                await UpdateParentOfDeletedEntry(path, cancellation);
             }
 
-            await _lockManager.AcquireLocalReadLockAsync(path, cancellation);
-
-            try
-            {
-                var entry = await _storage.GetEntryAsync(path, cancellation);
-
-                if (entry == null)
-                {
-                    goto CleanupParentOfDeletedEntry;
-                }
-
-                entry = await _lockManager.AcquireReadLockAsync(entry, cancellation);
-
-                if (entry == null)
-                {
-                    goto CleanupParentOfDeletedEntry;
-                }
-
-                try
-                {
-#if DEBUG
-                    var session = await GetSessionAsync(cancellation);
-                    Assert(entry.ReadLocks.Contains(session));
-#endif
-                    var updatedCacheEntry = _cache.UpdateEntry(cacheEntry, entry);
-
-                    // If we cannot update the cache, f.e. due to an old cache entry version, the cache is invalidated, and we do not need the read-lock. => Free it.
-                    // This must be synchronized with any concurrent read operations that 
-                    // (1) Register a read-lock (No-op, as we currently own a read-lock)
-                    // (2) Updates the cache entry successfully.
-                    // (3) We are releasing the read-lock here
-                    // In order to not leaves the coordination service in an inconsistent state, we have acquire a separate local read-lock on cache update.
-                    if (!updatedCacheEntry.IsValid)
-                    {
-                        Assert(entry != null);
-                        await _lockManager.ReleaseReadLockAsync(entry, cancellation);
-                    }
-                }
-                catch
-                {
-                    Assert(entry != null);
-                    await _lockManager.ReleaseReadLockAsync(entry, cancellation);
-                    throw;
-                }
-
-                return entry;
-            }
-            finally
-            {
-                await _lockManager.ReleaseLocalReadLockAsync(path, cancellation);
-            }
-
-// We do not want to do this under the local read-lock.
-CleanupParentOfDeletedEntry:
-
-// This operation is called for each child of an entry, when iterating the child collection.
-// We are in the case that the requested entry cannot be found. 
-// If this is part of the parents child collection, we clean this up now.
-            await UpdateParentOfDeletedEntry(path, cancellation);
-            return null;
+            return result;
         }
 
         #endregion
@@ -359,7 +294,6 @@ CleanupParentOfDeletedEntry:
             }
 
             Assert(entry != null);
-            await AddToCacheAsync(entry, cancellation);
 
             return new Entry(this, entry);
         }
@@ -391,52 +325,8 @@ CleanupParentOfDeletedEntry:
                                                           cancellation);
 
             Assert(entry != null);
-            await AddToCacheAsync(entry, cancellation);
 
             return new Entry(this, entry);
-        }
-
-        private async Task<IStoredEntry> AddToCacheAsync(IStoredEntry entry, CancellationToken cancellation)
-        {
-            if (entry == null)
-                throw new ArgumentNullException(nameof(entry));
-
-            var path = entry.Path;
-
-            await _lockManager.AcquireLocalReadLockAsync(path, cancellation);
-
-            try
-            {
-                entry = await _lockManager.AcquireReadLockAsync(entry, cancellation);
-
-                if (entry == null)
-                {
-                    return null;
-                }
-
-                try
-                {
-#if DEBUG
-                    var session = await GetSessionAsync(cancellation);
-                    Assert(entry.ReadLocks.Contains(session));
-#endif
-                    _cache.AddEntry(entry);
-
-                    return entry;
-                }
-                catch
-                {
-                    Assert(entry != null);
-
-                    await _lockManager.ReleaseReadLockAsync(entry, cancellation);
-
-                    throw;
-                }
-            }
-            finally
-            {
-                await _lockManager.ReleaseLocalReadLockAsync(path, cancellation);
-            }
         }
 
         private async Task<(IStoredEntry entry, bool created)> TryCreateInternalAsync(CoordinationEntryPath path,
@@ -472,7 +362,7 @@ CleanupParentOfDeletedEntry:
                 finally
                 {
                     Assert(parent != null);
-                    await _lockManager.ReleaseWriteLockAsync(parent, cancellation);
+                    await _cacheManager.UnlockEntryAsync(parentPath);
                 }
             }
 
@@ -540,7 +430,7 @@ CleanupParentOfDeletedEntry:
 
             do
             {
-                result = await LoadAndAcquireWriteLockAsync(path, cancellation);
+                result = await _cacheManager.LockEntryAsync(path, cancellation);
 
                 if (result != null)
                 {
@@ -554,7 +444,7 @@ CleanupParentOfDeletedEntry:
 
             Assert(result != null);
             Assert(result.WriteLock == session);
-            Assert(_cache.GetEntry(path).LocalWriteLock.CurrentCount == 0);
+            //Assert(_cache.GetEntry(path).LocalWriteLock.CurrentCount == 0);
             return result;
         }
 
@@ -564,26 +454,11 @@ CleanupParentOfDeletedEntry:
                                                                                   Session session,
                                                                                   CancellationToken cancellation)
         {
-            IStoredEntry comparand = null;
-
-            // Lock the local-lock first.
-            // Create will lock the write-lock for us.
-            await _lockManager.AcquireLocalWriteLockAsync(path, cancellation);
-            Assert(_cache.GetEntry(path).LocalWriteLock.CurrentCount == 0);
+            var comparand = await _cacheManager.LockOrCreateEntryAsync(path, cancellation);
+            IStoredEntry entry;
 
             try
             {
-                try
-                {
-                    // Check if entry exists.
-                    comparand = await _storage.GetEntryAsync(path, cancellation);
-                }
-                catch
-                {
-                    await _lockManager.ReleaseLocalWriteLockAsync(path, cancellation);
-                    throw;
-                }
-
                 if (comparand != null)
                 {
                     // There is already an entry present
@@ -601,7 +476,7 @@ CleanupParentOfDeletedEntry:
                     await _sessionManager.AddSessionEntryAsync(session, path, cancellation);
                 }
 
-                var entry = _storedEntryManager.Create(path, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.Span);
+                entry = _storedEntryManager.Create(path, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.Span);
                 Assert(entry != null);
                 Assert(entry.WriteLock == session);
 
@@ -613,13 +488,8 @@ CleanupParentOfDeletedEntry:
                     return (comparand, false);
                 }
 
-                // We created the entry successfully. => Release the write lock.
-                entry = await _lockManager.ReleaseWriteLockAsync(entry, cancellation);
-
-                Assert(entry.WriteLock == null);
-
-                // We created the entry successfully.
-                return (entry, true);
+                // We release the lock on comparand.
+                comparand = entry;
             }
             finally
             {
@@ -628,9 +498,14 @@ CleanupParentOfDeletedEntry:
                     Assert(comparand.WriteLock != session);
 
                     // There is already an entry present => Release the local lock only.
-                    await _lockManager.ReleaseLocalWriteLockAsync(path, cancellation);
+                    entry = await _cacheManager.UnlockEntryAsync(path);
                 }
             }
+
+            Assert(entry.WriteLock == null);
+
+            // We created the entry successfully.
+            return (entry, true);
         }
 
         #endregion
@@ -655,7 +530,7 @@ CleanupParentOfDeletedEntry:
             // There is no parent entry.
             if (path.IsRoot)
             {
-                var entry = await LoadAndAcquireWriteLockAsync(path, cancellation);
+                var entry = await _cacheManager.LockEntryAsync(path, cancellation);
 
                 if (entry == null)
                 {
@@ -671,11 +546,12 @@ CleanupParentOfDeletedEntry:
                     // We must only release the write-lock if we could acquire it previously. 
                     // If the entry did not exist, this is not the case.
                     Assert(entry != null);
-                    await _lockManager.ReleaseWriteLockAsync(entry, cancellation);
+                    await _cacheManager.UnlockEntryAsync(path);
                 }
             }
 
-            var parent = await LoadAndAcquireWriteLockAsync(path.GetParentPath(), cancellation);
+            var parentPath = path.GetParentPath();
+            var parent = await _cacheManager.LockEntryAsync(parentPath, cancellation);
 
             // The parent was deleted concurrently. => The parent may only be deleted if all childs were deleted => Our entry does not exist any more.
             if (parent == null)
@@ -685,7 +561,7 @@ CleanupParentOfDeletedEntry:
 
             try
             {
-                var entry = await LoadAndAcquireWriteLockAsync(path, cancellation);
+                var entry = await _cacheManager.LockEntryAsync(path, cancellation);
 
                 if (entry == null)
                 {
@@ -711,7 +587,7 @@ CleanupParentOfDeletedEntry:
                 finally
                 {
                     Assert(entry != null);
-                    await _lockManager.ReleaseWriteLockAsync(entry, cancellation);
+                    await _cacheManager.UnlockEntryAsync(path);
                 }
 
                 // The entry is deleted now, because WE deleted it.
@@ -733,7 +609,7 @@ CleanupParentOfDeletedEntry:
             finally
             {
                 Assert(parent != null);
-                await _lockManager.ReleaseWriteLockAsync(parent, cancellation);
+                await _cacheManager.UnlockEntryAsync(parentPath);
             }
         }
 
@@ -797,7 +673,7 @@ CleanupParentOfDeletedEntry:
                 // First load the child entry.
                 var childPath = entry.Path.GetChildPath(childName);
 
-                var child = await LoadAndAcquireWriteLockAsync(childPath, cancellation);
+                var child = await _cacheManager.LockEntryAsync(childPath, cancellation);
                 var originalChild = child;
 
                 // The child-names collection is not guaranteed to be strongly consistent.
@@ -823,7 +699,7 @@ CleanupParentOfDeletedEntry:
                 finally
                 {
                     Assert(originalChild != null);
-                    await _lockManager.ReleaseWriteLockAsync(originalChild, cancellation);
+                    await _cacheManager.UnlockEntryAsync(childPath);
                 }
 
                 // As we did not specify a version, the call must succeed.
@@ -847,7 +723,7 @@ CleanupParentOfDeletedEntry:
 
             // TODO: We actually want to remove the entry from the cache, but this also deletes the local write-lock, we own.
 
-            // This is done now in 'ICoordinationLockManager.ReleaseWriteLockAsync' (called by the caller) and can be removed here.
+            // This is done now in 'ICoordinationCacheManager.ReleaseWriteLockAsync' (called by the caller) and can be removed here.
             //_cache.InvalidateEntry(entry.Path); 
             return (entry: null, deleted: true);
         }
@@ -866,7 +742,7 @@ CleanupParentOfDeletedEntry:
             if (!await _sessionManager.IsAliveAsync(session, cancellation))
                 throw new SessionTerminatedException();
 
-            var entry = await LoadAndAcquireWriteLockAsync(path, cancellation);
+            var entry = await _cacheManager.LockEntryAsync(path, cancellation);
 
             if (entry == null)
             {
@@ -886,7 +762,7 @@ CleanupParentOfDeletedEntry:
             finally
             {
                 Assert(entry != null);
-                await _lockManager.ReleaseWriteLockAsync(entry, cancellation);
+                await _cacheManager.UnlockEntryAsync(path);
             }
         }
 
@@ -902,7 +778,7 @@ CleanupParentOfDeletedEntry:
             var parentPath = path.GetParentPath();
             var child = path.Segments.Last();
 
-            var parent = await _storage.GetEntryAsync(parentPath, cancellation);
+            var parent = await _cacheManager.GetEntryAsync(parentPath, cancellation);
 
             if (parent == null || !parent.Children.Contains(child))
             {
@@ -910,7 +786,7 @@ CleanupParentOfDeletedEntry:
             }
 
             var session = await GetSessionAsync(cancellation);
-            parent = await _lockManager.AcquireWriteLockAsync(parent, cancellation);
+            parent = await _cacheManager.LockEntryAsync(parentPath, cancellation);
 
             if (parent == null)
             {
@@ -920,7 +796,7 @@ CleanupParentOfDeletedEntry:
             try
             {
                 var childPath = path.GetChildPath(child);
-                var childEntry = await _storage.GetEntryAsync(childPath, cancellation);
+                var childEntry = await _cacheManager.GetEntryAsync(childPath, cancellation);
 
                 if (childEntry == null)
                 {
@@ -930,7 +806,7 @@ CleanupParentOfDeletedEntry:
             finally
             {
                 Assert(parent != null);
-                await _lockManager.ReleaseWriteLockAsync(parent, cancellation);
+                await _cacheManager.UnlockEntryAsync(parentPath);
             }
         }
 
@@ -944,20 +820,6 @@ CleanupParentOfDeletedEntry:
             {
                 throw new SessionTerminatedException();
             }
-        }
-
-        private async Task<IStoredEntry> LoadAndAcquireWriteLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
-        {
-            var entry = await _storage.GetEntryAsync(path, cancellation);
-
-            if (entry == null)
-                return null;
-
-            var result = await _lockManager.AcquireWriteLockAsync(entry, cancellation);
-
-            Assert(result == null || result.WriteLock == await GetSessionAsync(cancellation));
-
-            return result;
         }
 
         private sealed class Entry : IEntry

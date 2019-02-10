@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using AI4E.Internal;
 using AI4E.Remoting;
 using AI4E.Storage;
@@ -52,7 +52,8 @@ namespace AI4E.Coordination
             services.AddScoped<ICoordinationLockManager, CoordinationLockManager>();
             services.AddScoped<ICoordinationSessionOwner, CoordinationSessionOwner>();
             services.AddScoped<ILockWaitDirectory, LockWaitDirectory>();
-            services.AddScoped<CoordinationEntryCache>();
+            //services.AddScoped<CoordinationEntryCache>();
+            services.AddScoped<ICoordinationCacheManager, CoordinationCacheManager>();
 
             return new CoordinationBuilder(services);
         }
