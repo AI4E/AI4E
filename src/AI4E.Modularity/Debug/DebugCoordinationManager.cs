@@ -7,6 +7,7 @@ using AI4E.Proxying;
 using AI4E.Utils;
 using AI4E.Utils.Memory;
 using Microsoft.Extensions.Logging;
+using AI4E.Coordination.Session;
 
 namespace AI4E.Modularity.Debug
 {
@@ -16,7 +17,7 @@ namespace AI4E.Modularity.Debug
         private readonly ILogger<DebugCoordinationManager> _logger;
 
         private readonly DisposableAsyncLazy<IProxy<CoordinationManagerSkeleton>> _proxyLazy;
-        private readonly DisposableAsyncLazy<Session> _sessionLazy;
+        private readonly DisposableAsyncLazy<CoordinationSession> _sessionLazy;
 
         public DebugCoordinationManager(DebugConnection debugConnection, ILogger<DebugCoordinationManager> logger = null)
         {
@@ -31,7 +32,7 @@ namespace AI4E.Modularity.Debug
                 disposal: p => p.DisposeAsync(),
                 options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
 
-            _sessionLazy = new DisposableAsyncLazy<Session>(
+            _sessionLazy = new DisposableAsyncLazy<CoordinationSession>(
                 factory: GetSessionInternalAsync,
                 options: DisposableAsyncLazyOptions.ExecuteOnCallingThread | DisposableAsyncLazyOptions.RetryOnFailure);
         }
@@ -119,19 +120,19 @@ namespace AI4E.Modularity.Debug
             return await proxy.ExecuteAsync(p => p.DeleteAsync(path.EscapedPath.ConvertToString(), version, recursive, cancellation));
         }
 
-        private async Task<Session> GetSessionInternalAsync(CancellationToken cancellation)
+        private async Task<CoordinationSession> GetSessionInternalAsync(CancellationToken cancellation)
         {
             var proxy = await GetProxyAsync(cancellation);
             var session = await proxy.ExecuteAsync(p => p.GetSessionAsync(cancellation));
-            return Session.FromChars(session.AsSpan());
+            return CoordinationSession.FromChars(session.AsSpan());
         }
 
-        public ValueTask<Session> GetSessionAsync(CancellationToken cancellation = default)
+        public ValueTask<CoordinationSession> GetSessionAsync(CancellationToken cancellation = default)
         {
             // Once determined, the session is a constant and can be cached.
             // Be aware that this can change in the future, 
             // for example when implementing reconnection on session termination.
-            return new ValueTask<Session>(_sessionLazy.Task.WithCancellation(cancellation));
+            return new ValueTask<CoordinationSession>(_sessionLazy.Task.WithCancellation(cancellation));
         }
     }
 }

@@ -36,6 +36,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Coordination.Caching;
+using AI4E.Coordination.Session;
+using AI4E.Coordination.Storage;
 using AI4E.Utils;
 using AI4E.Utils.Memory;
 using AI4E.Utils.Processing;
@@ -124,7 +127,7 @@ namespace AI4E.Coordination
 
         #region Session management
 
-        public ValueTask<Session> GetSessionAsync(CancellationToken cancellation)
+        public ValueTask<CoordinationSession> GetSessionAsync(CancellationToken cancellation)
         {
             return _sessionOwner.GetSessionAsync(cancellation);
         }
@@ -180,7 +183,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task UpdateSessionAsync(Session session, CancellationToken cancellation)
+        private async Task UpdateSessionAsync(CoordinationSession session, CancellationToken cancellation)
         {
             var leaseLength = _options.LeaseLength;
 
@@ -213,7 +216,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task CleanupSessionAsync(Session session, CancellationToken cancellation)
+        private async Task CleanupSessionAsync(CoordinationSession session, CancellationToken cancellation)
         {
             _logger?.LogInformation($"[{await GetSessionAsync(cancellation)}] Cleaning up session '{session}'.");
 
@@ -332,7 +335,7 @@ namespace AI4E.Coordination
         private async Task<(IStoredEntry entry, bool created)> TryCreateInternalAsync(CoordinationEntryPath path,
                                                                                       ReadOnlyMemory<byte> value,
                                                                                       EntryCreationModes modes,
-                                                                                      Session session,
+                                                                                      CoordinationSession session,
                                                                                       CancellationToken cancellation)
         {
             Stopwatch watch = null;
@@ -388,7 +391,7 @@ namespace AI4E.Coordination
                                                                                    IStoredEntry parent,
                                                                                    ReadOnlyMemory<byte> value,
                                                                                    EntryCreationModes modes,
-                                                                                   Session session,
+                                                                                   CoordinationSession session,
                                                                                    CancellationToken cancellation)
         {
             Assert(parent != null);
@@ -424,7 +427,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task<IStoredEntry> EnsureParentLock(CoordinationEntryPath path, Session session, CancellationToken cancellation)
+        private async Task<IStoredEntry> EnsureParentLock(CoordinationEntryPath path, CoordinationSession session, CancellationToken cancellation)
         {
             IStoredEntry result;
 
@@ -451,7 +454,7 @@ namespace AI4E.Coordination
         private async Task<(IStoredEntry entry, bool created)> TryCreateCoreAsync(CoordinationEntryPath path,
                                                                                   ReadOnlyMemory<byte> value,
                                                                                   EntryCreationModes modes,
-                                                                                  Session session,
+                                                                                  CoordinationSession session,
                                                                                   CancellationToken cancellation)
         {
             var comparand = await _cacheManager.LockOrCreateEntryAsync(path, cancellation);
@@ -613,7 +616,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async ValueTask<int> DeleteInternalAsync(IStoredEntry entry, Session session, int version, bool recursive, CancellationToken cancellation)
+        private async ValueTask<int> DeleteInternalAsync(IStoredEntry entry, CoordinationSession session, int version, bool recursive, CancellationToken cancellation)
         {
             bool deleted;
 
@@ -645,7 +648,7 @@ namespace AI4E.Coordination
         // Return values:
         // entry: null if the delete operation succeeded or if the entry is not present
         // deleted: true, if the operation succeeded, false otherwise. Check the entry result in this case.
-        private async Task<(IStoredEntry entry, bool deleted)> DeleteCoreAsync(IStoredEntry entry, Session session, int version, bool recursive, CancellationToken cancellation)
+        private async Task<(IStoredEntry entry, bool deleted)> DeleteCoreAsync(IStoredEntry entry, CoordinationSession session, int version, bool recursive, CancellationToken cancellation)
         {
             // The entry is not existing.
             if (entry == null)
@@ -714,7 +717,7 @@ namespace AI4E.Coordination
 
             if (entry.EphemeralOwner != null)
             {
-                await _sessionManager.RemoveSessionEntryAsync((Session)entry.EphemeralOwner, entry.Path, cancellation);
+                await _sessionManager.RemoveSessionEntryAsync((CoordinationSession)entry.EphemeralOwner, entry.Path, cancellation);
             }
 
             // We must remove the entry from the cache by ourselves here, 

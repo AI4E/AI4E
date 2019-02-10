@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -21,6 +21,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Coordination.Session;
 using AI4E.Utils.Async;
 
 namespace AI4E.Coordination
@@ -119,7 +120,7 @@ namespace AI4E.Coordination
         /// When evaluated, the tasks result contains the current session.
         /// </returns>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
-        ValueTask<Session> GetSessionAsync(CancellationToken cancellation = default);
+        ValueTask<CoordinationSession> GetSessionAsync(CancellationToken cancellation = default);
     }
 
     /// <summary>

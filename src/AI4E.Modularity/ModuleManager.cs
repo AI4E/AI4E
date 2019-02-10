@@ -28,6 +28,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
+using AI4E.Coordination.Session;
 using AI4E.Internal;
 using AI4E.Routing;
 using AI4E.Utils.Memory;
@@ -213,7 +214,7 @@ namespace AI4E.Modularity
             ModuleIdentifier module,
             EndPointAddress endPoint,
             ICollection<ReadOnlyMemory<char>> prefixes,
-            Session session,
+            CoordinationSession session,
             CancellationToken cancellation)
         {
             var path = GetRunningModulePath(module, session);
@@ -236,7 +237,7 @@ namespace AI4E.Modularity
             }
         }
 
-        private async Task WriteModulePrefixEntryAsync(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, Session session, CancellationToken cancellation)
+        private async Task WriteModulePrefixEntryAsync(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, CoordinationSession session, CancellationToken cancellation)
         {
             var normalizedPrefix = NormalizePrefix(prefix);
 
@@ -308,7 +309,7 @@ namespace AI4E.Modularity
             return _rootPrefixesPath.GetChildPath(prefix);
         }
 
-        private static CoordinationEntryPath GetPrefixPath(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, Session session, bool normalize = true)
+        private static CoordinationEntryPath GetPrefixPath(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, CoordinationSession session, bool normalize = true)
         {
             if (normalize)
             {
@@ -324,7 +325,7 @@ namespace AI4E.Modularity
             return _rootRunningPath.GetChildPath(module.Name);
         }
 
-        private static CoordinationEntryPath GetRunningModulePath(ModuleIdentifier module, Session session)
+        private static CoordinationEntryPath GetRunningModulePath(ModuleIdentifier module, CoordinationSession session)
         {
             return _rootRunningPath.GetChildPath(module.Name, session.ToString());
         }

@@ -1,4 +1,8 @@
 using System;
+using AI4E.Coordination.Caching;
+using AI4E.Coordination.Locking;
+using AI4E.Coordination.Session;
+using AI4E.Coordination.Storage;
 using AI4E.Internal;
 using AI4E.Remoting;
 using AI4E.Storage;
