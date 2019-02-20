@@ -29,7 +29,6 @@
  */
 
 using System;
-using System.Collections.Generic;
 
 namespace AI4E
 {
@@ -51,7 +50,7 @@ namespace AI4E
         /// </summary>
         Type MessageType { get; }
 
-        IReadOnlyList<object> Configuration { get; }
+        MessageHandlerConfiguration Configuration { get; }
     }
 
     /// <summary>

@@ -1,7 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using static System.Diagnostics.Debug;
 
 namespace AI4E
 {
@@ -20,18 +17,21 @@ namespace AI4E
 
         public bool LocalDispatchOnly { get; }
 
-        protected override void ConfigureMessageHandler(MessageHandlerActionDescriptor memberDescriptor, IList<object> configuration)
+        protected override void ConfigureMessageHandler(MessageHandlerActionDescriptor memberDescriptor, IMessageHandlerConfigurationBuilder configurationBuilder)
         {
-            var existing = configuration.OfType<LocalDispatchOnlyAttribute>().FirstOrDefault();
-
-            if (existing != null)
-            {
-                configuration.Remove(existing);
-
-                Assert(!configuration.OfType<LocalDispatchOnlyAttribute>().Any());
-            }
-
-            configuration.Add(this);
+            configurationBuilder.Configure(() => new LocalDispatchOnlyMessageHandlerConfiguration(LocalDispatchOnly));
         }
+    }
+
+    public sealed class LocalDispatchOnlyMessageHandlerConfiguration : IMessageHandlerConfigurationFeature
+    {
+        public LocalDispatchOnlyMessageHandlerConfiguration(bool localDispatchOnly)
+        {
+            LocalDispatchOnly = localDispatchOnly;
+        }
+
+        public bool LocalDispatchOnly { get; }
+
+        bool IMessageHandlerConfigurationFeature.IsEnabled => LocalDispatchOnly;
     }
 }
