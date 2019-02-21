@@ -6,12 +6,7 @@ using Newtonsoft.Json;
 
 namespace AI4E.Modularity.Host
 {
-#if BLAZOR
-    internal
-#else
-    public
-#endif
-    readonly struct ResolvedInstallationSet : IComparable<ResolvedInstallationSet>
+    public readonly struct ResolvedInstallationSet : IComparable<ResolvedInstallationSet>
     {
         public static ResolvedInstallationSet EmptyInstallationSet { get; } = default;
 

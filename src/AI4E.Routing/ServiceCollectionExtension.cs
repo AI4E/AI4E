@@ -1,6 +1,5 @@
 using System;
 using System.Reflection;
-using AI4E.Coordination;
 using AI4E.Remoting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -37,9 +36,6 @@ namespace AI4E.Routing
             services.AddCoreServices();
 
             services.AddSingleton(typeof(IEndPointScheduler<>), typeof(RandomEndPointScheduler<>));
-            services.AddSingleton(typeof(IEndPointMap<>), typeof(EndPointMap<>));
-
-            services.AddCoordinationService();
         }
 
         public static void AddEndPointManager(this IServiceCollection services)
@@ -52,7 +48,6 @@ namespace AI4E.Routing
 
         public static void AddMessageRouter(this IServiceCollection services)
         {
-            services.AddSingleton<IRouteManagerFactory, RouteManagerFactory>();
             services.AddSingleton<IMessageRouterFactory, MessageRouterFactory>();
             services.AddHelperServices();
         }

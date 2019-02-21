@@ -1,11 +1,6 @@
 namespace AI4E.Modularity.Debug
 {
-#if BLAZOR
-    internal
-#else
-    public
-#endif
-    sealed class DebugModuleDisconnected
+    public sealed class DebugModuleDisconnected
     {
         public DebugModuleDisconnected(DebugModuleProperties moduleProperties)
         {

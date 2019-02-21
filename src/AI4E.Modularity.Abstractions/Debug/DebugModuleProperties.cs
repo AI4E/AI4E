@@ -21,8 +21,6 @@
 using System;
 using System.Collections.Generic;
 using AI4E.Routing;
-
-#if !BLAZOR
 using System.Buffers;
 using System.Buffers.Binary;
 using System.IO;
@@ -32,16 +30,10 @@ using System.Threading.Tasks;
 using AI4E.Utils.Memory;
 using AI4E.Utils.Memory.Compatibility;
 using static System.Diagnostics.Debug;
-#endif
 
 namespace AI4E.Modularity.Debug
 {
-#if BLAZOR
-    internal
-#else
-    public
-#endif
-    readonly struct DebugModuleProperties : IEquatable<DebugModuleProperties>
+    public readonly struct DebugModuleProperties : IEquatable<DebugModuleProperties>
     {
         public DebugModuleProperties(EndPointAddress endPoint, ModuleIdentifier module, ModuleVersion version)
         {
@@ -54,7 +46,7 @@ namespace AI4E.Modularity.Debug
         public ModuleIdentifier Module { get; }
         public ModuleVersion Version { get; }
 
-#if !BLAZOR
+
 
         public async Task WriteAsync(Stream stream, CancellationToken cancellation)
         {
@@ -122,7 +114,7 @@ namespace AI4E.Modularity.Debug
             return new DebugModuleProperties(endPoint, module, version);
         }
 
-#endif
+
 
         public bool Equals(in DebugModuleProperties other)
         {

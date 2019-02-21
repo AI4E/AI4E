@@ -20,21 +20,36 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Routing;
+using AI4E.Utils.Memory;
 
 namespace AI4E.Modularity
 {
     public interface IModuleManager
     {
-        Task AddModuleAsync(ModuleIdentifier module, EndPointAddress endPoint, IEnumerable<ReadOnlyMemory<char>> prefixes, CancellationToken cancellation = default);
+        Task AddModuleAsync(ModuleIdentifier module, ModuleProperties properties, bool overrideExisting, CancellationToken cancellation = default);
         Task RemoveModuleAsync(ModuleIdentifier module, CancellationToken cancellation);
 
         ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(ReadOnlyMemory<char> prefix, CancellationToken cancellation = default);
-        ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(ModuleIdentifier module, CancellationToken cancellation = default);
+        ValueTask<ModuleProperties> GetPropertiesAsync(ModuleIdentifier module, CancellationToken cancellation = default);
+    }
 
-        ValueTask<IEnumerable<ReadOnlyMemory<char>>> GetPrefixesAsync(ModuleIdentifier module, CancellationToken cancellation = default);
+    public static class ModuleManagerExtension
+    {
+        public static Task AddModuleAsync(
+            this IModuleManager moduleManager,
+            ModuleIdentifier module,
+            EndPointAddress endPoint,
+            IEnumerable<ReadOnlyMemory<char>> prefixes,
+            CancellationToken cancellation = default)
+        {
+            var properties = new ModuleProperties(prefixes.Select(p => p.ConvertToString()).ToImmutableList(), ImmutableList.Create(endPoint));
+
+            return moduleManager.AddModuleAsync(module, properties, overrideExisting: true, cancellation);
+        }
     }
 }

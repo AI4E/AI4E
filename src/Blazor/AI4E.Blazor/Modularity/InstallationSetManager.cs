@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.ApplicationParts;
@@ -154,7 +155,7 @@ namespace AI4E.Blazor.Modularity
             {
                 _logger?.LogDebug($"Processing newly installed module {installedModule}.");
 
-                var manifest = await _moduleManifestProvider.GetModuleManifestAsync(installedModule, cancellation);
+                var manifest = await LoadManifestAsync(installedModule, cancellation);
                 var assemblies = manifest.Assemblies;
 
                 foreach (var assembly in assemblies)
@@ -262,6 +263,7 @@ namespace AI4E.Blazor.Modularity
                 }
             }
 
+            // Download and install all new assemblies.
             foreach (var assembly in installedAssemblies)
             {
                 if (_installedAssemblies.ContainsKey(assembly.Key))
@@ -269,8 +271,7 @@ namespace AI4E.Blazor.Modularity
                     continue;
                 }
 
-                // Download and install all new assemblies.
-                await _moduleAssemblyDownloader.InstallAssemblyAsync(assembly.Value.module, assembly.Key, cancellation);
+                await InstallAssemblyAsync(assembly, cancellation);
             }
 
             foreach (var asmName in registerAsAppPart)
@@ -289,6 +290,29 @@ namespace AI4E.Blazor.Modularity
             }
 
             _installedAssemblies = installedAssemblies.ToImmutable();
+        }
+
+        private async ValueTask InstallAssemblyAsync(KeyValuePair<string, (Version version, bool isAppPart, ModuleIdentifier module)> assembly, CancellationToken cancellation)
+        {
+            Assembly asm;
+            do
+            {
+                asm = await _moduleAssemblyDownloader.InstallAssemblyAsync(assembly.Value.module, assembly.Key, cancellation);
+            }
+            while (asm == null); // TODO: Should we throw an exception and abort instead of retrying this forever?
+        }
+
+        private async ValueTask<BlazorModuleManifest> LoadManifestAsync(ModuleIdentifier installedModule, CancellationToken cancellation)
+        {
+            BlazorModuleManifest manifest;
+
+            do
+            {
+                manifest = await _moduleManifestProvider.GetModuleManifestAsync(installedModule, cancellation);
+            }
+            while (manifest == null);  // TODO: Should we throw an exception and abort instead of retrying this forever?
+
+            return manifest;
         }
 
         private void ReloadBrowser()

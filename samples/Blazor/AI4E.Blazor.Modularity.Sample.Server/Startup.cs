@@ -1,6 +1,5 @@
 using System.Linq;
 using System.Net.Mime;
-using AI4E.Blazor.Server;
 using AI4E.Modularity.Host;
 using AI4E.Routing.SignalR.Server;
 using AI4E.Storage;
@@ -46,8 +45,6 @@ namespace AI4E.Blazor.Modularity.Sample.Server
                 options.EnableDebugging = true;
                 options.DebugConnection = "localhost:8080";
             });
-
-            services.AddBlazorServer();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
