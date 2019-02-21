@@ -21,6 +21,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -30,6 +31,7 @@ using System.Threading.Tasks;
 using AI4E.Coordination;
 using AI4E.Internal;
 using AI4E.Routing;
+using AI4E.Utils;
 using AI4E.Utils.Memory;
 using AI4E.Utils.Memory.Compatibility;
 using static System.Diagnostics.Debug;
@@ -46,7 +48,15 @@ namespace AI4E.Modularity
                                                                                             RegexOptions.Compiled);
 
         private static readonly CoordinationEntryPath _rootPath = new CoordinationEntryPath("modules");
+
+        // Used to insert entries that map from a modules prefix to the end-points a module is present at. This is needed for http-dispatch.
+        // The storage scheme is: {_rootPrefixesPath}/{prefix}/{end-point session combination}
+        // The entry contains the end-point as payload.
         private static readonly CoordinationEntryPath _rootPrefixesPath = _rootPath.GetChildPath("prefixes"); // prefix => end-point
+
+        // Used to insert entries that map from module ids to theit properties (prefixes and end-points).
+        // The storage scheme is: {_rootRunningPath}/{module-name}/{session}
+        // The entry contains the module properties for the session.
         private static readonly CoordinationEntryPath _rootRunningPath = _rootPath.GetChildPath("running"); // module => (prefixes, end-point)
 
         private readonly ICoordinationManager _coordinationManager;
@@ -65,36 +75,28 @@ namespace AI4E.Modularity
 
         #region IRunningModuleLookup
 
-        public async Task AddModuleAsync(ModuleIdentifier module, EndPointAddress endPoint, IEnumerable<ReadOnlyMemory<char>> prefixes, CancellationToken cancellation)
+        public async Task AddModuleAsync(ModuleIdentifier module, ModuleProperties properties, bool overrideExisting, CancellationToken cancellation)
         {
             if (module == default)
                 throw new ArgumentDefaultException(nameof(module));
 
-            if (endPoint == default)
-                throw new ArgumentDefaultException(nameof(endPoint));
+            if (properties == null)
+                throw new ArgumentNullException(nameof(properties));
 
-            if (prefixes == null)
-                throw new ArgumentNullException(nameof(prefixes));
-
-            if (!prefixes.Any())
-                throw new ArgumentException("The collection must not be empty.", nameof(prefixes));
-
-            if (prefixes.Any(prefix => prefix.Span.IsEmptyOrWhiteSpace()))
-                throw new ArgumentException("The collection must not contain null entries or entries that are empty or contain whitespace only.", nameof(prefixes));
-
-            var prefixCollection = (prefixes as ICollection<ReadOnlyMemory<char>>) ?? prefixes.ToList();
             var session = await _coordinationManager.GetSessionAsync(cancellation);
+            var tasks = new List<Task>(capacity: properties.Prefixes.Count * properties.EndPoints.Count);
 
-            var tasks = new List<Task>(capacity: prefixCollection.Count());
-
-            foreach (var prefix in prefixCollection)
+            foreach (var endPoint in properties.EndPoints)
             {
-                tasks.Add(WriteModulePrefixEntryAsync(prefix, endPoint, session, cancellation));
+                foreach (var prefix in properties.Prefixes)
+                {
+                    tasks.Add(WriteModulePrefixEntryAsync(prefix.AsMemory(), endPoint, session, cancellation));
+                }
             }
 
             await Task.WhenAll(tasks);
 
-            await WriteRunningModuleEntryAsync(module, endPoint, prefixCollection, session, cancellation);
+            await WriteRunningModuleEntryAsync(module, properties, overrideExisting, session, cancellation);
 
             // TODO: When cancelled, alls completed operations should be reverted.
             // TODO: The RemoveModuleAsync alogrithm assumes that there are no prefix entries, if the running module entry is not present. We should reflect this assumtion here.
@@ -115,12 +117,15 @@ namespace AI4E.Modularity
 
             await _coordinationManager.DeleteAsync(runningModulePath, cancellation: cancellation);
 
-            var (endPoint, prefixes) = ReadRunningModuleEntry(entry);
+            var (endPoints, prefixes) = ReadRunningModuleEntry(entry);
 
-            foreach (var prefix in prefixes)
+            foreach (var endPoint in endPoints)
             {
-                var prefixPath = GetPrefixPath(prefix, endPoint, session, normalize: false);
-                await _coordinationManager.DeleteAsync(prefixPath, cancellation: cancellation);
+                foreach (var prefix in prefixes)
+                {
+                    var prefixPath = GetPrefixPath(prefix, endPoint, session, normalize: false);
+                    await _coordinationManager.DeleteAsync(prefixPath, cancellation: cancellation);
+                }
             }
         }
 
@@ -154,34 +159,53 @@ namespace AI4E.Modularity
             return result;
         }
 
-        public async ValueTask<IEnumerable<ReadOnlyMemory<char>>> GetPrefixesAsync(ModuleIdentifier module, CancellationToken cancellation)
+        public async ValueTask<ModuleProperties> GetPropertiesAsync(ModuleIdentifier module, CancellationToken cancellation)
         {
             if (module == default)
                 throw new ArgumentDefaultException(nameof(module));
 
             var runningModulePath = GetRunningModulePath(module);
+            var rootEntry = await _coordinationManager.GetAsync(runningModulePath, cancellation);
 
-            var entry = await _coordinationManager.GetAsync(runningModulePath, cancellation);
+            if (rootEntry == null)
+                return null;
 
-            if (entry == null)
-                return Enumerable.Empty<ReadOnlyMemory<char>>();
+            var endPointsBuilder = ImmutableList.CreateBuilder<EndPointAddress>();
+            var prefixesBuilder = ImmutableList.CreateBuilder<string>();
+            var entries = await rootEntry.GetChildrenEntriesAsync(cancellation);
 
-            return await entry.GetChildrenEntries().SelectMany(p => ReadRunningModuleEntry(p).prefixes.ToAsyncEnumerable()).Distinct().ToList();
-        }
+            foreach (var entry in entries)
+            {
+                var (endPoints, prefixes) = ReadRunningModuleEntry(entry);
 
-        public async ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(ModuleIdentifier module, CancellationToken cancellation)
-        {
-            if (module == default)
-                throw new ArgumentDefaultException(nameof(module));
+                foreach (var endPoint in endPoints)
+                {
+                    if (!endPointsBuilder.Contains(endPoint))
+                    {
+                        endPointsBuilder.Add(endPoint);
+                    }
+                }
 
-            var runningModulePath = GetRunningModulePath(module);
+                foreach (var prefix in prefixes)
+                {
+                    if (!prefixesBuilder.Any(p => p.AsSpan().SequenceEqual(prefix.Span)))
+                    {
+                        prefixesBuilder.Add(prefix.ConvertToString());
+                    }
+                }
+            }
 
-            var entry = await _coordinationManager.GetAsync(runningModulePath, cancellation);
+            if (!prefixesBuilder.Any() || !endPointsBuilder.Any())
+            {
+                // If we there is a module present with this identifier, there must be registered at least one prefix and one end-point.
+                Assert(!prefixesBuilder.Any());
+                Assert(!endPointsBuilder.Any());
 
-            if (entry == null)
-                return Enumerable.Empty<EndPointAddress>();
+                return null;
+            }
 
-            return await entry.GetChildrenEntries().Select(p => ReadRunningModuleEntry(p).endPoint).Distinct().ToList();
+            return new ModuleProperties(prefixesBuilder.ToImmutable(), endPointsBuilder.ToImmutable());
+
         }
 
         #endregion
@@ -192,48 +216,122 @@ namespace AI4E.Modularity
             return ReadEndPointAddress(ref reader);
         }
 
-        private (EndPointAddress endPoint, IReadOnlyCollection<ReadOnlyMemory<char>> prefixes) ReadRunningModuleEntry(IEntry entry)
+        private (IEnumerable<EndPointAddress> endPoints, IReadOnlyCollection<ReadOnlyMemory<char>> prefixes) ReadRunningModuleEntry(IEntry entry)
         {
             var reader = new BinarySpanReader(entry.Value.Span, ByteOrder.LittleEndian);
-            var endPoint = ReadEndPointAddress(ref reader);
-            var prefixesCount = reader.ReadInt32();
 
+            var endPointsCount = reader.ReadInt32();
+            var endPoints = new List<EndPointAddress>(capacity: endPointsCount);
+            for (var i = 0; i < endPointsCount; i++)
+            {
+                var endPoint = ReadEndPointAddress(ref reader);
+                endPoints.Add(endPoint);
+            }
+
+            var prefixesCount = reader.ReadInt32();
             var prefixes = new List<ReadOnlyMemory<char>>(capacity: prefixesCount);
 
             for (var i = 0; i < prefixesCount; i++)
             {
-                var prefix = reader.ReadString().AsMemory();
+                var bytes = reader.ReadInt32();
+                var prefix =  Encoding.UTF8.GetString(reader.Read(bytes)).AsMemory();
                 prefixes.Add(prefix);
             }
 
-            return (endPoint, prefixes);
+            return (endPoints, prefixes);
+        }
+
+        private static EndPointAddress ReadEndPointAddress(ref BinarySpanReader reader)
+        {
+            var localEndPointBytesLenght = reader.ReadInt32();
+
+            if (localEndPointBytesLenght == 0)
+            {
+                return EndPointAddress.UnknownAddress;
+            }
+
+            var utf8EncodedValue = reader.Read(localEndPointBytesLenght);
+
+            return new EndPointAddress(utf8EncodedValue.ToArray());
         }
 
         private async Task WriteRunningModuleEntryAsync(
             ModuleIdentifier module,
-            EndPointAddress endPoint,
-            ICollection<ReadOnlyMemory<char>> prefixes,
+            ModuleProperties properties,
+            bool overrideExisting,
             Session session,
             CancellationToken cancellation)
         {
             var path = GetRunningModulePath(module, session);
 
-            using (var stream = new MemoryStream())
-            {
-                using (var writer = new BinaryWriter(stream))
-                {
-                    writer.Write(endPoint);
-                    writer.Write(prefixes.Count());
+            IEntry existing;
+            byte[] payload;
 
-                    foreach (var prefix in prefixes)
+            async Task<bool> AddOrUpdateAsync()
+            {
+                if (existing == null)
+                {
+                    try
                     {
-                        WritePrefix(writer, prefix);
+                        await _coordinationManager.CreateAsync(path, payload, EntryCreationModes.Ephemeral, cancellation);
                     }
+                    catch (DuplicateEntryException) { return false; }
+                }
+                else
+                {
+                    try
+                    {
+                        var comparand = await _coordinationManager.SetValueAsync(path, payload, version: overrideExisting ? 0 : existing.Version, cancellation);
+
+                        if (!overrideExisting && comparand != existing.Version)
+                        {
+                            return false;
+                        }
+                    }
+                    catch (EntryNotFoundException) { return false; }
                 }
 
-                var payload = stream.ToArray();
-                await _coordinationManager.GetOrCreateAsync(path, payload, EntryCreationModes.Ephemeral, cancellation);
+                return true;
             }
+
+            do
+            {
+                existing = await _coordinationManager.GetAsync(path, cancellation);
+
+                var endPoints = properties.EndPoints.ToHashSet();
+                var prefixes = properties.Prefixes.Select(p => p.AsMemory()).ToHashSet();
+
+                if (!overrideExisting)
+                {
+                    var (existingEndPoints, existingPrefixes) = ReadRunningModuleEntry(existing);
+                    endPoints.UnionWith(existingEndPoints);
+                    prefixes.UnionWith(existingPrefixes);
+                }
+
+                using (var stream = new MemoryStream())
+                {
+                    using (var writer = new BinaryWriter(stream))
+                    {
+                        writer.Write(endPoints.Count);
+
+                        foreach (var endPoint in endPoints)
+                        {
+                            writer.Write(endPoint);
+                        }
+
+                        writer.Write(prefixes.Count);
+
+                        foreach (var prefix in prefixes)
+                        {
+                            WritePrefix(writer, prefix);
+                        }
+                    }
+
+                    payload = stream.ToArray();
+                }
+
+            }
+            while (!await AddOrUpdateAsync());
         }
 
         private async Task WriteModulePrefixEntryAsync(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, Session session, CancellationToken cancellation)
@@ -257,20 +355,7 @@ namespace AI4E.Modularity
             }
         }
 
-        private EndPointAddress ReadEndPointAddress(ref BinarySpanReader reader)
-        {
-            var localEndPointBytesLenght = reader.ReadInt32();
-
-            if (localEndPointBytesLenght == 0)
-            {
-                return EndPointAddress.UnknownAddress;
-            }
-
-            var utf8EncodedValue = reader.Read(localEndPointBytesLenght);
-            var copy = utf8EncodedValue.ToArray(); // TODO
-
-            return new EndPointAddress(copy);
-        }
+        
 
         private void WritePrefix(BinaryWriter writer, ReadOnlyMemory<char> prefix)
         {

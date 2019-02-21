@@ -36,6 +36,10 @@ namespace AI4E.Modularity.Module
             services.ConfigureApplicationParts(ConfigureApplicationParts);
             services.ConfigureApplicationServices(ConfigureApplicationServices);
 
+            services.AddSingleton<IRouteManagerFactory, RouteManagerFactory>();
+            services.AddSingleton(typeof(IEndPointMap<>), typeof(EndPointMap<>));
+            services.AddCoordinationService();
+
             return services;
         }
 

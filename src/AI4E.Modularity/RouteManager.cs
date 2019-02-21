@@ -7,11 +7,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
 using AI4E.Internal;
+using AI4E.Routing;
 using AI4E.Utils;
 using AI4E.Utils.Memory;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Routing
+namespace AI4E.Modularity
 {
     // TODO: This thing is currently not thread safe in regards to the consistency of the coordination service's memory.
     //       We can only ensure consistency within a single session here, but do we have to do?

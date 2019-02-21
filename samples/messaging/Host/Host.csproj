@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.Domain.Services\AI4E.Domain.Services.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.Domain\AI4E.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
