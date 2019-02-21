@@ -224,7 +224,7 @@ namespace AI4E.Modularity
             var endPoints = new List<EndPointAddress>(capacity: endPointsCount);
             for (var i = 0; i < endPointsCount; i++)
             {
-                var endPoint = ReadEndPointAddress(reader);
+                var endPoint = ReadEndPointAddress(ref reader);
                 endPoints.Add(endPoint);
             }
 
@@ -233,14 +233,15 @@ namespace AI4E.Modularity
 
             for (var i = 0; i < prefixesCount; i++)
             {
-                var prefix = reader.ReadString().AsMemory();
+                var bytes = reader.ReadInt32();
+                var prefix =  Encoding.UTF8.GetString(reader.Read(bytes)).AsMemory();
                 prefixes.Add(prefix);
             }
 
             return (endPoints, prefixes);
         }
 
-        private static EndPointAddress ReadEndPointAddress(BinarySpanReader reader)
+        private static EndPointAddress ReadEndPointAddress(ref BinarySpanReader reader)
         {
             var localEndPointBytesLenght = reader.ReadInt32();
 
@@ -354,20 +355,7 @@ namespace AI4E.Modularity
             }
         }
 
-        private EndPointAddress ReadEndPointAddress(ref BinarySpanReader reader)
-        {
-            var localEndPointBytesLenght = reader.ReadInt32();
-
-            if (localEndPointBytesLenght == 0)
-            {
-                return EndPointAddress.UnknownAddress;
-            }
-
-            var utf8EncodedValue = reader.Read(localEndPointBytesLenght);
-            var copy = utf8EncodedValue.ToArray(); // TODO
-
-            return new EndPointAddress(copy);
-        }
+        
 
         private void WritePrefix(BinaryWriter writer, ReadOnlyMemory<char> prefix)
         {
