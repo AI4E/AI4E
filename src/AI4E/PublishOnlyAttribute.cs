@@ -1,7 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using static System.Diagnostics.Debug;
 
 namespace AI4E
 {
@@ -20,18 +17,21 @@ namespace AI4E
 
         public bool PublishOnly { get; }
 
-        protected override void ConfigureMessageHandler(MessageHandlerActionDescriptor memberDescriptor, IList<object> configuration)
+        protected override void ConfigureMessageHandler(MessageHandlerActionDescriptor memberDescriptor, IMessageHandlerConfigurationBuilder configurationBuilder)
         {
-            var existing = configuration.OfType<PublishOnlyAttribute>().FirstOrDefault();
-
-            if (existing != null)
-            {
-                configuration.Remove(existing);
-
-                Assert(!configuration.OfType<PublishOnlyAttribute>().Any());
-            }
-
-            configuration.Add(this);
+            configurationBuilder.Configure(() => new PublishOnlyMessageHandlerConfiguration(PublishOnly));
         }
+    }
+
+    public sealed class PublishOnlyMessageHandlerConfiguration : IMessageHandlerConfigurationFeature
+    {
+        public PublishOnlyMessageHandlerConfiguration(bool publishOnly)
+        {
+            PublishOnly = publishOnly;
+        }
+
+        public bool PublishOnly { get; }
+
+        bool IMessageHandlerConfigurationFeature.IsEnabled => PublishOnly;
     }
 }
