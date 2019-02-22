@@ -11,6 +11,7 @@ using AI4E.Blazor.Modularity;
 using AI4E.Modularity.Debug;
 using AI4E.Modularity.Host;
 using AI4E.Routing.SignalR.Client;
+using AI4E.Utils;
 using BlazorSignalR;
 using Microsoft.AspNetCore.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -89,22 +90,27 @@ namespace AI4E.Blazor
             serviceManager.AddService<IInstallationSetManager>(InitializeInstallationSetManagerAsync);
         }
 
-        private static async Task InitializeInstallationSetManagerAsync(IInstallationSetManager installationSetManager, IServiceProvider serviceProvider)
+        private static Task InitializeInstallationSetManagerAsync(IInstallationSetManager installationSetManager, IServiceProvider serviceProvider)
         {
-            var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
-
-            Console.WriteLine("Performing query for running debug modules.");
-            var queryResult = await messageDispatcher.QueryAsync<IEnumerable<DebugModuleProperties>>(cancellation: default);
-
-            if (!queryResult.IsSuccessWithResult<IEnumerable<DebugModuleProperties>>(out var debugModules))
+            Task.Run(async () =>
             {
-                throw new Exception("Unable to query installation set."); // TODO: Exception type
-            }
+                var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
 
-            foreach (var debugModule in debugModules)
-            {
-                await installationSetManager.InstallAsync(debugModule.Module, cancellation: default);
-            }
+                Console.WriteLine("Performing query for running debug modules.");
+                var queryResult = await messageDispatcher.QueryAsync<IEnumerable<DebugModuleProperties>>(cancellation: default);
+
+                if (!queryResult.IsSuccessWithResult<IEnumerable<DebugModuleProperties>>(out var debugModules))
+                {
+                    throw new Exception("Unable to query installation set."); // TODO: Exception type
+                }
+
+                foreach (var debugModule in debugModules)
+                {
+                    await installationSetManager.InstallAsync(debugModule.Module, cancellation: default);
+                }
+            }).HandleExceptions();
+
+            return Task.CompletedTask;
 
             //var queryResult = await messageDispatcher.QueryAsync<ResolvedInstallationSet>(cancellation: default);
 
