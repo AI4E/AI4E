@@ -9,7 +9,7 @@ namespace AI4E.Blazor.Modularity
     {
         Assembly GetAssembly(string assemblyName);
 
-        Task InstallAssemblyAsync(ModuleIdentifier module, string assemblyName, CancellationToken cancellation);
+        ValueTask<Assembly> InstallAssemblyAsync(ModuleIdentifier module, string assemblyName, CancellationToken cancellation);
         Task<byte[]> DownloadAssemblyAsync(ModuleIdentifier module, string assemblyName, CancellationToken cancellation);
     }
 }

@@ -1,7 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Routing
 {
@@ -17,18 +14,21 @@ namespace AI4E.Routing
 
         public bool IsTransient { get; }
 
-        protected override void ConfigureMessageHandler(MessageHandlerActionDescriptor memberDescriptor, IList<object> configuration)
+        protected override void ConfigureMessageHandler(MessageHandlerActionDescriptor memberDescriptor, IMessageHandlerConfigurationBuilder configurationBuilder)
         {
-            var existing = configuration.OfType<TransientAttribute>().FirstOrDefault();
-
-            if (existing != null)
-            {
-                configuration.Remove(existing);
-
-                Assert(!configuration.OfType<TransientAttribute>().Any());
-            }
-
-            configuration.Add(this);
+            configurationBuilder.Configure(() => new IsTransientMessageHandlerConfiguration(IsTransient));
         }
+    }
+
+    public sealed class IsTransientMessageHandlerConfiguration : IMessageHandlerConfigurationFeature
+    {
+        public IsTransientMessageHandlerConfiguration(bool isTransient)
+        {
+            IsTransient = isTransient;
+        }
+
+        public bool IsTransient { get; }
+
+        bool IMessageHandlerConfigurationFeature.IsEnabled => IsTransient;
     }
 }

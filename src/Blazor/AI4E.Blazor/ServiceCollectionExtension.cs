@@ -28,7 +28,7 @@ namespace AI4E.Blazor
 
             services.AddSignalRMessageDispatcher(hubConnectionBuilder =>
             {
-                hubConnectionBuilder.WithUrlBlazor(_defaultHubUrl);
+                hubConnectionBuilder.WithUrlBlazor(new Uri(_defaultHubUrl, UriKind.Relative));
             });
         }
 

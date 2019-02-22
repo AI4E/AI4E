@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using AI4E.Modularity;
 using AI4E.Modularity.Host;
 using AI4E.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace AI4E.Blazor.Modularity
 {
@@ -15,10 +16,13 @@ namespace AI4E.Blazor.Modularity
     {
         private readonly HttpClient _httpClient;
         private readonly IModulePropertiesLookup _modulePropertiesLookup;
-
+        private readonly ILogger<ModuleAssemblyDownloader> _logger;
         private readonly ConcurrentDictionary<string, Assembly> _assemblies = new ConcurrentDictionary<string, Assembly>();
 
-        public ModuleAssemblyDownloader(HttpClient httpClient, IModulePropertiesLookup modulePropertiesLookup)
+        public ModuleAssemblyDownloader(
+            HttpClient httpClient,
+            IModulePropertiesLookup modulePropertiesLookup,
+            ILogger<ModuleAssemblyDownloader> logger = null)
         {
             if (httpClient == null)
                 throw new ArgumentNullException(nameof(httpClient));
@@ -28,6 +32,7 @@ namespace AI4E.Blazor.Modularity
 
             _httpClient = httpClient;
             _modulePropertiesLookup = modulePropertiesLookup;
+            _logger = logger;
         }
 
         public Assembly GetAssembly(string assemblyName)
@@ -42,26 +47,90 @@ namespace AI4E.Blazor.Modularity
 
         public async Task<byte[]> DownloadAssemblyAsync(ModuleIdentifier module, string assemblyName, CancellationToken cancellation)
         {
-            Console.WriteLine("Loading assembly: " + assemblyName);
+            _logger?.LogDebug($"Downloading assembly {assemblyName} for module {module}.");
 
-            var assemblyUri = GetAssemblyUri(await GetNormalizedPrefixAsync(module, cancellation), assemblyName);
+            var moduleProperties = await _modulePropertiesLookup.LookupAsync(module, cancellation);
 
-            using (var assemblyStream = await _httpClient.GetStreamAsync(assemblyUri))
-            using (var localAssemblyStream = await assemblyStream.ReadToMemoryAsync(cancellation))
+            if (moduleProperties == null)
             {
-                return localAssemblyStream.ToArray();
+                _logger?.LogError($"Unable to download assembly {assemblyName} for module {module}. The module properties could not be fetched.");
+                return null;
             }
+
+            foreach (var prefix in moduleProperties.Prefixes)
+            {
+                var assemblyUri = GetAssemblyUri(prefix, assemblyName);
+                HttpResponseMessage response;
+
+                try
+                {
+                    response = await _httpClient.GetAsync(assemblyUri, cancellation);
+                }
+                catch (Exception exc)
+                {
+                    _logger?.LogWarning(exc, $"Unable to download assembly {assemblyName} from source {assemblyUri}.");
+                    continue;
+                }
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadAsByteArrayAsync();
+
+                    _logger?.LogDebug($"Successfully downloaded assembly {assemblyName}. Response status was: {response.StatusCode} {response?.ReasonPhrase ?? string.Empty}.");
+
+                    return result;
+                }
+
+                _logger?.LogWarning($"Unable to download assembly {assemblyName} from source {assemblyUri}.");
+            }
+
+            if (moduleProperties.Prefixes.Any())
+            {
+                _logger?.LogError($"Unable to download assembly {assemblyName}. No source successful.");
+            }
+            else
+            {
+                _logger?.LogError($"Unable to download assembly {assemblyName}. No sources available.");
+            }
+
+            return null;
         }
 
-        public async Task InstallAssemblyAsync(ModuleIdentifier module, string assemblyName, CancellationToken cancellation)
+        public async ValueTask<Assembly> InstallAssemblyAsync(ModuleIdentifier module, string assemblyName, CancellationToken cancellation)
         {
+            var result = GetAssembly(assemblyName);
+
+            if (result != null)
+            {
+                _logger?.LogDebug($"Installing assembly {assemblyName} for module {module}: Already installed.");
+                return result;
+            }
+
             var assemblyBytes = await DownloadAssemblyAsync(module, assemblyName, cancellation);
-            var assembly = Assembly.Load(assemblyBytes);
+
+            if (assemblyBytes == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                result = Assembly.Load(assemblyBytes);
+            }
+            catch (Exception exc)
+            {
+                _logger?.LogWarning(exc, $"Unable to install loaded assembly {assemblyName}.");
+                throw;
+            }
+
+            _logger?.LogDebug($"Successfully installed assembly {assemblyName}.");
+            return result;
+
         }
 
-        private string GetAssemblyUri(string normalizedPrefix, string assemblyName)
+        private string GetAssemblyUri(string prefix, string assemblyName)
         {
-            var assemblyUri = normalizedPrefix;
+            var assemblyUri = NormalizePrefix(prefix);
 
             if (!assemblyUri.EndsWith("/", StringComparison.OrdinalIgnoreCase))
             {
@@ -73,21 +142,14 @@ namespace AI4E.Blazor.Modularity
             return assemblyUri;
         }
 
-        private async Task<string> GetNormalizedPrefixAsync(ModuleIdentifier module, CancellationToken cancellation)
+        private string NormalizePrefix(string prefix)
         {
-            var prefix = await GetPrefixAsync(module, cancellation);
-
             if (!prefix.StartsWith("/", StringComparison.OrdinalIgnoreCase))
             {
                 prefix = "/" + prefix;
             }
 
             return prefix;
-        }
-
-        private ValueTask<string> GetPrefixAsync(ModuleIdentifier module, CancellationToken cancellation)
-        {
-            return _modulePropertiesLookup.LookupPrefixAsync(module, cancellation);
         }
     }
 }

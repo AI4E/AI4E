@@ -1,6 +1,4 @@
 using System;
-using System.Linq;
-using AI4E.Utils;
 
 namespace AI4E
 {
@@ -11,13 +9,7 @@ namespace AI4E
             if (handlerRegistration == null)
                 throw new ArgumentNullException(nameof(handlerRegistration));
 
-            var config = handlerRegistration.Configuration;
-
-            if (config.Count == 0)
-                return false;
-
-            var configEntry = config.OfType<PublishOnlyAttribute>().FirstOrDefault();
-            return configEntry != null && configEntry.PublishOnly;
+            return handlerRegistration.Configuration.IsEnabled<PublishOnlyMessageHandlerConfiguration>();
         }
 
         public static bool IsLocalDispatchOnly(this IMessageHandlerRegistration handlerRegistration)
@@ -25,13 +17,7 @@ namespace AI4E
             if (handlerRegistration == null)
                 throw new ArgumentNullException(nameof(handlerRegistration));
 
-            var config = handlerRegistration.Configuration;
-
-            if (config.Count == 0)
-                return false;
-
-            var configEntry = config.OfType<LocalDispatchOnlyAttribute>().FirstOrDefault();
-            return configEntry != null && configEntry.LocalDispatchOnly;
+            return handlerRegistration.Configuration.IsEnabled<LocalDispatchOnlyMessageHandlerConfiguration>();
         }
     }
 }
