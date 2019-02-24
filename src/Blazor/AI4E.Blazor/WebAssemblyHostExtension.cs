@@ -17,11 +17,22 @@ namespace AI4E.Blazor
 
             if (applicationServiceManager != null)
             {
-                // TODO: https://github.com/AI4E/AI4E/issues/39
-                //       There seems to be a dead-lock with the initialization of the messaging infrastructure if this is not off-loaded.
-                //       This does not seem to be true. ANY asnyc initialization that is not off-loaded locks up the process. This seems to be a live lock,
-                //       as there are many CPU cycles burnt without progress.
-                Task.Run(() => applicationServiceManager.InitializeApplicationServicesAsync(serviceProvider, cancellation: default));
+                async Task InitializeApplicationServicesAsync()
+                {
+                    await applicationServiceManager.InitializeApplicationServicesAsync(serviceProvider, cancellation: default);
+
+                    // Forces an asynchronous yield to the continuation that blocks synchronously
+                    // We do not want the contiuations of applicationServiceManager.InitializeApplicationServicesAsync to be blocked indefinitely
+                    await Task.Yield(); 
+                }
+
+                // We cannot wait for the result currently, as this blocks the JsRuntime to be initialized that we need in the app-services.
+                // https://github.com/AI4E/AI4E/issues/39
+                InitializeApplicationServicesAsync()
+                    .ConfigureAwait(false)
+                    //.GetAwaiter()
+                    //.GetResult()
+                    ;
             }
 
             return webhost;

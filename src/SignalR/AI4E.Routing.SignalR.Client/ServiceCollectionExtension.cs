@@ -81,8 +81,6 @@ namespace AI4E.Routing.SignalR.Client
             serviceCollection.ConfigureHubConnectionBuilder(configureHubConnection);
             // Do NOT Add the HubConnection to the service container.
             // The connection builder already does this and it would lead to infinite recursion.
-
-            serviceCollection.ConfigureApplicationServices(serviceManager => serviceManager.AddService<IMessageDispatcher>());
         }
     }
 }
