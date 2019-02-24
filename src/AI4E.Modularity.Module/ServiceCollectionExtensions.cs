@@ -50,7 +50,6 @@ namespace AI4E.Modularity.Module
 
         private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
         {
-            serviceManager.AddService<IMessageDispatcher>();
             serviceManager.AddService<DebugConnection>();
         }
 
