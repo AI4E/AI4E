@@ -1,4 +1,4 @@
-#define SUPPORT_UNLOADING
+//#define SUPPORT_UNLOADING
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -77,23 +77,16 @@ namespace AI4E.Blazor.Modularity
                 UninstallModule(module);
             }
 
-            try
+            using (var scope = _serviceProvider.CreateScope())
             {
-                using (var scope = _serviceProvider.CreateScope())
-                {
-                    var serviceProvider = scope.ServiceProvider;
-                    var moduleManifestProvider = serviceProvider.GetRequiredService<IModuleManifestProvider>();
-                    var moduleAssemblyDownloader = serviceProvider.GetRequiredService<IModuleAssemblyDownloader>();
+                var serviceProvider = scope.ServiceProvider;
+                var moduleManifestProvider = serviceProvider.GetRequiredService<IModuleManifestProvider>();
+                var moduleAssemblyDownloader = serviceProvider.GetRequiredService<IModuleAssemblyDownloader>();
 
-                    foreach (var module in installedModules)
-                    {
-                        await InstallModuleAsync(module, moduleManifestProvider, moduleAssemblyDownloader, cancellation);
-                    }
+                foreach (var module in installedModules)
+                {
+                    await InstallModuleAsync(module, moduleManifestProvider, moduleAssemblyDownloader, cancellation);
                 }
-            }
-            catch (Exception exc)
-            {
-                System.Diagnostics.Debugger.Break(); // TODO: Remove me
             }
         }
 
@@ -168,10 +161,13 @@ namespace AI4E.Blazor.Modularity
                     _partManager.ApplicationParts.Add(assemblyPart);
                 }
             }
+
+            _running.Add(module, loadContext);
         }
 
         private void UninstallModule(ModuleIdentifier module)
         {
+#if SUPPORT_UNLOADING
             var loadContextWeak = UninstallModuleCore(module);
 
             var i = 0;
@@ -185,6 +181,9 @@ namespace AI4E.Blazor.Modularity
             {
                 // TODO
             }
+#else
+            throw new NotSupportedException("Module unloading is not supported.");
+#endif
         }
 
         private WeakReference<AssemblyLoadContext> UninstallModuleCore(ModuleIdentifier module)
