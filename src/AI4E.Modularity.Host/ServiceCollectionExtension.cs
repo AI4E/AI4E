@@ -77,7 +77,6 @@ namespace AI4E.Modularity.Host
 
         private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
         {
-            serviceManager.AddService<IMessageDispatcher>();
             serviceManager.AddService<DebugPort>(isRequiredService: false);
         }
 
@@ -93,8 +92,6 @@ namespace AI4E.Modularity.Host
 
             var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModularityOptions>>();
             var options = optionsAccessor.Value ?? new ModularityOptions();
-
-
 
             if (options.EnableDebugging)
             {
