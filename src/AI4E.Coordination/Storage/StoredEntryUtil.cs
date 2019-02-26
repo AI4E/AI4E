@@ -12,7 +12,7 @@ namespace AI4E.Coordination.Storage
             if (right is null)
                 return false;
 
-            Debug.Assert(left.Path == right.Path);
+            Debug.Assert(left.Key == right.Key);
 
             return left.StorageVersion == right.StorageVersion;
         }

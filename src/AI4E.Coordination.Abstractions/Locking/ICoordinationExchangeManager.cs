@@ -8,13 +8,23 @@ namespace AI4E.Coordination.Locking
 {
     public interface ICoordinationExchangeManager : IDisposable
     {
-        Task NotifyReadLockReleasedAsync(CoordinationEntryPath path, CancellationToken cancellation = default);
-        Task NotifyWriteLockReleasedAsync(CoordinationEntryPath path, CancellationToken cancellation = default);
-        Task InvalidateCacheEntryAsync(CoordinationEntryPath path, CoordinationSession session, CancellationToken cancellation = default);
+        ValueTask NotifyReadLockReleasedAsync(
+            string key,
+            CancellationToken cancellation = default);
+
+        ValueTask NotifyWriteLockReleasedAsync(
+            string key,
+            CancellationToken cancellation = default);
+
+        ValueTask InvalidateCacheEntryAsync(
+            string key,
+            CoordinationSession session,
+            CancellationToken cancellation = default);
     }
 
     public interface ICoordinationExchangeManager<TAddress> : ICoordinationExchangeManager
     {
-        ValueTask<IPhysicalEndPoint<TAddress>> GetPhysicalEndPointAsync(CancellationToken cancellation = default);
+        ValueTask<IPhysicalEndPoint<TAddress>> GetPhysicalEndPointAsync(
+            CancellationToken cancellation = default);
     }
 }

@@ -6,7 +6,13 @@ namespace AI4E.Coordination.Locking
 {
     public interface ICoordinationWaitManager
     {
-        Task<IStoredEntry> WaitForWriteLockReleaseAsync(IStoredEntry entry, bool allowWriteLock, CancellationToken cancellation);
-        Task<IStoredEntry> WaitForReadLocksReleaseAsync(IStoredEntry entry, CancellationToken cancellation);
+        ValueTask<IStoredEntry> WaitForWriteLockReleaseAsync(
+            IStoredEntry entry,
+            bool allowWriteLock,
+            CancellationToken cancellation);
+
+        ValueTask<IStoredEntry> WaitForReadLocksReleaseAsync(
+            IStoredEntry entry,
+            CancellationToken cancellation);
     }
 }

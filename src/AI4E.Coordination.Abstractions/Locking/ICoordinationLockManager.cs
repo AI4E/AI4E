@@ -6,9 +6,22 @@ namespace AI4E.Coordination.Locking
 {
     public interface ICoordinationLockManager
     {
-        Task<IStoredEntry> AcquireWriteLockAsync(IStoredEntry entry, CancellationToken cancellation);
-        Task<IStoredEntry> ReleaseWriteLockAsync(IStoredEntry entry);
-        Task<IStoredEntry> AcquireReadLockAsync(IStoredEntry entry, CancellationToken cancellation);
-        Task<IStoredEntry> ReleaseReadLockAsync(IStoredEntry entry);
+        ValueTask<IStoredEntry> AcquireWriteLockAsync(
+            string key,
+            CancellationToken cancellation);
+
+        ValueTask<IStoredEntry> AcquireWriteLockAsync(
+            IStoredEntry entry,
+            CancellationToken cancellation);
+
+        ValueTask<IStoredEntry> ReleaseWriteLockAsync(
+            IStoredEntry entry);
+
+        ValueTask<IStoredEntry> AcquireReadLockAsync(
+            IStoredEntry entry,
+            CancellationToken cancellation);
+
+        ValueTask<IStoredEntry> ReleaseReadLockAsync(
+            IStoredEntry entry);
     }
 }

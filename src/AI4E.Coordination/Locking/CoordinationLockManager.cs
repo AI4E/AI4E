@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination.Session;
@@ -13,15 +12,13 @@ using static AI4E.Utils.DebugEx;
 
 namespace AI4E.Coordination.Locking
 {
-    internal sealed class CoordinationLockManager : ICoordinationLockManager
+    public sealed class CoordinationLockManager : ICoordinationLockManager
     {
         #region Fields
 
         private readonly ICoordinationSessionOwner _sessionOwner;
         private readonly ISessionManager _sessionManager;
-        //private readonly CoordinationEntryCache _cache;
         private readonly ICoordinationStorage _storage;
-        private readonly IStoredEntryManager _storedEntryManager;
         private readonly ICoordinationWaitManager _waitManager;
         private readonly ICoordinationExchangeManager _exchangeManager;
         private readonly ILogger<CoordinationLockManager> _logger;
@@ -34,21 +31,13 @@ namespace AI4E.Coordination.Locking
 
         public CoordinationLockManager(ICoordinationSessionOwner sessionOwner,
                                        ISessionManager sessionManager,
-                                       //CoordinationEntryCache cache,
                                        ICoordinationStorage storage,
-                                       IStoredEntryManager storedEntryManager,
                                        ICoordinationWaitManager waitManager,
                                        ICoordinationExchangeManager exchangeManager,
                                        ILogger<CoordinationLockManager> logger = null)
         {
-            //if (cache == null)
-            //    throw new ArgumentNullException(nameof(cache));
-
             if (storage == null)
                 throw new ArgumentNullException(nameof(storage));
-
-            if (storedEntryManager == null)
-                throw new ArgumentNullException(nameof(storedEntryManager));
 
             if (waitManager == null)
                 throw new ArgumentNullException(nameof(waitManager));
@@ -64,9 +53,7 @@ namespace AI4E.Coordination.Locking
 
             _sessionOwner = sessionOwner;
             _sessionManager = sessionManager;
-            //_cache = cache;
             _storage = storage;
-            _storedEntryManager = storedEntryManager;
             _waitManager = waitManager;
             _exchangeManager = exchangeManager;
             _logger = logger;
@@ -94,10 +81,39 @@ namespace AI4E.Coordination.Locking
 
         #region ICoordinationLockManager
 
+        public async ValueTask<IStoredEntry> AcquireWriteLockAsync(
+            string key,
+            CancellationToken cancellation)
+        {
+            var session = await _sessionOwner.GetSessionAsync(cancellation);
+            IStoredEntry entry;
 
-        // Acquired a read lock for the entry with the specified path and returns the entry.
+            do
+            {
+                var builder = new StoredEntryBuilder(key, session);
+                builder.AcquireWriteLock();
+                entry = builder.ToImmutable(reset: true);
+
+                var comparand = await _storage.UpdateEntryAsync(entry, comparand: null, cancellation);
+
+                if (comparand != null)
+                {
+                    entry = await AcquireWriteLockAsync(comparand, cancellation);
+                }
+            }
+            while (entry == null);
+
+            Assert(entry != null);
+            Assert(entry.WriteLock == session);
+
+            return entry;
+        }
+
+        // Acquired a read lock for the entry with the specified key and returns the entry.
         // If the result is null, the entry does not exist and no lock is allocated.
-        public async Task<IStoredEntry> AcquireWriteLockAsync(IStoredEntry entry, CancellationToken cancellation)
+        public async ValueTask<IStoredEntry> AcquireWriteLockAsync(
+            IStoredEntry entry,
+            CancellationToken cancellation)
         {
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
@@ -116,10 +132,7 @@ namespace AI4E.Coordination.Locking
                 throw new SessionTerminatedException(session);
             }
 
-            if (entry != null)
-            {
-                _logger?.LogTrace($"[{session}] Acquiring write-lock for entry '{entry.Path}'.");
-            }
+            _logger?.LogTrace($"[{session}] Acquiring write-lock for entry '{entry.Key}'.");
 
             // We have to perform the operation in a CAS-like loop because concurrency is controlled via a version number only.
             IStoredEntry start, desired;
@@ -135,10 +148,11 @@ namespace AI4E.Coordination.Locking
                 }
 
                 Assert(start.WriteLock == null);
+                var builder = start.ToBuilder(session);
 
-                // Actually try to lock the entry.
-                // Do not use UpdateEntryAsync as this method assumes that we already own the write-lock.
-                desired = _storedEntryManager.AcquireWriteLock(start, session);
+                builder.AcquireWriteLock();
+                builder.AcquireReadLock();
+                desired = builder.ToImmutable();
                 entry = await _storage.UpdateEntryAsync(desired, start, cancellation);
             }
             while (entry != start);
@@ -149,7 +163,7 @@ namespace AI4E.Coordination.Locking
 
             try
             {
-                _logger?.LogTrace($"[{session}] Pending write-lock for entry '{entry.Path}'. Waiting for read-locks to release.");
+                _logger?.LogTrace($"[{session}] Pending write-lock for entry '{entry.Key}'. Waiting for read-locks to release.");
 
                 // Wait till all read-locks are freed.
                 entry = await _waitManager.WaitForReadLocksReleaseAsync(entry, cancellation);
@@ -167,7 +181,7 @@ namespace AI4E.Coordination.Locking
                     Assert(watch != null);
                     watch.Stop();
 
-                    _logger?.LogTrace($"[{session}] Acquired write-lock for entry '{entry.Path}' in {watch.Elapsed.TotalSeconds}sec.");
+                    _logger?.LogTrace($"[{session}] Acquired write-lock for entry '{entry.Key}' in {watch.Elapsed.TotalSeconds}sec.");
                 }
 
                 return entry;
@@ -192,14 +206,13 @@ namespace AI4E.Coordination.Locking
         // Releases the write lock for the specified entry and returns the updated entry.
         // If the current session does not own the write-lock for the entry (f.e. if it is deleted), 
         // this method only releases the local lock but is a no-op otherwise.
-        public async Task<IStoredEntry> ReleaseWriteLockAsync(IStoredEntry entry)
+        public async ValueTask<IStoredEntry> ReleaseWriteLockAsync(
+            IStoredEntry entry)
         {
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
 
-            Assert(entry != null);
-
-            var path = entry.Path;
+            var key = entry.Key;
             var cancellation = (await _sessionTerminationSource).Token;
             IStoredEntry start, desired;
 
@@ -207,7 +220,7 @@ namespace AI4E.Coordination.Locking
 
             if (entry != null)
             {
-                _logger?.LogTrace($"[{session}] Releasing write-lock for entry '{path}'.");
+                _logger?.LogTrace($"[{session}] Releasing write-lock for entry '{key}'.");
             }
 
             do
@@ -217,8 +230,8 @@ namespace AI4E.Coordination.Locking
                 // The entry was deleted.
                 if (start == null)
                 {
-                    _exchangeManager.NotifyWriteLockReleasedAsync(path, cancellation).HandleExceptions(_logger);
-                    _logger?.LogTrace($"[{session}] Released write-lock for entry '{path}'.");
+                    _exchangeManager.NotifyWriteLockReleasedAsync(key, cancellation).HandleExceptions(_logger);
+                    _logger?.LogTrace($"[{session}] Released write-lock for entry '{key}'.");
                     return start;
                 }
 
@@ -228,7 +241,16 @@ namespace AI4E.Coordination.Locking
                     return start;
                 }
 
-                desired = _storedEntryManager.ReleaseWriteLock(start, session);
+                var builder = start.ToBuilder(session);
+                builder.ReleaseWriteLock();
+
+                // We downgrade the write-lock to a read-lock IN CASE the entry is NOT invalidated.
+                if (!builder.IsMarkedAsDeleted)
+                {
+                    builder.AcquireReadLock();
+                }
+
+                desired = builder.ToImmutable();
                 entry = await _storage.UpdateEntryAsync(desired, start, cancellation);
             }
             while (entry != start);
@@ -239,15 +261,16 @@ namespace AI4E.Coordination.Locking
 
             if (entry != null)
             {
-                _exchangeManager.NotifyWriteLockReleasedAsync(path, cancellation).HandleExceptions(_logger);
-                _logger?.LogTrace($"[{session}] Released write-lock for entry '{path}'.");
+                _exchangeManager.NotifyWriteLockReleasedAsync(key, cancellation).HandleExceptions(_logger);
+                _logger?.LogTrace($"[{session}] Released write-lock for entry '{key}'.");
             }
 
             return entry;
-
         }
 
-        public async Task<IStoredEntry> AcquireReadLockAsync(IStoredEntry entry, CancellationToken cancellation)
+        public async ValueTask<IStoredEntry> AcquireReadLockAsync(
+            IStoredEntry entry,
+            CancellationToken cancellation)
         {
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
@@ -270,7 +293,7 @@ namespace AI4E.Coordination.Locking
 
             if (entry != null)
             {
-                _logger?.LogTrace($"[{session}] Acquiring read-lock for entry '{entry.Path}'.");
+                _logger?.LogTrace($"[{session}] Acquiring read-lock for entry '{entry.Key}'.");
             }
 
             do
@@ -285,7 +308,9 @@ namespace AI4E.Coordination.Locking
 
                 Assert(start.WriteLock == null || start.WriteLock == session);
 
-                desired = _storedEntryManager.AcquireReadLock(start, session);
+                var builder = start.ToBuilder(session);
+                builder.AcquireReadLock();
+                desired = builder.ToImmutable();
                 entry = await _storage.UpdateEntryAsync(desired, start, cancellation);
             }
             while (start != entry);
@@ -301,7 +326,7 @@ namespace AI4E.Coordination.Locking
                     Assert(watch != null);
                     watch.Stop();
 
-                    _logger?.LogTrace($"[{session}] Acquired read-lock for entry '{entry.Path.EscapedPath}' in {watch.ElapsedMilliseconds}ms.");
+                    _logger?.LogTrace($"[{session}] Acquired read-lock for entry '{entry.Key}' in {watch.ElapsedMilliseconds}ms.");
                 }
 
                 return entry;
@@ -316,7 +341,8 @@ namespace AI4E.Coordination.Locking
             }
         }
 
-        public async Task<IStoredEntry> ReleaseReadLockAsync(IStoredEntry entry)
+        public async ValueTask<IStoredEntry> ReleaseReadLockAsync(
+            IStoredEntry entry)
         {
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
@@ -330,7 +356,7 @@ namespace AI4E.Coordination.Locking
 
             if (entry != null)
             {
-                _logger?.LogTrace($"[{session}] Releasing read-lock for entry '{entry.Path}'.");
+                _logger?.LogTrace($"[{session}] Releasing read-lock for entry '{entry.Key}'.");
             }
 
             do
@@ -343,16 +369,17 @@ namespace AI4E.Coordination.Locking
                     return null;
                 }
 
-                desired = _storedEntryManager.ReleaseReadLock(start, session);
-
+                var builder = start.ToBuilder(session);
+                builder.ReleaseReadLock();
+                desired = builder.ToImmutable();
                 entry = await _storage.UpdateEntryAsync(desired, start, cancellation);
             }
             while (start != entry);
 
             Assert(entry != null);
 
-            _exchangeManager.NotifyReadLockReleasedAsync(entry.Path, cancellation).HandleExceptions(_logger);
-            _logger?.LogTrace($"[{session}] Released read-lock for entry '{entry.Path}'.");
+            _exchangeManager.NotifyReadLockReleasedAsync(entry.Key, cancellation).HandleExceptions(_logger);
+            _logger?.LogTrace($"[{session}] Released read-lock for entry '{entry.Key}'.");
 
             return desired;
         }

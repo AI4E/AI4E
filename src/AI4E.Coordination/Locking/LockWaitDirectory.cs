@@ -7,33 +7,43 @@ namespace AI4E.Coordination.Locking
 {
     public sealed class LockWaitDirectory : ILockWaitDirectory
     {
-        private readonly AsyncWaitDirectory<(CoordinationEntryPath path, CoordinationSession session)> _readLockWaitDirectory;
-        private readonly AsyncWaitDirectory<(CoordinationEntryPath path, CoordinationSession session)> _writeLockWaitDirectory;
+        private readonly AsyncWaitDirectory<(string key, CoordinationSession session)> _readLockWaitDirectory;
+        private readonly AsyncWaitDirectory<(string key, CoordinationSession session)> _writeLockWaitDirectory;
 
         public LockWaitDirectory()
         {
-            _readLockWaitDirectory = new AsyncWaitDirectory<(CoordinationEntryPath path, CoordinationSession session)>();
-            _writeLockWaitDirectory = new AsyncWaitDirectory<(CoordinationEntryPath path, CoordinationSession session)>();
+            _readLockWaitDirectory = new AsyncWaitDirectory<(string key, CoordinationSession session)>();
+            _writeLockWaitDirectory = new AsyncWaitDirectory<(string key, CoordinationSession session)>();
         }
 
-        public void NotifyReadLockRelease(CoordinationEntryPath path, CoordinationSession session)
+        public void NotifyReadLockRelease(
+            string key,
+            CoordinationSession session)
         {
-            _readLockWaitDirectory.Notify((path, session));
+            _readLockWaitDirectory.Notify((key, session));
         }
 
-        public void NotifyWriteLockRelease(CoordinationEntryPath path, CoordinationSession session)
+        public void NotifyWriteLockRelease(
+            string key,
+            CoordinationSession session)
         {
-            _writeLockWaitDirectory.Notify((path, session));
+            _writeLockWaitDirectory.Notify((key, session));
         }
 
-        public Task WaitForReadLockNotificationAsync(CoordinationEntryPath path, CoordinationSession session, CancellationToken cancellation = default)
+        public ValueTask WaitForReadLockNotificationAsync(
+            string key,
+            CoordinationSession session,
+            CancellationToken cancellation)
         {
-            return _readLockWaitDirectory.WaitForNotificationAsync((path, session), cancellation);
+            return _readLockWaitDirectory.WaitForNotificationAsync((key, session), cancellation).AsValueTask();
         }
 
-        public Task WaitForWriteLockNotificationAsync(CoordinationEntryPath path, CoordinationSession session, CancellationToken cancellation = default)
+        public ValueTask WaitForWriteLockNotificationAsync(
+            string key,
+            CoordinationSession session,
+            CancellationToken cancellation)
         {
-            return _writeLockWaitDirectory.WaitForNotificationAsync((path, session), cancellation);
+            return _writeLockWaitDirectory.WaitForNotificationAsync((key, session), cancellation).AsValueTask();
         }
     }
 }

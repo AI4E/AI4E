@@ -15,11 +15,9 @@ namespace AI4E.Coordination.Storage
     {
         private readonly IFilterableDatabase _database;
         private readonly IStoredSessionManager _storedSessionManager;
-        private readonly IStoredEntryManager _storedEntryManager;
 
         public CoordinationStorage(IFilterableDatabase database,
-                                   IStoredSessionManager storedSessionManager,
-                                   IStoredEntryManager storedEntryManager)
+                                   IStoredSessionManager storedSessionManager)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -27,25 +25,23 @@ namespace AI4E.Coordination.Storage
             if (storedSessionManager == null)
                 throw new ArgumentNullException(nameof(storedSessionManager));
 
-            if (storedEntryManager == null)
-                throw new ArgumentNullException(nameof(storedEntryManager));
-
             _database = database;
             _storedSessionManager = storedSessionManager;
-            _storedEntryManager = storedEntryManager;
         }
 
         #region Entry
 
-        public async Task<IStoredEntry> GetEntryAsync(CoordinationEntryPath path, CancellationToken cancellation)
+        public async ValueTask<IStoredEntry> GetEntryAsync(
+            string key,
+            CancellationToken cancellation)
         {
-            var escapedPath = path.EscapedPath.ConvertToString();
-            var storedEntry = await _database.GetOneAsync<StoredEntry>(p => p.Id == escapedPath, cancellation);
-
-            return _storedEntryManager.Copy(storedEntry);
+            return await _database.GetOneAsync<SerializedStoredEntry>(p => p.Id == key, cancellation);
         }
 
-        public async Task<IStoredEntry> UpdateEntryAsync(IStoredEntry value, IStoredEntry comparand, CancellationToken cancellation)
+        public async ValueTask<IStoredEntry> UpdateEntryAsync(
+            IStoredEntry value,
+            IStoredEntry comparand,
+            CancellationToken cancellation)
         {
             var convertedValue = ConvertValue(value);
             var convertedComparand = ConvertValue(comparand);
@@ -55,22 +51,12 @@ namespace AI4E.Coordination.Storage
                 return comparand;
             }
 
-            return await GetEntryAsync((comparand ?? value).Path, cancellation);
+            return await GetEntryAsync((comparand ?? value).Key, cancellation);
         }
 
-        private StoredEntry ConvertValue(IStoredEntry value)
+        private SerializedStoredEntry ConvertValue(IStoredEntry value)
         {
-            StoredEntry convertedValue = null;
-
-            if (value != null)
-            {
-                convertedValue = value as StoredEntry ?? new StoredEntry(value);
-
-                Assert(convertedValue != null);
-                Assert(convertedValue.Id == value.Path.EscapedPath.ConvertToString());
-            }
-
-            return convertedValue;
+            return value as SerializedStoredEntry ?? (value != null ? new SerializedStoredEntry(value) : null);
         }
 
         #endregion
@@ -126,43 +112,31 @@ namespace AI4E.Coordination.Storage
 
         #endregion
 
-        private sealed class StoredEntry : IStoredEntry
+        private sealed class SerializedStoredEntry : IStoredEntry
         {
-            public StoredEntry() { }
+            public SerializedStoredEntry() { }
 
-            public StoredEntry(IStoredEntry entry)
+            public SerializedStoredEntry(IStoredEntry entry)
             {
-                Id = entry.Path.EscapedPath.ConvertToString();
+                Id = entry.Key;
                 Value = entry.Value.ToArray();
                 ReadLocks = entry.ReadLocks.Select(p => p.ToString()).ToArray();
                 WriteLock = entry.WriteLock?.ToString();
-                Children = entry.Children.Select(p => p.EscapedSegment.ConvertToString()).ToArray();
-                CreationTime = entry.CreationTime;
-                LastWriteTime = entry.LastWriteTime;
-                Version = entry.Version;
                 StorageVersion = entry.StorageVersion;
-                EphemeralOwner = entry.EphemeralOwner?.ToString();
+                IsMarkedAsDeleted = entry.IsMarkedAsDeleted;
             }
 
             public string Id { get; set; }
-            CoordinationEntryPath IStoredEntry.Path => CoordinationEntryPath.FromEscapedPath(Id.AsMemory());
             public byte[] Value { get; set; }
             public string[] ReadLocks { get; set; }
             public string WriteLock { get; set; }
-            CoordinationSession? IStoredEntry.WriteLock => WriteLock == null ? default(CoordinationSession?) : CoordinationSession.FromChars(WriteLock.AsSpan());
-
-            public int Version { get; set; }
             public int StorageVersion { get; set; }
-            public DateTime CreationTime { get; set; }
-            public DateTime LastWriteTime { get; set; }
-            public string[] Children { get; set; }
-            public string EphemeralOwner { get; set; }
-            CoordinationSession? IStoredEntry.EphemeralOwner => EphemeralOwner == null ? default(CoordinationSession?) : CoordinationSession.FromChars(EphemeralOwner.AsSpan());
+            public bool IsMarkedAsDeleted { get; set; }
 
-            ReadOnlyMemory<byte> IStoredEntry.Value => Value;
+            string IStoredEntry.Key => Id;
+            CoordinationSession? IStoredEntry.WriteLock => WriteLock == null ? default(CoordinationSession?) : CoordinationSession.FromChars(WriteLock.AsSpan());
             ImmutableArray<CoordinationSession> IStoredEntry.ReadLocks => ReadLocks.Select(p => CoordinationSession.FromChars(p.AsSpan())).ToImmutableArray();
-            ImmutableList<CoordinationEntryPathSegment> IStoredEntry.Children => Children.Select(p => CoordinationEntryPathSegment.FromEscapedSegment(p.AsMemory())).ToImmutableList();
-
+            ReadOnlyMemory<byte> IStoredEntry.Value => Value;
         }
 
         private sealed class StoredSession : IStoredSession

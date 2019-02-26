@@ -6,9 +6,22 @@ namespace AI4E.Coordination.Locking
 {
     public interface ILockWaitDirectory
     {
-        void NotifyReadLockRelease(CoordinationEntryPath path, CoordinationSession session);
-        void NotifyWriteLockRelease(CoordinationEntryPath path, CoordinationSession session);
-        Task WaitForReadLockNotificationAsync(CoordinationEntryPath path, CoordinationSession session, CancellationToken cancellation = default);
-        Task WaitForWriteLockNotificationAsync(CoordinationEntryPath path, CoordinationSession session, CancellationToken cancellation = default);
+        void NotifyReadLockRelease(
+            string key,
+            CoordinationSession session);
+
+        void NotifyWriteLockRelease(
+            string key,
+            CoordinationSession session);
+
+        ValueTask WaitForReadLockNotificationAsync(
+            string key,
+            CoordinationSession session,
+            CancellationToken cancellation = default);
+
+        ValueTask WaitForWriteLockNotificationAsync(
+            string key,
+            CoordinationSession session,
+            CancellationToken cancellation = default);
     }
 }

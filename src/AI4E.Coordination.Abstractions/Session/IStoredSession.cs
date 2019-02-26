@@ -28,7 +28,8 @@ namespace AI4E.Coordination.Session
         CoordinationSession Session { get; }
         bool IsEnded { get; }
         DateTime LeaseEnd { get; }
-        ImmutableArray<CoordinationEntryPath> EntryPaths { get; }
         int StorageVersion { get; }
+
+        ImmutableArray<CoordinationEntryPath> EntryPaths { get; }
     }
 }

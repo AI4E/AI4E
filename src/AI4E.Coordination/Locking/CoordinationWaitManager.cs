@@ -12,16 +12,15 @@ using static AI4E.Utils.DebugEx;
 
 namespace AI4E.Coordination.Locking
 {
-    internal sealed class CoordinationWaitManager : ICoordinationWaitManager
+    public sealed class CoordinationWaitManager : ICoordinationWaitManager
     {
         #region Fields
 
-        private static readonly TimeSpan _timeToWaitMin = new TimeSpan(200 * TimeSpan.TicksPerMillisecond);
-        private static readonly TimeSpan _timeToWaitMax = new TimeSpan(12800 * TimeSpan.TicksPerMillisecond);
+        private static readonly TimeSpan _timeToWaitMin = new TimeSpan(200 * TimeSpan.TicksPerMillisecond); // TODO: This should be configurable
+        private static readonly TimeSpan _timeToWaitMax = new TimeSpan(12800 * TimeSpan.TicksPerMillisecond);  // TODO: This should be configurable
 
         private readonly ICoordinationSessionOwner _sessionOwner;
         private readonly ICoordinationStorage _storage;
-        private readonly IStoredEntryManager _storedEntryManager;
         private readonly ISessionManager _sessionManager;
         private readonly ICoordinationExchangeManager _exchangeManager;
         private readonly ILockWaitDirectory _lockWaitDirectory;
@@ -33,7 +32,6 @@ namespace AI4E.Coordination.Locking
 
         public CoordinationWaitManager(ICoordinationSessionOwner sessionOwner,
                                        ICoordinationStorage storage,
-                                       IStoredEntryManager storedEntryManager,
                                        ISessionManager sessionManager,
                                        ICoordinationExchangeManager exchangeManager,
                                        ILockWaitDirectory lockWaitDirectory,
@@ -44,9 +42,6 @@ namespace AI4E.Coordination.Locking
 
             if (storage == null)
                 throw new ArgumentNullException(nameof(storage));
-
-            if (storedEntryManager == null)
-                throw new ArgumentNullException(nameof(storedEntryManager));
 
             if (sessionManager == null)
                 throw new ArgumentNullException(nameof(sessionManager));
@@ -59,7 +54,6 @@ namespace AI4E.Coordination.Locking
 
             _sessionOwner = sessionOwner;
             _storage = storage;
-            _storedEntryManager = storedEntryManager;
             _sessionManager = sessionManager;
             _exchangeManager = exchangeManager;
             _lockWaitDirectory = lockWaitDirectory;
@@ -72,7 +66,10 @@ namespace AI4E.Coordination.Locking
 
         // WaitForWriteLockReleaseAsync updates the session in order that there is enough time
         // to complete the write operation, without the session to terminate.
-        public async Task<IStoredEntry> WaitForWriteLockReleaseAsync(IStoredEntry entry, bool allowWriteLock, CancellationToken cancellation)
+        public async ValueTask<IStoredEntry> WaitForWriteLockReleaseAsync(
+            IStoredEntry entry,
+            bool allowWriteLock,
+            CancellationToken cancellation)
         {
             var session = await _sessionOwner.GetSessionAsync(cancellation);
 
@@ -96,8 +93,6 @@ namespace AI4E.Coordination.Locking
 
                     return entry;
                 }
-
-                var path = entry.Path;
 
                 if (!await _sessionManager.IsAliveAsync((CoordinationSession)writeLock, cancellation))
                 {
@@ -130,7 +125,9 @@ namespace AI4E.Coordination.Locking
             return null;
         }
 
-        public async Task<IStoredEntry> WaitForReadLocksReleaseAsync(IStoredEntry entry, CancellationToken cancellation)
+        public async ValueTask<IStoredEntry> WaitForReadLocksReleaseAsync(
+            IStoredEntry entry,
+            CancellationToken cancellation)
         {
             Assert(entry != null);
 
@@ -165,7 +162,7 @@ namespace AI4E.Coordination.Locking
                 if (entry.ReadLocks.Length != 0 && (entry.ReadLocks.Length > 1 || entry.ReadLocks.First() != session))
                 {
 #if DEBUG
-                    entry = await _storage.GetEntryAsync(entry.Path, cancellation);
+                    entry = await _storage.GetEntryAsync(entry.Key, cancellation);
 
                     var x = entry.ReadLocks.Length != 0 && (entry.ReadLocks.Length > 1 || entry.ReadLocks.First() != session);
 
@@ -181,7 +178,10 @@ namespace AI4E.Coordination.Locking
 
         #endregion
 
-        private async Task<IStoredEntry> CleanupLocksOnSessionTermination(IStoredEntry entry, CoordinationSession session, CancellationToken cancellation)
+        private async Task<IStoredEntry> CleanupLocksOnSessionTermination(
+            IStoredEntry entry,
+            CoordinationSession session,
+            CancellationToken cancellation)
         {
 #if DEBUG
             var isTerminated = !await _sessionManager.IsAliveAsync(session, cancellation);
@@ -197,8 +197,8 @@ namespace AI4E.Coordination.Locking
                 throw new SessionTerminatedException();
             }
 
-            IStoredEntry start,
-                         desired;
+            IStoredEntry start;
+            IStoredEntry desired;
 
             do
             {
@@ -211,23 +211,25 @@ namespace AI4E.Coordination.Locking
                     return null;
                 }
 
-                desired = start;
+                // We are cleaning up for the remove session 'session' not for our local session!
+                var builder = start.ToBuilder(session);
 
                 if (entry.WriteLock == session)
                 {
-                    desired = _storedEntryManager.ReleaseWriteLock(desired, session);
+                    builder.ReleaseWriteLock();
                 }
 
                 if (entry.ReadLocks.Contains(session))
                 {
-                    desired = _storedEntryManager.ReleaseReadLock(desired, session);
+                    builder.ReleaseReadLock();
                 }
 
-                if (StoredEntryUtil.AreVersionEqual(start, desired))
+                if (!builder.ChangesPending)
                 {
                     return entry;
                 }
 
+                desired = builder.ToImmutable();
                 entry = await _storage.UpdateEntryAsync(desired, start, cancellation);
             }
             while (start != entry);
@@ -239,7 +241,10 @@ namespace AI4E.Coordination.Locking
             return entry;
         }
 
-        private async Task<IStoredEntry> WaitForReadLockRelease(IStoredEntry entry, CoordinationSession readLock, CancellationToken cancellation)
+        private async Task<IStoredEntry> WaitForReadLockRelease(
+            IStoredEntry entry,
+            CoordinationSession readLock,
+            CancellationToken cancellation)
         {
             Assert(entry != null);
             Assert(entry.ReadLocks.Contains(readLock));
@@ -270,26 +275,30 @@ namespace AI4E.Coordination.Locking
             return entry;
         }
 
-        private Task AcquireReadLockReleaseAsync(CoordinationEntryPath path, CoordinationSession session, CancellationToken cancellation)
+        private ValueTask AcquireReadLockReleaseAsync(
+            string key,
+            CoordinationSession session,
+            CancellationToken cancellation)
         {
-            return _exchangeManager.InvalidateCacheEntryAsync(path, session, cancellation);
+            return _exchangeManager.InvalidateCacheEntryAsync(key, session, cancellation);
         }
 
-        private async Task<IStoredEntry> WaitForLockReleaseCoreAsync(IStoredEntry entry,
-                                                                     CoordinationSession session,
-                                                                     Func<CoordinationEntryPath, CoordinationSession, CancellationToken, Task> wait,
-                                                                     Func<CoordinationEntryPath, CoordinationSession, CancellationToken, Task> acquireLockRelease,
-                                                                     Func<IStoredEntry, bool> isLockReleased,
-                                                                     CancellationToken cancellation)
+        private async Task<IStoredEntry> WaitForLockReleaseCoreAsync(
+            IStoredEntry entry,
+            CoordinationSession session,
+            Func<string, CoordinationSession, CancellationToken, ValueTask> wait,
+            Func<string, CoordinationSession, CancellationToken, ValueTask> acquireLockRelease,
+            Func<IStoredEntry, bool> isLockReleased,
+            CancellationToken cancellation)
         {
             var timeToWait = _timeToWaitMin;
-            var path = entry.Path;
+            var key = entry.Key;
             var sessionTermination = _sessionManager.WaitForTerminationAsync(session, cancellation);
-            var releaseNotification = wait(path, session, cancellation);
+            var releaseNotification = wait(key, session, cancellation).AsTask();
 
             while (entry != null && !isLockReleased(entry))
             {
-                acquireLockRelease?.Invoke(path, session, cancellation).HandleExceptions(_logger);
+                acquireLockRelease?.Invoke(key, session, cancellation).HandleExceptions(_logger);
                 cancellation.ThrowIfCancellationRequested();
 
                 var delay = Task.Delay(timeToWait, cancellation);
@@ -298,7 +307,7 @@ namespace AI4E.Coordination.Locking
 
                 if (completed == releaseNotification)
                 {
-                    return await _storage.GetEntryAsync(path, cancellation);
+                    return await _storage.GetEntryAsync(key, cancellation);
                 }
 
                 if (completed == sessionTermination)
@@ -315,7 +324,7 @@ namespace AI4E.Coordination.Locking
                     timeToWait = _timeToWaitMax;
                 }
 
-                entry = await _storage.GetEntryAsync(path, cancellation);
+                entry = await _storage.GetEntryAsync(key, cancellation);
             }
 
             return entry;

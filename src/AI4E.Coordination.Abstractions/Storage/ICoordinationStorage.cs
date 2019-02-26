@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,7 +26,13 @@ namespace AI4E.Coordination.Storage
 {
     public interface ICoordinationStorage
     {
-        Task<IStoredEntry> GetEntryAsync(CoordinationEntryPath path, CancellationToken cancellation);
-        Task<IStoredEntry> UpdateEntryAsync(IStoredEntry value, IStoredEntry comparand, CancellationToken cancellation);
+        ValueTask<IStoredEntry> GetEntryAsync(
+            string key,
+            CancellationToken cancellation);
+
+        ValueTask<IStoredEntry> UpdateEntryAsync(
+            IStoredEntry value,
+            IStoredEntry comparand,
+            CancellationToken cancellation);
     }
 }

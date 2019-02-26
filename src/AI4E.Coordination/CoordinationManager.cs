@@ -1,129 +1,76 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        CoordinationManager.cs 
- * Types:           (1) AI4E.Coordination.CoordinationManager'1
- *                  (2) AI4E.Coordination.CoordinationManager'1.Entry
- *                  (3) AI4E.Coordination.CoordinationManagerFactory'1
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   30.09.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
-/* License
- * --------------------------------------------------------------------------------------------------------------------
- * This file is part of the AI4E distribution.
- *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
- * 
- * AI4E is free software: you can redistribute it and/or modify  
- * it under the terms of the GNU Lesser General Public License as   
- * published by the Free Software Foundation, version 3.
- *
- * AI4E is distributed in the hope that it will be useful, but 
- * WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Collections.Immutable;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination.Caching;
 using AI4E.Coordination.Session;
-using AI4E.Coordination.Storage;
 using AI4E.Utils;
 using AI4E.Utils.Memory;
+using AI4E.Utils.Memory.Compatibility;
 using AI4E.Utils.Processing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
-using static AI4E.Utils.DebugEx;
 
 namespace AI4E.Coordination
 {
-    public sealed partial class CoordinationManager<TAddress> : ICoordinationManager
+    public sealed class CoordinationManager<TAddress> : ICoordinationManager
     {
-        #region Fields
-
         private readonly IServiceScope _serviceScope;
-        private readonly ICoordinationStorage _storage;
-        private readonly IStoredEntryManager _storedEntryManager;
-        private readonly ISessionManager _sessionManager;
         private readonly ICoordinationSessionOwner _sessionOwner;
-        private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly ISessionManager _sessionManager;
         private readonly ICoordinationCacheManager _cacheManager;
+        private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILogger<CoordinationManager<TAddress>> _logger;
 
         private readonly CoordinationManagerOptions _options;
+        private readonly AsyncProcess _updateSessionProcess;
+        private readonly AsyncProcess _sessionCleanupProcess;
 
-        private readonly IAsyncProcess _updateSessionProcess;
-        private readonly IAsyncProcess _sessionCleanupProcess;
+        internal CoordinationManager(
+            IServiceScope serviceScope,
+            ICoordinationSessionOwner sessionOwner,
+            ISessionManager sessionManager,
+            ICoordinationCacheManager cacheManager,
 
-        #endregion
-
-        #region C'tor
-
-        public CoordinationManager(IServiceScope serviceScope,
-                                   ICoordinationStorage storage,
-                                   IStoredEntryManager storedEntryManager,
-                                   ISessionManager sessionManager,
-                                   ICoordinationSessionOwner sessionOwner,
-                                   IDateTimeProvider dateTimeProvider,
-                                   ICoordinationCacheManager cacheManager,
-                                   IOptions<CoordinationManagerOptions> optionsAccessor,
-                                   ILogger<CoordinationManager<TAddress>> logger = null)
+            IDateTimeProvider dateTimeProvider,
+            IOptions<CoordinationManagerOptions> optionsAccessor,
+            ILogger<CoordinationManager<TAddress>> logger = null)
         {
             if (serviceScope == null)
                 throw new ArgumentNullException(nameof(serviceScope));
 
-            if (storage == null)
-                throw new ArgumentNullException(nameof(storage));
-
-            if (storedEntryManager == null)
-                throw new ArgumentNullException(nameof(storedEntryManager));
+            if (sessionOwner == null)
+                throw new ArgumentNullException(nameof(sessionOwner));
 
             if (sessionManager == null)
                 throw new ArgumentNullException(nameof(sessionManager));
 
-            if (sessionOwner == null)
-                throw new ArgumentNullException(nameof(sessionOwner));
+            if (cacheManager == null)
+                throw new ArgumentNullException(nameof(cacheManager));
 
             if (dateTimeProvider == null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
-
-            if (cacheManager == null)
-                throw new ArgumentNullException(nameof(cacheManager));
 
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
 
             _serviceScope = serviceScope;
-            _storage = storage;
-            _storedEntryManager = storedEntryManager;
-            _sessionManager = sessionManager;
             _sessionOwner = sessionOwner;
-            _dateTimeProvider = dateTimeProvider;
+            _sessionManager = sessionManager;
             _cacheManager = cacheManager;
+            _dateTimeProvider = dateTimeProvider;
             _logger = logger;
 
             _options = optionsAccessor.Value ?? new CoordinationManagerOptions();
-
             _updateSessionProcess = new AsyncProcess(UpdateSessionProcess, start: true);
             _sessionCleanupProcess = new AsyncProcess(SessionCleanupProcess, start: true);
         }
-
-        #endregion
-
-        public IServiceProvider ServiceProvider => _serviceScope.ServiceProvider;
 
         #region Session management
 
@@ -241,40 +188,11 @@ namespace AI4E.Coordination
             _serviceScope.Dispose();
         }
 
-        #region Get entry
-
-        public async ValueTask<IEntry> GetAsync(CoordinationEntryPath path, CancellationToken cancellation = default)
-        {
-            var entry = await GetEntryAsync(path, cancellation);
-
-            if (entry == null)
-            {
-                return null;
-            }
-
-            return new Entry(this, entry);
-        }
-
-        private async ValueTask<IStoredEntry> GetEntryAsync(CoordinationEntryPath path, CancellationToken cancellation)
-        {
-            var result = await _cacheManager.GetEntryAsync(path, cancellation);
-
-            if (result == null)
-            {
-                // This operation is called for each child of an entry, when iterating the child collection.
-                // We are in the case that the requested entry cannot be found. 
-                // If this is part of the parents child collection, we clean this up now.
-                await UpdateParentOfDeletedEntry(path, cancellation);
-            }
-
-            return result;
-        }
-
-        #endregion
-
-        #region Create entry
-
-        public async ValueTask<IEntry> CreateAsync(CoordinationEntryPath path, ReadOnlyMemory<byte> value, EntryCreationModes modes, CancellationToken cancellation)
+        public async ValueTask<IEntry> CreateAsync(
+            CoordinationEntryPath path,
+            ReadOnlyMemory<byte> value,
+            EntryCreationModes modes = EntryCreationModes.Default,
+            CancellationToken cancellation = default)
         {
             if (modes < 0 || modes > EntryCreationModes.Ephemeral)
                 throw new ArgumentOutOfRangeException(nameof(modes), $"The argument must be one or a combination of the values defined in '{nameof(EntryCreationModes)}'.");
@@ -284,11 +202,11 @@ namespace AI4E.Coordination
             if (!await _sessionManager.IsAliveAsync(session))
                 throw new SessionTerminatedException();
 
-            var (entry, created) = await TryCreateInternalAsync(path,
-                                                                value,
-                                                                modes,
-                                                                session,
-                                                                cancellation);
+            var (entry, created) = await TryCreateAsync(path,
+                                                        value,
+                                                        modes,
+                                                        session,
+                                                        cancellation);
 
             // There is already an entry present.
             if (!created)
@@ -298,10 +216,14 @@ namespace AI4E.Coordination
 
             Assert(entry != null);
 
-            return new Entry(this, entry);
+            return entry;
         }
 
-        public async ValueTask<IEntry> GetOrCreateAsync(CoordinationEntryPath path, ReadOnlyMemory<byte> value, EntryCreationModes modes, CancellationToken cancellation)
+        public async ValueTask<IEntry> GetOrCreateAsync(
+            CoordinationEntryPath path,
+            ReadOnlyMemory<byte> value,
+            EntryCreationModes modes = EntryCreationModes.Default,
+            CancellationToken cancellation = default)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -314,208 +236,159 @@ namespace AI4E.Coordination
             if (!await _sessionManager.IsAliveAsync(session))
                 throw new SessionTerminatedException();
 
-            var cachedEntry = await GetEntryAsync(path, cancellation);
+            var (entry, _) = await TryCreateAsync(path,
+                                                  value,
+                                                  modes,
+                                                  session,
+                                                  cancellation);
 
-            if (cachedEntry != null)
-            {
-                return new Entry(this, cachedEntry);
-            }
-
-            var (entry, _) = await TryCreateInternalAsync(path,
-                                                          value,
-                                                          modes,
-                                                          session,
-                                                          cancellation);
-
-            Assert(entry != null);
-
-            return new Entry(this, entry);
+            return entry;
         }
 
-        private async Task<(IStoredEntry entry, bool created)> TryCreateInternalAsync(CoordinationEntryPath path,
-                                                                                      ReadOnlyMemory<byte> value,
-                                                                                      EntryCreationModes modes,
-                                                                                      CoordinationSession session,
-                                                                                      CancellationToken cancellation)
+        private async ValueTask<(IEntry entry, bool created)> TryCreateAsync(
+            CoordinationEntryPath path,
+            ReadOnlyMemory<byte> value,
+            EntryCreationModes modes,
+            CoordinationSession session,
+            CancellationToken cancellation)
         {
-            Stopwatch watch = null;
+            var cacheEntry = await _cacheManager.GetCacheEntryAsync(path.ToString(), cancellation);
 
-            if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+            if (cacheEntry.TryGetValue(out var cacheEntryValue) && cacheEntryValue.IsExisting && !cacheEntryValue.Value.IsEmpty)
             {
-                watch = new Stopwatch();
-                watch.Start();
+                return (Entry.FromRawValue(this, path, cacheEntryValue.Value), created: false);
             }
 
-            IStoredEntry entry;
-            bool created;
-
-            // We have no parent entry.
             if (path.IsRoot)
             {
-                (entry, created) = await TryCreateCoreAsync(path, value, modes, session, cancellation);
+                using (var lockedEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation))
+                {
+                    if (lockedEntry.IsExisting && !lockedEntry.Value.IsEmpty)
+                    {
+                        return (Entry.FromRawValue(this, path, lockedEntry.Value), created: false);
+                    }
+
+                    var resultBuilder = new EntryBuilder(this, path, _dateTimeProvider) { Value = value };
+                    var result = resultBuilder.ToEntry();
+
+                    lockedEntry.CreateOrUpdate(result.ToRawValue());
+
+                    return (result, created: true);
+                }
             }
-            else
+
+            var parentPath = path.GetParentPath();
+            var parentCacheEntry = await _cacheManager.GetCacheEntryAsync(parentPath.ToString(), cancellation);
+            while (true)
             {
-                var parentPath = path.GetParentPath();
-                var parent = await EnsureParentLock(parentPath, session, cancellation);
-                try
+                var parentCacheEntryValue = await parentCacheEntry.GetValueAsync(cancellation);
+
+                if (!parentCacheEntryValue.IsExisting || parentCacheEntryValue.Value.IsEmpty)
                 {
-                    (entry, created) = await TryCreateChildAsync(path, parent, value, modes, session, cancellation);
+                    await TryCreateAsync(parentPath, ReadOnlyMemory<byte>.Empty, EntryCreationModes.Default, session, cancellation);
                 }
-                finally
+
+                using (var lockedParentEntry = await parentCacheEntry.LockAsync(LockType.Exclusive, cancellation))
                 {
-                    Assert(parent != null);
-                    await _cacheManager.UnlockEntryAsync(parentPath);
+                    if (!lockedParentEntry.IsExisting || lockedParentEntry.Value.IsEmpty)
+                    {
+                        continue;
+                    }
+
+                    var parent = Entry.FromRawValue(this, parentPath, lockedParentEntry.Value);
+                    var parentBuilder = new EntryBuilder(parent, _dateTimeProvider);
+                    parentBuilder.Children.Add(path.Segments.Last());
+                    parent = parentBuilder.ToEntry();
+                    lockedParentEntry.CreateOrUpdate(parent.ToRawValue());
+                    await lockedParentEntry.FlushAsync(cancellation);
+
+                    // TODO: This shared lots of code with the branch "path.IsRoot" above
+                    using (var lockedEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation))
+                    {
+                        if (lockedEntry.IsExisting && !lockedEntry.Value.IsEmpty)
+                        {
+                            return (Entry.FromRawValue(this, path, lockedEntry.Value), created: false);
+                        }
+
+                        var resultBuilder = new EntryBuilder(this, path, _dateTimeProvider) { Value = value };
+                        var result = resultBuilder.ToEntry();
+
+                        lockedEntry.CreateOrUpdate(result.ToRawValue());
+
+                        return (result, created: true);
+                    }
                 }
             }
 
-            if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
-            {
-                Assert(watch != null);
-                watch.Stop();
-
-                if (created)
-                {
-                    _logger?.LogTrace($"Creating the entry '{path.EscapedPath}' in {watch.ElapsedMilliseconds}ms.");
-                }
-                else
-                {
-                    _logger?.LogTrace($"Creating the entry '{path.EscapedPath}' failed. The path was already present. Operation took {watch.ElapsedMilliseconds}ms.");
-                }
-            }
-
-            return (entry, created);
         }
 
-        private async Task<(IStoredEntry entry, bool created)> TryCreateChildAsync(CoordinationEntryPath path,
-                                                                                   IStoredEntry parent,
-                                                                                   ReadOnlyMemory<byte> value,
-                                                                                   EntryCreationModes modes,
-                                                                                   CoordinationSession session,
-                                                                                   CancellationToken cancellation)
+        public async ValueTask<IEntry> GetAsync(
+            CoordinationEntryPath path,
+            CancellationToken cancellation = default)
         {
-            Assert(parent != null);
+            var cacheEntry = await _cacheManager.GetCacheEntryAsync(path.ToString(), cancellation);
 
-            if (parent.EphemeralOwner != null)
+            if (cacheEntry.TryGetValue(out var value) && value.IsExisting && !value.Value.IsEmpty)
             {
-                throw new InvalidOperationException($"Unable to create the entry. The parent entry is an ephemeral entry and is not allowed to have child entries.");
+                return Entry.FromRawValue(this, path, value.Value);
             }
 
-            var name = path.Segments.Last();
-            await UpdateEntryAsync(_storedEntryManager.AddChild(parent, name, session), parent, cancellation);
+            // This operation is called for each child of an entry, when iterating the child collection.
+            // We are in the case that the requested entry cannot be found. 
+            // If this is part of the parents child collection, we clean this up now.
+            await UpdateParentOfDeletedEntry(path, cancellation);
 
-            try
-            {
-                return await TryCreateCoreAsync(path, value, modes, session, cancellation);
-            }
-            catch (SessionTerminatedException) { throw; }
-            catch
-            {
-                // This is not the root entry and the parent entry was found. 
-                // We did not successfully create the entry.
-                // Note that the operation MUST be performed under the lock COMPLETELY.
-                try
-                {
-                    // If this operation gets canceled, the parent entry is not cleaned up. 
-                    // This is not of a problem, because the parent entry is not guaranteed to be strongly consistent anyway.
-                    // In case of cancellation, we want the original exception to be rethrown.
-                    await UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, name, session), parent, cancellation);
-                }
-                catch (OperationCanceledException) { }
-
-                throw;
-            }
+            return null;
         }
 
-        private async Task<IStoredEntry> EnsureParentLock(CoordinationEntryPath path, CoordinationSession session, CancellationToken cancellation)
+        public async ValueTask<int> SetValueAsync(
+            CoordinationEntryPath path,
+            ReadOnlyMemory<byte> value,
+            int version = 0,
+            CancellationToken cancellation = default)
         {
-            IStoredEntry result;
+            if (version < 0)
+                throw new ArgumentOutOfRangeException(nameof(version));
 
-            do
+            var session = await GetSessionAsync(cancellation);
+
+            if (!await _sessionManager.IsAliveAsync(session, cancellation))
+                throw new SessionTerminatedException();
+
+            var cacheEntry = await _cacheManager.GetCacheEntryAsync(path.ToString(), cancellation);
+
+            // If we have the entry in the cache and is non-existing => Fail fast
+            if (cacheEntry.TryGetValue(out var cacheEntryValue) && (!cacheEntryValue.IsExisting || cacheEntryValue.Value.IsEmpty))
             {
-                result = await _cacheManager.LockEntryAsync(path, cancellation);
+                throw new EntryNotFoundException(path);
+            }
 
-                if (result != null)
+            using (var lockedEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation))
+            {
+                if (!lockedEntry.IsExisting || lockedEntry.Value.IsEmpty)
                 {
-                    break;
+                    throw new EntryNotFoundException(path);
                 }
 
-                var (e, c) = await TryCreateInternalAsync(path, ReadOnlyMemory<byte>.Empty, modes: default, session, cancellation);
+                var entry = Entry.FromRawValue(this, path, lockedEntry.Value);
+                if (version != default && entry.Version != version)
+                {
+                    return entry.Version;
+                }
+
+                var entryBuilder = new EntryBuilder(entry, _dateTimeProvider) { Value = value };
+                entry = entryBuilder.ToEntry();
+                lockedEntry.CreateOrUpdate(entry.ToRawValue());
+
+                return version;
             }
-            while (true);
-
-
-            Assert(result != null);
-            Assert(result.WriteLock == session);
-            //Assert(_cache.GetEntry(path).LocalWriteLock.CurrentCount == 0);
-            return result;
         }
 
-        private async Task<(IStoredEntry entry, bool created)> TryCreateCoreAsync(CoordinationEntryPath path,
-                                                                                  ReadOnlyMemory<byte> value,
-                                                                                  EntryCreationModes modes,
-                                                                                  CoordinationSession session,
-                                                                                  CancellationToken cancellation)
-        {
-            var comparand = await _cacheManager.LockOrCreateEntryAsync(path, cancellation);
-            IStoredEntry entry;
-
-            try
-            {
-                if (comparand != null)
-                {
-                    // There is already an entry present
-                    return (comparand, false);
-                }
-
-                // In case of failure, we currently do not remove the session entry. 
-                // We cannot just remove the session entry on failure, as we do not have a lock on the entry
-                // and, hence, the entry may already exist or is created concurrently.
-                // This is ok because the session entry is skipped if the respective entry is not found. 
-                // This could lead to many dead entries, if we have lots of failures. But we assume that this case is rather rare.
-                // If this is ever a big performance problem, we can use a form of "reference counting" of session entries.
-                if ((modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral)
-                {
-                    await _sessionManager.AddSessionEntryAsync(session, path, cancellation);
-                }
-
-                entry = _storedEntryManager.Create(path, session, (modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral, value.Span);
-                Assert(entry != null);
-                Assert(entry.WriteLock == session);
-
-                comparand = await _storage.UpdateEntryAsync(entry, comparand: null, cancellation);
-
-                if (comparand != null)
-                {
-                    // There is already an entry present
-                    return (comparand, false);
-                }
-
-                // We release the lock on comparand.
-                comparand = entry;
-            }
-            finally
-            {
-                if (comparand != null)
-                {
-                    Assert(comparand.WriteLock != session);
-
-                    // There is already an entry present => Release the local lock only.
-                    entry = await _cacheManager.UnlockEntryAsync(path);
-                }
-            }
-
-            Assert(entry.WriteLock == null);
-
-            // We created the entry successfully.
-            return (entry, true);
-        }
-
-        #endregion
-
-        #region Delete entry
-
-        public async ValueTask<int> DeleteAsync(CoordinationEntryPath path, int version, bool recursive, CancellationToken cancellation)
+        public async ValueTask<int> DeleteAsync(
+            CoordinationEntryPath path,
+            int version = 0,
+            bool recursive = false,
+            CancellationToken cancellation = default)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -530,116 +403,90 @@ namespace AI4E.Coordination
 
             _logger?.LogTrace($"[{await GetSessionAsync(cancellation)}] Deleting entry '{path.EscapedPath.ConvertToString()}'.");
 
-            // There is no parent entry.
-            if (path.IsRoot)
-            {
-                var entry = await _cacheManager.LockEntryAsync(path, cancellation);
+            var key = path.ToString();
+            var cacheEntry = await _cacheManager.GetCacheEntryAsync(key, cancellation);
 
-                if (entry == null)
-                {
-                    return 0;
-                }
-
-                try
-                {
-                    return await DeleteInternalAsync(entry, session, version, recursive, cancellation);
-                }
-                finally
-                {
-                    // We must only release the write-lock if we could acquire it previously. 
-                    // If the entry did not exist, this is not the case.
-                    Assert(entry != null);
-                    await _cacheManager.UnlockEntryAsync(path);
-                }
-            }
-
-            var parentPath = path.GetParentPath();
-            var parent = await _cacheManager.LockEntryAsync(parentPath, cancellation);
-
-            // The parent was deleted concurrently. => The parent may only be deleted if all childs were deleted => Our entry does not exist any more.
-            if (parent == null)
+            // If we have the entry in the cache and is non-existing, we are done
+            if (cacheEntry.TryGetValue(out var cacheEntryValue) && (!cacheEntryValue.IsExisting || cacheEntryValue.Value.IsEmpty))
             {
                 return 0;
             }
 
-            try
+            // There is no parent entry.
+            if (path.IsRoot)
             {
-                var entry = await _cacheManager.LockEntryAsync(path, cancellation);
-
-                if (entry == null)
+                using (var lockedCacheEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation))
                 {
-                    return 0;
-                }
-
-                try
-                {
-                    var result = await DeleteInternalAsync(entry, session, version, recursive, cancellation);
-
-                    // The entry was already deleted.
-                    if (result == 0)
+                    if (!lockedCacheEntry.IsExisting || lockedCacheEntry.Value.IsEmpty)
                     {
                         return 0;
                     }
 
-                    // Version conflict.
-                    if (result != version)
+                    var entry = Entry.FromRawValue(this, path, lockedCacheEntry.Value);
+                    var entryBuilder = new EntryBuilder(entry, _dateTimeProvider);
+
+                    if (!await DeleteCoreAsync(entryBuilder, session, version, recursive, cancellation))
                     {
-                        return result;
+                        return entry.Version;
                     }
+
+                    lockedCacheEntry.Delete();
                 }
-                finally
+            }
+            else
+            {
+                var parentPath = path.GetParentPath();
+                var parentCacheEntry = await _cacheManager.GetCacheEntryAsync(parentPath.ToString(), cancellation);
+
+                // The parent was deleted concurrently. => The parent may only be deleted if all childs were deleted => Our entry does not exist any more.
+                if (parentCacheEntry.TryGetValue(out var parentCacheEntryValue) && (!parentCacheEntryValue.IsExisting || parentCacheEntryValue.Value.IsEmpty))
                 {
-                    Assert(entry != null);
-                    await _cacheManager.UnlockEntryAsync(path);
+                    return 0;
                 }
 
-                // The entry is deleted now, because WE deleted it.
-                var name = path.Segments.Last();
+                using (var lockedParentEntry = await parentCacheEntry.LockAsync(LockType.Exclusive, cancellation))
+                {
+                    // The parent was deleted concurrently. => The parent may only be deleted if all childs were deleted => Our entry does not exist any more.
+                    if (!lockedParentEntry.IsExisting || lockedParentEntry.Value.IsEmpty)
+                    {
+                        return 0;
+                    }
 
-                // This is not the root entry.
+                    using (var lockedCacheEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation))
+                    {
+                        if (!lockedCacheEntry.IsExisting || lockedCacheEntry.Value.IsEmpty)
+                        {
+                            return 0;
+                        }
 
-                // We can safely remove the reference from the parent entry, as the entry cannot be recreaed concurrently. 
-                // (We own the write-lock for the parent entry, that must be allocated, before creating a child entry.)
+                        var entry = Entry.FromRawValue(this, path, lockedCacheEntry.Value);
+                        var entryBuilder = new EntryBuilder(entry, _dateTimeProvider);
 
-                // If this operation gets canceled, the parent entry is not cleaned up. 
-                // This is not of a problem, because the parent entry is not guaranteed to be strongly consistent anyway.
-                var parentComparand = parent;
-                parent = _storedEntryManager.RemoveChild(parent, name, session);
-                await UpdateEntryAsync(parent, parentComparand, cancellation);
+                        if (!await DeleteCoreAsync(entryBuilder, session, version, recursive, cancellation))
+                        {
+                            return entry.Version;
+                        }
 
-                return version;
-            }
-            finally
-            {
-                Assert(parent != null);
-                await _cacheManager.UnlockEntryAsync(parentPath);
-            }
-        }
+                        lockedCacheEntry.Delete();
+                    }
 
-        private async ValueTask<int> DeleteInternalAsync(IStoredEntry entry, CoordinationSession session, int version, bool recursive, CancellationToken cancellation)
-        {
-            bool deleted;
+                    var parentEntry = Entry.FromRawValue(this, parentPath, lockedParentEntry.Value);
+                    var parentEntryBuilder = new EntryBuilder(parentEntry, _dateTimeProvider);
+                    parentEntryBuilder.Children.Remove(path.Segments.Last());
+                    parentEntry = parentEntryBuilder.ToEntry();
 
-            (entry, deleted) = await DeleteCoreAsync(entry, session, version, recursive, cancellation);
-
-            // If we did not specify a version, there are two possible cases:
-            // * The call must have succeeded
-            // * The entry was not present (already deleted)
-            Assert(version != 0 || deleted || entry == null);
-
-            // The entry is not existing.
-            if (entry == null)
-            {
-                return 0;
+                    lockedParentEntry.CreateOrUpdate(parentEntry.ToRawValue());
+                }
             }
 
-            if (!deleted)
-            {
-                return entry.Version;
-            }
+            // TODO: Ephemeral entries
+
+            //if (childEntryBuilder.EphemeralOwner != null)
+            //{
+            //    await _sessionManager.RemoveSessionEntryAsync((CoordinationSession)childEntryBuilder.EphemeralOwner, childPath, cancellation);
+            //}
 
             return version;
-
         }
 
         // Deleted an entry without checking the input params and without locking the dispose lock.
@@ -648,45 +495,46 @@ namespace AI4E.Coordination
         // Return values:
         // entry: null if the delete operation succeeded or if the entry is not present
         // deleted: true, if the operation succeeded, false otherwise. Check the entry result in this case.
-        private async Task<(IStoredEntry entry, bool deleted)> DeleteCoreAsync(IStoredEntry entry, CoordinationSession session, int version, bool recursive, CancellationToken cancellation)
+        private async Task<bool> DeleteCoreAsync(
+            IEntryBuilder entryBuilder,
+            CoordinationSession session,
+            int version,
+            bool recursive,
+            CancellationToken cancellation)
         {
-            // The entry is not existing.
-            if (entry == null)
+            if (version != default && entryBuilder.Version != version)
             {
-                return default;
+                return false;
             }
-
-            if (version != default && entry.Version != version)
-            {
-                return (entry, deleted: false);
-            }
-
-            var comparand = entry;
 
             // Check whether there are child entries
             // It is important that all coordination manager instances handle the recursive operation in the same oder
             // (they must process all children in the exact same order) to prevent dead-lock situations.
-            foreach (var childName in entry.Children)
+            foreach (var childName in entryBuilder.Children)
             {
                 bool deleted;
                 // Recursively delete all child entries. 
-                // The delete operation is not required to remove the child name entry in the parent entry, as the parent entry is  to be deleted anyway.
+                // The delete operation is not required to remove the child name entry in the parent entry, as the parent entry is to be deleted anyway.
                 // In the case that we cannot proceed (our session terminates f.e.), we do not guarantee that the child names collection is strongly consistent anyway.
 
                 // First load the child entry.
-                var childPath = entry.Path.GetChildPath(childName);
+                var childPath = entryBuilder.Path.GetChildPath(childName);
+                var childCacheEntry = await _cacheManager.GetCacheEntryAsync(childPath.ToString(), cancellation);
 
-                var child = await _cacheManager.LockEntryAsync(childPath, cancellation);
-                var originalChild = child;
-
+                // Check whether child actually exists before locking
                 // The child-names collection is not guaranteed to be strongly consistent.
-                if (child == null)
+                if (childCacheEntry.TryGetValue(out var childCacheEntryValue) && (!childCacheEntryValue.IsExisting || childCacheEntryValue.Value.IsEmpty))
                 {
                     continue;
                 }
 
-                try
+                using (var lockedChildEntry = await childCacheEntry.LockAsync(LockType.Exclusive, cancellation))
                 {
+                    if (!lockedChildEntry.IsExisting || lockedChildEntry.Value.IsEmpty)
+                    {
+                        continue;
+                    }
+
                     // Check whether we allow recursive delete operation.
                     // This cannot be done upfront, 
                     // as the child-names collection is not guaranteed to be strongly consistent.
@@ -697,149 +545,134 @@ namespace AI4E.Coordination
                         throw new InvalidOperationException("An entry that contains child entries cannot be deleted.");
                     }
 
-                    (child, deleted) = await DeleteCoreAsync(child, session, version: default, recursive: true, cancellation);
-                }
-                finally
-                {
-                    Assert(originalChild != null);
-                    await _cacheManager.UnlockEntryAsync(childPath);
+                    var childEntry = Entry.FromRawValue(this, childPath, lockedChildEntry.Value);
+                    var childEntryBuilder = new EntryBuilder(childEntry, _dateTimeProvider);
+
+                    deleted = await DeleteCoreAsync(childEntryBuilder, session, version: default, recursive: true, cancellation);
+                    // As we did not specify a version, the call must succeed.
+                    Assert(deleted);
+
+                    if (!deleted)
+                    {
+                        throw new Exception(); // TODO
+                    }
+
+                    lockedChildEntry.Delete();
                 }
 
-                // As we did not specify a version, the call must succeed.
-                Assert(deleted);
-                Assert(child == null);
+                // TODO: Ephemeral entries
 
-                entry = _storedEntryManager.RemoveChild(entry, childName, session);
+                //if (childEntryBuilder.EphemeralOwner != null)
+                //{
+                //    await _sessionManager.RemoveSessionEntryAsync((CoordinationSession)childEntryBuilder.EphemeralOwner, childPath, cancellation);
+                //}
             }
 
-            // Delete the entry
-            await UpdateEntryAsync(_storedEntryManager.Remove(entry, session), comparand, cancellation);
-
-            if (entry.EphemeralOwner != null)
-            {
-                await _sessionManager.RemoveSessionEntryAsync((CoordinationSession)entry.EphemeralOwner, entry.Path, cancellation);
-            }
-
-            // We must remove the entry from the cache by ourselves here, 
-            // as we do allow the session to hold a read-lock and a write-lock at the same time 
-            // and hence do not wipe the entry from the cache on write lock acquirement.
-
-            // TODO: We actually want to remove the entry from the cache, but this also deletes the local write-lock, we own.
-
-            // This is done now in 'ICoordinationCacheManager.ReleaseWriteLockAsync' (called by the caller) and can be removed here.
-            //_cache.InvalidateEntry(entry.Path); 
-            return (entry: null, deleted: true);
+            return true;
         }
 
-        #endregion
+        #region Helpers
 
-        #region Set entry value
-
-        public async ValueTask<int> SetValueAsync(CoordinationEntryPath path, ReadOnlyMemory<byte> value, int version, CancellationToken cancellation)
+        private async ValueTask UpdateParentOfDeletedEntry(CoordinationEntryPath path, CancellationToken cancellation)
         {
-            if (version < 0)
-                throw new ArgumentOutOfRangeException(nameof(version));
-
-            var session = await GetSessionAsync(cancellation);
-
-            if (!await _sessionManager.IsAliveAsync(session, cancellation))
-                throw new SessionTerminatedException();
-
-            var entry = await _cacheManager.LockEntryAsync(path, cancellation);
-
-            if (entry == null)
-            {
-                throw new EntryNotFoundException(path);
-            }
-
-            try
-            {
-                if (version != default && entry.Version != version)
-                {
-                    return entry.Version;
-                }
-
-                await UpdateEntryAsync(_storedEntryManager.SetValue(entry, value.Span, session), entry, cancellation);
-                return version;
-            }
-            finally
-            {
-                Assert(entry != null);
-                await _cacheManager.UnlockEntryAsync(path);
-            }
-        }
-
-        #endregion
-
-        private async Task UpdateParentOfDeletedEntry(CoordinationEntryPath path, CancellationToken cancellation)
-        {
+            // The entry is the root node.
             if (path.IsRoot)
             {
                 return;
             }
 
             var parentPath = path.GetParentPath();
-            var child = path.Segments.Last();
+            var childName = path.Segments.Last();
 
-            var parent = await _cacheManager.GetEntryAsync(parentPath, cancellation);
+            var parentCacheEntry = await _cacheManager.GetCacheEntryAsync(parentPath.ToString(), cancellation);
+            var parentCacheEntryValue = await parentCacheEntry.GetValueAsync(cancellation);
 
-            if (parent == null || !parent.Children.Contains(child))
+            // The parent does not exist.
+            if (!parentCacheEntryValue.IsExisting || parentCacheEntryValue.Value.IsEmpty)
+            {
+                return;
+            }
+
+            var parent = Entry.FromRawValue(this, parentPath, parentCacheEntryValue.Value);
+
+            // The parent's child collection does not contain the entry.
+            if (!parent.Children.Contains(childName))
             {
                 return;
             }
 
             var session = await GetSessionAsync(cancellation);
-            parent = await _cacheManager.LockEntryAsync(parentPath, cancellation);
 
-            if (parent == null)
+            using (var lockedParentEntry = await parentCacheEntry.LockAsync(LockType.Exclusive, cancellation))
             {
-                return;
-            }
-
-            try
-            {
-                var childPath = path.GetChildPath(child);
-                var childEntry = await _cacheManager.GetEntryAsync(childPath, cancellation);
-
-                if (childEntry == null)
+                // The parent does not exist.
+                if (!lockedParentEntry.IsExisting || lockedParentEntry.Value.IsEmpty)
                 {
-                    await UpdateEntryAsync(_storedEntryManager.RemoveChild(parent, child, session), parent, cancellation);
+                    return;
                 }
-            }
-            finally
-            {
-                Assert(parent != null);
-                await _cacheManager.UnlockEntryAsync(parentPath);
+
+                parent = Entry.FromRawValue(this, parentPath, lockedParentEntry.Value);
+
+                // The parent's child collection does not contain the entry.
+                if (!parent.Children.Contains(childName))
+                {
+                    return;
+                }
+
+                // As we own the write-lock now, the child collection cannot be changed concurrently.
+                // Check if the child is alive. We MUST NOT delete the child entry in our collection when the child is still alive or alive again.
+                var cacheEntry = await _cacheManager.GetCacheEntryAsync(path.ToString(), cancellation);
+                var cacheEntryValue = await cacheEntry.GetValueAsync(cancellation);
+
+                // The child is alive.
+                if (cacheEntryValue.IsExisting && !cacheEntryValue.Value.IsEmpty)
+                {
+                    return;
+                }
+
+                var parentBuilder = new EntryBuilder(parent, _dateTimeProvider);
+                parentBuilder.Children.Remove(childName);
+                parent = parentBuilder.ToEntry();
+
+                lockedParentEntry.CreateOrUpdate(parent.ToRawValue());
             }
         }
 
-        private async Task UpdateEntryAsync(IStoredEntry value, IStoredEntry comparand, CancellationToken cancellation)
-        {
-            var result = await _storage.UpdateEntryAsync(value, comparand, cancellation);
+        #endregion
 
-            // We are holding the exclusive lock => No one else can alter the entry.
-            // The only exception is that out session terminates.
-            if (!StoredEntryUtil.AreVersionEqual(result, comparand))
-            {
-                throw new SessionTerminatedException();
-            }
-        }
+        #region Entry
 
         private sealed class Entry : IEntry
         {
-            public Entry(ICoordinationManager coordinationManager, IStoredEntry entry)
+            public Entry(
+                ICoordinationManager coordinationManager,
+                CoordinationEntryPath path,
+                int version,
+                DateTime creationTime,
+                DateTime lastWriteTime,
+                ReadOnlyMemory<byte> value,
+                IReadOnlyList<CoordinationEntryPathSegment> children)
             {
-                Assert(coordinationManager != null);
-                Assert(entry != null);
-
                 CoordinationManager = coordinationManager;
+                Path = path;
+                Version = version;
+                CreationTime = creationTime;
+                LastWriteTime = lastWriteTime;
+                Value = value;
+                Children = children as ImmutableList<CoordinationEntryPathSegment>
+                    ?? children?.ToImmutableList()
+                    ?? ImmutableList<CoordinationEntryPathSegment>.Empty;
+            }
 
-                Path = entry.Path;
-                Version = entry.Version;
-                CreationTime = entry.CreationTime;
-                LastWriteTime = entry.LastWriteTime;
-                Value = entry.Value;
-                Children = entry.Children;
+            public Entry(IEntryBuilder builder)
+            {
+                Path = builder.Path;
+                Version = builder.Version;
+                CreationTime = builder.CreationTime;
+                LastWriteTime = builder.LastWriteTime;
+                Value = builder.Value;
+                Children = builder.Children.ToImmutableList();
+                CoordinationManager = builder.CoordinationManager;
             }
 
             public CoordinationEntryPathSegment Name => Path.Segments.LastOrDefault();
@@ -859,7 +692,264 @@ namespace AI4E.Coordination
             public CoordinationEntryPath ParentPath => Path.GetParentPath();
 
             public ICoordinationManager CoordinationManager { get; }
+
+            public static Entry FromRawValue(ICoordinationManager coordinationManager, CoordinationEntryPath path, ReadOnlyMemory<byte> rawValue)
+            {
+                Assert(coordinationManager != null);
+
+                var spanReader = new BinarySpanReader(rawValue.Span, ByteOrder.LittleEndian);
+                var version = spanReader.ReadInt32();
+                var creationTime = new DateTime(spanReader.ReadInt64());
+                var lastWriteTime = new DateTime(spanReader.ReadInt64());
+
+                var childrenCount = spanReader.ReadInt32();
+                var childrenBuilder = ImmutableList.CreateBuilder<CoordinationEntryPathSegment>();
+
+                for (var i = 0; i < childrenCount; i++)
+                {
+                    var escapedChildSegment = spanReader.ReadString();
+                    var childSegment = CoordinationEntryPathSegment.FromEscapedSegment(escapedChildSegment.AsMemory());
+                    childrenBuilder.Add(childSegment);
+                }
+
+                var value = rawValue.Slice(spanReader.Length);
+
+                return new Entry(coordinationManager, path, version, creationTime, lastWriteTime, value, childrenBuilder.ToImmutable());
+            }
+
+            public ReadOnlyMemory<byte> ToRawValue()
+            {
+                var resultLength = 4 + // Version
+                                   8 + // CreationTime
+                                   8 + // LastWriteTime
+                                   4; // ChildrenCount
+
+                for (var i = 0; i < Children.Count; i++)
+                {
+                    var escapedChildSegment = Children[i].EscapedSegment;
+                    resultLength += 4; // String length
+                    resultLength += Encoding.UTF8.GetByteCount(escapedChildSegment.Span); // UTF8 encoded length
+                }
+
+                var result = new byte[resultLength];
+
+                var spanWriter = new BinarySpanWriter(result.AsSpan(), ByteOrder.LittleEndian);
+                spanWriter.WriteInt32(Version);
+                spanWriter.WriteInt64(CreationTime.Ticks);
+                spanWriter.WriteInt64(LastWriteTime.Ticks);
+                spanWriter.WriteInt32(Children.Count);
+
+                for (var i = 0; i < Children.Count; i++)
+                {
+                    var escapedChildSegment = Children[i].EscapedSegment;
+                    spanWriter.Write(escapedChildSegment.Span, lengthPrefix: true);
+                }
+
+                Assert(spanWriter.Length == result.Length);
+
+                return result.AsMemory();
+            }
         }
+
+        private sealed class EntryBuilder : IEntryBuilder
+        {
+            private ReadOnlyMemory<byte> _value;
+            private readonly int _initialVersion;
+            private bool _touched;
+            private readonly IDateTimeProvider _dateTimeProvider;
+
+            public EntryBuilder(
+                ICoordinationManager coordinationManager,
+                CoordinationEntryPath path,
+                IDateTimeProvider dateTimeProvider)
+            {
+                if (dateTimeProvider == null)
+                    throw new ArgumentNullException(nameof(dateTimeProvider));
+
+                _dateTimeProvider = dateTimeProvider;
+
+                CoordinationManager = coordinationManager;
+                Path = path;
+                CoordinationManager = coordinationManager;
+                Path = path;
+                _initialVersion = 0;
+                _touched = true;
+                CreationTime = _dateTimeProvider.GetCurrentTime();
+                LastWriteTime = _dateTimeProvider.GetCurrentTime();
+                _value = ReadOnlyMemory<byte>.Empty;
+                Children = new EntryBuilderChildCollection(this);
+            }
+
+            public EntryBuilder(
+                IEntry entry,
+                IDateTimeProvider dateTimeProvider)
+            {
+                if (dateTimeProvider == null)
+                    throw new ArgumentNullException(nameof(dateTimeProvider));
+
+                _dateTimeProvider = dateTimeProvider;
+
+                CoordinationManager = entry.CoordinationManager;
+                Path = entry.Path;
+                _initialVersion = entry.Version;
+                _touched = false;
+                CreationTime = entry.CreationTime;
+                LastWriteTime = entry.LastWriteTime;
+                _value = entry.Value;
+                Children = new EntryBuilderChildCollection(this, entry.Children);
+            }
+
+            public ICoordinationManager CoordinationManager { get; }
+
+            public CoordinationEntryPathSegment Name => Path.Segments.LastOrDefault();
+
+            public CoordinationEntryPath Path { get; }
+
+            public CoordinationEntryPath ParentPath => Path.GetParentPath();
+
+            public int Version => _touched ? _initialVersion + 1 : _initialVersion;
+
+            public DateTime CreationTime { get; }
+
+            public DateTime LastWriteTime { get; private set; }
+
+            public ReadOnlyMemory<byte> Value
+            {
+                get => _value;
+                set
+                {
+                    _value = value;
+                    Touch();
+                }
+            }
+
+            public IList<CoordinationEntryPathSegment> Children { get; }
+
+            public Entry ToEntry()
+            {
+                return new Entry(this);
+            }
+
+            IEntry IEntryBuilder.ToEntry()
+            {
+                return ToEntry();
+            }
+
+            private void Touch()
+            {
+                _touched = true;
+                LastWriteTime = _dateTimeProvider.GetCurrentTime();
+            }
+
+            private sealed class EntryBuilderChildCollection : IList<CoordinationEntryPathSegment>
+            {
+                private readonly EntryBuilder _owner;
+                private readonly List<CoordinationEntryPathSegment> _data;
+
+                public EntryBuilderChildCollection(EntryBuilder owner)
+                {
+                    _owner = owner;
+                    _data = new List<CoordinationEntryPathSegment>();
+                }
+
+                public EntryBuilderChildCollection(EntryBuilder owner, IEnumerable<CoordinationEntryPathSegment> children)
+                {
+                    _owner = owner;
+                    _data = new List<CoordinationEntryPathSegment>(children);
+                }
+
+                public int Count => _data.Count;
+
+                public bool IsReadOnly => false;
+
+                public CoordinationEntryPathSegment this[int index]
+                {
+                    get => _data[index];
+                    set
+                    {
+                        if (value == default)
+                            throw new ArgumentDefaultException(nameof(value));
+
+                        _data[index] = value;
+                        _owner.Touch();
+                    }
+                }
+
+                public int IndexOf(CoordinationEntryPathSegment item)
+                {
+                    return _data.IndexOf(item);
+                }
+
+                public bool Contains(CoordinationEntryPathSegment item)
+                {
+                    return _data.Contains(item);
+                }
+
+                public void CopyTo(CoordinationEntryPathSegment[] array, int arrayIndex)
+                {
+                    _data.CopyTo(array, arrayIndex);
+                }
+
+                public void Add(CoordinationEntryPathSegment item)
+                {
+                    if (item == default)
+                        throw new ArgumentDefaultException(nameof(item));
+
+                    _data.Add(item);
+                    _owner.Touch();
+                }
+
+                public bool Remove(CoordinationEntryPathSegment item)
+                {
+                    if (item == default)
+                        throw new ArgumentDefaultException(nameof(item));
+
+                    var result = _data.Remove(item);
+
+                    if (result)
+                    {
+                        _owner.Touch();
+                    }
+
+                    return result;
+                }
+
+                public void Insert(int index, CoordinationEntryPathSegment item)
+                {
+                    if (item == default)
+                        throw new ArgumentDefaultException(nameof(item));
+
+                    _data.Insert(index, item);
+                    _owner.Touch();
+                }
+
+                public void RemoveAt(int index)
+                {
+                    _data.RemoveAt(index);
+                    _owner.Touch();
+                }
+
+                public void Clear()
+                {
+                    _data.Clear();
+                    _owner.Touch();
+                }
+
+                public IEnumerator<CoordinationEntryPathSegment> GetEnumerator()
+                {
+                    return _data.GetEnumerator();
+                }
+
+                IEnumerator IEnumerable.GetEnumerator()
+                {
+                    return _data.GetEnumerator();
+                }
+            }
+
+
+        }
+
+        #endregion
     }
 
     public sealed class CoordinationManagerFactory<TAddress> : ICoordinationManagerFactory

@@ -24,7 +24,7 @@ using AI4E.Coordination.Session;
 
 namespace AI4E.Coordination.Storage
 {
-    public interface IStoredEntry
+    public interface IStoredEntryBuilder
     {
         /// <summary>
         /// Gets the key of the entry.
@@ -49,5 +49,23 @@ namespace AI4E.Coordination.Storage
         int StorageVersion { get; }
 
         bool IsMarkedAsDeleted { get; }
+
+        void Create(ReadOnlyMemory<byte> value);
+
+        void AcquireWriteLock();
+
+        void ReleaseWriteLock();
+
+        void AcquireReadLock();
+
+        void ReleaseReadLock();
+
+        void MarkAsDeleted();
+
+        void SetValue(ReadOnlyMemory<byte> value);
+
+        bool ChangesPending { get; }
+
+        IStoredEntry ToImmutable(bool reset = true);
     }
 }

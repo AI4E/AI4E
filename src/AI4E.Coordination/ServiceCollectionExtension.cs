@@ -42,7 +42,6 @@ namespace AI4E.Coordination
             services.UseCoordinationStorage<CoordinationStorage>();
 
             // Add state managers
-            services.AddSingleton<IStoredEntryManager, StoredEntryManager>();
             services.AddSingleton<IStoredSessionManager, StoredSessionManager>();
 
             // Add session manager
@@ -52,12 +51,12 @@ namespace AI4E.Coordination
             services.AddSingleton(p => p.GetRequiredService<ICoordinationManagerFactory>().CreateCoordinationManager());
             services.AddSingleton(p => ConfigureCoordinationManagerFactory(p, addressType));
             services.AddScoped(p => ConfigureCoordinationExchangeManager(p, addressType));
-            services.AddScoped<ICoordinationWaitManager, CoordinationWaitManager>();
-            services.AddScoped<ICoordinationLockManager, CoordinationLockManager>();
+            services.AddScoped(typeof(ICoordinationWaitManager), typeof(CoordinationWaitManager));
+            services.AddScoped(typeof(ICoordinationLockManager),typeof( CoordinationLockManager));
             services.AddScoped<ICoordinationSessionOwner, CoordinationSessionOwner>();
-            services.AddScoped<ILockWaitDirectory, LockWaitDirectory>();
-            //services.AddScoped<CoordinationEntryCache>();
-            services.AddScoped<ICoordinationCacheManager, CoordinationCacheManager>();
+            services.AddScoped(typeof(ILockWaitDirectory), typeof(LockWaitDirectory));
+            services.AddScoped(typeof(ICoordinationCacheManager), typeof(CoodinationCacheManager));
+            services.AddScoped(typeof(IInvalidationCallbackDirectory), typeof(InvalidationCallbackDirectory));
 
             return new CoordinationBuilder(services);
         }
@@ -185,9 +184,8 @@ namespace AI4E.Coordination
             Assert(database != null);
 
             var storedSessionManager = serviceProvider.GetRequiredService<IStoredSessionManager>();
-            var storedEntryManager = serviceProvider.GetRequiredService<IStoredEntryManager>();
 
-            return new CoordinationStorage(database, storedSessionManager, storedEntryManager);
+            return new CoordinationStorage(database, storedSessionManager);
         }
 
         private static CoordinationStorage BuildInMemoryCoordinationStorage(IServiceProvider serviceProvider)
