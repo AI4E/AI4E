@@ -21,11 +21,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using AI4E.ApplicationParts;
-using Microsoft.AspNetCore.Blazor;
-using Microsoft.AspNetCore.Blazor.Components;
-using Microsoft.AspNetCore.Blazor.RenderTree;
-using BlazorInject = Microsoft.AspNetCore.Blazor.Components.InjectAttribute;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.RenderTree;
+using BlazorInject = Microsoft.AspNetCore.Components.InjectAttribute;
 
 namespace AI4E.Blazor.Components
 {
@@ -49,14 +49,14 @@ namespace AI4E.Blazor.Components
         [Parameter] private Action<TViewExtension> Configuration { get; set; }
         [BlazorInject] private ApplicationPartManager PartManager { get; set; }
 
-        public void Init(RenderHandle renderHandle)
+        public void Configure(RenderHandle renderHandle)
         {
             // This implicitly means a BlazorComponent can only be associated with a single
             // renderer. That's the only use case we have right now. If there was ever a need,
             // a component could hold a collection of render handles.
             if (_renderHandle.IsInitialized)
             {
-                throw new InvalidOperationException($"The render handle is already set. Cannot initialize a {nameof(BlazorComponent)} more than once.");
+                throw new InvalidOperationException($"The render handle is already set. Cannot initialize a component more than once.");
             }
 
             _renderHandle = renderHandle;
@@ -66,9 +66,9 @@ namespace AI4E.Blazor.Components
         /// Method invoked to apply initial or updated parameters to the component.
         /// </summary>
         /// <param name="parameters">The parameters to apply.</param>
-        public void SetParameters(ParameterCollection parameters)
+        public Task SetParametersAsync(ParameterCollection parameters)
         {
-            parameters.AssignToProperties(this);
+            parameters.SetParameterProperties(this);
 
             if (!_hasCalledInit)
             {
@@ -78,6 +78,7 @@ namespace AI4E.Blazor.Components
             }
 
             StateHasChanged();
+            return Task.CompletedTask;
         }
 
         private void ApplicationPartsChanged(object sender, EventArgs e)
@@ -138,22 +139,22 @@ namespace AI4E.Blazor.Components
         [BlazorInject] private IServiceProvider ServiceProvider { get; set; }
         [Parameter] private Action<TViewExtension> Configuration { get; set; }
 
-        public void Init(RenderHandle renderHandle)
+        public void Configure(RenderHandle renderHandle)
         {
             // This implicitly means a BlazorComponent can only be associated with a single
             // renderer. That's the only use case we have right now. If there was ever a need,
             // a component could hold a collection of render handles.
             if (_renderHandle.IsInitialized)
             {
-                throw new InvalidOperationException($"The render handle is already set. Cannot initialize a {nameof(BlazorComponent)} more than once.");
+                throw new InvalidOperationException($"The render handle is already set. Cannot initialize a component more than once.");
             }
 
             _renderHandle = renderHandle;
         }
 
-        public void SetParameters(ParameterCollection parameters)
+        public Task SetParametersAsync(ParameterCollection parameters)
         {
-            parameters.AssignToProperties(this);
+            parameters.SetParameterProperties(this);
 
             if (!_hasCalledInit)
             {
@@ -161,11 +162,11 @@ namespace AI4E.Blazor.Components
                 var componentFactory = new ComponentFactory(ServiceProvider);
 
                 _component = (TViewExtension)componentFactory.InstantiateComponent(typeof(TViewExtension));
-                _component.Init(_renderHandle);
+                _component.Configure(_renderHandle);
                 Configuration?.Invoke(_component);
             }
 
-            _component.SetParameters(ParameterCollection.Empty);
+            return _component.SetParametersAsync(ParameterCollection.Empty);
         }
     }
 }

@@ -39,7 +39,7 @@
 using System;
 using System.IO;
 using System.Net.Mime;
-using Microsoft.AspNetCore.Blazor.Server;
+using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;

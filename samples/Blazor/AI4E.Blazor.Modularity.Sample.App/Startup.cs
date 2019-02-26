@@ -1,6 +1,5 @@
 using AI4E.Blazor.Routing;
-using Blazor.Extensions.Logging;
-using Microsoft.AspNetCore.Blazor.Builder;
+using Microsoft.AspNetCore.Components.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -12,14 +11,14 @@ namespace AI4E.Blazor.Modularity.Sample.App
         {
             services.AddLogging(builder =>
             {
-                builder.AddBrowserConsole();
+                //builder.AddBrowserConsole();
                 builder.SetMinimumLevel(LogLevel.Trace);
             });
 
             services.AddBlazorModularity();
         }
 
-        public void Configure(IBlazorApplicationBuilder app)
+        public void Configure(IComponentsApplicationBuilder app)
         {
             app.AddComponent<RouterX>("app");
         }

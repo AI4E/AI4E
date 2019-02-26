@@ -3,11 +3,7 @@
   <PropertyGroup>
     <TargetFramework>$(NetCoreAppTargetFrameworkVersion)</TargetFramework>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.App" Version="$(MicrosoftAspNetCoreAppVersion)" />
-  </ItemGroup>
-
+  
   <ItemGroup>
     <DotNetCliToolReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Tools" Version="2.0.3" />
   </ItemGroup>

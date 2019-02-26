@@ -1,6 +1,6 @@
-﻿using System;
-using Microsoft.AspNetCore.Blazor;
-using Microsoft.AspNetCore.Blazor.RenderTree;
+using System;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.RenderTree;
 
 namespace AI4E.Blazor.Components
 {

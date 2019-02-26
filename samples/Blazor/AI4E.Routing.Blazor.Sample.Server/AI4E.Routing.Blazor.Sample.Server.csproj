@@ -5,8 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.App" Version="$(MicrosoftAspNetCoreAppVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Blazor.Server" Version="$(MicrosoftAspNetCoreBlazorServerVersion)" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Server" Version="$(MicrosoftAspNetCoreComponentsServerVersion)" />
   </ItemGroup>
 
   <ItemGroup>

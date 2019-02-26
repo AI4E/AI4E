@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>$(NetCoreAppTargetFrameworkVersion)</TargetFramework>
     <DefineConstants>BLAZOR_SERVER;ASPNETCORE</DefineConstants>
   </PropertyGroup>
   
@@ -13,9 +13,11 @@
     <ProjectReference Include="..\..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup> 
+    <PackageReference Include="Microsoft.AspNetCore.Components.Server" Version="$(MicrosoftAspNetCoreComponentsServerVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Blazor.Server" Version="$(MicrosoftAspNetCoreBlazorServerVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="$(MicrosoftAspNetCoreStaticFilesVersion)" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="$(MicrosoftExtensionsFileProvidersPhysicalVersion)" />
   </ItemGroup>
 
 </Project>

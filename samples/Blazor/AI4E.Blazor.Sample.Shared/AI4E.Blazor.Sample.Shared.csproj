@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <TargetFramework>$(NetStandardTargetFrameworkVersion)</TargetFramework>
@@ -9,8 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Blazor.Browser" Version="$(MicrosoftAspNetCoreBlazorBrowserVersion)" />
-    <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="$(MicrosoftAspNetCoreBlazorBuildVersion)" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Browser" Version="$(MicrosoftAspNetCoreComponentsBrowserVersion)" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Build" Version="$(MicrosoftAspNetCoreComponentsBuildVersion)" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -39,7 +39,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Microsoft.AspNetCore.Blazor.Components;
+using Microsoft.AspNetCore.Components;
 
 namespace AI4E.Blazor.Routing
 {
@@ -110,7 +110,7 @@ namespace AI4E.Blazor.Routing
             }
             else
             {
-                for (int i = 0; i < xTemplate.Segments.Length; i++)
+                for (var i = 0; i < xTemplate.Segments.Length; i++)
                 {
                     var xSegment = xTemplate.Segments[i];
                     var ySegment = yTemplate.Segments[i];

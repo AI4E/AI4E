@@ -34,12 +34,15 @@
     <SystemReflectionExtensionsVersion Condition="'$(SystemReflectionExtensionsVersion)' == ''">4.3.0</SystemReflectionExtensionsVersion>
     <SystemRuntimeCompilerServicesUnsafeVersion Condition="'$(SystemRuntimeCompilerServicesUnsafeVersion)' == ''">4.5.2</SystemRuntimeCompilerServicesUnsafeVersion>
     <SystemThreadingTasksExtensionsVersion Condition="'$(SystemThreadingTasksExtensionsVersion)' == ''">4.5.2</SystemThreadingTasksExtensionsVersion>
-    <BlazorExtensionsSignalRVersion Condition="'$(BlazorExtensionsSignalRVersion)' == ''">0.1.8</BlazorExtensionsSignalRVersion>
-    <BlazorExtensionsLoggingVersion Condition="'$(BlazorExtensionsLoggingVersion)' == ''">0.1.10</BlazorExtensionsLoggingVersion>
+    <!--<BlazorExtensionsLoggingVersion Condition="'$(BlazorExtensionsLoggingVersion)' == ''">0.1.10</BlazorExtensionsLoggingVersion>-->
+    <BlazorSignalRVersion Condition="'$(BlazorSignalRVersion)' == ''">0.4.0</BlazorSignalRVersion>
     <JsonDiffPatchNetVersion Condition="'$(JsonDiffPatchNetVersion)' == ''">2.1.0</JsonDiffPatchNetVersion>
-    <MicrosoftAspNetCoreBlazorBrowserVersion Condition="'$(MicrosoftAspNetCoreBlazorBrowserVersion)' == ''">0.7.0</MicrosoftAspNetCoreBlazorBrowserVersion>
-    <MicrosoftAspNetCoreBlazorBuildVersion Condition="'$(MicrosoftAspNetCoreBlazorBuildVersion)' == ''">0.7.0</MicrosoftAspNetCoreBlazorBuildVersion>
-    <MicrosoftAspNetCoreBlazorServerVersion Condition="'$(MicrosoftAspNetCoreBlazorServerVersion)' == ''">0.7.0</MicrosoftAspNetCoreBlazorServerVersion>
+    <MicrosoftAspNetCoreBlazorVersion Condition="'$(MicrosoftAspNetCoreBlazorVersion)' == ''">0.8.0-preview-19104-04</MicrosoftAspNetCoreBlazorVersion>
+    <MicrosoftAspNetCoreBlazorBuildVersion Condition="'$(MicrosoftAspNetCoreBlazorBuildVersion)' == ''">0.8.0-preview-19104-04</MicrosoftAspNetCoreBlazorBuildVersion>
+    <MicrosoftAspNetCoreBlazorServerVersion Condition="'$(MicrosoftAspNetCoreBlazorServerVersion)' == ''">0.8.0-preview-19104-04</MicrosoftAspNetCoreBlazorServerVersion>
+    <MicrosoftAspNetCoreComponentsBrowserVersion Condition="'$(MicrosoftAspNetCoreComponentsBrowserVersion)' == ''">3.0.0-preview-19075-0444</MicrosoftAspNetCoreComponentsBrowserVersion>
+    <MicrosoftAspNetCoreComponentsBuildVersion Condition="'$(MicrosoftAspNetCoreComponentsBuildVersion)' == ''">3.0.0-preview-19075-0444</MicrosoftAspNetCoreComponentsBuildVersion>
+    <MicrosoftAspNetCoreComponentsServerVersion Condition="'$(MicrosoftAspNetCoreComponentsServerVersion)' == ''">3.0.0-preview-19075-0444</MicrosoftAspNetCoreComponentsServerVersion>
     <MicrosoftAspNetCoreHostingVersion Condition="'$(MicrosoftAspNetCoreHostingVersion)' == ''">2.2.0</MicrosoftAspNetCoreHostingVersion>
     <MicrosoftAspNetCoreHtmlAbstractionsVersion Condition="'$(MicrosoftAspNetCoreHtmlAbstractionsVersion)' == ''">2.2.0</MicrosoftAspNetCoreHtmlAbstractionsVersion>
     <MicrosoftAspNetCoreMvcRazorVersion Condition="'$(MicrosoftAspNetCoreMvcRazorVersion)' == ''">2.2.0</MicrosoftAspNetCoreMvcRazorVersion>
@@ -52,9 +55,10 @@
     <MicrosoftExtensionsConfigurationCommandLineVersion Condition="'$(MicrosoftExtensionsConfigurationCommandLineVersion)' == ''">2.2.0</MicrosoftExtensionsConfigurationCommandLineVersion>
     <MicrosoftExtensionsConfigurationJsonVersion Condition="'$(MicrosoftExtensionsConfigurationJsonVersion)' == ''">2.2.0</MicrosoftExtensionsConfigurationJsonVersion>
     <MicrosoftExtensionsConfigurationUserSecretsVersion Condition="'$(MicrosoftExtensionsConfigurationUserSecretsVersion)' == ''">2.2.0</MicrosoftExtensionsConfigurationUserSecretsVersion>
-    <MicrosoftExtensionsDependencyInjectionVersion Condition="'$(MicrosoftExtensionsDependencyInjectionVersion)' == ''">2.2.0</MicrosoftExtensionsDependencyInjectionVersion>
-    <MicrosoftExtensionsDependencyInjectionAbstractionsVersion Condition="'$(MicrosoftExtensionsDependencyInjectionAbstractionsVersion)' == ''">2.2.0</MicrosoftExtensionsDependencyInjectionAbstractionsVersion>
+    <MicrosoftExtensionsDependencyInjectionVersion Condition="'$(MicrosoftExtensionsDependencyInjectionVersion)' == ''">3.0.0-preview.19074.2</MicrosoftExtensionsDependencyInjectionVersion>
+    <MicrosoftExtensionsDependencyInjectionAbstractionsVersion Condition="'$(MicrosoftExtensionsDependencyInjectionAbstractionsVersion)' == ''">3.0.0-preview.19074.2</MicrosoftExtensionsDependencyInjectionAbstractionsVersion>
     <MicrosoftExtensionsDependencyModelVersion Condition="'$(MicrosoftExtensionsDependencyModelVersion)' == ''">2.1.0</MicrosoftExtensionsDependencyModelVersion>
+    <MicrosoftExtensionsFileProvidersPhysicalVersion Condition="'$(MicrosoftExtensionsFileProvidersPhysicalVersion)' == ''">3.0.0-preview.19074.2</MicrosoftExtensionsFileProvidersPhysicalVersion>
     <MicrosoftExtensionsLoggingVersion Condition="'$(MicrosoftExtensionsLoggingVersion)' == ''">2.2.0</MicrosoftExtensionsLoggingVersion>
     <MicrosoftExtensionsLoggingAbstractionsVersion Condition="'$(MicrosoftExtensionsLoggingAbstractionsVersion)' == ''">2.2.0</MicrosoftExtensionsLoggingAbstractionsVersion>
     <MicrosoftExtensionsLoggingConsoleVersion Condition="'$(MicrosoftExtensionsLoggingConsoleVersion)' == ''">2.2.0</MicrosoftExtensionsLoggingConsoleVersion>
@@ -68,8 +72,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <MicrosoftAspNetCoreAppVersion Condition="'$(MicrosoftAspNetCoreAppVersion)' == ''">2.2.1</MicrosoftAspNetCoreAppVersion>  
-    <NetCoreAppTargetFrameworkVersion Condition="'$(NetCoreAppTargetFrameworkVersion)' == ''">netcoreapp2.2</NetCoreAppTargetFrameworkVersion>
+    <NetCoreAppTargetFrameworkVersion Condition="'$(NetCoreAppTargetFrameworkVersion)' == ''">netcoreapp3.0</NetCoreAppTargetFrameworkVersion>
     <NetStandardTargetFrameworkVersion Condition="'$(NetStandardTargetFrameworkVersion)' == ''">netstandard2.0</NetStandardTargetFrameworkVersion>
   </PropertyGroup>
 </Project>

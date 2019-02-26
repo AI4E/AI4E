@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -36,19 +36,19 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using Microsoft.AspNetCore.Blazor.Components;
+using Microsoft.AspNetCore.Components;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using BlazorInject = Microsoft.AspNetCore.Blazor.Components.InjectAttribute;
+using BlazorInject = Microsoft.AspNetCore.Components.InjectAttribute;
 
 namespace AI4E.Blazor.Components
 {
     internal class ComponentFactory
     {
-        private readonly static BindingFlags _injectablePropertyBindingFlags
+        private static readonly BindingFlags _injectablePropertyBindingFlags
             = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
         private readonly IServiceProvider _serviceProvider;

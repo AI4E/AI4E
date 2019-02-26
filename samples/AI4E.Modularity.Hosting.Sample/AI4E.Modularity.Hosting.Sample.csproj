@@ -6,10 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.App" Version="$(MicrosoftAspNetCoreAppVersion)" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\src\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Domain.Services\AI4E.Domain.Services.csproj" />

@@ -37,15 +37,16 @@
 */
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using AI4E.ApplicationParts;
 using AI4E.Blazor.Components;
 using AI4E.Blazor.Modularity;
-using Microsoft.AspNetCore.Blazor.Components;
-using Microsoft.AspNetCore.Blazor.Layouts;
-using Microsoft.AspNetCore.Blazor.RenderTree;
-using Microsoft.AspNetCore.Blazor.Services;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Layouts;
+using Microsoft.AspNetCore.Components.RenderTree;
+using Microsoft.AspNetCore.Components.Services;
 using Microsoft.Extensions.Logging;
-using BlazorInject = Microsoft.AspNetCore.Blazor.Components.InjectAttribute;
+using BlazorInject = Microsoft.AspNetCore.Components.InjectAttribute;
 
 namespace AI4E.Blazor.Routing
 {
@@ -69,7 +70,7 @@ namespace AI4E.Blazor.Routing
         private RouteTable Routes { get; set; }
 
         /// <inheritdoc />
-        public void Init(RenderHandle renderHandle)
+        public void Configure(RenderHandle renderHandle)
         {
             _renderHandle = renderHandle;
             _baseUri = UriHelper.GetBaseUri();
@@ -79,11 +80,13 @@ namespace AI4E.Blazor.Routing
         }
 
         /// <inheritdoc />
-        public void SetParameters(ParameterCollection parameters)
+        public Task SetParametersAsync(ParameterCollection parameters)
         {
-            parameters.AssignToProperties(this);
+            parameters.SetParameterProperties(this);
             UpdateRouteTable();
             Refresh();
+
+            return Task.CompletedTask;
         }
 
         public void UpdateRouteTable()

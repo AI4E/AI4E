@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27130.2036
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28606.126
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0F6E77C0-90F0-4593-89EA-4830EE7A3084}"
 EndProject
@@ -26,7 +26,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 		.gitignore = .gitignore
 		Directory.Build.props = Directory.Build.props
-		NuGet.config = NuGet.config
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{8682A1B5-6D4B-4176-8BC8-9F93018B12CE}"
@@ -112,9 +111,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore", "src\AI4E.AspNetCore\AI4E.AspNetCore.csproj", "{010A7464-8342-4908-A088-AFC034443668}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Blazor", "Blazor", "{5FA02E7D-6DAF-47EE-A24A-B01621C01326}"
-	ProjectSection(SolutionItems) = preProject
-		samples\Blazor\global.json = samples\Blazor\global.json
-	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Routing.Blazor.Sample.Server", "samples\Blazor\AI4E.Routing.Blazor.Sample.Server\AI4E.Routing.Blazor.Sample.Server.csproj", "{09DA5180-DB8C-4EB4-8A35-1AAF39470B0C}"
 EndProject
