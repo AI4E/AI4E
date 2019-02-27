@@ -34,6 +34,7 @@ namespace AI4E
 
     public interface IMessageProcessorContext
     {
+        MessageHandlerConfiguration MessageHandlerConfiguration { get; }
         MessageHandlerActionDescriptor MessageHandlerAction { get; }
         object MessageHandler { get; }
         bool IsPublish { get; }

@@ -22,6 +22,7 @@ using System;
 using System.Reflection;
 using AI4E.ApplicationParts;
 using AI4E.ApplicationParts.Utils;
+using AI4E.Coordination;
 using AI4E.Domain.Services;
 using AI4E.Modularity.Debug;
 using AI4E.Remoting;
@@ -48,10 +49,17 @@ namespace AI4E.Modularity.Host
             services.AddRemoteMessageDispatcher();
             services.AddUdpEndPoint();
             services.AddSingleton(ConfigureDebugPort);
-            services.ConfigureApplicationServices(ConfigureApplicationServices);
 
             services.AddSingleton<IModuleManager, ModuleManager>();
+            services.AddSingleton<IModulePropertiesLookup, ModulePropertiesLookup>();
             services.AddSingleton<IPathMapper, PathMapper>();
+
+            services.AddSingleton<IRouteManagerFactory, RouteManagerFactory>();
+            services.AddSingleton(typeof(IEndPointMap<>), typeof(EndPointMap<>));
+            services.AddCoordinationService();
+
+            services.ConfigureApplicationServices(ConfigureApplicationServices);
+            services.ConfigureApplicationParts(ConfigureApplicationParts);
 
             return new ModularityBuilder(services);
         }
@@ -65,13 +73,10 @@ namespace AI4E.Modularity.Host
             services.AddSingleton<IModuleInstallationManager, ModuleInstallationManager>();
             services.AddSingleton<IMetadataReader, MetadataReader>();
             services.AddDomainServices();
-            services.ConfigureApplicationParts(ConfigureApplicationParts);
-            services.ConfigureApplicationServices(ConfigureApplicationServices);
         }
 
         private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
         {
-            serviceManager.AddService<IMessageDispatcher>();
             serviceManager.AddService<DebugPort>(isRequiredService: false);
         }
 
@@ -87,8 +92,6 @@ namespace AI4E.Modularity.Host
 
             var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModularityOptions>>();
             var options = optionsAccessor.Value ?? new ModularityOptions();
-
-
 
             if (options.EnableDebugging)
             {

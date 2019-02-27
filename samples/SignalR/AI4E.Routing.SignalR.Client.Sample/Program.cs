@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
 using AI4E.Routing.SignalR.Sample.Common;
-using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -26,14 +25,7 @@ namespace AI4E.Routing.SignalR.Client.Sample
         {
             ConfigureLogging(services);
 
-            services.AddHubConnection()
-                    .WithUrl("http://localhost:5000/MessageDispatcherHub")
-                    .Build();
-
-            services.AddRemoteMessageDispatcher();
-            services.AddSingleton<IClientEndPoint, ClientEndPoint>();
-            services.AddSingleton<IRequestReplyClientEndPoint, RequestReplyClientEndPoint>();
-            services.AddSingleton<IMessageRouterFactory, RemoteMessageRouterFactory>();
+            services.AddSignalRMessageDispatcher();
         }
 
         private static void ConfigureLogging(IServiceCollection services)

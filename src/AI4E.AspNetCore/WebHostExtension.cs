@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
@@ -19,6 +19,10 @@ namespace AI4E.AspNetCore
             if (applicationServiceManager != null)
             {
                 await applicationServiceManager.InitializeApplicationServicesAsync(serviceProvider, cancellation);
+
+                // Forces an asynchronous yield to the continuation that blocks synchronously
+                // We do not want the contiuations of applicationServiceManager.InitializeApplicationServicesAsync to be blocked indefinitely
+                await Task.Yield();
             }
 
             return webhost;

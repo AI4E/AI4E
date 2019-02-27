@@ -4,12 +4,6 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <DefineConstants>BLAZOR_SERVER;ASPNETCORE</DefineConstants>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Remove="Internal\**" />
-    <EmbeddedResource Remove="Internal\**" />
-    <None Remove="Internal\**" />
-  </ItemGroup>
   
   <ItemGroup>
     <Compile Include="..\AI4E.Blazor\Modularity\BlazorModuleManifest.cs" Link="BlazorModuleManifest.cs" />

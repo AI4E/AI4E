@@ -105,8 +105,10 @@ namespace AI4E.Modularity.Debug
             // - the handler for the debug messages is registered AND
             // - reached a globally consistent state (its routes are registered).
 
-            // TODO: https://github.com/AI4E/AI4E/issues/111
-            //await ((_messageDispatcher as IAsyncInitialization)?.Initialization?.WithCancellation(cancellation) ?? Task.CompletedTask);
+            if (_messageDispatcher is IAsyncInitialization asyncInitialization)
+            {
+                await asyncInitialization.Initialization.WithCancellation(cancellation);
+            }
 
             _tcpHost.Start();
             var localAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;
