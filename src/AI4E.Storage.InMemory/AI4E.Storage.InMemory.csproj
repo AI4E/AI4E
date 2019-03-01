@@ -9,11 +9,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AI4E.Utils.ObjectClone" Version="0.1.0" />
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="$(NitoAsyncExCoordinationVersion)" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />

@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -21,7 +21,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using AI4E.ApplicationParts;
+using AI4E.Utils.ApplicationParts;
 using Microsoft.AspNetCore.Blazor.Components;
 
 namespace AI4E.Blazor.Components
