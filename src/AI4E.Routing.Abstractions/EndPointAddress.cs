@@ -36,7 +36,6 @@ using System.Security.Permissions;
 using System.Text;
 using AI4E.Utils;
 using AI4E.Utils.Memory;
-using AI4E.Utils.Memory.Compatibility;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
 

@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AI4E.Utils.ApplicationParts" Version="0.1.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="$(MicrosoftExtensionsDependencyModelVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="$(MicrosoftExtensionsLoggingVersion)" />   
     <PackageReference Include="Newtonsoft.Json.Bson" Version="$(NewtonsoftJsonBsonVersion)" />  
@@ -14,10 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\lib\AI4E.ApplicationParts\src\AI4E.ApplicationParts.Utils\AI4E.ApplicationParts.Utils.csproj" />
-    <ProjectReference Include="..\..\lib\AI4E.ApplicationParts\src\AI4E.ApplicationParts\AI4E.ApplicationParts.csproj" />
-    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils.AsyncEnumerable\AI4E.Utils.AsyncEnumerable.csproj" />
-    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils\AI4E.Utils.csproj" />
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
   </ItemGroup>
 
