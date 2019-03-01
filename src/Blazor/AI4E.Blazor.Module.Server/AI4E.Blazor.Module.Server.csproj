@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>$(NetCoreAppTargetFrameworkVersion)</TargetFramework>
+    <TargetFramework>$(NetCoreAppVersion)</TargetFramework>
     <DefineConstants>BLAZOR_SERVER;ASPNETCORE</DefineConstants>
   </PropertyGroup>
   
@@ -14,10 +14,10 @@
   </ItemGroup>
 
   <ItemGroup> 
-    <PackageReference Include="Microsoft.AspNetCore.Components.Server" Version="$(MicrosoftAspNetCoreComponentsServerVersion)" />
-    <PackageReference Include="Microsoft.AspNetCore.Blazor.Server" Version="$(MicrosoftAspNetCoreBlazorServerVersion)" />
-    <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="$(MicrosoftAspNetCoreStaticFilesVersion)" />
-    <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="$(MicrosoftExtensionsFileProvidersPhysicalVersion)" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Server" Version="3.0.0-preview-19075-0444" />
+    <PackageReference Include="Microsoft.AspNetCore.Blazor.Server" Version="0.8.0-preview-19104-04" />
+    <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="3.0.0-preview.19074.2" />
   </ItemGroup>
 
 </Project>

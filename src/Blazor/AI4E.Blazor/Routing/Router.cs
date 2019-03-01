@@ -38,7 +38,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using AI4E.ApplicationParts;
+using AI4E.Utils.ApplicationParts;
 using AI4E.Blazor.Components;
 using AI4E.Blazor.Modularity;
 using Microsoft.AspNetCore.Components;

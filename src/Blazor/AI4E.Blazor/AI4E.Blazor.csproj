@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>$(NetStandardTargetFrameworkVersion)</TargetFramework>
+    <TargetFramework>$(NetStandardVersion)</TargetFramework>
     <DefineConstants>BLAZOR</DefineConstants>
     <OutputType>Library</OutputType>
     <IsPackable>true</IsPackable>
@@ -27,15 +27,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="BlazorSignalR" Version="$(BlazorSignalRVersion)" />
+    <PackageReference Include="BlazorSignalR" Version="0.4.0" />
     
-    <PackageReference Include="Microsoft.AspNetCore.Components.Browser" Version="$(MicrosoftAspNetCoreComponentsBrowserVersion)" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Build" Version="$(MicrosoftAspNetCoreComponentsBuildVersion)" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Browser" Version="3.0.0-preview-19075-0444" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Build" Version="3.0.0-preview-19075-0444" />
 
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsDependencyInjectionVersion)" />
-    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="$(MicrosoftExtensionsDependencyModelVersion)" />
-    <PackageReference Include="Nito.AsyncEx.Coordination" Version="$(NitoAsyncExCoordinationVersion)" />
-    <PackageReference Include="System.Collections.Immutable" Version="$(SystemCollectionsImmutableVersion)" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.0.0-preview.19074.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="2.1.0" />
+    <PackageReference Include="Nito.AsyncEx.Coordination" Version="1.0.2" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
   </ItemGroup>
 
 </Project>

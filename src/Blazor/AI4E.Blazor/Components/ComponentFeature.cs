@@ -21,7 +21,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using AI4E.ApplicationParts;
+using AI4E.Utils.ApplicationParts;
 using Microsoft.AspNetCore.Components;
 
 namespace AI4E.Blazor.Components

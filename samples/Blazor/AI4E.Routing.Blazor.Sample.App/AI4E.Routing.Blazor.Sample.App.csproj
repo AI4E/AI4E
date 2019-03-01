@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>$(NetStandardTargetFrameworkVersion)</TargetFramework>
+    <TargetFramework>$(NetStandardVersion)</TargetFramework>
     <OutputType>Exe</OutputType>
     <DefineConstants>BLAZOR;SERVERSIDEBLAZOR</DefineConstants>
     <!-- The linker is not beneficial for server-side execution. Re-enable this if you switch to WebAssembly execution. -->
@@ -9,9 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!--<PackageReference Include="Blazor.Extensions.Logging" Version="$(BlazorExtensionsLoggingVersion)" />-->
-    <PackageReference Include="Microsoft.AspNetCore.Blazor" Version="$(MicrosoftAspNetCoreBlazorVersion)" />
-    <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="$(MicrosoftAspNetCoreBlazorBuildVersion)" />
+    <!--<PackageReference Include="Blazor.Extensions.Logging" Version="0.1.10" />-->
+    <PackageReference Include="Microsoft.AspNetCore.Blazor" Version="0.8.0-preview-19104-04" />
+    <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="0.8.0-preview-19104-04" />
   </ItemGroup>
 
   <ItemGroup>

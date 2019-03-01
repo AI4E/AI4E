@@ -1,23 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>$(NetStandardVersion)</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="$(MicrosoftExtensionsDependencyModelVersion)" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="$(MicrosoftExtensionsLoggingVersion)" />   
-    <PackageReference Include="Newtonsoft.Json.Bson" Version="$(NewtonsoftJsonBsonVersion)" />  
-    <PackageReference Include="System.Interactive.Async" Version="$(SystemInteractiveAsyncVersion)" />
-    <PackageReference Include="Nito.AsyncEx.Coordination" Version="$(NitoAsyncExCoordinationVersion)" />
-    <PackageReference Include="System.Collections.Immutable" Version="$(SystemCollectionsImmutableVersion)" />
+    <PackageReference Include="AI4E.Utils.ApplicationParts" Version="0.1.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="2.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.2.0" />   
+    <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.2" />  
+    <PackageReference Include="System.Interactive.Async" Version="3.2.0" />
+    <PackageReference Include="Nito.AsyncEx.Coordination" Version="1.0.2" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\lib\AI4E.ApplicationParts\src\AI4E.ApplicationParts.Utils\AI4E.ApplicationParts.Utils.csproj" />
-    <ProjectReference Include="..\..\lib\AI4E.ApplicationParts\src\AI4E.ApplicationParts\AI4E.ApplicationParts.csproj" />
-    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils.AsyncEnumerable\AI4E.Utils.AsyncEnumerable.csproj" />
-    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils\AI4E.Utils.csproj" />
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
   </ItemGroup>
 

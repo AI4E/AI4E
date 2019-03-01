@@ -1,13 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>$(NetStandardVersion)</TargetFramework>
     <RootNamespace>AI4E.Routing</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils.Memory.Compatibility\AI4E.Utils.Memory.Compatibility.csproj" />
-    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
+    <PackageReference Include="AI4E.Utils.Memory" Version="0.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
   </ItemGroup>

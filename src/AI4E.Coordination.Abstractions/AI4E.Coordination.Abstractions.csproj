@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>$(NetStandardVersion)</TargetFramework>
     <RootNamespace>AI4E.Coordination</RootNamespace>
   </PropertyGroup>
 
@@ -10,16 +10,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Numerics.Vectors" Version="$(SystemNumericsVectorsVersion)" />
-    <PackageReference Include="System.Collections.Immutable" Version="$(SystemCollectionsImmutableVersion)" />
-    <PackageReference Include="System.Interactive.Async" Version="$(SystemInteractiveAsyncVersion)" />
-    <PackageReference Include="System.Memory" Version="$(SystemMemoryVersion)" />
-    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="$(SystemRuntimeCompilerServicesUnsafeVersion)" />
+    <PackageReference Include="AI4E.Utils.Memory" Version="0.1.0" />
+    <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
+    <PackageReference Include="System.Interactive.Async" Version="3.2.0" />
+    <PackageReference Include="System.Memory" Version="4.5.2" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.5.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils.Memory.Compatibility\AI4E.Utils.Memory.Compatibility.csproj" />
-    <ProjectReference Include="..\..\lib\AI4E.Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
   </ItemGroup>

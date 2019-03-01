@@ -22,7 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using AI4E.ApplicationParts;
+using AI4E.Utils.ApplicationParts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.RenderTree;
 using BlazorInject = Microsoft.AspNetCore.Components.InjectAttribute;
