@@ -13,7 +13,6 @@
     <ProjectReference Include="..\AI4E.Domain.Services\AI4E.Domain.Services.csproj" />
     <ProjectReference Include="..\AI4E.Domain\AI4E.Domain.csproj" />
     <ProjectReference Include="..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
-    <ProjectReference Include="..\AI4E.Proxying\AI4E.Proxying.csproj" />
     <ProjectReference Include="..\AI4E.Routing\AI4E.Routing.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
   </ItemGroup>
@@ -29,6 +28,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="2.2.0" />
+    <PackageReference Include="AI4E.Utils.Proxying" Version="0.1.0-pre190301" />
   </ItemGroup>
 
 </Project>
