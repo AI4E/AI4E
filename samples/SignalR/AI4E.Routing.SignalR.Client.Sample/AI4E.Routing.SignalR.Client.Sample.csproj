@@ -12,8 +12,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E\AI4E.csproj" />
-    <ProjectReference Include="..\..\..\src\SignalR\AI4E.Routing.SignalR.Client.Abstractions\AI4E.Routing.SignalR.Client.Abstractions.csproj" />
-    <ProjectReference Include="..\..\..\src\SignalR\AI4E.Routing.SignalR.Client\AI4E.Routing.SignalR.Client.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Routing.SignalR.Client.Abstractions\AI4E.Routing.SignalR.Client.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Routing.SignalR.Client\AI4E.Routing.SignalR.Client.csproj" />
     <ProjectReference Include="..\AI4E.Routing.SignalR.Sample.Common\AI4E.Routing.SignalR.Sample.Common.csproj" />
   </ItemGroup>
 

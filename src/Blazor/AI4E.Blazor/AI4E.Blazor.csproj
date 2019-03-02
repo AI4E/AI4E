@@ -23,7 +23,7 @@
     <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
     <ProjectReference Include="..\..\AI4E\AI4E.csproj" />
-    <ProjectReference Include="..\..\SignalR\AI4E.Routing.SignalR.Client\AI4E.Routing.SignalR.Client.csproj" />
+    <ProjectReference Include="..\..\AI4E.Routing.SignalR.Client\AI4E.Routing.SignalR.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -19,8 +19,8 @@
     <ProjectReference Include="..\..\..\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E\AI4E.csproj" />
-    <ProjectReference Include="..\..\..\src\SignalR\AI4E.Routing.SignalR.Server.Abstractions\AI4E.Routing.SignalR.Server.Abstractions.csproj" />
-    <ProjectReference Include="..\..\..\src\SignalR\AI4E.Routing.SignalR.Server\AI4E.Routing.SignalR.Server.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Routing.SignalR.Server.Abstractions\AI4E.Routing.SignalR.Server.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Routing.SignalR.Server\AI4E.Routing.SignalR.Server.csproj" />
     <ProjectReference Include="..\AI4E.Routing.Blazor.Sample.App\AI4E.Routing.Blazor.Sample.App.csproj" />
   </ItemGroup>
 
