@@ -2,12 +2,11 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
-using AI4E.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
 using AI4E.Utils;
 using AI4E.Utils.Async;
+using AI4E.Utils.Proxying;
 using Microsoft.Extensions.Logging;
 
 namespace AI4E.Modularity.Debug

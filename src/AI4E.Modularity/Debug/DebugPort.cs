@@ -27,7 +27,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Modularity.Host;
-using AI4E.Proxying;
+using AI4E.Utils.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
 using AI4E.Utils;

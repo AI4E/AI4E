@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AI4E.Utils.ApplicationParts" Version="0.1.0" />
+    <PackageReference Include="AI4E.Utils.ApplicationParts" Version="0.2.0-pre19030212" />
     <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="2.1.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="2.2.0" />   
     <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.2" />  
