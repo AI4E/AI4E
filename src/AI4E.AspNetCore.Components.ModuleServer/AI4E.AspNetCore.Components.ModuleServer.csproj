@@ -6,11 +6,11 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <Compile Include="..\AI4E.Blazor\Modularity\BlazorModuleManifest.cs" Link="BlazorModuleManifest.cs" />
-    <ProjectReference Include="..\..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
-    <ProjectReference Include="..\..\AI4E\AI4E.csproj" />
-    <ProjectReference Include="..\..\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
-    <ProjectReference Include="..\..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
+    <Compile Include="..\AI4E.AspNetCore.Components.Modularity\Modularity\BlazorModuleManifest.cs" Link="BlazorModuleManifest.cs" />
+    <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+    <ProjectReference Include="..\AI4E\AI4E.csproj" />
+    <ProjectReference Include="..\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
+    <ProjectReference Include="..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup> 
