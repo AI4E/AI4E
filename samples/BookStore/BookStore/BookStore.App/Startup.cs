@@ -10,6 +10,9 @@ namespace BookStore.App
         {
             // Example of a data service
             services.AddSingleton<WeatherForecastService>();
+
+
+            services.AddSharedBookStoreServices();
         }
 
         public void Configure(IComponentsApplicationBuilder app)
