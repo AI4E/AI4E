@@ -2,16 +2,13 @@
 
   <PropertyGroup>
     <TargetFramework>$(NetStandardVersion)</TargetFramework>
-    <RootNamespace>AI4E.Routing</RootNamespace>
+    <RootNamespace>AI4E.Routing.SignalR.Server</RootNamespace>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="AI4E.Utils.Memory" Version="0.2.0-pre19030212" />
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
+    <ProjectReference Include="..\AI4E.Routing.Abstractions\AI4E.Routing.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

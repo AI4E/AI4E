@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Utils.Async;
 using AI4E.Coordination;
-using AI4E.Proxying;
+using AI4E.Utils.Proxying;
 using AI4E.Utils;
 using AI4E.Utils.Memory;
 using Microsoft.Extensions.Logging;

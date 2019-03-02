@@ -7,6 +7,10 @@
 
   <PropertyGroup>
     <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
+  
 </Project>
