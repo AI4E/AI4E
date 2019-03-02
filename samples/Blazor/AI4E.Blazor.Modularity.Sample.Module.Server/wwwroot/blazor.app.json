@@ -1,6 +1,0 @@
-﻿{
-  "name": "AI4E.Blazor.Modularity.Sample.Module",
-  "assemblies": [
-    "/module/AI4E.Blazor.Modularity.Sample.Module.App.dll"
-  ]
-}
