@@ -4,28 +4,29 @@
     <Authors>Andreas Trütschel and contributors</Authors>
     <Product>$(ProjectName)</Product>
     <Copyright>Copyright (c) Andreas Trütschel and contributors.</Copyright>
-    <PackageLicenseUrl>https://github.com/AI4E/AI4E.Utils/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageLicenseExpression>LGPL-3.0-or-later</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/AI4E/AI4E.Utils</PackageProjectUrl>
     <RepositoryUrl>https://github.com/AI4E/AI4E.Utils</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Version>0.1.0-pre$([System.DateTime]::UtcNow.ToString(yyMMddHH))</Version>
- </PropertyGroup>
+  </PropertyGroup>
     
   <PropertyGroup>
     <RepositoryRoot Condition="'$(RepositoryRoot)' == ''">$(MSBuildThisFileDirectory)</RepositoryRoot>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <LangVersion>latest</LangVersion>
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
-    <NoWarn>NU5125;NU5105</NoWarn>
+    <NoWarn>NU5105</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup>
     <RepositoryRootPath>$(RepositoryRoot)\</RepositoryRootPath>
-    <RootOutputPath>$(RepositoryRootPath)artifacts\bin\</RootOutputPath>
-    <RootIntermediateOutputPath>$(RepositoryRootPath)artifacts\obj\</RootIntermediateOutputPath>
-    <PackageOutputPath>$(RepositoryRootPath)artifacts\nupkg\</PackageOutputPath>
+    <RepositoryBuiltPath>$(RepositoryRootPath)artifacts\</RepositoryBuiltPath>
+    <RootOutputPath>$(RepositoryBuiltPath)bin\</RootOutputPath>
+    <RootIntermediateOutputPath>$(RepositoryBuiltPath)obj\</RootIntermediateOutputPath>
+    <PackageOutputPath>$(RepositoryBuiltPath)nupkg\</PackageOutputPath>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(RootOutputPath)' != ''">

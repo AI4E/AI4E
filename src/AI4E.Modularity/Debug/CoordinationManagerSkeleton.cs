@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
-using AI4E.Proxying;
+using AI4E.Utils.Proxying;
 using AI4E.Utils.Memory;
 using static System.Diagnostics.Debug;
 

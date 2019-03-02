@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Proxying;
+using AI4E.Utils.Proxying;
 using AI4E.Remoting;
 using AI4E.Routing;
 using static System.Diagnostics.Debug;
