@@ -235,8 +235,8 @@ namespace AI4E.Coordination.Locking
             while (start != entry);
 
             entry = desired;
-            Assert(!entry.ReadLocks.Contains(session));
-            Assert(entry.WriteLock != session);
+            Assert(entry == null || !entry.ReadLocks.Contains(session));
+            Assert(entry == null || entry.WriteLock != session);
 
             return entry;
         }

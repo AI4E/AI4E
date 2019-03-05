@@ -142,7 +142,7 @@ namespace AI4E.Coordination.Locking
                 start = await _waitManager.WaitForWriteLockReleaseAsync(entry, allowWriteLock: false, cancellation);
 
                 // The entry was deleted (concurrently).
-                if (start == null)
+                if (start == null || start.IsMarkedAsDeleted)
                 {
                     return null;
                 }
@@ -256,8 +256,7 @@ namespace AI4E.Coordination.Locking
             while (entry != start);
 
             entry = desired;
-            Assert(entry != null);
-            Assert(entry.WriteLock == null);
+            Assert(entry == null || entry.WriteLock == null);
 
             if (entry != null)
             {
@@ -301,7 +300,7 @@ namespace AI4E.Coordination.Locking
                 start = await _waitManager.WaitForWriteLockReleaseAsync(entry, allowWriteLock: true, cancellation);
 
                 // The entry was deleted (concurrently).
-                if (start == null)
+                if (start == null || start.IsMarkedAsDeleted)
                 {
                     return null;
                 }

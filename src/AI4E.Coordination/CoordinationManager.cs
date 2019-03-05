@@ -32,7 +32,7 @@ namespace AI4E.Coordination
         private readonly AsyncProcess _updateSessionProcess;
         private readonly AsyncProcess _sessionCleanupProcess;
 
-        internal CoordinationManager(
+        public CoordinationManager(
             IServiceScope serviceScope,
             ICoordinationSessionOwner sessionOwner,
             ISessionManager sessionManager,

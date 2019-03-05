@@ -384,7 +384,7 @@ namespace AI4E.Coordination.Caching
                             return _entry;
                         }
 
-                        if (entry != null)
+                        if (entry != null && !entry.IsMarkedAsDeleted)
                         {
                             // We may already have a read-lock on the entry.
                             if (!IsLockedEntry(entry))
@@ -392,7 +392,7 @@ namespace AI4E.Coordination.Caching
                                 entry = await _cacheManager._lockManager.AcquireReadLockAsync(entry, cancellation);
                             }
 
-                            Assert(entry == null || IsLockedEntry(entry));
+                            Assert(entry == null || entry.IsMarkedAsDeleted || IsLockedEntry(entry));
                             _entry = entry;
                         }
                     }
@@ -472,7 +472,7 @@ namespace AI4E.Coordination.Caching
             {
                 try
                 {
-                    await _unlockOperation(_modified, _value, _isExisting);
+                    await _unlockOperation(_modified, _value, !_isExisting);
                 }
                 catch (OperationCanceledException exc)
                 {
@@ -559,7 +559,7 @@ namespace AI4E.Coordination.Caching
                     throw new NotSupportedException();
                 }
 
-                await _flushOperation(_value, _isExisting);
+                await _flushOperation(_value, !_isExisting);
                 _modified = false;
 
             }
