@@ -2,7 +2,9 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>$(NetCoreAppTargetFrameworkVersion)</TargetFramework>
+    <TargetFramework>$(NetCoreAppVersion)</TargetFramework>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>ai4e-pack</ToolCommandName>
   </PropertyGroup>
 
   <ItemGroup>

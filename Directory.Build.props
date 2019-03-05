@@ -1,17 +1,32 @@
 <Project>
-  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" Condition="exists($([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../')))" />
 
+  <PropertyGroup>
+    <Authors>Andreas Trütschel and contributors</Authors>
+    <Product>$(ProjectName)</Product>
+    <Copyright>Copyright (c) Andreas Trütschel and contributors.</Copyright>
+    <PackageLicenseExpression>LGPL-3.0-or-later</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/AI4E/AI4E.Utils</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/AI4E/AI4E.Utils</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Version>0.1.0-pre$([System.DateTime]::UtcNow.ToString(yyMMddHH))</Version>
+  </PropertyGroup>
+    
   <PropertyGroup>
     <RepositoryRoot Condition="'$(RepositoryRoot)' == ''">$(MSBuildThisFileDirectory)</RepositoryRoot>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <LangVersion>latest</LangVersion>
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
+    <NoWarn>NU5105</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup>
     <RepositoryRootPath>$(RepositoryRoot)\</RepositoryRootPath>
-    <RootOutputPath>$(RepositoryRootPath)artifacts\bin\</RootOutputPath>
-    <RootIntermediateOutputPath>$(RepositoryRootPath)artifacts\obj\</RootIntermediateOutputPath>
+    <RepositoryBuiltPath>$(RepositoryRootPath)artifacts\</RepositoryBuiltPath>
+    <RootOutputPath>$(RepositoryBuiltPath)bin\</RootOutputPath>
+    <RootIntermediateOutputPath>$(RepositoryBuiltPath)obj\</RootIntermediateOutputPath>
+    <PackageOutputPath>$(RepositoryBuiltPath)nupkg\</PackageOutputPath>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(RootOutputPath)' != ''">
@@ -25,51 +40,11 @@
     <MSBuildProjectExtensionsPath>$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
     <RestoreOutputPath>$(BaseIntermediateOutputPath)</RestoreOutputPath>
   </PropertyGroup>
-
+  
   <PropertyGroup>
-    <SystemCollectionsImmutableVersion Condition="'$(SystemCollectionsImmutableVersion)' == ''">1.5.0</SystemCollectionsImmutableVersion>
-    <SystemInteractiveAsyncVersion Condition="'$(SystemInteractiveAsyncVersion)' == ''">3.2.0</SystemInteractiveAsyncVersion>
-    <SystemMemoryVersion Condition="'$(SystemMemoryVersion)' == ''">4.5.2</SystemMemoryVersion>
-    <SystemNumericsVectorsVersion Condition="'$(SystemNumericsVectorsVersion)' == ''">4.5.0</SystemNumericsVectorsVersion>
-    <SystemReflectionExtensionsVersion Condition="'$(SystemReflectionExtensionsVersion)' == ''">4.3.0</SystemReflectionExtensionsVersion>
-    <SystemRuntimeCompilerServicesUnsafeVersion Condition="'$(SystemRuntimeCompilerServicesUnsafeVersion)' == ''">4.5.2</SystemRuntimeCompilerServicesUnsafeVersion>
-    <SystemThreadingTasksExtensionsVersion Condition="'$(SystemThreadingTasksExtensionsVersion)' == ''">4.5.2</SystemThreadingTasksExtensionsVersion>
-    <BlazorExtensionsSignalRVersion Condition="'$(BlazorExtensionsSignalRVersion)' == ''">0.1.8</BlazorExtensionsSignalRVersion>
-    <BlazorExtensionsLoggingVersion Condition="'$(BlazorExtensionsLoggingVersion)' == ''">0.1.10</BlazorExtensionsLoggingVersion>
-    <JsonDiffPatchNetVersion Condition="'$(JsonDiffPatchNetVersion)' == ''">2.1.0</JsonDiffPatchNetVersion>
-    <MicrosoftAspNetCoreBlazorBrowserVersion Condition="'$(MicrosoftAspNetCoreBlazorBrowserVersion)' == ''">0.7.0</MicrosoftAspNetCoreBlazorBrowserVersion>
-    <MicrosoftAspNetCoreBlazorBuildVersion Condition="'$(MicrosoftAspNetCoreBlazorBuildVersion)' == ''">0.7.0</MicrosoftAspNetCoreBlazorBuildVersion>
-    <MicrosoftAspNetCoreBlazorServerVersion Condition="'$(MicrosoftAspNetCoreBlazorServerVersion)' == ''">0.7.0</MicrosoftAspNetCoreBlazorServerVersion>
-    <MicrosoftAspNetCoreHostingVersion Condition="'$(MicrosoftAspNetCoreHostingVersion)' == ''">2.2.0</MicrosoftAspNetCoreHostingVersion>
-    <MicrosoftAspNetCoreHtmlAbstractionsVersion Condition="'$(MicrosoftAspNetCoreHtmlAbstractionsVersion)' == ''">2.2.0</MicrosoftAspNetCoreHtmlAbstractionsVersion>
-    <MicrosoftAspNetCoreMvcRazorVersion Condition="'$(MicrosoftAspNetCoreMvcRazorVersion)' == ''">2.2.0</MicrosoftAspNetCoreMvcRazorVersion>
-    <MicrosoftAspNetCoreMvcViewFeaturesVersion Condition="'$(MicrosoftAspNetCoreMvcViewFeaturesVersion)' == ''">2.2.0</MicrosoftAspNetCoreMvcViewFeaturesVersion>
-    <MicrosoftAspNetCoreSignalRVersion Condition="'$(MicrosoftAspNetCoreSignalRVersion)' == ''">1.1.0</MicrosoftAspNetCoreSignalRVersion>
-    <MicrosoftAspNetCoreSignalRClientVersion Condition="'$(MicrosoftAspNetCoreSignalRClientVersion)' == ''">1.1.0</MicrosoftAspNetCoreSignalRClientVersion>
-    <MicrosoftAspNetCoreStaticFilesVersion Condition="'$(MicrosoftAspNetCoreStaticFilesVersion)' == ''">2.2.0</MicrosoftAspNetCoreStaticFilesVersion>
-    <MicrosoftExtensionsConfigurationVersion Condition="'$(MicrosoftExtensionsConfigurationVersion)' == ''">2.2.0</MicrosoftExtensionsConfigurationVersion>
-    <MicrosoftExtensionsConfigurationAbstractionsVersion Condition="'$(MicrosoftExtensionsConfigurationAbstractionsVersion)' == ''">2.2.0</MicrosoftExtensionsConfigurationAbstractionsVersion>
-    <MicrosoftExtensionsConfigurationCommandLineVersion Condition="'$(MicrosoftExtensionsConfigurationCommandLineVersion)' == ''">2.2.0</MicrosoftExtensionsConfigurationCommandLineVersion>
-    <MicrosoftExtensionsConfigurationJsonVersion Condition="'$(MicrosoftExtensionsConfigurationJsonVersion)' == ''">2.2.0</MicrosoftExtensionsConfigurationJsonVersion>
-    <MicrosoftExtensionsConfigurationUserSecretsVersion Condition="'$(MicrosoftExtensionsConfigurationUserSecretsVersion)' == ''">2.2.0</MicrosoftExtensionsConfigurationUserSecretsVersion>
-    <MicrosoftExtensionsDependencyInjectionVersion Condition="'$(MicrosoftExtensionsDependencyInjectionVersion)' == ''">2.2.0</MicrosoftExtensionsDependencyInjectionVersion>
-    <MicrosoftExtensionsDependencyInjectionAbstractionsVersion Condition="'$(MicrosoftExtensionsDependencyInjectionAbstractionsVersion)' == ''">2.2.0</MicrosoftExtensionsDependencyInjectionAbstractionsVersion>
-    <MicrosoftExtensionsDependencyModelVersion Condition="'$(MicrosoftExtensionsDependencyModelVersion)' == ''">2.1.0</MicrosoftExtensionsDependencyModelVersion>
-    <MicrosoftExtensionsLoggingVersion Condition="'$(MicrosoftExtensionsLoggingVersion)' == ''">2.2.0</MicrosoftExtensionsLoggingVersion>
-    <MicrosoftExtensionsLoggingAbstractionsVersion Condition="'$(MicrosoftExtensionsLoggingAbstractionsVersion)' == ''">2.2.0</MicrosoftExtensionsLoggingAbstractionsVersion>
-    <MicrosoftExtensionsLoggingConsoleVersion Condition="'$(MicrosoftExtensionsLoggingConsoleVersion)' == ''">2.2.0</MicrosoftExtensionsLoggingConsoleVersion>
-    <MicrosoftExtensionsLoggingDebugVersion Condition="'$(MicrosoftExtensionsLoggingDebugVersion)' == ''">2.2.0</MicrosoftExtensionsLoggingDebugVersion>
-    <MicrosoftExtensionsOptionsVersion Condition="'$(MicrosoftExtensionsOptionsVersion)' == ''">2.2.0</MicrosoftExtensionsOptionsVersion>
-    <MongoDBDriverVersion Condition="'$(MongoDBDriverVersion)' == ''">2.7.2</MongoDBDriverVersion>
-    <NewtonsoftJsonVersion Condition="'$(NewtonsoftJsonVersion)' == ''">12.0.1</NewtonsoftJsonVersion>
-    <NewtonsoftJsonBsonVersion Condition="'$(NewtonsoftJsonBsonVersion)' == ''">1.0.2</NewtonsoftJsonBsonVersion>
-    <NitoAsyncExCoordinationVersion Condition="'$(NitoAsyncExCoordinationVersion)' == ''">1.0.2</NitoAsyncExCoordinationVersion>
-    <NitoCollectionsDequeVersion Condition="'$(NitoCollectionsDequeVersion)' == ''">1.0.4</NitoCollectionsDequeVersion>
+    <NetStandardVersion>netstandard2.0</NetStandardVersion>
+    <NetCoreAppVersion>netcoreapp2.2</NetCoreAppVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <MicrosoftAspNetCoreAppVersion Condition="'$(MicrosoftAspNetCoreAppVersion)' == ''">2.2.1</MicrosoftAspNetCoreAppVersion>  
-    <NetCoreAppTargetFrameworkVersion Condition="'$(NetCoreAppTargetFrameworkVersion)' == ''">netcoreapp2.2</NetCoreAppTargetFrameworkVersion>
-    <NetStandardTargetFrameworkVersion Condition="'$(NetStandardTargetFrameworkVersion)' == ''">netstandard2.0</NetStandardTargetFrameworkVersion>
-  </PropertyGroup>
 </Project>
