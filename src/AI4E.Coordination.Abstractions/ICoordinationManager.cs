@@ -22,7 +22,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination.Session;
-using AI4E.Utils.Async;
 
 namespace AI4E.Coordination
 {

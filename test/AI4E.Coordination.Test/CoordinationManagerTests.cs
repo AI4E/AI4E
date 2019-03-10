@@ -7,11 +7,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace AI4E.Coordination
 {
     [TestClass]
-    public class CoordinationManagerTest
+    public class CoordinationManagerTests
     {
-        #region No-Contention tests
-
-        [TestMethod]
+        //[TestMethod]
         public async Task TestCreateRootNoContention()
         {
             var services = Setup.BuildDefaultInMemorySetup();
@@ -29,7 +27,5 @@ namespace AI4E.Coordination
             Assert.AreEqual(1, entry.Version);
             Assert.IsTrue(payload.SequenceEqual(entry.Value.ToArray()));
         }
-
-        #endregion
     }
 }
