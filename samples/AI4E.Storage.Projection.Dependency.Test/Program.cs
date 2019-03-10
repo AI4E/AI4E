@@ -1,16 +1,15 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using AI4E.Domain;
 using AI4E.Domain.Services;
 using AI4E.Storage.Domain;
-using AI4E.Storage.InMemory;
 using AI4E.Storage.MongoDB;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 
 namespace AI4E.Storage.Projection.Dependency.Test
 {
-    class Program
+    internal class Program
     {
         private static IServiceProvider ServiceProvider { get; set; }
 
@@ -81,8 +80,8 @@ namespace AI4E.Storage.Projection.Dependency.Test
         {
             using (var scope = ServiceProvider.CreateScope())
             {
-                var dataStore = scope.ServiceProvider.GetRequiredService<IDataStore>();
-                return await dataStore.FindOneAsync<DependentModel>(p => p.Id == id);
+                var dataStore = scope.ServiceProvider.GetRequiredService<IDatabase>();
+                return await dataStore.GetOneAsync<DependentModel>(p => p.Id == id);
             }
         }
     }

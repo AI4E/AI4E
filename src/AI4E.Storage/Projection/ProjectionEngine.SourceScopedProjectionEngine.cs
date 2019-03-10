@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
-using AI4E.Storage.Transactions;
 using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using static System.Diagnostics.Debug;
@@ -18,7 +17,6 @@ namespace AI4E.Storage.Projection
         {
             private readonly ProjectionSourceDescriptor _sourceDescriptor;
             private readonly IProjector _projector;
-            private readonly ITransactionalDatabase _transactionalDatabase;
             private readonly IDatabase _database;
             private readonly IServiceProvider _serviceProvider;
 
@@ -27,20 +25,17 @@ namespace AI4E.Storage.Projection
 
             public SourceScopedProjectionEngine(in ProjectionSourceDescriptor sourceDescriptor,
                                                 IProjector projector,
-                                                ITransactionalDatabase transactionalDatabase,
                                                 IDatabase database,
                                                 IServiceProvider serviceProvider)
             {
                 Assert(sourceDescriptor != default);
                 Assert(projector != null);
                 Assert(sourceDescriptor != default);
-                Assert(transactionalDatabase != null);
                 Assert(database != null);
                 Assert(serviceProvider != null);
 
                 _sourceDescriptor = sourceDescriptor;
                 _projector = projector;
-                _transactionalDatabase = transactionalDatabase;
                 _database = database;
                 _serviceProvider = serviceProvider;
 
@@ -52,7 +47,7 @@ namespace AI4E.Storage.Projection
             // Projects the source entity and returns the descriptors of all dependent source entities. 
             public async Task<IEnumerable<ProjectionSourceDescriptor>> ProjectAsync(CancellationToken cancellation)
             {
-                using (var transactionalDatabase = _transactionalDatabase.CreateScope())
+                using (var transactionalDatabase = _database.CreateScope())
                 {
                     do
                     {
@@ -105,7 +100,6 @@ namespace AI4E.Storage.Projection
                                 return dependents;
                             }
                         }
-                        catch (TransactionAbortedException) { }
                         catch
                         {
                             await transactionalDatabase.RollbackAsync();
@@ -116,7 +110,7 @@ namespace AI4E.Storage.Projection
                 }
             }
 
-            private async Task<bool> WriteToDatabaseAsync(IScopedTransactionalDatabase transactionalDatabase, CancellationToken cancellation)
+            private async Task<bool> WriteToDatabaseAsync(IScopedDatabase transactionalDatabase, CancellationToken cancellation)
             {
                 // Write touched source metadata to database
                 foreach (var (originalMetadata, touchedMetadata) in _sourceMetadataCache.Values.Where(p => p.Touched))

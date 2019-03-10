@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -19,7 +19,6 @@
  */
 
 using System;
-using AI4E.Internal;
 using AI4E.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -36,7 +35,6 @@ namespace AI4E.Storage
             services.AddCoreServices();
             services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
             services.AddSingleton<ISerializer>(new Serialization.JsonSerializer());
-            services.AddTransient<IDataStore, DataStore>();
 
             return new StorageBuilder(services);
         }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AI4E.Modularity.Host;
@@ -19,19 +19,19 @@ namespace AI4E.Modularity.Hosting.Sample.Services
             return modules.Select(p => projection.ProjectToListModel(p, query.IncludePreReleases)).ToList();
         }
 
-        public Task<ModuleReleaseModel> HandleAsync(ByIdQuery<ModuleReleaseIdentifier, ModuleReleaseModel> query, [FromServices][Inject] IDataStore dataStore)
+        public Task<ModuleReleaseModel> HandleAsync(ByIdQuery<ModuleReleaseIdentifier, ModuleReleaseModel> query, [FromServices][Inject] IDatabase dataStore)
         {
-            return dataStore.FindOneAsync<ModuleReleaseModel>(p => p.Id == query.Id).AsTask();
+            return dataStore.GetOneAsync<ModuleReleaseModel>(p => p.Id == query.Id).AsTask();
         }
 
-        public Task<ModuleInstallModel> HandleAsync(ByIdQuery<ModuleReleaseIdentifier, ModuleInstallModel> query, [FromServices][Inject] IDataStore dataStore)
+        public Task<ModuleInstallModel> HandleAsync(ByIdQuery<ModuleReleaseIdentifier, ModuleInstallModel> query, [FromServices][Inject] IDatabase dataStore)
         {
-            return dataStore.FindOneAsync<ModuleInstallModel>(p => p.Id == query.Id).AsTask();
+            return dataStore.GetOneAsync<ModuleInstallModel>(p => p.Id == query.Id).AsTask();
         }
 
-        public Task<ModuleUninstallModel> HandleAsync(ByIdQuery<ModuleIdentifier, ModuleUninstallModel> query, [FromServices][Inject] IDataStore dataStore)
+        public Task<ModuleUninstallModel> HandleAsync(ByIdQuery<ModuleIdentifier, ModuleUninstallModel> query, [FromServices][Inject] IDatabase dataStore)
         {
-            return dataStore.FindOneAsync<ModuleUninstallModel>(p => p.Id == query.Id).AsTask();
+            return dataStore.GetOneAsync<ModuleUninstallModel>(p => p.Id == query.Id).AsTask();
         }
     }
 }

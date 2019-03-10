@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using AI4E.Domain;
@@ -39,7 +39,7 @@ namespace AI4E.Storage.Sample
         private static async Task RunAsync()
         {
             var messageDispatcher = ServiceProvider.GetRequiredService<IMessageDispatcher>();
-            var dataStore = ServiceProvider.GetRequiredService<IDataStore>();
+            var dataStore = ServiceProvider.GetRequiredService<IDatabase>();
 
             var command = new ProductCreateCommand(Guid.NewGuid(), "myProduct");
             var commandResult = await messageDispatcher.DispatchAsync(command);
@@ -54,7 +54,7 @@ namespace AI4E.Storage.Sample
 
             await Console.Out.WriteLineAsync(listModel.ProductName);
 
-            var deleteModel = await dataStore.FindOneAsync<ProductDeleteModel>(p => p.Id == command.Id);
+            var deleteModel = await dataStore.GetOneAsync<ProductDeleteModel>(p => p.Id == command.Id);
 
             var deleteCommand = new ProductDeleteCommand(deleteModel.Id, deleteModel.ConcurrencyToken);
             var deleteCommandResult = await messageDispatcher.DispatchAsync(deleteCommand);
@@ -82,8 +82,8 @@ namespace AI4E.Storage.Sample
         {
             using (var scope = ServiceProvider.CreateScope())
             {
-                var dataStore = scope.ServiceProvider.GetRequiredService<IDataStore>();
-                return await dataStore.FindOneAsync<ProductListModel>(p => p.Id == id);
+                var dataStore = scope.ServiceProvider.GetRequiredService<IDatabase>();
+                return await dataStore.GetOneAsync<ProductListModel>(p => p.Id == id);
             }
         }
     }
