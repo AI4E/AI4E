@@ -19,7 +19,7 @@ namespace AI4E.Storage.Projection
             private readonly ProjectionSourceDescriptor _sourceDescriptor;
             private readonly IProjector _projector;
             private readonly ITransactionalDatabase _transactionalDatabase;
-            private readonly IFilterableDatabase _database;
+            private readonly IDatabase _database;
             private readonly IServiceProvider _serviceProvider;
 
             private readonly IDictionary<ProjectionSourceDescriptor, ProjectionSourceMetadataCacheEntry> _sourceMetadataCache;
@@ -28,7 +28,7 @@ namespace AI4E.Storage.Projection
             public SourceScopedProjectionEngine(in ProjectionSourceDescriptor sourceDescriptor,
                                                 IProjector projector,
                                                 ITransactionalDatabase transactionalDatabase,
-                                                IFilterableDatabase database,
+                                                IDatabase database,
                                                 IServiceProvider serviceProvider)
             {
                 Assert(sourceDescriptor != default);

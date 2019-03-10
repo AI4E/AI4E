@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
 using AI4E.Storage.Transactions;
 using Microsoft.Extensions.Logging;
 
@@ -11,13 +10,13 @@ namespace AI4E.Storage.Projection
     public sealed partial class ProjectionEngine : IProjectionEngine
     {
         private readonly IProjector _projector;
-        private readonly IFilterableDatabase _database;
+        private readonly IDatabase _database;
         private readonly ITransactionalDatabase _transactionalDatabase;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ProjectionEngine> _logger;
 
         public ProjectionEngine(IProjector projector,
-                                IFilterableDatabase database,
+                                IDatabase database,
                                 ITransactionalDatabase transactionalDatabase,
                                 IServiceProvider serviceProvider,
                                 ILogger<ProjectionEngine> logger = default)

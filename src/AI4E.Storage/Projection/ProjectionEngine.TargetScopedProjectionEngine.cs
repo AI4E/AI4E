@@ -23,12 +23,12 @@ namespace AI4E.Storage.Projection
         private sealed class TargetScopedProjectionEngine<TProjectionId, TProjection> : ITargetScopedProjectionEngine
             where TProjection : class
         {
-            private readonly IFilterableDatabase _database;
+            private readonly IDatabase _database;
             private readonly IDictionary<ProjectionTargetDescriptor, ProjectionTargetMetadataCacheEntry> _targetMetadataCache;
             private readonly List<TProjection> _targetsToUpdate = new List<TProjection>();
             private readonly List<TProjection> _targetsToDelete = new List<TProjection>();
 
-            public TargetScopedProjectionEngine(IFilterableDatabase database)
+            public TargetScopedProjectionEngine(IDatabase database)
             {
                 _targetMetadataCache = new Dictionary<ProjectionTargetDescriptor, ProjectionTargetMetadataCacheEntry>();
                 _database = database;

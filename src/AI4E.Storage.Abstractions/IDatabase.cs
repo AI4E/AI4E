@@ -151,13 +151,7 @@ namespace AI4E.Storage
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
         IAsyncEnumerable<TEntry> GetAsync<TEntry>(CancellationToken cancellation = default)
             where TEntry : class;
-    }
 
-    /// <summary>
-    /// An abstraction of a database with filtering functionality.
-    /// </summary>
-    public interface IFilterableDatabase : IDatabase
-    {
         /// <summary>
         /// Asynchronously retrieves a collection of all stored entries that match the specified predicate.
         /// </summary>
@@ -181,7 +175,7 @@ namespace AI4E.Storage
     /// <summary>
     /// An abstraction of a database with queryable functionality.
     /// </summary>
-    public interface IQueryableDatabase : IFilterableDatabase
+    public interface IQueryableDatabase : IDatabase
     {
         /// <summary>
         /// Asynchronously performs a database query specified by a query shaper.
