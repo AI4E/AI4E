@@ -38,12 +38,7 @@ namespace AI4E.Storage
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
 
-            if (database is IFilterableDatabase filterableDatabase)
-            {
-                return filterableDatabase.GetOneAsync<TEntry>(p => true, cancellation);
-            }
-
-            return new ValueTask<TEntry>(database.GetAsync<TEntry>(cancellation).FirstOrDefault(cancellation));
+            return database.GetOneAsync<TEntry>(p => true, cancellation);
         }
 
         public static Task<bool> CompareExchangeAsync<TEntry, TVersion>(this IDatabase database,

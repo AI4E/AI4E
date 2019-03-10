@@ -12,20 +12,15 @@ namespace AI4E.Storage.Domain
 {
     public sealed class StreamPersistence : IStreamPersistence
     {
-        private readonly IFilterableDatabase _database;
-        //private readonly ISnapshotProcessor _snapshotProcessor;
+        private readonly IDatabase _database;
         private int _isDisposed;
 
-        public StreamPersistence(IFilterableDatabase database/*, ISnapshotProcessor snapshotProcessor*/)
+        public StreamPersistence(IDatabase database)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
 
-            //if (snapshotProcessor == null)
-            //    throw new ArgumentNullException(nameof(snapshotProcessor));
-
             _database = database;
-            //_snapshotProcessor = snapshotProcessor;
         }
 
         #region Disposal

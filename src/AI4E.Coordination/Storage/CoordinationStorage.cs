@@ -13,10 +13,10 @@ namespace AI4E.Coordination.Storage
 {
     public sealed class CoordinationStorage : ICoordinationStorage, ISessionStorage
     {
-        private readonly IFilterableDatabase _database;
+        private readonly IDatabase _database;
         private readonly IStoredSessionManager _storedSessionManager;
 
-        public CoordinationStorage(IFilterableDatabase database,
+        public CoordinationStorage(IDatabase database,
                                    IStoredSessionManager storedSessionManager)
         {
             if (database == null)

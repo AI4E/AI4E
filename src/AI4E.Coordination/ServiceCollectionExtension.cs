@@ -155,7 +155,7 @@ namespace AI4E.Coordination
             return builder;
         }
 
-        public static ICoordinationBuilder UseDatabase(this ICoordinationBuilder builder, IFilterableDatabase database)
+        public static ICoordinationBuilder UseDatabase(this ICoordinationBuilder builder, IDatabase database)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
@@ -178,7 +178,7 @@ namespace AI4E.Coordination
             return builder;
         }
 
-        private static CoordinationStorage BuildCoordinationStorage(IServiceProvider serviceProvider, IFilterableDatabase database)
+        private static CoordinationStorage BuildCoordinationStorage(IServiceProvider serviceProvider, IDatabase database)
         {
             Assert(serviceProvider != null);
             Assert(database != null);

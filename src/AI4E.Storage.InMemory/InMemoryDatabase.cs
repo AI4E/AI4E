@@ -13,7 +13,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.InMemory
 {
-    public sealed class InMemoryDatabase : IFilterableDatabase
+    public sealed class InMemoryDatabase : IDatabase
     {
         private readonly ConcurrentDictionary<Type, object> _typedStores = new ConcurrentDictionary<Type, object>();
 
