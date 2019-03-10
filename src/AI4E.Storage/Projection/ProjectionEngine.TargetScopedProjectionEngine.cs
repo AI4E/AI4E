@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
-using AI4E.Storage.Transactions;
 using AI4E.Utils;
 using static System.Diagnostics.Debug;
 
@@ -17,7 +16,7 @@ namespace AI4E.Storage.Projection
 
             Task UpdateEntityToProjectionAsync(ProjectionSourceDescriptor projectionSource, IProjectionResult projectionResult, bool addEntityToProjections, CancellationToken cancellation);
 
-            Task<bool> WriteToDatabaseAsync(IScopedTransactionalDatabase transactionalDatabase, CancellationToken cancellation);
+            Task<bool> WriteToDatabaseAsync(IScopedDatabase transactionalDatabase, CancellationToken cancellation);
         }
 
         private sealed class TargetScopedProjectionEngine<TProjectionId, TProjection> : ITargetScopedProjectionEngine
@@ -34,7 +33,7 @@ namespace AI4E.Storage.Projection
                 _database = database;
             }
 
-            public async Task<bool> WriteToDatabaseAsync(IScopedTransactionalDatabase transactionalDatabase, CancellationToken cancellation)
+            public async Task<bool> WriteToDatabaseAsync(IScopedDatabase transactionalDatabase, CancellationToken cancellation)
             {
                 // Write touched target metadata to database
                 foreach (var (originalMetadata, touchedMetadata) in _targetMetadataCache.Values.Where(p => p.Touched))

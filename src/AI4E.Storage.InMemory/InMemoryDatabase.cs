@@ -9,7 +9,6 @@ using AI4E.Internal;
 using AI4E.Utils;
 using AI4E.Utils.AsyncEnumerable;
 using Nito.AsyncEx;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.InMemory
 {
@@ -41,6 +40,13 @@ namespace AI4E.Storage.InMemory
         }
 
         #region IDatabase
+
+        IScopedDatabase IDatabase.CreateScope()
+        {
+            throw new NotSupportedException();
+        }
+
+        bool IDatabase.SupportsScopes => false;
 
         public Task<bool> AddAsync<TData>(TData data, CancellationToken cancellation = default)
              where TData : class
@@ -91,46 +97,12 @@ namespace AI4E.Storage.InMemory
             return GetTypedStore<TData>().GetAsync(predicate, cancellation);
         }
 
-        public IAsyncEnumerable<TEntry> GetAsync<TEntry>(CancellationToken cancellation = default) where TEntry : class
-        {
-            return GetAsync<TEntry>(p => true, cancellation);
-        }
-
         public ValueTask<TEntry> GetOneAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default) where TEntry : class
         {
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
 
             return GetTypedStore<TEntry>().GetOneAsync(predicate, cancellation);
-        }
-
-        public Task<bool> CompareExchangeAsync<TEntry>(TEntry entry, TEntry comparand, Expression<Func<TEntry, TEntry, bool>> equalityComparer, CancellationToken cancellation = default) where TEntry : class
-        {
-            if (equalityComparer == null)
-                throw new ArgumentNullException(nameof(equalityComparer));
-
-            // This is a nop actually. But we check whether comparand is up to date.
-            if (entry == comparand)
-            {
-                return CheckComparandToBeUpToDate(comparand, equalityComparer, cancellation);
-            }
-
-            // Trying to update an entry.
-            if (entry != null && comparand != null)
-            {
-                return UpdateAsync(entry, BuildPredicate(comparand, equalityComparer), cancellation);
-            }
-
-            // Trying to create an entry.
-            if (entry != null)
-            {
-                return AddAsync(entry, cancellation);
-            }
-
-            // Trying to remove an entry.
-            Assert(comparand != null);
-
-            return RemoveAsync(comparand, BuildPredicate(comparand, equalityComparer), cancellation);
         }
 
         public async ValueTask<TEntry> GetOrAdd<TEntry>(TEntry entry, CancellationToken cancellation = default)
@@ -148,59 +120,6 @@ namespace AI4E.Storage.InMemory
             }
 
             return entry;
-        }
-
-        private async Task<bool> CheckComparandToBeUpToDate<TEntry>(TEntry comparand,
-                                                                         Expression<Func<TEntry, TEntry, bool>> equalityComparer,
-                                                                         CancellationToken cancellation)
-            where TEntry : class
-        {
-            var result = await GetOneAsync(DataPropertyHelper.BuildPredicate(comparand), cancellation);
-
-            if (comparand == null)
-            {
-                return result == null;
-            }
-
-            if (result == null)
-                return false;
-
-            return equalityComparer.Compile(preferInterpretation: true).Invoke(comparand, result);
-        }
-
-        private static Expression<Func<TEntry, bool>> BuildPredicate<TEntry>(TEntry comparand,
-                                                                             Expression<Func<TEntry, TEntry, bool>> equalityComparer)
-        {
-            Assert(comparand != null);
-            Assert(equalityComparer != null);
-
-            var idSelector = DataPropertyHelper.BuildPredicate(comparand);
-            var comparandConstant = Expression.Constant(comparand, typeof(TEntry));
-            var parameter = equalityComparer.Parameters.First();
-            var equality = ParameterExpressionReplacer.ReplaceParameter(equalityComparer.Body, equalityComparer.Parameters.Last(), comparandConstant);
-            var idEquality = ParameterExpressionReplacer.ReplaceParameter(idSelector.Body, idSelector.Parameters.First(), parameter);
-            var body = Expression.AndAlso(idEquality, equality);
-
-            return Expression.Lambda<Func<TEntry, bool>>(body, parameter);
-        }
-
-        private readonly ConcurrentDictionary<string, Resource> _resources = new ConcurrentDictionary<string, Resource>();
-
-        public sealed class Resource
-        {
-            private long _counter = 0;
-
-            public long NextId()
-            {
-                var result = Interlocked.Increment(ref _counter);
-                Assert(result > 0);
-                return result;
-            }
-        }
-
-        public ValueTask<long> GetUniqueResourceIdAsync(string resourceKey, CancellationToken cancellation)
-        {
-            return new ValueTask<long>(_resources.GetOrAdd(resourceKey, _ => new Resource()).NextId());
         }
 
         #endregion

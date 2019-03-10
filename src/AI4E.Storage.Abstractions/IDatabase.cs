@@ -1,15 +1,3 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IDatabase.cs 
- * Types:           (1) AI4E.Storage.IDatabase
- *                  (2) AI4E.Storage.IFilterableDatabase
- *                  (3) AI4E.Storage.IQueryableDatabase
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   04.06.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -44,8 +32,6 @@ namespace AI4E.Storage
     /// </summary>
     public interface IDatabase
     {
-        ValueTask<long> GetUniqueResourceIdAsync(string resourceKey, CancellationToken cancellation);
-
         /// <summary>
         /// Asynchronously tries to add the specified entry into the database.
         /// </summary>
@@ -110,46 +96,7 @@ namespace AI4E.Storage
         Task Clear<TEntry>(CancellationToken cancellation = default)
             where TEntry : class;
 
-        /// <summary>
-        /// Asynchronously replaces an entry with the specified one if the existing entry equals the specified comparand.
-        /// </summary>
-        /// <typeparam name="TEntry">The type of entry.</typeparam>
-        /// <param name="entry">The entry to insert on succcess.</param>
-        /// <param name="comparand">The comparand entry.</param>
-        /// <param name="equalityComparer">An expression that specifies the equality of two entries,</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>
-        /// A value task that represents the asynchronous operation.
-        /// When evaluated, the tasks result contains a boolean value indicating whether the entry was inserted successfully.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="equalityComparer"/> is null.</exception>
-        /// <exception cref="ArgumentException">
-        /// Throw if either both, <paramref name="entry"/> and <paramref name="comparand"/> are null or 
-        ///       if both are non null and the id of <paramref name="entry"/> does not match the id of <paramref name="comparand"/>. 
-        /// </exception>
-        /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
-        /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
-        /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified equality comparer.</exception>
-        Task<bool> CompareExchangeAsync<TEntry>(TEntry entry,
-                                                     TEntry comparand,
-                                                     Expression<Func<TEntry, TEntry, bool>> equalityComparer,
-                                                     CancellationToken cancellation = default)
-            where TEntry : class;
-
         ValueTask<TEntry> GetOrAdd<TEntry>(TEntry entry, CancellationToken cancellation = default) 
-            where TEntry : class;
-
-        /// <summary>
-        /// Asynchronously retrieves a collection of all stored entries.
-        /// </summary>
-        /// <typeparam name="TEntry">The type of entry.</typeparam>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>
-        /// An async enumerable that enumerates all stored entries of type <typeparamref name="TEntry"/>.
-        /// </returns>
-        /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
-        /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
-        IAsyncEnumerable<TEntry> GetAsync<TEntry>(CancellationToken cancellation = default)
             where TEntry : class;
 
         /// <summary>
@@ -170,6 +117,10 @@ namespace AI4E.Storage
 
         ValueTask<TEntry> GetOneAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
             where TEntry : class;
+
+        IScopedDatabase CreateScope();
+
+        bool SupportsScopes { get; }
     }
 
     /// <summary>

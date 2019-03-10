@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Storage.Transactions;
 using Microsoft.Extensions.Logging;
 
 namespace AI4E.Storage.Projection
@@ -11,13 +10,11 @@ namespace AI4E.Storage.Projection
     {
         private readonly IProjector _projector;
         private readonly IDatabase _database;
-        private readonly ITransactionalDatabase _transactionalDatabase;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ProjectionEngine> _logger;
 
         public ProjectionEngine(IProjector projector,
                                 IDatabase database,
-                                ITransactionalDatabase transactionalDatabase,
                                 IServiceProvider serviceProvider,
                                 ILogger<ProjectionEngine> logger = default)
         {
@@ -27,15 +24,11 @@ namespace AI4E.Storage.Projection
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
 
-            if (transactionalDatabase == null)
-                throw new ArgumentNullException(nameof(transactionalDatabase));
-
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
             _projector = projector;
             _database = database;
-            _transactionalDatabase = transactionalDatabase;
             _serviceProvider = serviceProvider;
             _logger = logger;
         }
@@ -61,7 +54,7 @@ namespace AI4E.Storage.Projection
                 return;
             }
 
-            var scopedEngine = new SourceScopedProjectionEngine(entityDescriptor, _projector, _transactionalDatabase, _database, _serviceProvider);
+            var scopedEngine = new SourceScopedProjectionEngine(entityDescriptor, _projector, _database, _serviceProvider);
             var dependents = await scopedEngine.ProjectAsync(cancellation);
 
             processedEntities.Add(entityDescriptor);

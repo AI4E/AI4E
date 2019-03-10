@@ -22,7 +22,7 @@ namespace BookStore.Catalog.Server
             services.AddResponseCompression();
 
             services.AddStorage()
-                    .UseMongoDB(database: "BookStoreDatabase", useNativeTransactions: true)
+                    .UseMongoDB(database: "BookStoreDatabase")
                     .UseDomainStorage();
 
             services.AddDomainServices();

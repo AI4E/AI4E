@@ -31,7 +31,7 @@ namespace BookStore.Server
             services.AddMvc().AddNewtonsoftJson();
 
             services.AddStorage()
-                    .UseMongoDB(useNativeTransactions: true)
+                    .UseMongoDB()
                     .UseDomainStorage();
 
             services.AddDomainServices();

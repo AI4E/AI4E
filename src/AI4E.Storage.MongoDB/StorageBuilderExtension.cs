@@ -27,7 +27,7 @@ namespace AI4E.Storage.MongoDB
 {
     public static class StorageBuilderExtension
     {
-        public static IStorageBuilder UseMongoDB(this IStorageBuilder builder, bool useNativeTransactions = false)
+        public static IStorageBuilder UseMongoDB(this IStorageBuilder builder)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
@@ -35,20 +35,12 @@ namespace AI4E.Storage.MongoDB
             builder.Services.AddOptions();
             builder.Services.AddSingleton(BuildMongoClient);
             builder.Services.AddSingleton(BuildMongoDatabase);
-
-            if (useNativeTransactions)
-            {
-                builder.UseTransactionalDatabase<MongoDatabase>();
-            }
-            else
-            {
-                builder.UseDatabase<MongoDatabase>();
-            }
-
+            builder.UseDatabase<MongoDatabase>();
+            
             return builder;
         }
 
-        public static IStorageBuilder UseMongoDB(this IStorageBuilder builder, Action<MongoOptions> configuration, bool useNativeTransactions = false)
+        public static IStorageBuilder UseMongoDB(this IStorageBuilder builder, Action<MongoOptions> configuration)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
@@ -56,14 +48,14 @@ namespace AI4E.Storage.MongoDB
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
-            builder.UseMongoDB(useNativeTransactions);
+            builder.UseMongoDB();
 
             builder.Services.Configure(configuration);
 
             return builder;
         }
 
-        public static IStorageBuilder UseMongoDB(this IStorageBuilder builder, string database, bool useNativeTransactions = false)
+        public static IStorageBuilder UseMongoDB(this IStorageBuilder builder, string database)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
@@ -71,7 +63,7 @@ namespace AI4E.Storage.MongoDB
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
 
-            builder.UseMongoDB(useNativeTransactions);
+            builder.UseMongoDB();
 
             builder.Services.Configure<MongoOptions>(options =>
             {
@@ -80,7 +72,6 @@ namespace AI4E.Storage.MongoDB
 
             return builder;
         }
-
 
         private static IMongoDatabase BuildMongoDatabase(IServiceProvider serviceProvider)
         {

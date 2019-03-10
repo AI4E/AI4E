@@ -35,7 +35,6 @@ namespace AI4E.Storage
             services.AddCoreServices();
             services.TryAddSingleton(typeof(IContextualProvider<>), typeof(ContextualProvider<>));
             services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
-            services.AddTransient<IDataStore, DataStore>();
 
             return new StorageBuilder(services);
         }

@@ -36,7 +36,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
 using AI4E.Storage.MongoDB.Serializers;
-using AI4E.Storage.Transactions;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.Logging;
@@ -52,7 +51,7 @@ using static AI4E.Storage.MongoDB.MongoWriteHelper;
 
 namespace AI4E.Storage.MongoDB
 {
-    public sealed class MongoDatabase : IQueryableDatabase, ITransactionalDatabase
+    public sealed class MongoDatabase : IQueryableDatabase
     {
         private const string _collectionLookupEntryResourceKey = "collection-lookup-entry";
         private const string _counterEntryCollectionName = "data-store-counter";
@@ -279,22 +278,6 @@ namespace AI4E.Storage.MongoDB
             return Expression.Lambda<Func<TEntry, bool>>(body, parameter);
         }
 
-        private static Expression<Func<TEntry, bool>> BuildPredicate<TEntry>(TEntry comparand,
-                                                                             Expression<Func<TEntry, TEntry, bool>> equalityComparer)
-        {
-            Assert(comparand != null);
-            Assert(equalityComparer != null);
-
-            var idSelector = DataPropertyHelper.BuildPredicate(comparand);
-            var comparandConstant = Expression.Constant(comparand, typeof(TEntry));
-            var parameter = equalityComparer.Parameters.First();
-            var equality = ParameterExpressionReplacer.ReplaceParameter(equalityComparer.Body, equalityComparer.Parameters.Last(), comparandConstant);
-            var idEquality = ParameterExpressionReplacer.ReplaceParameter(idSelector.Body, idSelector.Parameters.First(), parameter);
-            var body = Expression.AndAlso(idEquality, equality);
-
-            return Expression.Lambda<Func<TEntry, bool>>(body, parameter);
-        }
-
         #endregion
 
         #region IDatabase
@@ -392,56 +375,6 @@ namespace AI4E.Storage.MongoDB
             return updateResult.MatchedCount != 0; // TODO: What does the result value represent? Matched count or modified count.
         }
 
-        public Task<bool> CompareExchangeAsync<TEntry>(TEntry entry,
-                                                       TEntry comparand,
-                                                       Expression<Func<TEntry, TEntry, bool>> equalityComparer,
-                                                       CancellationToken cancellation = default) where TEntry : class
-        {
-            if (equalityComparer == null)
-                throw new ArgumentNullException(nameof(equalityComparer));
-
-            // This is a nop actually. But we check whether comparand is up to date.
-            if (entry == comparand)
-            {
-                return CheckComparandToBeUpToDate(comparand, equalityComparer, cancellation);
-            }
-
-            // Trying to update an entry.
-            if (entry != null && comparand != null)
-            {
-                return UpdateAsync(entry, BuildPredicate(comparand, equalityComparer), cancellation);
-            }
-
-            // Trying to create an entry.
-            if (entry != null)
-            {
-                return AddAsync(entry, cancellation);
-            }
-
-            // Trying to remove an entry.
-            Assert(comparand != null);
-
-            return RemoveAsync(comparand, BuildPredicate(comparand, equalityComparer), cancellation);
-        }
-
-        private async Task<bool> CheckComparandToBeUpToDate<TEntry>(TEntry comparand,
-                                                                    Expression<Func<TEntry, TEntry, bool>> equalityComparer,
-                                                                    CancellationToken cancellation)
-            where TEntry : class
-        {
-            var result = await GetOneAsync(comparand, cancellation);
-
-            if (comparand == null)
-            {
-                return result == null;
-            }
-
-            if (result == null)
-                return false;
-
-            return equalityComparer.Compile(preferInterpretation: true).Invoke(comparand, result);
-        }
-
         private ValueTask<TEntry> GetOneAsync<TEntry>(TEntry comparand, CancellationToken cancellation)
             where TEntry : class
         {
@@ -449,17 +382,6 @@ namespace AI4E.Storage.MongoDB
             var predicate = DataPropertyHelper.BuildPredicate(comparand);
             return GetOneAsync(predicate, cancellation);
         }
-
-        public IAsyncEnumerable<TEntry> GetAsync<TEntry>(CancellationToken cancellation = default)
-            where TEntry : class
-        {
-            var collection = GetCollectionAsync<TEntry>(cancellation);
-            return new MongoQueryEvaluator<TEntry>(collection, p => true, cancellation);
-        }
-
-        #endregion
-
-        #region IFilterableDatabase
 
         public IAsyncEnumerable<TEntry> GetAsync<TEntry>(Expression<Func<TEntry, bool>> predicate,
                                                          CancellationToken cancellation = default)
@@ -479,6 +401,13 @@ namespace AI4E.Storage.MongoDB
             {
                 return await cursor.FirstOrDefaultAsync(cancellation);
             }
+        }
+
+        bool IDatabase.SupportsScopes => true; // TODO: Check whether the underlying mongo database actually supports transactions.
+
+        public IScopedDatabase CreateScope()
+        {
+            return new MongoScopedTransactionalDatabase(this);
         }
 
         #endregion
@@ -503,16 +432,7 @@ namespace AI4E.Storage.MongoDB
 
         #endregion
 
-        #region ITransactionalDatabase
-
-        public IScopedTransactionalDatabase CreateScope()
-        {
-            return new MongoScopedTransactionalDatabase(this);
-        }
-
-        #endregion
-
-        private sealed class MongoScopedTransactionalDatabase : IScopedTransactionalDatabase
+        private sealed class MongoScopedTransactionalDatabase : IScopedDatabase
         {
             private volatile int _operationInProgress = 0;
 
