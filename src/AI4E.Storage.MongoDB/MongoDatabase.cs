@@ -450,17 +450,6 @@ namespace AI4E.Storage.MongoDB
             return GetOneAsync(predicate, cancellation);
         }
 
-        public ValueTask<TEntry> GetOneAsync<TId, TEntry>(TId id, CancellationToken cancellation = default)
-            where TId : IEquatable<TId>
-            where TEntry : class
-        {
-            if (id == null)
-                return new ValueTask<TEntry>(default(TEntry));
-
-            var predicate = DataPropertyHelper.BuildPredicate<TId, TEntry>(id);
-            return GetOneAsync(predicate, cancellation);
-        }
-
         public IAsyncEnumerable<TEntry> GetAsync<TEntry>(CancellationToken cancellation = default)
             where TEntry : class
         {

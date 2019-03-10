@@ -96,16 +96,6 @@ namespace AI4E.Storage.InMemory
             return GetAsync<TEntry>(p => true, cancellation);
         }
 
-        public ValueTask<TEntry> GetOneAsync<TId, TEntry>(TId id, CancellationToken cancellation = default)
-            where TId : IEquatable<TId>
-            where TEntry : class
-        {
-            if (id == null)
-                throw new ArgumentNullException(nameof(id));
-
-            return GetTypedStore<TEntry>().GetOneAsync(DataPropertyHelper.BuildPredicate<TId, TEntry>(id), cancellation);
-        }
-
         public ValueTask<TEntry> GetOneAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default) where TEntry : class
         {
             if (predicate == null)

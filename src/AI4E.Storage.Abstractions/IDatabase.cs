@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IDatabase.cs 
  * Types:           (1) AI4E.Storage.IDatabase
@@ -150,23 +150,6 @@ namespace AI4E.Storage
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
         IAsyncEnumerable<TEntry> GetAsync<TEntry>(CancellationToken cancellation = default)
-            where TEntry : class;
-
-        /// <summary>
-        /// Asynchronously retrieves the entry with the specified id.
-        /// </summary>
-        /// <typeparam name="TId">The type of id.</typeparam>
-        /// <typeparam name="TEntry">The type of entry.</typeparam>
-        /// <param name="id">The id of the entry to retrieve.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>
-        /// A value task that represents the asynchronous operation.
-        /// When evaluated, the tasks result contains the entry of type <typeparamref name="TEntry"/> with the specified id or null if no matching entry was found.
-        /// </returns>
-        /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
-        /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
-        ValueTask<TEntry> GetOneAsync<TId, TEntry>(TId id, CancellationToken cancellation = default)
-            where TId : IEquatable<TId>
             where TEntry : class;
     }
 
