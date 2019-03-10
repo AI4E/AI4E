@@ -19,7 +19,6 @@
  */
 
 using System;
-using System.Linq;
 using AI4E.Storage.Transactions;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -39,8 +38,6 @@ namespace AI4E.Storage
             services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IFilterableDatabase);
             services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IQueryableDatabase);
 
-            services.UseTransactionSubsystem();
-
             return builder;
         }
 
@@ -59,7 +56,6 @@ namespace AI4E.Storage
             services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IFilterableDatabase);
             services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IQueryableDatabase);
 
-            services.UseTransactionSubsystem();
 
             return builder;
         }
@@ -101,18 +97,6 @@ namespace AI4E.Storage
             services.AddSingleton(p => p.GetRequiredService<ITransactionalDatabase>() as IQueryableTransactionalDatabase);
 
             return builder;
-        }
-
-        private static void UseTransactionSubsystem(this IServiceCollection services)
-        {
-            services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
-            services.AddSingleton<IEntryStateTransformerFactory, EntryStateTransformerFactory>();
-            services.AddSingleton<IEntryStateStorageFactory, EntryStateStorageFactory>();
-            services.AddSingleton<ITransactionStateTransformer, TransactionStateTransformer>();
-            services.AddSingleton<ITransactionStateStorage, TransactionStateStorage>();
-            services.AddSingleton<ITransactionManager, TransactionManager>();
-            services.AddSingleton<ITransactionalDatabase, TransactionalDatabase>();
-            // TODO: Register IQueryablTransactionalDatabase if the underlying non-transactional database is queryable.
         }
 
         public static IStorageBuilder Configure(this IStorageBuilder builder, Action<StorageOptions> configuration)
