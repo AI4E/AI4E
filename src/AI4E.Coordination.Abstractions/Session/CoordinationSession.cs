@@ -1,21 +1,54 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using AI4E.Utils.Memory;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination.Session
 {
+    /// <summary>
+    /// Represents a coordination session.
+    /// </summary>
     public readonly struct CoordinationSession : IEquatable<CoordinationSession>
     {
         private readonly ReadOnlyMemory<byte> _bytes;
 
+        /// <summary>
+        /// Creates a new <see cref="CoordinationSession"/> with the specified prefix and physical address.
+        /// </summary>
+        /// <param name="prefix">A span of bytes that represent the prefix.</param>
+        /// <param name="physicalAddress">A span of bytes that represent the physical address.</param>
         public CoordinationSession(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> physicalAddress)
         {
             if (physicalAddress.IsEmpty)
-                throw new ArgumentException("The argument must not be an empty span.", nameof(physicalAddress));
+            {
+                this = default;
+                return;
+            }
 
             var bytes = (new byte[4 + prefix.Length + physicalAddress.Length]).AsMemory();
-            Write(bytes.Span, prefix.Length);
+            BinaryPrimitives.WriteInt32LittleEndian(bytes.Span, prefix.Length);
+
             prefix.CopyTo(bytes.Span.Slice(start: 4));
             physicalAddress.CopyTo(bytes.Span.Slice(start: 4 + prefix.Length));
 
@@ -29,24 +62,35 @@ namespace AI4E.Coordination.Session
             _bytes = bytes;
         }
 
-        public ReadOnlyMemory<byte> Prefix => _bytes.Slice(start: 4, length: ReadInt32(_bytes.Span));
-        public ReadOnlyMemory<byte> PhysicalAddress => _bytes.Slice(start: 4 + ReadInt32(_bytes.Span));
+        /// <summary>
+        /// Gets a memory of bytes that represent the session prefix.
+        /// </summary>
+        public ReadOnlyMemory<byte> Prefix => _bytes.IsEmpty ? _bytes : _bytes.Slice(start: 4, length: BinaryPrimitives.ReadInt32LittleEndian(_bytes.Span));
 
+        /// <summary>
+        /// Gets a memory of bytes that represent the session's physical address.
+        /// </summary>
+        public ReadOnlyMemory<byte> PhysicalAddress => _bytes.IsEmpty ? _bytes : _bytes.Slice(start: 4 + BinaryPrimitives.ReadInt32LittleEndian(_bytes.Span));
+
+        /// <inheritdoc/>
         public bool Equals(CoordinationSession other)
         {
             return _bytes.Span.SequenceEqual(other._bytes.Span);
         }
 
+        /// <inheritdoc/>
         public override bool Equals(object obj)
         {
             return obj is CoordinationSession session && Equals(session);
         }
 
+        /// <inheritdoc/>
         public override int GetHashCode()
         {
-            return _bytes.GetHashCode();
+            return _bytes.Span.SequenceHashCode();
         }
 
+        /// <inheritdoc/>
         public override string ToString()
         {
             if (_bytes.IsEmpty)
@@ -62,16 +106,33 @@ namespace AI4E.Coordination.Session
             return result;
         }
 
+        /// <summary>
+        /// Compares two <see cref="CoordinationSession"/>s.
+        /// </summary>
+        /// <param name="left">The first segment.</param>
+        /// <param name="right">The second segment.</param>
+        /// <returns>True, if <paramref name="left"/> equals <paramref name="right"/>, false otherwise.</returns>
         public static bool operator ==(CoordinationSession left, CoordinationSession right)
         {
             return left.Equals(right);
         }
 
+        /// <summary>
+        /// Compares two <see cref="CoordinationSession"/>s.
+        /// </summary>
+        /// <param name="left">The first segment.</param>
+        /// <param name="right">The second segment.</param>
+        /// <returns>True, if <paramref name="left"/> does not equal <paramref name="right"/>, false otherwise.</returns>
         public static bool operator !=(CoordinationSession left, CoordinationSession right)
         {
             return !left.Equals(right);
         }
 
+        /// <summary>
+        /// Creates a <see cref="CoordinationSession"/> from the specified span of chars.
+        /// </summary>
+        /// <param name="chars">The span of chars to create the session from.</param>
+        /// <returns>The <see cref="CoordinationSession"/> that is created from <paramref name="chars"/>.</returns>
         public static CoordinationSession FromChars(ReadOnlySpan<char> chars)
         {
             if (chars.IsEmpty)
@@ -83,22 +144,18 @@ namespace AI4E.Coordination.Session
             return new CoordinationSession(bytes.AsMemory().Slice(start: 0, length: bytesLength));
         }
 
+        /// <summary>
+        /// Creates a <see cref="CoordinationSession"/> from the specified string.
+        /// </summary>
+        /// <param name="str">The string to create the session from.</param>
+        /// <returns>The <see cref="CoordinationSession"/> that is created from <paramref name="str"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="str"/> is <c>null</c>.</exception>
         public static CoordinationSession FromString(string str)
         {
+            if (str == null)
+                throw new ArgumentNullException(nameof(str));
+
             return FromChars(str.AsSpan());
-        }
-
-        private static void Write(Span<byte> span, int value)
-        {
-            span[0] = (byte)value;
-            span[1] = (byte)(value >> 8);
-            span[2] = (byte)(value >> 16);
-            span[3] = (byte)(value >> 24);
-        }
-
-        private static int ReadInt32(ReadOnlySpan<byte> span)
-        {
-            return span[0] | span[1] << 8 | span[2] << 16 | span[3] << 24;
         }
     }
 }
