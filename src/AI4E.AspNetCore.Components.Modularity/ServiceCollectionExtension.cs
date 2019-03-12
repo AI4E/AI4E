@@ -2,14 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
-using AI4E.Utils.ApplicationParts;
 using AI4E.Blazor.Components;
 using AI4E.Blazor.Modularity;
 using AI4E.Modularity.Debug;
 using AI4E.Modularity.Host;
 using AI4E.Routing.SignalR.Client;
+using AI4E.Utils.ApplicationParts;
 using BlazorSignalR;
+using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 
 namespace AI4E.Blazor
 {
@@ -22,10 +25,15 @@ namespace AI4E.Blazor
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            services.AddSignalRMessageDispatcher(hubConnectionBuilder =>
+            void ConfigureHubConnection(
+                IHubConnectionBuilder hubConnectionBuilder,
+                IServiceProvider serviceProvider)
             {
-                hubConnectionBuilder.WithUrlBlazor(new Uri(_defaultHubUrl, UriKind.Relative));
-            });
+                var jsRuntime = serviceProvider.GetRequiredService<IJSRuntime>();
+                hubConnectionBuilder.WithUrlBlazor(new Uri(_defaultHubUrl, UriKind.Relative), jsRuntime);
+            }
+
+            services.AddSignalRMessageDispatcher(ConfigureHubConnection);
         }
 
         public static void AddBlazorModularity(this IServiceCollection services, Assembly entryAssembly)
@@ -57,9 +65,10 @@ namespace AI4E.Blazor
 
         private static async Task InitializeInstallationSetManagerAsync(IInstallationSetManager installationSetManager, IServiceProvider serviceProvider)
         {
+            var logger = serviceProvider.GetService<ILogger<object>>(); // TODO
             var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
 
-            Console.WriteLine("Performing query for running debug modules.");
+            logger?.LogDebug("Performing query for running debug modules.");
             var queryResult = await messageDispatcher.QueryAsync<IEnumerable<DebugModuleProperties>>(cancellation: default);
 
             if (!queryResult.IsSuccessWithResult<IEnumerable<DebugModuleProperties>>(out var debugModules))

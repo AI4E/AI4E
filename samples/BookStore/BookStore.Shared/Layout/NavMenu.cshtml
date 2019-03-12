@@ -1,4 +1,5 @@
-﻿@functions {
+﻿@inject ViewExtensionRenderer viewExtensionRenderer
+@functions {
     bool collapseNavMenu = true;
 
     string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
@@ -32,5 +33,6 @@
                 <span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
             </NavLink>
         </li>
+        @(viewExtensionRenderer.RenderViewExtension<IMenuViewExtension>())
     </ul>
 </div>

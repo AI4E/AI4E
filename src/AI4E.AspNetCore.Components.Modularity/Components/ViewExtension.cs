@@ -38,9 +38,6 @@ namespace AI4E.Blazor.Components
         private RenderHandle _renderHandle;
         private bool _hasCalledInit;
 
-        /// <summary>
-        /// Constructs an instance of <see cref="BlazorComponent"/>.
-        /// </summary>
         public ViewExtension()
         {
             _renderFragment = BuildRenderTree;

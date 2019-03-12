@@ -9,6 +9,8 @@
     private string _relativeUri;
     private Alert Alert { get; set; }
 
+    [Parameter] private RenderFragment<Alert> AlertTemplate { get; set; }
+
     protected override void OnInit()
     {
         _baseUri = UriHelper.GetBaseUri();
@@ -66,33 +68,35 @@
         var alert = AlertMessageManager.GetLatestMatchingAlert(_relativeUri);
         Alert = alert;
     }
-
-    private void DismissAlert()
-    {
-        Alert.Dismiss();
-    }
 }
 @if (Alert.AlertType != AlertType.None)
 {
     <div class="bottom-row px-4 @(Alert.AlertType.ToString().ToLower())">
-        @if (Alert.AlertType == AlertType.Info)
+        @if (AlertTemplate != null)
         {
-            <span class="oi oi-info"></span>
-        }
-        else if (Alert.AlertType == AlertType.Success)
-        {
-            <span class="oi oi-check"></span>
+            @AlertTemplate(Alert);
         }
         else
         {
-            <span class="oi oi-warning"></span>
-        }
-        <span style="flex: 1 1 auto;">@(Alert.Message ?? string.Empty)</span>
-        @if (Alert.AllowDismiss)
-        {
-            <button class="icon-btn" onclick="@DismissAlert">
-                <span class="oi oi-x"></span>
-            </button>
+            @if (Alert.AlertType == AlertType.Info)
+            {
+                <span class="oi oi-info"></span>
+            }
+            else if (Alert.AlertType == AlertType.Success)
+            {
+                <span class="oi oi-check"></span>
+            }
+            else
+            {
+                <span class="oi oi-warning"></span>
+            }
+            <span style="flex: 1 1 auto;">@(Alert.Message ?? string.Empty)</span>
+            @if (Alert.AllowDismiss)
+            {
+                <button class="icon-btn" onclick="@(_ => Alert.Dismiss())">
+                    <span class="oi oi-x"></span>
+                </button>
+            }
         }
     </div>
 }

@@ -23,6 +23,7 @@ namespace AI4E.Blazor.Modularity
 
         private readonly IModuleManifestProvider _moduleManifestProvider;
         private readonly ApplicationPartManager _partManager;
+        private readonly IJSRuntime _jSRuntime;
         private readonly ILogger<InstallationSetManager> _logger;
         private readonly AsyncLock _lock = new AsyncLock();
 
@@ -41,6 +42,7 @@ namespace AI4E.Blazor.Modularity
             IModuleAssemblyDownloader moduleAssemblyDownloader,
             IModuleManifestProvider moduleManifestProvider,
             ApplicationPartManager partManager,
+            IJSRuntime jSRuntime,
             ILogger<InstallationSetManager> logger = null)
         {
             if (moduleAssemblyDownloader == null)
@@ -51,10 +53,12 @@ namespace AI4E.Blazor.Modularity
 
             if (partManager == null)
                 throw new ArgumentNullException(nameof(partManager));
-
+            if (jSRuntime == null)
+                throw new ArgumentNullException(nameof(jSRuntime));
             _moduleAssemblyDownloader = moduleAssemblyDownloader;
             _moduleManifestProvider = moduleManifestProvider;
             _partManager = partManager;
+            _jSRuntime = jSRuntime;
             _logger = logger;
 
             var installedAssemblyBuilder = ImmutableDictionary.CreateBuilder<string, (Version version, bool isAppPart, ModuleIdentifier module)>();
@@ -64,9 +68,9 @@ namespace AI4E.Blazor.Modularity
                 var isAppPart = partManager.ApplicationParts.OfType<AssemblyPart>().Any(p => p.Assembly == asm);
 
                 installedAssemblyBuilder.Add(asm.GetName().Name, (asm.GetName().Version, isAppPart, ModuleIdentifier.UnknownModule));
-
-                Console.WriteLine(asm.GetName().Name + " " + asm.GetName().Version);
             }
+
+            _logger?.LogCritical("Initially loaded assemblies:\r\n" + installedAssemblyBuilder.Select(p => p.Key + " " + p.Value.version).Aggregate((e, n) => e + "\r\n" + n));
 
             _installedAssemblies = installedAssemblyBuilder.ToImmutable();
         }
@@ -142,7 +146,7 @@ namespace AI4E.Blazor.Modularity
 
             if (uninstalledModules.Any())
             {
-                _logger.LogWarning("Uninstalling module. As we cannot uninstall modules, we are reloading now.");
+                _logger?.LogWarning("Uninstalling module. As we cannot uninstall modules, we are reloading now.");
                 ReloadBrowser();
                 Environment.Exit(0);
             }
@@ -179,7 +183,8 @@ namespace AI4E.Blazor.Modularity
                     // The version of the existing assembly is greater or equal than the one, we try to install.
                     if (existing.version >= assembly.AssemblyVersion)
                     {
-                        _logger?.LogDebug($"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. " +
+                        _logger?.LogDebug(
+                            $"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. " +
                             $"It is not necessary to install the assembly as it will already be installed in version {existing.version}. " +
                             $"The assembly is {(!(existing.isAppPart || assembly.IsAppPart) ? "not " : "")} an app-part.");
 
@@ -197,7 +202,8 @@ namespace AI4E.Blazor.Modularity
                     // If the existing assembly is not yet installed.
                     if (!_installedAssemblies.TryGetValue(assembly.AssemblyName, out var existingInstalled))
                     {
-                        _logger?.LogDebug($"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. " +
+                        _logger?.LogDebug(
+                            $"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. " +
                             $"Assembly will replace version {existing.version} in the future installation set. " +
                             $"The assembly is {(!(existing.isAppPart || assembly.IsAppPart) ? "not " : "")} an app-part.");
 
@@ -235,8 +241,9 @@ namespace AI4E.Blazor.Modularity
                     {
                         if (asm.GetName().Name == assembly.AssemblyName)
                         {
-                            _logger.LogWarning($"Cannnot install assembly {assembly.AssemblyName} {assembly.AssemblyVersion} as required by module {installedModule} " +
-                            $"as a minor version of the assembly is already installed by the host app, that cannot be unloaded. Ignoring the failure in good hope.");
+                            _logger?.LogWarning(
+                                $"Cannnot install assembly {assembly.AssemblyName} {assembly.AssemblyVersion} as required by module {installedModule} " +
+                                $"as a minor version of the assembly is already installed by the host app, that cannot be unloaded. Ignoring the failure in good hope.");
 
                             if (!existingInstalled.isAppPart && assembly.IsAppPart)
                             {
@@ -251,8 +258,8 @@ namespace AI4E.Blazor.Modularity
 
                     if (reload)
                     {
-                        // TODO: Reload browser
-                        _logger?.LogWarning($"Cannnot install assembly {assembly.AssemblyName} {assembly.AssemblyVersion} as required by module {installedModule} " +
+                        _logger?.LogWarning(
+                            $"Cannnot install assembly {assembly.AssemblyName} {assembly.AssemblyVersion} as required by module {installedModule} " +
                             $"as a minor version of the assembly is already installed that cannot be unloaded. " +
                             $"We are reloading now.");
 
@@ -316,13 +323,13 @@ namespace AI4E.Blazor.Modularity
 
         private void ReloadBrowser()
         {
-            if (JSRuntime.Current is IJSInProcessRuntime jSInProcessRuntime)
+            if (_jSRuntime is IJSInProcessRuntime jSInProcessRuntime)
             {
                 jSInProcessRuntime.Invoke<object>(_reloadBrowserMethod);
             }
             else
             {
-                JSRuntime.Current.InvokeAsync<object>(_reloadBrowserMethod).GetAwaiter().GetResult();
+                _jSRuntime.InvokeAsync<object>(_reloadBrowserMethod).ConfigureAwait(false).GetAwaiter().GetResult();
             }
         }
     }

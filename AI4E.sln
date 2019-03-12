@@ -92,11 +92,23 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.ModulePacke
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BookStore", "BookStore", "{36966E5D-2711-40B8-ADCE-98A68DEB0122}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BookStore.Server", "samples\BookStore\BookStore\BookStore.Server\BookStore.Server.csproj", "{6902F7FA-0B39-4571-8367-D4555EFEA74C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BookStore.Server", "samples\BookStore\BookStore.Server\BookStore.Server.csproj", "{6902F7FA-0B39-4571-8367-D4555EFEA74C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BookStore.App", "samples\BookStore\BookStore\BookStore.App\BookStore.App.csproj", "{8C2A3F9C-F7E5-416F-B129-C35AD639681E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BookStore.App", "samples\BookStore\BookStore.App\BookStore.App.csproj", "{8C2A3F9C-F7E5-416F-B129-C35AD639681E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BookStore.Shared", "samples\BookStore\BookStore.Shared\BookStore.Shared.csproj", "{C4E59BBB-528A-456F-9F13-19B78B3B34BB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "modules", "modules", "{0E04EA93-7BD0-4323-BD53-5C1F0DCB4056}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BookStore.Catalog", "BookStore.Catalog", "{431F3C76-7933-42B9-9975-261389A2B5B9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BookStore.Catalog.API", "samples\BookStore\modules\BookStore.Catalog\BookStore.Catalog.API\BookStore.Catalog.API.csproj", "{FA2F6C7B-DE2C-41EF-8AB7-966D4EAA8D1D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BookStore.Catalog.Server", "samples\BookStore\modules\BookStore.Catalog\BookStore.Catalog.Server\BookStore.Catalog.Server.csproj", "{093C31B4-9138-4D52-A1E7-26770E97E5CF}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BookStore.Catalog.App", "samples\BookStore\modules\BookStore.Catalog\BookStore.Catalog.App\BookStore.Catalog.App.csproj", "{A22D2836-3621-4009-9F9A-8B5F08847C3B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookStore.API", "samples\BookStore\BookStore.API\BookStore.API.csproj", "{FB370061-D630-4770-84D7-7356AA9BE08A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -235,6 +247,22 @@ Global
 		{C4E59BBB-528A-456F-9F13-19B78B3B34BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C4E59BBB-528A-456F-9F13-19B78B3B34BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C4E59BBB-528A-456F-9F13-19B78B3B34BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FA2F6C7B-DE2C-41EF-8AB7-966D4EAA8D1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA2F6C7B-DE2C-41EF-8AB7-966D4EAA8D1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA2F6C7B-DE2C-41EF-8AB7-966D4EAA8D1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA2F6C7B-DE2C-41EF-8AB7-966D4EAA8D1D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{093C31B4-9138-4D52-A1E7-26770E97E5CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{093C31B4-9138-4D52-A1E7-26770E97E5CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{093C31B4-9138-4D52-A1E7-26770E97E5CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{093C31B4-9138-4D52-A1E7-26770E97E5CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A22D2836-3621-4009-9F9A-8B5F08847C3B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A22D2836-3621-4009-9F9A-8B5F08847C3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A22D2836-3621-4009-9F9A-8B5F08847C3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A22D2836-3621-4009-9F9A-8B5F08847C3B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB370061-D630-4770-84D7-7356AA9BE08A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB370061-D630-4770-84D7-7356AA9BE08A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB370061-D630-4770-84D7-7356AA9BE08A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB370061-D630-4770-84D7-7356AA9BE08A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -275,6 +303,12 @@ Global
 		{6902F7FA-0B39-4571-8367-D4555EFEA74C} = {36966E5D-2711-40B8-ADCE-98A68DEB0122}
 		{8C2A3F9C-F7E5-416F-B129-C35AD639681E} = {36966E5D-2711-40B8-ADCE-98A68DEB0122}
 		{C4E59BBB-528A-456F-9F13-19B78B3B34BB} = {36966E5D-2711-40B8-ADCE-98A68DEB0122}
+		{0E04EA93-7BD0-4323-BD53-5C1F0DCB4056} = {36966E5D-2711-40B8-ADCE-98A68DEB0122}
+		{431F3C76-7933-42B9-9975-261389A2B5B9} = {0E04EA93-7BD0-4323-BD53-5C1F0DCB4056}
+		{FA2F6C7B-DE2C-41EF-8AB7-966D4EAA8D1D} = {431F3C76-7933-42B9-9975-261389A2B5B9}
+		{093C31B4-9138-4D52-A1E7-26770E97E5CF} = {431F3C76-7933-42B9-9975-261389A2B5B9}
+		{A22D2836-3621-4009-9F9A-8B5F08847C3B} = {431F3C76-7933-42B9-9975-261389A2B5B9}
+		{FB370061-D630-4770-84D7-7356AA9BE08A} = {36966E5D-2711-40B8-ADCE-98A68DEB0122}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}

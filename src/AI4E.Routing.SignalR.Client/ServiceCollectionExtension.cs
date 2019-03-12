@@ -10,7 +10,9 @@ namespace AI4E.Routing.SignalR.Client
     {
         internal static readonly string _defaultHubUrl = "/MessageDispatcherHub"; // TODO: This should be configured only once.
 
-        public static IServiceCollection ConfigureHubConnectionBuilder(this IServiceCollection services, Action<IHubConnectionBuilder> configuration)
+        public static IServiceCollection ConfigureHubConnectionBuilder(
+            this IServiceCollection services,
+            Action<IHubConnectionBuilder, IServiceProvider> configuration)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
@@ -18,15 +20,14 @@ namespace AI4E.Routing.SignalR.Client
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
-            var hubConnectionBuilder = services.GetService<IHubConnectionBuilder>();
-
-            if (hubConnectionBuilder == null)
+            HubConnection BuildHubConnection(IServiceProvider provider)
             {
-                hubConnectionBuilder = new HubConnectionBuilder(services);
+                var hubConnectionBuilder = new HubConnectionBuilder();
+                configuration(hubConnectionBuilder, provider);
+                return hubConnectionBuilder.Build();
             }
 
-            configuration(hubConnectionBuilder);
-            services.Add(new ServiceDescriptor(typeof(IHubConnectionBuilder), hubConnectionBuilder));
+            services.AddSingleton(BuildHubConnection);
 
             return services;
         }
@@ -36,7 +37,7 @@ namespace AI4E.Routing.SignalR.Client
             if (serviceCollection == null)
                 throw new ArgumentNullException(nameof(serviceCollection));
 
-            serviceCollection.AddSignalRMessageDispatcherCore(hubConnectionBuilder => hubConnectionBuilder.WithUrl(_defaultHubUrl));
+            serviceCollection.AddSignalRMessageDispatcherCore((hubConnectionBuilder, _) => hubConnectionBuilder.WithUrl(_defaultHubUrl));
             return serviceCollection;
         }
 
@@ -48,13 +49,13 @@ namespace AI4E.Routing.SignalR.Client
             if (url == null)
                 throw new ArgumentNullException(nameof(url));
 
-            serviceCollection.AddSignalRMessageDispatcherCore(hubConnectionBuilder => hubConnectionBuilder.WithUrl(url));
+            serviceCollection.AddSignalRMessageDispatcherCore((hubConnectionBuilder, _) => hubConnectionBuilder.WithUrl(url));
             return serviceCollection;
         }
 
         public static IServiceCollection AddSignalRMessageDispatcher(
             this IServiceCollection serviceCollection,
-            Action<IHubConnectionBuilder> configureHubConnection)
+            Action<IHubConnectionBuilder, IServiceProvider> configureHubConnection)
         {
             if (serviceCollection == null)
                 throw new ArgumentNullException(nameof(serviceCollection));
@@ -68,7 +69,7 @@ namespace AI4E.Routing.SignalR.Client
 
         private static void AddSignalRMessageDispatcherCore(
             this IServiceCollection serviceCollection,
-            Action<IHubConnectionBuilder> configureHubConnection)
+            Action<IHubConnectionBuilder, IServiceProvider> configureHubConnection)
         {
             serviceCollection.AddCoreServices();
             serviceCollection.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
@@ -79,8 +80,6 @@ namespace AI4E.Routing.SignalR.Client
             serviceCollection.AddSingleton<IMessageRouterFactory, RemoteMessageRouterFactory>();
 
             serviceCollection.ConfigureHubConnectionBuilder(configureHubConnection);
-            // Do NOT Add the HubConnection to the service container.
-            // The connection builder already does this and it would lead to infinite recursion.
         }
     }
 }

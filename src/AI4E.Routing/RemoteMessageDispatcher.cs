@@ -106,6 +106,7 @@ namespace AI4E.Routing
                 var routeRegistrations = GetRouteRegistrations(messageHandlerProvider);
                 var registrationOperations = routeRegistrations.Select(p => _messageRouter.RegisterRouteAsync(p, cancellation: default));
                 await Task.WhenAll(registrationOperations);
+                _logger?.LogDebug("Remote message dispatcher initialized.");
             }
 
             async Task DisposeAsync()

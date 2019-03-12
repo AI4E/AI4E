@@ -6,8 +6,8 @@
 
   <ItemGroup>
     <PackageReference Include="AI4E.Utils.ApplicationParts" Version="0.2.0-pre19030212" />
-    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.2.0" />   
+    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="3.0.0-preview3-27503-5" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.0.0-preview3.19153.1" />   
     <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.2" />  
     <PackageReference Include="System.Interactive.Async" Version="3.2.0" />
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="1.0.2" />

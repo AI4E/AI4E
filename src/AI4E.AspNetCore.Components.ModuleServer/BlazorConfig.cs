@@ -47,7 +47,8 @@ namespace AI4E.Blazor.Module.Server
         public string SourceMSBuildPath { get; }
         public string SourceOutputAssemblyPath { get; }
         public string WebRootPath { get; }
-        public string DistPath => Path.Combine(Path.GetDirectoryName(SourceOutputAssemblyPath), "dist");
+        public string DistPath
+            => Path.Combine(Path.GetDirectoryName(SourceOutputAssemblyPath), "dist");
         public bool EnableAutoRebuilding { get; }
         public bool EnableDebugging { get; }
 

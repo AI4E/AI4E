@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Blazor.Modularity;
 using AI4E.Modularity;
+using Newtonsoft.Json;
 
 namespace AI4E.Blazor.Module.Server
 {
@@ -37,17 +39,25 @@ namespace AI4E.Blazor.Module.Server
 
         private List<BlazorModuleManifestAssemblyEntry> GetAppAssemblies()
         {
-            var assemblies = new Dictionary<string, Assembly>();
             var blazorConfig = BlazorConfig.Read(_appAssembly.Location);
+            var distPath = blazorConfig.DistPath;
+            var blazorBootPath = Path.Combine(distPath, "_framework", "blazor.boot.json");
 
-            AddAssemblyAndDependencies(_appAssembly, assemblies);
+            BlazorBoot blazorBoot;
 
-            var result = new List<BlazorModuleManifestAssemblyEntry>(capacity: assemblies.Count);
-            var sourceOutputDir = Path.GetDirectoryName(blazorConfig.SourceOutputAssemblyPath);
-
-            foreach (var assembly in assemblies.Values)
+            using (var fileStream = new FileStream(blazorBootPath, FileMode.Open))
+            using (var streamReader = new StreamReader(fileStream))
             {
-                var dllFile = Path.Combine(sourceOutputDir, Path.GetFileName(assembly.Location));
+                blazorBoot = (BlazorBoot)JsonSerializer.CreateDefault().Deserialize(streamReader, typeof(BlazorBoot));
+            }
+
+            var binPath = Path.Combine(distPath, "_framework", "_bin");
+
+            var result = new List<BlazorModuleManifestAssemblyEntry>(capacity: blazorBoot.AssemblyReferences.Count + 1);
+
+            foreach (var assembly in blazorBoot.AssemblyReferences.Where(p => p.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)).Append(blazorBoot.Main))
+            {
+                var dllFile = Path.Combine(binPath, assembly);
 
                 if (File.Exists(dllFile))
                 {
@@ -55,9 +65,9 @@ namespace AI4E.Blazor.Module.Server
 
                     result.Add(new BlazorModuleManifestAssemblyEntry
                     {
-                        AssemblyName = assembly.GetName().Name,
+                        AssemblyName = dllFileRef.Name,
                         AssemblyVersion = dllFileRef.Version,
-                        IsAppPart = assembly == _appAssembly
+                        IsAppPart = assembly == blazorBoot.Main
                     });
                 }
             }
@@ -66,22 +76,19 @@ namespace AI4E.Blazor.Module.Server
 
         }
 
-        private static void AddAssemblyAndDependencies(Assembly asm, Dictionary<string, Assembly> assemblies)
+        private sealed class BlazorBoot
         {
-            var asmName = asm.GetName().Name;
+            [JsonProperty("main")]
+            public string Main { get; set; }
 
-            if (assemblies.ContainsKey(asmName))
-            {
-                return;
-            }
+            [JsonProperty("assemblyReferences")]
+            public List<string> AssemblyReferences { get; set; } = new List<string>();
 
-            assemblies.Add(asm.GetName().Name, asm);
+            [JsonProperty("cssReferences")]
+            public List<string> CssReferences { get; set; } = new List<string>();
 
-            foreach (var dependencyRef in asm.GetReferencedAssemblies())
-            {
-                var dependency = Assembly.Load(dependencyRef);
-                AddAssemblyAndDependencies(dependency, assemblies);
-            }
+            [JsonProperty("jsReferences")]
+            public List<string> JsReferences { get; set; } = new List<string>();
         }
     }
 }

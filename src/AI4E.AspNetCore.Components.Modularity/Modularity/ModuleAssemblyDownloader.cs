@@ -122,7 +122,7 @@ namespace AI4E.Blazor.Modularity
                 assemblyUri = assemblyUri + "/";
             }
 
-            assemblyUri = assemblyUri + assemblyName + ".dll"; // TODO: Is this necessary? Can we avoid this?
+            assemblyUri = assemblyUri + "_framework/_bin/" + assemblyName + ".dll"; // TODO: Is this necessary? Can we avoid this?
 
             return assemblyUri;
         }

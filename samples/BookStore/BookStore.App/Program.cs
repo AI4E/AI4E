@@ -1,3 +1,5 @@
+using System.Threading.Tasks;
+using AI4E.Blazor;
 using Microsoft.AspNetCore.Blazor.Hosting;
 
 namespace BookStore.App
@@ -6,7 +8,9 @@ namespace BookStore.App
     {
         public static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            var wasmHost = CreateHostBuilder(args).Build();
+            wasmHost.Run();
+            wasmHost.InitializeApplicationServices();
         }
 
         private static IWebAssemblyHostBuilder CreateHostBuilder(string[] args)

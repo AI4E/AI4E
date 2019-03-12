@@ -39,33 +39,32 @@
 using System;
 using System.IO;
 using System.Net.Mime;
-using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Net.Http.Headers;
+using Microsoft.AspNetCore.Hosting;
 
 namespace AI4E.Blazor.Module.Server
 {
     public static class ApplicationBuilderExtension
     {
-        public static void UseBlazorModule<TProgram>(this IApplicationBuilder applicationBuilder)
+        public static IApplicationBuilder UseBlazorModule<TProgram>(this IApplicationBuilder applicationBuilder)
         {
             if (applicationBuilder == null)
                 throw new ArgumentNullException(nameof(applicationBuilder));
 
             var clientAssemblyInServerBinDir = typeof(TProgram).Assembly;
-            applicationBuilder.UseBlazorModule(new BlazorOptions
+            return applicationBuilder.UseBlazorModule(new BlazorOptions
             {
                 ClientAssemblyPath = clientAssemblyInServerBinDir.Location,
             });
         }
 
         // TODO: Test if publishing works correctly.
-        public static void UseBlazorModule(this IApplicationBuilder applicationBuilder, BlazorOptions options)
+        public static IApplicationBuilder UseBlazorModule(this IApplicationBuilder applicationBuilder, BlazorOptions options)
         {
             if (applicationBuilder == null)
                 throw new ArgumentNullException(nameof(applicationBuilder));
@@ -76,12 +75,19 @@ namespace AI4E.Blazor.Module.Server
             // TODO: Make the .blazor.config file contents sane
             // Currently the items in it are bizarre and don't relate to their purpose,
             // hence all the path manipulation here. We shouldn't be hardcoding 'dist' here either.
-            var env = applicationBuilder.ApplicationServices.GetRequiredService<IHostingEnvironment>();
+            var env = applicationBuilder.ApplicationServices.GetService<IHostingEnvironment>();
             var config = BlazorConfig.Read(options.ClientAssemblyPath);
 
             //if (env.IsDevelopment() && config.EnableAutoRebuilding)
             //{
-            //    applicationBuilder.UseHostedAutoRebuild(config, env.ContentRootPath);
+            //    if (env.ApplicationName.Equals(DevServerApplicationName, StringComparison.OrdinalIgnoreCase))
+            //    {
+            //        app.UseDevServerAutoRebuild(config);
+            //    }
+            //    else
+            //    {
+            //        app.UseHostedAutoRebuild(config, env.ContentRootPath);
+            //    }
             //}
 
             // First, match the request against files in the client app dist directory
@@ -91,7 +97,7 @@ namespace AI4E.Blazor.Module.Server
                 {
                     FileProvider = new PhysicalFileProvider(config.DistPath),
                     ContentTypeProvider = CreateContentTypeProvider(config.EnableDebugging),
-                    OnPrepareResponse = SetCacheHeaders
+                    OnPrepareResponse = CacheHeaderSettings.SetCacheHeaders,
                 });
             }
 
@@ -106,25 +112,38 @@ namespace AI4E.Blazor.Module.Server
                 applicationBuilder.UseStaticFiles(new StaticFileOptions
                 {
                     FileProvider = new PhysicalFileProvider(config.WebRootPath),
-                    OnPrepareResponse = SetCacheHeaders
+                    OnPrepareResponse = CacheHeaderSettings.SetCacheHeaders,
                 });
             }
 
-            // Accept debugger connections
-            //if (config.EnableDebugging)
-            //{
-            //    applicationBuilder.UseMonoDebugProxy();
-            //}
-
-            applicationBuilder.UseStaticFiles(new StaticFileOptions
-            {
-                FileProvider = new PhysicalFileProvider(Path.GetDirectoryName(config.SourceOutputAssemblyPath)),
-                ContentTypeProvider = CreateContentTypeProvider(config.EnableDebugging),
-                OnPrepareResponse = SetCacheHeaders
-            });
+            return applicationBuilder;
         }
 
-        private static void SetCacheHeaders(StaticFileResponseContext ctx)
+        private static IContentTypeProvider CreateContentTypeProvider(bool enableDebugging)
+        {
+            var result = new FileExtensionContentTypeProvider();
+            AddMapping(result, ".dll", MediaTypeNames.Application.Octet);
+
+            if (enableDebugging)
+            {
+                AddMapping(result, ".pdb", MediaTypeNames.Application.Octet);
+            }
+
+            return result;
+        }
+
+        private static void AddMapping(FileExtensionContentTypeProvider provider, string name, string mimeType)
+        {
+            if (!provider.Mappings.ContainsKey(name))
+            {
+                provider.Mappings.Add(name, mimeType);
+            }
+        }
+    }
+
+    internal static class CacheHeaderSettings
+    {
+        internal static void SetCacheHeaders(StaticFileResponseContext ctx)
         {
             // By setting "Cache-Control: no-cache", we're allowing the browser to store
             // a cached copy of the response, but telling it that it must check with the
@@ -140,26 +159,6 @@ namespace AI4E.Blazor.Module.Server
                     NoCache = true
                 };
             }
-        }
-
-        private static bool IsNotFrameworkDir(HttpContext context)
-        {
-            return !context.Request.Path.StartsWithSegments("/_framework");
-        }
-
-        private static IContentTypeProvider CreateContentTypeProvider(bool enableDebugging)
-        {
-            var result = new FileExtensionContentTypeProvider();
-            result.Mappings[".dll"] = MediaTypeNames.Application.Octet;
-            result.Mappings[".mem"] = MediaTypeNames.Application.Octet;
-            result.Mappings[".wasm"] = WasmMediaTypeNames.Application.Wasm;
-
-            if (enableDebugging)
-            {
-                result.Mappings[".pdb"] = MediaTypeNames.Application.Octet;
-            }
-
-            return result;
         }
     }
 }
