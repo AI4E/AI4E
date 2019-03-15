@@ -9,7 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AI4E.Utils.ObjectClone" Version="0.2.0-pre19030212" />
+    <PackageReference Include="AI4E.Utils.ObjectClone" Version="0.2.0-pre19031310" />
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="1.0.2" />
   </ItemGroup>
 
