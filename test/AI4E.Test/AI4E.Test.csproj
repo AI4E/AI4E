@@ -4,6 +4,8 @@
     <TargetFramework>$(NetCoreAppVersion)</TargetFramework>
 
     <IsPackable>false</IsPackable>
+
+    <RootNamespace>AI4E</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
