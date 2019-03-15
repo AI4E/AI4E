@@ -58,7 +58,7 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(member));
 
             if (!messageType.IsOrdinaryClass())
-                throw new ArgumentException("That argument must specify an ordinary class.", nameof(messageType));
+                throw new ArgumentException("The argument must specify an ordinary class.", nameof(messageType));
 
             if (!messageHandlerType.IsOrdinaryClass())
                 throw new ArgumentException("The argument must specify an ordinary class.", nameof(messageHandlerType));
@@ -77,7 +77,7 @@ namespace AI4E
             if (!member.DeclaringType.IsAssignableFrom(messageHandlerType))
                 throw new ArgumentException("The specififed message handler type must be assignable to the type that declares the specified member.");
 
-            // TODO: Do we also check wheter any parameter/messageType/messageHandlerType is by ref or is a pointer, etc.
+            // TODO: Do we also check whether any parameter/messageType/messageHandlerType is by ref or is a pointer, etc.
 
             MessageType = messageType;
             MessageHandlerType = messageHandlerType;

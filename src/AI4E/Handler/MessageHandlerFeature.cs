@@ -27,7 +27,7 @@ namespace AI4E.Handler
             }
         }
 
-        protected virtual bool IsMessageHandler(Type type)
+        protected internal virtual bool IsMessageHandler(Type type)
         {
             return (type.IsClass || type.IsValueType && !type.IsEnum) &&
                    !type.IsAbstract &&
