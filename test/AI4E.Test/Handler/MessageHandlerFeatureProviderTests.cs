@@ -116,8 +116,6 @@ namespace AI4E.Handler
                 typeof(InternalClassWithAttribute)
             }.SequenceEqual(feature.MessageHandlers));
         }
-
-
     }
 
     public class PublicClassWithoutSuffix { }
