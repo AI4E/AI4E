@@ -9,13 +9,12 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Handler
 {
-    public class HandlerActionInvoker
+    public sealed class HandlerActionInvoker
     {
-        private static readonly ParameterModifier[] _emptyParameterModifiers = new ParameterModifier[0];
         private static readonly ConcurrentDictionary<MethodInfo, HandlerActionInvoker> _cache = new ConcurrentDictionary<MethodInfo, HandlerActionInvoker>();
         private readonly Func<object, object, Func<ParameterInfo, object>, object> _invoker;
 
-        private protected HandlerActionInvoker(MethodInfo method)
+        private HandlerActionInvoker(MethodInfo method)
         {
             if (method == null)
                 throw new ArgumentNullException(nameof(method));
@@ -90,7 +89,7 @@ namespace AI4E.Handler
 
         // Func<object,                     -> Instance
         //     object,                      -> First argument
-        //     Func<ParameterInfo, object>, -> Paramter resolver
+        //     Func<ParameterInfo, object>, -> Parameter resolver
         //     object>                      -> Return value (null in case of void result)
         private static Func<object, object, Func<ParameterInfo, object>, object> BuildInvoker(MethodInfo method, Type firstParameterType)
         {
