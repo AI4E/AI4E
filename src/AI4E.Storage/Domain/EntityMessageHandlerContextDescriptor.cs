@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -29,6 +29,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Handler;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 using Microsoft.Extensions.DependencyInjection;
 using static System.Diagnostics.Debug;
 
@@ -202,7 +203,7 @@ namespace AI4E.Storage.Domain
                 return false;
 
             var returnType = member.ReturnType;
-            var typeDescriptor = TypeDescriptor.GetTypeDescriptor(returnType);
+            var typeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(returnType);
 
             return entityType.IsAssignableFrom(typeDescriptor.ResultType);
         }

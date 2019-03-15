@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 
 namespace AI4E.Handler
 {
@@ -76,9 +77,9 @@ namespace AI4E.Handler
                 messageType = actionAttribute.MessageType;
             }
 
-            var returnTypeDescriptor = TypeDescriptor.GetTypeDescriptor(member.ReturnType);
+            var returnTypeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(member.ReturnType);
 
-            if (IsSychronousHandler(member, actionAttribute, returnTypeDescriptor) || 
+            if (IsSychronousHandler(member, actionAttribute, returnTypeDescriptor) ||
                 IsAsynchronousHandler(member, actionAttribute, returnTypeDescriptor))
             {
                 descriptor = new MessageHandlerActionDescriptor(messageType, _type, member);
@@ -89,14 +90,20 @@ namespace AI4E.Handler
             return false;
         }
 
-        private static bool IsAsynchronousHandler(MethodInfo member, ActionAttribute actionAttribute, TypeDescriptor returnTypeDescriptor)
+        private static bool IsAsynchronousHandler(
+            MethodInfo member,
+            ActionAttribute actionAttribute,
+            AwaitableTypeDescriptor returnTypeDescriptor)
         {
-            return (member.Name == "HandleAsync" || actionAttribute != null) && returnTypeDescriptor.IsAsyncType;
+            return (member.Name == "HandleAsync" || actionAttribute != null) && returnTypeDescriptor.IsAwaitable;
         }
 
-        private static bool IsSychronousHandler(MethodInfo member, ActionAttribute actionAttribute, TypeDescriptor returnTypeDescriptor)
+        private static bool IsSychronousHandler(
+            MethodInfo member,
+            ActionAttribute actionAttribute,
+            AwaitableTypeDescriptor returnTypeDescriptor)
         {
-            return (member.Name == "Handle" || actionAttribute != null) && !returnTypeDescriptor.IsAsyncType;
+            return (member.Name == "Handle" || actionAttribute != null) && !returnTypeDescriptor.IsAwaitable;
         }
     }
 }

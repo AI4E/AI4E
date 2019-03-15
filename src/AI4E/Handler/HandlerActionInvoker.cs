@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
+using AI4E.Utils.Async;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Handler
@@ -23,7 +24,7 @@ namespace AI4E.Handler
                 throw new ArgumentException("The specified method must not be a generic type definition.", nameof(method));
 
             Method = method;
-            ReturnTypeDescriptor = TypeDescriptor.GetTypeDescriptor(method.ReturnType);
+            ReturnTypeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(method.ReturnType);
             var firstParameterType = method.GetParameters().Select(p => p.ParameterType).FirstOrDefault() ?? typeof(void);
             _invoker = BuildInvoker(method, firstParameterType);
             FirstParameterType = firstParameterType;
@@ -38,7 +39,7 @@ namespace AI4E.Handler
 
         public Type FirstParameterType { get; }
 
-        public TypeDescriptor ReturnTypeDescriptor { get; }
+        public AwaitableTypeDescriptor ReturnTypeDescriptor { get; }
 
         public async ValueTask<object> InvokeAsync(object instance, object argument, Func<ParameterInfo, object> parameterResolver)
         {
@@ -59,7 +60,7 @@ namespace AI4E.Handler
 
             var result = _invoker(instance, argument, parameterResolver);
 
-            if (ReturnTypeDescriptor.IsAsyncType)
+            if (ReturnTypeDescriptor.IsAwaitable)
             {
                 Assert(result != null);
 
