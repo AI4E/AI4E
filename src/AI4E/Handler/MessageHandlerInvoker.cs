@@ -88,7 +88,7 @@ namespace AI4E.Handler
         }
     }
 
-    public sealed class MessageHandlerInvoker<TMessage> : IMessageHandler<TMessage>, IMessageHandler
+    public sealed class MessageHandlerInvoker<TMessage> : IMessageHandler<TMessage>
         where TMessage : class
     {
         private readonly object _handler;
@@ -118,11 +118,12 @@ namespace AI4E.Handler
 
         public ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, bool publish, bool localDispatch, CancellationToken cancellation)
         {
-            Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next = (nextDispatchData => InvokeHandlerCore(
-                nextDispatchData,
-                publish,
-                localDispatch,
-                cancellation));
+            ValueTask<IDispatchResult> InvokeHandler(DispatchDataDictionary<TMessage> nextDispatchData)
+            {
+                return InvokeHandlerCore(nextDispatchData, publish, localDispatch, cancellation);
+            }
+
+            Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next = InvokeHandler;
 
             for (var i = _processors.Length - 1; i >= 0; i--)
             {
@@ -130,13 +131,21 @@ namespace AI4E.Handler
                 Assert(processor != null);
                 var nextCopy = next; // This is needed because of the way, the variable values are captured in the lambda expression.
 
-                next = (nextDispatchData => InvokeProcessorAsync(
-                    processor,
-                    nextDispatchData,
-                    publish,
-                    localDispatch,
-                    nextCopy,
-                    cancellation));
+                ValueTask<IDispatchResult> InvokeProcessor(DispatchDataDictionary<TMessage> nextDispatchData)
+                {
+                    var contextDescriptor = MessageProcessorContextDescriptor.GetDescriptor(processor.GetType());
+
+                    if (contextDescriptor.CanSetContext)
+                    {
+                        IMessageProcessorContext messageProcessorContext = new MessageProcessorContext(_handler, _memberDescriptor, publish, localDispatch);
+
+                        contextDescriptor.SetContext(processor, messageProcessorContext);
+                    }
+
+                    return processor.ProcessAsync(dispatchData, nextCopy, cancellation);
+                }
+
+                next = InvokeProcessor;
             }
 
             return next(dispatchData);
@@ -156,25 +165,6 @@ namespace AI4E.Handler
         }
 
         public Type MessageType => typeof(TMessage);
-
-        private ValueTask<IDispatchResult> InvokeProcessorAsync(IMessageProcessor processor,
-                                                                DispatchDataDictionary<TMessage> dispatchData,
-                                                                bool publish,
-                                                                bool isLocalDispatch,
-                                                                Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
-                                                                CancellationToken cancellation)
-        {
-            var contextDescriptor = MessageProcessorContextDescriptor.GetDescriptor(processor.GetType());
-
-            if (contextDescriptor.CanSetContext)
-            {
-                IMessageProcessorContext messageProcessorContext = new MessageProcessorContext(_handler, _memberDescriptor, publish, isLocalDispatch);
-
-                contextDescriptor.SetContext(processor, messageProcessorContext);
-            }
-
-            return processor.ProcessAsync(dispatchData, next, cancellation);
-        }
 
         private async ValueTask<IDispatchResult> InvokeHandlerCore(
             DispatchDataDictionary<TMessage> dispatchData,

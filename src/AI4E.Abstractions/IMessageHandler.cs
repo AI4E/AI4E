@@ -74,5 +74,7 @@ namespace AI4E
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
         ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, bool publish, bool localDispatch, CancellationToken cancellation);
+
+        // TODO: When we have default interface implementation support, provide a default implementation for the base interfaces members.
     }
 }
