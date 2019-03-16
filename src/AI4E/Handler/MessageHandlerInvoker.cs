@@ -1,3 +1,23 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
@@ -12,6 +32,9 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Handler
 {
+    /// <summary>
+    /// Contains factory methods to create generic message handler invoker.
+    /// </summary>
     public static class MessageHandlerInvoker
     {
         private static readonly Type _messageHandlerInvokerTypeDefinition = typeof(MessageHandlerInvoker<>);
@@ -20,6 +43,18 @@ namespace AI4E.Handler
 
         private static readonly Func<Type, Func<object, MessageHandlerActionDescriptor, ImmutableArray<IContextualProvider<IMessageProcessor>>, IServiceProvider, IMessageHandler>> _factoryBuilderCache = BuildFactory;
 
+        /// <summary>
+        /// Creates a <see cref="MessageHandlerInvoker{TMessage}"/> from the specified parameters.
+        /// </summary>
+        /// <param name="memberDescriptor">The descriptor that specifies the message handler member.</param>
+        /// <param name="processors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
+        /// <param name="serviceProvider">A <see cref="IServiceProvider"/> used to obtain services.</param>
+        /// <returns>The created <see cref="MessageHandlerInvoker{TMessage}"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is <c>null</c>.</exception>
+        /// <remarks>
+        /// This overload creates the message handler specified by <paramref name="memberDescriptor"/>
+        /// and resolved its depdendencies from <paramref name="serviceProvider"/>.
+        /// </remarks>
         public static IMessageHandler CreateInvoker(
             MessageHandlerActionDescriptor memberDescriptor,
             ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
@@ -35,6 +70,20 @@ namespace AI4E.Handler
             return CreateInvokerInternal(handler, memberDescriptor, processors, serviceProvider);
         }
 
+        /// <summary>
+        /// Creates a <see cref="MessageHandlerInvoker{TMessage}"/> from the specified parameters.
+        /// </summary>
+        /// <param name="handler">The message handler.</param>
+        /// <param name="memberDescriptor">The descriptor that specifies the message handler member.</param>
+        /// <param name="processors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
+        /// <param name="serviceProvider">A <see cref="IServiceProvider"/> used to obtain services.</param>
+        /// <returns>The created <see cref="MessageHandlerInvoker{TMessage}"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="handler"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="handler"/> has a different type as specified by <paramref name="memberDescriptor"/>.
+        /// </exception>
         public static IMessageHandler CreateInvoker(
             object handler,
             MessageHandlerActionDescriptor memberDescriptor,
@@ -88,6 +137,10 @@ namespace AI4E.Handler
         }
     }
 
+    /// <summary>
+    /// Represents message handlers as <see cref="IMessageHandler{TMessage}"/>.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of handled message.</typeparam>
     public sealed class MessageHandlerInvoker<TMessage> : IMessageHandler<TMessage>
         where TMessage : class
     {
@@ -96,10 +149,24 @@ namespace AI4E.Handler
         private readonly ImmutableArray<IContextualProvider<IMessageProcessor>> _processors;
         private readonly IServiceProvider _serviceProvider;
 
-        public MessageHandlerInvoker(object handler,
-                                     MessageHandlerActionDescriptor memberDescriptor,
-                                     ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
-                                     IServiceProvider serviceProvider)
+        /// <summary>
+        /// Creates a new instance of type <see cref="MessageHandlerInvoker"/>.
+        /// </summary>
+        /// <param name="handler">The message handler.</param>
+        /// <param name="memberDescriptor">The descriptor that specifies the message handler member.</param>
+        /// <param name="processors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
+        /// <param name="serviceProvider">A <see cref="IServiceProvider"/> used to obtain services.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="handler"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="handler"/> has a different type as specified by <paramref name="memberDescriptor"/>.
+        /// </exception>
+        public MessageHandlerInvoker(
+            object handler,
+            MessageHandlerActionDescriptor memberDescriptor,
+            ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+            IServiceProvider serviceProvider)
         {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
@@ -116,7 +183,12 @@ namespace AI4E.Handler
             _serviceProvider = serviceProvider;
         }
 
-        public ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, bool publish, bool localDispatch, CancellationToken cancellation)
+        /// <inheritdoc/>
+        public ValueTask<IDispatchResult> HandleAsync(
+            DispatchDataDictionary<TMessage> dispatchData,
+            bool publish,
+            bool localDispatch,
+            CancellationToken cancellation)
         {
             ValueTask<IDispatchResult> InvokeHandler(DispatchDataDictionary<TMessage> nextDispatchData)
             {
@@ -151,7 +223,12 @@ namespace AI4E.Handler
             return next(dispatchData);
         }
 
-        public ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary dispatchData, bool publish, bool localDispatch, CancellationToken cancellation)
+        /// <inheritdoc/>
+        public ValueTask<IDispatchResult> HandleAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            bool localDispatch,
+            CancellationToken cancellation)
         {
             if (!(dispatchData.Message is TMessage))
                 throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{MessageType}'.");
@@ -164,6 +241,7 @@ namespace AI4E.Handler
             return HandleAsync(typedDispatchData, publish, localDispatch, cancellation);
         }
 
+        /// <inheritdoc/>
         public Type MessageType => typeof(TMessage);
 
         private async ValueTask<IDispatchResult> InvokeHandlerCore(
