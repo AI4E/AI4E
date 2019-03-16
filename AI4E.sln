@@ -34,6 +34,10 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "doc", "doc", "{F75BCF9E-AC6A-499D-B9F2-1E00FC6CA0EE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{391CBBDB-848A-472B-A4EE-BA542324983E}"
+	ProjectSection(SolutionItems) = preProject
+		test\AI4E.Test\Handler\MessageDispatcherMock.cs = test\AI4E.Test\Handler\MessageDispatcherMock.cs
+		test\AI4E.Test\Handler\MessageProcessorContextMock.cs = test\AI4E.Test\Handler\MessageProcessorContextMock.cs
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Test", "test\AI4E.Test\AI4E.Test.csproj", "{5C334379-E664-43B6-BA71-22F3C688543C}"
 EndProject

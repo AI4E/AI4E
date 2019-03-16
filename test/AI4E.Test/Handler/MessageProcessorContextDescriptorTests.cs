@@ -19,7 +19,9 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using AI4E.Mocks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Handler
@@ -42,7 +44,7 @@ namespace AI4E.Handler
         }
 
         [TestMethod]
-        public void MessageProcessorPropertyWithAttributeTest()
+        public void MessageProcessorPropertyWithoutAttributeTest()
         {
             var descriptor = MessageProcessorContextDescriptor.GetDescriptor(typeof(MessageProcessorPropertyWithoutAttribute));
             var processor = new MessageProcessorPropertyWithoutAttribute();
@@ -150,19 +152,57 @@ namespace AI4E.Handler
                 descriptor.SetContext(processor, context);
             });
         }
-    }
 
-    public sealed class MessageProcessorContextMock : IMessageProcessorContext
-    {
-        public MessageHandlerConfiguration MessageHandlerConfiguration { get; set; }
+        [TestMethod]
+        public void IsDefaultIfTypeIsDelegateTest()
+        {
+            var descriptor = MessageProcessorContextDescriptor.GetDescriptor(typeof(Func<object>));
 
-        public MessageHandlerActionDescriptor MessageHandlerAction { get; set; }
+            Assert.IsFalse(descriptor.CanSetContext);
+        }
 
-        public object MessageHandler { get; set; }
+        [TestMethod]
+        public void IsDefaultIfTypeIsAbstractTest()
+        {
+            var descriptor = MessageProcessorContextDescriptor.GetDescriptor(typeof(AbstractMessagsProcessor));
 
-        public bool IsPublish { get; set; }
+            Assert.IsFalse(descriptor.CanSetContext);
+        }
 
-        public bool IsLocalDispatch { get; set; }
+        [TestMethod]
+        public void IsDefaultIfTypeIsEnumTest()
+        {
+            var descriptor = MessageProcessorContextDescriptor.GetDescriptor(typeof(ConsoleColor));
+
+            Assert.IsFalse(descriptor.CanSetContext);
+        }
+
+        [TestMethod]
+        public void ThrowsIfTypeIsGenericTypeDefinitionTest()
+        {
+            Assert.ThrowsException<ArgumentException>(() =>
+            {
+                MessageProcessorContextDescriptor.GetDescriptor(typeof(GenericMessagsProcessor<>));
+            });
+        }
+
+        [TestMethod]
+        public void ThrowsIfTypeIsGenericTypeDefinition2Test()
+        {
+            Assert.ThrowsException<ArgumentException>(() =>
+            {
+                MessageProcessorContextDescriptor.GetDescriptor(typeof(List<>));
+            });
+        }
+
+        [TestMethod]
+        public void ThrowsIfTypeIsNullTest()
+        {
+            Assert.ThrowsException<ArgumentNullException>(() =>
+            {
+                MessageProcessorContextDescriptor.GetDescriptor(null);
+            });
+        }
     }
 
     public class MessageProcessorPropertyWithoutAttribute
@@ -211,5 +251,17 @@ namespace AI4E.Handler
             get => throw null;
             set { }
         }
+    }
+
+    public abstract class AbstractMessagsProcessor
+    {
+        [MessageProcessorContext]
+        public IMessageProcessorContext Context { get; set; }
+    }
+
+    public class GenericMessagsProcessor<T>
+    {
+        [MessageProcessorContext]
+        public IMessageProcessorContext Context { get; set; }
     }
 }

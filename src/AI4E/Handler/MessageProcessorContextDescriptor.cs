@@ -42,6 +42,7 @@ namespace AI4E.Handler
         /// <param name="type">The processor type.</param>
         /// <returns>The <see cref="MessageProcessorContextDescriptor"/> for <paramref name="type"/>.</returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="type"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown if <paramref name="handlerType"/> is an open generic type definition.</exception>
         public static MessageProcessorContextDescriptor GetDescriptor(Type type)
         {
             if (type == null)
@@ -54,15 +55,30 @@ namespace AI4E.Handler
         {
             Assert(type != null);
 
-            var contextProperty = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                                             .FirstOrDefault(p => p.PropertyType.IsAssignableFrom(typeof(IMessageProcessorContext)) &&
-                                                                  p.CanWrite &&
-                                                                  p.GetIndexParameters().Length == 0 &&
-                                                                  p.IsDefined<MessageProcessorContextAttribute>());
+            if (type.IsAbstract)
+                return default;
 
+            if (type.IsGenericTypeDefinition)
+                throw new ArgumentException("The argument must not be an open generic type definition.", nameof(type));
+
+            var contextProperty = GetContextProperty(type);
             var contextSetter = contextProperty != null ? BuildContextSetter(type, contextProperty) : null;
 
             return new MessageProcessorContextDescriptor(type, contextSetter);
+        }
+
+        private static PropertyInfo GetContextProperty(Type type)
+        {
+            return GetInstanceProperty(type).FirstOrDefault(p =>
+                p.PropertyType.IsAssignableFrom(typeof(IMessageProcessorContext)) &&
+                p.CanWrite &&
+                p.GetIndexParameters().Length == 0 &&
+                p.IsDefined<MessageProcessorContextAttribute>());
+        }
+
+        private static PropertyInfo[] GetInstanceProperty(Type type)
+        {
+            return type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         }
 
         private static Action<object, IMessageProcessorContext> BuildContextSetter(Type type, PropertyInfo contextProperty)
