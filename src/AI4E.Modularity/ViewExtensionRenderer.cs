@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
@@ -21,13 +21,13 @@ namespace AI4E.Modularity
 
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual SuccessDispatchResult<string> View(string view)
         {
             return View<object>(view, null);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual SuccessDispatchResult<string> View<TModel>(string view, TModel model)
         {
             var serviceProvider = Context.DispatchServices;

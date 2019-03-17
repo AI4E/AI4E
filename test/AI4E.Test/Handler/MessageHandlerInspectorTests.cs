@@ -137,9 +137,32 @@ namespace AI4E.Handler
         }
 
         [TestMethod]
+        public void WithExplicitClassTypeHandlerTest()
+        {
+            var inspector = new MessageHandlerInspector(typeof(WithExplicitClassTypeHandler));
+
+            var descriptor = inspector.GetHandlerDescriptors().Single();
+
+            Assert.AreEqual(typeof(string), descriptor.MessageType);
+            Assert.AreEqual(typeof(WithExplicitClassTypeHandler), descriptor.MessageHandlerType);
+            Assert.AreEqual(typeof(WithExplicitClassTypeHandler).GetMethod("Handle"), descriptor.Member);
+        }
+
+        [TestMethod]
         public void WithInvalidExplicitTypeHandlerTest()
         {
             var inspector = new MessageHandlerInspector(typeof(WithInvalidExplicitTypeHandler));
+
+            Assert.ThrowsException<InvalidOperationException>(() =>
+            {
+                inspector.GetHandlerDescriptors();
+            });
+        }
+
+        [TestMethod]
+        public void WithInvalidExplicitClassTypeHandlerTest()
+        {
+            var inspector = new MessageHandlerInspector(typeof(WithInvalidExplicitClassTypeHandler));
 
             Assert.ThrowsException<InvalidOperationException>(() =>
             {
@@ -206,7 +229,7 @@ namespace AI4E.Handler
 
     public sealed class NoActionAttributeHandler
     {
-        [NoAction]
+        [NoMessageHandler]
         public int Handle(string x, int y)
         {
             throw null;
@@ -215,7 +238,7 @@ namespace AI4E.Handler
 
     public sealed class SuffixSyncWithActionAttributeHandler
     {
-        [Action]
+        [MessageHandler]
         public int HandleAsync(string x, int y)
         {
             throw null;
@@ -224,7 +247,7 @@ namespace AI4E.Handler
 
     public sealed class MissingSuffixAsyncWithActionAttributeHandler
     {
-        [Action]
+        [MessageHandler]
         public Task<int> Handle(string x, int y)
         {
             throw null;
@@ -233,7 +256,16 @@ namespace AI4E.Handler
 
     public sealed class WithExplicitTypeHandler
     {
-        [Action(typeof(string))]
+        [MessageHandler(typeof(string))]
+        public int Handle(object x, int y)
+        {
+            throw null;
+        }
+    }
+
+    [MessageHandler(typeof(string))]
+    public sealed class WithExplicitClassTypeHandler
+    {
         public int Handle(object x, int y)
         {
             throw null;
@@ -242,7 +274,17 @@ namespace AI4E.Handler
 
     public sealed class WithInvalidExplicitTypeHandler
     {
-        [Action(typeof(WithInvalidExplicitTypeHandler))]
+        [MessageHandler(typeof(WithInvalidExplicitTypeHandler))]
+        public int Handle(string x, int y)
+        {
+            throw null;
+        }
+    }
+
+    [MessageHandler(typeof(WithInvalidExplicitTypeHandler))]
+    public sealed class WithInvalidExplicitClassTypeHandler
+    {
+
         public int Handle(string x, int y)
         {
             throw null;

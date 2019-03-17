@@ -33,7 +33,7 @@ namespace AI4E.Handler
                    !type.IsAbstract &&
                    !type.ContainsGenericParameters &&
                    !type.IsDefined<NoMessageHandlerAttribute>(inherit: false) &&
-                   (type.Name.EndsWith("Handler", StringComparison.OrdinalIgnoreCase) && type.IsPublic || type.IsDefined<MessageHandlerAttribute>(inherit: true));
+                   (type.Name.EndsWith("Handler", StringComparison.OrdinalIgnoreCase) && type.IsPublic || type.IsDefined<MessageHandlerAttribute>(inherit: false));
         }
     }
 }

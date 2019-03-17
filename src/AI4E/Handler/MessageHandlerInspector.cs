@@ -57,15 +57,27 @@ namespace AI4E.Handler
                 return false;
             }
 
-            if (member.IsDefined<NoActionAttribute>())
+            // There is defined a NoMessageHandlerAttribute on the member somewhere in the inheritance hierarchy.
+            if (member.IsDefined<NoMessageHandlerAttribute>(inherit: true))
             {
-                descriptor = default;
-                return false;
+                // The member on the current type IS decorated with a NoMessageHandlerAttribute OR
+                // The member on the current type IS NOT decorated with a MessageHandlerAttribute
+                // TODO: Test this.
+                if (member.IsDefined<NoMessageHandlerAttribute>(inherit: false) || !member.IsDefined<MessageHandlerAttribute>(inherit: false))
+                {
+                    descriptor = default;
+                    return false;
+                }
             }
 
             var messageType = parameters[0].ParameterType;
 
-            var actionAttribute = member.GetCustomAttribute<ActionAttribute>();
+            var actionAttribute = member.GetCustomAttribute<MessageHandlerAttribute>(inherit: true);
+
+            if (actionAttribute == null)
+            {
+                actionAttribute = _type.GetCustomAttribute<MessageHandlerAttribute>(inherit: true);
+            }
 
             if (actionAttribute != null && actionAttribute.MessageType != null)
             {
@@ -92,18 +104,18 @@ namespace AI4E.Handler
 
         private static bool IsAsynchronousHandler(
             MethodInfo member,
-            ActionAttribute actionAttribute,
+            MessageHandlerAttribute actionAttribute,
             AwaitableTypeDescriptor returnTypeDescriptor)
         {
-            return (member.Name == "HandleAsync" || actionAttribute != null) && returnTypeDescriptor.IsAwaitable;
+            return (member.Name == "HandleAsync" || member.IsDefined<MessageHandlerAttribute>(inherit: true)) && returnTypeDescriptor.IsAwaitable;
         }
 
         private static bool IsSychronousHandler(
             MethodInfo member,
-            ActionAttribute actionAttribute,
+            MessageHandlerAttribute actionAttribute,
             AwaitableTypeDescriptor returnTypeDescriptor)
         {
-            return (member.Name == "Handle" || actionAttribute != null) && !returnTypeDescriptor.IsAwaitable;
+            return (member.Name == "Handle" || member.IsDefined<MessageHandlerAttribute>(inherit: true)) && !returnTypeDescriptor.IsAwaitable;
         }
     }
 }
