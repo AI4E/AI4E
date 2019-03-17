@@ -380,7 +380,7 @@ namespace AI4E.Handler
                 IsLocalDispatch = isLocalDispatch;
             }
 
-            public MessageHandlerConfiguration MessageHandlerConfiguration => MessageHandlerConfiguration.FromDescriptor(MessageHandlerAction);
+            public MessageHandlerConfiguration MessageHandlerConfiguration => MessageHandlerAction.BuildConfiguration();
             public MessageHandlerActionDescriptor MessageHandlerAction { get; }
 
             public object MessageHandler { get; }

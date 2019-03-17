@@ -260,7 +260,7 @@ namespace AI4E
             MessageHandlerActionDescriptor memberDescriptor,
             ImmutableArray<IContextualProvider<IMessageProcessor>> processors)
         {
-            var configuration = MessageHandlerConfiguration.FromDescriptor(memberDescriptor);
+            var configuration = memberDescriptor.BuildConfiguration();
 
             return new MessageHandlerRegistration(
                 memberDescriptor.MessageType,
