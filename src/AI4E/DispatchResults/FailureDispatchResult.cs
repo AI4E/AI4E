@@ -20,30 +20,59 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using Newtonsoft.Json;
 
 namespace AI4E.DispatchResults
 {
+    /// <summary>
+    /// Describes the result of a failed message dispatch operation.
+    /// </summary>
     public class FailureDispatchResult : DispatchResult
     {
+#pragma warning disable IDE0051
         [JsonConstructor]
         private FailureDispatchResult(string message, Exception exception, IReadOnlyDictionary<string, object> resultData)
                     : base(false, exception != null ? FormatMessage(exception) : message, resultData)
-        { }
+        {
+            Exception = exception;
+        }
+#pragma warning restore IDE0051
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="FailureDispatchResult"/> type.
+        /// </summary>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
+        /// </exception>
         public FailureDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
             : base(false, message, resultData)
         { }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="FailureDispatchResult"/> type.
+        /// </summary>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is <c>null</c>.</exception>
         public FailureDispatchResult(string message)
-            : base(false, message, ImmutableDictionary<string, object>.Empty)
+            : base(false, message)
         { }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="FailureDispatchResult"/> type.
+        /// </summary>
+        /// <param name="exception">The exception that caused the message dispatch operation to fail.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="exception"/> is <c>null</c>.</exception>
         public FailureDispatchResult(Exception exception) : this(FormatMessage(exception))
         {
             Exception = exception;
         }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="FailureDispatchResult"/> type.
+        /// </summary>
+        public FailureDispatchResult() : this("Unknown failure.") { }
 
         private static string FormatMessage(Exception exception)
         {
@@ -53,10 +82,12 @@ namespace AI4E.DispatchResults
             return "An unhandled exception occured: " + exception.Message;
         }
 
-        public FailureDispatchResult() : this("Unknown failure.") { }
-
+        /// <summary>
+        /// Gets the exception that caused the message dispatch operation to fail.
+        /// </summary>
         public Exception Exception { get; }
 
+        /// <inheritdoc/>
         [JsonIgnore]
         public override bool IsSuccess => false;
     }
