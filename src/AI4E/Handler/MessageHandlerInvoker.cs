@@ -298,13 +298,13 @@ namespace AI4E.Handler
                 {
                     return dispatchData;
                 }
-                else if (parameter.IsDefined<InjectAttribute>())
+                else if (parameter.HasDefaultValue)
                 {
-                    return _serviceProvider.GetRequiredService(parameter.ParameterType);
+                    return _serviceProvider.GetService(parameter.ParameterType) ?? parameter.DefaultValue;
                 }
                 else
                 {
-                    return _serviceProvider.GetService(parameter.ParameterType);
+                    return _serviceProvider.GetRequiredService(parameter.ParameterType);
                 }
             }
 

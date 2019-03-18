@@ -378,12 +378,12 @@ namespace AI4E.Handler
         public void ResolveServicesHandle(
             string message,
             DispatchDataDictionary dispatchData,
-            DispatchDataDictionary<string> genericDispatchData,
-            DispatchDataDictionary<TestMessageHandler> wronglyTypedDispatchData,
+            DispatchDataDictionary<string> genericDispatchData,           
             CancellationToken cancellation,
             IMessageDispatchContext messageDispatchContext,
             IServiceProvider serviceProvider,
-            IService service)
+            IService service,
+            DispatchDataDictionary<TestMessageHandler> wronglyTypedDispatchData = null)
         {
             Message = message;
             DispatchData = dispatchData;
@@ -395,13 +395,13 @@ namespace AI4E.Handler
             Service = service;
         }
 
-        public void ResolveUnresolvableRequiredServiceHandle(string message, [Inject]IService service)
+        public void ResolveUnresolvableRequiredServiceHandle(string message, IService service)
         {
             Message = message;
             Service = service;
         }
 
-        public void ResolveUnresolvableNonRequiredServiceHandle(string message, IService service)
+        public void ResolveUnresolvableNonRequiredServiceHandle(string message, IService service = null)
         {
             Message = message;
             Service = service;

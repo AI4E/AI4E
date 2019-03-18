@@ -166,13 +166,13 @@ namespace AI4E.Storage.Domain
                         {
                             return cancellation;
                         }
-                        else if (parameter.IsDefined<InjectAttribute>())
+                        else if (parameter.HasDefaultValue)
                         {
-                            return serviceProvider.GetRequiredService(parameter.ParameterType);
+                            return serviceProvider.GetService(parameter.ParameterType) ?? parameter.DefaultValue;
                         }
                         else
                         {
-                            return serviceProvider.GetService(parameter.ParameterType);
+                            return serviceProvider.GetRequiredService(parameter.ParameterType);
                         }
                     }
 
