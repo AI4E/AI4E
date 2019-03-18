@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -19,10 +19,8 @@
  */
 
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace AI4E
+namespace AI4E.Storage
 {
     /// <summary>
     /// Represents a contextual provider for the specified type.

@@ -2,14 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using AI4E.Utils.ApplicationParts;
 using AI4E.Handler;
 using AI4E.Utils;
+using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using static System.Diagnostics.Debug;
 
 namespace AI4E
 {
@@ -38,26 +37,10 @@ namespace AI4E
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
-
-            // This must be registered as transient to allow retrieval of scoped services.
-            services.TryAddSingleton(typeof(IContextualProvider<>), typeof(ContextualProvider<>));
+           
             services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
 
             return services;
-        }
-
-
-        private sealed class ContextualProvider<T> : IContextualProvider<T>
-        {
-            public ContextualProvider() { }
-
-            public T ProvideInstance(IServiceProvider serviceProvider)
-            {
-                if (serviceProvider == null)
-                    throw new ArgumentNullException(nameof(serviceProvider));
-
-                return serviceProvider.GetRequiredService<T>();
-            }
         }
 
         public static IMessagingBuilder AddInMemoryMessaging(this IServiceCollection services)
