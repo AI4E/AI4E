@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using AI4E.Utils;
 using Newtonsoft.Json;
 
 namespace AI4E.DispatchResults
@@ -34,13 +35,13 @@ namespace AI4E.DispatchResults
 #pragma warning disable IDE0051
         [JsonConstructor]
         private EntityAlreadyPresentDispatchResult(
-            Type entityType,
+            string entityTypeName,
             string id,
             string message,
             IReadOnlyDictionary<string, object> resultData)
             : base(message, resultData)
         {
-            EntityType = entityType;
+            EntityTypeName = entityTypeName;
             Id = id;
         }
 #pragma warning restore IDE0051
@@ -80,7 +81,7 @@ namespace AI4E.DispatchResults
         public EntityAlreadyPresentDispatchResult(Type entityType, string id)
             : base(FormatDefaultMessage(entityType, id))
         {
-            EntityType = entityType;
+            EntityTypeName = entityType.GetUnqualifiedTypeName();
             Id = id;
         }
 
@@ -92,18 +93,35 @@ namespace AI4E.DispatchResults
         public EntityAlreadyPresentDispatchResult(Type entityType)
             : base(FormatDefaultMessage(entityType))
         {
-            EntityType = entityType;
+            EntityTypeName = entityType.GetUnqualifiedTypeName();
         }
 
         /// <summary>
-        /// Gets the type of resource, that an id-conflict occured at.
+        /// Gets the unqualified type-name of resource that an id-conflict occured at.
         /// </summary>
-        public Type EntityType { get; }
+        public string EntityTypeName { get; }
 
         /// <summary>
         /// Gets the stringified id that conflicted.
         /// </summary>
         public string Id { get; }
+
+        /// <summary>
+        /// Tries to load the type of resource that an id-conflict occured at.
+        /// </summary>
+        /// <param name="entityType">Contains the resource type if the call is succeeds.</param>
+        /// <returns>True if the call suceeded, false otherwise.</returns>
+        public bool TryGetEntityType(out Type entityType)
+        {
+            if (EntityTypeName == null)
+            {
+                entityType = null;
+                return false;
+            }
+
+            entityType = TypeLoadHelper.LoadTypeFromUnqualifiedName(EntityTypeName, throwIfNotFound: false);
+            return entityType != null;
+        }
 
         private static string FormatDefaultMessage(Type entityType, string id)
         {

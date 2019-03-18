@@ -120,7 +120,7 @@ namespace AI4E.DispatchResults
             Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
             Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
             Assert.IsNull(deserializedResult.EntityTypeName);
-            Assert.IsFalse(dispatchResult.TryGetEntityType(out _));
+            Assert.IsFalse(deserializedResult.TryGetEntityType(out _));
             Assert.IsNull(deserializedResult.Id);
         }
 
@@ -142,7 +142,7 @@ namespace AI4E.DispatchResults
             Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
             Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
             Assert.IsNull(deserializedResult.EntityTypeName);
-            Assert.IsFalse(dispatchResult.TryGetEntityType(out _));
+            Assert.IsFalse(deserializedResult.TryGetEntityType(out _));
             Assert.IsNull(deserializedResult.Id);
         }
 
@@ -156,7 +156,7 @@ namespace AI4E.DispatchResults
             Assert.AreEqual($"An entity of type'{typeof(string)}' with the specified id cannot be not found.", deserializedResult.Message);
             Assert.AreEqual(0, deserializedResult.ResultData.Count);
             Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
-            Assert.IsTrue(dispatchResult.TryGetEntityType(out var entityTypeName));
+            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
             Assert.AreSame(typeof(string), entityTypeName);
             Assert.IsNull(deserializedResult.Id);
         }
@@ -171,7 +171,7 @@ namespace AI4E.DispatchResults
             Assert.AreEqual($"An entity of type'{typeof(string)}' with the specified id cannot be not found.", deserializedResult.Message);
             Assert.AreEqual(0, deserializedResult.ResultData.Count);
             Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
-            Assert.IsTrue(dispatchResult.TryGetEntityType(out var entityTypeName));
+            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
             Assert.AreSame(typeof(string), entityTypeName);
             Assert.IsNull(deserializedResult.Id);
         }
@@ -186,7 +186,7 @@ namespace AI4E.DispatchResults
             Assert.AreEqual($"An entity of type'{typeof(string)}' with the id 'abc' cannot be not found.", deserializedResult.Message);
             Assert.AreEqual(0, deserializedResult.ResultData.Count);
             Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
-            Assert.IsTrue(dispatchResult.TryGetEntityType(out var entityTypeName));
+            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
             Assert.AreSame(typeof(string), entityTypeName);
             Assert.AreEqual("abc", deserializedResult.Id);
         }
@@ -201,7 +201,7 @@ namespace AI4E.DispatchResults
             Assert.AreEqual($"An entity of type'{typeof(string)}' with the id 'abc' cannot be not found.", deserializedResult.Message);
             Assert.AreEqual(0, deserializedResult.ResultData.Count);
             Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
-            Assert.IsTrue(dispatchResult.TryGetEntityType(out var entityTypeName));
+            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
             Assert.AreSame(typeof(string), entityTypeName);
             Assert.AreEqual("abc", deserializedResult.Id);
         }

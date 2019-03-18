@@ -1,4 +1,25 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System.Collections.Generic;
+using AI4E.Utils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.DispatchResults
@@ -22,7 +43,7 @@ namespace AI4E.DispatchResults
             Assert.AreEqual(2, dispatchResult.ResultData.Count);
             Assert.AreEqual("def", dispatchResult.ResultData["abc"]);
             Assert.AreEqual(1234L, dispatchResult.ResultData["xyz"]);
-            Assert.IsNull(dispatchResult.EntityType);
+            Assert.IsNull(dispatchResult.EntityTypeName);
             Assert.IsNull(dispatchResult.Id);
         }
 
@@ -34,7 +55,7 @@ namespace AI4E.DispatchResults
             Assert.IsFalse(dispatchResult.IsSuccess);
             Assert.AreEqual("DispatchResultMessage", dispatchResult.Message);
             Assert.AreEqual(0, dispatchResult.ResultData.Count);
-            Assert.IsNull(dispatchResult.EntityType);
+            Assert.IsNull(dispatchResult.EntityTypeName);
             Assert.IsNull(dispatchResult.Id);
         }
 
@@ -46,7 +67,7 @@ namespace AI4E.DispatchResults
             Assert.IsFalse(dispatchResult.IsSuccess);
             Assert.AreEqual(EntityAlreadyPresentDispatchResult.DefaultMessage, dispatchResult.Message);
             Assert.AreEqual(0, dispatchResult.ResultData.Count);
-            Assert.IsNull(dispatchResult.EntityType);
+            Assert.IsNull(dispatchResult.EntityTypeName);
             Assert.IsNull(dispatchResult.Id);
         }
 
@@ -58,7 +79,9 @@ namespace AI4E.DispatchResults
             Assert.IsFalse(dispatchResult.IsSuccess);
             Assert.AreEqual($"An entity of type'{typeof(string)}' with the specified id is already present.", dispatchResult.Message);
             Assert.AreEqual(0, dispatchResult.ResultData.Count);
-            Assert.AreSame(typeof(string), dispatchResult.EntityType);
+            Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), dispatchResult.EntityTypeName);
+            Assert.IsTrue(dispatchResult.TryGetEntityType(out var entityTypeName));
+            Assert.AreSame(typeof(string), entityTypeName);
             Assert.IsNull(dispatchResult.Id);
         }
 
@@ -70,7 +93,9 @@ namespace AI4E.DispatchResults
             Assert.IsFalse(dispatchResult.IsSuccess);
             Assert.AreEqual($"An entity of type'{typeof(string)}' with the id 'abc' is already present.", dispatchResult.Message);
             Assert.AreEqual(0, dispatchResult.ResultData.Count);
-            Assert.AreSame(typeof(string), dispatchResult.EntityType);
+            Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), dispatchResult.EntityTypeName);
+            Assert.IsTrue(dispatchResult.TryGetEntityType(out var entityTypeName));
+            Assert.AreSame(typeof(string), entityTypeName);
             Assert.AreEqual("abc", dispatchResult.Id);
         }
 
@@ -91,7 +116,8 @@ namespace AI4E.DispatchResults
             Assert.AreEqual(2, deserializedResult.ResultData.Count);
             Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
             Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
-            Assert.IsNull(deserializedResult.EntityType);
+            Assert.IsNull(deserializedResult.EntityTypeName);
+            Assert.IsFalse(deserializedResult.TryGetEntityType(out _));
             Assert.IsNull(deserializedResult.Id);
         }
 
@@ -112,7 +138,8 @@ namespace AI4E.DispatchResults
             Assert.AreEqual(2, deserializedResult.ResultData.Count);
             Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
             Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
-            Assert.IsNull(deserializedResult.EntityType);
+            Assert.IsNull(deserializedResult.EntityTypeName);
+            Assert.IsFalse(deserializedResult.TryGetEntityType(out _));
             Assert.IsNull(deserializedResult.Id);
         }
 
@@ -125,7 +152,9 @@ namespace AI4E.DispatchResults
             Assert.IsFalse(deserializedResult.IsSuccess);
             Assert.AreEqual($"An entity of type'{typeof(string)}' with the specified id is already present.", deserializedResult.Message);
             Assert.AreEqual(0, deserializedResult.ResultData.Count);
-            Assert.AreSame(typeof(string), deserializedResult.EntityType);
+            Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
+            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
+            Assert.AreSame(typeof(string), entityTypeName);
             Assert.IsNull(deserializedResult.Id);
         }
 
@@ -138,7 +167,9 @@ namespace AI4E.DispatchResults
             Assert.IsFalse(deserializedResult.IsSuccess);
             Assert.AreEqual($"An entity of type'{typeof(string)}' with the specified id is already present.", deserializedResult.Message);
             Assert.AreEqual(0, deserializedResult.ResultData.Count);
-            Assert.AreSame(typeof(string), deserializedResult.EntityType);
+            Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
+            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
+            Assert.AreSame(typeof(string), entityTypeName);
             Assert.IsNull(deserializedResult.Id);
         }
 
@@ -151,7 +182,9 @@ namespace AI4E.DispatchResults
             Assert.IsFalse(deserializedResult.IsSuccess);
             Assert.AreEqual($"An entity of type'{typeof(string)}' with the id 'abc' is already present.", deserializedResult.Message);
             Assert.AreEqual(0, deserializedResult.ResultData.Count);
-            Assert.AreSame(typeof(string), deserializedResult.EntityType);
+            Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
+            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
+            Assert.AreSame(typeof(string), entityTypeName);
             Assert.AreEqual("abc", deserializedResult.Id);
         }
 
@@ -164,7 +197,9 @@ namespace AI4E.DispatchResults
             Assert.IsFalse(deserializedResult.IsSuccess);
             Assert.AreEqual($"An entity of type'{typeof(string)}' with the id 'abc' is already present.", deserializedResult.Message);
             Assert.AreEqual(0, deserializedResult.ResultData.Count);
-            Assert.AreSame(typeof(string), deserializedResult.EntityType);
+            Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
+            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
+            Assert.AreSame(typeof(string), entityTypeName);
             Assert.AreEqual("abc", deserializedResult.Id);
         }
     }

@@ -138,28 +138,29 @@ namespace AI4E
             return dispatchResult is EntityAlreadyPresentDispatchResult;
         }
 
-        public static bool IsEntityAlreadPresent(this IDispatchResult dispatchResult, out Type entityType, out string id)
-        {
-            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
-            {
-                dispatchResult = aggregateDispatchResult.Flatten()
-                                                        .DispatchResults
-                                                        .OfType<EntityAlreadyPresentDispatchResult>()
-                                                        .FirstOrDefault();
-            }
+        // TODO
+        //public static bool IsEntityAlreadPresent(this IDispatchResult dispatchResult, out Type entityType, out string id)
+        //{
+        //    if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+        //    {
+        //        dispatchResult = aggregateDispatchResult.Flatten()
+        //                                                .DispatchResults
+        //                                                .OfType<EntityAlreadyPresentDispatchResult>()
+        //                                                .FirstOrDefault();
+        //    }
 
-            if (dispatchResult is EntityAlreadyPresentDispatchResult entityAlreadyPresentDispatchResult)
-            {
-                entityType = entityAlreadyPresentDispatchResult.EntityType;
-                id = entityAlreadyPresentDispatchResult.Id;
-                return true;
-            }
+        //    if (dispatchResult is EntityAlreadyPresentDispatchResult entityAlreadyPresentDispatchResult)
+        //    {
+        //        entityType = entityAlreadyPresentDispatchResult.EntityType;
+        //        id = entityAlreadyPresentDispatchResult.Id;
+        //        return true;
+        //    }
 
-            entityType = default;
-            id = default;
+        //    entityType = default;
+        //    id = default;
 
-            return false;
-        }
+        //    return false;
+        //}
 
         public static bool IsTimeout(this IDispatchResult dispatchResult)
         {
