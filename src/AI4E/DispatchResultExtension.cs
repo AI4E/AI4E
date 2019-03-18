@@ -138,29 +138,32 @@ namespace AI4E
             return dispatchResult is EntityAlreadyPresentDispatchResult;
         }
 
-        // TODO
-        //public static bool IsEntityAlreadPresent(this IDispatchResult dispatchResult, out Type entityType, out string id)
-        //{
-        //    if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
-        //    {
-        //        dispatchResult = aggregateDispatchResult.Flatten()
-        //                                                .DispatchResults
-        //                                                .OfType<EntityAlreadyPresentDispatchResult>()
-        //                                                .FirstOrDefault();
-        //    }
+        public static bool IsEntityAlreadPresent(this IDispatchResult dispatchResult, out Type entityType, out string id)
+        {
+            if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
+            {
+                dispatchResult = aggregateDispatchResult.Flatten()
+                                                        .DispatchResults
+                                                        .OfType<EntityAlreadyPresentDispatchResult>()
+                                                        .FirstOrDefault();
+            }
 
-        //    if (dispatchResult is EntityAlreadyPresentDispatchResult entityAlreadyPresentDispatchResult)
-        //    {
-        //        entityType = entityAlreadyPresentDispatchResult.EntityType;
-        //        id = entityAlreadyPresentDispatchResult.Id;
-        //        return true;
-        //    }
+            if (dispatchResult is EntityAlreadyPresentDispatchResult entityAlreadyPresentDispatchResult)
+            {
+                if(!entityAlreadyPresentDispatchResult.TryGetEntityType(out entityType))
+                {
+                    entityType = null;
+                }
 
-        //    entityType = default;
-        //    id = default;
+                id = entityAlreadyPresentDispatchResult.Id;
+                return true;
+            }
 
-        //    return false;
-        //}
+            entityType = default;
+            id = default;
+
+            return false;
+        }
 
         public static bool IsTimeout(this IDispatchResult dispatchResult)
         {
@@ -172,7 +175,7 @@ namespace AI4E
             return dispatchResult is TimeoutDispatchResult;
         }
 
-        public static bool IsTimeout(this IDispatchResult dispatchResult, out DateTime dueTime)
+        public static bool IsTimeout(this IDispatchResult dispatchResult, out DateTime? dueTime)
         {
             if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {

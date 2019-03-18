@@ -25,7 +25,7 @@ using Newtonsoft.Json;
 namespace AI4E.DispatchResults
 {
     /// <summary>
-    /// Describes the result of a message dispatch operation that failed du to an error in the storage subsystem.
+    /// Describes the result of a message dispatch operation that failed due to an error in the storage subsystem.
     /// </summary>
     public class StorageIssueDispatchResult : FailureDispatchResult
     {

@@ -19,16 +19,68 @@
  */
 
 using System;
+using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace AI4E.DispatchResults
 {
+    /// <summary>
+    /// Describes the result of a message dispatch operation timeout.
+    /// </summary>
     public class TimeoutDispatchResult : FailureDispatchResult
     {
-        public TimeoutDispatchResult(DateTime dueTime) : base("The message was not handled in due time.")
+        internal const string DefaultMessage = "The message was not handled in due time";
+
+#pragma warning disable IDE0051
+
+        [JsonConstructor]
+        private TimeoutDispatchResult(
+            DateTime? dueTime,
+            string message,
+            IReadOnlyDictionary<string, object> resultData)
+            : base(message, resultData)
         {
             DueTime = dueTime;
         }
 
-        public DateTime DueTime { get; }
+#pragma warning restore IDE0051
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="TimeoutDispatchResult"/> type.
+        /// </summary>
+        public TimeoutDispatchResult() : base(DefaultMessage) { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="TimeoutDispatchResult"/> type.
+        /// </summary>
+        ///  <param name="message">A message describing the message dispatch result.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is <c>null</c>.</exception>
+        public TimeoutDispatchResult(string message) : base(message) { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="TimeoutDispatchResult"/> type.
+        /// </summary>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
+        /// </exception>
+        public TimeoutDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+            : base(message, resultData)
+        { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="TimeoutDispatchResult"/> type.
+        /// </summary>
+        /// <param name="dueTime">The due time that the message could not be handled in.</param>
+        public TimeoutDispatchResult(DateTime dueTime) : base(DefaultMessage)
+        {
+            DueTime = dueTime;
+        }
+
+        /// <summary>
+        /// Gets the due time that the message could not be handled in.
+        /// </summary>
+        public DateTime? DueTime { get; }
     }
 }
