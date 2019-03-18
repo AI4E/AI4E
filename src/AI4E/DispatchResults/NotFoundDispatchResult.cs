@@ -18,15 +18,42 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace AI4E.DispatchResults
 {
+    /// <summary>
+    /// Describes the result of a message dispatch operation that failed due to a missing resource.
+    /// </summary>
     public class NotFoundDispatchResult : FailureDispatchResult
     {
-        [JsonConstructor]
+        internal const string DefaultMessage = "Not found";
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="NotFoundDispatchResult"/> type.
+        /// </summary>
+        public NotFoundDispatchResult() : base(DefaultMessage) { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="NotFoundDispatchResult"/> type.
+        /// </summary>
+        ///  <param name="message">A message describing the message dispatch result.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is <c>null</c>.</exception>
         public NotFoundDispatchResult(string message) : base(message) { }
 
-        public NotFoundDispatchResult() : base("Not found") { }
+        /// <summary>
+        /// Creates a new instance of the <see cref="NotFoundDispatchResult"/> type.
+        /// </summary>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
+        /// </exception>
+        [JsonConstructor]
+        public NotFoundDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+            : base(message, resultData)
+        { }
     }
 }
