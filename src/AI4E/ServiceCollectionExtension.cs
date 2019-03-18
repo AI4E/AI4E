@@ -40,28 +40,12 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(services));
 
             // This must be registered as transient to allow retrieval of scoped services.
-            services.TryAddTransient(typeof(IProvider<>), typeof(Provider<>));
             services.TryAddSingleton(typeof(IContextualProvider<>), typeof(ContextualProvider<>));
             services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
 
             return services;
         }
 
-        private sealed class Provider<T> : IProvider<T>
-        {
-            private readonly IServiceProvider _serviceProvider;
-
-            public Provider(IServiceProvider serviceProvider)
-            {
-                Assert(serviceProvider != null);
-                _serviceProvider = serviceProvider;
-            }
-
-            public T ProvideInstance()
-            {
-                return _serviceProvider.GetRequiredService<T>();
-            }
-        }
 
         private sealed class ContextualProvider<T> : IContextualProvider<T>
         {

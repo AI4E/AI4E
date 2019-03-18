@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -23,6 +23,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E
 {
+    [Obsolete]
     public sealed class ContextualProvider<T> : IContextualProvider<T>
     {
         private readonly Func<IServiceProvider, T> _factory;
@@ -60,6 +61,7 @@ namespace AI4E
         }
     }
 
+    [Obsolete]
     public static class ContextualProvider
     {
         public static ContextualProvider<T> Create<T>()

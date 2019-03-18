@@ -1,14 +1,3 @@
-﻿/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IProvider.cs
- * Types:           (1) AI4E.IProvider'1
- *                  (2) AI4E.IContextualProvider'1
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   25.02.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -36,22 +25,10 @@ using System.Threading.Tasks;
 namespace AI4E
 {
     /// <summary>
-    /// Represents a provider for the specified type.
-    /// </summary>
-    /// <typeparam name="T">The type that the provider can deliver an instance of.</typeparam>
-    public interface IProvider<out T>
-    {
-        /// <summary>
-        /// Provides an instance of type <typeparamref name="T"/>.
-        /// </summary>
-        /// <returns>An object of type <typeparamref name="T"/>.</returns>
-        T ProvideInstance();
-    }
-
-    /// <summary>
     /// Represents an asynchronous provider for the specified type.
     /// </summary>
     /// <typeparam name="T">The type that the provider can deliver an instance of.</typeparam>
+    [Obsolete]
     public interface IAsyncProvider<T>
     {
         /// <summary>
@@ -70,6 +47,7 @@ namespace AI4E
     /// Represents a contextual provider for the specified type.
     /// </summary>
     /// <typeparam name="T">The type that the provider can deliver an instance of.</typeparam>
+    [Obsolete]
     public interface IContextualProvider<out T>
     {
         /// <summary>
