@@ -85,7 +85,7 @@ namespace AI4E.Storage.Domain
         {
             services.Configure<MessagingOptions>(options =>
             {
-                options.MessageProcessors.Add(ContextualProvider.Create<EntityMessageHandlerProcessor>());
+                options.MessageProcessors.Add(MessageProcessorRegistration.Create<EntityMessageHandlerProcessor>());
             });
         }
 

@@ -1,18 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        MessagingOptions.cs 
- * Types:           AI4E.MessagingOptions
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   26.08.2017 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -28,21 +18,21 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
-using AI4E.Validation;
+using System;
 
 namespace AI4E
 {
-    public class MessagingOptions
+    /// <summary>
+    /// Represents the registration of a message processor.
+    /// </summary>
+    public interface IMessageProcessorRegistration
     {
-        public MessagingOptions()
-        {
-            MessageProcessors = new List<IMessageProcessorRegistration>()
-            {
-                MessageProcessorRegistration.Create<ValidationCommandProcessor>()
-            };
-        }
-
-        public IList<IMessageProcessorRegistration> MessageProcessors { get; }
+        /// <summary>
+        /// Creates an instance of the registered message processor within the scope of the specified service provider.
+        /// </summary>
+        /// <param name="serviceProvider">The <see cref="IServiceProvider"/> that is used to obtain processor specific services.</param>
+        /// <returns>The created <see cref="IMessageProcessor"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
+        IMessageProcessor CreateMessageProcessor(IServiceProvider serviceProvider);
     }
 }

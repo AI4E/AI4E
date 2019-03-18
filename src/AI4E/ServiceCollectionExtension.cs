@@ -213,7 +213,7 @@ namespace AI4E
         private static void RegisterMessageHandlerTypes(
             IEnumerable<Type> types,
             IMessageHandlerRegistry messageHandlerRegistry,
-            ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+            ImmutableArray<IMessageProcessorRegistration> processors,
             ILogger logger)
         {
             foreach (var type in types)
@@ -225,7 +225,7 @@ namespace AI4E
         private static void RegisterMessageHandlerType(
             Type handlerType,
             IMessageHandlerRegistry messageHandlerRegistry,
-            ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+            ImmutableArray<IMessageProcessorRegistration> processors,
             ILogger logger)
         {
             var inspector = new MessageHandlerInspector(handlerType);
@@ -242,7 +242,7 @@ namespace AI4E
 
         private static IMessageHandlerRegistration CreateMessageHandlerRegistration(
             MessageHandlerActionDescriptor memberDescriptor,
-            ImmutableArray<IContextualProvider<IMessageProcessor>> processors)
+            ImmutableArray<IMessageProcessorRegistration> processors)
         {
             var configuration = memberDescriptor.BuildConfiguration();
 

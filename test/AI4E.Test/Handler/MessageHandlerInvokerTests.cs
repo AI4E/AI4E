@@ -41,7 +41,7 @@ namespace AI4E.Handler
             serviceCollection.AddSingleton<IService, Service>();
             serviceCollection.AddSingleton<IMessageDispatcher, MessageDispatcherMock>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
-            var processors = ImmutableArray<IContextualProvider<IMessageProcessor>>.Empty;
+            var processors = ImmutableArray<IMessageProcessorRegistration>.Empty;
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
@@ -59,7 +59,7 @@ namespace AI4E.Handler
             serviceCollection.AddSingleton<IService, Service>();
             serviceCollection.AddSingleton<IMessageDispatcher, MessageDispatcherMock>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
-            var processors = ImmutableArray<IContextualProvider<IMessageProcessor>>.Empty;
+            var processors = ImmutableArray<IMessageProcessorRegistration>.Empty;
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
@@ -93,7 +93,7 @@ namespace AI4E.Handler
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddSingleton<IMessageDispatcher, MessageDispatcherMock>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
-            var processors = ImmutableArray<IContextualProvider<IMessageProcessor>>.Empty;
+            var processors = ImmutableArray<IMessageProcessorRegistration>.Empty;
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
@@ -114,7 +114,7 @@ namespace AI4E.Handler
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddSingleton<IMessageDispatcher, MessageDispatcherMock>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
-            var processors = ImmutableArray<IContextualProvider<IMessageProcessor>>.Empty;
+            var processors = ImmutableArray<IMessageProcessorRegistration>.Empty;
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
@@ -135,7 +135,7 @@ namespace AI4E.Handler
             serviceCollection.AddSingleton<IService, Service>();
             serviceCollection.AddSingleton<IMessageDispatcher, MessageDispatcherMock>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
-            var processors = ImmutableArray<IContextualProvider<IMessageProcessor>>.Empty;
+            var processors = ImmutableArray<IMessageProcessorRegistration>.Empty;
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
@@ -156,7 +156,7 @@ namespace AI4E.Handler
             serviceCollection.AddSingleton<IService, Service>();
             serviceCollection.AddSingleton<IMessageDispatcher, MessageDispatcherMock>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
-            var processors = ImmutableArray<IContextualProvider<IMessageProcessor>>.Empty;
+            var processors = ImmutableArray<IMessageProcessorRegistration>.Empty;
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
@@ -177,7 +177,7 @@ namespace AI4E.Handler
             serviceCollection.AddSingleton<IService, Service>();
             serviceCollection.AddSingleton<IMessageDispatcher, MessageDispatcherMock>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
-            var processors = ImmutableArray<IContextualProvider<IMessageProcessor>>.Empty;
+            var processors = ImmutableArray<IMessageProcessorRegistration>.Empty;
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
@@ -199,7 +199,7 @@ namespace AI4E.Handler
             serviceCollection.AddSingleton<IService, Service>();
             serviceCollection.AddSingleton<IMessageDispatcher, MessageDispatcherMock>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
-            var processors = ImmutableArray<IContextualProvider<IMessageProcessor>>.Empty;
+            var processors = ImmutableArray<IMessageProcessorRegistration>.Empty;
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
@@ -220,7 +220,7 @@ namespace AI4E.Handler
             serviceCollection.AddSingleton<IService, Service>();
             serviceCollection.AddSingleton<IMessageDispatcher, MessageDispatcherMock>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
-            var processors = ImmutableArray<IContextualProvider<IMessageProcessor>>.Empty;
+            var processors = ImmutableArray<IMessageProcessorRegistration>.Empty;
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
@@ -242,7 +242,7 @@ namespace AI4E.Handler
             serviceCollection.AddSingleton<IService, Service>();
             serviceCollection.AddSingleton<IMessageDispatcher, MessageDispatcherMock>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
-            var processors = ImmutableArray<IContextualProvider<IMessageProcessor>>.Empty;
+            var processors = ImmutableArray<IMessageProcessorRegistration>.Empty;
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
@@ -269,8 +269,8 @@ namespace AI4E.Handler
             var processor = new TestMessageProcessor(dispatchDataReplacement, dispatchResultReplacement);
             var processors = new[]
             {
-                (IContextualProvider<IMessageProcessor>)ContextualProvider.Create<IMessageProcessor>(processor)
-            }.ToImmutableArray();
+                new MessageProcessorRegistration(processor)
+            }.ToImmutableArray<IMessageProcessorRegistration>();
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
@@ -310,9 +310,9 @@ namespace AI4E.Handler
             var processor2 = new OrderTestMessageProcessor(resultList, 2);
             var processors = new[]
             {
-                (IContextualProvider<IMessageProcessor>)ContextualProvider.Create<IMessageProcessor>(processor1),
-                (IContextualProvider<IMessageProcessor>)ContextualProvider.Create<IMessageProcessor>(processor2)
-            }.ToImmutableArray();
+                new MessageProcessorRegistration(processor1),
+                new MessageProcessorRegistration(processor2)
+            }.ToImmutableArray<IMessageProcessorRegistration>();
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
@@ -334,7 +334,7 @@ namespace AI4E.Handler
             serviceCollection.AddSingleton<IService, Service>();
             serviceCollection.AddSingleton<IMessageDispatcher, MessageDispatcherMock>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
-            var processors = ImmutableArray<IContextualProvider<IMessageProcessor>>.Empty;
+            var processors = ImmutableArray<IMessageProcessorRegistration>.Empty;
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
@@ -356,7 +356,7 @@ namespace AI4E.Handler
             serviceCollection.AddSingleton<IService, Service>();
             serviceCollection.AddSingleton<IMessageDispatcher, MessageDispatcherMock>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
-            var processors = ImmutableArray<IContextualProvider<IMessageProcessor>>.Empty;
+            var processors = ImmutableArray<IMessageProcessorRegistration>.Empty;
             var memberDescriptor = new MessageHandlerActionDescriptor(
                 typeof(string),
                 typeof(TestMessageHandler),
