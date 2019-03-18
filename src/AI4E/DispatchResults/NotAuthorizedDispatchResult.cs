@@ -20,12 +20,40 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
+using Newtonsoft.Json;
 
 namespace AI4E.DispatchResults
 {
+    /// <summary>
+    /// Describes the result of a message dispatch operation that failed due to missing authorization.
+    /// </summary>
     public class NotAuthorizedDispatchResult : FailureDispatchResult
     {
-        public NotAuthorizedDispatchResult() : base("Action forbidden") { }
+        internal const string DefaultMessage = "Action forbidden";
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="NotAuthorizedDispatchResult"/> type.
+        /// </summary>
+        public NotAuthorizedDispatchResult() : base(DefaultMessage) { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="NotAuthorizedDispatchResult"/> type.
+        /// </summary>
+        ///  <param name="message">A message describing the message dispatch result.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is <c>null</c>.</exception>
+        public NotAuthorizedDispatchResult(string message) : base(message) { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="NotAuthorizedDispatchResult"/> type.
+        /// </summary>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
+        /// </exception>
+        [JsonConstructor]
+        public NotAuthorizedDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+            : base(message, resultData)
+        { }
     }
 }
