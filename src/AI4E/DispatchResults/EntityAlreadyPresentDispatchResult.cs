@@ -25,7 +25,7 @@ using Newtonsoft.Json;
 namespace AI4E.DispatchResults
 {
     /// <summary>
-    /// Describes the result of a message dispatch operation that failed du to an id conflict.
+    /// Describes the result of a message dispatch operation that failed due to an id conflict.
     /// </summary>
     public class EntityAlreadyPresentDispatchResult : FailureDispatchResult
     {
