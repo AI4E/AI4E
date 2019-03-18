@@ -18,16 +18,42 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+using System.Collections.Generic;
+using Newtonsoft.Json;
+
 namespace AI4E.DispatchResults
 {
+    /// <summary>
+    /// Describes the result of a canceled message dispatch operation.
+    /// </summary>
     public sealed class CanceledDispatchResult : FailureDispatchResult
     {
-        public CanceledDispatchResult() : base("Canceled")
-        {
-        }
+        internal const string DefaultMessage = "Canceled";
 
-        public CanceledDispatchResult(string message) : base(message)
-        {
-        }
+        /// <summary>
+        /// Creates a new instance of the <see cref="CanceledDispatchResult"/> type.
+        /// </summary>
+        public CanceledDispatchResult() : base(DefaultMessage) { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="CanceledDispatchResult"/> type.
+        /// </summary>
+        ///  <param name="message">A message describing the message dispatch result.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is <c>null</c>.</exception>
+        public CanceledDispatchResult(string message) : base(message) { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="CanceledDispatchResult"/> type.
+        /// </summary>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
+        /// </exception>
+        [JsonConstructor]
+        public CanceledDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+            : base(message, resultData)
+        { }
     }
 }
