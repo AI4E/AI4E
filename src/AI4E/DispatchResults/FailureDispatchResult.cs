@@ -31,7 +31,7 @@ namespace AI4E.DispatchResults
     {
 #pragma warning disable IDE0051
         [JsonConstructor]
-        private FailureDispatchResult(string message, Exception exception, IReadOnlyDictionary<string, object> resultData)
+        private protected FailureDispatchResult(string message, Exception exception, IReadOnlyDictionary<string, object> resultData)
                     : base(false, exception != null ? FormatMessage(exception) : message, resultData)
         {
             Exception = exception;
