@@ -35,8 +35,7 @@ namespace AI4E
         /// <param name="configurationBuilder">The configuration builder.</param>
         protected abstract void ConfigureMessageHandler(MessageHandlerActionDescriptor memberDescriptor, IMessageHandlerConfigurationBuilder configurationBuilder);
 
-        // TODO: This should be internal.
-        public void ExecuteConfigureMessageHandler(MessageHandlerActionDescriptor memberDescriptor, IMessageHandlerConfigurationBuilder configurationBuilder)
+        internal void ExecuteConfigureMessageHandler(MessageHandlerActionDescriptor memberDescriptor, IMessageHandlerConfigurationBuilder configurationBuilder)
         {
             if (configurationBuilder == null)
                 throw new ArgumentNullException(nameof(configurationBuilder));
