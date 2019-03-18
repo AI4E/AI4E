@@ -30,11 +30,24 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.DispatchResults
 {
+    /// <summary>
+    /// Aggregates multiple message dispatch results to a single result.
+    /// </summary>
     public sealed class AggregateDispatchResult : DispatchResult, IAggregateDispatchResult
     {
         [JsonProperty("ResultData")]
+#pragma warning disable IDE0052 // This is needed for serialization
         private readonly ImmutableDictionary<string, object> _resultData;
+#pragma warning restore IDE0052 
 
+        /// <summary>
+        /// Creates a new instance of type <see cref="AggregateDispatchResult"/>.
+        /// </summary>
+        /// <param name="dispatchResults">The collection of dispatch results.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="dispatchResults"/> or <paramref name="resultData"/> is null.
+        /// </exception>
         [JsonConstructor]
         public AggregateDispatchResult(IEnumerable<IDispatchResult> dispatchResults, IReadOnlyDictionary<string, object> resultData)
         {
@@ -44,12 +57,19 @@ namespace AI4E.DispatchResults
             if (resultData == null)
                 throw new ArgumentNullException(nameof(resultData));
 
-            if (!(dispatchResults is ImmutableArray<IDispatchResult> immutableResults))
+            if (dispatchResults.Any(p => p is null))
             {
-                immutableResults = dispatchResults.ToImmutableArray();
+                DispatchResults = dispatchResults.Where(p => !(p is null)).ToImmutableList();
             }
+            else
+            {
+                if (!(dispatchResults is ImmutableList<IDispatchResult> immutableResults))
+                {
+                    immutableResults = dispatchResults.ToImmutableList();
+                }
 
-            DispatchResults = immutableResults;
+                DispatchResults = immutableResults;
+            }
 
             if (!(resultData is ImmutableDictionary<string, object> immutableData))
             {
@@ -59,22 +79,38 @@ namespace AI4E.DispatchResults
             Assert(immutableData != null);
             _resultData = immutableData;
 
-            ResultData = new AggregateDispatchResultDataDictionary(immutableResults, immutableData);
+            ResultData = new AggregateDispatchResultDataDictionary((ImmutableList<IDispatchResult>)DispatchResults, immutableData);
         }
 
+        /// <summary>
+        /// Creates a new instance of type <see cref="AggregateDispatchResult"/>.
+        /// </summary>
+        /// <param name="dispatchResults">The collection of dispatch results.</param>
+        /// <exception cref="ArgumentNullException"> Thrown if <paramref name="dispatchResults"/> is null. </exception>
         public AggregateDispatchResult(IEnumerable<IDispatchResult> dispatchResults)
             : this(dispatchResults, ImmutableDictionary<string, object>.Empty)
         { }
 
+        /// <summary>
+        /// Creates a new instance of type <see cref="AggregateDispatchResult"/>.
+        /// </summary>
+        /// <param name="dispatchResult">The dispatch result that shall be added new result data.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="dispatchResult"/> or <paramref name="resultData"/> is null.
+        /// </exception>
         public AggregateDispatchResult(IDispatchResult dispatchResult, IReadOnlyDictionary<string, object> resultData)
             : this((dispatchResult ?? throw new ArgumentNullException(nameof(dispatchResult))).Yield(), resultData)
         { }
 
+        /// <inheritdoc />
         public IEnumerable<IDispatchResult> DispatchResults { get; }
 
+        /// <inheritdoc />
         [JsonIgnore]
         public override bool IsSuccess => DispatchResults.Count() == 0 || DispatchResults.All(p => p.IsSuccess);
 
+        /// <inheritdoc />
         [JsonIgnore]
         public override string Message
         {
@@ -82,12 +118,12 @@ namespace AI4E.DispatchResults
             {
                 var count = DispatchResults.Count();
 
-                if(count == 0)
+                if (count == 0)
                 {
                     return "{ No results }";
                 }
 
-                if(count == 1)
+                if (count == 1)
                 {
                     return DispatchResults.First().Message;
                 }
@@ -96,19 +132,20 @@ namespace AI4E.DispatchResults
             }
         }
 
+        /// <inheritdoc />
         [JsonIgnore]
         public override IReadOnlyDictionary<string, object> ResultData { get; }
 
         private sealed class AggregateDispatchResultDataDictionary : IReadOnlyDictionary<string, object>
         {
-            private readonly ImmutableArray<IDispatchResult> _dispatchResults;
+            private readonly ImmutableList<IDispatchResult> _dispatchResults;
             private readonly ImmutableDictionary<string, object> _resultData;
 
             // This is generated only when needed.
             private readonly Lazy<ImmutableDictionary<string, object>> _combinedResultData;
 
             public AggregateDispatchResultDataDictionary(
-                ImmutableArray<IDispatchResult> dispatchResults,
+                ImmutableList<IDispatchResult> dispatchResults,
                 ImmutableDictionary<string, object> resultData)
             {
                 _dispatchResults = dispatchResults;
@@ -133,9 +170,9 @@ namespace AI4E.DispatchResults
                     return _combinedResultData.Value.TryGetValue(key, out value);
                 }
 
-                if (_resultData != null && _resultData.TryGetValue(key, out value) && value != null)
+                if (_resultData != null && _resultData.TryGetValue(key, out value))
                 {
-                    return true;
+                    return value != null;
                 }
 
                 foreach (var dispatchResult in _dispatchResults)
