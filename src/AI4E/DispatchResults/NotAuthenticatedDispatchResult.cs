@@ -18,10 +18,42 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+using System.Collections.Generic;
+using Newtonsoft.Json;
+
 namespace AI4E.DispatchResults
 {
+    /// <summary>
+    /// Describes the result of a message dispatch operation that failed due to missing authentication.
+    /// </summary>
     public class NotAuthenticatedDispatchResult : FailureDispatchResult
     {
-        public NotAuthenticatedDispatchResult() : base("Authentication required") { }
+        internal const string DefaultMessage = "Authentication required";
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="NotAuthenticatedDispatchResult"/> type.
+        /// </summary>
+        public NotAuthenticatedDispatchResult() : base(DefaultMessage) { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="NotAuthenticatedDispatchResult"/> type.
+        /// </summary>
+        ///  <param name="message">A message describing the message dispatch result.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is <c>null</c>.</exception>
+        public NotAuthenticatedDispatchResult(string message) : base(message) { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="NotAuthenticatedDispatchResult"/> type.
+        /// </summary>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
+        /// </exception>
+        [JsonConstructor]
+        public NotAuthenticatedDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+            : base(message, resultData)
+        { }
     }
 }
