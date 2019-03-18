@@ -23,12 +23,12 @@ using System.Collections.Generic;
 namespace AI4E
 {
     /// <summary>
-    /// Represents the result of a message dispatch process.
+    /// Describes the result of a message dispatch operation.
     /// </summary>
     public interface IDispatchResult
     {
         /// <summary>
-        /// Gets a boolean value indicating whether the dispatch and execution was successful.
+        /// Gets a boolean value indicating whether the message dispatch operation was successful.
         /// </summary>
         bool IsSuccess { get; }
 
@@ -37,6 +37,9 @@ namespace AI4E
         /// </summary>
         string Message { get; }
 
+        /// <summary>
+        /// Gets a collection of key value pairs that represent additional result data.
+        /// </summary>
         IReadOnlyDictionary<string, object> ResultData { get; }
     }
 

@@ -29,6 +29,9 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.DispatchResults
 {
+    /// <summary>
+    /// Describes the result of a message dispatch operation.
+    /// </summary>
     public class DispatchResult : IDispatchResult
     {
         [JsonProperty("ResultData")]
@@ -36,6 +39,15 @@ namespace AI4E.DispatchResults
 
         private protected DispatchResult() { }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="DispatchResult"/> type.
+        /// </summary>
+        /// <param name="isSuccess">A boolean value indicating whether the dispatch operation was successful.</param>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
+        /// </exception>
         [JsonConstructor]
         public DispatchResult(bool isSuccess, string message, IReadOnlyDictionary<string, object> resultData)
         {
@@ -60,13 +72,17 @@ namespace AI4E.DispatchResults
             ResultData = new DispatchResultDictionary(immutableData);
         }
 
+        /// <inheritdoc />
         public virtual bool IsSuccess { get; }
 
+        /// <inheritdoc />
         public virtual string Message { get; }
 
+        /// <inheritdoc />
         [JsonIgnore]
         public virtual IReadOnlyDictionary<string, object> ResultData { get; }
 
+        /// <inheritdoc />
         public sealed override string ToString()
         {
             var stringBuilder = new StringBuilder();
@@ -74,6 +90,10 @@ namespace AI4E.DispatchResults
             return stringBuilder.ToString();
         }
 
+        /// <summary>
+        /// When overriden in a derived class, formats the dispatch result into the specified string builder.
+        /// </summary>
+        /// <param name="stringBuilder">A <see cref="StringBuilder"/> that contains the formatted dispatch result.</param>
         protected virtual void FormatString(StringBuilder stringBuilder)
         {
             stringBuilder.Append("Success: ");
