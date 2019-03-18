@@ -30,8 +30,27 @@ namespace AI4E
     /// </summary>
     public static class MessageDispatcherExtension
     {
-        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, IEnumerable<KeyValuePair<string, object>> data, CancellationToken cancellation = default)
-             where TMessage : class
+        /// <summary>
+        /// Asynchronously dispatches a message of the specified message type.
+        /// </summary>
+        /// <param name="messageDispatcher">The message dispatcher.</param>
+        /// <param name="message">The message to dispatch.</param>
+        /// <param name="data">A collection of key value pairs that contain additional dispatch data.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <typeparam name="TMessage">The type of message tp dispatch.</typeparam>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// The tasks result contains an <see cref="IDispatchResult"/> indicating message handling state.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="messageDispatcher"/>, <paramref name="message"/> or <paramref name="data"/> is <c>null</c>.
+        /// </exception>
+        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(
+            this IMessageDispatcher messageDispatcher,
+            TMessage message,
+            IEnumerable<KeyValuePair<string, object>> data,
+            CancellationToken cancellation = default)
+            where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -45,8 +64,25 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message, data), publish: false, cancellation);
         }
 
-        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, CancellationToken cancellation = default)
-             where TMessage : class
+        /// <summary>
+        /// Asynchronously dispatches a message of the specified message type.
+        /// </summary>
+        /// <param name="messageDispatcher">The message dispatcher.</param>
+        /// <param name="message">The message to dispatch.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <typeparam name="TMessage">The type of message tp dispatch.</typeparam>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// The tasks result contains an <see cref="IDispatchResult"/> indicating message handling state.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="messageDispatcher"/> or <paramref name="message"/> is <c>null</c>.
+        /// </exception>
+        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(
+            this IMessageDispatcher messageDispatcher,
+            TMessage message,
+            CancellationToken cancellation = default)
+            where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -57,8 +93,21 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message), publish: false, cancellation);
         }
 
-        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, CancellationToken cancellation = default)
-             where TMessage : class, new()
+        /// <summary>
+        /// Asynchronously dispatches a message of the specified message type.
+        /// </summary>
+        /// <param name="messageDispatcher">The message dispatcher.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <typeparam name="TMessage">The type of message tp dispatch.</typeparam>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// The tasks result contains an <see cref="IDispatchResult"/> indicating message handling state.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="messageDispatcher"/> is <c>null</c>.</exception>
+        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(
+            this IMessageDispatcher messageDispatcher,
+            CancellationToken cancellation = default)
+            where TMessage : class, new()
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -66,8 +115,29 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(new TMessage()), publish: false, cancellation);
         }
 
-        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, IEnumerable<KeyValuePair<string, object>> data, bool publish, CancellationToken cancellation = default)
-             where TMessage : class
+        /// <summary>
+        /// Asynchronously dispatches a message of the specified message type.
+        /// </summary>
+        /// <param name="messageDispatcher">The message dispatcher.</param>
+        /// <param name="message">The message to dispatch.</param>
+        /// <param name="data">A collection of key value pairs that contain additional dispatch data.</param>
+        /// <param name="publish">A boolean value specifying whether the message shall be published to all handlers.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <typeparam name="TMessage">The type of message tp dispatch.</typeparam>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// The tasks result contains an <see cref="IDispatchResult"/> indicating message handling state.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="messageDispatcher"/>, <paramref name="message"/> or <paramref name="data"/> is <c>null</c>.
+        /// </exception>
+        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(
+            this IMessageDispatcher messageDispatcher,
+            TMessage message,
+            IEnumerable<KeyValuePair<string, object>> data,
+            bool publish,
+            CancellationToken cancellation = default)
+            where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -81,8 +151,27 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message, data), publish, cancellation);
         }
 
-        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, TMessage message, bool publish, CancellationToken cancellation = default)
-             where TMessage : class
+        /// <summary>
+        /// Asynchronously dispatches a message of the specified message type.
+        /// </summary>
+        /// <param name="messageDispatcher">The message dispatcher.</param>
+        /// <param name="message">The message to dispatch.</param>
+        /// <param name="publish">A boolean value specifying whether the message shall be published to all handlers.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <typeparam name="TMessage">The type of message tp dispatch.</typeparam>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// The tasks result contains an <see cref="IDispatchResult"/> indicating message handling state.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="messageDispatcher"/> or <paramref name="message"/> is <c>null</c>.
+        /// </exception>
+        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(
+            this IMessageDispatcher messageDispatcher,
+            TMessage message,
+            bool publish,
+            CancellationToken cancellation = default)
+            where TMessage : class
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
@@ -93,8 +182,23 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(new DispatchDataDictionary<TMessage>(message), publish, cancellation);
         }
 
-        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(this IMessageDispatcher messageDispatcher, bool publish, CancellationToken cancellation = default)
-             where TMessage : class, new()
+        /// <summary>
+        /// Asynchronously dispatches a message of the specified message type.
+        /// </summary>
+        /// <param name="messageDispatcher">The message dispatcher.</param>
+        /// <param name="publish">A boolean value specifying whether the message shall be published to all handlers.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <typeparam name="TMessage">The type of message tp dispatch.</typeparam>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// The tasks result contains an <see cref="IDispatchResult"/> indicating message handling state.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="messageDispatcher"/> is <c>null</c>.</exception>
+        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(
+            this IMessageDispatcher messageDispatcher,
+            bool publish,
+            CancellationToken cancellation = default)
+            where TMessage : class, new()
         {
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));

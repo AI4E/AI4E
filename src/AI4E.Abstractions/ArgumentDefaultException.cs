@@ -28,18 +28,41 @@ namespace AI4E
     /// </summary>
     public class ArgumentDefaultException : ArgumentException
     {
-        private const string _defaultMessage = "A non-default value must be specified.";
+        private const string DefaultMessage = "A non-default value must be specified.";
 
-        public ArgumentDefaultException() : base(_defaultMessage) { }
+        /// <summary>
+        /// Creates a new instance of type <see cref="ArgumentDefaultException"/>.
+        /// </summary>
+        public ArgumentDefaultException() : base(DefaultMessage) { }
 
-        public ArgumentDefaultException(string paramName) : base(_defaultMessage, paramName) { }
+        /// <summary>
+        /// Creates a new instance of type <see cref="ArgumentDefaultException"/>.
+        /// </summary>
+        /// <param name="paramName">The name of the parameter that caused the exception.</param>
+        public ArgumentDefaultException(string paramName) : base(DefaultMessage, paramName) { }
 
+        /// <summary>
+        /// Creates a new instance of type <see cref="ArgumentDefaultException"/>.
+        /// </summary>
+        /// <param name="message">The error message that explains the reason for this exception.</param>
+        /// <param name="innerException">
+        /// The exception that is the cause of the current exception,
+        /// or <c>null</c> if no inner exception is specified.
+        /// </param>
         public ArgumentDefaultException(string message, Exception innerException) : base(message, innerException) { }
 
+        /// <summary>
+        /// Creates a new instance of type <see cref="ArgumentDefaultException"/>.
+        /// </summary>
+        /// <param name="message">The error message that explains the reason for this exception.</param>
+        /// <param name="paramName">The name of the parameter that caused the exception.</param>
         public ArgumentDefaultException(string message, string paramName) : base(message, paramName) { }
 
-        public ArgumentDefaultException(string message, string paramName, Exception innerException) : base(message, paramName, innerException) { }
-
+        /// <summary>
+        /// Creates a new instance of type <see cref="ArgumentDefaultException"/> with serialized data.
+        /// </summary>
+        /// <param name="info">The object that holds the serialized object data.</param>
+        /// <param name="context">n object that describes the source or destination of the serialized data.</param>
         protected ArgumentDefaultException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
 }

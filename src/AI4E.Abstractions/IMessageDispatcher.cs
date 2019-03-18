@@ -32,7 +32,7 @@ namespace AI4E
         /// <summary>
         /// Asynchronously dispatches a message of the specified message type.
         /// </summary>
-        /// <param name="dispatchData">The dispatchd data dictionary that contains the message and supporting values.</param>
+        /// <param name="dispatchData">The dispatch data dictionary that contains the message and supporting values.</param>
         /// <param name="publish">A boolean value specifying whether the message shall be published to all handlers.</param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>

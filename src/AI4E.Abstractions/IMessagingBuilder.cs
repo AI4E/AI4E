@@ -35,8 +35,14 @@ namespace AI4E
         public IServiceCollection Services { get; }
     }
 
+    /// <summary>
+    /// Represents a message system builder.
+    /// </summary>
     public interface IMessagingBuilder
     {
+        /// <summary>
+        /// Gets the service collection the message system builder uses.
+        /// </summary>
         IServiceCollection Services { get; }
     }
 }

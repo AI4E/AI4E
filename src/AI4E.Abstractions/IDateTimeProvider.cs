@@ -22,8 +22,15 @@ using System;
 
 namespace AI4E
 {
+    /// <summary>
+    /// An injectable provider that can be used to obtain the current time.
+    /// </summary>
     public interface IDateTimeProvider
     {
+        /// <summary>
+        /// Gets the current UTC time.
+        /// </summary>
+        /// <returns>The current UTC time.</returns>
         DateTime GetCurrentTime();
     }
 }

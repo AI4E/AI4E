@@ -22,18 +22,36 @@ using System;
 
 namespace AI4E
 {
+    /// <summary>
+    /// A base type for event notifications.
+    /// </summary>
+    /// <typeparam name="TId">The type of id the resource uses that caused the event.</typeparam>
     public abstract class Event<TId>
     {
+        /// <summary>
+        /// Creates an instance of the <see cref="Event"/> type.
+        /// </summary>
+        /// <param name="id">The id of the resource that caused the event.</param>
         public Event(TId id)
         {
             Id = id;
         }
 
+        /// <summary>
+        /// Gets the id of the resource that caused the event.
+        /// </summary>
         public TId Id { get; }
     }
 
+    /// <summary>
+    /// A base type for event notifications.
+    /// </summary>
     public abstract class Event : Event<Guid>
     {
+        /// <summary>
+        /// Creates an instance of the <see cref="Event"/> type.
+        /// </summary>
+        /// <param name="id">The id of the resource that caused the event.</param>
         public Event(Guid id) : base(id) { }
     }
 }

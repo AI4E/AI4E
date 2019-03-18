@@ -23,17 +23,45 @@ using System.Runtime.Serialization;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Thrown if an argument is null or a string that is empty or consists of whitespace only.
+    /// </summary>
     [Serializable]
     public class ArgumentNullOrWhiteSpaceException : ArgumentException
     {
+        /// <summary>
+        /// Creates a new instance of type <see cref="ArgumentNullOrWhiteSpaceException"/>.
+        /// </summary>
         public ArgumentNullOrWhiteSpaceException() : base("The argument must neither be null nor an empty string or a string that consists of whitespace only.") { }
 
+        /// <summary>
+        /// Creates a new instance of type <see cref="ArgumentNullOrWhiteSpaceException"/>.
+        /// </summary>
+        /// <param name="paramName">The name of the parameter that caused the exception.</param>
         public ArgumentNullOrWhiteSpaceException(string paramName) : base("The argument must neither be null nor an empty string or a string that consists of whitespace only.", paramName) { }
 
+        /// <summary>
+        /// Creates a new instance of type <see cref="ArgumentNullOrWhiteSpaceException"/>.
+        /// </summary>
+        /// <param name="message">The error message that explains the reason for this exception.</param>
+        /// <param name="innerException">
+        /// The exception that is the cause of the current exception,
+        /// or <c>null</c> if no inner exception is specified.
+        /// </param>
         public ArgumentNullOrWhiteSpaceException(string message, Exception innerException) : base(message, "The argument must neither be null nor an empty string or a string that consists of whitespace only.", innerException) { }
 
+        /// <summary>
+        /// Creates a new instance of type <see cref="ArgumentNullOrWhiteSpaceException"/>.
+        /// </summary>
+        /// <param name="message">The error message that explains the reason for this exception.</param>
+        /// <param name="paramName">The name of the parameter that caused the exception.</param>
         public ArgumentNullOrWhiteSpaceException(string paramName, string message) : base(message, paramName) { }
 
+        /// <summary>
+        /// Creates a new instance of type <see cref="ArgumentNullOrWhiteSpaceException"/> with serialized data.
+        /// </summary>
+        /// <param name="info">The object that holds the serialized object data.</param>
+        /// <param name="context">n object that describes the source or destination of the serialized data.</param>
         protected ArgumentNullOrWhiteSpaceException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
 }
