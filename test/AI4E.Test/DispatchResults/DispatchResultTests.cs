@@ -48,9 +48,7 @@ namespace AI4E.DispatchResults
         [TestMethod]
         public void ToStringTest()
         {
-            var resultData = new Dictionary<string, object> { };
-
-            var dispatchResult = new DispatchResult(false, "DispatchResultMessage", resultData);
+            var dispatchResult = new DispatchResult(false, "DispatchResultMessage");
             var desiredString = "Success: false - DispatchResultMessage";
 
             Assert.AreEqual(desiredString, dispatchResult.ToString());
@@ -59,9 +57,7 @@ namespace AI4E.DispatchResults
         [TestMethod]
         public void ToStringEmptyMessageTest()
         {
-            var resultData = new Dictionary<string, object> { };
-
-            var dispatchResult = new DispatchResult(false, "   ", resultData);
+            var dispatchResult = new DispatchResult(false, "   ");
             var desiredString = "Success: false";
 
             Assert.AreEqual(desiredString, dispatchResult.ToString());

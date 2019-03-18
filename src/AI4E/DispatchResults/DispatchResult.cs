@@ -35,7 +35,9 @@ namespace AI4E.DispatchResults
     public class DispatchResult : IDispatchResult
     {
         [JsonProperty("ResultData")]
+#pragma warning disable IDE0052 // This is needed to support serialization.
         private readonly ImmutableDictionary<string, object> _resultData;
+#pragma warning restore IDE0052 
 
         private protected DispatchResult() { }
 
@@ -71,6 +73,16 @@ namespace AI4E.DispatchResults
 
             ResultData = new DispatchResultDictionary(immutableData);
         }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="DispatchResult"/> type.
+        /// </summary>
+        /// <param name="isSuccess">A boolean value indicating whether the dispatch operation was successful.</param>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <exception cref="ArgumentNullException"> Thrown if <paramref name="message"/> is <c>null</c>. </exception>
+        public DispatchResult(bool isSuccess, string message)
+            : this(isSuccess, message, ImmutableDictionary<string, object>.Empty)
+        { }
 
         /// <inheritdoc />
         public virtual bool IsSuccess { get; }
