@@ -25,25 +25,6 @@ using System.Threading.Tasks;
 namespace AI4E
 {
     /// <summary>
-    /// Represents an asynchronous provider for the specified type.
-    /// </summary>
-    /// <typeparam name="T">The type that the provider can deliver an instance of.</typeparam>
-    [Obsolete]
-    public interface IAsyncProvider<T>
-    {
-        /// <summary>
-        /// Asynchronously provides an instance of type <typeparamref name="T"/>.
-        /// </summary>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>
-        /// A task representing the asynchronous operation.
-        /// When evaluated, the tasks result contains an object of type <typeparamref name="T"/>.
-        /// </returns>
-        /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
-        Task<T> ProvideInstanceAsync(CancellationToken cancellation = default);
-    }
-
-    /// <summary>
     /// Represents a contextual provider for the specified type.
     /// </summary>
     /// <typeparam name="T">The type that the provider can deliver an instance of.</typeparam>
