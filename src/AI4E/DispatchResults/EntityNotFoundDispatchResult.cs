@@ -30,7 +30,7 @@ namespace AI4E.DispatchResults
     /// </summary>
     public class EntityNotFoundDispatchResult : NotFoundDispatchResult
     {
-        internal const string DefaultMessage = "An entity with the specified id cannot be not found.";
+        internal new const string DefaultMessage = "An entity with the specified id cannot be not found.";
 
 #pragma warning disable IDE0051
         [JsonConstructor]

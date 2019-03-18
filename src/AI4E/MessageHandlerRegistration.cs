@@ -22,10 +22,21 @@ using System;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Represents the registration of a message handler.
+    /// </summary>
     public sealed class MessageHandlerRegistration : IMessageHandlerRegistration
     {
         private readonly Func<IServiceProvider, IMessageHandler> _factory;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessageHandlerRegistration"/> type.
+        /// </summary>
+        /// <param name="messageType">The type of message the handler can handle.</param>
+        /// <param name="factory">A factory function that is used to obtain the message handler.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="messageType"/> or <paramref name="factory"/> is <c>null</c>.
+        /// </exception>
         public MessageHandlerRegistration(Type messageType, Func<IServiceProvider, IMessageHandler> factory)
         {
             if (messageType == null)
@@ -39,12 +50,22 @@ namespace AI4E
             Configuration = default;
         }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessageHandlerRegistration"/> type.
+        /// </summary>
+        /// <param name="messageType">The type of message the handler can handle.</param>
+        /// <param name="configuration">The message handler configuration.</param>
+        /// <param name="factory">A factory function that is used to obtain the message handler.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="messageType"/> or <paramref name="factory"/> is <c>null</c>.
+        /// </exception>
         public MessageHandlerRegistration(Type messageType, MessageHandlerConfiguration configuration, Func<IServiceProvider, IMessageHandler> factory)
           : this(messageType, factory)
         {
             Configuration = configuration;
         }
 
+        /// <inheritdoc />
         public IMessageHandler CreateMessageHandler(IServiceProvider serviceProvider)
         {
             if (serviceProvider == null)
@@ -61,17 +82,28 @@ namespace AI4E
             return result;
         }
 
+        /// <inheritdoc />
         public Type MessageType { get; }
 
+        /// <inheritdoc />
         public MessageHandlerConfiguration Configuration { get; }
     }
 
+    /// <summary>
+    /// Represents the registration of a message handler.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of message the handler can handle.</typeparam>
     public sealed class MessageHandlerRegistration<TMessage> : IMessageHandlerRegistration<TMessage>
         where TMessage : class
     {
         private static readonly Type _messageType = typeof(TMessage);
         private readonly Func<IServiceProvider, IMessageHandler<TMessage>> _factory;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessageHandlerRegistration{TMessage}"/> type.
+        /// </summary>
+        /// <param name="factory">A factory function that is used to obtain the message handler.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="factory"/> is <c>null</c>.</exception>
         public MessageHandlerRegistration(Func<IServiceProvider, IMessageHandler<TMessage>> factory)
         {
             if (factory == null)
@@ -81,6 +113,12 @@ namespace AI4E
             Configuration = default;
         }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessageHandlerRegistration{TMessage}"/> type.
+        /// </summary>
+        /// <param name="configuration">The message handler configuration.</param>
+        /// <param name="factory">A factory function that is used to obtain the message handler.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="factory"/> is <c>null</c>.</exception>
         public MessageHandlerRegistration(MessageHandlerConfiguration configuration, Func<IServiceProvider, IMessageHandler<TMessage>> factory)
            : this(factory)
         {
@@ -88,6 +126,7 @@ namespace AI4E
             Configuration = configuration;
         }
 
+        /// <inheritdoc />
         public IMessageHandler<TMessage> CreateMessageHandler(IServiceProvider serviceProvider)
         {
             if (serviceProvider == null)
@@ -108,6 +147,7 @@ namespace AI4E
 
         Type IMessageHandlerRegistration.MessageType => _messageType;
 
+        /// <inheritdoc />
         public MessageHandlerConfiguration Configuration { get; }
     }
 }

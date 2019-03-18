@@ -35,6 +35,10 @@ namespace AI4E
     // This is inspired by the ViewDataDictionary, Asp.Net Core MVC uses to pass the view data from the controller to the view.
     // We have to use an immutable type however, to ensure consistency, as our messaging solution is not guaranteed to be used
     // by a single thread only.
+
+    /// <summary>
+    /// Contains the dispatch data of a dispatch operation.
+    /// </summary>
     [JsonConverter(typeof(DispatchDataDictionaryConverter))]
     public abstract class DispatchDataDictionary : IReadOnlyDictionary<string, object>
     {
@@ -42,11 +46,38 @@ namespace AI4E
         private static readonly ConcurrentDictionary<Type, Func<object, IEnumerable<KeyValuePair<string, object>>, DispatchDataDictionary>> _factories
             = new ConcurrentDictionary<Type, Func<object, IEnumerable<KeyValuePair<string, object>>, DispatchDataDictionary>>();
 
+        /// <summary>
+        /// Creates an instance of the <see cref="DispatchDataDictionary"/> type.
+        /// </summary>
+        /// <param name="messageType">The type of message that is dispatched.</param>
+        /// <param name="message">The message that is dispatched.</param>
+        /// <returns>The created <see cref="DispatchDataDictionary"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="messageType"/> or <paramref name="message"/> is null.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if either the type of <paramref name="message"/> is not assignable to <paramref name="messageType"/> or
+        /// <paramref name="messageType"/> is not a valid message type.
+        /// </exception>
         public static DispatchDataDictionary Create(Type messageType, object message)
         {
             return Create(messageType, message, ImmutableDictionary<string, object>.Empty);
         }
 
+        /// <summary>
+        /// Creates an instance of the <see cref="DispatchDataDictionary"/> type.
+        /// </summary>
+        /// <param name="messageType">The type of message that is dispatched.</param>
+        /// <param name="message">The message that is dispatched.</param>
+        /// <param name="data">A collection of key value pairs that contain additional dispatch data.</param>
+        /// <returns>The created <see cref="DispatchDataDictionary"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of  <paramref name="messageType"/>, <paramref name="message"/> or <paramref name="data"/> is null.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if either the type of <paramref name="message"/> is not assignable to <paramref name="messageType"/> or
+        /// <paramref name="messageType"/> is not a valid message type.
+        /// </exception>
         public static DispatchDataDictionary Create(Type messageType, object message, IEnumerable<KeyValuePair<string, object>> data)
         {
             ValidateArguments(messageType, message, data);
@@ -146,11 +177,19 @@ namespace AI4E
 
         #endregion
 
+        /// <summary>
+        /// Gets the type of message that is dispatched.
+        /// </summary>
         public Type MessageType { get; }
+
+        /// <summary>
+        /// Gets the message that is dispatched.
+        /// </summary>
         public object Message { get; }
 
         #region IReadOnlyDictionary<string, object>
 
+        /// <inheritdoc />
         public object this[string key]
         {
             get
@@ -170,17 +209,22 @@ namespace AI4E
             }
         }
 
+        /// <inheritdoc />
         public IEnumerable<string> Keys => _data?.Keys ?? Enumerable.Empty<string>();
 
+        /// <inheritdoc />
         public IEnumerable<object> Values => _data?.Values ?? Enumerable.Empty<object>();
 
+        /// <inheritdoc />
         public int Count => _data?.Count ?? 0;
 
+        /// <inheritdoc />
         public bool ContainsKey(string key)
         {
             return key != null && _data != null && _data.ContainsKey(key);
         }
 
+        /// <inheritdoc />
         public bool TryGetValue(string key, out object value)
         {
             if (key == null || _data == null)
@@ -192,6 +236,7 @@ namespace AI4E
             return _data.TryGetValue(key, out value);
         }
 
+        /// <inheritdoc />
         public IEnumerator<KeyValuePair<string, object>> GetEnumerator()
         {
             var enumerable = _data as IEnumerable<KeyValuePair<string, object>> ?? Enumerable.Empty<KeyValuePair<string, object>>();
@@ -207,23 +252,55 @@ namespace AI4E
         #endregion
     }
 
+    /// <summary>
+    /// Contains the dispatch data of a dispatch operation.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of message that is dispatched.</typeparam>
     [JsonConverter(typeof(DispatchDataDictionaryConverter))]
     public sealed class DispatchDataDictionary<TMessage> : DispatchDataDictionary
         where TMessage : class
     {
+        /// <summary>
+        /// Creates an instance of the <see cref="DispatchDataDictionary"/> type.
+        /// </summary>
+        /// <param name="message">The message that is dispatched.</param>
+        /// <param name="data">A collection of key value pairs that contain additional dispatch data.</param>
+        /// <returns>The created <see cref="DispatchDataDictionary"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="message"/> or <paramref name="data"/> is null.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <typeparamref name="TMessage"/> is not a valid message type.
+        /// </exception>
         public DispatchDataDictionary(TMessage message, IEnumerable<KeyValuePair<string, object>> data)
             : base(typeof(TMessage), message, data)
         { }
 
+        /// <summary>
+        /// Creates an instance of the <see cref="DispatchDataDictionary"/> type.
+        /// </summary>
+        /// <param name="message">The message that is dispatched.</param>
+        /// <returns>The created <see cref="DispatchDataDictionary"/>.</returns>
+        /// <exception cref="ArgumentNullException"> Thrown if <paramref name="message"/> is null. </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <typeparamref name="TMessage"/> is not a valid message type.
+        /// </exception>
         public DispatchDataDictionary(TMessage message)
             : base(typeof(TMessage), message, ImmutableDictionary<string, object>.Empty)
         { }
 
+        /// <summary>
+        /// Gets the message that is dispatched.
+        /// </summary>
         public new TMessage Message => (TMessage)base.Message;
     }
 
+    /// <summary>
+    /// A json converter for the <see cref="DispatchDataDictionary"/> type.
+    /// </summary>
     public sealed class DispatchDataDictionaryConverter : JsonConverter
     {
+        /// <inheritdoc />
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
             if (!(value is DispatchDataDictionary dispatchData))
@@ -260,6 +337,7 @@ namespace AI4E
             writer.WriteEndObject();
         }
 
+        /// <inheritdoc />
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
             if (!CanConvert(objectType))
@@ -350,6 +428,7 @@ namespace AI4E
             return result;
         }
 
+        /// <inheritdoc />
         public override bool CanConvert(Type objectType)
         {
             return objectType == typeof(DispatchDataDictionary) ||

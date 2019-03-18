@@ -23,9 +23,23 @@ using System.Collections.Generic;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Represents a provider of message handlers.
+    /// </summary>
     public interface IMessageHandlerProvider
     {
+        /// <summary>
+        /// Returns an ordered collection of message handler registrations for the specified message type.
+        /// </summary>
+        /// <param name="messageType">The message type.</param>
+        /// <returns>An ordered collection of message handler registrations for <paramref name="messageType"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="messageType"/> is <c>null</c>.</exception>
         IReadOnlyList<IMessageHandlerRegistration> GetHandlerRegistrations(Type messageType);
+
+        /// <summary>
+        /// Returns an ordered collection of all message handler registrations.
+        /// </summary>
+        /// <returns>An ordered collection of message handler registrations.</returns>
         IReadOnlyList<IMessageHandlerRegistration> GetHandlerRegistrations();
     }
 }

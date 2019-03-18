@@ -195,6 +195,9 @@ namespace AI4E
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public sealed class NoMessageHandlerAttribute : Attribute { }
 
+    /// <summary>
+    /// An attribute that identifies a message handler's message-dispatcher property.
+    /// </summary>
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
     public class MessageDispatcherAttribute : Attribute { }
 }

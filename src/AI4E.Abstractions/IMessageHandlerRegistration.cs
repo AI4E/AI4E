@@ -40,6 +40,9 @@ namespace AI4E
         /// </summary>
         Type MessageType { get; }
 
+        /// <summary>
+        /// Gets the message handler configuration.
+        /// </summary>
         MessageHandlerConfiguration Configuration { get; }
     }
 

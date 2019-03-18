@@ -42,7 +42,7 @@ namespace AI4E.Handler
         /// <param name="type">The processor type.</param>
         /// <returns>The <see cref="MessageProcessorContextDescriptor"/> for <paramref name="type"/>.</returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="type"/> is null.</exception>
-        /// <exception cref="ArgumentException">Thrown if <paramref name="handlerType"/> is an open generic type definition.</exception>
+        /// <exception cref="ArgumentException">Thrown if <paramref name="type"/> is an open generic type definition.</exception>
         public static MessageProcessorContextDescriptor GetDescriptor(Type type)
         {
             if (type == null)

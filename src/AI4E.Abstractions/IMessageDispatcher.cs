@@ -39,8 +39,7 @@ namespace AI4E
         /// A task representing the asynchronous operation.
         /// The tasks result contains an <see cref="IDispatchResult"/> indicating message handling state.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="messageType"/> or <paramref name="message"/> is null.</exception>
-        /// <exception cref="ArgumentException">Thrown if <paramref name="message"/> is not of type <paramref name="messageType"/> or a derived type.</exception>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
         ValueTask<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation = default);
     }
 }

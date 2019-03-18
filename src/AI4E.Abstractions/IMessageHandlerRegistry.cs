@@ -19,13 +19,35 @@
  */
 
 
+using System;
+
 namespace AI4E
 {
+    /// <summary>
+    /// Represents a registry where message handler can be registered.
+    /// </summary>
     public interface IMessageHandlerRegistry
     {
+        /// <summary>
+        /// Registers a message handler.
+        /// </summary>
+        /// <param name="handlerRegistration">The message handler to register.</param>
+        /// <returns>True, if the message handler was registered, false if a message handler of the specified type was already registered.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="handlerRegistration"/> is null.</exception>
         bool Register(IMessageHandlerRegistration handlerRegistration);
+
+        /// <summary>
+        /// Unregisters a message handler.
+        /// </summary>
+        /// <param name="handlerRegistration">The message handler to unregister.</param>
+        /// <returns>True, if the message handler was unregistered, false if a message handler of the specified type was not registered.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="handlerRegistration"/> is null.</exception>
         bool Unregister(IMessageHandlerRegistration handlerRegistration);
 
+        /// <summary>
+        /// Creates a <see cref="IMessageHandlerProvider"/> of the current snapshot of handler registrations.
+        /// </summary>
+        /// <returns>The created <see cref="IMessageHandlerProvider"/>.</returns>
         IMessageHandlerProvider ToProvider();
     }
 }

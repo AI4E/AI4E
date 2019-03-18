@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 namespace AI4E
 {
     /// <summary>
-    /// Defines extensions for the <see cref="IMessageDispatcher"/> and <see cref="INonGenericMessageDispatcher"/> interfaces.
+    /// Contains extensions for <see cref="IMessageDispatcher"/>s.
     /// </summary>
     public static class MessageDispatcherExtension
     {

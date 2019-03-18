@@ -33,6 +33,9 @@ namespace AI4E
         /// Asynchronously handles the specified message.
         /// </summary>
         /// <param name="dispatchData">The dispatch data that contains the message to handle and supporting data.</param>
+        /// <param name="publish">A boolean value specifying whether the message is published to all handlers.</param>
+        /// <param name="localDispatch">A boolean value specifying whether the message is dispatched locally.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>
         /// A value task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the dispatch result.
@@ -58,6 +61,9 @@ namespace AI4E
         /// Asynchronously handles the specified message.
         /// </summary>
         /// <param name="dispatchData">The dispatch data that contains the message to handle and supporting data.</param>
+        /// <param name="publish">A boolean value specifying whether the message is published to all handlers.</param>
+        /// <param name="localDispatch">A boolean value specifying whether the message is dispatched locally.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>
         /// A value task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the dispatch result.

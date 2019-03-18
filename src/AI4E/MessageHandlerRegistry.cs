@@ -26,15 +26,29 @@ using AI4E.Utils;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Represents a registry where message handler can be registered.
+    /// </summary>
     public sealed class MessageHandlerRegistry : IMessageHandlerRegistry
     {
         private readonly Dictionary<Type, OrderedSet<IMessageHandlerRegistration>> _handlerRegistrations;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="IMessageHandlerRegistry"/> type.
+        /// </summary>
         public MessageHandlerRegistry()
         {
             _handlerRegistrations = new Dictionary<Type, OrderedSet<IMessageHandlerRegistration>>();
         }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="IMessageHandlerRegistry"/> type.
+        /// </summary>
+        /// <param name="handlerRegistrations">The initial message handler registrations.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="handlerRegistrations"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="handlerRegistrations"/> contains entries that are <c>null</c>.
+        /// </exception>
         public MessageHandlerRegistry(IEnumerable<IMessageHandlerRegistration> handlerRegistrations) : this()
         {
             if (handlerRegistrations == null)
@@ -51,6 +65,7 @@ namespace AI4E
             }
         }
 
+        /// <inheritdoc />
         public bool Register(IMessageHandlerRegistration handlerRegistration)
         {
             if (handlerRegistration == null)
@@ -68,6 +83,7 @@ namespace AI4E
             return true;
         }
 
+        /// <inheritdoc />
         public bool Unregister(IMessageHandlerRegistration handlerRegistration)
         {
             if (handlerRegistration == null)
@@ -91,6 +107,7 @@ namespace AI4E
             return true;
         }
 
+        /// <inheritdoc />
         public IMessageHandlerProvider ToProvider()
         {
             return new MessageHandlerProvider(_handlerRegistrations);
