@@ -49,7 +49,7 @@ namespace AI4E.DispatchResults
         }
 
         [TestMethod]
-        public void CreateMessageTypeMessageAndresultDataTest()
+        public void CreateMessageTypeMessageAndResultDataTest()
         {
             var resultData = new Dictionary<string, object>
             {
