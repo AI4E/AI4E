@@ -86,6 +86,37 @@ namespace AI4E
             return factory(message, data);
         }
 
+        /// <summary>
+        /// Creates an instance of the <see cref="DispatchDataDictionary"/> type.
+        /// </summary>
+        /// <param name="message">The message that is dispatched.</param>
+        /// <returns>The created <see cref="DispatchDataDictionary"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if the type of <paramref name="message"/> is not a valid message type.
+        /// </exception>
+        public static DispatchDataDictionary Create(object message)
+        {
+            return Create(message?.GetType(), message, ImmutableDictionary<string, object>.Empty);
+        }
+
+        /// <summary>
+        /// Creates an instance of the <see cref="DispatchDataDictionary"/> type.
+        /// </summary>
+        /// <param name="message">The message that is dispatched.</param>
+        /// <param name="data">A collection of key value pairs that contain additional dispatch data.</param>
+        /// <returns>The created <see cref="DispatchDataDictionary"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="message"/> or <paramref name="data"/> is null.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if the type of <paramref name="message"/> is not a valid message type.
+        /// </exception>
+        public static DispatchDataDictionary Create(object message, IEnumerable<KeyValuePair<string, object>> data)
+        {
+            return Create(message?.GetType(), message, data);
+        }
+
         private static Func<object, IEnumerable<KeyValuePair<string, object>>, DispatchDataDictionary> BuildFactory(Type messageType)
         {
             var dispatchDataDictionaryType = _dispatchDataDictionaryTypeDefinition.MakeGenericType(messageType);
@@ -328,7 +359,13 @@ namespace AI4E
                 foreach (var kvp in dispatchData)
                 {
                     writer.WritePropertyName(kvp.Key);
-                    serializer.Serialize(writer, kvp.Value, typeof(object));
+                    writer.WriteStartObject();
+                    writer.WritePropertyName("type");
+                    writer.WriteValue(kvp.Value.GetType().GetUnqualifiedTypeName());
+                    writer.WritePropertyName("value");
+                    serializer.Serialize(writer, kvp.Value, kvp.Value.GetType());
+
+                    writer.WriteEndObject();
                 }
 
                 writer.WriteEndObject();
@@ -381,7 +418,7 @@ namespace AI4E
                     }
                     else if ((string)reader.Value == "data")
                     {
-                        data = ReadData(reader, serializer);
+                        data = ReadDataItems(reader, serializer);
                     }
                     else
                     {
@@ -400,7 +437,7 @@ namespace AI4E
             return DispatchDataDictionary.Create(messageType, message, data?.ToImmutable() ?? ImmutableDictionary<string, object>.Empty);
         }
 
-        private ImmutableDictionary<string, object>.Builder ReadData(JsonReader reader, JsonSerializer serializer)
+        private ImmutableDictionary<string, object>.Builder ReadDataItems(JsonReader reader, JsonSerializer serializer)
         {
             var result = ImmutableDictionary.CreateBuilder<string, object>();
 
@@ -415,9 +452,7 @@ namespace AI4E
                 }
                 else if (reader.TokenType == JsonToken.PropertyName)
                 {
-                    var key = (string)reader.Value;
-                    reader.Read();
-                    var value = serializer.Deserialize(reader, typeof(object));
+                    ReadSingleDataItem(reader, serializer, result);
                 }
                 else
                 {
@@ -426,6 +461,30 @@ namespace AI4E
             }
 
             return result;
+        }
+
+        private static void ReadSingleDataItem(JsonReader reader, JsonSerializer serializer, ImmutableDictionary<string, object>.Builder result)
+        {
+            var key = (string)reader.Value;
+            reader.Read(); // Read start object
+            reader.Read(); // Read type property-name
+
+            if (reader.TokenType != JsonToken.PropertyName || (string)reader.Value != "type")
+                throw new InvalidOperationException();
+
+            reader.Read(); // Read type property value
+            var type = TypeLoadHelper.LoadTypeFromUnqualifiedName((string)reader.Value);
+
+            reader.Read(); // Read value property-name
+
+            if (reader.TokenType != JsonToken.PropertyName || (string)reader.Value != "value")
+                throw new InvalidOperationException();
+
+            reader.Read();
+
+            var value = serializer.Deserialize(reader, type);
+            result[key] = value;
+            reader.Read(); // Read end object
         }
 
         /// <inheritdoc />
