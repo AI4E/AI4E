@@ -41,30 +41,6 @@ namespace AI4E
             _handlerRegistrations = new Dictionary<Type, OrderedSet<IMessageHandlerRegistration>>();
         }
 
-        /// <summary>
-        /// Creates a new instance of the <see cref="IMessageHandlerRegistry"/> type.
-        /// </summary>
-        /// <param name="handlerRegistrations">The initial message handler registrations.</param>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="handlerRegistrations"/> is <c>null</c>.</exception>
-        /// <exception cref="ArgumentException">
-        /// Thrown if <paramref name="handlerRegistrations"/> contains entries that are <c>null</c>.
-        /// </exception>
-        public MessageHandlerRegistry(IEnumerable<IMessageHandlerRegistration> handlerRegistrations) : this()
-        {
-            if (handlerRegistrations == null)
-                throw new ArgumentNullException(nameof(handlerRegistrations));
-
-            foreach (var handlerRegistration in handlerRegistrations)
-            {
-                if (handlerRegistration == null)
-                {
-                    throw new ArgumentException("The collection must not contain null entries.");
-                }
-
-                Register(handlerRegistration);
-            }
-        }
-
         /// <inheritdoc />
         public bool Register(IMessageHandlerRegistration handlerRegistration)
         {
@@ -72,15 +48,16 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(handlerRegistration));
 
             var handlerCollection = _handlerRegistrations.GetOrAdd(handlerRegistration.MessageType, _ => new OrderedSet<IMessageHandlerRegistration>());
+            var result = true;
 
-            if (handlerCollection.Contains(handlerRegistration))
+            if (handlerCollection.Remove(handlerRegistration))
             {
-                return false;
+                result = false; // TODO: Does this conform with spec?
             }
 
             handlerCollection.Add(handlerRegistration);
 
-            return true;
+            return result;
         }
 
         /// <inheritdoc />
