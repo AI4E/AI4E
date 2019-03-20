@@ -335,57 +335,57 @@ namespace AI4E.Handler
             }
 
             return SuccessDispatchResult.FromResult(invoker.ReturnTypeDescriptor.ResultType, result);
-        }
+        }      
+    }
 
-        private sealed class MessageDispatchContext : IMessageDispatchContext
+    public sealed class MessageDispatchContext : IMessageDispatchContext
+    {
+        public MessageDispatchContext(
+            IServiceProvider dispatchServices,
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            bool isLocalDispatch)
         {
-            public MessageDispatchContext(
-                IServiceProvider dispatchServices,
-                DispatchDataDictionary dispatchData,
-                bool publish,
-                bool isLocalDispatch)
-            {
-                if (dispatchServices == null)
-                    throw new ArgumentNullException(nameof(dispatchServices));
+            if (dispatchServices == null)
+                throw new ArgumentNullException(nameof(dispatchServices));
 
-                if (dispatchData == null)
-                    throw new ArgumentNullException(nameof(dispatchData));
+            if (dispatchData == null)
+                throw new ArgumentNullException(nameof(dispatchData));
 
-                DispatchServices = dispatchServices;
-                DispatchData = dispatchData;
-                IsPublish = publish;
-                IsLocalDispatch = isLocalDispatch;
-            }
-
-            public IServiceProvider DispatchServices { get; }
-            public DispatchDataDictionary DispatchData { get; }
-            public bool IsPublish { get; }
-            public bool IsLocalDispatch { get; }
+            DispatchServices = dispatchServices;
+            DispatchData = dispatchData;
+            IsPublish = publish;
+            IsLocalDispatch = isLocalDispatch;
         }
 
-        private sealed class MessageProcessorContext : IMessageProcessorContext
+        public IServiceProvider DispatchServices { get; }
+        public DispatchDataDictionary DispatchData { get; }
+        public bool IsPublish { get; }
+        public bool IsLocalDispatch { get; }
+    }
+
+    public sealed class MessageProcessorContext : IMessageProcessorContext
+    {
+        public MessageProcessorContext(
+            object messageHandler,
+            MessageHandlerActionDescriptor messageHandlerAction,
+            bool publish,
+            bool isLocalDispatch)
         {
-            public MessageProcessorContext(
-                object messageHandler,
-                MessageHandlerActionDescriptor messageHandlerAction,
-                bool publish,
-                bool isLocalDispatch)
-            {
-                if (messageHandler == null)
-                    throw new ArgumentNullException(nameof(messageHandler));
+            if (messageHandler == null)
+                throw new ArgumentNullException(nameof(messageHandler));
 
-                MessageHandler = messageHandler;
-                MessageHandlerAction = messageHandlerAction;
-                IsPublish = publish;
-                IsLocalDispatch = isLocalDispatch;
-            }
-
-            public MessageHandlerConfiguration MessageHandlerConfiguration => MessageHandlerAction.BuildConfiguration();
-            public MessageHandlerActionDescriptor MessageHandlerAction { get; }
-
-            public object MessageHandler { get; }
-            public bool IsPublish { get; }
-            public bool IsLocalDispatch { get; }
+            MessageHandler = messageHandler;
+            MessageHandlerAction = messageHandlerAction;
+            IsPublish = publish;
+            IsLocalDispatch = isLocalDispatch;
         }
+
+        public MessageHandlerConfiguration MessageHandlerConfiguration => MessageHandlerAction.BuildConfiguration();
+        public MessageHandlerActionDescriptor MessageHandlerAction { get; }
+
+        public object MessageHandler { get; }
+        public bool IsPublish { get; }
+        public bool IsLocalDispatch { get; }
     }
 }

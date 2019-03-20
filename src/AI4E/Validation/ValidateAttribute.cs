@@ -22,11 +22,18 @@ using System;
 
 namespace AI4E.Validation
 {
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true, Inherited = true)]
-    public abstract class ValidateAttribute : Attribute
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method,
+        AllowMultiple = false,
+        Inherited = true)]
+    public class ValidateAttribute : Attribute
     {
-        protected ValidateAttribute() { }
+        public ValidateAttribute() : this(true) { }
 
-        public abstract bool Validate(object value, out string message);
+        public ValidateAttribute(bool validate)
+        {
+            Validate = validate;
+        }
+
+        public bool Validate { get; }
     }
 }

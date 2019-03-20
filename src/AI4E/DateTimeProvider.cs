@@ -22,8 +22,12 @@ using System;
 
 namespace AI4E
 {
+    /// <summary>
+    /// An injectable provider that can be used to obtain the current time.
+    /// </summary>
     public sealed class DateTimeProvider : IDateTimeProvider
     {
+        /// <inheritdoc/>
         public DateTime GetCurrentTime()
         {
             return DateTime.UtcNow;

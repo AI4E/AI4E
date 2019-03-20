@@ -99,7 +99,7 @@ namespace AI4E.Handler
 
         private static bool IsNullable(Type type)
         {
-            return type.IsClass || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+            return !type.IsValueType || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
         }
 
         private static object ResolveParameter(Func<ParameterInfo, object> parameterResolver, ParameterInfo parameter)
