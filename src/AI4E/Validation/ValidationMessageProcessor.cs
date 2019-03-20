@@ -19,7 +19,9 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -43,6 +45,7 @@ namespace AI4E.Validation
             _serviceProvider = serviceProvider;
         }
 
+        /// <inheritdoc/>
         public override async ValueTask<IDispatchResult> ProcessAsync<TMessage>(
             DispatchDataDictionary<TMessage> dispatchData,
             Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
@@ -53,22 +56,12 @@ namespace AI4E.Validation
                 return await next(dispatchData);
             }
 
-            var members = ValidationInspector.Instance.InspectType(Context.MessageHandler.GetType());
             var handledType = GetMessageHandlerMessageType(Context.MessageHandlerAction);
 
             do
             {
-                var ofType = members.Where(p => p.ParameterType == handledType);
-
-                if (ofType.Any())
+                if (TryGetDescriptor(handledType, out var descriptor))
                 {
-                    if (ofType.Skip(1).Any())
-                    {
-                        throw new InvalidOperationException("Ambigous validation");
-                    }
-
-                    var descriptor = ofType.First();
-
                     var validationResults = await InvokeValidationAsync(descriptor, dispatchData, cancellation);
 
                     if (validationResults.Any())
@@ -155,7 +148,7 @@ namespace AI4E.Validation
                 var validationResult = (ValidationResult)result;
 
                 if (validationResult == default)
-                    return validationResultsBuilder?.GetValidationResults() ?? Enumerable.Empty<ValidationResult>();     
+                    return validationResultsBuilder?.GetValidationResults() ?? Enumerable.Empty<ValidationResult>();
 
                 if (validationResultsBuilder == null)
                     return Enumerable.Repeat((ValidationResult)result, 1);
@@ -168,9 +161,9 @@ namespace AI4E.Validation
             {
                 if (result == validationResultsBuilder || result == null)
                     return validationResultsBuilder?.GetValidationResults() ?? Enumerable.Empty<ValidationResult>();
-                
+
                 if (validationResultsBuilder == null)
-                    return ((ValidationResultsBuilder)result).GetValidationResults();            
+                    return ((ValidationResultsBuilder)result).GetValidationResults();
 
                 return validationResultsBuilder.GetValidationResults().Concat(
                         ((ValidationResultsBuilder)result).GetValidationResults());
@@ -178,6 +171,47 @@ namespace AI4E.Validation
 
             throw new InvalidOperationException();
 
+        }
+
+        private static readonly ConcurrentDictionary<Type, ImmutableDictionary<Type, ValidationDescriptor>> _descriptorsCache
+            = new ConcurrentDictionary<Type, ImmutableDictionary<Type, ValidationDescriptor>>();
+
+        private bool TryGetDescriptor(Type handledType, out ValidationDescriptor descriptor)
+        {
+            var messageHandlerType = Context.MessageHandler.GetType();
+
+            if (_descriptorsCache.TryGetValue(messageHandlerType, out var descriptors))
+            {
+                return descriptors.TryGetValue(handledType, out descriptor);
+            }
+
+            var members = ValidationInspector.Instance.InspectType(Context.MessageHandler.GetType());
+            var duplicates = members.GroupBy(p => p.ParameterType).Where(p => p.Count() > 1);
+
+            if (duplicates.Any(p => p.Key == handledType))
+            {
+                throw new InvalidOperationException("Ambigous validation");
+            }
+
+            var descriptorL = members.Where(p => p.ParameterType == handledType);
+            var result = false;
+
+            if (descriptorL.Any())
+            {
+                descriptor = descriptorL.First();
+                result = true;
+            }
+            else
+            {
+                descriptor = default;
+            }
+
+            if (!duplicates.Any())
+            {
+                _descriptorsCache.TryAdd(messageHandlerType, members.ToImmutableDictionary(p => p.ParameterType));
+            }
+
+            return result;
         }
 
         private static Type GetMessageHandlerMessageType(MessageHandlerActionDescriptor memberDescriptor)
