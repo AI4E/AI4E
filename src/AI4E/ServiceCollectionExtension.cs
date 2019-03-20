@@ -57,7 +57,7 @@ namespace AI4E
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
-           
+
             services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
 
             return services;
@@ -231,8 +231,7 @@ namespace AI4E
             ImmutableArray<IMessageProcessorRegistration> processors,
             ILogger logger)
         {
-            var inspector = new MessageHandlerInspector(handlerType);
-            var memberDescriptors = inspector.GetHandlerDescriptors();
+            var memberDescriptors = MessageHandlerInspector.Instance.InspectType(handlerType);
 
             foreach (var memberDescriptor in memberDescriptors)
             {

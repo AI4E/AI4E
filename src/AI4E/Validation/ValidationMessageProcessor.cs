@@ -43,9 +43,10 @@ namespace AI4E.Validation
             _serviceProvider = serviceProvider;
         }
 
-        public override async ValueTask<IDispatchResult> ProcessAsync<TMessage>(DispatchDataDictionary<TMessage> dispatchData,
-                                                                          Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
-                                                                          CancellationToken cancellation)
+        public override async ValueTask<IDispatchResult> ProcessAsync<TMessage>(
+            DispatchDataDictionary<TMessage> dispatchData,
+            Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
+            CancellationToken cancellation)
         {
             if (!IsValidationEnabled(Context.MessageHandlerAction))
             {
