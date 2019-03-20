@@ -73,8 +73,14 @@ namespace AI4E.Handler
                 return false;
             }
 
-            var parameterType = GetParameterType(type, member, parameters);
             var returnTypeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(member.ReturnType);
+
+            if (!IsValidReturnType(returnTypeDescriptor))
+            {
+                return false;
+            }
+
+            var parameterType = GetParameterType(type, member, parameters);
 
             if (IsSychronousMember(member, returnTypeDescriptor) && !returnTypeDescriptor.IsAwaitable)
             {
@@ -109,7 +115,16 @@ namespace AI4E.Handler
         protected virtual bool IsValidParameter(ParameterInfo parameter)
         {
             return !parameter.ParameterType.IsByRef;
+        }
 
+        /// <summary>
+        /// Returns a boolean value indicating whether the specified return type is valid.
+        /// </summary>
+        /// <param name="returnTypeDescriptor">An <see cref="AwaitableTypeDescriptor"/> that described the return type.</param>
+        /// <returns>True if the return type described by <paramref name="returnTypeDescriptor"/> is valid, false otherwise.</returns>
+        protected virtual bool IsValidReturnType(AwaitableTypeDescriptor returnTypeDescriptor)
+        {
+            return true;
         }
 
         /// <summary>
@@ -131,7 +146,6 @@ namespace AI4E.Handler
         /// <param name="returnTypeDescriptor">The <see cref="AwaitableTypeDescriptor"/> that described the members result type.</param>
         /// <returns>True if <paramref name="member"/> is a synchronous result, false otherwise.</returns>
         protected abstract bool IsSychronousMember(MethodInfo member, AwaitableTypeDescriptor returnTypeDescriptor);
-
 
         /// <summary>
         /// Returns a boolean value indicating whether the specified member is aa asynchronous result.

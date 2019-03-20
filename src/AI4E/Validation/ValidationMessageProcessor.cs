@@ -53,165 +53,23 @@ namespace AI4E.Validation
                 return await next(dispatchData);
             }
 
-            var validations = new Dictionary<Type, Func<ValueTask<IEnumerable<ValidationResult>>>>();
-
-            var members = Context.MessageHandler.GetType().GetMethods();
-
-            foreach (var member in members)
-            {
-                var parameters = member.GetParameters();
-                if (parameters.Length == 0)
-                {
-                    continue;
-                }
-
-                if (parameters.Any(p => p.ParameterType.IsByRef))
-                {
-                    continue;
-                }
-
-                if (member.IsGenericMethod || member.IsGenericMethodDefinition)
-                {
-                    continue;
-                }
-
-                var messageType = parameters[0].ParameterType;
-                var returnTypeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(member.ReturnType);
-
-                if (returnTypeDescriptor.ResultType != typeof(void) &&
-                   !typeof(IEnumerable<ValidationResult>).IsAssignableFrom(returnTypeDescriptor.ResultType) &&
-                   typeof(ValidationResult) != returnTypeDescriptor.ResultType &&
-                   typeof(ValidationResultsBuilder) != returnTypeDescriptor.ResultType)
-                {
-                    continue;
-                }
-
-                if (!IsSychronousValidation(member, returnTypeDescriptor) &&
-                    !IsAsynchronousValidation(member, returnTypeDescriptor))
-                {
-                    continue;
-                }
-
-                var invoker = HandlerActionInvoker.GetInvoker(member);
-
-                async ValueTask<IEnumerable<ValidationResult>> InvokeValidation()
-                {
-                    ValidationResultsBuilder validationResultsBuilder = null;
-
-                    object ResolveParameter(ParameterInfo parameter)
-                    {
-                        if (parameter.ParameterType == typeof(IServiceProvider))
-                        {
-                            return _serviceProvider;
-                        }
-                        else if (parameter.ParameterType == typeof(CancellationToken))
-                        {
-                            return cancellation;
-                        }
-                        else if (parameter.ParameterType == typeof(DispatchDataDictionary) ||
-                                 parameter.ParameterType == typeof(DispatchDataDictionary<TMessage>))
-                        {
-                            return dispatchData;
-                        }
-                        else if (parameter.ParameterType == typeof(ValidationResultsBuilder))
-                        {
-                            if (validationResultsBuilder == null)
-                            {
-                                validationResultsBuilder = new ValidationResultsBuilder();
-                            }
-
-                            return validationResultsBuilder;
-                        }
-                        else if (parameter.HasDefaultValue)
-                        {
-                            return _serviceProvider.GetService(parameter.ParameterType) ?? parameter.DefaultValue;
-                        }
-                        else
-                        {
-                            return _serviceProvider.GetRequiredService(parameter.ParameterType);
-                        }
-                    }
-
-                    var result = await invoker.InvokeAsync(Context.MessageHandler, dispatchData.Message, ResolveParameter);
-
-                    if (returnTypeDescriptor.ResultType == typeof(void))
-                    {
-                        return validationResultsBuilder?.GetValidationResults() ?? Enumerable.Empty<ValidationResult>();
-                    }
-
-                    if (typeof(IEnumerable<ValidationResult>).IsAssignableFrom(returnTypeDescriptor.ResultType))
-                    {
-                        if (validationResultsBuilder != null)
-                        {
-                            if (result == null)
-                            {
-                                return validationResultsBuilder.GetValidationResults();
-                            }
-
-                            return validationResultsBuilder.GetValidationResults().Concat(
-                                (IEnumerable<ValidationResult>)result);
-                        }
-
-                        return result as IEnumerable<ValidationResult> ?? Enumerable.Empty<ValidationResult>();
-                    }
-
-                    if (typeof(ValidationResult) == returnTypeDescriptor.ResultType)
-                    {
-                        var validationResult = (ValidationResult)result;
-
-                        if (validationResultsBuilder != null)
-                        {
-                            if (validationResult == default)
-                            {
-                                return validationResultsBuilder.GetValidationResults();
-                            }
-
-                            return validationResultsBuilder.GetValidationResults().Concat(
-                                Enumerable.Repeat((ValidationResult)result, 1));
-                        }
-
-                        if (validationResult == default)
-                        {
-                            return Enumerable.Empty<ValidationResult>();
-                        }
-
-                        return Enumerable.Repeat((ValidationResult)result, 1);
-                    }
-
-                    if (typeof(ValidationResultsBuilder) == returnTypeDescriptor.ResultType)
-                    {
-                        if (result == validationResultsBuilder || result == null)
-                        {
-                            return validationResultsBuilder?.GetValidationResults() ?? Enumerable.Empty<ValidationResult>();
-                        }
-
-                        if (validationResultsBuilder == null)
-                        {
-                            return ((ValidationResultsBuilder)result).GetValidationResults();
-                        }
-
-                        return validationResultsBuilder.GetValidationResults().Concat(
-                                ((ValidationResultsBuilder)result).GetValidationResults());
-                    }
-
-                    throw new InvalidOperationException();
-                }
-
-                if (validations.ContainsKey(messageType))
-                {
-                    throw new InvalidOperationException("Ambigous validation");
-                }
-
-                validations.Add(messageType, InvokeValidation);
-            }
-
+            var members = ValidationInspector.Instance.InspectType(Context.MessageHandler.GetType());
             var handledType = GetMessageHandlerMessageType(Context.MessageHandlerAction);
 
             do
             {
-                if (validations.TryGetValue(handledType, out var invokeValidation))
+                var ofType = members.Where(p => p.ParameterType == handledType);
+
+                if (ofType.Any())
                 {
-                    var validationResults = await invokeValidation();
+                    if (ofType.Skip(1).Any())
+                    {
+                        throw new InvalidOperationException("Ambigous validation");
+                    }
+
+                    var descriptor = ofType.First();
+
+                    var validationResults = await InvokeValidationAsync(descriptor, dispatchData, cancellation);
 
                     if (validationResults.Any())
                     {
@@ -228,18 +86,98 @@ namespace AI4E.Validation
             throw new InvalidOperationException("No validation handlers found.");
         }
 
-        private static bool IsAsynchronousValidation(
-            MethodInfo member,
-            AwaitableTypeDescriptor returnTypeDescriptor)
+        private async ValueTask<IEnumerable<ValidationResult>> InvokeValidationAsync<TMessage>(
+            ValidationDescriptor descriptor,
+            DispatchDataDictionary<TMessage> dispatchData,
+            CancellationToken cancellation)
+            where TMessage : class
         {
-            return member.Name == "ValidateAsync" && returnTypeDescriptor.IsAwaitable;
-        }
+            var invoker = HandlerActionInvoker.GetInvoker(descriptor.Member);
+            var returnTypeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(descriptor.Member.ReturnType);
 
-        private static bool IsSychronousValidation(
-            MethodInfo member,
-            AwaitableTypeDescriptor returnTypeDescriptor)
-        {
-            return member.Name == "Validate" && !returnTypeDescriptor.IsAwaitable;
+            ValidationResultsBuilder validationResultsBuilder = null;
+
+            object ResolveParameter(ParameterInfo parameter)
+            {
+                if (parameter.ParameterType == typeof(IServiceProvider))
+                {
+                    return _serviceProvider;
+                }
+                else if (parameter.ParameterType == typeof(CancellationToken))
+                {
+                    return cancellation;
+                }
+                else if (parameter.ParameterType == typeof(DispatchDataDictionary) ||
+                         parameter.ParameterType == typeof(DispatchDataDictionary<TMessage>))
+                {
+                    return dispatchData;
+                }
+                else if (parameter.ParameterType == typeof(ValidationResultsBuilder))
+                {
+                    if (validationResultsBuilder == null)
+                    {
+                        validationResultsBuilder = new ValidationResultsBuilder();
+                    }
+
+                    return validationResultsBuilder;
+                }
+                else if (parameter.HasDefaultValue)
+                {
+                    return _serviceProvider.GetService(parameter.ParameterType) ?? parameter.DefaultValue;
+                }
+                else
+                {
+                    return _serviceProvider.GetRequiredService(parameter.ParameterType);
+                }
+            }
+
+            var result = await invoker.InvokeAsync(Context.MessageHandler, dispatchData.Message, ResolveParameter);
+
+            if (returnTypeDescriptor.ResultType == typeof(void))
+            {
+                return validationResultsBuilder?.GetValidationResults() ?? Enumerable.Empty<ValidationResult>();
+            }
+
+            if (typeof(IEnumerable<ValidationResult>).IsAssignableFrom(returnTypeDescriptor.ResultType))
+            {
+                if (validationResultsBuilder == null)
+                    return result as IEnumerable<ValidationResult> ?? Enumerable.Empty<ValidationResult>();
+
+                if (result == null)
+                    return validationResultsBuilder.GetValidationResults();
+
+                return validationResultsBuilder.GetValidationResults().Concat(
+                    (IEnumerable<ValidationResult>)result);
+            }
+
+            if (typeof(ValidationResult) == returnTypeDescriptor.ResultType)
+            {
+                var validationResult = (ValidationResult)result;
+
+                if (validationResult == default)
+                    return validationResultsBuilder?.GetValidationResults() ?? Enumerable.Empty<ValidationResult>();     
+
+                if (validationResultsBuilder == null)
+                    return Enumerable.Repeat((ValidationResult)result, 1);
+
+                return validationResultsBuilder.GetValidationResults().Concat(
+                         Enumerable.Repeat((ValidationResult)result, 1));
+            }
+
+            if (typeof(ValidationResultsBuilder) == returnTypeDescriptor.ResultType)
+            {
+                if (result == validationResultsBuilder || result == null)
+                    return validationResultsBuilder?.GetValidationResults() ?? Enumerable.Empty<ValidationResult>();
+                
+                if (validationResultsBuilder == null)
+                    return ((ValidationResultsBuilder)result).GetValidationResults();            
+
+                return validationResultsBuilder.GetValidationResults().Concat(
+                        ((ValidationResultsBuilder)result).GetValidationResults());
+            }
+
+            throw new InvalidOperationException();
+
         }
 
         private static Type GetMessageHandlerMessageType(MessageHandlerActionDescriptor memberDescriptor)

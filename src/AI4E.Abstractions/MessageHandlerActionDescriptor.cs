@@ -38,6 +38,7 @@ namespace AI4E
         /// <param name="member">A <see cref="MethodInfo"/> instance that specifies the member.</param>
         public MessageHandlerActionDescriptor(Type messageType, Type messageHandlerType, MethodInfo member)
         {
+            // TODO: Use the parameter order to TypeMemberInspector`1.CreateDescriptor
             if (messageType == null)
                 throw new ArgumentNullException(nameof(messageType));
 
