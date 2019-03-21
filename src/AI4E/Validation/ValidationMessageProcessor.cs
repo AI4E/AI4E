@@ -60,9 +60,15 @@ namespace AI4E.Validation
 
             do
             {
-                if (TryGetDescriptor(handledType, out var descriptor))
+                if (TryGetDescriptor(Context.MessageHandler.GetType(), handledType, out var descriptor))
                 {
-                    var validationResults = await InvokeValidationAsync(descriptor, dispatchData, cancellation);
+                    var validationResults = await InvokeValidationAsync(
+                        typeof(TMessage),
+                        Context.MessageHandler,
+                        descriptor,
+                        dispatchData,
+                        _serviceProvider,
+                        cancellation);
 
                     if (validationResults.Any())
                     {
@@ -79,11 +85,15 @@ namespace AI4E.Validation
             throw new InvalidOperationException("No validation handlers found.");
         }
 
-        private async ValueTask<IEnumerable<ValidationResult>> InvokeValidationAsync<TMessage>(
+        #region TODO -  Move me to a separate type
+
+        internal static async ValueTask<IEnumerable<ValidationResult>> InvokeValidationAsync(
+            Type messageType,
+            object messageHandler,
             ValidationDescriptor descriptor,
-            DispatchDataDictionary<TMessage> dispatchData,
+            DispatchDataDictionary dispatchData,
+            IServiceProvider serviceProvider,
             CancellationToken cancellation)
-            where TMessage : class
         {
             var invoker = HandlerActionInvoker.GetInvoker(descriptor.Member);
             var returnTypeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(descriptor.Member.ReturnType);
@@ -94,14 +104,14 @@ namespace AI4E.Validation
             {
                 if (parameter.ParameterType == typeof(IServiceProvider))
                 {
-                    return _serviceProvider;
+                    return serviceProvider;
                 }
                 else if (parameter.ParameterType == typeof(CancellationToken))
                 {
                     return cancellation;
                 }
                 else if (parameter.ParameterType == typeof(DispatchDataDictionary) ||
-                         parameter.ParameterType == typeof(DispatchDataDictionary<TMessage>))
+                         parameter.ParameterType == dispatchData.GetType())
                 {
                     return dispatchData;
                 }
@@ -116,15 +126,15 @@ namespace AI4E.Validation
                 }
                 else if (parameter.HasDefaultValue)
                 {
-                    return _serviceProvider.GetService(parameter.ParameterType) ?? parameter.DefaultValue;
+                    return serviceProvider.GetService(parameter.ParameterType) ?? parameter.DefaultValue;
                 }
                 else
                 {
-                    return _serviceProvider.GetRequiredService(parameter.ParameterType);
+                    return serviceProvider.GetRequiredService(parameter.ParameterType);
                 }
             }
 
-            var result = await invoker.InvokeAsync(Context.MessageHandler, dispatchData.Message, ResolveParameter);
+            var result = await invoker.InvokeAsync(messageHandler, dispatchData.Message, ResolveParameter);
 
             if (returnTypeDescriptor.ResultType == typeof(void))
             {
@@ -176,16 +186,14 @@ namespace AI4E.Validation
         private static readonly ConcurrentDictionary<Type, ImmutableDictionary<Type, ValidationDescriptor>> _descriptorsCache
             = new ConcurrentDictionary<Type, ImmutableDictionary<Type, ValidationDescriptor>>();
 
-        private bool TryGetDescriptor(Type handledType, out ValidationDescriptor descriptor)
+        internal static bool TryGetDescriptor(Type messageHandlerType, Type handledType, out ValidationDescriptor descriptor)
         {
-            var messageHandlerType = Context.MessageHandler.GetType();
-
             if (_descriptorsCache.TryGetValue(messageHandlerType, out var descriptors))
             {
                 return descriptors.TryGetValue(handledType, out descriptor);
             }
 
-            var members = ValidationInspector.Instance.InspectType(Context.MessageHandler.GetType());
+            var members = ValidationInspector.Instance.InspectType(messageHandlerType);
             var duplicates = members.GroupBy(p => p.ParameterType).Where(p => p.Count() > 1);
 
             if (duplicates.Any(p => p.Key == handledType))
@@ -214,10 +222,12 @@ namespace AI4E.Validation
             return result;
         }
 
-        private static Type GetMessageHandlerMessageType(MessageHandlerActionDescriptor memberDescriptor)
+        internal static Type GetMessageHandlerMessageType(MessageHandlerActionDescriptor memberDescriptor)
         {
             return memberDescriptor.Member.GetParameters().First().ParameterType;
         }
+
+        #endregion
 
         private static bool IsValidationEnabled(MessageHandlerActionDescriptor memberDescriptor)
         {

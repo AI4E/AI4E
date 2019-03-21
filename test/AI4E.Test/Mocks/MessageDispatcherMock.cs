@@ -51,6 +51,8 @@ namespace AI4E.Mocks
 
             return result;
         }
+
+        public IMessageHandlerProvider MessageHandlerProvider { get; set; }
     }
 
     public readonly struct RecordedMessage

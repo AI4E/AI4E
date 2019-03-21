@@ -55,7 +55,6 @@ namespace AI4E.Routing
 
         private readonly IMessageRouterFactory _messageRouterFactory;
         private readonly ITypeConversion _typeConversion;
-        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<RemoteMessageDispatcher> _logger;
 
         private readonly MessageDispatcher _localMessageDispatcher;
@@ -87,7 +86,6 @@ namespace AI4E.Routing
 
             _messageRouterFactory = messageRouterFactory;
             _typeConversion = typeConversion;
-            _serviceProvider = serviceProvider;
             _logger = logger;
 
             _localMessageDispatcher = new MessageDispatcher(messageHandlerRegistry, serviceProvider);
@@ -183,6 +181,8 @@ namespace AI4E.Routing
         }
 
         public Task Initialization => _lifetimeManager.Initialization;
+
+        public IMessageHandlerProvider MessageHandlerProvider => _localMessageDispatcher.MessageHandlerProvider;
 
         #region Disposal
 

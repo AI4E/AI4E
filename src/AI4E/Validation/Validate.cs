@@ -18,21 +18,35 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
-using AI4E.Validation;
+using System;
+using Newtonsoft.Json;
 
-namespace AI4E
+namespace AI4E.Validation
 {
-    public class MessagingOptions
+    public abstract class Validate
     {
-        public MessagingOptions()
+        private protected Validate(Type messageType, object message)
         {
-            MessageProcessors = new List<IMessageProcessorRegistration>()
-            {
-                MessageProcessorRegistration.Create<ValidationMessageProcessor>() // TOOD: Remove me??
-            };
+            MessageType = messageType;
+            Message = message;
         }
 
-        public IList<IMessageProcessorRegistration> MessageProcessors { get; }
+        [JsonIgnore]
+        public Type MessageType { get; }
+
+        [JsonIgnore]
+        public object Message { get; }
+    }
+
+    public sealed class Validate<TMessage> : Validate
+        where TMessage : class
+    {
+        [JsonConstructor]
+        public Validate(TMessage message) : base(typeof(TMessage), message)
+        {
+            Message = message;
+        }
+
+        public new TMessage Message { get; }
     }
 }

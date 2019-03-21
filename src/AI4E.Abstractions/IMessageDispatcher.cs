@@ -41,5 +41,10 @@ namespace AI4E
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
         ValueTask<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation = default);
+
+        /// <summary>
+        /// Gets the <see cref="IMessageHandlerProvider"/> that is used to load (local) message handlers.
+        /// </summary>
+        IMessageHandlerProvider MessageHandlerProvider { get; }
     }
 }

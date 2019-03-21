@@ -93,9 +93,7 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(services));
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
             services.AddSingleton<IMessageDispatcher, TMessageDispatcher>();
         }
@@ -110,9 +108,7 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(instance));
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
             services.AddSingleton<IMessageDispatcher>(instance);
         }
@@ -127,9 +123,7 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(factory));
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
             services.AddSingleton<IMessageDispatcher>(factory);
         }
@@ -142,9 +136,7 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(services));
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
             services.AddSingleton<TMessageDispatcher, TMessageDispatcherImpl>();
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
@@ -161,9 +153,7 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(instance));
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
             services.AddSingleton<TMessageDispatcher>(instance);
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
@@ -183,22 +173,27 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(factory));
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
             services.AddSingleton<TMessageDispatcher>(factory);
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
         }
 
-        public static IMessageHandlerRegistry BuildMessageHandlerRegistry(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
+        public static void ConfigureMessageHandlers(this IServiceCollection services, Action<IMessageHandlerRegistry, IServiceProvider> configuration)
         {
-            if (serviceProvider == null)
-                throw new ArgumentNullException(nameof(serviceProvider));
+            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
+            services.Decorate<IMessageHandlerRegistry>((registry, provider) =>
+            {
+                configuration(registry, provider);
+                return registry;
+            });
+        }
 
-            if (messageHandlerRegistry == null)
-                throw new ArgumentNullException(nameof(messageHandlerRegistry));
+        #region TODO - Move me to a separate type
 
+        // TODO: Rename
+        private static void ConfigureMessageHandlers(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
+        {
             var options = serviceProvider.GetService<IOptions<MessagingOptions>>()?.Value ?? new MessagingOptions();
             var processors = options.MessageProcessors.ToImmutableArray();
             var partManager = serviceProvider.GetRequiredService<ApplicationPartManager>();
@@ -209,8 +204,6 @@ namespace AI4E
             var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
             var logger = loggerFactory?.CreateLogger("MessageHandlerRegistration");
             RegisterMessageHandlerTypes(messageHandlerFeature.MessageHandlers, messageHandlerRegistry, processors, logger);
-
-            return messageHandlerRegistry;
         }
 
         private static void RegisterMessageHandlerTypes(
@@ -251,8 +244,11 @@ namespace AI4E
             return new MessageHandlerRegistration(
                 memberDescriptor.MessageType,
                 configuration,
-                serviceProvider => MessageHandlerInvoker.CreateInvoker(memberDescriptor, processors, serviceProvider));
+                serviceProvider => MessageHandlerInvoker.CreateInvoker(memberDescriptor, processors, serviceProvider),
+                memberDescriptor);
         }
+
+        #endregion
 
         private static void ConfigureFeatureProviders(ApplicationPartManager partManager)
         {

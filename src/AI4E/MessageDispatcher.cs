@@ -136,11 +136,11 @@ namespace AI4E
             {
                 Assert(currType != null);
 
-                var handlerCollection = messageHandlerProvider.GetHandlerRegistrations(currType);
+                var handlerRegistrations = messageHandlerProvider.GetHandlerRegistrations(currType);
 
-                if (handlerCollection.Any())
+                if (handlerRegistrations.Any())
                 {
-                    var dispatchOperation = DispatchAsync(handlerCollection, dispatchData, publish, localDispatch, cancellation);
+                    var dispatchOperation = DispatchAsync(handlerRegistrations, dispatchData, publish, localDispatch, cancellation);
 
                     if (publish)
                     {
