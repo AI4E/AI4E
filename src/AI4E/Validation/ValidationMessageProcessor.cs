@@ -33,10 +33,18 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Validation
 {
+    /// <summary>
+    /// A message processor that validates messages.
+    /// </summary>
     public class ValidationMessageProcessor : MessageProcessor
     {
         private readonly IServiceProvider _serviceProvider;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="ValidationMessageProcessor"/> type.
+        /// </summary>
+        /// <param name="serviceProvider">The <see cref="IServiceProvider"/> that is used to resolve services.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is <c>null</c>.</exception>
         public ValidationMessageProcessor(IServiceProvider serviceProvider)
         {
             if (serviceProvider == null)

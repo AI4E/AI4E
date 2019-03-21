@@ -32,6 +32,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Validation
 {
+    /// <summary>
+    /// Contains factory methods to create generic validation invoker.
+    /// </summary>
     public static class ValidationInvoker
     {
         private static readonly ConcurrentDictionary<Type, InvokerFactory> _factories =
@@ -39,6 +42,17 @@ namespace AI4E.Validation
 
         private static readonly Type _validationInvokerTypeDefinition = typeof(ValidationInvoker<>);
 
+        /// <summary>
+        /// Creates a <see cref="ValidationInvoker{TMessage}"/> from the specified parameters.
+        /// </summary>
+        /// <param name="messageType">The message type.</param>
+        /// <param name="messageProcessors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
+        /// <param name="serviceProvider">A <see cref="IServiceProvider"/> used to obtain services.</param>
+        /// <returns>The creates <see cref="ValidationInvoker{TMessage}"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="messageType"/>, <paramref name="messageProcessors"/>
+        /// or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
         public static IValidationInvoker CreateInvoker(
             Type messageType,
             IList<IMessageProcessorRegistration> messageProcessors,
@@ -77,8 +91,26 @@ namespace AI4E.Validation
             IServiceProvider serviceProvider);
     }
 
+    /// <summary>
+    /// Represents a validation invoker.
+    /// </summary>
     public interface IValidationInvoker
     {
+        /// <summary>
+        /// Invokes the validation with the specified parameters.
+        /// </summary>
+        /// <param name="dispatchData">The dispatch data that contains the message to handle and supporting data.</param>
+        /// <param name="publish">A boolean value specifying whether the message is published to all handlers.</param>
+        /// <param name="localDispatch">A boolean value specifying whether the message is dispatched locally.</param>
+        /// <param name="handlerRegistration">The message handler that is responsible for handling the messages in non-validation dispatches.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A value task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the dispatch result.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either<paramref name="dispatchData"/> or <paramref name="handlerRegistration"/> is null.
+        /// </exception>
         ValueTask<IDispatchResult> InvokeValidationAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
@@ -87,11 +119,23 @@ namespace AI4E.Validation
             CancellationToken cancellation);
     }
 
+    /// <summary>
+    /// Represents a validation invoker.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of message that is validated.</typeparam>
     public sealed class ValidationInvoker<TMessage> : InvokerBase<TMessage>, IValidationInvoker
         where TMessage : class
     {
         private readonly IServiceProvider _serviceProvider;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="ValidationInvoker{TMessage}"/> type.
+        /// </summary>
+        /// <param name="messageProcessors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
+        /// <param name="serviceProvider">>A <see cref="IServiceProvider"/> used to obtain services.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="messageProcessors"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
         public ValidationInvoker(
             IList<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider) : base(messageProcessors, serviceProvider)
@@ -102,6 +146,7 @@ namespace AI4E.Validation
             _serviceProvider = serviceProvider;
         }
 
+        /// <inheritdoc/>
         public ValueTask<IDispatchResult> InvokeValidationAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
@@ -124,6 +169,21 @@ namespace AI4E.Validation
                 typedDispatchData, publish, localDispatch, handlerRegistration, cancellation);
         }
 
+        /// <summary>
+        /// Invokes the validation with the specified parameters.
+        /// </summary>
+        /// <param name="dispatchData">The dispatch data that contains the message to handle and supporting data.</param>
+        /// <param name="publish">A boolean value specifying whether the message is published to all handlers.</param>
+        /// <param name="localDispatch">A boolean value specifying whether the message is dispatched locally.</param>
+        /// <param name="handlerRegistration">The message handler that is responsible for handling the messages in non-validation dispatches.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A value task representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the dispatch result.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either<paramref name="dispatchData"/> or <paramref name="handlerRegistration"/> is null.
+        /// </exception>
         public ValueTask<IDispatchResult> InvokeValidationAsync(
             DispatchDataDictionary<TMessage> dispatchData,
             bool publish,
@@ -165,6 +225,7 @@ namespace AI4E.Validation
                 handler, descriptor, dispatchData, publish, localDispatch, InvokeValidation, cancellation);
         }
 
+        /// <inheritdoc/>
         protected override bool ExecuteProcessor(IMessageProcessorRegistration messageProcessorRegistration)
         {
             var processorType = messageProcessorRegistration.MessageProcessorType;

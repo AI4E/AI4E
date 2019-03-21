@@ -21,7 +21,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
@@ -47,17 +46,19 @@ namespace AI4E.Handler
         /// Creates a <see cref="MessageHandlerInvoker{TMessage}"/> from the specified parameters.
         /// </summary>
         /// <param name="memberDescriptor">The descriptor that specifies the message handler member.</param>
-        /// <param name="processors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
+        /// <param name="messageProcessors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
         /// <param name="serviceProvider">A <see cref="IServiceProvider"/> used to obtain services.</param>
         /// <returns>The created <see cref="MessageHandlerInvoker{TMessage}"/>.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="messageProcessors"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
         /// <remarks>
         /// This overload creates the message handler specified by <paramref name="memberDescriptor"/>
         /// and resolved its depdendencies from <paramref name="serviceProvider"/>.
         /// </remarks>
         public static IMessageHandler CreateInvoker(
             MessageHandlerActionDescriptor memberDescriptor,
-            IList<IMessageProcessorRegistration> processors,
+            IList<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
         {
             if (serviceProvider == null)
@@ -67,7 +68,7 @@ namespace AI4E.Handler
             var handler = ActivatorUtilities.CreateInstance(serviceProvider, handlerType);
             Assert(handler != null);
 
-            return CreateInvokerInternal(handler, memberDescriptor, processors, serviceProvider);
+            return CreateInvokerInternal(handler, memberDescriptor, messageProcessors, serviceProvider);
         }
 
         /// <summary>
@@ -75,11 +76,11 @@ namespace AI4E.Handler
         /// </summary>
         /// <param name="handler">The message handler.</param>
         /// <param name="memberDescriptor">The descriptor that specifies the message handler member.</param>
-        /// <param name="processors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
+        /// <param name="messageProcessors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
         /// <param name="serviceProvider">A <see cref="IServiceProvider"/> used to obtain services.</param>
         /// <returns>The created <see cref="MessageHandlerInvoker{TMessage}"/>.</returns>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if any of <paramref name="handler"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// Thrown if any of <paramref name="handler"/>, <paramref name="messageProcessors"/> or <paramref name="serviceProvider"/> is <c>null</c>.
         /// </exception>
         /// <exception cref="ArgumentException">
         /// Thrown if <paramref name="handler"/> has a different type as specified by <paramref name="memberDescriptor"/>.
@@ -87,7 +88,7 @@ namespace AI4E.Handler
         public static IMessageHandler CreateInvoker(
             object handler,
             MessageHandlerActionDescriptor memberDescriptor,
-            IList<IMessageProcessorRegistration> processors,
+            IList<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
         {
             if (handler == null)
@@ -99,7 +100,7 @@ namespace AI4E.Handler
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            return CreateInvokerInternal(handler, memberDescriptor, processors, serviceProvider);
+            return CreateInvokerInternal(handler, memberDescriptor, messageProcessors, serviceProvider);
         }
 
         private static IMessageHandler CreateInvokerInternal(
@@ -153,10 +154,10 @@ namespace AI4E.Handler
         /// </summary>
         /// <param name="handler">The message handler.</param>
         /// <param name="memberDescriptor">The descriptor that specifies the message handler member.</param>
-        /// <param name="processors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
+        /// <param name="messageProcessors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
         /// <param name="serviceProvider">A <see cref="IServiceProvider"/> used to obtain services.</param>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if any of <paramref name="handler"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// Thrown if any of <paramref name="handler"/>, <paramref name="messageProcessors"/> or <paramref name="serviceProvider"/> is <c>null</c>.
         /// </exception>
         /// <exception cref="ArgumentException">
         /// Thrown if <paramref name="handler"/> has a different type as specified by <paramref name="memberDescriptor"/>.
@@ -164,9 +165,9 @@ namespace AI4E.Handler
         public MessageHandlerInvoker(
             object handler,
             MessageHandlerActionDescriptor memberDescriptor,
-            IList<IMessageProcessorRegistration> processors,
+            IList<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
-            : base(processors, serviceProvider)
+            : base(messageProcessors, serviceProvider)
         {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));

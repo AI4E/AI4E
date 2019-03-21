@@ -24,8 +24,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Contains validation specific extension for the <see cref="IMessagingBuilder"/> type.
+    /// </summary>
     public static class ValidationMessagingBuilderExtension
     {
+        /// <summary>
+        /// Adds validation to the messaging system.
+        /// </summary>
+        /// <param name="builder">The messaging builder.</param>
+        /// <returns>The messaging builder.</returns>
         public static IMessagingBuilder AddValidation(this IMessagingBuilder builder)
         {
             var services = builder.Services;

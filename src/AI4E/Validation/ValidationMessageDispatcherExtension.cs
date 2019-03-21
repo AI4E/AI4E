@@ -24,8 +24,22 @@ using AI4E.Validation;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Contains validation specific extensions for the <see cref="IMessageDispatcher"/> type.
+    /// </summary>
     public static class ValidationMessageDispatcherExtension
     {
+        /// <summary>
+        /// Asynchronously performs a validation dispatch for the specified set of data.
+        /// </summary>
+        /// <typeparam name="TMessage">The type of message to validate.</typeparam>
+        /// <param name="messageDispatcher">The message dispatcher.</param>
+        /// <param name="dispatchData">The dispatch data that contains the message to validate.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the dispatch result.
+        /// </returns>
         public static ValueTask<IDispatchResult> ValidateAsync<TMessage>(
             this IMessageDispatcher messageDispatcher,
             DispatchDataDictionary<TMessage> dispatchData,
@@ -39,6 +53,17 @@ namespace AI4E
             return messageDispatcher.DispatchAsync(validationDispatchData, publish: false, cancellation);
         }
 
+        /// <summary>
+        /// Asynchronously performs a validation dispatch for the specified set of data.
+        /// </summary>
+        /// <typeparam name="TMessage">The type of message to validate.</typeparam>
+        /// <param name="messageDispatcher">The message dispatcher.</param>
+        /// <param name="message">The message to validate.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the dispatch result.
+        /// </returns>
         public static ValueTask<IDispatchResult> ValidateAsync<TMessage>(
             this IMessageDispatcher messageDispatcher,
             TMessage message,

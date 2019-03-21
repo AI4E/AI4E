@@ -26,12 +26,24 @@ using System.Threading.Tasks;
 
 namespace AI4E.Handler
 {
+    /// <summary>
+    /// A base class for invokers that need message processor chaining support.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of message that is dispatched.</typeparam>
     public abstract class InvokerBase<TMessage>
         where TMessage : class
     {
         private readonly IList<IMessageProcessorRegistration> _messageProcessors;
         private readonly IServiceProvider _serviceProvider;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="InvokerBase{TMessage}"/> type.
+        /// </summary>
+        /// <param name="messageProcessors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
+        /// <param name="serviceProvider">>A <see cref="IServiceProvider"/> used to obtain services.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="messageProcessors"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
         protected InvokerBase(
             IList<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
@@ -45,6 +57,7 @@ namespace AI4E.Handler
             _messageProcessors = messageProcessors;
             _serviceProvider = serviceProvider;
         }
+
 
         protected ValueTask<IDispatchResult> InvokeChainAsync(
             object handler,

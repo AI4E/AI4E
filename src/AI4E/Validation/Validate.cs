@@ -23,6 +23,9 @@ using Newtonsoft.Json;
 
 namespace AI4E.Validation
 {
+    /// <summary>
+    /// A message base-type that is used to validate a message.
+    /// </summary>
     public abstract class Validate
     {
         private protected Validate(Type messageType, object message)
@@ -31,22 +34,39 @@ namespace AI4E.Validation
             Message = message;
         }
 
+        /// <summary>
+        /// Gets the message type of the validation dispatch.
+        /// </summary>
         [JsonIgnore]
         public Type MessageType { get; }
 
+        /// <summary>
+        /// Gets the message that shall be validated in the validation dispatch.
+        /// </summary>
         [JsonIgnore]
         public object Message { get; }
     }
 
+    /// <summary>
+    /// A message type that is used to validate a message.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of message to validate.</typeparam>
     public sealed class Validate<TMessage> : Validate
         where TMessage : class
     {
+        /// <summary>
+        /// Creates a new instance of the <see cref="Validate"/> type.
+        /// </summary>
+        /// <param name="message">The message that shall be validated in the validation dispatch.</param>
         [JsonConstructor]
         public Validate(TMessage message) : base(typeof(TMessage), message)
         {
             Message = message;
         }
 
+        /// <summary>
+        /// Gets the message that shall be validated in the validation dispatch.
+        /// </summary>
         public new TMessage Message { get; }
     }
 }
