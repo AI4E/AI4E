@@ -213,7 +213,7 @@ namespace AI4E.Handler
                         contextDescriptor.SetContext(processor, messageProcessorContext);
                     }
 
-                    return processor.ProcessAsync(dispatchData, nextCopy, cancellation);
+                    return processor.ProcessAsync(nextDispatchData, nextCopy, cancellation);
                 }
 
                 next = InvokeProcessor;

@@ -328,6 +328,39 @@ namespace AI4E.Handler
         }
 
         [TestMethod]
+        public async Task MessageProcessorDispatchDataChainTest()
+        {
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddSingleton<IService, Service>();
+            serviceCollection.AddSingleton<IMessageDispatcher, MessageDispatcherMock>();
+            var serviceProvider = serviceCollection.BuildServiceProvider();
+
+            var resultList = new List<int>();
+
+            var processor1 = new OrderTestMessageProcessor(resultList, 1);
+            var processor2 = new OrderTestMessageProcessor(resultList, 2);
+            var processors = new[]
+            {
+                new MessageProcessorRegistration(processor1),
+                new MessageProcessorRegistration(processor2)
+            }.ToImmutableArray<IMessageProcessorRegistration>();
+            var memberDescriptor = new MessageHandlerActionDescriptor(
+                typeof(string),
+                typeof(TestMessageHandler),
+                typeof(TestMessageHandler).GetMethod(nameof(TestMessageHandler.ReturningDispatchResultHandle)));
+            var handler = new TestMessageHandler();
+            var messageHandler = new MessageHandlerInvoker<string>(handler, memberDescriptor, processors, serviceProvider);
+            var dispatchData = new DispatchDataDictionary<string>("abc");
+            var cancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = cancellationTokenSource.Token;
+            await messageHandler.HandleAsync(dispatchData, true, true, cancellationToken);
+
+            Assert.IsNull(processor1.DispatchData["processorIndex"]);
+            Assert.AreEqual(1, processor2.DispatchData["processorIndex"]);
+            Assert.AreEqual(2, handler.Context.DispatchData["processorIndex"]);
+        }
+
+        [TestMethod]
         public async Task CreateInvokerWithHandlerTest()
         {
             var serviceCollection = new ServiceCollection();
@@ -378,7 +411,7 @@ namespace AI4E.Handler
         public void ResolveServicesHandle(
             string message,
             DispatchDataDictionary dispatchData,
-            DispatchDataDictionary<string> genericDispatchData,           
+            DispatchDataDictionary<string> genericDispatchData,
             CancellationToken cancellation,
             IMessageDispatchContext messageDispatchContext,
             IServiceProvider serviceProvider,
@@ -501,9 +534,17 @@ namespace AI4E.Handler
             where TMessage : class
         {
             _resultList.Add(_index);
+            DispatchData = dispatchData;
 
-            return next(dispatchData);
+            var dispatchDataValues = new Dictionary<string, object>(dispatchData)
+            {
+                ["processorIndex"] = _index
+            };
+
+            return next(new DispatchDataDictionary<TMessage>(dispatchData.Message, dispatchDataValues));
         }
+
+        public DispatchDataDictionary DispatchData { get; private set; }
     }
 
     public interface IService { }
