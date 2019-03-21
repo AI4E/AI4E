@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
@@ -36,7 +37,7 @@ namespace AI4E.Validation
         [TestMethod]
         public async Task ValidateValidTest()
         {
-            var serviceProvider = new ServiceCollection().BuildServiceProvider();
+
             var memberDescriptor = new MessageHandlerActionDescriptor(
                typeof(ValidationTestMessage),
                typeof(ValidationTestMessageHandler),
@@ -50,7 +51,16 @@ namespace AI4E.Validation
             var messageHandlerProvider = new MessageHandlerProviderMock();
             messageHandlerProvider.GetHandlerRegistrations(typeof(ValidationTestMessage)).Add(handlerRegistration);
             var messageDispatcher = new MessageDispatcherMock { MessageHandlerProvider = messageHandlerProvider };
-            var validationMessageHandler = new ValidationMessageHandler(messageDispatcher, serviceProvider);
+            var serviceProvider = BuildServiceProvider(services =>
+            {
+                services.AddSingleton<IMessageDispatcher>(messageDispatcher);
+                services.AddOptions();
+                services.Configure<MessagingOptions>(options =>
+                {
+                    options.MessageProcessors.Clear();
+                });
+            });
+            var validationMessageHandler = ActivatorUtilities.CreateInstance<ValidationMessageHandler>(serviceProvider);
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
             var testMessage = new ValidationTestMessage("myString", 243);
@@ -64,7 +74,6 @@ namespace AI4E.Validation
         [TestMethod]
         public async Task ValidateInvalidTest()
         {
-            var serviceProvider = new ServiceCollection().BuildServiceProvider();
             var memberDescriptor = new MessageHandlerActionDescriptor(
                typeof(ValidationTestMessage),
                typeof(ValidationTestMessageHandler),
@@ -78,7 +87,16 @@ namespace AI4E.Validation
             var messageHandlerProvider = new MessageHandlerProviderMock();
             messageHandlerProvider.GetHandlerRegistrations(typeof(ValidationTestMessage)).Add(handlerRegistration);
             var messageDispatcher = new MessageDispatcherMock { MessageHandlerProvider = messageHandlerProvider };
-            var validationMessageHandler = new ValidationMessageHandler(messageDispatcher, serviceProvider);
+            var serviceProvider = BuildServiceProvider(services =>
+            {
+                services.AddSingleton<IMessageDispatcher>(messageDispatcher);
+                services.AddOptions();
+                services.Configure<MessagingOptions>(options =>
+                {
+                    options.MessageProcessors.Clear();
+                });
+            });
+            var validationMessageHandler = ActivatorUtilities.CreateInstance<ValidationMessageHandler>(serviceProvider);
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
             var testMessage = new ValidationTestMessage("   ", -1);
@@ -94,5 +112,131 @@ namespace AI4E.Validation
                 new ValidationResult("Must be non-negative.", "Int"),
             }));
         }
+
+        [TestMethod]
+        public async Task ValidationEnabledMessageProcessorTest()
+        {
+            var memberDescriptor = new MessageHandlerActionDescriptor(
+               typeof(ValidationTestMessage),
+               typeof(ValidationTestMessageHandler),
+               typeof(ValidationTestMessageHandler).GetMethod("Handle"));
+            var configuration = memberDescriptor.BuildConfiguration();
+            var handlerRegistration = new MessageHandlerRegistration(
+                memberDescriptor.MessageType,
+                configuration,
+                provider => MessageHandlerInvoker.CreateInvoker(memberDescriptor, ImmutableArray<IMessageProcessorRegistration>.Empty, provider),
+                memberDescriptor);
+            var messageHandlerProvider = new MessageHandlerProviderMock();
+            messageHandlerProvider.GetHandlerRegistrations(typeof(ValidationTestMessage)).Add(handlerRegistration);
+            var messageDispatcher = new MessageDispatcherMock { MessageHandlerProvider = messageHandlerProvider };
+            var validationEnabledMessageProcessor = new ValidationEnabledMessageProcessor();
+            var serviceProvider = BuildServiceProvider(services =>
+            {
+                services.AddSingleton<IMessageDispatcher>(messageDispatcher);
+                services.AddOptions();
+                services.Configure<MessagingOptions>(options =>
+                {
+                    options.MessageProcessors.Clear();
+                    options.MessageProcessors.Add(new MessageProcessorRegistration(validationEnabledMessageProcessor));
+                });
+            });
+            var validationMessageHandler = ActivatorUtilities.CreateInstance<ValidationMessageHandler>(serviceProvider);
+            var cancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = cancellationTokenSource.Token;
+            var testMessage = new ValidationTestMessage("   ", -1);
+            var dispatchData = new DispatchDataDictionary<Validate<ValidationTestMessage>>(new Validate<ValidationTestMessage>(testMessage));
+
+            var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, cancellationToken);
+
+            Assert.IsTrue(validationEnabledMessageProcessor.Called);
+            Assert.IsInstanceOfType(dispatchResult, typeof(ValidationFailureDispatchResult));
+            Assert.AreEqual(2, ((ValidationFailureDispatchResult)dispatchResult).ValidationResults.Count);
+            Assert.IsTrue(((ValidationFailureDispatchResult)dispatchResult).ValidationResults.ToHashSet().SetEquals(new[]
+            {
+                new ValidationResult("Must not be null nor whitespace.", "String"),
+                new ValidationResult("Must be non-negative.", "Int"),
+            }));
+        }
+
+        [TestMethod]
+        public async Task ValidationDisabledMessageProcessorTest()
+        {
+            var memberDescriptor = new MessageHandlerActionDescriptor(
+               typeof(ValidationTestMessage),
+               typeof(ValidationTestMessageHandler),
+               typeof(ValidationTestMessageHandler).GetMethod("Handle"));
+            var configuration = memberDescriptor.BuildConfiguration();
+            var handlerRegistration = new MessageHandlerRegistration(
+                memberDescriptor.MessageType,
+                configuration,
+                provider => MessageHandlerInvoker.CreateInvoker(memberDescriptor, ImmutableArray<IMessageProcessorRegistration>.Empty, provider),
+                memberDescriptor);
+            var messageHandlerProvider = new MessageHandlerProviderMock();
+            messageHandlerProvider.GetHandlerRegistrations(typeof(ValidationTestMessage)).Add(handlerRegistration);
+            var messageDispatcher = new MessageDispatcherMock { MessageHandlerProvider = messageHandlerProvider };
+            var validationEnabledMessageProcessor = new ValidationDisabledMessageProcessor();
+            var serviceProvider = BuildServiceProvider(services =>
+            {
+                services.AddSingleton<IMessageDispatcher>(messageDispatcher);
+                services.AddOptions();
+                services.Configure<MessagingOptions>(options =>
+                {
+                    options.MessageProcessors.Clear();
+                    options.MessageProcessors.Add(new MessageProcessorRegistration(validationEnabledMessageProcessor));
+                });
+            });
+            var validationMessageHandler = ActivatorUtilities.CreateInstance<ValidationMessageHandler>(serviceProvider);
+            var cancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = cancellationTokenSource.Token;
+            var testMessage = new ValidationTestMessage("   ", -1);
+            var dispatchData = new DispatchDataDictionary<Validate<ValidationTestMessage>>(new Validate<ValidationTestMessage>(testMessage));
+
+            var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, cancellationToken);
+
+            Assert.IsFalse(validationEnabledMessageProcessor.Called);
+            Assert.IsInstanceOfType(dispatchResult, typeof(ValidationFailureDispatchResult));
+            Assert.AreEqual(2, ((ValidationFailureDispatchResult)dispatchResult).ValidationResults.Count);
+            Assert.IsTrue(((ValidationFailureDispatchResult)dispatchResult).ValidationResults.ToHashSet().SetEquals(new[]
+            {
+                new ValidationResult("Must not be null nor whitespace.", "String"),
+                new ValidationResult("Must be non-negative.", "Int"),
+            }));
+        }
+
+        private static IServiceProvider BuildServiceProvider(Action<IServiceCollection> config)
+        {
+            var services = new ServiceCollection();
+            config(services);
+            return services.BuildServiceProvider();
+        }
+    }
+
+    [CallOnValidation]
+    public class ValidationEnabledMessageProcessor : MessageProcessor
+    {
+        public override ValueTask<IDispatchResult> ProcessAsync<TMessage>(
+            DispatchDataDictionary<TMessage> dispatchData,
+            Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
+            CancellationToken cancellation)
+        {
+            Called = true;
+            return base.ProcessAsync(dispatchData, next, cancellation);
+        }
+
+        public bool Called { get; private set; }
+    }
+
+    public class ValidationDisabledMessageProcessor : MessageProcessor
+    {
+        public override ValueTask<IDispatchResult> ProcessAsync<TMessage>(
+            DispatchDataDictionary<TMessage> dispatchData,
+            Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
+            CancellationToken cancellation)
+        {
+            Called = true;
+            return base.ProcessAsync(dispatchData, next, cancellation);
+        }
+
+        public bool Called { get; private set; }
     }
 }

@@ -63,7 +63,6 @@ namespace AI4E.Validation
                 if (TryGetDescriptor(Context.MessageHandler.GetType(), handledType, out var descriptor))
                 {
                     var validationResults = await InvokeValidationAsync(
-                        typeof(TMessage),
                         Context.MessageHandler,
                         descriptor,
                         dispatchData,
@@ -88,7 +87,6 @@ namespace AI4E.Validation
         #region TODO -  Move me to a separate type
 
         internal static async ValueTask<IEnumerable<ValidationResult>> InvokeValidationAsync(
-            Type messageType,
             object messageHandler,
             ValidationDescriptor descriptor,
             DispatchDataDictionary dispatchData,

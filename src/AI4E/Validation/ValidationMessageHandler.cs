@@ -20,11 +20,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
+using AI4E.Handler;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace AI4E.Validation
 {
@@ -33,11 +37,16 @@ namespace AI4E.Validation
     {
         private readonly IMessageDispatcher _messageDispatcher;
         private readonly IServiceProvider _serviceProvider;
+        private readonly MessagingOptions _options;
 
-        public ValidationMessageHandler(IMessageDispatcher messageDispatcher, IServiceProvider serviceProvider)
+        public ValidationMessageHandler(
+            IMessageDispatcher messageDispatcher,
+            IServiceProvider serviceProvider,
+            IOptions<MessagingOptions> optionsAccessor)
         {
             _messageDispatcher = messageDispatcher;
             _serviceProvider = serviceProvider;
+            _options = optionsAccessor.Value ?? new MessagingOptions();
         }
 
         public Type MessageType => typeof(Validate);
@@ -73,37 +82,7 @@ namespace AI4E.Validation
                             continue;
                         }
 
-                        // The handler has no descriptor and cannot have a validation therefore.
-                        if (!handlerRegistration.TryGetDescriptor(out var descriptor))
-                        {
-                            return new ValueTask<IDispatchResult>(new SuccessDispatchResult());
-                        }
-
-                        var parameterType = ValidationMessageProcessor.GetMessageHandlerMessageType(descriptor);
-
-                        // The handler has no validation.
-                        if (!ValidationMessageProcessor.TryGetDescriptor(descriptor.MessageHandlerType, parameterType, out var validation))
-                        {
-                            return new ValueTask<IDispatchResult>(new SuccessDispatchResult());
-                        }
-
-                        var validationDispatchData = DispatchDataDictionary.Create(
-                            dispatchData.Message.MessageType,
-                            dispatchData.Message.Message,
-                            dispatchData);
-
-                        var handlerType = descriptor.MessageHandlerType;
-                        var handler = ActivatorUtilities.CreateInstance(_serviceProvider, handlerType);
-
-                        var invokeResult = ValidationMessageProcessor.InvokeValidationAsync(
-                            dispatchData.Message.MessageType,
-                            handler,
-                            validation,
-                            validationDispatchData,
-                            _serviceProvider,
-                            cancellation);
-
-                        return EvaluateValidationInvokation(invokeResult);
+                        return InvokeValidationAsync(dispatchData, publish, localDispatch, handlerRegistration, cancellation);
 
                         // The message dispatcher has another constraint on the handler.
                         // It skips the handler if it returns a
@@ -115,6 +94,90 @@ namespace AI4E.Validation
             while (!currType.IsInterface && (currType = currType.BaseType) != null);
 
             return new ValueTask<IDispatchResult>(new DispatchFailureDispatchResult(dispatchData.MessageType));
+        }
+
+        private ValueTask<IDispatchResult> InvokeValidationAsync(
+            DispatchDataDictionary<Validate> dispatchData,
+            bool publish,
+            bool localDispatch,
+            IMessageHandlerRegistration handlerRegistration,
+            CancellationToken cancellation)
+        {
+            // The handler has no descriptor and cannot have a validation therefore.
+            if (!handlerRegistration.TryGetDescriptor(out var descriptor))
+            {
+                return new ValueTask<IDispatchResult>(new SuccessDispatchResult());
+            }
+
+            var parameterType = ValidationMessageProcessor.GetMessageHandlerMessageType(descriptor);
+
+            // The handler has no validation.
+            if (!ValidationMessageProcessor.TryGetDescriptor(descriptor.MessageHandlerType, parameterType, out var validation))
+            {
+                return new ValueTask<IDispatchResult>(new SuccessDispatchResult());
+            }
+
+            var handlerType = descriptor.MessageHandlerType;
+            var handler = ActivatorUtilities.CreateInstance(_serviceProvider, handlerType);
+            var validationDispatchData = DispatchDataDictionary.Create(
+                dispatchData.Message.MessageType,
+                dispatchData.Message.Message,
+                dispatchData);
+
+            ValueTask<IDispatchResult> InvokeValidation(DispatchDataDictionary nextDispatchData)
+            {
+                var invokeResult = ValidationMessageProcessor.InvokeValidationAsync(
+                    handler,
+                    validation,
+                    nextDispatchData,
+                    _serviceProvider,
+                    cancellation);
+
+                return EvaluateValidationInvokation(invokeResult);
+            }
+
+            Func<DispatchDataDictionary, ValueTask<IDispatchResult>> next = InvokeValidation;
+
+            for (var i = _options.MessageProcessors.Count - 1; i >= 0; i--)
+            {
+                var processorType = _options.MessageProcessors[i].MessageProcessorType;
+
+                var callOnValidationAttribute = processorType.GetCustomAttribute<CallOnValidationAttribute>(inherit: true);
+
+                if (callOnValidationAttribute == null || !callOnValidationAttribute.CallOnValidation)
+                    continue;
+
+                var processor = _options.MessageProcessors[i].CreateMessageProcessor(_serviceProvider);
+                Debug.Assert(processor != null);
+                var nextCopy = next; // This is needed because of the way, the variable values are captured in the lambda expression.
+
+                ValueTask<IDispatchResult> InvokeProcessor(DispatchDataDictionary nextDispatchData)
+                {
+                    var contextDescriptor = MessageProcessorContextDescriptor.GetDescriptor(processor.GetType());
+
+                    if (contextDescriptor.CanSetContext)
+                    {
+                        IMessageProcessorContext messageProcessorContext = new MessageProcessorContext(
+                            handler,
+                            descriptor, // TODO: Can we pass descriptor in here? Null? We are not calling this handler actually.
+                            publish,
+                            localDispatch);
+
+                        contextDescriptor.SetContext(processor, messageProcessorContext);
+                    }
+
+                    // TODO
+                    return (ValueTask<IDispatchResult>)typeof(IMessageProcessor)
+                        .GetMethods()
+                        .Single(p => p.Name == nameof(IMessageProcessor.ProcessAsync))
+                        .MakeGenericMethod(validationDispatchData.MessageType)
+                        .Invoke(processor, new object[] { nextDispatchData, nextCopy, cancellation });
+                }
+
+                next = InvokeProcessor;
+            }
+
+            return next(validationDispatchData);
         }
 
         public ValueTask<IDispatchResult> HandleAsync(
