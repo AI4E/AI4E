@@ -195,7 +195,7 @@ namespace AI4E
         private static void ConfigureMessageHandlers(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
         {
             var options = serviceProvider.GetService<IOptions<MessagingOptions>>()?.Value ?? new MessagingOptions();
-            var processors = options.MessageProcessors.ToImmutableArray();
+            var processors = options.MessageProcessors;
             var partManager = serviceProvider.GetRequiredService<ApplicationPartManager>();
             var messageHandlerFeature = new MessageHandlerFeature();
 
@@ -209,7 +209,7 @@ namespace AI4E
         private static void RegisterMessageHandlerTypes(
             IEnumerable<Type> types,
             IMessageHandlerRegistry messageHandlerRegistry,
-            ImmutableArray<IMessageProcessorRegistration> processors,
+            IList<IMessageProcessorRegistration> processors,
             ILogger logger)
         {
             foreach (var type in types)
@@ -221,7 +221,7 @@ namespace AI4E
         private static void RegisterMessageHandlerType(
             Type handlerType,
             IMessageHandlerRegistry messageHandlerRegistry,
-            ImmutableArray<IMessageProcessorRegistration> processors,
+            IList<IMessageProcessorRegistration> processors,
             ILogger logger)
         {
             var memberDescriptors = MessageHandlerInspector.Instance.InspectType(handlerType);
@@ -237,7 +237,7 @@ namespace AI4E
 
         private static IMessageHandlerRegistration CreateMessageHandlerRegistration(
             MessageHandlerActionDescriptor memberDescriptor,
-            ImmutableArray<IMessageProcessorRegistration> processors)
+            IList<IMessageProcessorRegistration> processors)
         {
             var configuration = memberDescriptor.BuildConfiguration();
 

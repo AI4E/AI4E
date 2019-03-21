@@ -21,7 +21,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -88,23 +87,18 @@ namespace AI4E.Validation
             CancellationToken cancellation);
     }
 
-    public sealed class ValidationInvoker<TMessage> : IValidationInvoker
+    public sealed class ValidationInvoker<TMessage> : InvokerBase<TMessage>, IValidationInvoker
         where TMessage : class
     {
-        private readonly IList<IMessageProcessorRegistration> _messageProcessors;
         private readonly IServiceProvider _serviceProvider;
 
         public ValidationInvoker(
             IList<IMessageProcessorRegistration> messageProcessors,
-            IServiceProvider serviceProvider)
+            IServiceProvider serviceProvider) : base(messageProcessors, serviceProvider)
         {
-            if (messageProcessors == null)
-                throw new ArgumentNullException(nameof(messageProcessors));
-
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            _messageProcessors = messageProcessors;
             _serviceProvider = serviceProvider;
         }
 
@@ -167,50 +161,18 @@ namespace AI4E.Validation
                 return EvaluateValidationInvokation(invokeResult);
             }
 
-            Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next = InvokeValidation;
+            return InvokeChainAsync(
+                handler, descriptor, dispatchData, publish, localDispatch, InvokeValidation, cancellation);
+        }
 
-            // TODO: This is copied from MessageHandlerInvoker. Can we refactor this elegantly without
-            //       creating a function with a monstrous parameter list.
+        protected override bool ExecuteProcessor(IMessageProcessorRegistration messageProcessorRegistration)
+        {
+            var processorType = messageProcessorRegistration.MessageProcessorType;
 
-            for (var i = _messageProcessors.Count - 1; i >= 0; i--)
-            {
-                var processorType = _messageProcessors[i].MessageProcessorType;
+            var callOnValidationAttribute = processorType
+                .GetCustomAttribute<CallOnValidationAttribute>(inherit: true);
 
-                var callOnValidationAttribute = processorType
-                    .GetCustomAttribute<CallOnValidationAttribute>(inherit: true);
-
-                if (callOnValidationAttribute == null || !callOnValidationAttribute.CallOnValidation)
-                    continue;
-
-                var processor = _messageProcessors[i].CreateMessageProcessor(_serviceProvider);
-                Debug.Assert(processor != null);
-                // This is needed because of the way, the variable values are captured in the lambda expression.
-                var nextCopy = next;
-
-                ValueTask<IDispatchResult> InvokeProcessor(DispatchDataDictionary<TMessage> nextDispatchData)
-                {
-                    var contextDescriptor = MessageProcessorContextDescriptor.GetDescriptor(processor.GetType());
-
-                    if (contextDescriptor.CanSetContext)
-                    {
-                        // We pass in the message descriptor here altough we never call this member
-                        // as validation shall mimic the dispatch of the actual message as close as possible.
-                        IMessageProcessorContext messageProcessorContext = new MessageProcessorContext(
-                            handler,
-                            descriptor,
-                            publish,
-                            localDispatch);
-
-                        contextDescriptor.SetContext(processor, messageProcessorContext);
-                    }
-
-                    return processor.ProcessAsync(nextDispatchData, nextCopy, cancellation);
-                }
-
-                next = InvokeProcessor;
-            }
-
-            return next(dispatchData);
+            return callOnValidationAttribute != null && callOnValidationAttribute.CallOnValidation;
         }
 
         private async ValueTask<IDispatchResult> EvaluateValidationInvokation(
