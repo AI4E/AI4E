@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        ITypeConversion.cs 
  * Types:           AI4E.Remoting.ITypeConversion
@@ -32,6 +32,7 @@ using System;
 
 namespace AI4E.Remoting
 {
+    [Obsolete]
     public interface ITypeConversion
     {
         string SerializeType(Type type);

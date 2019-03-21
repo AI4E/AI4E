@@ -43,6 +43,7 @@ using AI4E.Remoting;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using static System.Diagnostics.Debug;
@@ -56,6 +57,7 @@ namespace AI4E.Routing
         private readonly IMessageRouterFactory _messageRouterFactory;
         private readonly ITypeConversion _typeConversion;
         private readonly ILogger<RemoteMessageDispatcher> _logger;
+        private readonly IList<IRoutesResolver> _routesResolver;
 
         private readonly MessageDispatcher _localMessageDispatcher;
         private readonly IMessageRouter _messageRouter;
@@ -70,6 +72,7 @@ namespace AI4E.Routing
                                        IMessageRouterFactory messageRouterFactory,
                                        ITypeConversion typeConversion,
                                        IServiceProvider serviceProvider,
+                                       IOptions<RemoteMessagingOptions> optionsAccessor,
                                        ILogger<RemoteMessageDispatcher> logger)
         {
             if (messageHandlerRegistry == null)
@@ -84,9 +87,13 @@ namespace AI4E.Routing
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
+            if (optionsAccessor == null)
+                throw new ArgumentNullException(nameof(optionsAccessor));
+
             _messageRouterFactory = messageRouterFactory;
             _typeConversion = typeConversion;
             _logger = logger;
+            _routesResolver = optionsAccessor.Value?.RoutesResolvers ?? new IRoutesResolver[0];
 
             _localMessageDispatcher = new MessageDispatcher(messageHandlerRegistry, serviceProvider);
             _messageRouter = _messageRouterFactory.CreateMessageRouter(new SerializedMessageHandler(this));
@@ -422,7 +429,7 @@ namespace AI4E.Routing
         {
             await Initialization.WithCancellation(cancellation);
 
-            var routes = GetRoutes(dispatchData.MessageType);
+            var routes = ResolveRoutes(dispatchData);
             var serializedMessage = new Message();
             SerializeDispatchData(serializedMessage, dispatchData);
 
@@ -449,23 +456,17 @@ namespace AI4E.Routing
             return new AggregateDispatchResult(results);
         }
 
-        private RouteHierarchy GetRoutes(Type messageType)
+        private RouteHierarchy ResolveRoutes(DispatchDataDictionary dispatchData)
         {
-            if (messageType.IsInterface)
+            foreach (var routesResolver in _routesResolver)
             {
-                var route = new Route(_typeConversion.SerializeType(messageType));
-
-                return new RouteHierarchy(ImmutableArray.Create(route));
+                if (routesResolver.CanResolve(dispatchData))
+                {
+                    return routesResolver.Resolve(dispatchData);
+                }
             }
 
-            var result = ImmutableArray.CreateBuilder<Route>();
-
-            for (; messageType != null; messageType = messageType.BaseType)
-            {
-                result.Add(new Route(_typeConversion.SerializeType(messageType)));
-            }
-
-            return new RouteHierarchy(result.ToImmutable());
+            return RoutesResolver.ResolveDefaults(dispatchData);
         }
 
         private async ValueTask<(IDispatchResult result, bool handlersFound)> TryDispatchLocalAsync(

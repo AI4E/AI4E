@@ -33,6 +33,7 @@ using AI4E.Utils;
 
 namespace AI4E.Remoting
 {
+    [Obsolete]
     public class TypeSerializer : ITypeConversion
     {
         public string SerializeType(Type type)
