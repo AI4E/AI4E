@@ -1,18 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        TypeSerializer.cs 
- * Types:           AI4E.Remoting.TypeSerializer
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   31.07.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -29,21 +19,32 @@
  */
 
 using System;
-using AI4E.Utils;
 
-namespace AI4E.Remoting
+namespace AI4E.Handler
 {
-    [Obsolete]
-    public class TypeSerializer : ITypeConversion
+    public sealed class MessageDispatchContext : IMessageDispatchContext
     {
-        public string SerializeType(Type type)
+        public MessageDispatchContext(
+            IServiceProvider dispatchServices,
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            bool isLocalDispatch)
         {
-            return type.GetUnqualifiedTypeName();
+            if (dispatchServices == null)
+                throw new ArgumentNullException(nameof(dispatchServices));
+
+            if (dispatchData == null)
+                throw new ArgumentNullException(nameof(dispatchData));
+
+            DispatchServices = dispatchServices;
+            DispatchData = dispatchData;
+            IsPublish = publish;
+            IsLocalDispatch = isLocalDispatch;
         }
 
-        public Type DeserializeType(string serializedType)
-        {
-            return TypeLoadHelper.LoadTypeFromUnqualifiedName(serializedType);
-        }
+        public IServiceProvider DispatchServices { get; }
+        public DispatchDataDictionary DispatchData { get; }
+        public bool IsPublish { get; }
+        public bool IsLocalDispatch { get; }
     }
 }

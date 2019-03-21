@@ -29,7 +29,7 @@ namespace AI4E
         {
             MessageProcessors = new List<IMessageProcessorRegistration>()
             {
-                MessageProcessorRegistration.Create<ValidationCommandProcessor>()
+                MessageProcessorRegistration.Create<ValidationMessageProcessor>() // TOOD: Remove me??
             };
         }
 

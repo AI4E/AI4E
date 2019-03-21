@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -20,17 +20,30 @@
 
 using System;
 
-namespace AI4E
+namespace AI4E.Handler
 {
-    /// <summary>
-    /// An injectable provider that can be used to obtain the current time.
-    /// </summary>
-    public sealed class DateTimeProvider : IDateTimeProvider
+    public sealed class MessageProcessorContext : IMessageProcessorContext
     {
-        /// <inheritdoc/>
-        public DateTime GetCurrentTime()
+        public MessageProcessorContext(
+            object messageHandler,
+            MessageHandlerActionDescriptor messageHandlerAction,
+            bool publish,
+            bool isLocalDispatch)
         {
-            return DateTime.UtcNow;
+            if (messageHandler == null)
+                throw new ArgumentNullException(nameof(messageHandler));
+
+            MessageHandler = messageHandler;
+            MessageHandlerAction = messageHandlerAction;
+            IsPublish = publish;
+            IsLocalDispatch = isLocalDispatch;
         }
+
+        public MessageHandlerConfiguration MessageHandlerConfiguration => MessageHandlerAction.BuildConfiguration();
+        public MessageHandlerActionDescriptor MessageHandlerAction { get; }
+
+        public object MessageHandler { get; }
+        public bool IsPublish { get; }
+        public bool IsLocalDispatch { get; }
     }
 }

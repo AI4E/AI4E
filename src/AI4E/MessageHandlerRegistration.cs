@@ -28,16 +28,21 @@ namespace AI4E
     public sealed class MessageHandlerRegistration : IMessageHandlerRegistration
     {
         private readonly Func<IServiceProvider, IMessageHandler> _factory;
+        private readonly MessageHandlerActionDescriptor? _descriptor;
 
         /// <summary>
         /// Creates a new instance of the <see cref="MessageHandlerRegistration"/> type.
         /// </summary>
         /// <param name="messageType">The type of message the handler can handle.</param>
         /// <param name="factory">A factory function that is used to obtain the message handler.</param>
+        /// <param name="descriptor">A <see cref="MessageHandlerActionDescriptor"/> that described the message handler, or <c>null</c>.</param>
         /// <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="messageType"/> or <paramref name="factory"/> is <c>null</c>.
         /// </exception>
-        public MessageHandlerRegistration(Type messageType, Func<IServiceProvider, IMessageHandler> factory)
+        public MessageHandlerRegistration(
+            Type messageType,
+            Func<IServiceProvider, IMessageHandler> factory,
+            MessageHandlerActionDescriptor? descriptor = null)
         {
             if (messageType == null)
                 throw new ArgumentNullException(nameof(messageType));
@@ -48,6 +53,7 @@ namespace AI4E
             MessageType = messageType;
             _factory = factory;
             Configuration = default;
+            _descriptor = descriptor;
         }
 
         /// <summary>
@@ -56,11 +62,16 @@ namespace AI4E
         /// <param name="messageType">The type of message the handler can handle.</param>
         /// <param name="configuration">The message handler configuration.</param>
         /// <param name="factory">A factory function that is used to obtain the message handler.</param>
+        /// <param name="descriptor">A <see cref="MessageHandlerActionDescriptor"/> that described the message handler, or <c>null</c>.</param>
         /// <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="messageType"/> or <paramref name="factory"/> is <c>null</c>.
         /// </exception>
-        public MessageHandlerRegistration(Type messageType, MessageHandlerConfiguration configuration, Func<IServiceProvider, IMessageHandler> factory)
-          : this(messageType, factory)
+        public MessageHandlerRegistration(
+            Type messageType,
+            MessageHandlerConfiguration configuration,
+            Func<IServiceProvider, IMessageHandler> factory,
+            MessageHandlerActionDescriptor? descriptor = null)
+          : this(messageType, factory, descriptor)
         {
             Configuration = configuration;
         }
@@ -87,6 +98,13 @@ namespace AI4E
 
         /// <inheritdoc />
         public MessageHandlerConfiguration Configuration { get; }
+
+        /// <inheritdoc />
+        public bool TryGetDescriptor(out MessageHandlerActionDescriptor descriptor)
+        {
+            descriptor = _descriptor.GetValueOrDefault();
+            return _descriptor.HasValue;
+        }
     }
 
     /// <summary>
@@ -98,19 +116,24 @@ namespace AI4E
     {
         private static readonly Type _messageType = typeof(TMessage);
         private readonly Func<IServiceProvider, IMessageHandler<TMessage>> _factory;
+        private readonly MessageHandlerActionDescriptor? _descriptor;
 
         /// <summary>
         /// Creates a new instance of the <see cref="MessageHandlerRegistration{TMessage}"/> type.
         /// </summary>
         /// <param name="factory">A factory function that is used to obtain the message handler.</param>
+        /// <param name="descriptor">A <see cref="MessageHandlerActionDescriptor"/> that described the message handler, or <c>null</c>.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="factory"/> is <c>null</c>.</exception>
-        public MessageHandlerRegistration(Func<IServiceProvider, IMessageHandler<TMessage>> factory)
+        public MessageHandlerRegistration(
+            Func<IServiceProvider, IMessageHandler<TMessage>> factory,
+            MessageHandlerActionDescriptor? descriptor = null)
         {
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
 
             _factory = factory;
             Configuration = default;
+            _descriptor = descriptor;
         }
 
         /// <summary>
@@ -118,9 +141,13 @@ namespace AI4E
         /// </summary>
         /// <param name="configuration">The message handler configuration.</param>
         /// <param name="factory">A factory function that is used to obtain the message handler.</param>
+        /// <param name="descriptor">A <see cref="MessageHandlerActionDescriptor"/> that described the message handler, or <c>null</c>.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="factory"/> is <c>null</c>.</exception>
-        public MessageHandlerRegistration(MessageHandlerConfiguration configuration, Func<IServiceProvider, IMessageHandler<TMessage>> factory)
-           : this(factory)
+        public MessageHandlerRegistration(
+            MessageHandlerConfiguration configuration,
+            Func<IServiceProvider, IMessageHandler<TMessage>> factory,
+            MessageHandlerActionDescriptor? descriptor = null)
+           : this(factory, descriptor)
         {
 
             Configuration = configuration;
@@ -149,5 +176,12 @@ namespace AI4E
 
         /// <inheritdoc />
         public MessageHandlerConfiguration Configuration { get; }
+
+        /// <inheritdoc />
+        public bool TryGetDescriptor(out MessageHandlerActionDescriptor descriptor)
+        {
+            descriptor = _descriptor.GetValueOrDefault();
+            return _descriptor.HasValue;
+        }
     }
 }

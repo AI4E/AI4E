@@ -22,11 +22,33 @@ using System;
 
 namespace AI4E.Validation
 {
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true, Inherited = true)]
-    public abstract class ValidateAttribute : Attribute
+    /// <summary>
+    /// Instructs the messaging system to validate the message before invoking the decorated handler.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method,
+        AllowMultiple = false,
+        Inherited = true)]
+    public class ValidateAttribute : Attribute
     {
-        protected ValidateAttribute() { }
+        /// <summary>
+        /// Creates a new instance of the <see cref="ValidateAttribute"/> type.
+        /// </summary>
+        public ValidateAttribute() : this(true) { }
 
-        public abstract bool Validate(object value, out string message);
+        /// <summary>
+        /// Creates a new instance of the <see cref="ValidateAttribute"/> type.
+        /// </summary>
+        /// <param name="validate">
+        /// A boolean value inidicating whether the message shall be validated before invoking the decorated handler.
+        /// </param>
+        public ValidateAttribute(bool validate)
+        {
+            Validate = validate;
+        }
+
+        /// <summary>
+        /// Gets a boolean value inidicating whether the message shall be validated before invoking the decorated handler.
+        /// </summary>
+        public bool Validate { get; }
     }
 }

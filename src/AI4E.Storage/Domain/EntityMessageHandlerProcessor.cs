@@ -25,11 +25,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
 using AI4E.Utils;
+using AI4E.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Domain
 {
+    [CallOnValidation]
     public sealed class EntityMessageHandlerProcessor : MessageProcessor
     {
         private readonly IServiceProvider _serviceProvider;

@@ -44,6 +44,8 @@ namespace AI4E
         /// Gets the message handler configuration.
         /// </summary>
         MessageHandlerConfiguration Configuration { get; }
+
+        bool TryGetDescriptor(out MessageHandlerActionDescriptor descriptor);
     }
 
     /// <summary>

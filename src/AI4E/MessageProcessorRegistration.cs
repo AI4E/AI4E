@@ -31,16 +31,9 @@ namespace AI4E
     {
         private readonly Func<IServiceProvider, IMessageProcessor> _factory;
 
-        /// <summary>
-        /// Creates a new instance of the <see cref="MessageProcessorRegistration"/> type.
-        /// </summary>
-        /// <param name="factory">A factory that is used to create message processors.</param>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="factory"/> is null.</exception>
-        public MessageProcessorRegistration(Func<IServiceProvider, IMessageProcessor> factory)
+        private MessageProcessorRegistration(Type messageProcessorType, Func<IServiceProvider, IMessageProcessor> factory)
         {
-            if (factory == null)
-                throw new ArgumentNullException(nameof(factory));
-
+            MessageProcessorType = messageProcessorType;
             _factory = factory;
         }
 
@@ -54,6 +47,7 @@ namespace AI4E
             if (messageProcessor == null)
                 throw new ArgumentNullException(nameof(messageProcessor));
 
+            MessageProcessorType = messageProcessor.GetType();
             _factory = _ => messageProcessor;
         }
 
@@ -62,6 +56,7 @@ namespace AI4E
             Debug.Assert(messageProcessorType != null);
             Debug.Assert(typeof(IMessageProcessor).IsAssignableFrom(messageProcessorType));
 
+            MessageProcessorType = messageProcessorType;
             _factory = serviceProvider => (IMessageProcessor)ActivatorUtilities.CreateInstance(serviceProvider, messageProcessorType);
         }
 
@@ -81,5 +76,20 @@ namespace AI4E
         {
             return new MessageProcessorRegistration(typeof(TProcessor));
         }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessageProcessorRegistration"/> type.
+        /// </summary>
+        /// <typeparam name="TProcessor">The type of message processor.</typeparam>
+        /// <param name="factory">A factory that is used to create message processors.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="factory"/> is null.</exception>
+        public static MessageProcessorRegistration Create<TProcessor>(Func<IServiceProvider, TProcessor> factory)
+            where TProcessor : class, IMessageProcessor
+        {
+            return new MessageProcessorRegistration(typeof(TProcessor), factory);
+        }
+
+        /// <inheritdoc />
+        public Type MessageProcessorType { get; }
     }
 }

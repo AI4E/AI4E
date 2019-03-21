@@ -31,9 +31,7 @@ namespace AI4E.Handler
         [TestMethod]
         public void SyncHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(SyncHandler));
-
-            var descriptor = inspector.GetHandlerDescriptors().Single();
+            var descriptor = MessageHandlerInspector.Instance.InspectType(typeof(SyncHandler)).Single();
 
             Assert.AreEqual(typeof(string), descriptor.MessageType);
             Assert.AreEqual(typeof(SyncHandler), descriptor.MessageHandlerType);
@@ -43,9 +41,7 @@ namespace AI4E.Handler
         [TestMethod]
         public void AsyncHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(AsyncHandler));
-
-            var descriptor = inspector.GetHandlerDescriptors().Single();
+            var descriptor = MessageHandlerInspector.Instance.InspectType(typeof(AsyncHandler)).Single();
 
             Assert.AreEqual(typeof(string), descriptor.MessageType);
             Assert.AreEqual(typeof(AsyncHandler), descriptor.MessageHandlerType);
@@ -55,57 +51,43 @@ namespace AI4E.Handler
         [TestMethod]
         public void SuffixSyncHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(SuffixSyncHandler));
-
-            Assert.AreEqual(0, inspector.GetHandlerDescriptors().Count());
+            Assert.AreEqual(0, MessageHandlerInspector.Instance.InspectType(typeof(SuffixSyncHandler)).Count());
         }
 
         [TestMethod]
         public void MissingSuffixAsyncHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(MissingSuffixAsyncHandler));
-
-            Assert.AreEqual(0, inspector.GetHandlerDescriptors().Count());
+            Assert.AreEqual(0, MessageHandlerInspector.Instance.InspectType(typeof(MissingSuffixAsyncHandler)).Count());
         }
 
         [TestMethod]
         public void WithRefParamHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(WithRefParamHandler));
-
-            Assert.AreEqual(0, inspector.GetHandlerDescriptors().Count());
+            Assert.AreEqual(0, MessageHandlerInspector.Instance.InspectType(typeof(WithRefParamHandler)).Count());
         }
 
         [TestMethod]
         public void GenericActionHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(GenericActionHandler));
-
-            Assert.AreEqual(0, inspector.GetHandlerDescriptors().Count());
+            Assert.AreEqual(0, MessageHandlerInspector.Instance.InspectType(typeof(GenericActionHandler)).Count());
         }
 
         [TestMethod]
         public void EmptyParametersHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(EmptyParametersHandler));
-
-            Assert.AreEqual(0, inspector.GetHandlerDescriptors().Count());
+            Assert.AreEqual(0, MessageHandlerInspector.Instance.InspectType(typeof(EmptyParametersHandler)).Count());
         }
 
         [TestMethod]
         public void NoActionAttributeHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(NoActionAttributeHandler));
-
-            Assert.AreEqual(0, inspector.GetHandlerDescriptors().Count());
+            Assert.AreEqual(0, MessageHandlerInspector.Instance.InspectType(typeof(NoActionAttributeHandler)).Count());
         }
 
         [TestMethod]
         public void SuffixSyncWithActionAttributeHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(SuffixSyncWithActionAttributeHandler));
-
-            var descriptor = inspector.GetHandlerDescriptors().Single();
+            var descriptor = MessageHandlerInspector.Instance.InspectType(typeof(SuffixSyncWithActionAttributeHandler)).Single();
 
             Assert.AreEqual(typeof(string), descriptor.MessageType);
             Assert.AreEqual(typeof(SuffixSyncWithActionAttributeHandler), descriptor.MessageHandlerType);
@@ -115,9 +97,7 @@ namespace AI4E.Handler
         [TestMethod]
         public void MissingSuffixAsyncWithActionAttributeHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(MissingSuffixAsyncWithActionAttributeHandler));
-
-            var descriptor = inspector.GetHandlerDescriptors().Single();
+            var descriptor = MessageHandlerInspector.Instance.InspectType(typeof(MissingSuffixAsyncWithActionAttributeHandler)).Single();
 
             Assert.AreEqual(typeof(string), descriptor.MessageType);
             Assert.AreEqual(typeof(MissingSuffixAsyncWithActionAttributeHandler), descriptor.MessageHandlerType);
@@ -127,9 +107,7 @@ namespace AI4E.Handler
         [TestMethod]
         public void WithExplicitTypeHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(WithExplicitTypeHandler));
-
-            var descriptor = inspector.GetHandlerDescriptors().Single();
+            var descriptor = MessageHandlerInspector.Instance.InspectType(typeof(WithExplicitTypeHandler)).Single();
 
             Assert.AreEqual(typeof(string), descriptor.MessageType);
             Assert.AreEqual(typeof(WithExplicitTypeHandler), descriptor.MessageHandlerType);
@@ -139,9 +117,7 @@ namespace AI4E.Handler
         [TestMethod]
         public void WithExplicitClassTypeHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(WithExplicitClassTypeHandler));
-
-            var descriptor = inspector.GetHandlerDescriptors().Single();
+            var descriptor = MessageHandlerInspector.Instance.InspectType(typeof(WithExplicitClassTypeHandler)).Single();
 
             Assert.AreEqual(typeof(string), descriptor.MessageType);
             Assert.AreEqual(typeof(WithExplicitClassTypeHandler), descriptor.MessageHandlerType);
@@ -151,22 +127,18 @@ namespace AI4E.Handler
         [TestMethod]
         public void WithInvalidExplicitTypeHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(WithInvalidExplicitTypeHandler));
-
             Assert.ThrowsException<InvalidOperationException>(() =>
             {
-                inspector.GetHandlerDescriptors();
+                MessageHandlerInspector.Instance.InspectType(typeof(WithInvalidExplicitTypeHandler));
             });
         }
 
         [TestMethod]
         public void WithInvalidExplicitClassTypeHandlerTest()
         {
-            var inspector = new MessageHandlerInspector(typeof(WithInvalidExplicitClassTypeHandler));
-
             Assert.ThrowsException<InvalidOperationException>(() =>
             {
-                inspector.GetHandlerDescriptors();
+                MessageHandlerInspector.Instance.InspectType(typeof(WithInvalidExplicitClassTypeHandler));
             });
         }
     }

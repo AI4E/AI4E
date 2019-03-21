@@ -20,21 +20,33 @@
 
 using System;
 
-namespace AI4E
+namespace AI4E.Validation
 {
     /// <summary>
-    /// Represents the registration of a message processor.
+    /// Instructs the messaging system to call the decorated message processors on validation dispatches.
     /// </summary>
-    public interface IMessageProcessorRegistration
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = true)]
+    public sealed class CallOnValidationAttribute : Attribute
     {
         /// <summary>
-        /// Creates an instance of the registered message processor within the scope of the specified service provider.
+        /// Creates a new instance of the <see cref="CallOnValidationAttribute"/> type.
         /// </summary>
-        /// <param name="serviceProvider">The <see cref="IServiceProvider"/> that is used to obtain processor specific services.</param>
-        /// <returns>The created <see cref="IMessageProcessor"/>.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
-        IMessageProcessor CreateMessageProcessor(IServiceProvider serviceProvider);
+        public CallOnValidationAttribute() : this(true) { }
 
-        Type MessageProcessorType { get; }
+        /// <summary>
+        /// Creates a new instance of the <see cref="CallOnValidationAttribute"/> type.
+        /// </summary>
+        /// <param name="callOnValidation">
+        /// A boolean value indicating whether the decorated processor shall be called on validation dispatches.
+        /// </param>
+        public CallOnValidationAttribute(bool callOnValidation)
+        {
+            CallOnValidation = callOnValidation;
+        }
+
+        /// <summary>
+        /// Gets a boolean value indicating whether the decorated processor shall be called on validation dispatches.
+        /// </summary>
+        public bool CallOnValidation { get; }
     }
 }
