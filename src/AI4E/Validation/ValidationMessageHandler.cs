@@ -19,15 +19,10 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
-using AI4E.Handler;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace AI4E.Validation
@@ -61,7 +56,7 @@ namespace AI4E.Validation
 
             // We mimic the behavior of the message dispatcher to get the validation of
             // the message handler that the message would be dispatched to.
-            // We assume that the message will to get published.
+            // We assume that the message will not get published.
             var currType = dispatchData.Message.MessageType;
 
             do
@@ -82,7 +77,16 @@ namespace AI4E.Validation
                             continue;
                         }
 
-                        return InvokeValidationAsync(dispatchData, publish, localDispatch, handlerRegistration, cancellation);
+                        var validationDispatchData = DispatchDataDictionary.Create(
+                            dispatchData.Message.MessageType,
+                            dispatchData.Message.Message,
+                            dispatchData);
+
+                        var invoker = ValidationInvoker.CreateInvoker(
+                            validationDispatchData.MessageType, _options.MessageProcessors, _serviceProvider);
+
+                        return invoker.InvokeValidationAsync(
+                            validationDispatchData, publish, localDispatch, handlerRegistration, cancellation);
 
                         // The message dispatcher has another constraint on the handler.
                         // It skips the handler if it returns a
@@ -93,91 +97,8 @@ namespace AI4E.Validation
             }
             while (!currType.IsInterface && (currType = currType.BaseType) != null);
 
-            return new ValueTask<IDispatchResult>(new DispatchFailureDispatchResult(dispatchData.MessageType));
-        }
-
-        private ValueTask<IDispatchResult> InvokeValidationAsync(
-            DispatchDataDictionary<Validate> dispatchData,
-            bool publish,
-            bool localDispatch,
-            IMessageHandlerRegistration handlerRegistration,
-            CancellationToken cancellation)
-        {
-            // The handler has no descriptor and cannot have a validation therefore.
-            if (!handlerRegistration.TryGetDescriptor(out var descriptor))
-            {
-                return new ValueTask<IDispatchResult>(new SuccessDispatchResult());
-            }
-
-            var parameterType = ValidationMessageProcessor.GetMessageHandlerMessageType(descriptor);
-
-            // The handler has no validation.
-            if (!ValidationMessageProcessor.TryGetDescriptor(descriptor.MessageHandlerType, parameterType, out var validation))
-            {
-                return new ValueTask<IDispatchResult>(new SuccessDispatchResult());
-            }
-
-            var handlerType = descriptor.MessageHandlerType;
-            var handler = ActivatorUtilities.CreateInstance(_serviceProvider, handlerType);
-            var validationDispatchData = DispatchDataDictionary.Create(
-                dispatchData.Message.MessageType,
-                dispatchData.Message.Message,
-                dispatchData);
-
-            ValueTask<IDispatchResult> InvokeValidation(DispatchDataDictionary nextDispatchData)
-            {
-                var invokeResult = ValidationMessageProcessor.InvokeValidationAsync(
-                    handler,
-                    validation,
-                    nextDispatchData,
-                    _serviceProvider,
-                    cancellation);
-
-                return EvaluateValidationInvokation(invokeResult);
-            }
-
-            Func<DispatchDataDictionary, ValueTask<IDispatchResult>> next = InvokeValidation;
-
-            for (var i = _options.MessageProcessors.Count - 1; i >= 0; i--)
-            {
-                var processorType = _options.MessageProcessors[i].MessageProcessorType;
-
-                var callOnValidationAttribute = processorType.GetCustomAttribute<CallOnValidationAttribute>(inherit: true);
-
-                if (callOnValidationAttribute == null || !callOnValidationAttribute.CallOnValidation)
-                    continue;
-
-                var processor = _options.MessageProcessors[i].CreateMessageProcessor(_serviceProvider);
-                Debug.Assert(processor != null);
-                var nextCopy = next; // This is needed because of the way, the variable values are captured in the lambda expression.
-
-                ValueTask<IDispatchResult> InvokeProcessor(DispatchDataDictionary nextDispatchData)
-                {
-                    var contextDescriptor = MessageProcessorContextDescriptor.GetDescriptor(processor.GetType());
-
-                    if (contextDescriptor.CanSetContext)
-                    {
-                        IMessageProcessorContext messageProcessorContext = new MessageProcessorContext(
-                            handler,
-                            descriptor, // TODO: Can we pass descriptor in here? Null? We are not calling this handler actually.
-                            publish,
-                            localDispatch);
-
-                        contextDescriptor.SetContext(processor, messageProcessorContext);
-                    }
-
-                    // TODO
-                    return (ValueTask<IDispatchResult>)typeof(IMessageProcessor)
-                        .GetMethods()
-                        .Single(p => p.Name == nameof(IMessageProcessor.ProcessAsync))
-                        .MakeGenericMethod(validationDispatchData.MessageType)
-                        .Invoke(processor, new object[] { nextDispatchData, nextCopy, cancellation });
-                }
-
-                next = InvokeProcessor;
-            }
-
-            return next(validationDispatchData);
+            return new ValueTask<IDispatchResult>(
+                new DispatchFailureDispatchResult(dispatchData.MessageType));
         }
 
         public ValueTask<IDispatchResult> HandleAsync(
@@ -198,20 +119,6 @@ namespace AI4E.Validation
             }
 
             return HandleAsync(typedDispatchData, publish, localDispatch, cancellation);
-        }
-
-        private async ValueTask<IDispatchResult> EvaluateValidationInvokation(ValueTask<IEnumerable<ValidationResult>> invokeResult)
-        {
-            var validationResults = await invokeResult;
-
-            if (validationResults.Any())
-            {
-                return new ValidationFailureDispatchResult(validationResults);
-            }
-            else
-            {
-                return new SuccessDispatchResult();
-            }
         }
     }
 }

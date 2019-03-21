@@ -189,6 +189,13 @@ namespace AI4E.Handler
             bool localDispatch,
             CancellationToken cancellation)
         {
+            var next = BuildInvocation(publish, localDispatch, cancellation);
+
+            return next(dispatchData);
+        }
+
+        private Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> BuildInvocation(bool publish, bool localDispatch, CancellationToken cancellation)
+        {
             ValueTask<IDispatchResult> InvokeHandler(DispatchDataDictionary<TMessage> nextDispatchData)
             {
                 return InvokeHandlerCore(nextDispatchData, publish, localDispatch, cancellation);
@@ -219,7 +226,7 @@ namespace AI4E.Handler
                 next = InvokeProcessor;
             }
 
-            return next(dispatchData);
+            return next;
         }
 
         /// <inheritdoc/>
@@ -334,7 +341,7 @@ namespace AI4E.Handler
             }
 
             return SuccessDispatchResult.FromResult(invoker.ReturnTypeDescriptor.ResultType, result);
-        }      
+        }
     }
 
     public sealed class MessageDispatchContext : IMessageDispatchContext
