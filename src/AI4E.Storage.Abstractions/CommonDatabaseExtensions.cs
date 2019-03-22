@@ -321,5 +321,24 @@ namespace AI4E.Storage
         {
             return database.GetAsync<TEntry>(_ => true, cancellation);
         }
+
+        public static async ValueTask<TEntry> GetOrAdd<TEntry>(this IDatabase database, TEntry entry, CancellationToken cancellation = default)
+            where TEntry : class
+        {
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
+
+            while (!await database.AddAsync(entry, cancellation))
+            {
+                var result = await database.GetOneAsync(DataPropertyHelper.BuildPredicate(entry), cancellation);
+
+                if (result != null)
+                    return result;
+            }
+
+            return entry;
+        }
     }
 }

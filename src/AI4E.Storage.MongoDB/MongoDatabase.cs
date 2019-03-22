@@ -301,23 +301,6 @@ namespace AI4E.Storage.MongoDB
             return true;
         }
 
-        public async ValueTask<TEntry> GetOrAdd<TEntry>(TEntry entry, CancellationToken cancellation = default)
-            where TEntry : class
-        {
-            if (entry == null)
-                throw new ArgumentNullException(nameof(entry));
-
-            while (!await AddAsync(entry, cancellation))
-            {
-                var result = await GetOneAsync(entry, cancellation);
-
-                if (result != null)
-                    return result;
-            }
-
-            return entry;
-        }
-
         public async Task<bool> RemoveAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default) where TEntry : class
         {
             if (entry == null)

@@ -93,10 +93,13 @@ namespace AI4E.Storage
         Task<bool> RemoveAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
             where TEntry : class;
 
+        /// <summary>
+        /// Asynchronously removes all entries of the specified type from the database.
+        /// </summary>
+        /// <typeparam name="TEntry">The type of entry.</typeparam>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         Task Clear<TEntry>(CancellationToken cancellation = default)
-            where TEntry : class;
-
-        ValueTask<TEntry> GetOrAdd<TEntry>(TEntry entry, CancellationToken cancellation = default) 
             where TEntry : class;
 
         /// <summary>
