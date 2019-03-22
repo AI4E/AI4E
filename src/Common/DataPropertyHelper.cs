@@ -143,9 +143,9 @@ namespace AI4E.Internal
 
             var idType = GetIdType<TData>();
 
-            if (!typeof(TId).IsAssignableFrom(idType))
+            if(idType == null || !typeof(TId).IsAssignableFrom(idType))
             {
-                throw new Exception("Type mismatch.");
+                throw new InvalidOperationException($"The type {typeof(TData)} does not have an id member that is assignable to type {typeof(TId)}.");
             }
 
             var idAccessor = (Func<TData, TId>)_idAccessors.GetOrAdd(typeof(TData), GetIdAccessor);

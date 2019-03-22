@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -37,7 +37,9 @@ namespace AI4E.Storage
         /// </summary>
         /// <typeparam name="TEntry">The type of entry.</typeparam>
         /// <param name="entry">The entry that shall be added.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>
         /// A value task that represents the asynchronous operation.
         /// When evaluated, the tasks result contains a boolean value indicating whether the entry was added successfully.
@@ -57,7 +59,9 @@ namespace AI4E.Storage
         /// <typeparam name="TEntry">The type of entry.</typeparam>
         /// <param name="entry">The entry that shall be updated in the database.</param>
         /// <param name="predicate">A predicate that the current database entry must match in order to perform the update operation.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>
         /// A value task that represents the asynchronous operation.
         /// When evaluated, the tasks result contains a boolean value indicating whether the entry was updated successfully.
@@ -78,7 +82,9 @@ namespace AI4E.Storage
         /// <typeparam name="TEntry">The type of entry.</typeparam>
         /// <param name="entry">The entry that shall be removed from the database.</param>
         /// <param name="predicate">A predicate that the current database entry must match in order to perform the update operation.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>
         /// A value task that represents the asynchronous operation.
         /// When evaluated, the tasks result contains a boolean value indicating whether the entry was removed successfully.
@@ -97,7 +103,9 @@ namespace AI4E.Storage
         /// Asynchronously removes all entries of the specified type from the database.
         /// </summary>
         /// <typeparam name="TEntry">The type of entry.</typeparam>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         Task Clear<TEntry>(CancellationToken cancellation = default)
             where TEntry : class;
@@ -107,7 +115,9 @@ namespace AI4E.Storage
         /// </summary>
         /// <typeparam name="TEntry">The type of entry.</typeparam>
         /// <param name="predicate">The predicate that the entries must match.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>
         /// An async enumerable that enumerates all stored entries of type <typeparamref name="TEntry"/> that match the specified predicate.
         /// </returns>
@@ -118,16 +128,41 @@ namespace AI4E.Storage
         IAsyncEnumerable<TEntry> GetAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
             where TEntry : class;
 
+        /// <summary>
+        /// Asynchronously retrieves a single entry that match the specified predicate.
+        /// </summary>
+        /// <typeparam name="TEntry">The type of entry.</typeparam>
+        /// <param name="predicate">The predicate that the entries must match.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> that represents the asynchronous operation.
+        /// When evaluated, the tasks result contains an entry that matches <paramref name="predicate"/> or
+        /// <c>null</c> if no entry matched <paramref name="predicate"/>.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="predicate"/> is null.</exception>
+        /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
+        /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
+        /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified predicate.</exception>
         ValueTask<TEntry> GetOneAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
             where TEntry : class;
 
+        /// <summary>
+        /// Creates a <see cref="IScopedDatabase"/> that can be used to permform multiple operations atomically.
+        /// </summary>
+        /// <returns>The created <see cref="IScopedDatabase"/>.</returns>
+        /// <exception cref="NotSupportedException">Thrown if <see cref="SupportsScopes"/> is false.</exception>
         IScopedDatabase CreateScope();
 
+        /// <summary>
+        /// Gets a boolean value indicating whether the database supports scoping.
+        /// </summary>
         bool SupportsScopes { get; }
     }
 
     /// <summary>
-    /// An abstraction of a database with queryable functionality.
+    /// An abstraction of a database with <see cref="IQueryable"/> support.
     /// </summary>
     public interface IQueryableDatabase : IDatabase
     {
