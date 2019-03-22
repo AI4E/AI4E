@@ -7,6 +7,7 @@ using AI4E.Coordination.Session;
 using AI4E.Coordination.Storage;
 using AI4E.Utils;
 using AI4E.Utils.Async;
+using Microsoft.Extensions.ObjectPool;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 
@@ -568,7 +569,20 @@ namespace AI4E.Coordination.Caching
 
             private static ObjectPool<LockedEntrySource> CreatePool()
             {
-                return ObjectPool.Create<LockedEntrySource>(isReusable: p => p.Token < int.MaxValue, size: ObjectPool.DefaultSize);
+                return new DefaultObjectPool<LockedEntrySource>(new LockedEntrySourcePoolPolicy());
+            }
+
+            private sealed class LockedEntrySourcePoolPolicy : IPooledObjectPolicy<LockedEntrySource>
+            {
+                public LockedEntrySource Create()
+                {
+                    return new LockedEntrySource();
+                }
+
+                public bool Return(LockedEntrySource obj)
+                {
+                    return obj.Token < int.MaxValue;
+                }
             }
 
             internal static LockedEntrySource Allocate(
@@ -577,7 +591,7 @@ namespace AI4E.Coordination.Caching
                 Func<bool, ReadOnlyMemory<byte>, bool, ValueTask> unlockOperation,
                 Func<ReadOnlyMemory<byte>, bool, ValueTask> flushOperation)
             {
-                var result = _pool.Rent();
+                var result = _pool.Get();
                 unchecked { result.Token++; }
                 result._value = value;
                 result._isExisting = isExisting;

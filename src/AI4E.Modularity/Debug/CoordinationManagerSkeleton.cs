@@ -32,7 +32,7 @@ namespace AI4E.Modularity.Debug
             if (result == null)
                 return null;
 
-            return new Entry((Proxy<CoordinationManagerSkeleton>)this, result);
+            return new Entry(ProxyHost.CreateProxy(this), result);
         }
 
         public async Task<IEntry> GetOrCreateAsync(string path, byte[] value, EntryCreationModes modes = EntryCreationModes.Default, CancellationToken cancellation = default)
@@ -42,7 +42,7 @@ namespace AI4E.Modularity.Debug
             if (result == null)
                 return null;
 
-            return new Entry((Proxy<CoordinationManagerSkeleton>)this, result);
+            return new Entry(ProxyHost.CreateProxy(this), result);
         }
 
         public async Task<IEntry> GetAsync(string path, CancellationToken cancellation = default)
@@ -52,7 +52,7 @@ namespace AI4E.Modularity.Debug
             if (result == null)
                 return null;
 
-            return new Entry((Proxy<CoordinationManagerSkeleton>)this, result);
+            return new Entry(ProxyHost.CreateProxy(this), result);
         }
 
         public Task<int> SetValueAsync(string path, byte[] value, int version = 0, CancellationToken cancellation = default)

@@ -1,15 +1,34 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using AI4E.Utils.ApplicationParts;
 using AI4E.Handler;
 using AI4E.Utils;
+using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using static System.Diagnostics.Debug;
 
 namespace AI4E
 {
@@ -39,41 +58,9 @@ namespace AI4E
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            // This must be registered as transient to allow retrieval of scoped services.
-            services.TryAddTransient(typeof(IProvider<>), typeof(Provider<>));
-            services.TryAddSingleton(typeof(IContextualProvider<>), typeof(ContextualProvider<>));
             services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
 
             return services;
-        }
-
-        private sealed class Provider<T> : IProvider<T>
-        {
-            private readonly IServiceProvider _serviceProvider;
-
-            public Provider(IServiceProvider serviceProvider)
-            {
-                Assert(serviceProvider != null);
-                _serviceProvider = serviceProvider;
-            }
-
-            public T ProvideInstance()
-            {
-                return _serviceProvider.GetRequiredService<T>();
-            }
-        }
-
-        private sealed class ContextualProvider<T> : IContextualProvider<T>
-        {
-            public ContextualProvider() { }
-
-            public T ProvideInstance(IServiceProvider serviceProvider)
-            {
-                if (serviceProvider == null)
-                    throw new ArgumentNullException(nameof(serviceProvider));
-
-                return serviceProvider.GetRequiredService<T>();
-            }
         }
 
         public static IMessagingBuilder AddInMemoryMessaging(this IServiceCollection services)
@@ -106,9 +93,7 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(services));
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
             services.AddSingleton<IMessageDispatcher, TMessageDispatcher>();
         }
@@ -123,9 +108,7 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(instance));
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
             services.AddSingleton<IMessageDispatcher>(instance);
         }
@@ -140,9 +123,7 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(factory));
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
             services.AddSingleton<IMessageDispatcher>(factory);
         }
@@ -155,9 +136,7 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(services));
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
             services.AddSingleton<TMessageDispatcher, TMessageDispatcherImpl>();
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
@@ -174,9 +153,7 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(instance));
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
             services.AddSingleton<TMessageDispatcher>(instance);
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
@@ -196,24 +173,29 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(factory));
 
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.Decorate<IMessageHandlerRegistry>(BuildMessageHandlerRegistry);
+            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
             services.AddSingleton<TMessageDispatcher>(factory);
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
         }
 
-        public static IMessageHandlerRegistry BuildMessageHandlerRegistry(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
+        public static void ConfigureMessageHandlers(this IServiceCollection services, Action<IMessageHandlerRegistry, IServiceProvider> configuration)
         {
-            if (serviceProvider == null)
-                throw new ArgumentNullException(nameof(serviceProvider));
+            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
+            services.Decorate<IMessageHandlerRegistry>((registry, provider) =>
+            {
+                configuration(registry, provider);
+                return registry;
+            });
+        }
 
-            if (messageHandlerRegistry == null)
-                throw new ArgumentNullException(nameof(messageHandlerRegistry));
+        #region TODO - Move me to a separate type
 
+        // TODO: Rename
+        private static void ConfigureMessageHandlers(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
+        {
             var options = serviceProvider.GetService<IOptions<MessagingOptions>>()?.Value ?? new MessagingOptions();
-            var processors = options.MessageProcessors.ToImmutableArray();
+            var processors = options.MessageProcessors;
             var partManager = serviceProvider.GetRequiredService<ApplicationPartManager>();
             var messageHandlerFeature = new MessageHandlerFeature();
 
@@ -222,14 +204,12 @@ namespace AI4E
             var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
             var logger = loggerFactory?.CreateLogger("MessageHandlerRegistration");
             RegisterMessageHandlerTypes(messageHandlerFeature.MessageHandlers, messageHandlerRegistry, processors, logger);
-
-            return messageHandlerRegistry;
         }
 
         private static void RegisterMessageHandlerTypes(
             IEnumerable<Type> types,
             IMessageHandlerRegistry messageHandlerRegistry,
-            ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+            IList<IMessageProcessorRegistration> processors,
             ILogger logger)
         {
             foreach (var type in types)
@@ -241,11 +221,10 @@ namespace AI4E
         private static void RegisterMessageHandlerType(
             Type handlerType,
             IMessageHandlerRegistry messageHandlerRegistry,
-            ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+            IList<IMessageProcessorRegistration> processors,
             ILogger logger)
         {
-            var inspector = new MessageHandlerInspector(handlerType);
-            var memberDescriptors = inspector.GetHandlerDescriptors();
+            var memberDescriptors = MessageHandlerInspector.Instance.InspectType(handlerType);
 
             foreach (var memberDescriptor in memberDescriptors)
             {
@@ -258,15 +237,18 @@ namespace AI4E
 
         private static IMessageHandlerRegistration CreateMessageHandlerRegistration(
             MessageHandlerActionDescriptor memberDescriptor,
-            ImmutableArray<IContextualProvider<IMessageProcessor>> processors)
+            IList<IMessageProcessorRegistration> processors)
         {
-            var configuration = MessageHandlerConfiguration.FromDescriptor(memberDescriptor);
+            var configuration = memberDescriptor.BuildConfiguration();
 
             return new MessageHandlerRegistration(
                 memberDescriptor.MessageType,
                 configuration,
-                serviceProvider => MessageHandlerInvoker.CreateInvoker(memberDescriptor, processors, serviceProvider));
+                serviceProvider => MessageHandlerInvoker.CreateInvoker(memberDescriptor, processors, serviceProvider),
+                memberDescriptor);
         }
+
+        #endregion
 
         private static void ConfigureFeatureProviders(ApplicationPartManager partManager)
         {

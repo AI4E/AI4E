@@ -1,31 +1,83 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Immutable;
-using System.Reflection;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using AI4E.Utils;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Represents the configuration of a message handler.
+    /// </summary>
     public readonly struct MessageHandlerConfiguration
     {
         private readonly ImmutableDictionary<Type, object> _data;
 
-        private MessageHandlerConfiguration(ImmutableDictionary<Type, object> data)
+        internal MessageHandlerConfiguration(ImmutableDictionary<Type, object> data)
         {
             _data = data;
         }
 
         private bool TryGetConfiguration(Type configurationType, out object configuration)
         {
-            if (configurationType == null)
-                throw new ArgumentNullException(nameof(configurationType));
+            Debug.Assert(configurationType != null);
 
             if (!configurationType.IsOrdinaryClass())
                 throw new ArgumentException("The specified type must be an ordinary reference type.", nameof(configurationType));
 
-            return _data.TryGetValue(configurationType, out configuration);
+            if (_data == null)
+            {
+                configuration = null;
+                return false;
+            }
+
+            if (!_data.TryGetValue(configurationType, out configuration))
+            {
+                configuration = null;
+                return false;
+            }
+
+            if (configuration == null)
+            {
+                return false;
+            }
+
+            if (!configurationType.IsAssignableFrom(configuration.GetType()))
+            {
+                configuration = null;
+                return false;
+            }
+
+            return true;
         }
 
+        /// <summary>
+        /// Attempts to retrieve the configuration of the specified type.
+        /// </summary>
+        /// <typeparam name="TConfig">The type of configuration.</typeparam>
+        /// <param name="configuration">Contains the configuration if the operation suceeds, <c>null</c> otherwise.</param>
+        /// <returns>True, if the operation is successful, false otherwise.</returns>
+        /// <exception cref="ArgumentException">Thrown if <typeparamref name="TConfig"/> is not an ordinary reference type.</exception>
         public bool TryGetConfiguration<TConfig>(
             out TConfig configuration)
             where TConfig : class
@@ -34,6 +86,12 @@ namespace AI4E
             return TryGetConfiguration(typeof(TConfig), out Unsafe.As<TConfig, object>(ref configuration));
         }
 
+        /// <summary>
+        /// Retrieves the configuration of the specified type.
+        /// </summary>
+        /// <typeparam name="TConfig">The type of configuration.</typeparam>
+        /// <returns>The configuration or a new instance if the configuration was not found.</returns>
+        /// <exception cref="ArgumentException">Thrown if <typeparamref name="TConfig"/> is not an ordinary reference type.</exception>
         public TConfig GetConfiguration<TConfig>()
             where TConfig : class, new()
         {
@@ -45,6 +103,16 @@ namespace AI4E
             return config;
         }
 
+        /// <summary>
+        /// Returns a boolean value indicating whether the feature of the specified type is enabled.
+        /// </summary>
+        /// <typeparam name="TFeature">The type of feature.</typeparam>
+        /// <param name="defaultValue">The default value if the feature is not found.</param>
+        /// <returns>
+        /// A boolean value indicating whether the feature specified by <typeparamref name="TFeature"/> is enabled,
+        /// or <paramref name="defaultValue"/> if the feature was not found.
+        /// </returns>
+        /// <exception cref="ArgumentException">Thrown if <typeparamref name="TFeature"/> is not an ordinary reference type.</exception>
         public bool IsEnabled<TFeature>(bool defaultValue = false)
              where TFeature : class, IMessageHandlerConfigurationFeature
         {
@@ -55,124 +123,5 @@ namespace AI4E
 
             return config.IsEnabled;
         }
-
-        public static MessageHandlerConfiguration FromDescriptor(in MessageHandlerActionDescriptor memberDescriptor)
-        {
-            var configurationBuilder = new MessageHandlerConfigurationBuilder();
-
-            foreach (var typeConfigAttribute in memberDescriptor.MessageHandlerType.Assembly.GetCustomAttributes<ConfigureMessageHandlerAttribute>(inherit: true))
-            {
-                typeConfigAttribute.ExecuteConfigureMessageHandler(memberDescriptor, configurationBuilder);
-            }
-
-            foreach (var typeConfigAttribute in memberDescriptor.MessageHandlerType.GetCustomAttributes<ConfigureMessageHandlerAttribute>(inherit: true))
-            {
-                typeConfigAttribute.ExecuteConfigureMessageHandler(memberDescriptor, configurationBuilder);
-            }
-
-            foreach (var actionConfigAttribute in memberDescriptor.Member.GetCustomAttributes<ConfigureMessageHandlerAttribute>(inherit: true))
-            {
-                actionConfigAttribute.ExecuteConfigureMessageHandler(memberDescriptor, configurationBuilder);
-            }
-
-            return configurationBuilder.Build();
-        }
-
-        private sealed class MessageHandlerConfigurationBuilder : IMessageHandlerConfigurationBuilder
-        {
-            private readonly ImmutableDictionary<Type, object>.Builder _dataBuilder;
-
-            public MessageHandlerConfigurationBuilder()
-            {
-                _dataBuilder = ImmutableDictionary.CreateBuilder<Type, object>();
-            }
-
-            private IMessageHandlerConfigurationBuilder Configure(
-                Type configurationType,
-                Func<object, object> configuration)
-            {
-                if (configurationType == null)
-                    throw new ArgumentNullException(nameof(configurationType));
-
-                if (!configurationType.IsOrdinaryClass())
-                    throw new ArgumentException("The specified type must be an ordinary reference type.", nameof(configurationType));
-
-                if (!_dataBuilder.TryGetValue(configurationType, out var obj))
-                {
-                    obj = null;
-                }
-
-                if (obj == null)
-                {
-                    _dataBuilder.Remove(configurationType);
-                }
-                else
-                {
-                    if (!configurationType.IsAssignableFrom(obj.GetType()))
-                    {
-                        throw new InvalidOperationException();
-                    }
-
-                    _dataBuilder[configurationType] = obj;
-                }
-
-                return this;
-            }
-
-            public IMessageHandlerConfigurationBuilder Configure<TConfig>(
-                Func<TConfig, TConfig> configuration)
-                where TConfig : class
-            {
-                return Configure(typeof(TConfig), o => configuration(o as TConfig));
-            }
-
-            public IMessageHandlerConfigurationBuilder Configure<TConfig>(
-                Func<TConfig> configuration)
-                where TConfig : class
-            {
-                return Configure(typeof(TConfig), o => configuration());
-            }
-
-            public IMessageHandlerConfigurationBuilder Configure<TConfig>(
-                Action<TConfig> configuration)
-                where TConfig : class, new()
-            {
-                object Configuration(object obj)
-                {
-                    var config = obj as TConfig ?? new TConfig();
-                    configuration(config);
-
-                    return config;
-                }
-
-                return Configure(typeof(TConfig), Configuration);
-            }
-
-            public MessageHandlerConfiguration Build()
-            {
-                var data = _dataBuilder.ToImmutable();
-                return new MessageHandlerConfiguration(data);
-            }
-        }
-    }
-
-    public interface IMessageHandlerConfigurationBuilder
-    {
-        IMessageHandlerConfigurationBuilder Configure<TConfig>(
-            Func<TConfig, TConfig> configuration)
-            where TConfig : class;
-
-        IMessageHandlerConfigurationBuilder Configure<TConfig>(
-           Func<TConfig> configuration)
-           where TConfig : class;
-
-        IMessageHandlerConfigurationBuilder Configure<TConfig>(
-            Action<TConfig> configuration)
-            where TConfig : class, new();
-    }
-
-    public interface IMessageHandlerConfigurationFeature
-    {
-        bool IsEnabled { get; }
     }
 }

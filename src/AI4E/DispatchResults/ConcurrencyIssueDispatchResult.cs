@@ -1,8 +1,8 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -20,12 +20,40 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
+using Newtonsoft.Json;
 
 namespace AI4E.DispatchResults
 {
+    /// <summary>
+    /// Describes the result of a message dispatch operation that failed due to a concurrency issue.
+    /// </summary>
     public sealed class ConcurrencyIssueDispatchResult : FailureDispatchResult
     {
-        public ConcurrencyIssueDispatchResult() : base("A concurrency issue occured.") { }
+        internal const string DefaultMessage = "A concurrency issue occured.";
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="ConcurrencyIssueDispatchResult"/> type.
+        /// </summary>
+        public ConcurrencyIssueDispatchResult() : base(DefaultMessage) { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="ConcurrencyIssueDispatchResult"/> type.
+        /// </summary>
+        ///  <param name="message">A message describing the message dispatch result.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is <c>null</c>.</exception>
+        public ConcurrencyIssueDispatchResult(string message) : base(message) { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="ConcurrencyIssueDispatchResult"/> type.
+        /// </summary>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
+        /// </exception>
+        [JsonConstructor]
+        public ConcurrencyIssueDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+            : base(message, resultData)
+        { }
     }
 }

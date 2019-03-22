@@ -31,7 +31,7 @@ namespace AI4E.Modularity.Debug
         {
             var receiveResult = await _logicalEndPoint.ReceiveAsync(cancellation);
             var receiveResultSkeleton = new MessageReceiveResultSkeleton(receiveResult);
-            return new Proxy<MessageReceiveResultSkeleton>(receiveResultSkeleton, ownsInstance: true);
+            return ProxyHost.CreateProxy(receiveResultSkeleton, ownsInstance: true);
         }
 
         public async Task<byte[]> SendAsync(byte[] messageBuffer, EndPointAddress remoteEndPoint, CancellationToken cancellation = default)

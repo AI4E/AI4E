@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -33,145 +33,145 @@ namespace AI4E
         [MessageDispatcher]
         public IMessageDispatcher MessageDispatcher { get; internal set; }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual FailureDispatchResult Failure()
         {
             return new FailureDispatchResult();
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual FailureDispatchResult Failure(string message)
         {
             return new FailureDispatchResult(message);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual FailureDispatchResult Failure(string message, IDispatchResult underlyingResult) // TODO
         {
             return new FailureDispatchResult(message);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual FailureDispatchResult Failure(Exception exc)
         {
             return new FailureDispatchResult(exc);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual SuccessDispatchResult Success()
         {
             return new SuccessDispatchResult();
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual SuccessDispatchResult Success(string message)
         {
             return new SuccessDispatchResult(message);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual SuccessDispatchResult<TResult> Success<TResult>(TResult result)
         {
             return new SuccessDispatchResult<TResult>(result);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual SuccessDispatchResult<TResult> Success<TResult>(TResult result, string message)
         {
             return new SuccessDispatchResult<TResult>(result, message);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual ConcurrencyIssueDispatchResult ConcurrencyIssue()
         {
             return new ConcurrencyIssueDispatchResult();
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual EntityNotFoundDispatchResult EntityNotFound(Type entityType, string id)
         {
             return new EntityNotFoundDispatchResult(entityType, id);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual EntityNotFoundDispatchResult EntityNotFound<TEntity>(string id)
         {
             return new EntityNotFoundDispatchResult(typeof(TEntity), id);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual EntityNotFoundDispatchResult EntityNotFound<TEntity>(object id)
         {
             return new EntityNotFoundDispatchResult(typeof(TEntity), id.ToString());
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual EntityAlreadyPresentDispatchResult EntityAlreadyPresent(Type entityType, string id)
         {
             return new EntityAlreadyPresentDispatchResult(entityType, id);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual EntityAlreadyPresentDispatchResult EntityAlreadyPresent<TEntity>(string id)
         {
             return new EntityAlreadyPresentDispatchResult(typeof(TEntity), id);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual EntityAlreadyPresentDispatchResult EntityAlreadyPresent<TEntity>(object id)
         {
             return new EntityAlreadyPresentDispatchResult(typeof(TEntity), id.ToString());
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual NotAuthenticatedDispatchResult NotAuthenticated()
         {
             return new NotAuthenticatedDispatchResult();
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual NotAuthorizedDispatchResult NotAuthorized()
         {
             return new NotAuthorizedDispatchResult();
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual ValidationFailureDispatchResult ValidationFailure()
         {
             return new ValidationFailureDispatchResult();
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual ValidationFailureDispatchResult ValidationFailure(IEnumerable<ValidationResult> validationResults)
         {
             return new ValidationFailureDispatchResult(validationResults);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual ValidationFailureDispatchResult ValidationFailure(params ValidationResult[] validationResults)
         {
             return new ValidationFailureDispatchResult(validationResults);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual ValidationFailureDispatchResult ValidationFailure(string member, string message)
         {
             return new ValidationFailureDispatchResult(new[] { new ValidationResult(member, message) });
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual NotFoundDispatchResult NotFound()
         {
             return new NotFoundDispatchResult();
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual NotFoundDispatchResult NotFound(string message)
         {
             return new NotFoundDispatchResult(message);
         }
 
-        [NoAction]
+        [NoMessageHandler]
         public virtual DispatchFailureDispatchResult DispatchFailure()
         {
             var messageType = Context.DispatchData.MessageType;
@@ -179,9 +179,25 @@ namespace AI4E
         }
     }
 
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = true)]
-    public class MessageHandlerAttribute : Attribute { }
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    public class MessageHandlerAttribute : Attribute
+    {
+        public MessageHandlerAttribute() { }
 
+        public MessageHandlerAttribute(Type messageType)
+        {
+            MessageType = messageType;
+        }
+
+        public Type MessageType { get; }
+    }
+
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    public sealed class NoMessageHandlerAttribute : Attribute { }
+
+    /// <summary>
+    /// An attribute that identifies a message handler's message-dispatcher property.
+    /// </summary>
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
     public class MessageDispatcherAttribute : Attribute { }
 }

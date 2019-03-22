@@ -1,20 +1,40 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
+using AI4E.Utils.Async;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Handler
 {
-    public class HandlerActionInvoker
+    public sealed class HandlerActionInvoker
     {
-        private static readonly ParameterModifier[] _emptyParameterModifiers = new ParameterModifier[0];
         private static readonly ConcurrentDictionary<MethodInfo, HandlerActionInvoker> _cache = new ConcurrentDictionary<MethodInfo, HandlerActionInvoker>();
         private readonly Func<object, object, Func<ParameterInfo, object>, object> _invoker;
 
-        private protected HandlerActionInvoker(MethodInfo method)
+        private HandlerActionInvoker(MethodInfo method)
         {
             if (method == null)
                 throw new ArgumentNullException(nameof(method));
@@ -23,7 +43,7 @@ namespace AI4E.Handler
                 throw new ArgumentException("The specified method must not be a generic type definition.", nameof(method));
 
             Method = method;
-            ReturnTypeDescriptor = TypeDescriptor.GetTypeDescriptor(method.ReturnType);
+            ReturnTypeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(method.ReturnType);
             var firstParameterType = method.GetParameters().Select(p => p.ParameterType).FirstOrDefault() ?? typeof(void);
             _invoker = BuildInvoker(method, firstParameterType);
             FirstParameterType = firstParameterType;
@@ -38,7 +58,7 @@ namespace AI4E.Handler
 
         public Type FirstParameterType { get; }
 
-        public TypeDescriptor ReturnTypeDescriptor { get; }
+        public AwaitableTypeDescriptor ReturnTypeDescriptor { get; }
 
         public async ValueTask<object> InvokeAsync(object instance, object argument, Func<ParameterInfo, object> parameterResolver)
         {
@@ -59,7 +79,7 @@ namespace AI4E.Handler
 
             var result = _invoker(instance, argument, parameterResolver);
 
-            if (ReturnTypeDescriptor.IsAsyncType)
+            if (ReturnTypeDescriptor.IsAwaitable)
             {
                 Assert(result != null);
 
@@ -79,7 +99,7 @@ namespace AI4E.Handler
 
         private static bool IsNullable(Type type)
         {
-            return type.IsClass || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+            return !type.IsValueType || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
         }
 
         private static object ResolveParameter(Func<ParameterInfo, object> parameterResolver, ParameterInfo parameter)
@@ -89,7 +109,7 @@ namespace AI4E.Handler
 
         // Func<object,                     -> Instance
         //     object,                      -> First argument
-        //     Func<ParameterInfo, object>, -> Paramter resolver
+        //     Func<ParameterInfo, object>, -> Parameter resolver
         //     object>                      -> Return value (null in case of void result)
         private static Func<object, object, Func<ParameterInfo, object>, object> BuildInvoker(MethodInfo method, Type firstParameterType)
         {

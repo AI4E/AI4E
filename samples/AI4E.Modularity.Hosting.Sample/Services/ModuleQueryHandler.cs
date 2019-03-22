@@ -11,7 +11,7 @@ namespace AI4E.Modularity.Hosting.Sample.Services
 {
     public sealed class ModuleQueryHandler : MessageHandler
     {
-        public async Task<IEnumerable<ModuleListModel>> HandleAsync(ModuleSearchQuery query, [FromServices][Inject] IModuleSearchEngine searchEngine)
+        public async Task<IEnumerable<ModuleListModel>> HandleAsync(ModuleSearchQuery query, IModuleSearchEngine searchEngine)
         {
             var modules = await searchEngine.SearchModulesAsync(query.SearchPhrase, query.IncludePreReleases, cancellation: default);
             var projection = new ModuleProjection();
@@ -19,17 +19,17 @@ namespace AI4E.Modularity.Hosting.Sample.Services
             return modules.Select(p => projection.ProjectToListModel(p, query.IncludePreReleases)).ToList();
         }
 
-        public Task<ModuleReleaseModel> HandleAsync(ByIdQuery<ModuleReleaseIdentifier, ModuleReleaseModel> query, [FromServices][Inject] IDatabase dataStore)
+        public Task<ModuleReleaseModel> HandleAsync(ByIdQuery<ModuleReleaseIdentifier, ModuleReleaseModel> query, IDatabase dataStore)
         {
             return dataStore.GetOneAsync<ModuleReleaseModel>(p => p.Id == query.Id).AsTask();
         }
 
-        public Task<ModuleInstallModel> HandleAsync(ByIdQuery<ModuleReleaseIdentifier, ModuleInstallModel> query, [FromServices][Inject] IDatabase dataStore)
+        public Task<ModuleInstallModel> HandleAsync(ByIdQuery<ModuleReleaseIdentifier, ModuleInstallModel> query, IDatabase dataStore)
         {
             return dataStore.GetOneAsync<ModuleInstallModel>(p => p.Id == query.Id).AsTask();
         }
 
-        public Task<ModuleUninstallModel> HandleAsync(ByIdQuery<ModuleIdentifier, ModuleUninstallModel> query, [FromServices][Inject] IDatabase dataStore)
+        public Task<ModuleUninstallModel> HandleAsync(ByIdQuery<ModuleIdentifier, ModuleUninstallModel> query, IDatabase dataStore)
         {
             return dataStore.GetOneAsync<ModuleUninstallModel>(p => p.Id == query.Id).AsTask();
         }

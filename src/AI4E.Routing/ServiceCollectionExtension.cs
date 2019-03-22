@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using AI4E.Remoting;
+using AI4E.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -71,8 +73,25 @@ namespace AI4E.Routing
         public RemoteMessagingOptions()
         {
             LocalEndPoint = new EndPointAddress(Assembly.GetEntryAssembly().GetName().Name);
+            RoutesResolvers = new List<IRoutesResolver> { new ValidationRoutesResolver() };
         }
 
         public EndPointAddress LocalEndPoint { get; set; }
+        public IList<IRoutesResolver> RoutesResolvers { get; }
+    }
+
+    internal sealed class ValidationRoutesResolver : RoutesResolver
+    {
+        public override bool CanResolve(DispatchDataDictionary dispatchData)
+        {
+            return typeof(Validate).IsAssignableFrom(dispatchData.MessageType);
+        }
+
+        public override RouteHierarchy Resolve(DispatchDataDictionary dispatchData)
+        {
+            var underlyingType = (dispatchData.Message as Validate).MessageType;
+
+            return ResolveDefaults(underlyingType);
+        }
     }
 }

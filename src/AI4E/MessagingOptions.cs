@@ -1,18 +1,8 @@
-﻿/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        MessagingOptions.cs 
- * Types:           AI4E.MessagingOptions
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   26.08.2017 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -37,12 +27,12 @@ namespace AI4E
     {
         public MessagingOptions()
         {
-            MessageProcessors = new List<IContextualProvider<IMessageProcessor>>()
+            MessageProcessors = new List<IMessageProcessorRegistration>()
             {
-                ContextualProvider.Create<ValidationCommandProcessor>()
+                MessageProcessorRegistration.Create<ValidationMessageProcessor>() // TOOD: Remove me??
             };
         }
 
-        public IList<IContextualProvider<IMessageProcessor>> MessageProcessors { get; }
+        public IList<IMessageProcessorRegistration> MessageProcessors { get; }
     }
 }

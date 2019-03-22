@@ -1,18 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        MessageHandlerActionDescriptor.cs 
- * Types:           AI4E.MessageHandlerActionDescriptor
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   01.06.2017 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -48,6 +38,7 @@ namespace AI4E
         /// <param name="member">A <see cref="MethodInfo"/> instance that specifies the member.</param>
         public MessageHandlerActionDescriptor(Type messageType, Type messageHandlerType, MethodInfo member)
         {
+            // TODO: Use the parameter order to TypeMemberInspector`1.CreateDescriptor
             if (messageType == null)
                 throw new ArgumentNullException(nameof(messageType));
 
@@ -58,7 +49,7 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(member));
 
             if (!messageType.IsOrdinaryClass())
-                throw new ArgumentException("That argument must specify an ordinary class.", nameof(messageType));
+                throw new ArgumentException("The argument must specify an ordinary class.", nameof(messageType));
 
             if (!messageHandlerType.IsOrdinaryClass())
                 throw new ArgumentException("The argument must specify an ordinary class.", nameof(messageHandlerType));
@@ -77,7 +68,7 @@ namespace AI4E
             if (!member.DeclaringType.IsAssignableFrom(messageHandlerType))
                 throw new ArgumentException("The specififed message handler type must be assignable to the type that declares the specified member.");
 
-            // TODO: Do we also check wheter any parameter/messageType/messageHandlerType is by ref or is a pointer, etc.
+            // TODO: Do we also check whether any parameter/messageType/messageHandlerType is by ref or is a pointer, etc.
 
             MessageType = messageType;
             MessageHandlerType = messageHandlerType;
