@@ -28,10 +28,18 @@ using AI4E.Storage;
 
 namespace AI4E.Coordination.Storage
 {
+    /// <summary>
+    /// Represents the storage for coordination service entries.
+    /// </summary>
     public sealed class CoordinationStorage : ICoordinationStorage
     {
         private readonly IDatabase _database;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="CoordinationStorage"/> type.
+        /// </summary>
+        /// <param name="database">The underlying database that is used to store entries.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="database"/> is null.</exception>
         public CoordinationStorage(IDatabase database)
         {
             if (database == null)
@@ -40,6 +48,7 @@ namespace AI4E.Coordination.Storage
             _database = database;
         }
 
+        /// <inheritdoc />
         public async ValueTask<IStoredEntry> GetEntryAsync(
             string key,
             CancellationToken cancellation)
@@ -47,6 +56,7 @@ namespace AI4E.Coordination.Storage
             return await _database.GetOneAsync<SerializedStoredEntry>(p => p.Id == key, cancellation);
         }
 
+        /// <inheritdoc />
         public async ValueTask<IStoredEntry> UpdateEntryAsync(
             IStoredEntry value,
             IStoredEntry comparand,
@@ -54,6 +64,11 @@ namespace AI4E.Coordination.Storage
         {
             var convertedValue = ConvertValue(value);
             var convertedComparand = ConvertValue(comparand);
+
+            if (convertedValue != null && convertedComparand != null && convertedValue.Id != convertedComparand.Id)
+            {
+                throw new ArgumentException($"The keys of {nameof(value)} and {nameof(comparand)} must be equal.");
+            }
 
             if (await _database.CompareExchangeAsync(convertedValue, convertedComparand, (left, right) => left.StorageVersion == right.StorageVersion, cancellation))
             {

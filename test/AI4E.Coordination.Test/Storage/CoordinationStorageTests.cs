@@ -225,7 +225,7 @@ namespace AI4E.Coordination.Storage
         }
 
         [TestMethod]
-        public async Task CanHandleDefaultImmutableArrayForReadLocksTest()
+        public async Task UpdateDifferTest()
         {
             var database = new InMemoryDatabase();
             var storage = new CoordinationStorage(database);
@@ -248,6 +248,32 @@ namespace AI4E.Coordination.Storage
             Assert.IsTrue(entry.ReadLocks.IsDefaultOrEmpty);
             Assert.AreEqual(entry.WriteLock, queryResult.WriteLock);
             Assert.IsFalse(queryResult.IsMarkedAsDeleted);
+        }
+
+        [TestMethod]
+        public async Task UpdateDifferentKeysTest()
+        {
+            var database = new InMemoryDatabase();
+            var storage = new CoordinationStorage(database);
+            var entry = new StoredEntryMock { Key = "/x/y/" };
+            var comparand = new StoredEntryMock { Key = "/x/y/z/" };
+
+            await Assert.ThrowsExceptionAsync<ArgumentException>(async () =>
+            {
+                await storage.UpdateEntryAsync(entry, comparand, cancellation: default);
+            });
+        }
+
+        [TestMethod]
+        public async Task UpdateBothNullTest()
+        {
+            var database = new InMemoryDatabase();
+            var storage = new CoordinationStorage(database);
+
+            await Assert.ThrowsExceptionAsync<ArgumentException>(async () =>
+            {
+                await storage.UpdateEntryAsync(null, null, cancellation: default);
+            });
         }
 
         private void AssertEquality(IStoredEntry desired, IStoredEntry value)

@@ -18,20 +18,56 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace AI4E.Coordination.Storage
 {
+    /// <summary>
+    /// Represents the storage for coordination service entries.
+    /// </summary>
     public interface ICoordinationStorage
     {
+        /// <summary>
+        /// Asynchronously retrieves the entry with the specified key.
+        /// </summary>
+        /// <param name="key">The entry key.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the loaded entry, or <c>null</c>
+        /// if an entry with <paramref name="key"/> does not exist.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="key"/> is null.</exception>
         ValueTask<IStoredEntry> GetEntryAsync(
             string key,
-            CancellationToken cancellation);
+            CancellationToken cancellation = default);
 
+        /// <summary>
+        /// Asynchronously replaces an existing entry.
+        /// </summary>
+        /// <param name="value">The value that shall replace the existing.</param>
+        /// <param name="comparand">The comparand that the existing entry must equal.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the entry that was present before the replacement, if executed.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown if either both, <paramref name="comparand"/> and <paramref name="value"/> are <c>null</c>
+        /// or both, <paramref name="comparand"/> and <paramref name="value"/> are not <c>null</c> and the keys are not equal.
+        /// </exception>
+        /// <remarks>
+        /// If the tasks result equals comparand, the replacement was executed, otherwise no entry was replaced.
+        /// </remarks>
         ValueTask<IStoredEntry> UpdateEntryAsync(
             IStoredEntry value,
             IStoredEntry comparand,
-            CancellationToken cancellation);
+            CancellationToken cancellation = default);
     }
 }
