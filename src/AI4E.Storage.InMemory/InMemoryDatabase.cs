@@ -1,3 +1,23 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -12,31 +32,40 @@ using Nito.AsyncEx;
 
 namespace AI4E.Storage.InMemory
 {
+    /// <summary>
+    /// Represents an in-memory database.
+    /// </summary>
     public sealed class InMemoryDatabase : IDatabase
     {
         private readonly ConcurrentDictionary<Type, object> _typedStores = new ConcurrentDictionary<Type, object>();
 
-        private IInMemoryDatabase<TData> GetTypedStore<TData>()
-            where TData : class
+        /// <summary>
+        /// Creates a new instance of the <see cref="InMemoryDatabase"/> type.
+        /// </summary>
+        public InMemoryDatabase()
+        { }
+
+        private IInMemoryDatabase<TEntry> GetTypedStore<TEntry>()
+            where TEntry : class
         {
-            return (IInMemoryDatabase<TData>)_typedStores.GetOrAdd(typeof(TData), _ => CreateTypedStore<TData>());
+            return (IInMemoryDatabase<TEntry>)_typedStores.GetOrAdd(typeof(TEntry), _ => CreateTypedStore<TEntry>());
         }
 
-        private IInMemoryDatabase<TData> CreateTypedStore<TData>()
-            where TData : class
+        private IInMemoryDatabase<TEntry> CreateTypedStore<TEntry>()
+            where TEntry : class
         {
-            var dataType = typeof(TData);
-            var idType = DataPropertyHelper.GetIdType<TData>();
+            var dataType = typeof(TEntry);
+            var idType = DataPropertyHelper.GetIdType<TEntry>();
 
             if (idType == null)
             {
-                throw new Exception($"Cannot store objects of type '{typeof(TData).FullName}'. An id cannot be extracted."); // TODO
+                throw new InvalidOperationException($"Cannot store objects of type '{typeof(TEntry).FullName}'. An id cannot be accessed.");
             }
 
 
             var typedStore = Activator.CreateInstance(typeof(InMemoryDatabase<,>).MakeGenericType(idType, dataType));
 
-            return (IInMemoryDatabase<TData>)typedStore;
+            return (IInMemoryDatabase<TEntry>)typedStore;
         }
 
         #region IDatabase
@@ -48,29 +77,24 @@ namespace AI4E.Storage.InMemory
 
         bool IDatabase.SupportsScopes => false;
 
-        public Task<bool> AddAsync<TData>(TData data, CancellationToken cancellation = default)
-             where TData : class
+        /// <inheritdoc />
+        public Task<bool> AddAsync<TEntry>(
+            TEntry data,
+            CancellationToken cancellation)
+             where TEntry : class
         {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
-            return GetTypedStore<TData>().AddAsync(data, cancellation);
+            return GetTypedStore<TEntry>().AddAsync(data, cancellation);
         }
 
-        public Task<bool> UpdateAsync<TData>(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
-            where TData : class
-        {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
-            if (predicate == null)
-                throw new ArgumentNullException(nameof(predicate));
-
-            return GetTypedStore<TData>().StoreAsync(data, predicate, cancellation);
-        }
-
-        public Task<bool> RemoveAsync<TData>(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
-            where TData : class
+        /// <inheritdoc />
+        public Task<bool> UpdateAsync<TEntry>(
+            TEntry data,
+            Expression<Func<TEntry, bool>> predicate,
+            CancellationToken cancellation)
+            where TEntry : class
         {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
@@ -78,26 +102,51 @@ namespace AI4E.Storage.InMemory
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
 
-            return GetTypedStore<TData>().RemoveAsync(data, predicate, cancellation);
+            return GetTypedStore<TEntry>().StoreAsync(data, predicate, cancellation);
         }
 
-        public Task Clear<TEntry>(CancellationToken cancellation = default) where TEntry : class
+        /// <inheritdoc />
+        public Task<bool> RemoveAsync<TEntry>(
+            TEntry data,
+            Expression<Func<TEntry, bool>> predicate,
+            CancellationToken cancellation)
+            where TEntry : class
+        {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            if (predicate == null)
+                throw new ArgumentNullException(nameof(predicate));
+
+            return GetTypedStore<TEntry>().RemoveAsync(data, predicate, cancellation);
+        }
+
+        /// <inheritdoc />
+        public Task Clear<TEntry>(CancellationToken cancellation)
+            where TEntry : class
         {
             _typedStores.TryRemove(typeof(TEntry), out _);
 
             return Task.CompletedTask;
         }
 
-        public IAsyncEnumerable<TData> GetAsync<TData>(Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
-                    where TData : class
+        /// <inheritdoc />
+        public IAsyncEnumerable<TEntry> GetAsync<TEntry>(
+            Expression<Func<TEntry, bool>> predicate,
+            CancellationToken cancellation)
+                    where TEntry : class
         {
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
 
-            return GetTypedStore<TData>().GetAsync(predicate, cancellation);
+            return GetTypedStore<TEntry>().GetAsync(predicate, cancellation);
         }
 
-        public ValueTask<TEntry> GetOneAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default) where TEntry : class
+        /// <inheritdoc />
+        public ValueTask<TEntry> GetOneAsync<TEntry>(
+            Expression<Func<TEntry, bool>> predicate,
+            CancellationToken cancellation)
+            where TEntry : class
         {
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
@@ -108,29 +157,29 @@ namespace AI4E.Storage.InMemory
         #endregion
     }
 
-    internal interface IInMemoryDatabase<TData>
-        where TData : class
+    internal interface IInMemoryDatabase<TEntry>
+        where TEntry : class
     {
-        Task<bool> AddAsync(TData data, CancellationToken cancellation = default);
-        Task<bool> StoreAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
-        Task<bool> RemoveAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
-        IAsyncEnumerable<TData> GetAsync(Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
-        ValueTask<TData> GetOneAsync(Expression<Func<TData, bool>> predicate, CancellationToken cancellation);
+        Task<bool> AddAsync(TEntry data, CancellationToken cancellation = default);
+        Task<bool> StoreAsync(TEntry data, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation);
+        Task<bool> RemoveAsync(TEntry data, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation);
+        IAsyncEnumerable<TEntry> GetAsync(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation);
+        ValueTask<TEntry> GetOneAsync(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation);
     }
 
-    internal sealed class InMemoryDatabase<TId, TData> : IInMemoryDatabase<TData>
-        where TData : class
+    internal sealed class InMemoryDatabase<TId, TEntry> : IInMemoryDatabase<TEntry>
+        where TEntry : class
     {
-        private readonly Dictionary<TId, TData> _entries = new Dictionary<TId, TData>();
+        private readonly Dictionary<TId, TEntry> _entries = new Dictionary<TId, TEntry>();
         private readonly AsyncReaderWriterLock _lock = new AsyncReaderWriterLock();
 
         public InMemoryDatabase() { }
 
-        public async Task<bool> StoreAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation)
+        public async Task<bool> StoreAsync(TEntry data, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation)
         {
-            var id = DataPropertyHelper.GetId<TId, TData>(data);
+            var id = DataPropertyHelper.GetId<TId, TEntry>(data);
 
-            TData comparand;
+            TEntry comparand;
 
             using (await _lock.ReaderLockAsync(cancellation))
             {
@@ -155,11 +204,11 @@ namespace AI4E.Storage.InMemory
             return await ExecuteAsync(data, p, (_1, _2) => _entries[id] = copy, cancellation);
         }
 
-        public async Task<bool> AddAsync(TData data, CancellationToken cancellation = default)
+        public async Task<bool> AddAsync(TEntry data, CancellationToken cancellation = default)
         {
-            var id = DataPropertyHelper.GetId<TId, TData>(data);
+            var id = DataPropertyHelper.GetId<TId, TEntry>(data);
 
-            TData comparand;
+            TEntry comparand;
 
             using (await _lock.ReaderLockAsync(cancellation))
             {
@@ -192,20 +241,20 @@ namespace AI4E.Storage.InMemory
             return true;
         }
 
-        public Task<bool> RemoveAsync(TData data, Expression<Func<TData, bool>> predicate, CancellationToken cancellation)
+        public Task<bool> RemoveAsync(TEntry data, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation)
         {
             return ExecuteAsync(data, predicate.Compile(), (id, _) => _entries.Remove(id), cancellation);
         }
 
-        private async Task<bool> ExecuteAsync(TData data, Func<TData, bool> predicate, Action<TId, TData> action, CancellationToken cancellation)
+        private async Task<bool> ExecuteAsync(TEntry data, Func<TEntry, bool> predicate, Action<TId, TEntry> action, CancellationToken cancellation)
         {
-            var id = DataPropertyHelper.GetId<TId, TData>(data);
+            var id = DataPropertyHelper.GetId<TId, TEntry>(data);
 
             using (await _lock.WriterLockAsync(cancellation))
             {
                 if (!_entries.TryGetValue(id, out var comparand))
                 {
-                    comparand = null;
+                    return false;
                 }
 
                 if (!predicate(comparand))
@@ -219,12 +268,12 @@ namespace AI4E.Storage.InMemory
             return true;
         }
 
-        public IAsyncEnumerable<TData> GetAsync(Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
+        public IAsyncEnumerable<TEntry> GetAsync(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
         {
-            async Task<IEnumerable<TData>> GetRawData()
+            async Task<IEnumerable<TEntry>> GetRawData()
             {
                 var compiledPredicate = predicate.Compile();
-                var result = new List<TData>();
+                var result = new List<TEntry>();
 
                 using (await _lock.ReaderLockAsync(cancellation))
                 {
@@ -241,10 +290,10 @@ namespace AI4E.Storage.InMemory
             return GetRawData().ToAsyncEnumerable().Select(p => p.DeepClone());
         }
 
-        public async ValueTask<TData> GetOneAsync(Expression<Func<TData, bool>> predicate, CancellationToken cancellation)
+        public async ValueTask<TEntry> GetOneAsync(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation)
         {
             var compiledPredicate = predicate.Compile();
-            TData result = null;
+            TEntry result = null;
             var resultFound = false;
 
             using (await _lock.ReaderLockAsync(cancellation))
