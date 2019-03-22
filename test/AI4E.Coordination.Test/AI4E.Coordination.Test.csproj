@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AI4E.Coordination\AI4E.Coordination.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj" />
   </ItemGroup>
 
 </Project>

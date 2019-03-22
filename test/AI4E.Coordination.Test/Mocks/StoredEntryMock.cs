@@ -18,20 +18,25 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Threading;
-using System.Threading.Tasks;
+using System;
+using System.Collections.Immutable;
+using AI4E.Coordination.Session;
+using AI4E.Coordination.Storage;
 
-namespace AI4E.Coordination.Storage
+namespace AI4E.Coordination.Mocks
 {
-    public interface ICoordinationStorage
+    public sealed class StoredEntryMock : IStoredEntry
     {
-        ValueTask<IStoredEntry> GetEntryAsync(
-            string key,
-            CancellationToken cancellation);
+        public string Key { get; set; }
 
-        ValueTask<IStoredEntry> UpdateEntryAsync(
-            IStoredEntry value,
-            IStoredEntry comparand,
-            CancellationToken cancellation);
+        public ReadOnlyMemory<byte> Value { get; set; }
+
+        public ImmutableArray<CoordinationSession> ReadLocks { get; set; }
+
+        public CoordinationSession? WriteLock { get; set; }
+
+        public int StorageVersion { get; set; }
+
+        public bool IsMarkedAsDeleted { get; set; }
     }
 }
