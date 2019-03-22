@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination.Session;
-using AI4E.Coordination.Storage;
 using AI4E.Remoting;
 using AI4E.Utils;
 using AI4E.Utils.Async;
@@ -25,7 +24,6 @@ namespace AI4E.Coordination.Locking
         private readonly ISessionManager _sessionManager;
         private readonly ILockWaitDirectory _lockWaitDirectory;
         private readonly IInvalidationCallbackDirectory _invalidationCallbackDirectory;
-        private readonly ICoordinationStorage _storage;
         private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
         private readonly IAddressConversion<TAddress> _addressConversion;
         private readonly ILogger<CoordinationExchangeManager<TAddress>> _logger;
@@ -42,7 +40,6 @@ namespace AI4E.Coordination.Locking
                                            ISessionManager sessionManager,
                                            ILockWaitDirectory lockWaitDirectory,
                                            IInvalidationCallbackDirectory invalidationCallbackDirectory,
-                                           ICoordinationStorage storage,
                                            IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
                                            IAddressConversion<TAddress> addressConversion,
                                            IOptions<CoordinationManagerOptions> optionsAccessor,
@@ -60,9 +57,6 @@ namespace AI4E.Coordination.Locking
             if (invalidationCallbackDirectory == null)
                 throw new ArgumentNullException(nameof(invalidationCallbackDirectory));
 
-            if (storage == null)
-                throw new ArgumentNullException(nameof(storage));
-
             if (endPointMultiplexer == null)
                 throw new ArgumentNullException(nameof(endPointMultiplexer));
 
@@ -73,7 +67,6 @@ namespace AI4E.Coordination.Locking
             _sessionManager = sessionManager;
             _lockWaitDirectory = lockWaitDirectory;
             _invalidationCallbackDirectory = invalidationCallbackDirectory;
-            _storage = storage;
             _endPointMultiplexer = endPointMultiplexer;
             _addressConversion = addressConversion;
             _logger = logger;
