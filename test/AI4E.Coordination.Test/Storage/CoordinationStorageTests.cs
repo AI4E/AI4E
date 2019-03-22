@@ -225,7 +225,7 @@ namespace AI4E.Coordination.Storage
         }
 
         [TestMethod]
-        public async Task UpdateDifferTest()
+        public async Task UpdateWithDefaultReadLocksImmutableArrayTest()
         {
             var database = new InMemoryDatabase();
             var storage = new CoordinationStorage(database);
@@ -242,12 +242,7 @@ namespace AI4E.Coordination.Storage
 
             Assert.IsNull(updateResult);
             Assert.IsNotNull(queryResult);
-            Assert.AreEqual(entry.Key, queryResult.Key);
-            Assert.AreEqual(entry.StorageVersion, queryResult.StorageVersion);
-            Assert.IsTrue(entry.Value.Span.SequenceEqual(queryResult.Value.Span));
-            Assert.IsTrue(entry.ReadLocks.IsDefaultOrEmpty);
-            Assert.AreEqual(entry.WriteLock, queryResult.WriteLock);
-            Assert.IsFalse(queryResult.IsMarkedAsDeleted);
+            AssertEquality(entry, queryResult);
         }
 
         [TestMethod]
@@ -281,7 +276,8 @@ namespace AI4E.Coordination.Storage
             Assert.AreEqual(desired.Key, value.Key);
             Assert.AreEqual(desired.StorageVersion, value.StorageVersion);
             Assert.IsTrue(desired.Value.Span.SequenceEqual(value.Value.Span));
-            Assert.IsTrue(desired.ReadLocks.SequenceEqual(value.ReadLocks));
+            Assert.IsTrue(desired.ReadLocks.IsDefaultOrEmpty && value.ReadLocks.IsDefaultOrEmpty ||
+                          !desired.ReadLocks.IsDefaultOrEmpty && !value.ReadLocks.IsDefaultOrEmpty && desired.ReadLocks.SequenceEqual(value.ReadLocks));
             Assert.AreEqual(desired.WriteLock, value.WriteLock);
             Assert.AreEqual(desired.IsMarkedAsDeleted, value.IsMarkedAsDeleted);
         }

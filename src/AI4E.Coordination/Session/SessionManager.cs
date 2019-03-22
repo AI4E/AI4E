@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Coordination.Storage;
 using AI4E.Utils;
 
 namespace AI4E.Coordination.Session

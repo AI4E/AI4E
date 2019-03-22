@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -19,16 +19,21 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Collections.Immutable;
+using AI4E.Coordination.Session;
 
-namespace AI4E.Coordination.Session
+namespace AI4E.Coordination.Mocks
 {
-    public interface ISessionStorage
+    public sealed class StoredSessionMock : IStoredSession
     {
-        Task<IStoredSession> GetSessionAsync(CoordinationSession session, CancellationToken cancellation);
-        IAsyncEnumerable<IStoredSession> GetSessionsAsync(CancellationToken cancellation);
-        Task<IStoredSession> UpdateSessionAsync(IStoredSession value, IStoredSession comparand, CancellationToken cancellation);
+        public CoordinationSession Session { get; set; }
+
+        public bool IsEnded { get; set; }
+
+        public DateTime LeaseEnd { get; set; }
+
+        public int StorageVersion { get; set; }
+
+        public ImmutableArray<CoordinationEntryPath> EntryPaths { get; set; }
     }
 }
