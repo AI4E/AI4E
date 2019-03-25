@@ -52,14 +52,7 @@ namespace AI4E.Coordination.Storage
         {
             var database = new InMemoryDatabase();
             var storage = new CoordinationStorage(database);
-            var entry = new StoredEntryMock
-            {
-                Key = "/x/y/",
-                StorageVersion = 1,
-                Value = new byte[] { 1, 2, 3 },
-                ReadLocks = new[] { _session1, _session2 }.ToImmutableArray(),
-                WriteLock = _session3
-            };
+            var entry = CreateDummyStoredEntry();
 
             var updateResult = await storage.UpdateEntryAsync(entry, null, cancellation: default);
             var queryResult = await storage.GetEntryAsync("/x/y/", cancellation: default);
@@ -67,6 +60,18 @@ namespace AI4E.Coordination.Storage
             Assert.IsNull(updateResult);
             Assert.IsNotNull(queryResult);
             AssertEquality(entry, queryResult);
+        }
+
+        private static StoredEntryMock CreateDummyStoredEntry()
+        {
+            return new StoredEntryMock
+            {
+                Key = "/x/y/",
+                StorageVersion = 1,
+                Value = new byte[] { 1, 2, 3 },
+                ReadLocks = new[] { _session1, _session2 }.ToImmutableArray(),
+                WriteLock = _session3
+            };
         }
 
         [TestMethod]

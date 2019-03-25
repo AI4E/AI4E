@@ -1,3 +1,23 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Immutable;
 using System.Linq;
@@ -16,7 +36,7 @@ namespace AI4E.Coordination.Storage
 
             Key = entry.Key;
             Value = entry.Value;
-            ReadLocks = entry.ReadLocks;
+            ReadLocks = entry.ReadLocks.IsDefaultOrEmpty ? _noReadLocks : entry.ReadLocks;
             WriteLock = entry.WriteLock;
             StorageVersion = entry.StorageVersion;
             IsMarkedAsDeleted = entry.IsMarkedAsDeleted;
@@ -52,7 +72,10 @@ namespace AI4E.Coordination.Storage
                 throw new InvalidOperationException("The entry is not free of locks.");
 
             Value = value;
-            ReadLocks = ReadLocks.Add(_session);
+
+            if (!ReadLocks.Contains(_session))
+                ReadLocks = ReadLocks.Add(_session);
+
             WriteLock = _session;
             StorageVersion = 1;
             IsMarkedAsDeleted = false;
@@ -66,9 +89,6 @@ namespace AI4E.Coordination.Storage
 
             if (WriteLock != null)
                 throw new InvalidOperationException("The lock is not free.");
-
-            //if (IsInvalidated)
-            //    throw new InvalidOperationException("The entry is invalidated.");
 
             WriteLock = _session;
             StorageVersion++;
@@ -127,6 +147,9 @@ namespace AI4E.Coordination.Storage
             if (WriteLock != _session)
                 throw new InvalidOperationException();
 
+            if (IsMarkedAsDeleted)
+                return;
+
             IsMarkedAsDeleted = true;
             StorageVersion++;
             ChangesPending = true;
@@ -138,6 +161,9 @@ namespace AI4E.Coordination.Storage
                 throw new InvalidOperationException();
 
             if (WriteLock != _session)
+                throw new InvalidOperationException();
+
+            if (IsMarkedAsDeleted)
                 throw new InvalidOperationException();
 
             Value = value;

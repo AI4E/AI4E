@@ -27,11 +27,17 @@ namespace AI4E.Coordination.Mocks
 {
     public sealed class StoredEntryMock : IStoredEntry
     {
+        private ImmutableArray<CoordinationSession> _readLocks;
+
         public string Key { get; set; }
 
         public ReadOnlyMemory<byte> Value { get; set; }
 
-        public ImmutableArray<CoordinationSession> ReadLocks { get; set; }
+        public ImmutableArray<CoordinationSession> ReadLocks
+        {
+            get => _readLocks.IsDefaultOrEmpty ? ImmutableArray<CoordinationSession>.Empty : _readLocks;
+            set => _readLocks = value;
+        }
 
         public CoordinationSession? WriteLock { get; set; }
 
