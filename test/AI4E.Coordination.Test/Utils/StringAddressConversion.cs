@@ -18,17 +18,31 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-namespace AI4E.Coordination.Session
+using System.Text;
+using AI4E.Remoting;
+
+namespace AI4E.Coordination.Utils
 {
-    /// <summary>
-    /// Represents a session identifier provider.
-    /// </summary>
-    public interface ISessionProvider
+    public sealed class StringAddressConversion : IAddressConversion<StringAddress>
     {
-        /// <summary>
-        /// Gets a new unique session identifier based on the current context.
-        /// </summary>
-        /// <returns>The creates session identifier.</returns>
-        CoordinationSession GetSession();
+        public byte[] SerializeAddress(StringAddress route)
+        {
+            return Encoding.UTF8.GetBytes(route.Address);
+        }
+
+        public StringAddress DeserializeAddress(byte[] buffer)
+        {
+            return new StringAddress(Encoding.UTF8.GetString(buffer));
+        }
+
+        public string ToString(StringAddress route)
+        {
+            return route.Address;
+        }
+
+        public StringAddress Parse(string str)
+        {
+            return new StringAddress(str);
+        }
     }
 }
