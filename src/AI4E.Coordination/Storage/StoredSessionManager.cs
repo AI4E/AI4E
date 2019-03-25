@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Immutable;
+using AI4E.Coordination.Session;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Coordination.Session
+namespace AI4E.Coordination.Storage
 {
     public sealed class StoredSessionManager : IStoredSessionManager
     {

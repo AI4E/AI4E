@@ -21,6 +21,7 @@
 using System;
 using System.Collections.Immutable;
 using AI4E.Coordination.Session;
+using AI4E.Coordination.Storage;
 
 namespace AI4E.Coordination.Mocks
 {

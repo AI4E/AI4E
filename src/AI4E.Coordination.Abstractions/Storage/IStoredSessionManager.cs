@@ -1,6 +1,7 @@
 using System;
+using AI4E.Coordination.Session;
 
-namespace AI4E.Coordination.Session
+namespace AI4E.Coordination.Storage
 {
     public interface IStoredSessionManager
     {

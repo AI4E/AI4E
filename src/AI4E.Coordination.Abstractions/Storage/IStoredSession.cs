@@ -20,8 +20,9 @@
 
 using System;
 using System.Collections.Immutable;
+using AI4E.Coordination.Session;
 
-namespace AI4E.Coordination.Session
+namespace AI4E.Coordination.Storage
 {
     public interface IStoredSession
     {
