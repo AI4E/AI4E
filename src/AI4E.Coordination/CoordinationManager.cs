@@ -10,7 +10,6 @@ using AI4E.Coordination.Caching;
 using AI4E.Coordination.Session;
 using AI4E.Utils;
 using AI4E.Utils.Memory;
-using AI4E.Utils.Memory.Compatibility;
 using AI4E.Utils.Processing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -29,7 +28,6 @@ namespace AI4E.Coordination
         private readonly ILogger<CoordinationManager<TAddress>> _logger;
 
         private readonly CoordinationManagerOptions _options;
-        private readonly AsyncProcess _updateSessionProcess;
         private readonly AsyncProcess _sessionCleanupProcess;
 
         public CoordinationManager(
@@ -68,7 +66,6 @@ namespace AI4E.Coordination
             _logger = logger;
 
             _options = optionsAccessor.Value ?? new CoordinationManagerOptions();
-            _updateSessionProcess = new AsyncProcess(UpdateSessionProcess, start: true);
             _sessionCleanupProcess = new AsyncProcess(SessionCleanupProcess, start: true);
         }
 
@@ -112,57 +109,6 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task UpdateSessionProcess(CancellationToken cancellation)
-        {
-            var session = await GetSessionAsync(cancellation);
-
-            while (cancellation.ThrowOrContinue())
-            {
-                try
-                {
-                    await UpdateSessionAsync(session, cancellation);
-                }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                catch (Exception exc)
-                {
-                    _logger?.LogWarning(exc, $"[{session}] Failure while updating session {session}.");
-                }
-            }
-        }
-
-        private async Task UpdateSessionAsync(CoordinationSession session, CancellationToken cancellation)
-        {
-            var leaseLength = _options.LeaseLength;
-
-            if (leaseLength <= TimeSpan.Zero)
-            {
-                leaseLength = CoordinationManagerOptions.LeaseLengthDefault;
-                Assert(leaseLength > TimeSpan.Zero);
-            }
-
-            var leaseLengthHalf = new TimeSpan(leaseLength.Ticks / 2);
-
-            if (leaseLengthHalf <= TimeSpan.Zero)
-            {
-                leaseLengthHalf = new TimeSpan(1);
-            }
-
-            Assert(session != null);
-
-            var leaseEnd = _dateTimeProvider.GetCurrentTime() + leaseLength;
-
-            try
-            {
-                await _sessionManager.UpdateSessionAsync(session, leaseEnd, cancellation);
-
-                await Task.Delay(leaseLengthHalf);
-            }
-            catch (SessionTerminatedException)
-            {
-                Dispose();
-            }
-        }
-
         private async Task CleanupSessionAsync(CoordinationSession session, CancellationToken cancellation)
         {
             _logger?.LogInformation($"[{await GetSessionAsync(cancellation)}] Cleaning up session '{session}'.");
@@ -182,7 +128,6 @@ namespace AI4E.Coordination
 
         public void Dispose()
         {
-            _updateSessionProcess.Terminate();
             _sessionCleanupProcess.Terminate();
 
             _serviceScope.Dispose();

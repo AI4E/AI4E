@@ -19,26 +19,28 @@
  */
 
 using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading;
+using AI4E.Coordination.Session;
 
 namespace AI4E.Coordination.Mocks
 {
-    public sealed class DateTimeProviderMock : IDateTimeProvider
+    public sealed class SessionProviderMock : ISessionProvider
     {
-        public DateTimeProviderMock(DateTime currentTime)
+        private readonly List<CoordinationSession> _coordinationSessions = new List<CoordinationSession>();
+        private int _counter;
+
+        public CoordinationSession GetSession()
         {
-            CurrentTime = currentTime;
+            var prefix = BitConverter.GetBytes(Interlocked.Increment(ref _counter));
+            var physicalAddress = Encoding.UTF8.GetBytes("Testaddress");
+
+            var result = new CoordinationSession(prefix, physicalAddress);
+            _coordinationSessions.Add(result);
+            return result;
         }
 
-        public DateTimeProviderMock()
-        {
-            CurrentTime = DateTime.UtcNow;
-        }
-
-        DateTime IDateTimeProvider.GetCurrentTime()
-        {
-            return CurrentTime;
-        }
-
-        public DateTime CurrentTime { get; set; }
+        public IReadOnlyList<CoordinationSession> CreatedSessions => _coordinationSessions;
     }
 }
