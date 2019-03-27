@@ -83,10 +83,12 @@ namespace AI4E.Coordination.Storage
             if (IsEnded(storedSession))
                 throw new InvalidOperationException();
 
-            if (storedSession.EntryPaths.Contains(entryPath))
+            if (!storedSession.EntryPaths.IsDefaultOrEmpty && storedSession.EntryPaths.Contains(entryPath))
                 return storedSession;
 
-            return new StoredSession(storedSession.Session, storedSession.IsEnded, storedSession.LeaseEnd, storedSession.EntryPaths.Add(entryPath), storedSession.StorageVersion + 1);
+            var entryPaths = storedSession.EntryPaths.IsDefaultOrEmpty ? ImmutableArray.Create(entryPath) : storedSession.EntryPaths.Add(entryPath);
+
+            return new StoredSession(storedSession.Session, storedSession.IsEnded, storedSession.LeaseEnd, entryPaths, storedSession.StorageVersion + 1);
         }
 
         public IStoredSession RemoveEntry(IStoredSession storedSession, CoordinationEntryPath entryPath)
@@ -94,7 +96,7 @@ namespace AI4E.Coordination.Storage
             if (storedSession == null)
                 throw new ArgumentNullException(nameof(storedSession));
 
-            if (!storedSession.EntryPaths.Contains(entryPath))
+            if (storedSession.EntryPaths.IsDefaultOrEmpty || !storedSession.EntryPaths.Contains(entryPath))
                 return storedSession;
 
             return new StoredSession(storedSession.Session, storedSession.IsEnded, storedSession.LeaseEnd, storedSession.EntryPaths.Remove(entryPath), storedSession.StorageVersion + 1);

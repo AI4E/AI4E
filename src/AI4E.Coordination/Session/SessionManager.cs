@@ -1,3 +1,23 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,6 +28,9 @@ using AI4E.Utils;
 
 namespace AI4E.Coordination.Session
 {
+    /// <summary>
+    /// Manages coordination service sessions.
+    /// </summary>
     public sealed class SessionManager : ISessionManager
     {
         private readonly ISessionStorage _storage;
@@ -16,6 +39,16 @@ namespace AI4E.Coordination.Session
 
         private readonly Dictionary<CoordinationSession, Task> _sessionTerminationCache = new Dictionary<CoordinationSession, Task>();
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="SessionManager"/> type.
+        /// </summary>
+        /// <param name="storage">A <see cref="ISessionStorage"/> that is used to store session entries.</param>
+        /// <param name="storedSessionManager">A <see cref="IStoredSessionManager"/> that is used to create session entries.</param>
+        /// <param name="dateTimeProvider">A <see cref="IDateTimeProvider"/> that is used to obtain the current date and time.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="storage"/>, <paramref name="storedSessionManager"/>
+        /// or <paramref name="dateTimeProvider"/> is <c>null</c>.
+        /// </exception>
         public SessionManager(ISessionStorage storage,
                               IStoredSessionManager storedSessionManager,
                               IDateTimeProvider dateTimeProvider)
@@ -34,6 +67,78 @@ namespace AI4E.Coordination.Session
             _dateTimeProvider = dateTimeProvider;
         }
 
+        /// <inheritdoc/>
+        public async Task AddSessionEntryAsync(CoordinationSession session, CoordinationEntryPath entryPath, CancellationToken cancellation)
+        {
+            if (session == default)
+                throw new ArgumentDefaultException(nameof(session));
+
+            IStoredSession current = await _storage.GetSessionAsync(session, cancellation),
+                           start,
+                           desired;
+
+            do
+            {
+                start = current;
+
+                if (start == null || _storedSessionManager.IsEnded(start))
+                {
+                    throw new SessionTerminatedException();
+                }
+
+                desired = _storedSessionManager.AddEntry(start, entryPath);
+
+                current = await _storage.UpdateSessionAsync(desired, start, cancellation);
+            }
+            while (start != current && start.StorageVersion != current.StorageVersion);
+        }
+
+        /// <inheritdoc/>
+        public async Task RemoveSessionEntryAsync(CoordinationSession session, CoordinationEntryPath entryPath, CancellationToken cancellation)
+        {
+            if (session == default)
+                throw new ArgumentDefaultException(nameof(session));
+
+            IStoredSession current = await _storage.GetSessionAsync(session, cancellation),
+                     start,
+                     desired;
+
+            do
+            {
+                start = current;
+
+                if (start == null)
+                {
+                    return;
+                }
+
+                desired = _storedSessionManager.RemoveEntry(start, entryPath);
+
+                if (_storedSessionManager.IsEnded(desired) && !desired.EntryPaths.Any())
+                {
+                    desired = null;
+                }
+
+                current = await _storage.UpdateSessionAsync(desired, start, cancellation);
+            }
+            while (start != current && start.StorageVersion != current.StorageVersion);
+        }
+
+        /// <inheritdoc/>
+        public async Task<IEnumerable<CoordinationEntryPath>> GetEntriesAsync(CoordinationSession session, CancellationToken cancellation)
+        {
+            if (session == default)
+                throw new ArgumentDefaultException(nameof(session));
+
+            var current = await _storage.GetSessionAsync(session, cancellation);
+
+            if (current == null)
+                return Enumerable.Empty<CoordinationEntryPath>();
+
+            return current.EntryPaths;
+        }
+
+        /// <inheritdoc/>
         public async Task<bool> TryBeginSessionAsync(CoordinationSession session, DateTime leaseEnd, CancellationToken cancellation)
         {
             if (session == default)
@@ -46,6 +151,7 @@ namespace AI4E.Coordination.Session
             return previousSession == null;
         }
 
+        /// <inheritdoc/>
         public async Task UpdateSessionAsync(CoordinationSession session, DateTime leaseEnd, CancellationToken cancellation)
         {
             if (session == default)
@@ -68,9 +174,10 @@ namespace AI4E.Coordination.Session
 
                 current = await _storage.UpdateSessionAsync(desired, start, cancellation);
             }
-            while (start != current);
+            while (start != current && start.StorageVersion != current.StorageVersion);
         }
 
+        /// <inheritdoc/>
         public async Task EndSessionAsync(CoordinationSession session, CancellationToken cancellation)
         {
             if (session == default)
@@ -89,12 +196,13 @@ namespace AI4E.Coordination.Session
                     return;
                 }
 
-                desired = start.EntryPaths.Any() ? _storedSessionManager.End(start) : null;
+                desired = start.EntryPaths.IsDefaultOrEmpty ? null : _storedSessionManager.End(start);
                 current = await _storage.UpdateSessionAsync(desired, start, cancellation);
             }
-            while (start != current);
+            while (start != current && start.StorageVersion != current.StorageVersion);
         }
 
+        /// <inheritdoc/>
         public Task WaitForTerminationAsync(CoordinationSession session, CancellationToken cancellation)
         {
             if (session == default)
@@ -170,15 +278,14 @@ namespace AI4E.Coordination.Session
 
                 var current = await _storage.GetSessionAsync(start.Session, cancellation);
 
-                if (start != current)
+                if (start != current && start.StorageVersion != current.StorageVersion)
                 {
                     start = current;
                 }
             }
-
-            return;
         }
 
+        /// <inheritdoc/>
         public async Task<CoordinationSession> WaitForTerminationAsync(CancellationToken cancellation)
         {
             while (true)
@@ -215,6 +322,7 @@ namespace AI4E.Coordination.Session
             }
         }
 
+        /// <inheritdoc/>
         public async Task<bool> IsAliveAsync(CoordinationSession session, CancellationToken cancellation)
         {
             if (session == default)
@@ -225,74 +333,7 @@ namespace AI4E.Coordination.Session
             return s != null && !_storedSessionManager.IsEnded(s);
         }
 
-        public async Task AddSessionEntryAsync(CoordinationSession session, CoordinationEntryPath entryPath, CancellationToken cancellation)
-        {
-            if (session == default)
-                throw new ArgumentDefaultException(nameof(session));
-
-            IStoredSession current = await _storage.GetSessionAsync(session, cancellation),
-                           start,
-                           desired;
-
-            do
-            {
-                start = current;
-
-                if (start == null || _storedSessionManager.IsEnded(start))
-                {
-                    throw new SessionTerminatedException();
-                }
-
-                desired = _storedSessionManager.AddEntry(start, entryPath);
-
-                current = await _storage.UpdateSessionAsync(desired, start, cancellation);
-            }
-            while (start != current);
-        }
-
-        public async Task RemoveSessionEntryAsync(CoordinationSession session, CoordinationEntryPath entryPath, CancellationToken cancellation)
-        {
-            if (session == default)
-                throw new ArgumentDefaultException(nameof(session));
-
-            IStoredSession current = await _storage.GetSessionAsync(session, cancellation),
-                     start,
-                     desired;
-
-            do
-            {
-                start = current;
-
-                if (start == null)
-                {
-                    return;
-                }
-
-                desired = _storedSessionManager.RemoveEntry(start, entryPath);
-
-                if (_storedSessionManager.IsEnded(desired) && !desired.EntryPaths.Any())
-                {
-                    desired = null;
-                }
-
-                current = await _storage.UpdateSessionAsync(desired, start, cancellation);
-            }
-            while (start != current);
-        }
-
-        public async Task<IEnumerable<CoordinationEntryPath>> GetEntriesAsync(CoordinationSession session, CancellationToken cancellation)
-        {
-            if (session == default)
-                throw new ArgumentDefaultException(nameof(session));
-
-            var current = await _storage.GetSessionAsync(session, cancellation);
-
-            if (current == null)
-                return Enumerable.Empty<CoordinationEntryPath>();
-
-            return current.EntryPaths;
-        }
-
+        /// <inheritdoc/>
         public IAsyncEnumerable<CoordinationSession> GetSessionsAsync(CancellationToken cancellation)
         {
             return _storage.GetSessionsAsync(cancellation)
