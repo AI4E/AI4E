@@ -135,6 +135,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Test", "test\AI4E.Test
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.ModulePacker", "tools\AI4E.Modularity.ModulePacker\AI4E.Modularity.ModulePacker.csproj", "{C4FE55B6-80AB-4633-A765-B942643BA902}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Remoting.Test", "test\AI4E.Remoting.Test\AI4E.Remoting.Test.csproj", "{8B129A39-4B0F-4A37-AF32-31D1C07D07AB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -329,6 +331,10 @@ Global
 		{C4FE55B6-80AB-4633-A765-B942643BA902}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C4FE55B6-80AB-4633-A765-B942643BA902}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C4FE55B6-80AB-4633-A765-B942643BA902}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B129A39-4B0F-4A37-AF32-31D1C07D07AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B129A39-4B0F-4A37-AF32-31D1C07D07AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B129A39-4B0F-4A37-AF32-31D1C07D07AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B129A39-4B0F-4A37-AF32-31D1C07D07AB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -386,6 +392,7 @@ Global
 		{77ACB861-6B2E-48D7-8F26-D2DED81A39F1} = {D7D5C0BC-316D-47A3-A2E8-E11CFC6D7486}
 		{45B22338-FFCD-4F87-B8C1-53B4F3667D42} = {51EBAD3B-B475-4587-A6DE-2CCDDC1952F7}
 		{C4FE55B6-80AB-4633-A765-B942643BA902} = {391CBBDB-848A-472B-A4EE-BA542324983E}
+		{8B129A39-4B0F-4A37-AF32-31D1C07D07AB} = {51EBAD3B-B475-4587-A6DE-2CCDDC1952F7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}
