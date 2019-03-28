@@ -22,11 +22,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using AI4E.Remoting.Test.Mocks;
-using AI4E.Remoting.Test.Utils;
+using AI4E.Remoting.Mocks;
+using AI4E.Remoting.Utils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace AI4E.Remoting.Test
+namespace AI4E.Remoting
 {
     [TestClass]
     public class PhysicalEndPointMultiplexerTests

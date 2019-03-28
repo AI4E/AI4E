@@ -24,7 +24,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
 
-namespace AI4E.Remoting.Test.Mocks
+namespace AI4E.Remoting.Mocks
 {
     public sealed class PhysicalEndPointMock<TAddress> : IPhysicalEndPoint<TAddress>
     {

@@ -4,10 +4,12 @@
     <TargetFramework>$(NetCoreAppVersion)</TargetFramework>
 
     <IsPackable>false</IsPackable>
+
+    <RootNamespace>AI4E.Remoting</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.0.0-preview-20181205-02" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.0.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="1.4.0" />
     <PackageReference Include="MSTest.TestFramework" Version="1.4.0" />
   </ItemGroup>

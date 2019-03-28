@@ -1,3 +1,23 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.IO;
 using System.Net.Sockets;
@@ -16,6 +36,12 @@ using static AI4E.Utils.DebugEx;
 
 namespace AI4E.Coordination.Locking
 {
+    /// <summary>
+    /// Manages the communication of coordination coordination service sessions..
+    /// </summary>
+    /// <typeparam name="TAddress">
+    /// The type of address the messaging system uses.
+    /// </typeparam>
     public sealed class CoordinationExchangeManager<TAddress> : ICoordinationExchangeManager<TAddress>
     {
         #region Fields
@@ -36,14 +62,48 @@ namespace AI4E.Coordination.Locking
 
         #region C'tor
 
-        public CoordinationExchangeManager(ICoordinationSessionOwner sessionOwner,
-                                           ISessionManager sessionManager,
-                                           ILockWaitDirectory lockWaitDirectory,
-                                           IInvalidationCallbackDirectory invalidationCallbackDirectory,
-                                           IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
-                                           IAddressConversion<TAddress> addressConversion,
-                                           IOptions<CoordinationManagerOptions> optionsAccessor,
-                                           ILogger<CoordinationExchangeManager<TAddress>> logger = null)
+        /// <summary>
+        /// Create a new instance of the <see cref="CoordinationExchangeManager{TAddress}"/>
+        /// type.
+        /// </summary>
+        /// <param name="sessionOwner">
+        /// A <see cref="ICoordinationSessionOwner"/> that is used to retrieve the current session.
+        /// </param>
+        /// <param name="sessionManager">
+        /// A <see cref="ISessionManager"/> that is used to manage coordination service sessions.
+        /// </param>
+        /// <param name="lockWaitDirectory">
+        /// A <see cref="ILockWaitDirectory"/> that is used to notify of released locks.
+        /// </param>
+        /// <param name="invalidationCallbackDirectory">
+        /// A <see cref="IInvalidationCallbackDirectory"/> that is used to invalidate entries.
+        /// </param>
+        /// <param name="endPointMultiplexer">
+        /// An <see cref="IPhysicalEndPointMultiplexer{TAddress}"/> to communicate with other
+        /// coordination service sessions.
+        /// </param>
+        /// <param name="addressConversion">
+        /// An <see cref="IAddressConversion{TAddress}"/> that serializes addresses.
+        /// </param>
+        /// <param name="optionsAccessor">
+        /// An <see cref="IOptions{TOptions}"/> that is used to access the <see cref="CoordinationManagerOptions"/>.
+        /// </param>
+        /// <param name="logger">A <see cref="Logger{T}"/> that is used to log messages or <c>null</c>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="sessionOwner"/>, <paramref name="sessionManager"/>,
+        /// <paramref name="lockWaitDirectory"/>, <paramref name="invalidationCallbackDirectory"/>,
+        /// <paramref name="endPointMultiplexer"/>, <paramref name="addressConversion"/> or
+        /// <paramref name="optionsAccessor"/> is <c>null</c>.
+        /// </exception>
+        public CoordinationExchangeManager(
+            ICoordinationSessionOwner sessionOwner,
+            ISessionManager sessionManager,
+            ILockWaitDirectory lockWaitDirectory,
+            IInvalidationCallbackDirectory invalidationCallbackDirectory,
+            IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
+            IAddressConversion<TAddress> addressConversion,
+            IOptions<CoordinationManagerOptions> optionsAccessor,
+            ILogger<CoordinationExchangeManager<TAddress>> logger = null)
         {
             if (sessionOwner == null)
                 throw new ArgumentNullException(nameof(sessionOwner));
@@ -98,11 +158,13 @@ namespace AI4E.Coordination.Locking
 
         #region ICoordinationExchangeManager
 
+        /// <inheritdoc />
         public ValueTask<IPhysicalEndPoint<TAddress>> GetPhysicalEndPointAsync(CancellationToken cancellation)
         {
             return new ValueTask<IPhysicalEndPoint<TAddress>>(_physicalEndPoint.Task.WithCancellation(cancellation));
         }
 
+        /// <inheritdoc />
         public async ValueTask NotifyReadLockReleasedAsync(string key, CancellationToken cancellation)
         {
             var sessions = _sessionManager.GetSessionsAsync(cancellation);
@@ -133,6 +195,7 @@ namespace AI4E.Coordination.Locking
             }
         }
 
+        /// <inheritdoc />
         public async ValueTask NotifyWriteLockReleasedAsync(string key, CancellationToken cancellation)
         {
             var sessions = _sessionManager.GetSessionsAsync(cancellation);
@@ -163,6 +226,7 @@ namespace AI4E.Coordination.Locking
             }
         }
 
+        /// <inheritdoc />
         public async ValueTask InvalidateCacheEntryAsync(string key, CoordinationSession session, CancellationToken cancellation)
         {
             if (session == await _sessionOwner.GetSessionAsync(cancellation))
@@ -178,6 +242,7 @@ namespace AI4E.Coordination.Locking
             }
         }
 
+        /// <inheritdoc />
         public void Dispose()
         {
             _receiveProcess.Terminate();
@@ -197,7 +262,7 @@ namespace AI4E.Coordination.Locking
                     var (message, _) = await physicalEndPoint.ReceiveAsync(cancellation);
                     var (messageType, key, session) = DecodeMessage(message);
 
-                    Task.Run(() => HandleMessageAsync(message, messageType, key, session, cancellation)).HandleExceptions();
+                    Task.Run(() => HandleMessageAsync(messageType, key, session, cancellation)).HandleExceptions();
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
@@ -207,7 +272,8 @@ namespace AI4E.Coordination.Locking
             }
         }
 
-        private async Task HandleMessageAsync(IMessage message, MessageType messageType, string key, CoordinationSession session, CancellationToken cancellation)
+        private async Task HandleMessageAsync(
+            MessageType messageType, string key, CoordinationSession session, CancellationToken cancellation)
         {
             switch (messageType)
             {
@@ -251,7 +317,6 @@ namespace AI4E.Coordination.Locking
             }
             catch (SocketException) { }
             catch (IOException) { } // The remote session terminated or we just cannot transmit to it.
-
         }
 
         private IPhysicalEndPoint<TAddress> GetSessionEndPoint(CoordinationSession session)
@@ -262,6 +327,7 @@ namespace AI4E.Coordination.Locking
                                        .Assert(p => p != null);
         }
 
+        // TODO: Cache this
         private string GetMultiplexEndPointName(CoordinationSession session)
         {
             var prefix = _options.MultiplexPrefix;

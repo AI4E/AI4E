@@ -26,8 +26,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
 
-namespace AI4E.Remoting.Test.Utils
+namespace AI4E.Remoting.Utils
 {
+    // TODO: Move this to a shared project and remove the dependency of Coordination.Test > Remoting.Test
     public sealed class TestMessagingSystem
     {
         private readonly ConcurrentDictionary<TestMessagingSystemAddress, PhysicalEndPoint> _physicalEndPoints;
