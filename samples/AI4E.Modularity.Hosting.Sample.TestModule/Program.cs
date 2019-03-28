@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Threading.Tasks;
 using AI4E.AspNetCore;
@@ -33,7 +33,6 @@ namespace AI4E.Modularity.Hosting.Sample.TestModule
             services.AddOptions();
             services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
             services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
-            services.AddSingleton<ITypeConversion, TypeSerializer>();
             services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
             services.AddSingleton<IRouteManager, RouteManager>();
             services.AddSingleton<IEndPointMap<IPEndPoint>, EndPointMap<IPEndPoint>>();

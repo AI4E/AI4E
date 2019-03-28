@@ -72,7 +72,6 @@ namespace AI4E.Routing.SignalR.Client
         {
             serviceCollection.AddCoreServices();
             serviceCollection.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
-            serviceCollection.AddSingleton<ITypeConversion, TypeSerializer>();
 
             serviceCollection.AddSingleton<IClientEndPoint, ClientEndPoint>();
             serviceCollection.AddSingleton<IRequestReplyClientEndPoint, RequestReplyClientEndPoint>();

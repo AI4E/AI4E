@@ -57,7 +57,6 @@ namespace AI4E.Routing
         public static void AddRemoteMessageDispatcher(this IServiceCollection services)
         {
             services.AddCoreServices();
-            services.AddSingleton<ITypeConversion, TypeSerializer>();
             services.ConfigureApplicationServices(RemoteMessageDispatcherInitialization);
             services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
         }
