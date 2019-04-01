@@ -5,6 +5,10 @@
     <RootNamespace>AI4E.Routing</RootNamespace>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="AI4E.Utils.Memory" Version="0.2.0-pre19031310" />
   </ItemGroup>
