@@ -6,10 +6,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
-using AI4E.Utils.Processing;
 using AI4E.Utils;
 using AI4E.Utils.Memory;
-using AI4E.Utils.Memory.Compatibility;
+using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
@@ -226,10 +225,10 @@ namespace AI4E.Routing.SignalR.Server
                                                          string securityToken,
                                                          CancellationToken cancellation)
         {
-            var now = _dateTimeProvider.GetCurrentTime();
             var path = GetPath(endPoint);
             do
             {
+                var now = _dateTimeProvider.GetCurrentTime();
                 var entry = await _coordinationManager.GetAsync(path, cancellation: cancellation);
 
                 if (entry == null)
@@ -271,8 +270,6 @@ namespace AI4E.Routing.SignalR.Server
                 {
                     var payloadLength = EncodePayload(bytes, securityToken.AsSpan(), leaseEnd);
                     var payload = bytes.AsMemory().Slice(start: 0, payloadLength);
-                    endPoint = new EndPointAddress("client/" + Guid.NewGuid().ToString());
-
                     var version = await _coordinationManager.SetValueAsync(path, payload, version: entry.Version, cancellation: cancellation);
 
                     if (version == entry.Version)
