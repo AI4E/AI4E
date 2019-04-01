@@ -95,7 +95,8 @@ namespace AI4E
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
             services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
-            services.AddSingleton<IMessageDispatcher, TMessageDispatcher>();
+            services.AddSingleton<TMessageDispatcher>();
+            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
         }
 
         public static void AddMessageDispatcher<TMessageDispatcher>(this IServiceCollection services, TMessageDispatcher instance)
@@ -110,7 +111,8 @@ namespace AI4E
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
             services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
-            services.AddSingleton<IMessageDispatcher>(instance);
+            services.AddSingleton(instance);
+            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
         }
 
         public static void AddMessageDispatcher<TMessageDispatcher>(this IServiceCollection services, Func<IServiceProvider, TMessageDispatcher> factory)
@@ -125,57 +127,7 @@ namespace AI4E
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
             services.ConfigureMessageHandlers(ConfigureMessageHandlers);
 
-            services.AddSingleton<IMessageDispatcher>(factory);
-        }
-
-        public static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(this IServiceCollection services)
-            where TMessageDispatcher : class, IMessageDispatcher
-            where TMessageDispatcherImpl : class, TMessageDispatcher
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            services.ConfigureApplicationParts(ConfigureFeatureProviders);
-            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
-
-            services.AddSingleton<TMessageDispatcher, TMessageDispatcherImpl>();
-            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
-        }
-
-        public static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(this IServiceCollection services, TMessageDispatcherImpl instance)
-            where TMessageDispatcher : class, IMessageDispatcher
-            where TMessageDispatcherImpl : class, TMessageDispatcher
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            if (instance == null)
-                throw new ArgumentNullException(nameof(instance));
-
-            services.ConfigureApplicationParts(ConfigureFeatureProviders);
-            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
-
-            services.AddSingleton<TMessageDispatcher>(instance);
-            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
-        }
-
-        public static void AddMessageDispatcher<TMessageDispatcher, TMessageDispatcherImpl>(
-            this IServiceCollection services,
-            Func<IServiceProvider,
-            TMessageDispatcherImpl> factory)
-            where TMessageDispatcher : class, IMessageDispatcher
-            where TMessageDispatcherImpl : class, TMessageDispatcher
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            if (factory == null)
-                throw new ArgumentNullException(nameof(factory));
-
-            services.ConfigureApplicationParts(ConfigureFeatureProviders);
-            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
-
-            services.AddSingleton<TMessageDispatcher>(factory);
+            services.AddSingleton(factory);
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
         }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Threading.Tasks;
 using AI4E.AspNetCore;
@@ -31,7 +31,8 @@ namespace AI4E.Modularity.Hosting.Sample.TestModule
                     .UseDomainStorage();
 
             services.AddOptions();
-            services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
+            services.AddSingleton<IRemoteMessageDispatcher>(p => p.GetRequiredService<RemoteMessageDispatcher>());
+            services.AddMessageDispatcher<RemoteMessageDispatcher>();
             services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
             services.AddSingleton<ITypeConversion, TypeSerializer>();
             services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
