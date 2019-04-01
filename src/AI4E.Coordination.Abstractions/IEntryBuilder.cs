@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using AI4E.Coordination.Session;
 
 namespace AI4E.Coordination
 {
@@ -14,6 +15,7 @@ namespace AI4E.Coordination
         CoordinationEntryPath Path { get; }
         ReadOnlyMemory<byte> Value { get; set; }
         int Version { get; }
+        CoordinationSession EphemeralOwner { get; }
 
         IEntry ToEntry();
     }

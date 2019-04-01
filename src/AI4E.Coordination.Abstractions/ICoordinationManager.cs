@@ -70,7 +70,7 @@ namespace AI4E.Coordination
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operatio or <see cref="CancellationToken.None"/>.</param>
         /// <returns>
         /// A task representing the asynchronous operation.
-        /// When evaluated, the tasks result contains the coordination entry or null if no matching entry exists.
+        /// When evaluated, the tasks result contains the coordination entry or <c>null</c> if no matching entry exists.
         /// </returns>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="SessionTerminatedException">Thrown if the session is terminated.</exception>
