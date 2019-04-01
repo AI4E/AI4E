@@ -288,7 +288,16 @@ namespace AI4E.Storage.MongoDB
                 throw new ArgumentNullException(nameof(entry));
 
             var collection = await GetCollectionAsync<TEntry>(cancellation);
-            
+            var idSelector = DataPropertyHelper.BuildPredicate(entry);
+
+            using (var cursor = await collection.FindAsync(idSelector, new FindOptions<TEntry, TEntry> { Limit = 1 }, cancellation))
+            {
+                if (await cursor.FirstOrDefaultAsync(cancellation) != null)
+                {
+                    return false;
+                }
+            }
+
             try
             {
                 await TryWriteOperation(() => collection.InsertOneAsync(entry, new InsertOneOptions { }, cancellation));
