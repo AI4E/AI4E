@@ -71,6 +71,7 @@ namespace AI4E.Coordination
 
         #region Session management
 
+        /// <inheritdoc/>
         public ValueTask<CoordinationSession> GetSessionAsync(CancellationToken cancellation)
         {
             return _sessionOwner.GetSessionAsync(cancellation);
@@ -126,6 +127,7 @@ namespace AI4E.Coordination
 
         #endregion
 
+        /// <inheritdoc/>
         public void Dispose()
         {
             _sessionCleanupProcess.Terminate();
@@ -133,6 +135,7 @@ namespace AI4E.Coordination
             _serviceScope.Dispose();
         }
 
+        /// <inheritdoc/>
         public async ValueTask<IEntry> CreateAsync(
             CoordinationEntryPath path,
             ReadOnlyMemory<byte> value,
@@ -140,7 +143,8 @@ namespace AI4E.Coordination
             CancellationToken cancellation = default)
         {
             if (modes < 0 || modes > EntryCreationModes.Ephemeral)
-                throw new ArgumentOutOfRangeException(nameof(modes), $"The argument must be one or a combination of the values defined in '{nameof(EntryCreationModes)}'.");
+                throw new ArgumentOutOfRangeException(nameof(modes),
+                    $"The argument must be one or a combination of the values defined in '{nameof(EntryCreationModes)}'.");
 
             var session = await GetSessionAsync(cancellation);
 
@@ -164,6 +168,7 @@ namespace AI4E.Coordination
             return entry;
         }
 
+        /// <inheritdoc/>
         public async ValueTask<IEntry> GetOrCreateAsync(
             CoordinationEntryPath path,
             ReadOnlyMemory<byte> value,
@@ -199,6 +204,7 @@ namespace AI4E.Coordination
         {
             var cacheEntry = await _cacheManager.GetCacheEntryAsync(path.ToString(), cancellation);
 
+            // If we have the entry in the cache and is non-existing => Fail fast
             if (cacheEntry.TryGetValue(out var cacheEntryValue) && cacheEntryValue.IsExisting && !cacheEntryValue.Value.IsEmpty)
             {
                 return (Entry.FromRawValue(this, path, cacheEntryValue.Value), created: false);
@@ -206,20 +212,7 @@ namespace AI4E.Coordination
 
             if (path.IsRoot)
             {
-                using (var lockedEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation))
-                {
-                    if (lockedEntry.IsExisting && !lockedEntry.Value.IsEmpty)
-                    {
-                        return (Entry.FromRawValue(this, path, lockedEntry.Value), created: false);
-                    }
-
-                    var resultBuilder = new EntryBuilder(this, path, _dateTimeProvider) { Value = value };
-                    var result = resultBuilder.ToEntry();
-
-                    lockedEntry.CreateOrUpdate(result.ToRawValue());
-
-                    return (result, created: true);
-                }
+                return await CreateCoreAsync(path, value, modes, session, cacheEntry, cancellation);
             }
 
             var parentPath = path.GetParentPath();
@@ -247,33 +240,59 @@ namespace AI4E.Coordination
                     lockedParentEntry.CreateOrUpdate(parent.ToRawValue());
                     await lockedParentEntry.FlushAsync(cancellation);
 
-                    // TODO: This shared lots of code with the branch "path.IsRoot" above
-                    using (var lockedEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation))
-                    {
-                        if (lockedEntry.IsExisting && !lockedEntry.Value.IsEmpty)
-                        {
-                            return (Entry.FromRawValue(this, path, lockedEntry.Value), created: false);
-                        }
-
-                        var resultBuilder = new EntryBuilder(this, path, _dateTimeProvider) { Value = value };
-                        var result = resultBuilder.ToEntry();
-
-                        lockedEntry.CreateOrUpdate(result.ToRawValue());
-
-                        return (result, created: true);
-                    }
+                    return await CreateCoreAsync(path, value, modes, session, cacheEntry, cancellation);
                 }
             }
-
         }
 
+        private async ValueTask<(IEntry entry, bool created)> CreateCoreAsync(
+            CoordinationEntryPath path,
+            ReadOnlyMemory<byte> value,
+            EntryCreationModes modes,
+            CoordinationSession session,
+            ICacheEntry cacheEntry,
+            CancellationToken cancellation)
+        {
+            using (var lockedEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation))
+            {
+                if (lockedEntry.IsExisting && !lockedEntry.Value.IsEmpty)
+                {
+                    return (Entry.FromRawValue(this, path, lockedEntry.Value), created: false);
+                }
+
+                var ephemeralOwner = modes.IncludesFlag(EntryCreationModes.Ephemeral) ? session : default;
+                var resultBuilder = new EntryBuilder(this, path, ephemeralOwner, _dateTimeProvider) { Value = value };
+                var result = resultBuilder.ToEntry();
+
+                lockedEntry.CreateOrUpdate(result.ToRawValue());
+
+                // Register the entry as ephemeral BEFORE releasing the lock (and thus writing the creation to the database)
+                // even if the session entries of a session are not strong consistent cause
+                // there MUST BE an entry for an ephemeral node.
+                // In case of failure, we currently do not remove the session entry. 
+                // We cannot just remove the session entry on failure, as we do not have a lock on the entry
+                // and, hence, the entry may already exist or is created concurrently.
+                // This is ok because the session entry is skipped if the respective entry is not found. 
+                // This could lead to many dead entries, if we have lots of failures. But we assume that this case is rather rare.
+                // If this is ever a big performance problem, we can use a form of "reference counting" of session entries.
+                if ((modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral)
+                {
+                    await _sessionManager.AddSessionEntryAsync(session, path, cancellation);
+                }
+
+                return (result, created: true);
+            }
+        }
+
+        /// <inheritdoc/>
         public async ValueTask<IEntry> GetAsync(
             CoordinationEntryPath path,
             CancellationToken cancellation = default)
         {
             var cacheEntry = await _cacheManager.GetCacheEntryAsync(path.ToString(), cancellation);
+            var value = await cacheEntry.GetValueAsync(cancellation);
 
-            if (cacheEntry.TryGetValue(out var value) && value.IsExisting && !value.Value.IsEmpty)
+            if (value.IsExisting && !value.Value.IsEmpty)
             {
                 return Entry.FromRawValue(this, path, value.Value);
             }
@@ -286,6 +305,7 @@ namespace AI4E.Coordination
             return null;
         }
 
+        /// <inheritdoc/>
         public async ValueTask<int> SetValueAsync(
             CoordinationEntryPath path,
             ReadOnlyMemory<byte> value,
@@ -329,6 +349,7 @@ namespace AI4E.Coordination
             }
         }
 
+        /// <inheritdoc/>
         public async ValueTask<int> DeleteAsync(
             CoordinationEntryPath path,
             int version = 0,
@@ -424,13 +445,6 @@ namespace AI4E.Coordination
                 }
             }
 
-            // TODO: Ephemeral entries
-
-            //if (childEntryBuilder.EphemeralOwner != null)
-            //{
-            //    await _sessionManager.RemoveSessionEntryAsync((CoordinationSession)childEntryBuilder.EphemeralOwner, childPath, cancellation);
-            //}
-
             return version;
         }
 
@@ -505,12 +519,10 @@ namespace AI4E.Coordination
                     lockedChildEntry.Delete();
                 }
 
-                // TODO: Ephemeral entries
-
-                //if (childEntryBuilder.EphemeralOwner != null)
-                //{
-                //    await _sessionManager.RemoveSessionEntryAsync((CoordinationSession)childEntryBuilder.EphemeralOwner, childPath, cancellation);
-                //}
+                if (entryBuilder.EphemeralOwner != default)
+                {
+                    await _sessionManager.RemoveSessionEntryAsync(entryBuilder.EphemeralOwner, childPath, cancellation);
+                }
             }
 
             return true;
@@ -593,6 +605,7 @@ namespace AI4E.Coordination
                 ICoordinationManager coordinationManager,
                 CoordinationEntryPath path,
                 int version,
+                CoordinationSession ephemeralOwner,
                 DateTime creationTime,
                 DateTime lastWriteTime,
                 ReadOnlyMemory<byte> value,
@@ -601,6 +614,7 @@ namespace AI4E.Coordination
                 CoordinationManager = coordinationManager;
                 Path = path;
                 Version = version;
+                EphemeralOwner = ephemeralOwner;
                 CreationTime = creationTime;
                 LastWriteTime = lastWriteTime;
                 Value = value;
@@ -613,6 +627,7 @@ namespace AI4E.Coordination
             {
                 Path = builder.Path;
                 Version = builder.Version;
+                EphemeralOwner = builder.EphemeralOwner;
                 CreationTime = builder.CreationTime;
                 LastWriteTime = builder.LastWriteTime;
                 Value = builder.Value;
@@ -623,6 +638,8 @@ namespace AI4E.Coordination
             public CoordinationEntryPathSegment Name => Path.Segments.LastOrDefault();
 
             public CoordinationEntryPath Path { get; }
+
+            public CoordinationSession EphemeralOwner { get; }
 
             public int Version { get; }
 
@@ -644,6 +661,7 @@ namespace AI4E.Coordination
 
                 var spanReader = new BinarySpanReader(rawValue.Span, ByteOrder.LittleEndian);
                 var version = spanReader.ReadInt32();
+                var ephemeralOwner = ReadSession(spanReader);
                 var creationTime = new DateTime(spanReader.ReadInt64());
                 var lastWriteTime = new DateTime(spanReader.ReadInt64());
 
@@ -659,12 +677,30 @@ namespace AI4E.Coordination
 
                 var value = rawValue.Slice(spanReader.Length);
 
-                return new Entry(coordinationManager, path, version, creationTime, lastWriteTime, value, childrenBuilder.ToImmutable());
+                return new Entry(coordinationManager, path, version, ephemeralOwner, creationTime, lastWriteTime, value, childrenBuilder.ToImmutable());
+            }
+
+            private static CoordinationSession ReadSession(in BinarySpanReader spanReader)
+            {
+                var prefix = spanReader.Read();
+                var physicalAddress = spanReader.Read();
+
+                if (physicalAddress.Length == 0)
+                    return default;
+
+                return new CoordinationSession(prefix, physicalAddress);
+            }
+
+            private static void WriteSession(in BinarySpanWriter spanWriter, CoordinationSession ephemeralOwner)
+            {
+                spanWriter.Write(ephemeralOwner.Prefix.Span, lengthPrefix: true);
+                spanWriter.Write(ephemeralOwner.PhysicalAddress.Span, lengthPrefix: true);
             }
 
             public ReadOnlyMemory<byte> ToRawValue()
             {
-                var resultLength = 4 + // Version
+                var resultLength = Value.Length +
+                                   4 + // Version
                                    8 + // CreationTime
                                    8 + // LastWriteTime
                                    4; // ChildrenCount
@@ -680,6 +716,7 @@ namespace AI4E.Coordination
 
                 var spanWriter = new BinarySpanWriter(result.AsSpan(), ByteOrder.LittleEndian);
                 spanWriter.WriteInt32(Version);
+                WriteSession(spanWriter, EphemeralOwner);
                 spanWriter.WriteInt64(CreationTime.Ticks);
                 spanWriter.WriteInt64(LastWriteTime.Ticks);
                 spanWriter.WriteInt32(Children.Count);
@@ -689,6 +726,8 @@ namespace AI4E.Coordination
                     var escapedChildSegment = Children[i].EscapedSegment;
                     spanWriter.Write(escapedChildSegment.Span, lengthPrefix: true);
                 }
+
+                spanWriter.Write(Value.Span);
 
                 Assert(spanWriter.Length == result.Length);
 
@@ -706,6 +745,7 @@ namespace AI4E.Coordination
             public EntryBuilder(
                 ICoordinationManager coordinationManager,
                 CoordinationEntryPath path,
+                CoordinationSession ephemeralOwner,
                 IDateTimeProvider dateTimeProvider)
             {
                 if (dateTimeProvider == null)
@@ -715,6 +755,7 @@ namespace AI4E.Coordination
 
                 CoordinationManager = coordinationManager;
                 Path = path;
+                EphemeralOwner = ephemeralOwner;
                 CoordinationManager = coordinationManager;
                 Path = path;
                 _initialVersion = 0;
@@ -726,7 +767,7 @@ namespace AI4E.Coordination
             }
 
             public EntryBuilder(
-                IEntry entry,
+                Entry entry,
                 IDateTimeProvider dateTimeProvider)
             {
                 if (dateTimeProvider == null)
@@ -737,6 +778,7 @@ namespace AI4E.Coordination
                 CoordinationManager = entry.CoordinationManager;
                 Path = entry.Path;
                 _initialVersion = entry.Version;
+                EphemeralOwner = entry.EphemeralOwner;
                 _touched = false;
                 CreationTime = entry.CreationTime;
                 LastWriteTime = entry.LastWriteTime;
@@ -745,6 +787,8 @@ namespace AI4E.Coordination
             }
 
             public ICoordinationManager CoordinationManager { get; }
+
+            public CoordinationSession EphemeralOwner { get; }
 
             public CoordinationEntryPathSegment Name => Path.Segments.LastOrDefault();
 
@@ -909,6 +953,7 @@ namespace AI4E.Coordination
             _serviceProvider = serviceProvider;
         }
 
+        /// <inheritdoc/>
         public ICoordinationManager CreateCoordinationManager()
         {
             var scope = _serviceProvider.CreateScope();
