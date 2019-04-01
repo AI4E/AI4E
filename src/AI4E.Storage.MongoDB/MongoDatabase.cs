@@ -288,7 +288,7 @@ namespace AI4E.Storage.MongoDB
                 throw new ArgumentNullException(nameof(entry));
 
             var collection = await GetCollectionAsync<TEntry>(cancellation);
-
+            
             try
             {
                 await TryWriteOperation(() => collection.InsertOneAsync(entry, new InsertOneOptions { }, cancellation));
@@ -356,14 +356,6 @@ namespace AI4E.Storage.MongoDB
             Assert(updateResult.MatchedCount == 0 || updateResult.MatchedCount == 1);
 
             return updateResult.MatchedCount != 0; // TODO: What does the result value represent? Matched count or modified count.
-        }
-
-        private ValueTask<TEntry> GetOneAsync<TEntry>(TEntry comparand, CancellationToken cancellation)
-            where TEntry : class
-        {
-            Assert(comparand != null);
-            var predicate = DataPropertyHelper.BuildPredicate(comparand);
-            return GetOneAsync(predicate, cancellation);
         }
 
         public IAsyncEnumerable<TEntry> GetAsync<TEntry>(Expression<Func<TEntry, bool>> predicate,
@@ -451,17 +443,21 @@ namespace AI4E.Storage.MongoDB
 
             private async Task DisposeClientSessionHandle(IClientSessionHandle clientSessionHandle)
             {
+                var id = clientSessionHandle.WrappedCoreSession.Id;
                 Assert(clientSessionHandle != null);
                 try
                 {
-                    await clientSessionHandle.AbortTransactionAsync();
+                    if (clientSessionHandle.IsInTransaction)
+                    {
+                        await clientSessionHandle.AbortTransactionAsync();
+                    }
                 }
                 finally
                 {
                     clientSessionHandle.Dispose();
                 }
 
-                _logger.LogTrace("Released mongo client session handle with id " + clientSessionHandle.WrappedCoreSession.Id.ToString());
+                _logger.LogTrace("Released mongo client session handle with id " + id.ToString());
             }
 
             #endregion
