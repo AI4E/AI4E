@@ -71,7 +71,12 @@ namespace AI4E.Routing
     {
         public RemoteMessagingOptions()
         {
-            LocalEndPoint = new EndPointAddress(Assembly.GetEntryAssembly().GetName().Name);
+            var assemblyName = Assembly.GetEntryAssembly()?.GetName()?.Name;
+            if (assemblyName != null)
+            {
+                LocalEndPoint = new EndPointAddress(assemblyName);
+            }
+
             RoutesResolvers = new List<IRoutesResolver> { new ValidationRoutesResolver() };
         }
 
