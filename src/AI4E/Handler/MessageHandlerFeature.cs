@@ -47,13 +47,32 @@ namespace AI4E.Handler
             }
         }
 
+        private bool IsMessageHandler(Type type, bool allowAbstract)
+        {
+            if (type.IsInterface || type.IsEnum)
+                return false;
+
+            if (!allowAbstract && type.IsAbstract)
+                return false;
+
+            if (type.ContainsGenericParameters)
+                return false;
+
+            if (type.IsDefined<NoMessageHandlerAttribute>(inherit: false))
+                return false;
+
+            if (type.Name.EndsWith("Handler", StringComparison.OrdinalIgnoreCase) && type.IsPublic)
+                return true;
+
+            if (type.IsDefined<MessageHandlerAttribute>(inherit: false))
+                return true;
+
+            return type.BaseType != null && IsMessageHandler(type.BaseType, allowAbstract: true);
+        }
+
         protected internal virtual bool IsMessageHandler(Type type)
         {
-            return (type.IsClass || type.IsValueType && !type.IsEnum) &&
-                   !type.IsAbstract &&
-                   !type.ContainsGenericParameters &&
-                   !type.IsDefined<NoMessageHandlerAttribute>(inherit: false) &&
-                   (type.Name.EndsWith("Handler", StringComparison.OrdinalIgnoreCase) && type.IsPublic || type.IsDefined<MessageHandlerAttribute>(inherit: false));
+            return IsMessageHandler(type, allowAbstract: false);
         }
     }
 }
