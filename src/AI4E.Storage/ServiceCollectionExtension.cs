@@ -1,8 +1,8 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -19,9 +19,8 @@
  */
 
 using System;
-using AI4E.Internal;
-using AI4E.Serialization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AI4E.Storage
 {
@@ -34,8 +33,8 @@ namespace AI4E.Storage
 
             services.AddOptions();
             services.AddCoreServices();
+            services.TryAddSingleton(typeof(IContextualProvider<>), typeof(ContextualProvider<>));
             services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
-            services.AddSingleton<ISerializer>(new Serialization.JsonSerializer());
             services.AddTransient<IDataStore, DataStore>();
 
             return new StorageBuilder(services);

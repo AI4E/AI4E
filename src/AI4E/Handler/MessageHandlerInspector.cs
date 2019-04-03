@@ -1,102 +1,116 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 
 namespace AI4E.Handler
 {
-    public sealed class MessageHandlerInspector
+    /// <summary>
+    /// Inspects the members of message handlers.
+    /// </summary>
+    public sealed class MessageHandlerInspector : TypeMemberInspector<MessageHandlerActionDescriptor>
     {
-        private readonly Type _type;
+        [ThreadStatic] private static MessageHandlerInspector _instance;
 
-        public MessageHandlerInspector(Type type)
+        /// <summary>
+        /// Gets the singleton <see cref="MessageHandlerInspector"/> instance for the current thread.
+        /// </summary>
+        public static MessageHandlerInspector Instance
         {
-            if (type == null)
-                throw new ArgumentNullException(nameof(type));
+            get
+            {
+                if (_instance == null)
+                    _instance = new MessageHandlerInspector();
 
-            _type = type;
+                return _instance;
+            }
         }
 
-        public IEnumerable<MessageHandlerActionDescriptor> GetHandlerDescriptors()
-        {
-            var members = _type.GetMethods();
-            var descriptors = new List<MessageHandlerActionDescriptor>();
+        private MessageHandlerInspector() { }
 
-            foreach (var member in members)
+        /// <inheritdoc/>
+        protected override bool IsSychronousMember(MethodInfo member, AwaitableTypeDescriptor returnTypeDescriptor)
+        {
+            return member.Name == "Handle" || member.IsDefined<MessageHandlerAttribute>(inherit: true);
+        }
+
+        /// <inheritdoc/>
+        protected override bool IsAsynchronousMember(MethodInfo member, AwaitableTypeDescriptor returnTypeDescriptor)
+        {
+            return member.Name == "HandleAsync" || member.IsDefined<MessageHandlerAttribute>(inherit: true);
+        }
+
+        /// <inheritdoc/>
+        protected override MessageHandlerActionDescriptor CreateDescriptor(Type type, MethodInfo member, Type parameterType)
+        {
+            return new MessageHandlerActionDescriptor(parameterType, type, member);
+        }
+
+        /// <inheritdoc/>
+        protected override bool IsValidMember(MethodInfo member)
+        {
+            if (!base.IsValidMember(member))
+                return false;
+
+            // There is defined a NoMessageHandlerAttribute on the member somewhere in the inheritance hierarchy.
+            if (member.IsDefined<NoMessageHandlerAttribute>(inherit: true))
             {
-                if (TryGetHandlingMember(member, out var descriptor))
+                // The member on the current type IS decorated with a NoMessageHandlerAttribute OR
+                // The member on the current type IS NOT decorated with a MessageHandlerAttribute
+                // TODO: Test this.
+                if (member.IsDefined<NoMessageHandlerAttribute>(inherit: false) || !member.IsDefined<MessageHandlerAttribute>(inherit: false))
                 {
-                    descriptors.Add(descriptor);
+                    return false;
                 }
             }
 
-            return descriptors;
+            return true;
         }
 
-        private bool TryGetHandlingMember(MethodInfo member, out MessageHandlerActionDescriptor descriptor)
+        /// <inheritdoc/>
+        protected override Type GetParameterType(Type type, MethodInfo member, IReadOnlyList<ParameterInfo> parameters)
         {
-            var parameters = member.GetParameters();
+            var parameterType = base.GetParameterType(type, member, parameters);
 
-            if (parameters.Length == 0)
+            var actionAttribute = member.GetCustomAttribute<MessageHandlerAttribute>(inherit: true);
+
+            if (actionAttribute == null)
             {
-                descriptor = default;
-                return false;
+                actionAttribute = type.GetCustomAttribute<MessageHandlerAttribute>(inherit: true);
             }
-
-            if (parameters.Any(p => p.ParameterType.IsByRef))
-            {
-                descriptor = default;
-                return false;
-            }
-
-            if (member.IsGenericMethod || member.IsGenericMethodDefinition)
-            {
-                descriptor = default;
-                return false;
-            }
-
-            if (member.IsDefined<NoActionAttribute>())
-            {
-                descriptor = default;
-                return false;
-            }
-
-            var messageType = parameters[0].ParameterType;
-
-            var actionAttribute = member.GetCustomAttribute<ActionAttribute>();
 
             if (actionAttribute != null && actionAttribute.MessageType != null)
             {
-                if (!messageType.IsAssignableFrom(actionAttribute.MessageType))
+                if (!parameterType.IsAssignableFrom(actionAttribute.MessageType))
                 {
                     throw new InvalidOperationException();
                 }
 
-                messageType = actionAttribute.MessageType;
+                parameterType = actionAttribute.MessageType;
             }
 
-            var returnTypeDescriptor = TypeDescriptor.GetTypeDescriptor(member.ReturnType);
-
-            if (IsSychronousHandler(member, actionAttribute, returnTypeDescriptor) || 
-                IsAsynchronousHandler(member, actionAttribute, returnTypeDescriptor))
-            {
-                descriptor = new MessageHandlerActionDescriptor(messageType, _type, member);
-                return true;
-            }
-
-            descriptor = default;
-            return false;
-        }
-
-        private static bool IsAsynchronousHandler(MethodInfo member, ActionAttribute actionAttribute, TypeDescriptor returnTypeDescriptor)
-        {
-            return (member.Name == "HandleAsync" || actionAttribute != null) && returnTypeDescriptor.IsAsyncType;
-        }
-
-        private static bool IsSychronousHandler(MethodInfo member, ActionAttribute actionAttribute, TypeDescriptor returnTypeDescriptor)
-        {
-            return (member.Name == "Handle" || actionAttribute != null) && !returnTypeDescriptor.IsAsyncType;
+            return parameterType;
         }
     }
 }

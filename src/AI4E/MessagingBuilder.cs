@@ -1,19 +1,8 @@
-﻿/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        MessagingBuilder.cs 
- * Types:           (1) AI4E.MessagingBuilder
- *                  (2) AI4E.IMessagingBuilder
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   26.08.2017 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   

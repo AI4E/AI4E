@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -29,20 +29,52 @@ using Newtonsoft.Json;
 
 namespace AI4E.DispatchResults
 {
+    /// <summary>
+    /// Describes the result of a succesful message dispatch operation.
+    /// </summary>
     public class SuccessDispatchResult : DispatchResult
     {
         internal const string DefaultMessage = "Success";
+
+        #region Factory methods
 
         private static readonly ConcurrentDictionary<Type, Func<object, string, IReadOnlyDictionary<string, object>, SuccessDispatchResult>> _cache
             = new ConcurrentDictionary<Type, Func<object, string, IReadOnlyDictionary<string, object>, SuccessDispatchResult>>();
 
         private static readonly Type _successDispatchResultTypeDefinition = typeof(SuccessDispatchResult<>);
 
+        /// <summary>
+        /// Creates a <see cref="SuccessDispatchResult"/> from the specified result value.
+        /// </summary>
+        /// <param name="resultType">The type of result value.</param>
+        /// <param name="result">The result value.</param>
+        /// <returns>The created <see cref="SuccessDispatchResult"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="resultType"/> or <paramref name="result"/> is null.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if the type of <paramref name="result"/> is not assignable to <paramref name="resultType"/>.
+        /// </exception>
         public static SuccessDispatchResult FromResult(Type resultType, object result)
         {
             return FromResult(resultType, result, DefaultMessage, ImmutableDictionary<string, object>.Empty);
         }
 
+        /// <summary>
+        /// Creates a <see cref="SuccessDispatchResult"/> from the specified result value.
+        /// </summary>
+        /// <param name="resultType">The type of result value.</param>
+        /// <param name="result">The result value.</param>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <returns>The created <see cref="SuccessDispatchResult"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="resultType"/>, <paramref name="result"/>,
+        /// <paramref name="message"/> or <paramref name="resultData"/> is null.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if the type of <paramref name="result"/> is not assignable to <paramref name="resultType"/>.
+        /// </exception>
         public static SuccessDispatchResult FromResult(Type resultType, object result, string message, IReadOnlyDictionary<string, object> resultData)
         {
             if (resultType == null)
@@ -64,17 +96,40 @@ namespace AI4E.DispatchResults
             return builder(result, message, resultData);
         }
 
+        /// <summary>
+        /// Creates a <see cref="SuccessDispatchResult"/> from the specified result value.
+        /// </summary>
+        /// <param name="result">The result value.</param>
+        /// <returns>The created <see cref="SuccessDispatchResult"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="result"/> is null.</exception>
         public static SuccessDispatchResult FromResult(object result)
         {
             return FromResult(result.GetType(), result, DefaultMessage, ImmutableDictionary<string, object>.Empty);
         }
 
+        /// <summary>
+        /// Creates a <see cref="SuccessDispatchResult"/> from the specified result value.
+        /// </summary>
+        /// <param name="result">The result value.</param>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <returns>The created <see cref="SuccessDispatchResult"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="result"/>,
+        /// <paramref name="message"/> or <paramref name="resultData"/> is null.
+        /// </exception>
         public static SuccessDispatchResult FromResult(object result, string message, IReadOnlyDictionary<string, object> resultData)
         {
             return FromResult(result.GetType(), result, message, resultData);
         }
 
-        // TODO: Remove this in favor of forcing the caller to invoke the constructor of the generic type directly?
+        /// <summary>
+        /// Creates a <see cref="SuccessDispatchResult"/> from the specified result value.
+        /// </summary>
+        /// <param name="result">The result value.</param>
+        /// <typeparam name="TResult">The type of result value.</typeparam>
+        /// <returns>The created <see cref="SuccessDispatchResult"/>.</returns>
+        /// <exception cref="ArgumentNullException"> Thrown if <paramref name="result"/> is null. </exception>
         public static SuccessDispatchResult<TResult> FromResult<TResult>(TResult result)
         {
             if (result == null)
@@ -83,7 +138,18 @@ namespace AI4E.DispatchResults
             return new SuccessDispatchResult<TResult>(result);
         }
 
-        // TODO: Remove this in favor of forcing the caller to invoke the constructor of the generic type directly?
+        /// <summary>
+        /// Creates a <see cref="SuccessDispatchResult"/> from the specified result value.
+        /// </summary>
+        /// <param name="result">The result value.</param>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <typeparam name="TResult">The type of result value.</typeparam>
+        /// <returns>The created <see cref="SuccessDispatchResult"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="result"/>,
+        /// <paramref name="message"/> or <paramref name="resultData"/> is null.
+        /// </exception>
         public static SuccessDispatchResult<TResult> FromResult<TResult>(TResult result, string message, IReadOnlyDictionary<string, object> resultData)
         {
             if (result == null)
@@ -121,22 +187,58 @@ namespace AI4E.DispatchResults
                 resultDataParameter).Compile();
         }
 
+        #endregion
+
+        #region C'tors
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="SuccessDispatchResult"/> type.
+        /// </summary>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
+        /// </exception>
         [JsonConstructor]
         public SuccessDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
             : base(true, message, resultData) { }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="SuccessDispatchResult"/> type.
+        /// </summary>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is <c>null</c>.</exception>
         public SuccessDispatchResult(string message)
             : this(message, ImmutableDictionary<string, object>.Empty) { }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="SuccessDispatchResult"/> type.
+        /// </summary>
         public SuccessDispatchResult()
             : this(DefaultMessage) { }
 
+        #endregion
+
+        /// <inheritdoc />
         [JsonIgnore]
         public override bool IsSuccess => true;
     }
 
+    /// <summary>
+    /// Describes the result of a succesful message dispatch operation with a result value.
+    /// </summary>
+    /// <typeparam name="TResult">The type of result value.</typeparam>
     public class SuccessDispatchResult<TResult> : SuccessDispatchResult, IDispatchResult<TResult>
     {
+        /// <summary>
+        /// Creates a new instance of the <see cref="SuccessDispatchResult{TResult}"/> type.
+        /// </summary>
+        /// <param name="result">The dispatch result value.</param>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="result"/>, <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
+        /// </exception>
         [JsonConstructor]
         public SuccessDispatchResult(TResult result, string message, IReadOnlyDictionary<string, object> resultData) : base(message, resultData)
         {
@@ -146,6 +248,14 @@ namespace AI4E.DispatchResults
             Result = result;
         }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="SuccessDispatchResult{TResult}"/> type.
+        /// </summary>
+        /// <param name="result">The dispatch result value.</param>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="result"/> or <paramref name="message"/> is <c>null</c>.
+        /// </exception>
         public SuccessDispatchResult(TResult result, string message) : base(message)
         {
             if (result == null)
@@ -154,10 +264,17 @@ namespace AI4E.DispatchResults
             Result = result;
         }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="SuccessDispatchResult{TResult}"/> type.
+        /// </summary>
+        /// <param name="result">The dispatch result value.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="result"/> is <c>null</c>.</exception>
         public SuccessDispatchResult(TResult result) : this(result, DefaultMessage) { }
 
+        /// <inheritdoc />
         public TResult Result { get; }
 
+        /// <inheritdoc />
         protected override void FormatString(StringBuilder stringBuilder)
         {
             base.FormatString(stringBuilder);

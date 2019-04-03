@@ -1,4 +1,4 @@
-﻿using AI4E.Storage.Domain;
+using AI4E.Storage.Domain;
 using AI4E.Storage.Sample.Domain;
 using AI4E.Storage.Sample.Models;
 
@@ -19,8 +19,7 @@ namespace AI4E.Storage.Sample.Services
             };
         }
 
-        public ProductDeleteModel ProjectToDeleteModel(Product product,
-                                                       [Inject] IEntityPropertyAccessor propertyManager)
+        public ProductDeleteModel ProjectToDeleteModel(Product product, IEntityPropertyAccessor propertyManager)
         {
             if (product == null)
                 return null;

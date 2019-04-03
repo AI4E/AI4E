@@ -147,7 +147,8 @@ namespace AI4E.Routing
             if (Utf8EncodedValue.IsEmpty)
                 return null;
 
-#if BLAZOR
+#if BLAZOR || true // TODO: https://github.com/AI4E/AI4E/issues/137
+
             // We need this workaround, as the compat shim does generate a delegate that causes the span to be boxed.
             //This seems to be the case, because Mono running on WASM interprets the 'compiled' expression.
 

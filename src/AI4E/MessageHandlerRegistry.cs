@@ -1,18 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IMessageHandler.cs
- * Types:           (1) AI4E.MessageHandlerRegistry
- *                  (2) AI4E.MessageHandlerRegistry.MessageHandlerProvider
- * Version:         1.0
- * Author:          Andreas Trütschel
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -36,48 +26,41 @@ using AI4E.Utils;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Represents a registry where message handler can be registered.
+    /// </summary>
     public sealed class MessageHandlerRegistry : IMessageHandlerRegistry
     {
         private readonly Dictionary<Type, OrderedSet<IMessageHandlerRegistration>> _handlerRegistrations;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="IMessageHandlerRegistry"/> type.
+        /// </summary>
         public MessageHandlerRegistry()
         {
             _handlerRegistrations = new Dictionary<Type, OrderedSet<IMessageHandlerRegistration>>();
         }
 
-        public MessageHandlerRegistry(IEnumerable<IMessageHandlerRegistration> handlerRegistrations) : this()
-        {
-            if (handlerRegistrations == null)
-                throw new ArgumentNullException(nameof(handlerRegistrations));
-
-            foreach (var handlerRegistration in handlerRegistrations)
-            {
-                if (handlerRegistration == null)
-                {
-                    throw new ArgumentException("The collection must not contain null entries.");
-                }
-
-                Register(handlerRegistration);
-            }
-        }
-
+        /// <inheritdoc />
         public bool Register(IMessageHandlerRegistration handlerRegistration)
         {
             if (handlerRegistration == null)
                 throw new ArgumentNullException(nameof(handlerRegistration));
 
             var handlerCollection = _handlerRegistrations.GetOrAdd(handlerRegistration.MessageType, _ => new OrderedSet<IMessageHandlerRegistration>());
+            var result = true;
 
-            if (handlerCollection.Contains(handlerRegistration))
+            if (handlerCollection.Remove(handlerRegistration))
             {
-                return false;
+                result = false; // TODO: Does this conform with spec?
             }
 
             handlerCollection.Add(handlerRegistration);
 
-            return true;
+            return result;
         }
 
+        /// <inheritdoc />
         public bool Unregister(IMessageHandlerRegistration handlerRegistration)
         {
             if (handlerRegistration == null)
@@ -101,6 +84,7 @@ namespace AI4E
             return true;
         }
 
+        /// <inheritdoc />
         public IMessageHandlerProvider ToProvider()
         {
             return new MessageHandlerProvider(_handlerRegistrations);

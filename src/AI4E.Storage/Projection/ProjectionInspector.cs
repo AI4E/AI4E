@@ -24,6 +24,7 @@ using System.Linq;
 using System.Reflection;
 using AI4E.Handler;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 
 namespace AI4E.Storage.Projection
 {
@@ -88,7 +89,7 @@ namespace AI4E.Storage.Projection
 
             var projectionType = default(Type);
 
-            var returnTypeDescriptor = TypeDescriptor.GetTypeDescriptor(member.ReturnType);
+            var returnTypeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(member.ReturnType);
 
             if (IsSynchronousHandler(member, memberAttribute, returnTypeDescriptor) ||
                 IsAsynchronousHandler(member, memberAttribute, returnTypeDescriptor))
@@ -156,14 +157,20 @@ namespace AI4E.Storage.Projection
             return true;
         }
 
-        private static bool IsAsynchronousHandler(MethodInfo member, ProjectionMemberAttribute memberAttribute, TypeDescriptor returnTypeDescriptor)
+        private static bool IsAsynchronousHandler(
+            MethodInfo member,
+            ProjectionMemberAttribute memberAttribute,
+            AwaitableTypeDescriptor returnTypeDescriptor)
         {
-            return (member.Name.StartsWith("Project") || memberAttribute != null) && returnTypeDescriptor.IsAsyncType;
+            return (member.Name.StartsWith("Project") || memberAttribute != null) && returnTypeDescriptor.IsAwaitable;
         }
 
-        private static bool IsSynchronousHandler(MethodInfo member, ProjectionMemberAttribute memberAttribute, TypeDescriptor returnTypeDescriptor)
+        private static bool IsSynchronousHandler(
+            MethodInfo member,
+            ProjectionMemberAttribute memberAttribute,
+            AwaitableTypeDescriptor returnTypeDescriptor)
         {
-            return (member.Name.StartsWith("Project") && !member.Name.EndsWith("Async") || memberAttribute != null) && !returnTypeDescriptor.IsAsyncType;
+            return (member.Name.StartsWith("Project") && !member.Name.EndsWith("Async") || memberAttribute != null) && !returnTypeDescriptor.IsAwaitable;
         }
     }
 }

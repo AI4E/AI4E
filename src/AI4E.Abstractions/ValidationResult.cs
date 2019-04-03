@@ -1,19 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        ValidationResult.cs 
- * Types:           (1) AI4E.ValidationResult
- *                  (2) AI4E.ValidationResultsBuilder
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   25.02.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -45,7 +34,7 @@ namespace AI4E
         /// </summary>
         /// <param name="member">The member whose validation failed.</param>
         /// <param name="message">A message describing the validation failure.</param>
-        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="member"/> or <paramref name="message"/> is null.</exception>
+        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="member"/> or <paramref name="message"/> is <c>null</c>.</exception>
         [JsonConstructor]
         public ValidationResult(string member, string message)
         {
@@ -63,7 +52,7 @@ namespace AI4E
         /// Creates a new instance of the <see cref="ValidationResult"/> type.
         /// </summary>
         /// <param name="message">A message describing the validation failure.</param>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is null.</exception>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is <c>null</c>.</exception>
         public ValidationResult(string message)
         {
             if (message == null)
@@ -165,11 +154,19 @@ namespace AI4E
         /// </summary>
         /// <param name="member">The member whose validation failed.</param>
         /// <param name="message">A message describing the validation failure.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="member"/> or <paramref name="message"/> is <c>null</c>.
+        /// </exception>
         public void AddValidationResult(string member, string message)
         {
             _validationResults.Add(new ValidationResult(member, message));
         }
 
+        /// <summary>
+        /// Adds a validation result.
+        /// </summary>
+        /// <param name="message">A message describing the validation failure.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is <c>null</c>.</exception>
         public void AddValidationResult(string message)
         {
             _validationResults.Add(new ValidationResult(message));
@@ -185,8 +182,22 @@ namespace AI4E
         }
     }
 
+    /// <summary>
+    /// Contains extensions for the <see cref="ValidationResultsBuilder"/> type.
+    /// </summary>
     public static class ValidationResultsBuilderExtension
     {
+        /// <summary>
+        /// Adds a validation result if the specified value is invalid.
+        /// </summary>
+        /// <typeparam name="T">The type of value.</typeparam>
+        /// <param name="validationResultsBuilder">The validation results builder.</param>
+        /// <param name="validationFunction">The validation function used to validate the value.</param>
+        /// <param name="value">The value to validate.</param>
+        /// <param name="member">A string that contains the member name.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="validationResultsBuilder"/>, <paramref name="validationFunction"/>
+        /// or <paramref name="member"/> is null.</exception>
         public static void Validate<T>(this ValidationResultsBuilder validationResultsBuilder,
                                        ValidationFunction<T> validationFunction,
                                        T value,
@@ -204,6 +215,13 @@ namespace AI4E
             }
         }
 
+        /// <summary>
+        /// Represents a validation function.
+        /// </summary>
+        /// <typeparam name="T">The type of value.</typeparam>
+        /// <param name="value">The value to validate.</param>
+        /// <param name="message">Contains the message if the value is invalid.</param>
+        /// <returns>True if the value is valid, false otherwise.</returns>
         public delegate bool ValidationFunction<T>(T value, out string message);
     }
 }

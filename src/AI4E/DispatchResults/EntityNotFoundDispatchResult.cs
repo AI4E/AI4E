@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -19,63 +19,125 @@
  */
 
 using System;
-using System.Text;
+using System.Collections.Generic;
 using AI4E.Utils;
 using Newtonsoft.Json;
 
 namespace AI4E.DispatchResults
 {
+    /// <summary>
+    /// Describes the result of a message dispatch operation that failed due to a non-found entity.
+    /// </summary>
     public class EntityNotFoundDispatchResult : NotFoundDispatchResult
     {
-        public EntityNotFoundDispatchResult(Type entityType, string id) : this(entityType?.GetUnqualifiedTypeName(), id) { }
+        internal new const string DefaultMessage = "An entity with the specified id cannot be not found.";
 
-        public EntityNotFoundDispatchResult(Type entityType) : this(entityType?.GetUnqualifiedTypeName(), id: null) { }
-
+#pragma warning disable IDE0051
         [JsonConstructor]
-        public EntityNotFoundDispatchResult(string entityTypeName, string id) : base(BuildMessage(entityTypeName, id: null))
+        private EntityNotFoundDispatchResult(
+            string entityTypeName,
+            string id,
+            string message,
+            IReadOnlyDictionary<string, object> resultData)
+            : base(message, resultData)
         {
             EntityTypeName = entityTypeName;
             Id = id;
         }
+#pragma warning restore IDE0051
 
-        private const string _messagePart1 = "The entity of type '";
-        private const string _messagePart2A = "' with the specified id was not found.";
-        private const string _messagePart2B = "' with the id '";
-        private const string _messagePart3 = "' was not found.";
+        /// <summary>
+        /// Creates a new instance of the <see cref="EntityNotFoundDispatchResult"/> type.
+        /// </summary>
+        public EntityNotFoundDispatchResult() : base(DefaultMessage) { }
 
-        private static string BuildMessage(string entityTypeName, string id)
+        /// <summary>
+        /// Creates a new instance of the <see cref="EntityNotFoundDispatchResult"/> type.
+        /// </summary>
+        ///  <param name="message">A message describing the message dispatch result.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is <c>null</c>.</exception>
+        public EntityNotFoundDispatchResult(string message) : base(message) { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="EntityNotFoundDispatchResult"/> type.
+        /// </summary>
+        /// <param name="message">A message describing the message dispatch result.</param>
+        /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
+        /// </exception>
+        public EntityNotFoundDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+            : base(message, resultData)
+        { }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="EntityNotFoundDispatchResult"/> type.
+        /// </summary>
+        /// <param name="entityType">The type of resource that was not found.</param>
+        /// <param name="id">The stringified id of resource that was not found.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="entityType"/> or <paramref name="id"/> is null.
+        /// </exception>
+        public EntityNotFoundDispatchResult(Type entityType, string id)
+            : base(FormatDefaultMessage(entityType, id))
         {
-            if (entityTypeName == null)
-                throw new ArgumentNullException(nameof(entityTypeName));
-
-            StringBuilder resultBuilder;
-
-            if (id == null)
-            {
-                resultBuilder = new StringBuilder(_messagePart1.Length + _messagePart2A.Length + entityTypeName.Length);
-                resultBuilder.Append(_messagePart1);
-                resultBuilder.Append(entityTypeName);
-                resultBuilder.Append(_messagePart2A);
-            }
-            else
-            {
-                resultBuilder = new StringBuilder(_messagePart1.Length + _messagePart2B.Length + _messagePart3.Length + entityTypeName.Length + id.Length);
-                resultBuilder.Append(_messagePart1);
-                resultBuilder.Append(entityTypeName);
-                resultBuilder.Append(_messagePart2B);
-                resultBuilder.Append(id);
-                resultBuilder.Append(_messagePart3);
-            }
-
-            return resultBuilder.ToString();
+            EntityTypeName = entityType.GetUnqualifiedTypeName();
+            Id = id;
         }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="EntityNotFoundDispatchResult"/> type.
+        /// </summary>
+        /// <param name="entityType">The type of resource that was not found.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="entityType"/> is null.</exception>
+        public EntityNotFoundDispatchResult(Type entityType)
+            : base(FormatDefaultMessage(entityType))
+        {
+            EntityTypeName = entityType.GetUnqualifiedTypeName();
+        }
+
+        private static string FormatDefaultMessage(Type entityType, string id)
+        {
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            if (id == null)
+                throw new ArgumentNullException(nameof(id));
+
+            return $"An entity of type'{entityType}' with the id '{id}' cannot be not found.";
+        }
+
+        private static string FormatDefaultMessage(Type entityType)
+        {
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            return $"An entity of type'{entityType}' with the specified id cannot be not found.";
+        }
+
+        /// <summary>
+        /// Gets the unqualified type-name of resource that was not found.
+        /// </summary>
         public string EntityTypeName { get; }
 
+        /// <summary>
+        /// Gets the stringified id of resource that was not found.
+        /// </summary>
         public string Id { get; }
 
+        /// <summary>
+        /// Tries to load the type of resource that was not found.
+        /// </summary>
+        /// <param name="entityType">Contains the resource type if the call is succeeds.</param>
+        /// <returns>True if the call suceeded, false otherwise.</returns>
         public bool TryGetEntityType(out Type entityType)
         {
+            if (EntityTypeName == null)
+            {
+                entityType = null;
+                return false;
+            }
+
             entityType = TypeLoadHelper.LoadTypeFromUnqualifiedName(EntityTypeName, throwIfNotFound: false);
             return entityType != null;
         }

@@ -1,28 +1,64 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Immutable;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
-using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Handler
 {
+    /// <summary>
+    /// Contains factory methods to create generic message handler invoker.
+    /// </summary>
     public static class MessageHandlerInvoker
     {
         private static readonly Type _messageHandlerInvokerTypeDefinition = typeof(MessageHandlerInvoker<>);
-        private static readonly ConcurrentDictionary<Type, Func<object, MessageHandlerActionDescriptor, ImmutableArray<IContextualProvider<IMessageProcessor>>, IServiceProvider, IMessageHandler>> _factories
-            = new ConcurrentDictionary<Type, Func<object, MessageHandlerActionDescriptor, ImmutableArray<IContextualProvider<IMessageProcessor>>, IServiceProvider, IMessageHandler>>();
+        private static readonly ConcurrentDictionary<Type, Func<object, MessageHandlerActionDescriptor, IList<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>> _factories
+            = new ConcurrentDictionary<Type, Func<object, MessageHandlerActionDescriptor, IList<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>>();
 
-        private static readonly Func<Type, Func<object, MessageHandlerActionDescriptor, ImmutableArray<IContextualProvider<IMessageProcessor>>, IServiceProvider, IMessageHandler>> _factoryBuilderCache = BuildFactory;
+        private static readonly Func<Type, Func<object, MessageHandlerActionDescriptor, IList<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>> _factoryBuilderCache = BuildFactory;
 
+        /// <summary>
+        /// Creates a <see cref="MessageHandlerInvoker{TMessage}"/> from the specified parameters.
+        /// </summary>
+        /// <param name="memberDescriptor">The descriptor that specifies the message handler member.</param>
+        /// <param name="messageProcessors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
+        /// <param name="serviceProvider">A <see cref="IServiceProvider"/> used to obtain services.</param>
+        /// <returns>The created <see cref="MessageHandlerInvoker{TMessage}"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="messageProcessors"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
+        /// <remarks>
+        /// This overload creates the message handler specified by <paramref name="memberDescriptor"/>
+        /// and resolved its depdendencies from <paramref name="serviceProvider"/>.
+        /// </remarks>
         public static IMessageHandler CreateInvoker(
             MessageHandlerActionDescriptor memberDescriptor,
-            ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+            IList<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
         {
             if (serviceProvider == null)
@@ -32,13 +68,27 @@ namespace AI4E.Handler
             var handler = ActivatorUtilities.CreateInstance(serviceProvider, handlerType);
             Assert(handler != null);
 
-            return CreateInvokerInternal(handler, memberDescriptor, processors, serviceProvider);
+            return CreateInvokerInternal(handler, memberDescriptor, messageProcessors, serviceProvider);
         }
 
+        /// <summary>
+        /// Creates a <see cref="MessageHandlerInvoker{TMessage}"/> from the specified parameters.
+        /// </summary>
+        /// <param name="handler">The message handler.</param>
+        /// <param name="memberDescriptor">The descriptor that specifies the message handler member.</param>
+        /// <param name="messageProcessors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
+        /// <param name="serviceProvider">A <see cref="IServiceProvider"/> used to obtain services.</param>
+        /// <returns>The created <see cref="MessageHandlerInvoker{TMessage}"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="handler"/>, <paramref name="messageProcessors"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="handler"/> has a different type as specified by <paramref name="memberDescriptor"/>.
+        /// </exception>
         public static IMessageHandler CreateInvoker(
             object handler,
             MessageHandlerActionDescriptor memberDescriptor,
-            ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+            IList<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
         {
             if (handler == null)
@@ -50,13 +100,13 @@ namespace AI4E.Handler
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            return CreateInvokerInternal(handler, memberDescriptor, processors, serviceProvider);
+            return CreateInvokerInternal(handler, memberDescriptor, messageProcessors, serviceProvider);
         }
 
         private static IMessageHandler CreateInvokerInternal(
            object handler,
            MessageHandlerActionDescriptor memberDescriptor,
-           ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
+           IList<IMessageProcessorRegistration> processors,
            IServiceProvider serviceProvider)
         {
             var messageType = memberDescriptor.MessageType;
@@ -64,42 +114,60 @@ namespace AI4E.Handler
             return factory(handler, memberDescriptor, processors, serviceProvider);
         }
 
-        private static Func<object, MessageHandlerActionDescriptor, ImmutableArray<IContextualProvider<IMessageProcessor>>, IServiceProvider, IMessageHandler> BuildFactory(Type messageType)
+        private static Func<object, MessageHandlerActionDescriptor, IList<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler> BuildFactory(Type messageType)
         {
             var messageHandlerInvokerType = _messageHandlerInvokerTypeDefinition.MakeGenericType(messageType);
             var ctor = messageHandlerInvokerType.GetConstructor(
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 Type.DefaultBinder,
-                types: new[] { typeof(object), typeof(MessageHandlerActionDescriptor), typeof(ImmutableArray<IContextualProvider<IMessageProcessor>>), typeof(IServiceProvider) },
+                types: new[] { typeof(object), typeof(MessageHandlerActionDescriptor), typeof(IList<IMessageProcessorRegistration>), typeof(IServiceProvider) },
                 modifiers: null);
 
             Assert(ctor != null);
 
             var handlerParameter = Expression.Parameter(typeof(object), "handler");
             var memberDescriptorParameter = Expression.Parameter(typeof(MessageHandlerActionDescriptor), "memberDescriptor");
-            var processorsParameter = Expression.Parameter(typeof(ImmutableArray<IContextualProvider<IMessageProcessor>>), "processors");
+            var processorsParameter = Expression.Parameter(typeof(IList<IMessageProcessorRegistration>), "processors");
             var serviceProviderParameter = Expression.Parameter(typeof(IServiceProvider), "serviceProvider");
             var ctorCall = Expression.New(ctor, handlerParameter, memberDescriptorParameter, processorsParameter, serviceProviderParameter);
             var convertedInvoker = Expression.Convert(ctorCall, typeof(IMessageHandler));
-            var lambda = Expression.Lambda<Func<object, MessageHandlerActionDescriptor, ImmutableArray<IContextualProvider<IMessageProcessor>>, IServiceProvider, IMessageHandler>>(
+            var lambda = Expression.Lambda<Func<object, MessageHandlerActionDescriptor, IList<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>>(
                 convertedInvoker, handlerParameter, memberDescriptorParameter, processorsParameter, serviceProviderParameter);
 
             return lambda.Compile();
         }
     }
 
-    public sealed class MessageHandlerInvoker<TMessage> : IMessageHandler<TMessage>, IMessageHandler
+    /// <summary>
+    /// Represents message handlers as <see cref="IMessageHandler{TMessage}"/>.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of handled message.</typeparam>
+    public sealed class MessageHandlerInvoker<TMessage> : InvokerBase<TMessage>, IMessageHandler<TMessage>
         where TMessage : class
     {
         private readonly object _handler;
         private readonly MessageHandlerActionDescriptor _memberDescriptor;
-        private readonly ImmutableArray<IContextualProvider<IMessageProcessor>> _processors;
         private readonly IServiceProvider _serviceProvider;
 
-        public MessageHandlerInvoker(object handler,
-                                     MessageHandlerActionDescriptor memberDescriptor,
-                                     ImmutableArray<IContextualProvider<IMessageProcessor>> processors,
-                                     IServiceProvider serviceProvider)
+        /// <summary>
+        /// Creates a new instance of type <see cref="MessageHandlerInvoker"/>.
+        /// </summary>
+        /// <param name="handler">The message handler.</param>
+        /// <param name="memberDescriptor">The descriptor that specifies the message handler member.</param>
+        /// <param name="messageProcessors">A collection of <see cref="IMessageProcessor"/>s to call.</param>
+        /// <param name="serviceProvider">A <see cref="IServiceProvider"/> used to obtain services.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="handler"/>, <paramref name="messageProcessors"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="handler"/> has a different type as specified by <paramref name="memberDescriptor"/>.
+        /// </exception>
+        public MessageHandlerInvoker(
+            object handler,
+            MessageHandlerActionDescriptor memberDescriptor,
+            IList<IMessageProcessorRegistration> messageProcessors,
+            IServiceProvider serviceProvider)
+            : base(messageProcessors, serviceProvider)
         {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
@@ -112,37 +180,33 @@ namespace AI4E.Handler
 
             _handler = handler;
             _memberDescriptor = memberDescriptor;
-            _processors = processors;
             _serviceProvider = serviceProvider;
         }
 
-        public ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, bool publish, bool localDispatch, CancellationToken cancellation)
+        #region IMessageHandler
+
+        /// <inheritdoc/>
+        public ValueTask<IDispatchResult> HandleAsync(
+            DispatchDataDictionary<TMessage> dispatchData,
+            bool publish,
+            bool localDispatch,
+            CancellationToken cancellation)
         {
-            Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next = (nextDispatchData => InvokeHandlerCore(
-                nextDispatchData,
-                publish,
-                localDispatch,
-                cancellation));
-
-            for (var i = _processors.Length - 1; i >= 0; i--)
+            ValueTask<IDispatchResult> InvokeCoreAsync(DispatchDataDictionary<TMessage> dispatchDataCore)
             {
-                var processor = _processors[i].ProvideInstance(_serviceProvider);
-                Assert(processor != null);
-                var nextCopy = next; // This is needed because of the way, the variable values are captured in the lambda expression.
-
-                next = (nextDispatchData => InvokeProcessorAsync(
-                    processor,
-                    nextDispatchData,
-                    publish,
-                    localDispatch,
-                    nextCopy,
-                    cancellation));
+                return InvokeAsync(dispatchDataCore, publish, localDispatch, cancellation);
             }
 
-            return next(dispatchData);
+            return InvokeChainAsync(
+                _handler, _memberDescriptor, dispatchData, publish, localDispatch, InvokeCoreAsync, cancellation);
         }
 
-        public ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary dispatchData, bool publish, bool localDispatch, CancellationToken cancellation)
+        /// <inheritdoc/>
+        public ValueTask<IDispatchResult> HandleAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            bool localDispatch,
+            CancellationToken cancellation)
         {
             if (!(dispatchData.Message is TMessage))
                 throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{MessageType}'.");
@@ -155,28 +219,12 @@ namespace AI4E.Handler
             return HandleAsync(typedDispatchData, publish, localDispatch, cancellation);
         }
 
+        /// <inheritdoc/>
         public Type MessageType => typeof(TMessage);
 
-        private ValueTask<IDispatchResult> InvokeProcessorAsync(IMessageProcessor processor,
-                                                                DispatchDataDictionary<TMessage> dispatchData,
-                                                                bool publish,
-                                                                bool isLocalDispatch,
-                                                                Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
-                                                                CancellationToken cancellation)
-        {
-            var contextDescriptor = MessageProcessorContextDescriptor.GetDescriptor(processor.GetType());
+        #endregion
 
-            if (contextDescriptor.CanSetContext)
-            {
-                IMessageProcessorContext messageProcessorContext = new MessageProcessorContext(_handler, _memberDescriptor, publish, isLocalDispatch);
-
-                contextDescriptor.SetContext(processor, messageProcessorContext);
-            }
-
-            return processor.ProcessAsync(dispatchData, next, cancellation);
-        }
-
-        private async ValueTask<IDispatchResult> InvokeHandlerCore(
+        private async ValueTask<IDispatchResult> InvokeAsync(
             DispatchDataDictionary<TMessage> dispatchData,
             bool publish,
             bool isLocalDispatch,
@@ -230,13 +278,13 @@ namespace AI4E.Handler
                 {
                     return dispatchData;
                 }
-                else if (parameter.IsDefined<InjectAttribute>())
+                else if (parameter.HasDefaultValue)
                 {
-                    return _serviceProvider.GetRequiredService(parameter.ParameterType);
+                    return _serviceProvider.GetService(parameter.ParameterType) ?? parameter.DefaultValue;
                 }
                 else
                 {
-                    return _serviceProvider.GetService(parameter.ParameterType);
+                    return _serviceProvider.GetRequiredService(parameter.ParameterType);
                 }
             }
 
@@ -267,57 +315,6 @@ namespace AI4E.Handler
             }
 
             return SuccessDispatchResult.FromResult(invoker.ReturnTypeDescriptor.ResultType, result);
-        }
-
-        private sealed class MessageDispatchContext : IMessageDispatchContext
-        {
-            public MessageDispatchContext(
-                IServiceProvider dispatchServices,
-                DispatchDataDictionary dispatchData,
-                bool publish,
-                bool isLocalDispatch)
-            {
-                if (dispatchServices == null)
-                    throw new ArgumentNullException(nameof(dispatchServices));
-
-                if (dispatchData == null)
-                    throw new ArgumentNullException(nameof(dispatchData));
-
-                DispatchServices = dispatchServices;
-                DispatchData = dispatchData;
-                IsPublish = publish;
-                IsLocalDispatch = isLocalDispatch;
-            }
-
-            public IServiceProvider DispatchServices { get; }
-            public DispatchDataDictionary DispatchData { get; }
-            public bool IsPublish { get; }
-            public bool IsLocalDispatch { get; }
-        }
-
-        private sealed class MessageProcessorContext : IMessageProcessorContext
-        {
-            public MessageProcessorContext(
-                object messageHandler,
-                MessageHandlerActionDescriptor messageHandlerAction,
-                bool publish,
-                bool isLocalDispatch)
-            {
-                if (messageHandler == null)
-                    throw new ArgumentNullException(nameof(messageHandler));
-
-                MessageHandler = messageHandler;
-                MessageHandlerAction = messageHandlerAction;
-                IsPublish = publish;
-                IsLocalDispatch = isLocalDispatch;
-            }
-
-            public MessageHandlerConfiguration MessageHandlerConfiguration => MessageHandlerConfiguration.FromDescriptor(MessageHandlerAction);
-            public MessageHandlerActionDescriptor MessageHandlerAction { get; }
-
-            public object MessageHandler { get; }
-            public bool IsPublish { get; }
-            public bool IsLocalDispatch { get; }
         }
     }
 }

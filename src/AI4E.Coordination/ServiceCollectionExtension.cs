@@ -1,14 +1,15 @@
-﻿using System;
+using System;
 using AI4E.Internal;
 using AI4E.Remoting;
 using AI4E.Storage;
 using AI4E.Storage.InMemory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
 {
-    public static class ServiceCollectionExtension
+    public static partial class ServiceCollectionExtension
     {
         public static ICoordinationBuilder AddCoordinationService<TAddress>(this IServiceCollection services)
         {
@@ -32,6 +33,7 @@ namespace AI4E.Coordination
 
             // Add helpers
             services.AddCoreServices();
+            services.TryAddTransient(typeof(IProvider<>), typeof(Provider<>));
             services.AddSingleton(p => ConfigureSessionProvider(p, addressType));
 
             // Add default storage
@@ -55,6 +57,23 @@ namespace AI4E.Coordination
             services.AddScoped<CoordinationEntryCache>();
 
             return new CoordinationBuilder(services);
+        }
+
+        [Obsolete]
+        private sealed class Provider<T> : IProvider<T>
+        {
+            private readonly IServiceProvider _serviceProvider;
+
+            public Provider(IServiceProvider serviceProvider)
+            {
+                Assert(serviceProvider != null);
+                _serviceProvider = serviceProvider;
+            }
+
+            public T ProvideInstance()
+            {
+                return _serviceProvider.GetRequiredService<T>();
+            }
         }
 
         private static ICoordinationExchangeManager ConfigureCoordinationExchangeManager(IServiceProvider serviceProvider, Type addressType)

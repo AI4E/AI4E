@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.421
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28711.60
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0F6E77C0-90F0-4593-89EA-4830EE7A3084}"
 EndProject
@@ -33,6 +33,10 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "doc", "doc", "{F75BCF9E-AC6A-499D-B9F2-1E00FC6CA0EE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{391CBBDB-848A-472B-A4EE-BA542324983E}"
+	ProjectSection(SolutionItems) = preProject
+		test\AI4E.Test\Handler\MessageDispatcherMock.cs = test\AI4E.Test\Handler\MessageDispatcherMock.cs
+		test\AI4E.Test\Handler\MessageProcessorContextMock.cs = test\AI4E.Test\Handler\MessageProcessorContextMock.cs
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Test", "test\AI4E.Test\AI4E.Test.csproj", "{5C334379-E664-43B6-BA71-22F3C688543C}"
 EndProject
@@ -169,6 +173,7 @@ Global
 		{A069E555-AA53-432B-B41F-A6B6BC83C60A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A069E555-AA53-432B-B41F-A6B6BC83C60A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5C334379-E664-43B6-BA71-22F3C688543C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C334379-E664-43B6-BA71-22F3C688543C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5C334379-E664-43B6-BA71-22F3C688543C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5C334379-E664-43B6-BA71-22F3C688543C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F3D1468C-1005-43FC-A786-4E0094DACED7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU

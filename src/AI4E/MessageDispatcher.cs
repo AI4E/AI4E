@@ -1,17 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        MessageDispatcher.cs
- * Types:           AI4E.MessageDispatcher
- * Version:         1.0
- * Author:          Andreas Trütschel
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -39,6 +30,9 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Represents a message dispatcher that dispatches messages to message handlers.
+    /// </summary>
     public sealed class MessageDispatcher : IMessageDispatcher
     {
         #region Fields
@@ -51,6 +45,11 @@ namespace AI4E
 
         #region C'tor
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessageDispatcher"/> type.
+        /// </summary>
+        /// <param name="messageHandlerRegistry">The <see cref="IMessageHandlerProvider"/> that is used to load message handlers.</param>
+        /// <param name="serviceProvider">The service provider that is used to obtain services.</param>
         public MessageDispatcher(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
         {
             if (messageHandlerRegistry == null)
@@ -75,16 +74,22 @@ namespace AI4E
 
         #region IMessageDispatcher
 
+        /// <inheritdoc />
         public async ValueTask<IDispatchResult> DispatchAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
             CancellationToken cancellation)
         {
+#pragma warning disable CS0612
             return (await TryDispatchAsync(dispatchData, publish, localDispatch: true, allowRouteDescend: true, cancellation: cancellation)).result;
+#pragma warning restore CS0612
         }
 
         #endregion
 
+        /// <summary>
+        /// Gets the <see cref="IMessageHandlerProvider"/> that is used to load message handlers.
+        /// </summary>
         public IMessageHandlerProvider MessageHandlerProvider => GetMessageHandlerProvider();
 
         private IMessageHandlerProvider GetMessageHandlerProvider()
@@ -107,6 +112,10 @@ namespace AI4E
             return messageHandlerProvider;
         }
 
+        /// <summary>
+        /// Do NOT use this directly. This will become an internal API.
+        /// </summary>
+        [Obsolete] // TODO: This should be an internal API
         public async ValueTask<(IDispatchResult result, bool handlersFound)> TryDispatchAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
@@ -127,11 +136,11 @@ namespace AI4E
             {
                 Assert(currType != null);
 
-                var handlerCollection = messageHandlerProvider.GetHandlerRegistrations(currType);
+                var handlerRegistrations = messageHandlerProvider.GetHandlerRegistrations(currType);
 
-                if (handlerCollection.Any())
+                if (handlerRegistrations.Any())
                 {
-                    var dispatchOperation = DispatchAsync(handlerCollection, dispatchData, publish, localDispatch, cancellation);
+                    var dispatchOperation = DispatchAsync(handlerRegistrations, dispatchData, publish, localDispatch, cancellation);
 
                     if (publish)
                     {
@@ -258,25 +267,21 @@ namespace AI4E
 
             using (var scope = _serviceProvider.CreateScope())
             {
+                var handler = handlerRegistration.CreateMessageHandler(scope.ServiceProvider);
+
+                if (handler == null)
+                {
+                    throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that is null.");
+                }
+
+                if (!handler.MessageType.IsAssignableFrom(dispatchData.MessageType))
+                {
+                    throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{handler.MessageType}'.");
+                }
+
                 try
                 {
-                    var handler = handlerRegistration.CreateMessageHandler(scope.ServiceProvider);
-
-                    if (handler == null)
-                    {
-                        throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that is null.");
-                    }
-
-                    if (!handler.MessageType.IsAssignableFrom(dispatchData.MessageType))
-                    {
-                        throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{handler.MessageType}'.");
-                    }
-
                     return await handler.HandleAsync(dispatchData, publish, localDispatch, cancellation);
-                }
-                catch (ConcurrencyException)
-                {
-                    return new ConcurrencyIssueDispatchResult();
                 }
                 catch (Exception exc)
                 {

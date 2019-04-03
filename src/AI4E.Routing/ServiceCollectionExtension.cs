@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using AI4E.Remoting;
+using AI4E.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -57,7 +59,9 @@ namespace AI4E.Routing
             services.AddCoreServices();
             services.AddSingleton<ITypeConversion, TypeSerializer>();
             services.ConfigureApplicationServices(RemoteMessageDispatcherInitialization);
-            services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
+
+            services.AddSingleton<IRemoteMessageDispatcher>(p => p.GetRequiredService<RemoteMessageDispatcher>());
+            services.AddMessageDispatcher<RemoteMessageDispatcher>();
         }
 
         private static void RemoteMessageDispatcherInitialization(ApplicationServiceManager serviceManager)
@@ -70,9 +74,32 @@ namespace AI4E.Routing
     {
         public RemoteMessagingOptions()
         {
-            LocalEndPoint = new EndPointAddress(Assembly.GetEntryAssembly().GetName().Name);
+            var assemblyName = Assembly.GetEntryAssembly()?.GetName()?.Name;
+
+            if (assemblyName != null)
+            {
+                LocalEndPoint = new EndPointAddress(assemblyName);
+            }
+
+            RoutesResolvers = new List<IRoutesResolver> { new ValidationRoutesResolver() };
         }
 
         public EndPointAddress LocalEndPoint { get; set; }
+        public IList<IRoutesResolver> RoutesResolvers { get; }
+    }
+
+    internal sealed class ValidationRoutesResolver : RoutesResolver
+    {
+        public override bool CanResolve(DispatchDataDictionary dispatchData)
+        {
+            return typeof(Validate).IsAssignableFrom(dispatchData.MessageType);
+        }
+
+        public override RouteHierarchy Resolve(DispatchDataDictionary dispatchData)
+        {
+            var underlyingType = (dispatchData.Message as Validate).MessageType;
+
+            return ResolveDefaults(underlyingType);
+        }
     }
 }

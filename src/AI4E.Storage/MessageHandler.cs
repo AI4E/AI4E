@@ -33,7 +33,7 @@ namespace AI4E
         [MessageHandlerEntity]
         public TEntity Entity { get; set; }
 
-        [NoAction]
+        [NoMessageHandler]
         protected void MarkAsDeleted()
         {
             IsMarkedAsDeleted = true;

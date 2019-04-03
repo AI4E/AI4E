@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -150,7 +150,11 @@ namespace AI4E
 
             if (dispatchResult is EntityAlreadyPresentDispatchResult entityAlreadyPresentDispatchResult)
             {
-                entityType = entityAlreadyPresentDispatchResult.EntityType;
+                if(!entityAlreadyPresentDispatchResult.TryGetEntityType(out entityType))
+                {
+                    entityType = null;
+                }
+
                 id = entityAlreadyPresentDispatchResult.Id;
                 return true;
             }
@@ -171,7 +175,7 @@ namespace AI4E
             return dispatchResult is TimeoutDispatchResult;
         }
 
-        public static bool IsTimeout(this IDispatchResult dispatchResult, out DateTime dueTime)
+        public static bool IsTimeout(this IDispatchResult dispatchResult, out DateTime? dueTime)
         {
             if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {

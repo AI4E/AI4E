@@ -1,21 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IDispatchResult.cs 
- * Types:           (1) AI4E.IDispatchResult
- *                  (2) AI4E.IAggregateDispatchResult
- *                  (3) AI4E.IDispatchResult'1
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   15.07.2017 
- * Status:          Ready
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -36,12 +23,12 @@ using System.Collections.Generic;
 namespace AI4E
 {
     /// <summary>
-    /// Represents the result of a message dispatch process.
+    /// Describes the result of a message dispatch operation.
     /// </summary>
     public interface IDispatchResult
     {
         /// <summary>
-        /// Gets a boolean value indicating whether the dispatch and execution was successful.
+        /// Gets a boolean value indicating whether the message dispatch operation was successful.
         /// </summary>
         bool IsSuccess { get; }
 
@@ -50,6 +37,9 @@ namespace AI4E
         /// </summary>
         string Message { get; }
 
+        /// <summary>
+        /// Gets a collection of key value pairs that represent additional result data.
+        /// </summary>
         IReadOnlyDictionary<string, object> ResultData { get; }
     }
 
@@ -65,7 +55,7 @@ namespace AI4E
     }
 
     /// <summary>
-    /// Represents the result of a message dispatch process with a result value.
+    /// Represents the result of a message dispatch operation with a result value.
     /// </summary>
     /// <typeparam name="TResult">The type of result.</typeparam>
     public interface IDispatchResult<TResult> : IDispatchResult

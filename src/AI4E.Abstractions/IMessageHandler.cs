@@ -1,18 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IMessageHandler.cs
- * Types:           (1) AI4E.IMessageHandler
- *                  (2) AI4E.IMessageHandler'1
- * Version:         1.0
- * Author:          Andreas Trütschel
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -43,6 +33,9 @@ namespace AI4E
         /// Asynchronously handles the specified message.
         /// </summary>
         /// <param name="dispatchData">The dispatch data that contains the message to handle and supporting data.</param>
+        /// <param name="publish">A boolean value specifying whether the message is published to all handlers.</param>
+        /// <param name="localDispatch">A boolean value specifying whether the message is dispatched locally.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>
         /// A value task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the dispatch result.
@@ -68,11 +61,16 @@ namespace AI4E
         /// Asynchronously handles the specified message.
         /// </summary>
         /// <param name="dispatchData">The dispatch data that contains the message to handle and supporting data.</param>
+        /// <param name="publish">A boolean value specifying whether the message is published to all handlers.</param>
+        /// <param name="localDispatch">A boolean value specifying whether the message is dispatched locally.</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>
         /// A value task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the dispatch result.
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
         ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, bool publish, bool localDispatch, CancellationToken cancellation);
+
+        // TODO: When we have default interface implementation support, provide a default implementation for the base interfaces members.
     }
 }
