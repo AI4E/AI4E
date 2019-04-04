@@ -1,0 +1,102 @@
+﻿@using BookStore.Alerts
+@using Microsoft.AspNetCore.Components.Services
+@implements IDisposable
+@inject AlertMessageManager AlertMessageManager
+@inject IUriHelper UriHelper
+@functions {
+
+    private string _baseUri;
+    private string _relativeUri;
+    private Alert Alert { get; set; }
+
+    [Parameter] private RenderFragment<Alert> AlertTemplate { get; set; }
+
+    protected override void OnInit()
+    {
+        _baseUri = UriHelper.GetBaseUri();
+        AlertMessageManager.AlertsChanged += OnAlertsChanged;
+        UriHelper.OnLocationChanged += OnLocationChanged;
+
+        UpdateRelativeUri();
+        UpdateAlert();
+
+        base.OnInit();
+    }
+
+    void IDisposable.Dispose()
+    {
+        AlertMessageManager.AlertsChanged -= OnAlertsChanged;
+        UriHelper.OnLocationChanged -= OnLocationChanged;
+    }
+
+    private void OnAlertsChanged(object sender, EventArgs e)
+    {
+        UpdateAlert();
+        StateHasChanged();
+    }
+
+    private void OnLocationChanged(object sender, string location)
+    {
+        UpdateRelativeUri();
+        UpdateAlert();
+        StateHasChanged();
+    }
+
+    private void UpdateRelativeUri()
+    {
+        var absoluteUri = UriHelper.GetAbsoluteUri();
+
+        var queryStart = absoluteUri.IndexOf('?');
+
+        if (queryStart > -1)
+        {
+            absoluteUri = absoluteUri.Substring(0, queryStart);
+        }
+
+        var relativeUri = UriHelper.ToBaseRelativePath(_baseUri, absoluteUri);
+
+        if (!relativeUri.StartsWith("/"))
+        {
+            relativeUri = "/" + relativeUri;
+        }
+
+        _relativeUri = relativeUri;
+    }
+
+    private void UpdateAlert()
+    {
+        var alert = AlertMessageManager.GetLatestMatchingAlert(_relativeUri);
+        Alert = alert;
+    }
+}
+@if (Alert.AlertType != AlertType.None)
+{
+    <div class="bottom-row px-4 @(Alert.AlertType.ToString().ToLower())">
+        @if (AlertTemplate != null)
+        {
+            @AlertTemplate(Alert);
+        }
+        else
+        {
+            @if (Alert.AlertType == AlertType.Info)
+            {
+                <span class="oi oi-info"></span>
+            }
+            else if (Alert.AlertType == AlertType.Success)
+            {
+                <span class="oi oi-check"></span>
+            }
+            else
+            {
+                <span class="oi oi-warning"></span>
+            }
+            <span style="flex: 1 1 auto;">@(Alert.Message ?? string.Empty)</span>
+            @if (Alert.AllowDismiss)
+            {
+                <button class="icon-btn" onclick="@(_ => Alert.Dismiss())">
+                    <span class="oi oi-x"></span>
+                </button>
+            }
+        }
+    </div>
+}

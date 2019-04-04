@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace AI4E.AspNetCore
 {
@@ -14,6 +15,13 @@ namespace AI4E.AspNetCore
                 throw new ArgumentNullException(nameof(webhost));
 
             var serviceProvider = webhost.Services;
+            await InitializeApplicationServicesAsync(serviceProvider, cancellation);
+
+            return webhost;
+        }
+
+        private static async Task InitializeApplicationServicesAsync(IServiceProvider serviceProvider, CancellationToken cancellation)
+        {
             var applicationServiceManager = serviceProvider.GetService<ApplicationServiceManager>();
 
             if (applicationServiceManager != null)
@@ -24,8 +32,17 @@ namespace AI4E.AspNetCore
                 // We do not want the contiuations of applicationServiceManager.InitializeApplicationServicesAsync to be blocked indefinitely
                 await Task.Yield();
             }
+        }
 
-            return webhost;
+        public static async Task<IHost> InitializeApplicationServicesAsync(this IHost host, CancellationToken cancellation = default)
+        {
+            if (host == null)
+                throw new ArgumentNullException(nameof(host));
+
+            var serviceProvider = host.Services;
+            await InitializeApplicationServicesAsync(serviceProvider, cancellation);
+
+            return host;
         }
     }
 }

@@ -60,6 +60,6 @@ namespace AI4E.Routing
         /// <summary>
         /// The handler is target for messages that are dispatched from the same end-point only.
         /// </summary>
-        LocalDispatchOnly = 3
+        LocalDispatchOnly = 4
     }
 }
