@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +24,7 @@ namespace AI4E.Routing.SignalR.Client
             Services = services;
             Services.AddSingleton<HubConnection>();
             Services.AddLogging();
-            this.AddJsonProtocol();
+            this.AddNewtonsoftJsonProtocol();
         }
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace AI4E.Routing.SignalR.Client
             Services = new ServiceCollection();
             Services.AddSingleton<HubConnection>();
             Services.AddLogging();
-            this.AddJsonProtocol();
+            this.AddNewtonsoftJsonProtocol();
         }
 
         /// <inheritdoc />
