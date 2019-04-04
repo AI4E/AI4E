@@ -428,8 +428,10 @@ namespace AI4E.Routing.SignalR.Client
                         await PushToServerAsync(GetNextSeqNum(), ReadOnlyMemory<byte>.Empty, cancellation);
                         SetLastSendOperation();
                     }
-
-                    await Task.Delay(delay, cancellation);
+                    else
+                    {
+                        await Task.Delay(delay, cancellation);
+                    }
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
