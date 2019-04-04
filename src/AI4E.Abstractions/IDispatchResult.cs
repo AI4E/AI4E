@@ -58,7 +58,7 @@ namespace AI4E
     /// Represents the result of a message dispatch operation with a result value.
     /// </summary>
     /// <typeparam name="TResult">The type of result.</typeparam>
-    public interface IDispatchResult<TResult> : IDispatchResult
+    public interface IDispatchResult<out TResult> : IDispatchResult
     {
         /// <summary>
         /// Gets the result.
