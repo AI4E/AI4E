@@ -4,11 +4,7 @@ using System.Threading.Tasks;
 using AI4E.Remoting;
 using Microsoft.Extensions.Logging;
 
-#if BLAZOR
-namespace AI4E.Routing.Blazor
-#else
 namespace AI4E.Routing.SignalR.Client
-#endif
 {
     public sealed class RequestReplyClientEndPoint : IRequestReplyClientEndPoint
     {

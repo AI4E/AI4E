@@ -12,18 +12,9 @@ using AI4E.Routing.SignalR.Server;
 using static System.Diagnostics.Debug;
 using AI4E.Utils.Processing;
 using AI4E.Utils.Memory;
-
-#if BLAZOR
-using Blazor.Extensions;
-#else
 using Microsoft.AspNetCore.SignalR.Client;
-#endif
 
-#if BLAZOR
-namespace AI4E.Routing.Blazor
-#else
 namespace AI4E.Routing.SignalR.Client
-#endif
 {
     public sealed partial class ClientEndPoint : IClientEndPoint
     {
@@ -67,11 +58,7 @@ namespace AI4E.Routing.SignalR.Client
             _logger = logger;
             _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
             _txQueue = new ConcurrentDictionary<int, (ReadOnlyMemory<byte> bytes, TaskCompletionSource<object> ackSource)>();
-#if BLAZOR
-            _hubConnection.OnClose(UnderlyingConnectionLostAsync);
-#else
             _hubConnection.Closed += UnderlyingConnectionLostAsync;
-#endif
 
             _client = new ClientCallStub(this);
             _stubRegistration = _hubConnection.Register(_client);
@@ -293,13 +280,8 @@ namespace AI4E.Routing.SignalR.Client
                     // We will re-establish the underlying connection now. => Reset the connection lost indicator.
                     _connectionLost.Reset();
 
-#if BLAZOR
-                    await _hubConnection.StopAsync();
-                    await _hubConnection.StartAsync();
-#else
                     await _hubConnection.StopAsync(cancellation);
                     await _hubConnection.StartAsync(cancellation);
-#endif
 
                     // _timeout is not synchronized.
                     // It is not necessary.
