@@ -1,5 +1,4 @@
-﻿using System.Threading.Tasks;
-using AI4E.Modularity.Host;
+using System.Threading.Tasks;
 using AI4E.Storage.Domain;
 
 namespace AI4E.Modularity.Host
@@ -35,19 +34,19 @@ namespace AI4E.Modularity.Host
         [CreatesEntity(AllowExisingEntity = true)]
         public Task HandleAsync(ModuleInstalled installedEvent)
         {
-            return (Entity = Entity ?? new ModuleInstallationConfiguration()).ModuleInstalledAsync(installedEvent.ModuleId, installedEvent.Version, _dependencyResolver);
+            return EnsureEntity().ModuleInstalledAsync(installedEvent.ModuleId, installedEvent.Version, _dependencyResolver);
         }
 
         [CreatesEntity(AllowExisingEntity = true)]
         public Task HandleAsync(ModuleUpdated updatedEvent)
         {
-            return (Entity = Entity ?? new ModuleInstallationConfiguration()).ModuleUpdatedAsync(updatedEvent.ModuleId, updatedEvent.UpdatedVersion, _dependencyResolver);
+            return EnsureEntity().ModuleUpdatedAsync(updatedEvent.ModuleId, updatedEvent.UpdatedVersion, _dependencyResolver);
         }
 
         [CreatesEntity(AllowExisingEntity = true)]
         public Task HandleAsync(ModuleUninstalled uninstalledEvent)
         {
-            return (Entity = Entity ?? new ModuleInstallationConfiguration()).ModuleUninstalledAsync(uninstalledEvent.ModuleId, _dependencyResolver);
+            return EnsureEntity().ModuleUninstalledAsync(uninstalledEvent.ModuleId, _dependencyResolver);
         }
 
         #endregion
@@ -76,6 +75,14 @@ namespace AI4E.Modularity.Host
             }
 
             return Entity.ReleaseAddedAsync(releaseRemovedEvent.ModuleId, releaseRemovedEvent.Version, _dependencyResolver);
+        }
+
+        private ModuleInstallationConfiguration EnsureEntity()
+        {
+            if (Entity == null)
+                Entity = new ModuleInstallationConfiguration();
+
+            return Entity;
         }
     }
 }
