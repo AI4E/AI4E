@@ -1,20 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        TcpEndPoint.cs 
- * Types:           (1) AI4E.Remoting.TcpEndPoint
-                    (2) AI4E.Remoting.TcpEndPoint.LocalEndPoint
-                    (3) AI4E.Remoting.TcpEndPoint.Connection
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -34,18 +22,18 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Utils;
 using AI4E.Utils.Async;
 using AI4E.Utils.Processing;
-using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Remoting
 {
@@ -67,7 +55,7 @@ namespace AI4E.Remoting
             _tcpHost = new TcpListener(new IPEndPoint(IPAddress.Loopback, 0));
             _tcpHost.Start();
             LocalAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;
-            Assert(LocalAddress != null);
+            Debug.Assert(LocalAddress != null);
 
             _connectionProcess = new AsyncProcess(ConnectProcedure, start: true);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
@@ -129,7 +117,7 @@ namespace AI4E.Remoting
         {
             var stream = client.GetStream();
 
-            Assert(stream != null);
+            Debug.Assert(stream != null);
 
             var remoteAddress = (IPEndPoint)client.Client.RemoteEndPoint;
 
@@ -137,7 +125,7 @@ namespace AI4E.Remoting
 
             var connection = new Connection(this, remoteAddress, stream);
 
-            _physicalConnections.AddOrUpdate(remoteAddress, ImmutableList<Connection>.Empty, (_, current) => current.Add(connection));
+            _physicalConnections.AddOrUpdate(remoteAddress, ImmutableList<Connection>.Empty.Add(connection), (_, current) => current.Add(connection));
         }
 
         public async Task<(IMessage message, IPEndPoint remoteAddress)> ReceiveAsync(CancellationToken cancellation)
@@ -162,7 +150,7 @@ namespace AI4E.Remoting
                 using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
                 {
                     var connection = await GetConnectionAsync(remoteAddress, guard.Cancellation);
-                    Assert(connection != null);
+                    Debug.Assert(connection != null);
                     await connection.SendAsync(message, guard.Cancellation);
                 }
             }
@@ -312,7 +300,7 @@ namespace AI4E.Remoting
                 }
                 catch (IOException)
                 {
-                    Close();
+                    Dispose();
                     throw;
                 }
 
