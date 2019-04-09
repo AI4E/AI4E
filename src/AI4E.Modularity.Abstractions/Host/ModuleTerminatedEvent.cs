@@ -18,12 +18,15 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-
-namespace AI4E.Blazor.Modularity
+namespace AI4E.Modularity.Host
 {
-    internal interface IInstallationSetManager
+    public sealed class ModuleTerminatedEvent
     {
-        event EventHandler InstallationSetChanged;
+        public ModuleTerminatedEvent(ModuleIdentifier module)
+        {
+            Module = module;
+        }
+
+        public ModuleIdentifier Module { get; }
     }
 }

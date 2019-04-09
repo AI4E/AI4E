@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -20,14 +20,13 @@
 
 using System;
 using System.Reflection;
-using AI4E.Utils.ApplicationParts;
 using AI4E.Coordination;
 using AI4E.Domain.Services;
 using AI4E.Modularity.Debug;
 using AI4E.Remoting;
 using AI4E.Routing;
+using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 
@@ -46,9 +45,10 @@ namespace AI4E.Modularity.Host
             services.AddEndPointManager();
             services.AddMessageRouter();
             services.AddRemoteMessageDispatcher();
-            services.AddUdpEndPoint();
+            services.AddTcpEndPoint();
             services.AddSingleton(ConfigureDebugPort);
 
+            services.AddSingleton<IRunningModuleManager, RunningModuleManager>();
             services.AddSingleton<IModuleManager, ModuleManager>();
             services.AddSingleton<IModulePropertiesLookup, ModulePropertiesLookup>();
             services.AddSingleton<IPathMapper, PathMapper>();
@@ -77,6 +77,7 @@ namespace AI4E.Modularity.Host
         private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
         {
             serviceManager.AddService<DebugPort>(isRequiredService: false);
+            serviceManager.AddService<IModuleInstallationManager>();
         }
 
         private static void ConfigureApplicationParts(ApplicationPartManager partManager)
@@ -94,8 +95,6 @@ namespace AI4E.Modularity.Host
 
             if (options.EnableDebugging)
             {
-                var dateTimeProvider = serviceProvider.GetRequiredService<IDateTimeProvider>();
-                var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
                 return ActivatorUtilities.CreateInstance<DebugPort>(serviceProvider, optionsAccessor);
             }
 

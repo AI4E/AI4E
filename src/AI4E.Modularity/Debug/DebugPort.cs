@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -46,6 +46,7 @@ namespace AI4E.Modularity.Debug
         private readonly TcpListener _tcpHost;
         private readonly AsyncProcess _connectionProcess;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IRunningModuleManager _runningModuleManager;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<DebugPort> _logger;
         private readonly IRemoteMessageDispatcher _messageDispatcher;
@@ -58,6 +59,7 @@ namespace AI4E.Modularity.Debug
         #region C'tor
 
         public DebugPort(IServiceProvider serviceProvider,
+                         IRunningModuleManager runningModuleManager,
                          IAddressConversion<IPEndPoint> addressConversion,
                          IOptions<ModularityOptions> optionsAccessor,
                          IRemoteMessageDispatcher messageDispatcher,
@@ -65,6 +67,9 @@ namespace AI4E.Modularity.Debug
         {
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
+
+            if (runningModuleManager == null)
+                throw new ArgumentNullException(nameof(runningModuleManager));
 
             if (addressConversion == null)
                 throw new ArgumentNullException(nameof(addressConversion));
@@ -78,6 +83,7 @@ namespace AI4E.Modularity.Debug
             var options = optionsAccessor.Value ?? new ModularityOptions();
 
             _serviceProvider = serviceProvider;
+            _runningModuleManager = runningModuleManager;
             _messageDispatcher = messageDispatcher;
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory?.CreateLogger<DebugPort>();
@@ -238,15 +244,15 @@ namespace AI4E.Modularity.Debug
 
                 // TODO: https://github.com/AI4E/AI4E/issues/102
                 //       The messaging system does not guarantee message ordering.
-                //       The message may be delivered AFTER a DebugModuleDisconnected message for the same module that was sent thereafter.
-                _debugServer._messageDispatcher.Dispatch(new DebugModuleConnected(properties), publish: true);
+                //       The message may be delivered AFTER a ModuleTerminated message for the same module that was sent thereafter.
+                _debugServer._runningModuleManager.Started(properties.Module);
 
                 return properties;
             }
 
             private Task DisposePropertiesAsync(DebugModuleProperties properties)
             {
-                _debugServer._messageDispatcher.Dispatch(new DebugModuleDisconnected(properties), publish: true);
+                _debugServer._runningModuleManager.Terminated(properties.Module);
 
                 return Task.CompletedTask;
             }

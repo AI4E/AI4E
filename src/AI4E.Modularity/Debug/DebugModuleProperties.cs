@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -19,16 +19,15 @@
  */
 
 using System;
-using System.Collections.Generic;
-using AI4E.Routing;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Routing;
 using AI4E.Utils.Memory;
-using AI4E.Utils.Memory.Compatibility;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Debug

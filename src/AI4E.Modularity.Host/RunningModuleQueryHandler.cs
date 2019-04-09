@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -18,15 +18,29 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-namespace AI4E.Modularity.Debug
+using System;
+using System.Linq;
+
+namespace AI4E.Modularity.Host
 {
-    public sealed class DebugModuleConnected
+    [MessageHandler]
+    internal sealed class RunningModuleQueryHandler
     {
-        public DebugModuleConnected(DebugModuleProperties moduleProperties)
+        private readonly IRunningModuleManager _runningModuleManager;
+
+        public RunningModuleQueryHandler(IRunningModuleManager runningModuleManager)
         {
-            ModuleProperties = moduleProperties;
+            if (runningModuleManager == null)
+                throw new ArgumentNullException(nameof(runningModuleManager));
+
+            _runningModuleManager = runningModuleManager;
         }
 
-        public DebugModuleProperties ModuleProperties { get; }
+#pragma warning disable IDE0060
+        public RunningModules Handle(Query<RunningModules> query)
+#pragma warning restore IDE0060
+        {
+            return new RunningModules(_runningModuleManager.Modules.ToList());
+        }
     }
 }

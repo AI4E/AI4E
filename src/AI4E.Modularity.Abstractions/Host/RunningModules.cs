@@ -18,12 +18,17 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
+using System.Collections.Generic;
 
-namespace AI4E.Blazor.Modularity
+namespace AI4E.Modularity.Host
 {
-    internal interface IInstallationSetManager
+    public sealed class RunningModules
     {
-        event EventHandler InstallationSetChanged;
+        public RunningModules(List<ModuleIdentifier> modules)
+        {
+            Modules = modules;
+        }
+
+        public List<ModuleIdentifier> Modules { get; }
     }
 }

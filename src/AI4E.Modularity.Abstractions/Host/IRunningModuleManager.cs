@@ -19,11 +19,18 @@
  */
 
 using System;
+using System.Collections.Generic;
 
-namespace AI4E.Blazor.Modularity
+namespace AI4E.Modularity.Host
 {
-    internal interface IInstallationSetManager
+    public interface IRunningModuleManager
     {
-        event EventHandler InstallationSetChanged;
+        void Started(ModuleIdentifier module);
+        void Terminated(ModuleIdentifier module);
+
+        IReadOnlyCollection<ModuleIdentifier> Modules { get; }
+
+        event EventHandler<ModuleIdentifier> ModuleStarted;
+        event EventHandler<ModuleIdentifier> ModuleTerminated;
     }
 }

@@ -1,3 +1,23 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -5,18 +25,20 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.ApplicationParts;
 using AI4E.Modularity;
+using AI4E.Modularity.Host;
+using AI4E.Utils;
+using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
-using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Blazor.Modularity
 {
-    internal sealed class InstallationSetManager : IInstallationSetManager
+    internal sealed class InstallationSetManager : IInstallationSetManager, IDisposable
     {
         private const string _reloadBrowserMethod = "ai4e.reloadBrowser";
+        private readonly IRunningModuleManager _runningModuleManager;
         private readonly IModuleAssemblyDownloader _moduleAssemblyDownloader;
 
         #region Fields
@@ -25,26 +47,26 @@ namespace AI4E.Blazor.Modularity
         private readonly ApplicationPartManager _partManager;
         private readonly IJSRuntime _jSRuntime;
         private readonly ILogger<InstallationSetManager> _logger;
-        private readonly AsyncLock _lock = new AsyncLock();
-
         private ISet<ModuleIdentifier> _running = new HashSet<ModuleIdentifier>();
-        private IEnumerable<ModuleIdentifier> _installationSet = Enumerable.Empty<ModuleIdentifier>();
-        private readonly ISet<ModuleIdentifier> _inclusiveModules = new HashSet<ModuleIdentifier>();
-        private readonly ISet<ModuleIdentifier> _exclusiveModules = new HashSet<ModuleIdentifier>();
 
         private ImmutableDictionary<string, (Version version, bool isAppPart, ModuleIdentifier module)> _installedAssemblies;
+        private CancellationTokenSource _disposalCancellationSource = new CancellationTokenSource();
 
         #endregion
 
         #region C'tor
 
         public InstallationSetManager(
+            IRunningModuleManager runningModuleManager,
             IModuleAssemblyDownloader moduleAssemblyDownloader,
             IModuleManifestProvider moduleManifestProvider,
             ApplicationPartManager partManager,
             IJSRuntime jSRuntime,
             ILogger<InstallationSetManager> logger = null)
         {
+            if (runningModuleManager == null)
+                throw new ArgumentNullException(nameof(runningModuleManager));
+
             if (moduleAssemblyDownloader == null)
                 throw new ArgumentNullException(nameof(moduleAssemblyDownloader));
 
@@ -53,8 +75,11 @@ namespace AI4E.Blazor.Modularity
 
             if (partManager == null)
                 throw new ArgumentNullException(nameof(partManager));
+
             if (jSRuntime == null)
                 throw new ArgumentNullException(nameof(jSRuntime));
+
+            _runningModuleManager = runningModuleManager;
             _moduleAssemblyDownloader = moduleAssemblyDownloader;
             _moduleManifestProvider = moduleManifestProvider;
             _partManager = partManager;
@@ -70,9 +95,22 @@ namespace AI4E.Blazor.Modularity
                 installedAssemblyBuilder.Add(asm.GetName().Name, (asm.GetName().Version, isAppPart, ModuleIdentifier.UnknownModule));
             }
 
-            _logger?.LogCritical("Initially loaded assemblies:\r\n" + installedAssemblyBuilder.Select(p => p.Key + " " + p.Value.version).Aggregate((e, n) => e + "\r\n" + n));
+            _logger?.LogTrace("Initially loaded assemblies:\r\n" + installedAssemblyBuilder.Select(p => p.Key + " " + p.Value.version).Aggregate((e, n) => e + "\r\n" + n));
 
             _installedAssemblies = installedAssemblyBuilder.ToImmutable();
+
+            runningModuleManager.ModuleStarted += UpdateInstallation;
+            runningModuleManager.ModuleTerminated += UpdateInstallation;
+        }
+
+        private void UpdateInstallation(object sender, ModuleIdentifier e)
+        {
+            var cancellationSource = Volatile.Read(ref _disposalCancellationSource);
+
+            if (cancellationSource != null)
+            {
+                UpdateAsync(cancellation: cancellationSource.Token).HandleExceptions(_logger);
+            }
         }
 
         #endregion
@@ -81,53 +119,12 @@ namespace AI4E.Blazor.Modularity
 
         public event EventHandler InstallationSetChanged;
 
-        public async Task UpdateInstallationSetAsync(IEnumerable<ModuleIdentifier> installationSet, CancellationToken cancellation)
-        {
-            if (installationSet == null)
-                throw new ArgumentNullException(nameof(installationSet));
-
-            if (installationSet.Any(p => p == default))
-                throw new ArgumentException("The collection must not contain default values.", nameof(installationSet));
-
-            using (await _lock.LockAsync(cancellation))
-            {
-                _installationSet = installationSet;
-
-                await UpdateAsync(cancellation);
-            }
-        }
-        public async Task InstallAsync(ModuleIdentifier module, CancellationToken cancellation)
-        {
-            if (module == default)
-                throw new ArgumentDefaultException(nameof(module));
-
-            using (await _lock.LockAsync(cancellation))
-            {
-                _exclusiveModules.Remove(module);
-                _inclusiveModules.Add(module);
-                await UpdateAsync(cancellation);
-            }
-        }
-
-        public async Task UninstallAsync(ModuleIdentifier module, CancellationToken cancellation)
-        {
-            if (module == default)
-                throw new ArgumentDefaultException(nameof(module));
-
-            using (await _lock.LockAsync(cancellation))
-            {
-                _inclusiveModules.Remove(module);
-                _exclusiveModules.Add(module);
-                await UpdateAsync(cancellation);
-            }
-        }
-
         #endregion
 
         private async Task UpdateAsync(CancellationToken cancellation)
         {
             // Build new running set
-            var installationSet = _installationSet.Except(_exclusiveModules).Concat(_inclusiveModules);
+            var installationSet = _runningModuleManager.Modules;
             var installedModules = installationSet.Except(_running).ToList();
             var uninstalledModules = _running.Except(installationSet).ToList();
 
@@ -159,6 +156,13 @@ namespace AI4E.Blazor.Modularity
                 _logger?.LogDebug($"Processing newly installed module {installedModule}.");
 
                 var manifest = await LoadManifestAsync(installedModule, cancellation);
+
+                if (manifest == null)
+                {
+                    _logger?.LogWarning($"Unable to install {installedModule}. The module does not seem to have a manifest.");
+                    continue;
+                }
+
                 var assemblies = manifest.Assemblies;
 
                 foreach (var assembly in assemblies)
@@ -312,11 +316,11 @@ namespace AI4E.Blazor.Modularity
         {
             BlazorModuleManifest manifest;
 
-            do
-            {
-                manifest = await _moduleManifestProvider.GetModuleManifestAsync(installedModule, cancellation);
-            }
-            while (manifest == null);  // TODO: Should we throw an exception and abort instead of retrying this forever?
+            //do
+            //{
+            manifest = await _moduleManifestProvider.GetModuleManifestAsync(installedModule, cancellation);
+            //}
+            //while (manifest == null);  // TODO: Should we throw an exception and abort instead of retrying this forever?
 
             return manifest;
         }
@@ -330,6 +334,22 @@ namespace AI4E.Blazor.Modularity
             else
             {
                 _jSRuntime.InvokeAsync<object>(_reloadBrowserMethod).ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+        }
+
+        public void Dispose()
+        {
+            var cancellationSource = Interlocked.Exchange(ref _disposalCancellationSource, null);
+
+            if (cancellationSource != null)
+            {
+                using (cancellationSource)
+                {
+                    cancellationSource.Cancel();
+
+                    _runningModuleManager.ModuleStarted -= UpdateInstallation;
+                    _runningModuleManager.ModuleTerminated -= UpdateInstallation;
+                }
             }
         }
     }
