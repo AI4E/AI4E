@@ -1,3 +1,23 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -376,7 +396,7 @@ namespace AI4E.Modularity.Host
                 return null;
             }
 
-            // We have to search for the module be opening all files (except the ones, we already looked at.
+            // We have to search for the module by opening all files, except the ones, we already inspected.
             try
             {
                 var files = Directory.GetFiles(_location.Location, $"*.aep", SearchOption.AllDirectories)
@@ -418,7 +438,7 @@ namespace AI4E.Modularity.Host
                     // Copy package to memory.
                     using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true))
                     {
-                        await fileStream.CopyToAsync(memoryStream, bufferSize: 4096);
+                        await fileStream.CopyToAsync(memoryStream, bufferSize: 4096, cancellation);
                     }
                 }
                 catch (FileNotFoundException) // The file was deleted concurrently.
@@ -431,32 +451,102 @@ namespace AI4E.Modularity.Host
                     return null;
                 }
 
-                do
+                //do
+                //{
+                memoryStream.Position = 0;
+
+                //if (!Directory.Exists(moduleDirectory))
+                //{
+                //    Directory.CreateDirectory(moduleDirectory);
+                //}
+
+                //try
+                //{
+                using (var package = new ZipArchive(memoryStream, ZipArchiveMode.Read))
                 {
-                    memoryStream.Position = 0;
-
-                    if (!Directory.Exists(moduleDirectory))
-                    {
-                        Directory.CreateDirectory(moduleDirectory);
-                    }
-
-                    try
-                    {
-                        using (var package = new ZipArchive(memoryStream, ZipArchiveMode.Read))
-                        {
-                            await package.ExtractToDirectoryAsync(moduleDirectory, overwrite: true, cancellation);
-                        }
-                    }
-                    catch (DirectoryNotFoundException)
-                    {
-                        continue;
-                    }
-
-                    return new DirectoryInfo(moduleDirectory);
-
+                    await
+                   XExtractToDirectoryAsync(package, moduleDirectory, overwrite: true, cancellation);
                 }
-                while (true);
+                //}
+                //catch (DirectoryNotFoundException)
+                //{
+                //    continue;
+                //}
+
+                return new DirectoryInfo(moduleDirectory);
+
+                //}
+                //while (true);
             }
+        }
+
+        private static async Task XExtractToDirectoryAsync(ZipArchive source, string destinationDirectoryName, bool overwrite, CancellationToken cancellation)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            if (destinationDirectoryName == null)
+                throw new ArgumentNullException(nameof(destinationDirectoryName));
+
+            foreach (var entry in source.Entries)
+            {
+                await XExtractRelativeToDirectoryAsync(entry, destinationDirectoryName, overwrite, cancellation);
+            }
+        }
+
+        private static Task XExtractRelativeToDirectoryAsync(ZipArchiveEntry source, string destinationDirectoryName, bool overwrite, CancellationToken cancellation)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            if (destinationDirectoryName == null)
+                throw new ArgumentNullException(nameof(destinationDirectoryName));
+
+            // Note that this will give us a good DirectoryInfo even if destinationDirectoryName exists:
+            var di = Directory.CreateDirectory(destinationDirectoryName);
+            var destinationDirectoryFullPath = di.FullName;
+            var fileDestinationPath = Path.GetFullPath(Path.Combine(destinationDirectoryFullPath, source.FullName));
+
+            if (!fileDestinationPath.StartsWith(destinationDirectoryFullPath, PathInternal.StringComparison))
+                throw new IOException("Extracting Zip entry would have resulted in a file outside the specified destination directory.");
+
+            if (Path.GetFileName(fileDestinationPath).Length != 0)
+            {
+                // If it is a file:
+                // Create containing directory:
+                Directory.CreateDirectory(Path.GetDirectoryName(fileDestinationPath));
+                return XExtractToFileAsync(source, fileDestinationPath, overwrite, cancellation);
+            }
+
+            // If it is a directory:
+            if (source.Length != 0)
+                throw new IOException("Zip entry name ends in directory separator character but contains data.");
+
+            Directory.CreateDirectory(fileDestinationPath);
+            return Task.CompletedTask;
+        }
+
+        private static async Task XExtractToFileAsync(ZipArchiveEntry source, string destinationFileName, bool overwrite, CancellationToken cancellation)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            if (destinationFileName == null)
+                throw new ArgumentNullException(nameof(destinationFileName));
+
+            // Rely on FileStream's ctor for further checking destinationFileName parameter
+            var fileMode = overwrite ? FileMode.Create : FileMode.CreateNew;
+
+            // TODO: When useAsync is set to true, there seems to occur an internal buffer overflow. This consumes gigabytes of memory then.
+            using (var fileStream = new FileStream(destinationFileName, fileMode, FileAccess.Write, FileShare.None, bufferSize: 0x1000, useAsync: true))
+            {
+                using (var zipStream = source.Open())
+                {
+                    await zipStream.CopyToAsync(fileStream, bufferSize: 0x1000, cancellation);
+                }
+            }
+
+            File.SetLastWriteTime(destinationFileName, source.LastWriteTime.DateTime);
         }
 
         protected override void DoDispose()
@@ -500,6 +590,46 @@ namespace AI4E.Modularity.Host
             //public ModuleReleaseIdentifier Release { get; }
             public string Path { get; set; }
             public IModuleMetadata Metadata { get; set; }
+        }
+    }
+
+    internal static partial class PathInternal
+    {
+        /// <summary>Returns a comparison that can be used to compare file and directory names for equality.</summary>
+        internal static StringComparison StringComparison => IsCaseSensitive ?
+                                                             StringComparison.Ordinal :
+                                                             StringComparison.OrdinalIgnoreCase;
+
+        /// <summary>Gets whether the system is case-sensitive.</summary>
+        internal static bool IsCaseSensitive { get; } = GetIsCaseSensitive();
+
+        /// <summary>
+        /// Determines whether the file system is case sensitive.
+        /// </summary>
+        /// <remarks>
+        /// Ideally we'd use something like pathconf with _PC_CASE_SENSITIVE, but that is non-portable, 
+        /// not supported on Windows or Linux, etc. For now, this function creates a tmp file with capital letters 
+        /// and then tests for its existence with lower-case letters.  This could return invalid results in corner 
+        /// cases where, for example, different file systems are mounted with differing sensitivities.
+        /// </remarks>
+        private static bool GetIsCaseSensitive()
+        {
+            try
+            {
+                var pathWithUpperCase = Path.Combine(Path.GetTempPath(), "CASESENSITIVETEST" + Guid.NewGuid().ToString("N"));
+                using (new FileStream(pathWithUpperCase, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 0x1000, FileOptions.DeleteOnClose))
+                {
+                    var lowerCased = pathWithUpperCase.ToLowerInvariant();
+                    return !File.Exists(lowerCased);
+                }
+            }
+            catch (Exception exc)
+            {
+                // In case something goes terribly wrong, we don't want to fail just because
+                // of a casing test, so we assume case-insensitive-but-preserving.
+                System.Diagnostics.Debug.Fail("Casing test failed: " + exc);
+                return false;
+            }
         }
     }
 }
