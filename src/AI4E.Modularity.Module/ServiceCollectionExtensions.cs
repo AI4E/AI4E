@@ -52,6 +52,7 @@ namespace AI4E.Modularity.Module
             services.AddSingleton<IModuleManager, ModuleManager>();
             services.AddSingleton<IMetadataReader, MetadataReader>();
 
+            services.AddSingleton<HostProcessMonitor>();
             services.ConfigureApplicationParts(ConfigureApplicationParts);
             services.ConfigureApplicationServices(ConfigureApplicationServices);
 
@@ -70,6 +71,7 @@ namespace AI4E.Modularity.Module
         private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
         {
             serviceManager.AddService<DebugConnection>(isRequiredService: false);
+            serviceManager.AddService<HostProcessMonitor>(isRequiredService: true);
         }
 
         private static ICoordinationManager ConfigureCoordinationManager(IServiceProvider serviceProvider)
