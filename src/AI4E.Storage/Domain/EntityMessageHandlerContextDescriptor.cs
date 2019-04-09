@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -193,7 +193,7 @@ namespace AI4E.Storage.Domain
         {
             var parameters = member.GetParameters();
 
-            if (parameters.Length == 0 || parameters.Any(p => p.ParameterType.IsByRef))
+            if (/*parameters.Length == 0 ||*/ parameters.Any(p => p.ParameterType.IsByRef))
                 return false;
 
             if (member.IsGenericMethod || member.IsGenericMethodDefinition)
@@ -234,8 +234,6 @@ namespace AI4E.Storage.Domain
         public bool IsEntityMessageHandler => _entityGetter != null && _entitySetter != null;
         public Type EntityType { get; }
 
-
-
         public void SetHandlerEntity(object handler, object entity)
         {
             if (handler == null)
@@ -274,12 +272,14 @@ namespace AI4E.Storage.Domain
             if (messageType == null)
                 throw new ArgumentNullException(nameof(messageType));
 
-            // TODO: This allocated a delegate for each call.
+            // TODO: This allocates a delegate for each call.
             return _matchingLookupAccessor.GetOrAdd(messageType, GetLookupAccessorInternal);
         }
 
         private Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> GetLookupAccessorInternal(Type messageType)
         {
+            Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> fallbackMessageAccessor = null;
+
             // TODO: Select best matching accessor
             foreach (var (type, accessor) in _lookupAccessors)
             {
@@ -287,9 +287,14 @@ namespace AI4E.Storage.Domain
                 {
                     return accessor;
                 }
+
+                if(type == typeof(void))
+                {
+                    fallbackMessageAccessor = accessor;
+                }
             }
 
-            return null;
+            return fallbackMessageAccessor;
         }
     }
 }
