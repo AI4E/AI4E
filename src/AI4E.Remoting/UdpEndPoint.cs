@@ -1,14 +1,39 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
-using System.Collections.Concurrent;
+using System.Buffers;
+using System.Buffers.Binary;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Processing;
 using AI4E.Utils;
+using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 
@@ -21,19 +46,38 @@ namespace AI4E.Remoting
         private const int WSAECONNRESET = 10054;
 #pragma warning restore IDE1006
 
+        private const int UdpPayloadLimit = 548;
+        private const int UdpPayloadLimitWithoutHeader = UdpPayloadLimit - 12;
+        private const int UdpPayloadLimitWithoutHeaderMinusOne = UdpPayloadLimitWithoutHeader - 1;
+
+        private static readonly TimeSpan _reveiveTimeout = TimeSpan.FromSeconds(30); // TODO: This should be configurable
+        private static readonly TimeSpan _gcTimeout = TimeSpan.FromSeconds(60); // TODO: This should be configurable
+
         private readonly ILogger<UdpEndPoint> _logger;
+        private readonly IDateTimeProvider _dateTimeProvider;
         private readonly UdpClient _udpClient;
 
         private readonly AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)> _rxQueue;
         private readonly AsyncManualResetEvent _event = new AsyncManualResetEvent(set: false);
 
         private readonly AsyncProcess _receiveProcess;
+        private readonly AsyncProcess _blockGCProcess;
 
         private bool _isDisposed = false;
+        private int _seqNum;
 
-        public UdpEndPoint(ILogger<UdpEndPoint> logger)
+        private readonly Dictionary<(IPEndPoint remoteEndPoint, int seqNum), LinkedListNode<BlockSequence>> _blockCache
+           = new Dictionary<(IPEndPoint remoteEndPoint, int seqNum), LinkedListNode<BlockSequence>>();
+        private readonly LinkedList<BlockSequence> _blocksByLastWriteTime = new LinkedList<BlockSequence>();
+        private readonly object _mutex = new object();
+
+        public UdpEndPoint(IDateTimeProvider dateTimeProvider, ILogger<UdpEndPoint> logger)
         {
+            if (dateTimeProvider == null)
+                throw new ArgumentNullException(nameof(dateTimeProvider));
+
             _logger = logger;
+            _dateTimeProvider = dateTimeProvider;
             _rxQueue = new AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)>();
 
             var localAddress = GetLocalAddress();
@@ -60,7 +104,8 @@ namespace AI4E.Remoting
                 _udpClient.Client.IOControl(unchecked((int)SIO_UDP_CONNRESET), new byte[] { Convert.ToByte(false) }, null);
             }
 
-            _receiveProcess = new AsyncProcess(ReceiveProcedure, start: true);
+            _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
+            _blockGCProcess = new AsyncProcess(BlockGCProcess, start: true);
         }
 
         public async Task SendAsync(IMessage message, IPEndPoint remoteAddress, CancellationToken cancellation)
@@ -78,13 +123,30 @@ namespace AI4E.Remoting
                 return;
             }
 
-            var buffer = new byte[message.Length];
-            using (var memoryStream = new MemoryStream(buffer, writable: true))
-            {
-                await message.WriteAsync(memoryStream, cancellation);
-            }
+            var blocks = await Block.GetBlocksAsync(message, cancellation);
+            var seqNum = Interlocked.Increment(ref _seqNum);
 
-            await _udpClient.SendAsync(buffer, buffer.Length, remoteAddress).WithCancellation(cancellation);
+            for (var i = 0; i < blocks.Count; i++)
+            {
+                var buffer = ArrayPool<byte>.Shared.Rent(blocks[i].Payload.Length + 12);
+
+                try
+                {
+                    BinaryPrimitives.WriteInt32LittleEndian(buffer.AsSpan(), seqNum);
+                    BinaryPrimitives.WriteInt32LittleEndian(buffer.AsSpan().Slice(4), blocks.Count);
+                    BinaryPrimitives.WriteInt32LittleEndian(buffer.AsSpan().Slice(8), i);
+
+                    blocks[i].Payload.CopyTo(buffer.AsMemory().Slice(12));
+
+                    Console.WriteLine($"UDP EndPoint: Transmit block #{ i } of { blocks.Count} to {remoteAddress.ToString()} with seq-num {seqNum}.");
+
+                    await _udpClient.SendAsync(buffer, blocks[i].Payload.Length + 12, remoteAddress).WithCancellation(cancellation);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
+            }
         }
 
         public Task<(IMessage message, IPEndPoint remoteAddress)> ReceiveAsync(CancellationToken cancellation)
@@ -92,7 +154,7 @@ namespace AI4E.Remoting
             return _rxQueue.DequeueAsync(cancellation);
         }
 
-        private async Task ReceiveProcedure(CancellationToken cancellation)
+        private async Task ReceiveProcess(CancellationToken cancellation)
         {
             _logger?.LogDebug($"Physical-end-point {LocalAddress}: Receive process started.");
 
@@ -114,14 +176,76 @@ namespace AI4E.Remoting
                     }
                     catch (ObjectDisposedException) when (cancellation.IsCancellationRequested) { return; }
 
-                    var message = new Message();
+                    var payload = receiveResult.Buffer;
+                    var seqNum = BinaryPrimitives.ReadInt32LittleEndian(payload.AsSpan());
+                    var blockCount = BinaryPrimitives.ReadInt32LittleEndian(payload.AsSpan().Slice(4));
 
-                    using (var memoryStream = new MemoryStream(receiveResult.Buffer))
+                    if (blockCount == 1)
                     {
-                        await message.ReadAsync(memoryStream, cancellation);
+                        await PutToRxQueueAsync(receiveResult.RemoteEndPoint, payload, index: 12, payload.Length - 12, cancellation);
                     }
+                    else
+                    {
+                        var block = new Block(payload.AsMemory().Slice(8));
 
-                    await _rxQueue.EnqueueAsync((message, receiveResult.RemoteEndPoint), cancellation);
+                        Console.WriteLine($"UDP EndPoint: Received block #{ block.Number } of { blockCount} from {receiveResult.RemoteEndPoint.ToString()} with seq-num {seqNum}.");
+
+                        BlockSequence sequence;
+                        var isComplete = false;
+
+                        lock (_mutex)
+                        {
+                            if (!_blockCache.TryGetValue((receiveResult.RemoteEndPoint, seqNum), out var sequenceNode))
+                            {
+                                sequence = new BlockSequence(receiveResult.RemoteEndPoint, seqNum, blockCount);
+                                sequenceNode = new LinkedListNode<BlockSequence>(sequence);
+                                _blockCache.Add((receiveResult.RemoteEndPoint, seqNum), sequenceNode);
+                            }
+                            else
+                            {
+                                sequence = sequenceNode.Value;
+                            }
+
+                            if (sequenceNode.List == _blocksByLastWriteTime)
+                            {
+                                _blocksByLastWriteTime.Remove(sequenceNode);
+                            }
+
+                            if (sequence.SetBlock(block))
+                            {
+                                _blockCache.Remove((receiveResult.RemoteEndPoint, seqNum));
+                                isComplete = true;
+                            }
+                            else
+                            {
+                                _blocksByLastWriteTime.AddLast(sequenceNode);
+                            }
+                        }
+
+                        if (isComplete)
+                        {
+                            Console.WriteLine($"UDP EndPoint: Block sequence from {receiveResult.RemoteEndPoint.ToString()} with seq-num {seqNum} complete.");
+
+                            var bufferLength = sequence.Sum(p => p.Payload.Length);
+                            var buffer = ArrayPool<byte>.Shared.Rent(bufferLength);
+
+                            try
+                            {
+                                var bufferIndex = 0;
+                                foreach (var b in sequence)
+                                {
+                                    b.Payload.CopyTo(buffer.AsMemory().Slice(bufferIndex));
+                                    bufferIndex += b.Payload.Length;
+                                }
+
+                                await PutToRxQueueAsync(receiveResult.RemoteEndPoint, buffer, 0, bufferLength, cancellation);
+                            }
+                            finally
+                            {
+                                ArrayPool<byte>.Shared.Return(buffer);
+                            }
+                        }
+                    }
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
 
@@ -132,6 +256,52 @@ namespace AI4E.Remoting
                     _logger?.LogWarning(exc, $"Physical-end-point {LocalAddress}: Failure on receiving incoming message.");
                 }
             }
+        }
+
+        private async Task BlockGCProcess(CancellationToken cancellation)
+        {
+            _logger?.LogDebug($"Physical-end-point {LocalAddress}: GC process started.");
+
+            while (cancellation.ThrowOrContinue())
+            {
+                try
+                {
+                    var now = _dateTimeProvider.GetCurrentTime();
+
+                    lock (_mutex)
+                    {
+                        for (var current = _blocksByLastWriteTime.First;
+                             current != null && current.Value.LastWriteTime + _reveiveTimeout < now;
+                              current = current.Next)
+                        {
+                            _blocksByLastWriteTime.Remove(current);
+                            _blockCache.Remove((current.Value.RemoteEndPoint, current.Value.SeqNum));
+                        }
+                    }
+
+                    await Task.Delay(_gcTimeout, cancellation); // TODO
+                }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
+
+                // TODO: https://github.com/AI4E/AI4E/issues/33
+                //       This can end in an infinite loop, f.e. if the socket is down.
+                catch (Exception exc)
+                {
+                    _logger?.LogWarning(exc, $"Physical-end-point {LocalAddress}: Failure on receiving incoming message.");
+                }
+            }
+        }
+
+        private async Task PutToRxQueueAsync(IPEndPoint remoteEndPoint, byte[] payload, int index, int length, CancellationToken cancellation)
+        {
+            var message = new Message();
+
+            using (var memoryStream = new MemoryStream(payload, index, length))
+            {
+                await message.ReadAsync(memoryStream, cancellation);
+            }
+
+            await _rxQueue.EnqueueAsync((message, remoteEndPoint), cancellation);
         }
 
         public IPEndPoint LocalAddress { get; }
@@ -156,8 +326,123 @@ namespace AI4E.Remoting
             if (!_isDisposed)
             {
                 _isDisposed = true;
-                _receiveProcess.Terminate();
-                _udpClient.Close();
+                try
+                {
+                    try
+                    {
+                        _receiveProcess.Terminate();
+                    }
+                    finally
+                    {
+                        _blockGCProcess.Terminate();
+                    }
+                }
+                finally
+                {
+                    _udpClient.Close();
+                }
+            }
+        }
+
+        private readonly struct Block
+        {
+            public Block(int number, ReadOnlyMemory<byte> payload)
+            {
+                Number = number;
+                Payload = payload;
+            }
+
+            public Block(ReadOnlyMemory<byte> bytes)
+            {
+                Number = BinaryPrimitives.ReadInt32LittleEndian(bytes.Span);
+                Payload = bytes.Slice(4);
+            }
+
+            public int Number { get; }
+            public ReadOnlyMemory<byte> Payload { get; }
+
+            public static IReadOnlyList<Block> GetBlocks(ReadOnlyMemory<byte> payload)
+            {
+                var blockCount = GetBlockCount(payload.Length);
+                var result = ImmutableList.CreateBuilder<Block>();
+
+                for (var i = 0; i < blockCount; i++)
+                {
+                    var payloadIndex = i * UdpPayloadLimitWithoutHeader;
+                    var payloadLength = Math.Min(UdpPayloadLimitWithoutHeader, payload.Length - payloadIndex);
+                    result.Add(new Block(i, payload.Slice(payloadIndex, payloadLength)));
+                }
+
+                return result;
+            }
+
+            public static async Task<IReadOnlyList<Block>> GetBlocksAsync(IMessage message, CancellationToken cancellation)
+            {
+                var buffer = new byte[message.Length];
+
+                using (var memoryStream = new MemoryStream(buffer, writable: true))
+                {
+                    await message.WriteAsync(memoryStream, cancellation);
+                }
+
+                return GetBlocks(buffer);
+            }
+
+            private static int GetBlockCount(int messageLength)
+            {
+                return (messageLength + UdpPayloadLimitWithoutHeaderMinusOne) / UdpPayloadLimitWithoutHeader;
+            }
+        }
+
+        private sealed class BlockSequence : IEnumerable<Block>
+        {
+            private readonly (Block block, bool set)[] _blocks;
+            private DateTime _lastWriteTime;
+            private readonly object _mutex = new object();
+
+            public BlockSequence(IPEndPoint remoteEndPoint, int seqNum, int numberOfBlocks)
+            {
+                _lastWriteTime = DateTime.UtcNow; // TODO: Use DateTimeProvider
+                _blocks = new (Block block, bool set)[numberOfBlocks];
+                RemoteEndPoint = remoteEndPoint;
+                SeqNum = seqNum;
+            }
+
+            public DateTime LastWriteTime
+            {
+                get
+                {
+                    lock (_mutex)
+                    {
+                        return _lastWriteTime;
+                    }
+                }
+            }
+
+            public IPEndPoint RemoteEndPoint { get; }
+            public int SeqNum { get; }
+
+            public bool SetBlock(Block block)
+            {
+                lock (_mutex)
+                {
+                    _lastWriteTime = DateTime.UtcNow; // TODO: Use DateTimeProvider
+                }
+
+                _blocks[block.Number] = (block, true);
+                return _blocks.All(p => p.set);
+            }
+
+            public IEnumerator<Block> GetEnumerator()
+            {
+                Debug.Assert(_blocks.All(p => p.set));
+
+                return _blocks.Select(p => p.block).GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
             }
         }
     }
