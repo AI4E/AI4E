@@ -431,122 +431,14 @@ namespace AI4E.Modularity.Host
 
             var moduleDirectory = Path.Combine(directory.FullName, metadata.Release.ToString());
 
-            using (var memoryStream = new MemoryStream())
+            if (Directory.Exists(moduleDirectory))
             {
-                try
-                {
-                    // Copy package to memory.
-                    using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true))
-                    {
-                        await fileStream.CopyToAsync(memoryStream, bufferSize: 4096, cancellation);
-                    }
-                }
-                catch (FileNotFoundException) // The file was deleted concurrently.
-                {
-                    return null;
-                }
-                catch (IOException)
-                {
-                    // TODO: Log
-                    return null;
-                }
-
-                //do
-                //{
-                memoryStream.Position = 0;
-
-                //if (!Directory.Exists(moduleDirectory))
-                //{
-                //    Directory.CreateDirectory(moduleDirectory);
-                //}
-
-                //try
-                //{
-                using (var package = new ZipArchive(memoryStream, ZipArchiveMode.Read))
-                {
-                    await
-                   XExtractToDirectoryAsync(package, moduleDirectory, overwrite: true, cancellation);
-                }
-                //}
-                //catch (DirectoryNotFoundException)
-                //{
-                //    continue;
-                //}
-
-                return new DirectoryInfo(moduleDirectory);
-
-                //}
-                //while (true);
-            }
-        }
-
-        private static async Task XExtractToDirectoryAsync(ZipArchive source, string destinationDirectoryName, bool overwrite, CancellationToken cancellation)
-        {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            if (destinationDirectoryName == null)
-                throw new ArgumentNullException(nameof(destinationDirectoryName));
-
-            foreach (var entry in source.Entries)
-            {
-                await XExtractRelativeToDirectoryAsync(entry, destinationDirectoryName, overwrite, cancellation);
-            }
-        }
-
-        private static Task XExtractRelativeToDirectoryAsync(ZipArchiveEntry source, string destinationDirectoryName, bool overwrite, CancellationToken cancellation)
-        {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            if (destinationDirectoryName == null)
-                throw new ArgumentNullException(nameof(destinationDirectoryName));
-
-            // Note that this will give us a good DirectoryInfo even if destinationDirectoryName exists:
-            var di = Directory.CreateDirectory(destinationDirectoryName);
-            var destinationDirectoryFullPath = di.FullName;
-            var fileDestinationPath = Path.GetFullPath(Path.Combine(destinationDirectoryFullPath, source.FullName));
-
-            if (!fileDestinationPath.StartsWith(destinationDirectoryFullPath, PathInternal.StringComparison))
-                throw new IOException("Extracting Zip entry would have resulted in a file outside the specified destination directory.");
-
-            if (Path.GetFileName(fileDestinationPath).Length != 0)
-            {
-                // If it is a file:
-                // Create containing directory:
-                Directory.CreateDirectory(Path.GetDirectoryName(fileDestinationPath));
-                return XExtractToFileAsync(source, fileDestinationPath, overwrite, cancellation);
+                Directory.Delete(moduleDirectory);
             }
 
-            // If it is a directory:
-            if (source.Length != 0)
-                throw new IOException("Zip entry name ends in directory separator character but contains data.");
+            ZipFile.ExtractToDirectory(file, moduleDirectory);
 
-            Directory.CreateDirectory(fileDestinationPath);
-            return Task.CompletedTask;
-        }
-
-        private static async Task XExtractToFileAsync(ZipArchiveEntry source, string destinationFileName, bool overwrite, CancellationToken cancellation)
-        {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            if (destinationFileName == null)
-                throw new ArgumentNullException(nameof(destinationFileName));
-
-            // Rely on FileStream's ctor for further checking destinationFileName parameter
-            var fileMode = overwrite ? FileMode.Create : FileMode.CreateNew;
-
-            // TODO: When useAsync is set to true, there seems to occur an internal buffer overflow. This consumes gigabytes of memory then.
-            using (var fileStream = new FileStream(destinationFileName, fileMode, FileAccess.Write, FileShare.None, bufferSize: 0x1000, useAsync: true))
-            {
-                using (var zipStream = source.Open())
-                {
-                    await zipStream.CopyToAsync(fileStream, bufferSize: 0x1000, cancellation);
-                }
-            }
-
-            File.SetLastWriteTime(destinationFileName, source.LastWriteTime.DateTime);
+            return new DirectoryInfo(moduleDirectory);
         }
 
         protected override void DoDispose()
