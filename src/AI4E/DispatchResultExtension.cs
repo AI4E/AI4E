@@ -61,17 +61,15 @@ namespace AI4E
         {
             if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
-                var innerResults = aggregateDispatchResult.Flatten().DispatchResults;
+                var innerResults = aggregateDispatchResult.Flatten().DispatchResults.OfType<ValidationFailureDispatchResult>();
 
-                if (!innerResults.Any(p => p is ValidationFailureDispatchResult))
+                if (!innerResults.Any())
                 {
                     validationResults = Enumerable.Empty<ValidationResult>();
                     return false;
                 }
 
-                var validationFailureDispatchResults = innerResults.Select(p => p is ValidationFailureDispatchResult);
-
-                validationResults = validationFailureDispatchResults.OfType<ValidationFailureDispatchResult>().SelectMany(p => p.ValidationResults);
+                validationResults = innerResults.SelectMany(p => p.ValidationResults);
                 return true;
             }
 
@@ -150,7 +148,7 @@ namespace AI4E
 
             if (dispatchResult is EntityAlreadyPresentDispatchResult entityAlreadyPresentDispatchResult)
             {
-                if(!entityAlreadyPresentDispatchResult.TryGetEntityType(out entityType))
+                if (!entityAlreadyPresentDispatchResult.TryGetEntityType(out entityType))
                 {
                     entityType = null;
                 }
