@@ -19,21 +19,76 @@
  */
 
 using System;
+using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E
 {
     public static class MessagingBuilderExtension
     {
-        public static IMessagingBuilder Configure(this IMessagingBuilder messagingBuilder, Action<MessagingOptions> configuration)
+        public static IMessagingBuilder Configure(
+            this IMessagingBuilder messagingBuilder,
+            Action<MessagingOptions> configuration)
         {
-            if (messagingBuilder == null)
-                throw new ArgumentNullException(nameof(messagingBuilder));
-
-            if (configuration == null)
-                throw new ArgumentNullException(nameof(configuration));
-
             messagingBuilder.Services.Configure(configuration);
+
+            return messagingBuilder;
+        }
+
+        public static IMessagingBuilder ConfigureMessageHandlers(
+            this IMessagingBuilder messagingBuilder,
+            Action<IMessageHandlerRegistry, IServiceProvider> configuration)
+        {
+            messagingBuilder.Services.Decorate<IMessageHandlerRegistry>((registry, provider) =>
+            {
+                configuration(registry, provider);
+                return registry;
+            });
+
+            return messagingBuilder;
+        }
+
+        private static void UseDispatcher<TMessageDispatcher>(this IServiceCollection services)
+             where TMessageDispatcher : class, IMessageDispatcher
+        {
+            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
+        }
+
+        public static IMessagingBuilder UseDispatcher<TMessageDispatcher>(this IMessagingBuilder messagingBuilder)
+            where TMessageDispatcher : class, IMessageDispatcher
+        {
+            var services = messagingBuilder.Services;
+
+            services.UseDispatcher<TMessageDispatcher>();
+            services.AddSingleton<TMessageDispatcher>();
+
+            return messagingBuilder;
+        }
+
+        public static IMessagingBuilder UseDispatcher<TMessageDispatcher>(this IMessagingBuilder messagingBuilder, TMessageDispatcher instance)
+            where TMessageDispatcher : class, IMessageDispatcher
+        {
+            if (instance == null)
+                throw new ArgumentNullException(nameof(instance));
+
+            var services = messagingBuilder.Services;
+
+            services.UseDispatcher<TMessageDispatcher>();
+            services.AddSingleton(instance);
+
+            return messagingBuilder;
+        }
+
+        public static IMessagingBuilder UseDispatcher<TMessageDispatcher>(this IMessagingBuilder messagingBuilder, Func<IServiceProvider, TMessageDispatcher> factory)
+            where TMessageDispatcher : class, IMessageDispatcher
+        {
+            if (factory == null)
+                throw new ArgumentNullException(nameof(factory));
+
+            var services = messagingBuilder.Services;
+
+            services.UseDispatcher<TMessageDispatcher>();
+            services.AddSingleton(factory);
 
             return messagingBuilder;
         }

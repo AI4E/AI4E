@@ -36,15 +36,14 @@ namespace AI4E
         /// <returns>The messaging builder.</returns>
         public static IMessagingBuilder AddValidation(this IMessagingBuilder builder)
         {
-            var services = builder.Services;
-            RegisterValidationMessageProcessor(services);
-            RegisterValidationMessageHandler(services);
+            RegisterValidationMessageProcessor(builder);
+            RegisterValidationMessageHandler(builder);
             return builder;
         }
 
-        private static void RegisterValidationMessageProcessor(IServiceCollection services)
+        private static void RegisterValidationMessageProcessor(IMessagingBuilder builder)
         {
-            services.Configure<MessagingOptions>(options =>
+            builder.Configure(options =>
             {
                 if (!options.MessageProcessors.Any(p => p.MessageProcessorType == typeof(ValidationMessageProcessor)))
                 {
@@ -53,9 +52,9 @@ namespace AI4E
             });
         }
 
-        private static void RegisterValidationMessageHandler(IServiceCollection services)
+        private static void RegisterValidationMessageHandler(IMessagingBuilder builder)
         {
-            services.ConfigureMessageHandlers((registry, serviceProvider) =>
+            builder.ConfigureMessageHandlers((registry, serviceProvider) =>
             {
                 registry.Register(new MessageHandlerRegistration<Validate>(
                     dispatchServices => ActivatorUtilities.CreateInstance<ValidationMessageHandler>(dispatchServices)));

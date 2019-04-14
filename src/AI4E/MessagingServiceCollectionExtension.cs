@@ -19,165 +19,32 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using AI4E;
 using AI4E.Handler;
-using AI4E.Utils;
-using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
     public static class MessagingServiceCollectionExtension
     {
-        public static IMessagingBuilder AddInMemoryMessaging(this IServiceCollection services)
+        public static IMessagingBuilder AddMessaging(this IServiceCollection services)
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
+            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
+            services.TryAddSingleton<IMessageDispatcher, MessageDispatcher>();
+            services.ConfigureApplicationParts(MessageHandlerFeatureProvider.Configure);
 
-            services.AddMessageDispatcher<MessageDispatcher>();
+            var builder = new MessagingBuilder(services);
 
-            return new MessagingBuilder(services);
-        }
+            builder.ConfigureMessageHandlers(MessageHandlers.Configure);
 
-        public static IMessagingBuilder AddInMemoryMessaging(this IServiceCollection services, Action<MessagingOptions> configuration)
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            if (configuration == null)
-                throw new ArgumentNullException(nameof(configuration));
-
-            var builder = services.AddInMemoryMessaging();
-            builder.Services.Configure(configuration);
             return builder;
         }
 
-        public static void AddMessageDispatcher<TMessageDispatcher>(this IServiceCollection services)
-            where TMessageDispatcher : class, IMessageDispatcher
+        public static IMessagingBuilder AddMessaging(this IServiceCollection services, Action<MessagingOptions> configuration)
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            services.ConfigureApplicationParts(ConfigureFeatureProviders);
-            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
-
-            services.AddSingleton<TMessageDispatcher>();
-            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
-        }
-
-        public static void AddMessageDispatcher<TMessageDispatcher>(this IServiceCollection services, TMessageDispatcher instance)
-            where TMessageDispatcher : class, IMessageDispatcher
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            if (instance == null)
-                throw new ArgumentNullException(nameof(instance));
-
-            services.ConfigureApplicationParts(ConfigureFeatureProviders);
-            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
-
-            services.AddSingleton(instance);
-            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
-        }
-
-        public static void AddMessageDispatcher<TMessageDispatcher>(this IServiceCollection services, Func<IServiceProvider, TMessageDispatcher> factory)
-            where TMessageDispatcher : class, IMessageDispatcher
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            if (factory == null)
-                throw new ArgumentNullException(nameof(factory));
-
-            services.ConfigureApplicationParts(ConfigureFeatureProviders);
-            services.ConfigureMessageHandlers(ConfigureMessageHandlers);
-
-            services.AddSingleton(factory);
-            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
-        }
-
-        public static void ConfigureMessageHandlers(this IServiceCollection services, Action<IMessageHandlerRegistry, IServiceProvider> configuration)
-        {
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.Decorate<IMessageHandlerRegistry>((registry, provider) =>
-            {
-                configuration(registry, provider);
-                return registry;
-            });
-        }
-
-        #region TODO - Move me to a separate type
-
-        // TODO: Rename
-        private static void ConfigureMessageHandlers(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
-        {
-            var options = serviceProvider.GetService<IOptions<MessagingOptions>>()?.Value ?? new MessagingOptions();
-            var processors = options.MessageProcessors;
-            var partManager = serviceProvider.GetRequiredService<ApplicationPartManager>();
-            var messageHandlerFeature = new MessageHandlerFeature();
-
-            partManager.PopulateFeature(messageHandlerFeature);
-
-            var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
-            var logger = loggerFactory?.CreateLogger("MessageHandlerRegistration");
-            RegisterMessageHandlerTypes(messageHandlerFeature.MessageHandlers, messageHandlerRegistry, processors, logger);
-        }
-
-        private static void RegisterMessageHandlerTypes(
-            IEnumerable<Type> types,
-            IMessageHandlerRegistry messageHandlerRegistry,
-            IList<IMessageProcessorRegistration> processors,
-            ILogger logger)
-        {
-            foreach (var type in types)
-            {
-                RegisterMessageHandlerType(type, messageHandlerRegistry, processors, logger);
-            }
-        }
-
-        private static void RegisterMessageHandlerType(
-            Type handlerType,
-            IMessageHandlerRegistry messageHandlerRegistry,
-            IList<IMessageProcessorRegistration> processors,
-            ILogger logger)
-        {
-            var memberDescriptors = MessageHandlerInspector.Instance.InspectType(handlerType);
-
-            foreach (var memberDescriptor in memberDescriptors)
-            {
-                var registration = CreateMessageHandlerRegistration(memberDescriptor, processors);
-                messageHandlerRegistry.Register(registration);
-
-                logger?.LogDebug($"Registered handler of type '{handlerType}' for message-type '{memberDescriptor.MessageType}'.");
-            }
-        }
-
-        private static IMessageHandlerRegistration CreateMessageHandlerRegistration(
-            MessageHandlerActionDescriptor memberDescriptor,
-            IList<IMessageProcessorRegistration> processors)
-        {
-            var configuration = memberDescriptor.BuildConfiguration();
-
-            return new MessageHandlerRegistration(
-                memberDescriptor.MessageType,
-                configuration,
-                serviceProvider => MessageHandlerInvoker.CreateInvoker(memberDescriptor, processors, serviceProvider),
-                memberDescriptor);
-        }
-
-        #endregion
-
-        private static void ConfigureFeatureProviders(ApplicationPartManager partManager)
-        {
-            if (!partManager.FeatureProviders.OfType<MessageHandlerFeatureProvider>().Any())
-            {
-                partManager.FeatureProviders.Add(new MessageHandlerFeatureProvider());
-            }
+            var builder = services.AddMessaging();
+            builder.Services.Configure(configuration);
+            return builder;
         }
     }
 }

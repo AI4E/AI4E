@@ -74,5 +74,13 @@ namespace AI4E.Handler
         {
             return IsMessageHandler(type, allowAbstract: false);
         }
+
+        internal static void Configure(ApplicationPartManager partManager)
+        {
+            if (!partManager.FeatureProviders.OfType<MessageHandlerFeatureProvider>().Any())
+            {
+                partManager.FeatureProviders.Add(new MessageHandlerFeatureProvider());
+            }
+        }
     }
 }

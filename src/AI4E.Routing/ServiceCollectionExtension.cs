@@ -60,8 +60,8 @@ namespace AI4E.Routing
             services.AddSingleton<ITypeConversion, TypeSerializer>();
             services.ConfigureApplicationServices(RemoteMessageDispatcherInitialization);
 
-            services.AddSingleton<IRemoteMessageDispatcher>(p => p.GetRequiredService<RemoteMessageDispatcher>());
-            services.AddMessageDispatcher<RemoteMessageDispatcher>();
+            services.AddSingleton(p => p.GetRequiredService<IMessageDispatcher>() as IRemoteMessageDispatcher);
+            services.AddMessaging().UseDispatcher<RemoteMessageDispatcher>();
         }
 
         private static void RemoteMessageDispatcherInitialization(ApplicationServiceManager serviceManager)
