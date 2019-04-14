@@ -200,7 +200,7 @@ namespace AI4E.Validation
             var parameterType = ValidationMessageProcessor.GetMessageHandlerMessageType(descriptor);
 
             // The handler has no validation.
-            if (!ValidationMessageProcessor.TryGetDescriptor(
+            if (!ValidationDescriptor.TryGetDescriptor(
                 descriptor.MessageHandlerType, parameterType, out var validation))
             {
                 return new ValueTask<IDispatchResult>(new SuccessDispatchResult());

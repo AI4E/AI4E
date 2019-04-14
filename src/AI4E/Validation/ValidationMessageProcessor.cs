@@ -68,7 +68,7 @@ namespace AI4E.Validation
 
             do
             {
-                if (TryGetDescriptor(Context.MessageHandler.GetType(), handledType, out var descriptor))
+                if (ValidationDescriptor.TryGetDescriptor(Context.MessageHandler.GetType(), handledType, out var descriptor))
                 {
                     var validationResults = await InvokeValidationAsync(
                         Context.MessageHandler,
@@ -187,45 +187,6 @@ namespace AI4E.Validation
 
             throw new InvalidOperationException();
 
-        }
-
-        private static readonly ConcurrentDictionary<Type, ImmutableDictionary<Type, ValidationDescriptor>> _descriptorsCache
-            = new ConcurrentDictionary<Type, ImmutableDictionary<Type, ValidationDescriptor>>();
-
-        internal static bool TryGetDescriptor(Type messageHandlerType, Type handledType, out ValidationDescriptor descriptor)
-        {
-            if (_descriptorsCache.TryGetValue(messageHandlerType, out var descriptors))
-            {
-                return descriptors.TryGetValue(handledType, out descriptor);
-            }
-
-            var members = ValidationInspector.Instance.InspectType(messageHandlerType);
-            var duplicates = members.GroupBy(p => p.ParameterType).Where(p => p.Count() > 1);
-
-            if (duplicates.Any(p => p.Key == handledType))
-            {
-                throw new InvalidOperationException("Ambigous validation");
-            }
-
-            var descriptorL = members.Where(p => p.ParameterType == handledType);
-            var result = false;
-
-            if (descriptorL.Any())
-            {
-                descriptor = descriptorL.First();
-                result = true;
-            }
-            else
-            {
-                descriptor = default;
-            }
-
-            if (!duplicates.Any())
-            {
-                _descriptorsCache.TryAdd(messageHandlerType, members.ToImmutableDictionary(p => p.ParameterType));
-            }
-
-            return result;
         }
 
         internal static Type GetMessageHandlerMessageType(MessageHandlerActionDescriptor memberDescriptor)
