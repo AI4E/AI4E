@@ -47,7 +47,10 @@ namespace AI4E
             {
                 if (!options.MessageProcessors.Any(p => p.MessageProcessorType == typeof(ValidationMessageProcessor)))
                 {
-                    options.MessageProcessors.Add(MessageProcessorRegistration.Create<ValidationMessageProcessor>());
+                    // We are dependent on all other processors that shall be called on validation.
+                    options.MessageProcessors.Add(
+                        MessageProcessorRegistration.Create<ValidationMessageProcessor>(
+                            new MessageProcessorDependency(p => p.CallOnValidation())));
                 }
             });
         }

@@ -36,5 +36,7 @@ namespace AI4E
         IMessageProcessor CreateMessageProcessor(IServiceProvider serviceProvider);
 
         Type MessageProcessorType { get; }
+
+        MessageProcessorDependency Dependency { get; }
     }
 }

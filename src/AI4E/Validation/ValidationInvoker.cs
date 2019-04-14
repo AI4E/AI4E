@@ -55,7 +55,7 @@ namespace AI4E.Validation
         /// </exception>
         public static IValidationInvoker CreateInvoker(
             Type messageType,
-            IList<IMessageProcessorRegistration> messageProcessors,
+            IEnumerable<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
         {
             if (messageType == null)
@@ -75,10 +75,10 @@ namespace AI4E.Validation
             var validationInvokerType = _validationInvokerTypeDefinition.MakeGenericType(messageType);
             var ctor = validationInvokerType.GetConstructor(
                 BindingFlags.Instance | BindingFlags.Public, Type.DefaultBinder,
-                new[] { typeof(IList<IMessageProcessorRegistration>), typeof(IServiceProvider) },
+                new[] { typeof(IEnumerable<IMessageProcessorRegistration>), typeof(IServiceProvider) },
                 modifiers: null);
             var messageProcessorsParameter = Expression.Parameter(
-                typeof(IList<IMessageProcessorRegistration>), "messageProcessors");
+                typeof(IEnumerable<IMessageProcessorRegistration>), "messageProcessors");
             var serviceProviderParameter = Expression.Parameter(typeof(IServiceProvider), "serviceProvider");
             var instanciation = Expression.New(ctor, messageProcessorsParameter, serviceProviderParameter);
             var lambda = Expression.Lambda<InvokerFactory>(
@@ -87,7 +87,7 @@ namespace AI4E.Validation
         }
 
         private delegate IValidationInvoker InvokerFactory(
-            IList<IMessageProcessorRegistration> messageProcessors,
+            IEnumerable<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider);
     }
 
@@ -137,7 +137,7 @@ namespace AI4E.Validation
         /// Thrown if either <paramref name="messageProcessors"/> or <paramref name="serviceProvider"/> is <c>null</c>.
         /// </exception>
         public ValidationInvoker(
-            IList<IMessageProcessorRegistration> messageProcessors,
+            IEnumerable<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider) : base(messageProcessors, serviceProvider)
         {
             if (serviceProvider == null)
@@ -225,12 +225,7 @@ namespace AI4E.Validation
         /// <inheritdoc/>
         protected override bool ExecuteProcessor(IMessageProcessorRegistration messageProcessorRegistration)
         {
-            var processorType = messageProcessorRegistration.MessageProcessorType;
-
-            var callOnValidationAttribute = processorType
-                .GetCustomAttribute<CallOnValidationAttribute>(inherit: true);
-
-            return callOnValidationAttribute != null && callOnValidationAttribute.CallOnValidation;
+            return messageProcessorRegistration.CallOnValidation();
         }
 
         private async ValueTask<IDispatchResult> EvaluateValidationInvokation(

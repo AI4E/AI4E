@@ -21,6 +21,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,7 +34,7 @@ namespace AI4E.Handler
     public abstract class InvokerBase<TMessage>
         where TMessage : class
     {
-        private readonly IList<IMessageProcessorRegistration> _messageProcessors;
+        private readonly List<IMessageProcessorRegistration> _messageProcessors;
         private readonly IServiceProvider _serviceProvider;
 
         /// <summary>
@@ -45,7 +46,7 @@ namespace AI4E.Handler
         /// Thrown if either <paramref name="messageProcessors"/> or <paramref name="serviceProvider"/> is <c>null</c>.
         /// </exception>
         protected InvokerBase(
-            IList<IMessageProcessorRegistration> messageProcessors,
+            IEnumerable<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
         {
             if (messageProcessors == null)
@@ -54,10 +55,19 @@ namespace AI4E.Handler
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            _messageProcessors = messageProcessors;
+            _messageProcessors = AsList(messageProcessors.TopologicalSort(p => messageProcessors.Where(p.Dependency.IsDependency), throwOnCycle: true));
             _serviceProvider = serviceProvider;
         }
 
+        private static List<IMessageProcessorRegistration> AsList(IEnumerable<IMessageProcessorRegistration> messageProcessors)
+        {
+            if (messageProcessors is List<IMessageProcessorRegistration> result)
+            {
+                return result;
+            }
+
+            return messageProcessors.ToList();
+        }
 
         protected ValueTask<IDispatchResult> InvokeChainAsync(
             object handler,

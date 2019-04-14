@@ -31,16 +31,31 @@ namespace AI4E
     {
         private readonly Func<IServiceProvider, IMessageProcessor> _factory;
 
-        private MessageProcessorRegistration(Type messageProcessorType, Func<IServiceProvider, IMessageProcessor> factory)
+        private MessageProcessorRegistration(
+            Type messageProcessorType,
+            Func<IServiceProvider, IMessageProcessor> factory,
+            MessageProcessorDependency dependency)
         {
             MessageProcessorType = messageProcessorType;
             _factory = factory;
+            Dependency = dependency;
+        }
+
+        private MessageProcessorRegistration(
+            Type messageProcessorType, MessageProcessorDependency dependency)
+        {
+            Debug.Assert(messageProcessorType != null);
+            Debug.Assert(typeof(IMessageProcessor).IsAssignableFrom(messageProcessorType));
+
+            MessageProcessorType = messageProcessorType;
+            _factory = serviceProvider => (IMessageProcessor)ActivatorUtilities.CreateInstance(serviceProvider, messageProcessorType);
+            Dependency = dependency;
         }
 
         /// <summary>
         /// Creates a new instance of the <see cref="MessageProcessorRegistration"/> type.
         /// </summary>
-        /// <param name="messageProcessor">The message processor instance..</param>
+        /// <param name="messageProcessor">The message processor instance.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="messageProcessor"/> is null.</exception>
         public MessageProcessorRegistration(IMessageProcessor messageProcessor)
         {
@@ -51,13 +66,20 @@ namespace AI4E
             _factory = _ => messageProcessor;
         }
 
-        private MessageProcessorRegistration(Type messageProcessorType)
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessageProcessorRegistration"/> type.
+        /// </summary>
+        /// <param name="messageProcessor">The message processor instance.</param>
+        /// <param name="dependency">The message processor dependency.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="messageProcessor"/> is null.</exception>
+        public MessageProcessorRegistration(IMessageProcessor messageProcessor, MessageProcessorDependency dependency)
         {
-            Debug.Assert(messageProcessorType != null);
-            Debug.Assert(typeof(IMessageProcessor).IsAssignableFrom(messageProcessorType));
+            if (messageProcessor == null)
+                throw new ArgumentNullException(nameof(messageProcessor));
 
-            MessageProcessorType = messageProcessorType;
-            _factory = serviceProvider => (IMessageProcessor)ActivatorUtilities.CreateInstance(serviceProvider, messageProcessorType);
+            MessageProcessorType = messageProcessor.GetType();
+            _factory = _ => messageProcessor;
+            Dependency = dependency;
         }
 
         /// <inheritdoc />
@@ -74,7 +96,19 @@ namespace AI4E
         public static MessageProcessorRegistration Create<TProcessor>()
             where TProcessor : class, IMessageProcessor
         {
-            return new MessageProcessorRegistration(typeof(TProcessor));
+            return new MessageProcessorRegistration(typeof(TProcessor), dependency: default);
+        }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessageProcessorRegistration"/> type.
+        /// </summary>
+        /// <typeparam name="TProcessor">The type of message processor.</typeparam>
+        /// <param name="dependency">The message processor dependency.</param>
+        /// <returns>The created <see cref="MessageProcessorRegistration"/>.</returns>
+        public static MessageProcessorRegistration Create<TProcessor>(MessageProcessorDependency dependency)
+            where TProcessor : class, IMessageProcessor
+        {
+            return new MessageProcessorRegistration(typeof(TProcessor), dependency);
         }
 
         /// <summary>
@@ -86,10 +120,27 @@ namespace AI4E
         public static MessageProcessorRegistration Create<TProcessor>(Func<IServiceProvider, TProcessor> factory)
             where TProcessor : class, IMessageProcessor
         {
-            return new MessageProcessorRegistration(typeof(TProcessor), factory);
+            return new MessageProcessorRegistration(typeof(TProcessor), factory, dependency: default);
+        }
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessageProcessorRegistration"/> type.
+        /// </summary>
+        /// <typeparam name="TProcessor">The type of message processor.</typeparam>
+        /// <param name="factory">A factory that is used to create message processors.</param>
+        /// <param name="dependency">The message processor dependency.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="factory"/> is null.</exception>
+        public static MessageProcessorRegistration Create<TProcessor>(
+            Func<IServiceProvider, TProcessor> factory, MessageProcessorDependency dependency)
+            where TProcessor : class, IMessageProcessor
+        {
+            return new MessageProcessorRegistration(typeof(TProcessor), factory, dependency);
         }
 
         /// <inheritdoc />
         public Type MessageProcessorType { get; }
+
+        /// <inheritdoc />
+        public MessageProcessorDependency Dependency { get; }
     }
 }

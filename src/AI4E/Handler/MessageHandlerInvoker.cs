@@ -21,13 +21,11 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
-using AI4E.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using static System.Diagnostics.Debug;
 
@@ -39,10 +37,10 @@ namespace AI4E.Handler
     public static class MessageHandlerInvoker
     {
         private static readonly Type _messageHandlerInvokerTypeDefinition = typeof(MessageHandlerInvoker<>);
-        private static readonly ConcurrentDictionary<Type, Func<object, MessageHandlerActionDescriptor, IList<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>> _factories
-            = new ConcurrentDictionary<Type, Func<object, MessageHandlerActionDescriptor, IList<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>>();
+        private static readonly ConcurrentDictionary<Type, Func<object, MessageHandlerActionDescriptor, IEnumerable<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>> _factories
+            = new ConcurrentDictionary<Type, Func<object, MessageHandlerActionDescriptor, IEnumerable<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>>();
 
-        private static readonly Func<Type, Func<object, MessageHandlerActionDescriptor, IList<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>> _factoryBuilderCache = BuildFactory;
+        private static readonly Func<Type, Func<object, MessageHandlerActionDescriptor, IEnumerable<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>> _factoryBuilderCache = BuildFactory;
 
         /// <summary>
         /// Creates a <see cref="MessageHandlerInvoker{TMessage}"/> from the specified parameters.
@@ -60,7 +58,7 @@ namespace AI4E.Handler
         /// </remarks>
         public static IMessageHandler CreateInvoker(
             MessageHandlerActionDescriptor memberDescriptor,
-            IList<IMessageProcessorRegistration> messageProcessors,
+            IEnumerable<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
         {
             if (serviceProvider == null)
@@ -90,7 +88,7 @@ namespace AI4E.Handler
         public static IMessageHandler CreateInvoker(
             object handler,
             MessageHandlerActionDescriptor memberDescriptor,
-            IList<IMessageProcessorRegistration> messageProcessors,
+            IEnumerable<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
         {
             if (handler == null)
@@ -108,7 +106,7 @@ namespace AI4E.Handler
         private static IMessageHandler CreateInvokerInternal(
            object handler,
            MessageHandlerActionDescriptor memberDescriptor,
-           IList<IMessageProcessorRegistration> processors,
+           IEnumerable<IMessageProcessorRegistration> processors,
            IServiceProvider serviceProvider)
         {
             var messageType = memberDescriptor.MessageType;
@@ -116,24 +114,24 @@ namespace AI4E.Handler
             return factory(handler, memberDescriptor, processors, serviceProvider);
         }
 
-        private static Func<object, MessageHandlerActionDescriptor, IList<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler> BuildFactory(Type messageType)
+        private static Func<object, MessageHandlerActionDescriptor, IEnumerable<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler> BuildFactory(Type messageType)
         {
             var messageHandlerInvokerType = _messageHandlerInvokerTypeDefinition.MakeGenericType(messageType);
             var ctor = messageHandlerInvokerType.GetConstructor(
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 Type.DefaultBinder,
-                types: new[] { typeof(object), typeof(MessageHandlerActionDescriptor), typeof(IList<IMessageProcessorRegistration>), typeof(IServiceProvider) },
+                types: new[] { typeof(object), typeof(MessageHandlerActionDescriptor), typeof(IEnumerable<IMessageProcessorRegistration>), typeof(IServiceProvider) },
                 modifiers: null);
 
             Assert(ctor != null);
 
             var handlerParameter = Expression.Parameter(typeof(object), "handler");
             var memberDescriptorParameter = Expression.Parameter(typeof(MessageHandlerActionDescriptor), "memberDescriptor");
-            var processorsParameter = Expression.Parameter(typeof(IList<IMessageProcessorRegistration>), "processors");
+            var processorsParameter = Expression.Parameter(typeof(IEnumerable<IMessageProcessorRegistration>), "processors");
             var serviceProviderParameter = Expression.Parameter(typeof(IServiceProvider), "serviceProvider");
             var ctorCall = Expression.New(ctor, handlerParameter, memberDescriptorParameter, processorsParameter, serviceProviderParameter);
             var convertedInvoker = Expression.Convert(ctorCall, typeof(IMessageHandler));
-            var lambda = Expression.Lambda<Func<object, MessageHandlerActionDescriptor, IList<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>>(
+            var lambda = Expression.Lambda<Func<object, MessageHandlerActionDescriptor, IEnumerable<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>>(
                 convertedInvoker, handlerParameter, memberDescriptorParameter, processorsParameter, serviceProviderParameter);
 
             return lambda.Compile();
@@ -167,9 +165,9 @@ namespace AI4E.Handler
         public MessageHandlerInvoker(
             object handler,
             MessageHandlerActionDescriptor memberDescriptor,
-            IList<IMessageProcessorRegistration> messageProcessors,
+            IEnumerable<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
-            : base(BuildMessageProcessors(messageProcessors), serviceProvider)
+            : base(messageProcessors, serviceProvider)
         {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
@@ -183,19 +181,6 @@ namespace AI4E.Handler
             _handler = handler;
             _memberDescriptor = memberDescriptor;
             _serviceProvider = serviceProvider;
-        }
-
-        private static IList<IMessageProcessorRegistration> BuildMessageProcessors(
-            IList<IMessageProcessorRegistration> messageProcessors)
-        {
-            if (messageProcessors.Any(p => p.MessageProcessorType == typeof(ValidationMessageProcessor)))
-            {
-                return messageProcessors;
-            }
-
-            var result = messageProcessors.ToList();
-            result.Add(MessageProcessorRegistration.Create<ValidationMessageProcessor>());
-            return result;
         }
 
         #region IMessageHandler
