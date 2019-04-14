@@ -452,11 +452,14 @@ namespace AI4E.Storage.Domain
 
             if (_lookup.TryGetValue((bucketId, stream.StreamId, revision), out var cachedResult))
             {
-                return cachedResult;
+                var result = cachedResult.entity;
+                Assert(result == null || entityType.IsAssignableFrom(result.GetType()));
+                return result;
             }
 
             Assert(revision != default, stream.StreamRevision == revision);
             var entity = Deserialize(entityType, stream);
+            Assert(entity == null || entityType.IsAssignableFrom(entity.GetType()));
 
             _lookup[(bucketId, stream.StreamId, revision)] = (entity, revision: stream.StreamRevision);
 
