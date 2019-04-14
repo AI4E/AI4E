@@ -19,9 +19,7 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -59,7 +57,7 @@ namespace AI4E.Validation
             Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
             CancellationToken cancellation)
         {
-            if (!IsValidationEnabled(Context.MessageHandlerAction))
+            if (!Context.MessageHandlerAction.IsValidationEnabled())
             {
                 return await next(dispatchData);
             }
@@ -195,31 +193,5 @@ namespace AI4E.Validation
         }
 
         #endregion
-
-        private static bool IsValidationEnabled(MessageHandlerActionDescriptor memberDescriptor)
-        {
-            var isValidationEnabled = memberDescriptor
-                .MessageHandlerType
-                .GetCustomAttribute<ValidateAttribute>(inherit: true)?.Validate ?? false;
-
-            var attribute = memberDescriptor.Member.GetCustomAttribute<ValidateAttribute>(inherit: true);
-
-            // If there is an attribute present in the inheritence hierarchy of the member but not on the
-            // member itself, and there is a non-inherited attribute present on the type, use this.
-            if (attribute != null &&
-                memberDescriptor.Member.GetCustomAttribute<ValidateAttribute>(inherit: false) == null)
-            {
-                var nonInheritedTypeAttribute = memberDescriptor
-                .MessageHandlerType
-                .GetCustomAttribute<ValidateAttribute>(inherit: false);
-
-                if (nonInheritedTypeAttribute != null)
-                {
-                    attribute = nonInheritedTypeAttribute;
-                }
-            }
-
-            return attribute?.Validate ?? isValidationEnabled;
-        }
     }
 }
