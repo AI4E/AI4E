@@ -263,13 +263,16 @@ namespace AI4E.Validation
                 Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
             };
 
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(async () =>
-            {
-                await validationProcessor.ProcessAsync(
-                                 dispatchData,
-                                 d => { messageHandler.Handle(d.Message); return new ValueTask<IDispatchResult>(new SuccessDispatchResult()); },
-                                 cancellation: default);
-            });
+
+            var dispatchResult = await validationProcessor.ProcessAsync(
+                             dispatchData,
+                             d => { messageHandler.Handle(d.Message); return new ValueTask<IDispatchResult>(new SuccessDispatchResult()); },
+                             cancellation: default);
+
+            Assert.IsInstanceOfType(dispatchResult, typeof(SuccessDispatchResult));
+            Assert.IsTrue(messageHandler.HandleCalled);
+            Assert.AreSame(testMessage, messageHandler.HandleMessage);
+            Assert.IsFalse(messageHandler.ValidateCalled);
         }
 
         [TestMethod]
@@ -961,7 +964,15 @@ namespace AI4E.Validation
     public class MissingValidationTestMessageHandler
     {
         [Validate]
-        public void Handle(ValidationTestMessage message) { }
+        public void Handle(ValidationTestMessage message)
+        {
+            HandleMessage = message;
+            HandleCalled = true;
+        }
+
+        public ValidationTestMessage HandleMessage { get; private set; }
+        public bool HandleCalled { get; private set; }
+        public bool ValidateCalled { get; private set; }
     }
 
     public class AmbiguousValidationTestMessageHandler

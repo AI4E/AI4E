@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System.Linq;
 using System.Reflection;
 using AI4E.Validation;
 
@@ -57,6 +58,41 @@ namespace AI4E.Handler
             }
 
             return attribute?.Validate ?? isValidationEnabled;
+        }
+
+        /// <summary>
+        /// Attempts to retrieve the <see cref="ValidationDescriptor"/> for the specified message handler.
+        /// </summary>
+        /// <param name="memberDescriptor">A <see cref="MessageHandlerActionDescriptor"/> that describes the message handler.</param>
+        /// <param name="validationDescriptor">Contains the <see cref="ValidationDescriptor"/> if the operation succeeds.</param>
+        /// <returns>True if the operation succeeds, false otherwise.</returns>
+        public static bool TryGetValidationDescriptor(  // TODO: Add extra unit-tests for this, as this is public now?
+            this MessageHandlerActionDescriptor memberDescriptor,
+            out ValidationDescriptor validationDescriptor)
+        {
+            if (!memberDescriptor.IsValidationEnabled())
+            {
+                validationDescriptor = default;
+                return false;
+            }
+
+            var handledType = memberDescriptor.Member.GetParameters().First().ParameterType;
+
+            do
+            {
+                if (ValidationDescriptor.TryGetDescriptor(
+                    memberDescriptor.MessageHandlerType,
+                    handledType,
+                    out validationDescriptor))
+                {
+                    return true;
+                }
+
+                handledType = handledType.BaseType;
+            }
+            while (handledType != null);
+
+            return false;
         }
     }
 }

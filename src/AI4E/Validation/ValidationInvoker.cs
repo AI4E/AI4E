@@ -197,11 +197,8 @@ namespace AI4E.Validation
                 return new ValueTask<IDispatchResult>(new SuccessDispatchResult());
             }
 
-            var parameterType = ValidationMessageProcessor.GetMessageHandlerMessageType(descriptor);
-
             // The handler has no validation.
-            if (!ValidationDescriptor.TryGetDescriptor(
-                descriptor.MessageHandlerType, parameterType, out var validation))
+            if (!descriptor.TryGetValidationDescriptor(out var validationDescriptor))
             {
                 return new ValueTask<IDispatchResult>(new SuccessDispatchResult());
             }
@@ -211,9 +208,9 @@ namespace AI4E.Validation
 
             ValueTask<IDispatchResult> InvokeValidation(DispatchDataDictionary<TMessage> nextDispatchData)
             {
-                var invokeResult = ValidationMessageProcessor.InvokeValidationAsync(
+                var invokeResult = ValidationEvaluator.EvaluateAsync(
                     handler,
-                    validation,
+                    validationDescriptor,
                     nextDispatchData,
                     _serviceProvider,
                     cancellation);

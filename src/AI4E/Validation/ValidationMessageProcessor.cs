@@ -57,141 +57,22 @@ namespace AI4E.Validation
             Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
             CancellationToken cancellation)
         {
-            if (!Context.MessageHandlerAction.IsValidationEnabled())
+            if (Context.MessageHandlerAction.TryGetValidationDescriptor(out var validationDescriptor))
             {
-                return await next(dispatchData);
-            }
-
-            var handledType = GetMessageHandlerMessageType(Context.MessageHandlerAction);
-
-            do
-            {
-                if (ValidationDescriptor.TryGetDescriptor(Context.MessageHandler.GetType(), handledType, out var descriptor))
-                {
-                    var validationResults = await InvokeValidationAsync(
+                var validationResults = await ValidationEvaluator.EvaluateAsync(
                         Context.MessageHandler,
-                        descriptor,
+                        validationDescriptor,
                         dispatchData,
                         _serviceProvider,
                         cancellation);
 
-                    if (validationResults.Any())
-                    {
-                        return new ValidationFailureDispatchResult(validationResults);
-                    }
-
-                    return await next(dispatchData);
+                if (validationResults.Any())
+                {
+                    return new ValidationFailureDispatchResult(validationResults);
                 }
-
-                handledType = handledType.BaseType;
             }
-            while (handledType != null);
 
-            throw new InvalidOperationException("No validation handlers found.");
+            return await next(dispatchData);
         }
-
-        #region TODO -  Move me to a separate type
-
-        internal static async ValueTask<IEnumerable<ValidationResult>> InvokeValidationAsync(
-            object messageHandler,
-            ValidationDescriptor descriptor,
-            DispatchDataDictionary dispatchData,
-            IServiceProvider serviceProvider,
-            CancellationToken cancellation)
-        {
-            var invoker = HandlerActionInvoker.GetInvoker(descriptor.Member);
-            var returnTypeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(descriptor.Member.ReturnType);
-
-            ValidationResultsBuilder validationResultsBuilder = null;
-
-            object ResolveParameter(ParameterInfo parameter)
-            {
-                if (parameter.ParameterType == typeof(IServiceProvider))
-                {
-                    return serviceProvider;
-                }
-                else if (parameter.ParameterType == typeof(CancellationToken))
-                {
-                    return cancellation;
-                }
-                else if (parameter.ParameterType == typeof(DispatchDataDictionary) ||
-                         parameter.ParameterType == dispatchData.GetType())
-                {
-                    return dispatchData;
-                }
-                else if (parameter.ParameterType == typeof(ValidationResultsBuilder))
-                {
-                    if (validationResultsBuilder == null)
-                    {
-                        validationResultsBuilder = new ValidationResultsBuilder();
-                    }
-
-                    return validationResultsBuilder;
-                }
-                else if (parameter.HasDefaultValue)
-                {
-                    return serviceProvider.GetService(parameter.ParameterType) ?? parameter.DefaultValue;
-                }
-                else
-                {
-                    return serviceProvider.GetRequiredService(parameter.ParameterType);
-                }
-            }
-
-            var result = await invoker.InvokeAsync(messageHandler, dispatchData.Message, ResolveParameter);
-
-            if (returnTypeDescriptor.ResultType == typeof(void))
-            {
-                return validationResultsBuilder?.GetValidationResults() ?? Enumerable.Empty<ValidationResult>();
-            }
-
-            if (typeof(IEnumerable<ValidationResult>).IsAssignableFrom(returnTypeDescriptor.ResultType))
-            {
-                if (validationResultsBuilder == null)
-                    return result as IEnumerable<ValidationResult> ?? Enumerable.Empty<ValidationResult>();
-
-                if (result == null)
-                    return validationResultsBuilder.GetValidationResults();
-
-                return validationResultsBuilder.GetValidationResults().Concat(
-                    (IEnumerable<ValidationResult>)result);
-            }
-
-            if (typeof(ValidationResult) == returnTypeDescriptor.ResultType)
-            {
-                var validationResult = (ValidationResult)result;
-
-                if (validationResult == default)
-                    return validationResultsBuilder?.GetValidationResults() ?? Enumerable.Empty<ValidationResult>();
-
-                if (validationResultsBuilder == null)
-                    return Enumerable.Repeat((ValidationResult)result, 1);
-
-                return validationResultsBuilder.GetValidationResults().Concat(
-                         Enumerable.Repeat((ValidationResult)result, 1));
-            }
-
-            if (typeof(ValidationResultsBuilder) == returnTypeDescriptor.ResultType)
-            {
-                if (result == validationResultsBuilder || result == null)
-                    return validationResultsBuilder?.GetValidationResults() ?? Enumerable.Empty<ValidationResult>();
-
-                if (validationResultsBuilder == null)
-                    return ((ValidationResultsBuilder)result).GetValidationResults();
-
-                return validationResultsBuilder.GetValidationResults().Concat(
-                        ((ValidationResultsBuilder)result).GetValidationResults());
-            }
-
-            throw new InvalidOperationException();
-
-        }
-
-        internal static Type GetMessageHandlerMessageType(MessageHandlerActionDescriptor memberDescriptor)
-        {
-            return memberDescriptor.Member.GetParameters().First().ParameterType;
-        }
-
-        #endregion
     }
 }
