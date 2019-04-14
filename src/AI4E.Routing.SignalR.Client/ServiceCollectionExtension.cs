@@ -71,7 +71,7 @@ namespace AI4E.Routing.SignalR.Client
             this IServiceCollection serviceCollection,
             Action<IHubConnectionBuilder, IServiceProvider> configureHubConnection)
         {
-            serviceCollection.AddCoreServices();
+            serviceCollection.AddDateTimeProvider();
             serviceCollection.AddSingleton<IRemoteMessageDispatcher>(p => p.GetRequiredService<RemoteMessageDispatcher>());
             serviceCollection.AddMessageDispatcher<RemoteMessageDispatcher>();
             serviceCollection.AddSingleton<ITypeConversion, TypeSerializer>();

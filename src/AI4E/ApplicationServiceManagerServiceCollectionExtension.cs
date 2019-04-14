@@ -19,27 +19,15 @@
  */
 
 using System;
-using Microsoft.Extensions.DependencyInjection;
+using AI4E;
+using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace AI4E.Storage
+namespace Microsoft.Extensions.DependencyInjection
 {
-    public static class ServiceCollectionExtension
+    public static class ApplicationServiceManagerServiceCollectionExtension
     {
-        public static IStorageBuilder AddStorage(this IServiceCollection services)
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            services.AddOptions();
-            services.AddDateTimeProvider();
-            services.TryAddSingleton(typeof(IContextualProvider<>), typeof(ContextualProvider<>));
-            services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
-
-            return new StorageBuilder(services);
-        }
-
-        public static IStorageBuilder AddStorage(this IServiceCollection services, Action<StorageOptions> configuration)
+        public static void ConfigureApplicationServices(this IServiceCollection services, Action<ApplicationServiceManager> configuration)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
@@ -47,10 +35,15 @@ namespace AI4E.Storage
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
-            var builder = services.AddStorage();
-            builder.Configure(configuration);
+            var serviceManager = services.GetService<ApplicationServiceManager>();
 
-            return builder;
+            if (serviceManager == null)
+            {
+                serviceManager = new ApplicationServiceManager();
+            }
+
+            configuration(serviceManager);
+            services.TryAddSingleton(serviceManager);
         }
     }
 }

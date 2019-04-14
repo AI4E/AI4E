@@ -20,49 +20,19 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
+using AI4E;
 using AI4E.Handler;
 using AI4E.Utils;
 using AI4E.Utils.ApplicationParts;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace AI4E
+namespace Microsoft.Extensions.DependencyInjection
 {
-    public static class ServiceCollectionExtension
+    public static class MessagingServiceCollectionExtension
     {
-        public static void ConfigureApplicationServices(this IServiceCollection services, Action<ApplicationServiceManager> configuration)
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            if (configuration == null)
-                throw new ArgumentNullException(nameof(configuration));
-
-            var serviceManager = services.GetService<ApplicationServiceManager>();
-
-            if (serviceManager == null)
-            {
-                serviceManager = new ApplicationServiceManager();
-            }
-
-            configuration(serviceManager);
-            services.TryAddSingleton(serviceManager);
-        }
-
-        public static IServiceCollection AddCoreServices(this IServiceCollection services)
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
-
-            return services;
-        }
-
         public static IMessagingBuilder AddInMemoryMessaging(this IServiceCollection services)
         {
             if (services == null)

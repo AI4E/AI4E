@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         public static IServiceCollection AddSharedBookStoreServices(this IServiceCollection services)
         {
-            services.AddCoreServices();
+            services.AddDateTimeProvider();
 
             // TODO: When running on Blazor (client-side) this should be registered as singleton,
             //       when running server-side scoped.
