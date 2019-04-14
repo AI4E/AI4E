@@ -21,11 +21,13 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
+using AI4E.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using static System.Diagnostics.Debug;
 
@@ -167,7 +169,7 @@ namespace AI4E.Handler
             MessageHandlerActionDescriptor memberDescriptor,
             IList<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
-            : base(messageProcessors, serviceProvider)
+            : base(BuildMessageProcessors(messageProcessors), serviceProvider)
         {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
@@ -181,6 +183,19 @@ namespace AI4E.Handler
             _handler = handler;
             _memberDescriptor = memberDescriptor;
             _serviceProvider = serviceProvider;
+        }
+
+        private static IList<IMessageProcessorRegistration> BuildMessageProcessors(
+            IList<IMessageProcessorRegistration> messageProcessors)
+        {
+            if (messageProcessors.Any(p => p.MessageProcessorType == typeof(ValidationMessageProcessor)))
+            {
+                return messageProcessors;
+            }
+
+            var result = messageProcessors.ToList();
+            result.Add(MessageProcessorRegistration.Create<ValidationMessageProcessor>());
+            return result;
         }
 
         #region IMessageHandler

@@ -19,7 +19,6 @@
  */
 
 using System.Collections.Generic;
-using AI4E.Validation;
 
 namespace AI4E
 {
@@ -27,10 +26,7 @@ namespace AI4E
     {
         public MessagingOptions()
         {
-            MessageProcessors = new List<IMessageProcessorRegistration>()
-            {
-                MessageProcessorRegistration.Create<ValidationMessageProcessor>() // TOOD: Remove me??
-            };
+            MessageProcessors = new List<IMessageProcessorRegistration>();
         }
 
         public IList<IMessageProcessorRegistration> MessageProcessors { get; }
