@@ -65,31 +65,55 @@ namespace AI4E
             return messagingBuilder;
         }
 
-        public static IMessagingBuilder UseDispatcher<TMessageDispatcher>(this IMessagingBuilder messagingBuilder, TMessageDispatcher instance)
-            where TMessageDispatcher : class, IMessageDispatcher
+        public static IMessagingBuilder UseDispatcher(
+            this IMessagingBuilder messagingBuilder, IMessageDispatcher instance)
         {
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
 
             var services = messagingBuilder.Services;
-
-            services.UseDispatcher<TMessageDispatcher>();
             services.AddSingleton(instance);
-
             return messagingBuilder;
         }
 
-        public static IMessagingBuilder UseDispatcher<TMessageDispatcher>(this IMessagingBuilder messagingBuilder, Func<IServiceProvider, TMessageDispatcher> factory)
-            where TMessageDispatcher : class, IMessageDispatcher
+        public static IMessagingBuilder UseDispatcher(
+            this IMessagingBuilder messagingBuilder, Func<IServiceProvider, IMessageDispatcher> factory)
         {
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
 
             var services = messagingBuilder.Services;
-
-            services.UseDispatcher<TMessageDispatcher>();
             services.AddSingleton(factory);
+            return messagingBuilder;
+        }
 
+        public static IMessagingBuilder DecorateDispatcher<TMessageDispatcher>(
+            this IMessagingBuilder messagingBuilder)
+             where TMessageDispatcher : class, IMessageDispatcher
+        {
+            messagingBuilder.Services.Decorate<IMessageDispatcher, TMessageDispatcher>();
+            return messagingBuilder;
+        }
+
+        public static IMessagingBuilder DecorateDispatcher(
+            this IMessagingBuilder messagingBuilder,
+            Func<IMessageDispatcher, IMessageDispatcher> decorator)
+        {
+            if (decorator == null)
+                throw new ArgumentNullException(nameof(decorator));
+
+            messagingBuilder.Services.Decorate(decorator);
+            return messagingBuilder;
+        }
+
+        public static IMessagingBuilder DecorateDispatcher(
+            this IMessagingBuilder messagingBuilder,
+            Func<IMessageDispatcher, IServiceProvider, IMessageDispatcher> decorator)
+        {
+            if (decorator == null)
+                throw new ArgumentNullException(nameof(decorator));
+
+            messagingBuilder.Services.Decorate(decorator);
             return messagingBuilder;
         }
     }
