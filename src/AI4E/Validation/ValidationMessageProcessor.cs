@@ -30,7 +30,7 @@ namespace AI4E.Validation
     /// <summary>
     /// A message processor that validates messages.
     /// </summary>
-    public class ValidationMessageProcessor : MessageProcessor
+    internal class ValidationMessageProcessor : MessageProcessor
     {
         private readonly IServiceProvider _serviceProvider;
 
@@ -69,6 +69,23 @@ namespace AI4E.Validation
             }
 
             return await next(dispatchData);
+        }
+
+        private static void Configuration(MessagingOptions options)
+        {
+            if (options.MessageProcessors.Any(p => p.MessageProcessorType == typeof(ValidationMessageProcessor)))
+                return;
+
+            // We are dependent on all other processors that shall be called on validation.
+            var dependency = new MessageProcessorDependency(p => p.CallOnValidation());
+            var registration = MessageProcessorRegistration.Create<ValidationMessageProcessor>(dependency);
+
+            options.MessageProcessors.Add(registration);
+        }
+
+        public static void Register(IMessagingBuilder builder)
+        {
+            builder.Configure(Configuration);
         }
     }
 }

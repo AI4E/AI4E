@@ -34,9 +34,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.ConfigureApplicationParts(MessageHandlerFeatureProvider.Configure);
 
             var builder = new MessagingBuilder(services);
-
-            builder.ConfigureMessageHandlers(MessageHandlers.Configure);
-
+            MessageHandlers.Register(builder);
             return builder;
         }
 

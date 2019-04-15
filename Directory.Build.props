@@ -1,5 +1,4 @@
 <Project>
-
   <PropertyGroup>
     <Authors>Andreas Trütschel and contributors</Authors>
     <Product>$(ProjectName)</Product>
@@ -10,7 +9,7 @@
     <RepositoryType>git</RepositoryType>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>0.1.1</Version>
+    <Version>0.1.2-pre$([System.DateTime]::UtcNow.ToString(yyMMddHH))</Version>
   </PropertyGroup>
     
   <PropertyGroup>

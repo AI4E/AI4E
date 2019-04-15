@@ -18,9 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Linq;
 using AI4E.Validation;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E
 {
@@ -34,34 +32,11 @@ namespace AI4E
         /// </summary>
         /// <param name="builder">The messaging builder.</param>
         /// <returns>The messaging builder.</returns>
-        public static IMessagingBuilder AddValidation(this IMessagingBuilder builder)
+        public static IMessagingBuilder UseValidation(this IMessagingBuilder builder)
         {
-            RegisterValidationMessageProcessor(builder);
-            RegisterValidationMessageHandler(builder);
+            ValidationMessageProcessor.Register(builder);
+            ValidationMessageHandler.Register(builder);
             return builder;
-        }
-
-        private static void RegisterValidationMessageProcessor(IMessagingBuilder builder)
-        {
-            builder.Configure(options =>
-            {
-                if (!options.MessageProcessors.Any(p => p.MessageProcessorType == typeof(ValidationMessageProcessor)))
-                {
-                    // We are dependent on all other processors that shall be called on validation.
-                    options.MessageProcessors.Add(
-                        MessageProcessorRegistration.Create<ValidationMessageProcessor>(
-                            new MessageProcessorDependency(p => p.CallOnValidation())));
-                }
-            });
-        }
-
-        private static void RegisterValidationMessageHandler(IMessagingBuilder builder)
-        {
-            builder.ConfigureMessageHandlers((registry, serviceProvider) =>
-            {
-                registry.Register(new MessageHandlerRegistration<Validate>(
-                    dispatchServices => ActivatorUtilities.CreateInstance<ValidationMessageHandler>(dispatchServices)));
-            });
         }
     }
 }
