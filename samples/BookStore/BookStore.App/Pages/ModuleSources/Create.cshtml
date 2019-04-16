@@ -1,0 +1,38 @@
+﻿@page "/modulesources/create"
+@inherits ComponentBase<ModuleSourceCreateModel>
+@inject IUriHelper UriHelper
+@functions{
+    protected override ValueTask<ModuleSourceCreateModel> LoadModelAsync(CancellationToken cancellation)
+    {
+        return new ValueTask<ModuleSourceCreateModel>(new ModuleSourceCreateModel());
+    }
+
+    public async Task StoreAsync()
+    {
+        var command = new ModuleSourceCreateCommand(Guid.NewGuid(), Model.Name, Model.Location);
+        var commandResult = await MessageDispatcher.DispatchAsync(command); // TODO: Cancellation
+
+        if (commandResult.IsSuccess)
+        {
+            UriHelper.NavigateTo("/modulesources/" + command.Id.ToString());
+        }
+        else
+        {
+            EvaluateCommandResult(commandResult);
+        }
+    }
+}
+<div class="container">
+    <EditForm Model="Model" OnValidSubmit="StoreAsync">
+        <div class="form-group">
+            <label for="Name">Name</label>
+            <InputText Id="Name" bind-Value="@Model.Name" class="form-control" />
+        </div>
+        <div class="form-group">
+            <label for="Location">Location</label>
+            <InputText Id="Location" bind-Value="@Model.Location" class="form-control" />
+        </div>
+        <a href="/modulesources" class="btn btn-primary">Back</a>
+        <input type="submit" value="Create" class="btn btn-primary" />
+    </EditForm>
+</div>

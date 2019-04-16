@@ -6,10 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Commands\" />
-    <Folder Include="Models\" />
-    <Folder Include="Events\" />
     <Folder Include="Queries\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\AI4E.Abstractions\AI4E.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

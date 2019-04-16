@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,13 +15,13 @@ namespace AI4E.Modularity.Host
         // This is needed currently in order for the domain storage engine to read the properties 
         // from the respective entities as the domain storage engine uses the statically known type for property access.
 
-        string Id { get; }
+        System.Guid Id { get; }
         long Revision { get; set; }
         string ConcurrencyToken { get; set; }
 
         #endregion
 
-        ModuleSourceName Name { get; }
+        ModuleSourceName Name { get; set; }
 
         Task<IEnumerable<ModuleReleaseIdentifier>> GetAvailableAsync(string searchPhrase,
                                                                      bool includePreReleases,

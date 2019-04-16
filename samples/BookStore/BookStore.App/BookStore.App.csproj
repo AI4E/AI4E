@@ -7,6 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Services\**" />
+    <Content Remove="Services\**" />
+    <EmbeddedResource Remove="Services\**" />
+    <None Remove="Services\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Blazor" Version="0.9.0-preview3-19154-02" />
     <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="0.9.0-preview3-19154-02" PrivateAssets="all" />
   </ItemGroup>
@@ -16,13 +23,9 @@
     <ProjectReference Include="..\BookStore.Shared\BookStore.Shared.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Services\" />
-  </ItemGroup>
-
   <!-- See: https://github.com/aspnet/AspNetCore/issues/8414 -->
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Copy SourceFiles="$(TargetDir)\System.Memory.dll" DestinationFolder="$(TargetDir)dist\_framework\_bin\"/>
+    <Copy SourceFiles="$(TargetDir)\System.Memory.dll" DestinationFolder="$(TargetDir)dist\_framework\_bin\" />
   </Target>
 
 </Project>

@@ -12,7 +12,7 @@ namespace AI4E.Storage.Projection
 {
     public sealed class Projector : IProjector
     {
-        private TypedProjectorLookup _typedProjectors;
+        private readonly TypedProjectorLookup _typedProjectors;
 
         public Projector()
         {

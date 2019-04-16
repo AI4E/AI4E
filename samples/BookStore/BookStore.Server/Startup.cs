@@ -1,3 +1,4 @@
+using AI4E;
 using AI4E.Domain.Services;
 using AI4E.Modularity.Host;
 using AI4E.Routing.SignalR.Server;
@@ -5,10 +6,10 @@ using AI4E.Storage;
 using AI4E.Storage.Domain;
 using AI4E.Storage.MongoDB;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace BookStore.Server
 {
@@ -40,11 +41,12 @@ namespace BookStore.Server
             // Bind Configuration
             services.Configure<MongoOptions>(Configuration.GetSection("MongoDB"));
             services.Configure<ModularityOptions>(Configuration.GetSection("Modularity"));
+
+            services.AddMessaging().UseValidation();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        [System.Obsolete] // TODO: Fixme pls
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             app.UseResponseCompression();
 
