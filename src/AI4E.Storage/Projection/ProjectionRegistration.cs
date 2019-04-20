@@ -22,6 +22,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
+#if SUPPORTS_ASYNC_DISPOSABLE
+using AI4E.Utils;
+#endif
+
 namespace AI4E.Storage.Projection
 {
     /// <summary>
@@ -88,10 +92,21 @@ namespace AI4E.Storage.Projection
                 }
             }
 
-            public Task DisposeAsync()
+            public
+#if !SUPPORTS_ASYNC_DISPOSABLE
+                Task
+#else
+                ValueTask
+#endif
+                DisposeAsync()
             {
                 Dispose();
+
+#if !SUPPORTS_ASYNC_DISPOSABLE
                 return Disposal;
+#else
+                 return Disposal.AsValueTask();
+#endif
             }
 
             public Task Disposal => _cancellationSource.Task;

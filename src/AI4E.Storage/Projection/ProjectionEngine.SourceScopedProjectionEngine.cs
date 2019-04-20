@@ -115,7 +115,12 @@ namespace AI4E.Storage.Projection
                 // Write touched source metadata to database
                 foreach (var (originalMetadata, touchedMetadata) in _sourceMetadataCache.Values.Where(p => p.Touched))
                 {
-                    var comparandMetdata = await transactionalDatabase.GetAsync<ProjectionSourceMetadata>(p => p.Id == (originalMetadata ?? touchedMetadata).Id).FirstOrDefault();
+                    var comparandMetdata = await transactionalDatabase.GetAsync<ProjectionSourceMetadata>(p => p.Id == (originalMetadata ?? touchedMetadata).Id)
+#if !SUPPORTS_ASYNC_ENUMERABLE
+                                                            .FirstOrDefault(cancellation);
+#else
+                                                            .FirstOrDefaultAsync(cancellation);
+#endif
 
                     if (!MatchesByRevision(originalMetadata, comparandMetdata))
                     {
@@ -338,14 +343,20 @@ namespace AI4E.Storage.Projection
                 var projectionsPresent = false;
                 IAsyncEnumerator<IProjectionResult> projectionResultsEnumerator = null;
 
-                try
+#if SUPPORTS_ASYNC_ENUMERABLE
+                await foreach(var projectionResult in projectionResults)
+                {
+#else
+                    try
                 {
                     projectionResultsEnumerator = projectionResults.GetEnumerator();
 
                     while (await projectionResultsEnumerator.MoveNext(cancellation))
                     {
-                        projectionsPresent = true;
                         var projectionResult = projectionResultsEnumerator.Current;
+#endif
+                        projectionsPresent = true;
+                        
                         var projection = new ProjectionTargetDescriptor(projectionResult.ResultType,
                                                                         projectionResult.ResultId.ToString());
                         projections.Add(projection);
@@ -356,13 +367,15 @@ namespace AI4E.Storage.Projection
                         //if (!appliedProjections.Remove(projection))
                         //{
                         await UpdateEntityToProjectionAsync(projectionResult, addEntityToProjections, cancellation);
-                        //}
-                        //await _database.StoreAsync(projectionResult.ResultType, projectionResult.Result, cancellation);
+                    //}
+                    //await _database.StoreAsync(projectionResult.ResultType, projectionResult.Result, cancellation);
+#if !SUPPORTS_ASYNC_ENUMERABLE
                     }
                 }
                 finally
                 {
                     projectionResultsEnumerator?.Dispose();
+#endif
                 }
 
                 // We removed all current projections from applied projections. 
@@ -443,7 +456,7 @@ namespace AI4E.Storage.Projection
                 _sourceMetadataCache[_sourceDescriptor] = new ProjectionSourceMetadataCacheEntry(originalMetadata, metadata, touched: true);
             }
 
-            #endregion
+#endregion
 
             private ValueTask<ProjectionSourceMetadataCacheEntry> GetMetadataAsync(bool createIfNonExistent, CancellationToken cancellation)
             {
@@ -457,7 +470,12 @@ namespace AI4E.Storage.Projection
                 if (!_sourceMetadataCache.TryGetValue(sourceDescriptor, out var entry))
                 {
                     var entryId = ProjectionSourceMetadata.GenerateId(sourceDescriptor.SourceId, sourceDescriptor.SourceType.GetUnqualifiedTypeName());
-                    var metadata = await _database.GetAsync<ProjectionSourceMetadata>(p => p.Id == entryId, cancellation).FirstOrDefault(cancellation);
+                    var metadata = await _database.GetAsync<ProjectionSourceMetadata>(p => p.Id == entryId, cancellation)
+#if !SUPPORTS_ASYNC_ENUMERABLE
+                                                            .FirstOrDefault(cancellation);
+#else
+                                                            .FirstOrDefaultAsync(cancellation);
+#endif
 
                     var originalMetadata = metadata;
                     var touched = false;

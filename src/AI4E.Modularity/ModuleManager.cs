@@ -33,8 +33,11 @@ using AI4E.Internal;
 using AI4E.Routing;
 using AI4E.Utils;
 using AI4E.Utils.Memory;
-using AI4E.Utils.Memory.Compatibility;
 using static System.Diagnostics.Debug;
+
+#if !SUPPORTS_SPAN_APIS
+using AI4E.Utils.Memory.Compatibility;
+#endif
 
 namespace AI4E.Modularity
 {
@@ -234,7 +237,7 @@ namespace AI4E.Modularity
             for (var i = 0; i < prefixesCount; i++)
             {
                 var bytes = reader.ReadInt32();
-                var prefix =  Encoding.UTF8.GetString(reader.Read(bytes)).AsMemory();
+                var prefix = Encoding.UTF8.GetString(reader.Read(bytes)).AsMemory();
                 prefixes.Add(prefix);
             }
 
@@ -355,7 +358,7 @@ namespace AI4E.Modularity
             }
         }
 
-        
+
 
         private void WritePrefix(BinaryWriter writer, ReadOnlyMemory<char> prefix)
         {

@@ -187,14 +187,17 @@ namespace AI4E.Coordination
                 var delay = TimeSpan.FromSeconds(2);
                 var sessions = _storage.GetSessionsAsync(cancellation);
 
+#if SUPPORTS_ASYNC_ENUMERABLE
+                await foreach (var session in sessions)
+                {
+#else
                 var enumerator = sessions.GetEnumerator();
-
                 try
                 {
                     while (await enumerator.MoveNext(cancellation))
                     {
                         var session = enumerator.Current;
-
+#endif
                         if (_storedSessionManager.IsEnded(session))
                             return session.Session;
 
@@ -203,11 +206,13 @@ namespace AI4E.Coordination
 
                         if (timeToWait < delay)
                             delay = timeToWait;
+#if !SUPPORTS_ASYNC_ENUMERABLE
                     }
                 }
                 finally
                 {
                     enumerator.Dispose();
+#endif
                 }
 
                 await Task.Delay(delay, cancellation);
