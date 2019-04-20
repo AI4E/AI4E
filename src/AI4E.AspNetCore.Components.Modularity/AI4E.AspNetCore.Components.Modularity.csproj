@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>$(NetStandardVersion)</TargetFramework>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
     <DefineConstants>BLAZOR</DefineConstants>
     <OutputType>Library</OutputType>
     <IsPackable>true</IsPackable>

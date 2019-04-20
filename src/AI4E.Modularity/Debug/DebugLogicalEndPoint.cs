@@ -32,7 +32,11 @@ namespace AI4E.Modularity.Debug
 
             _proxyLazy = new DisposableAsyncLazy<IProxy<LogicalEndPointSkeleton>>(
                 factory: CreateProxyAsync,
-                disposal: p => p.DisposeAsync(),
+#if !SUPPORTS_ASYNC_DISPOSABLE
+                    disposal: p => p.DisposeAsync(),
+#else
+                    disposal: p => p.DisposeAsync().AsTask(), // TODO: This should accept a ValueTask
+#endif
                 options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
         }
 

@@ -136,25 +136,46 @@ namespace AI4E.Coordination
                 _entry = entry;
             }
 
+#if !SUPPORTS_ASYNC_ENUMERABLE
             public IAsyncEnumerator<IEntry> GetEnumerator()
             {
                 return new ChildrenEnumerator(_entry);
             }
+#else
+            public IAsyncEnumerator<IEntry> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+            {
+                return new ChildrenEnumerator(_entry, cancellationToken);
+            }
+#endif
         }
 
         private sealed class ChildrenEnumerator : IAsyncEnumerator<IEntry>
         {
             private readonly IEntry _entry;
+#if SUPPORTS_ASYNC_ENUMERABLE
+            private readonly CancellationToken _cancellation;
+#endif
             private int _currentIndex = -1;
 
-            public ChildrenEnumerator(IEntry entry)
+            public ChildrenEnumerator(IEntry entry
+#if SUPPORTS_ASYNC_ENUMERABLE
+                , CancellationToken cancellation
+#endif
+                )
             {
                 Assert(entry != null);
 
                 _entry = entry;
+#if SUPPORTS_ASYNC_ENUMERABLE
+                _cancellation = cancellation;
+#endif
             }
 
+#if !SUPPORTS_ASYNC_ENUMERABLE
             public async Task<bool> MoveNext(CancellationToken cancellationToken)
+#else
+            public async ValueTask<bool> MoveNextAsync()
+#endif
             {
                 IEntry next;
 
@@ -171,7 +192,12 @@ namespace AI4E.Coordination
 
                     child = _entry.Children[index];
                     var childFullName = _entry.Path.GetChildPath(child);
-                    next = await _entry.CoordinationManager.GetAsync(childFullName, cancellationToken);
+                    next = await _entry.CoordinationManager.GetAsync(childFullName,
+#if !SUPPORTS_ASYNC_ENUMERABLE
+                        cancellationToken);
+#else
+                        _cancellation);
+#endif
                 }
                 while (next == null);
 
@@ -181,7 +207,11 @@ namespace AI4E.Coordination
 
             public IEntry Current { get; private set; } = default;
 
+#if !SUPPORTS_ASYNC_ENUMERABLE
             public void Dispose() { }
+#else
+            public ValueTask DisposeAsync() { return default; }
+#endif
         }
     }
 }

@@ -122,13 +122,17 @@ namespace AI4E.Coordination
             var sessions = _sessionManager.GetSessionsAsync(cancellation);
             var localSession = await _sessionOwner.GetSessionAsync(cancellation);
 
+#if SUPPORTS_ASYNC_ENUMERABLE
+            await foreach(var session in sessions)
+            {
+#else
             var enumerator = sessions.GetEnumerator();
             try
             {
                 while (await enumerator.MoveNext(cancellation))
                 {
                     var session = enumerator.Current;
-
+#endif
                     if (session == localSession)
                     {
                         _lockWaitDirectory.NotifyReadLockRelease(path, session);
@@ -139,11 +143,13 @@ namespace AI4E.Coordination
                     var message = EncodeMessage(MessageType.ReleasedReadLock, path, localSession);
 
                     await SendMessageAsync(session, message, cancellation);
+#if !SUPPORTS_ASYNC_ENUMERABLE
                 }
             }
             finally
             {
                 enumerator.Dispose();
+#endif 
             }
         }
 
@@ -152,13 +158,17 @@ namespace AI4E.Coordination
             var sessions = _sessionManager.GetSessionsAsync(cancellation);
             var localSession = await _sessionOwner.GetSessionAsync(cancellation);
 
+#if SUPPORTS_ASYNC_ENUMERABLE
+            await foreach (var session in sessions)
+            {
+#else
             var enumerator = sessions.GetEnumerator();
             try
             {
                 while (await enumerator.MoveNext(cancellation))
                 {
                     var session = enumerator.Current;
-
+#endif
                     if (session == localSession)
                     {
                         _lockWaitDirectory.NotifyWriteLockRelease(path, session);
@@ -169,11 +179,13 @@ namespace AI4E.Coordination
                     var message = EncodeMessage(MessageType.ReleasedWriteLock, path, localSession);
 
                     await SendMessageAsync(session, message, cancellation);
+#if !SUPPORTS_ASYNC_ENUMERABLE
                 }
             }
             finally
             {
                 enumerator.Dispose();
+#endif
             }
         }
 
@@ -198,7 +210,7 @@ namespace AI4E.Coordination
             _physicalEndPoint.Dispose();
         }
 
-        #endregion
+#endregion
 
         private async Task InvalidateCacheEntryAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {

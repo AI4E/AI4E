@@ -38,7 +38,12 @@ namespace AI4E.Storage.Projection
                 // Write touched target metadata to database
                 foreach (var (originalMetadata, touchedMetadata) in _targetMetadataCache.Values.Where(p => p.Touched))
                 {
-                    var comparandMetdata = await transactionalDatabase.GetAsync<ProjectionTargetMetadata>(p => p.Id == (originalMetadata ?? touchedMetadata).Id).FirstOrDefault();
+                    var comparandMetdata = await transactionalDatabase.GetAsync<ProjectionTargetMetadata>(p => p.Id == (originalMetadata ?? touchedMetadata).Id)
+#if !SUPPORTS_ASYNC_ENUMERABLE
+                                                            .FirstOrDefault(cancellation);
+#else
+                                                            .FirstOrDefaultAsync(cancellation);
+#endif
 
                     if (!MatchesByRevision(originalMetadata, comparandMetdata))
                     {
@@ -141,7 +146,12 @@ namespace AI4E.Storage.Projection
                                                                                                      touched: true);
 
                     var predicate = DataPropertyHelper.BuildPredicate<TProjectionId, TProjection>(metadata.TargetId);
-                    var projection = await _database.GetAsync(predicate, cancellation).FirstOrDefault();
+                    var projection = await _database.GetAsync(predicate, cancellation)
+#if !SUPPORTS_ASYNC_ENUMERABLE
+                                                            .FirstOrDefault(cancellation);
+#else
+                                                            .FirstOrDefaultAsync(cancellation);
+#endif
 
                     if (projection != null)
                     {
@@ -210,7 +220,12 @@ namespace AI4E.Storage.Projection
                 if (!_targetMetadataCache.TryGetValue(target, out var entry))
                 {
                     var entryId = ProjectionTargetMetadata.GenerateId(target.TargetId.ToString(), target.TargetType.GetUnqualifiedTypeName());
-                    var metadata = await _database.GetAsync<ProjectionTargetMetadata>(p => p.Id == entryId, cancellation).FirstOrDefault();
+                    var metadata = await _database.GetAsync<ProjectionTargetMetadata>(p => p.Id == entryId, cancellation)
+#if !SUPPORTS_ASYNC_ENUMERABLE
+                                                            .FirstOrDefault(cancellation);
+#else
+                                                            .FirstOrDefaultAsync(cancellation);
+#endif
                     var originalMetadata = metadata;
                     var touched = false;
 
@@ -238,7 +253,12 @@ namespace AI4E.Storage.Projection
                 if (!_targetMetadataCache.TryGetValue(target, out var entry))
                 {
                     var entryId = ProjectionTargetMetadata.GenerateId(target.TargetId, target.TargetType.GetUnqualifiedTypeName());
-                    var metadata = await _database.GetAsync<ProjectionTargetMetadata>(p => p.Id == entryId, cancellation).FirstOrDefault();
+                    var metadata = await _database.GetAsync<ProjectionTargetMetadata>(p => p.Id == entryId, cancellation)
+#if !SUPPORTS_ASYNC_ENUMERABLE
+                                                            .FirstOrDefault(cancellation);
+#else
+                                                            .FirstOrDefaultAsync(cancellation);
+#endif
 
                     entry = new ProjectionTargetMetadataCacheEntry(metadata, metadata, touched: false);
 

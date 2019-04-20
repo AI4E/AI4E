@@ -372,7 +372,7 @@ namespace AI4E.Storage.MongoDB
            where TEntry : class
         {
             var collection = GetCollectionAsync<TEntry>(cancellation);
-            return new MongoQueryEvaluator<TEntry>(collection, predicate, cancellation);
+            return new MongoQueryEvaluator<TEntry>(collection, predicate);
         }
 
         public async ValueTask<TEntry> GetOneAsync<TEntry>(Expression<Func<TEntry, bool>> predicate,
@@ -409,7 +409,7 @@ namespace AI4E.Storage.MongoDB
                 return (IMongoQueryable<TResult>)queryShaper(collection.AsQueryable());
             }
 
-            var queryEvaluator = new MongoQueryEvaluator<TResult>(GetCursorSourceAsync(), cancellation);
+            var queryEvaluator = new MongoQueryEvaluator<TResult>(GetCursorSourceAsync());
 
             return queryEvaluator;
         }
@@ -593,9 +593,9 @@ namespace AI4E.Storage.MongoDB
             public IAsyncEnumerable<TData> GetAsync<TData>(Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
                 where TData : class
             {
-                async Task<IAsyncCursor<TData>> BuildAsyncCursor()
+                async ValueTask<IAsyncCursor<TData>> BuildAsyncCursor(CancellationToken sequenceCancellation)
                 {
-                    var session = await GetClientSessionHandle(cancellation);
+                    var session = await GetClientSessionHandle(sequenceCancellation);
 
                     if (Interlocked.Exchange(ref _operationInProgress, 1) != 0)
                     {
@@ -611,7 +611,7 @@ namespace AI4E.Storage.MongoDB
                         }
 
                         EnsureTransaction(session);
-                        var collection = await GetCollection<TData>(session, cancellation);
+                        var collection = await GetCollection<TData>(session, sequenceCancellation);
                         if (collection == null)
                         {
                             Assert(_abortTransaction);
@@ -621,11 +621,11 @@ namespace AI4E.Storage.MongoDB
 
                         _logger.LogTrace($"Performing query via mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
 
-                        return await collection.FindAsync<TData>(session, predicate, cancellationToken: cancellation);
+                        return await collection.FindAsync<TData>(session, predicate, cancellationToken: sequenceCancellation);
                     }
                     catch (MongoCommandException exc) when (exc.Code == 251) // No such transaction
                     {
-                        await AbortAsync(session, cancellation);
+                        await AbortAsync(session, sequenceCancellation); // TODO: Default cancellation?
                         return null;
                     }
                     catch
