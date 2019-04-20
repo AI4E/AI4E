@@ -32,4 +32,5 @@ Currently there is no release, so the goal is to build a stable, manufacturing r
 | 2019-04-10 | 0.1.1 | YES |
 | Q2 2019 | 0.2.0 | YES |
 | 2019 | 0.3.0 | YES |
+| 2019 | 0.4.0 | YES |
 | 2019 | 1.0.0 | NO |
