@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -38,7 +38,12 @@ namespace AI4E.Modularity.Host
                                                                   bool includePreReleases,
                                                                   CancellationToken cancellation)
         {
-            var sources = await _entityStorageEngine.GetAllAsync<IModuleSource>(cancellation).ToArray();
+            var sources = await _entityStorageEngine.GetAllAsync<IModuleSource>(cancellation)
+#if !SUPPORTS_ASYNC_ENUMERABLE
+                .ToArray();
+#else
+                .ToArrayAsync();
+#endif
             var result = new Dictionary<ModuleIdentifier, Module>();
 
             foreach (var source in sources)

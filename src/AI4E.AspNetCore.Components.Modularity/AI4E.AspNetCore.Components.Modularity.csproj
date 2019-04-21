@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>$(NetStandardVersion)</TargetFramework>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
     <DefineConstants>BLAZOR</DefineConstants>
     <OutputType>Library</OutputType>
     <IsPackable>true</IsPackable>
@@ -35,7 +35,7 @@
 
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.0.0-preview3.19153.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="3.0.0-preview3-27503-5" />
-    <PackageReference Include="Nito.AsyncEx.Coordination" Version="1.0.2" />
+    <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
     <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
   </ItemGroup>
 

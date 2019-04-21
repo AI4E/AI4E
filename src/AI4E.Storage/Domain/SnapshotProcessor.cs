@@ -1,20 +1,29 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
 using AI4E.Internal;
-using AI4E.Utils.Processing;
 using AI4E.Utils;
+using AI4E.Utils.Processing;
 using JsonDiffPatchDotNet;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 
+#if !SUPPORTS_ASYNC_ENUMERABLE
+using System.Collections.Generic;
+#endif
+
+#if !SUPPORTS_ASYNC_DISPOSABLE
+using AI4E.Utils.Async;
+#endif
+
 namespace AI4E.Storage.Domain
 {
     public sealed class SnapshotProcessor : ISnapshotProcessor, IAsyncDisposable
+#if SUPPORTS_ASYNC_DISPOSABLE
+        , IDisposable
+#endif
     {
         private static JToken StreamRoot => JToken.Parse("{}");
 
@@ -106,10 +115,21 @@ namespace AI4E.Storage.Domain
             }
         }
 
-        public Task DisposeAsync()
+        public
+#if !SUPPORTS_ASYNC_DISPOSABLE
+            Task
+#else
+            ValueTask
+#endif
+            DisposeAsync()
         {
             Dispose();
+
+#if !SUPPORTS_ASYNC_DISPOSABLE
             return Disposal;
+#else
+            return Disposal.AsValueTask();
+#endif
         }
 
         #endregion
@@ -148,6 +168,11 @@ namespace AI4E.Storage.Domain
             {
                 var scopedServiceProvider = scope.ServiceProvider;
                 var entityStorageEngine = scopedServiceProvider.GetRequiredService<IEntityStorageEngine>();
+
+#if SUPPORTS_ASYNC_ENUMERABLE
+                await foreach (var stream in _streamStore.OpenStreamsToSnapshotAsync(snapshotRevisionThreshold, cancellation))
+                {
+#else
                 var enumerator = default(IAsyncEnumerator<IStream>);
                 try
                 {
@@ -156,6 +181,7 @@ namespace AI4E.Storage.Domain
                     while (await enumerator.MoveNext(cancellation))
                     {
                         var stream = enumerator.Current;
+#endif
 
                         if (stream.Snapshot == null && !stream.Commits.Any())
                             continue;
@@ -177,11 +203,14 @@ namespace AI4E.Storage.Domain
                         }
 
                         await stream.AddSnapshotAsync(CompressionHelper.Zip(serializedEntity.ToString()), cancellation);
+
+#if !SUPPORTS_ASYNC_ENUMERABLE
                     }
                 }
                 finally
                 {
                     enumerator?.Dispose();
+#endif
                 }
             }
         }

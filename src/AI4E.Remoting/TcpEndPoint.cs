@@ -37,7 +37,7 @@ using Nito.AsyncEx;
 
 namespace AI4E.Remoting
 {
-    public sealed class TcpEndPoint : IPhysicalEndPoint<IPEndPoint>
+    public sealed class TcpEndPoint : IPhysicalEndPoint<IPEndPoint>, IAsyncDisposable
     {
         private readonly AsyncProcess _connectionProcess;
         private readonly TcpListener _tcpHost;
@@ -70,9 +70,19 @@ namespace AI4E.Remoting
             _disposeHelper.Dispose();
         }
 
-        public Task DisposeAsync()
+        public
+#if !SUPPORTS_ASYNC_DISPOSABLE
+                Task
+#else
+                ValueTask
+#endif
+                DisposeAsync()
         {
+#if !SUPPORTS_ASYNC_DISPOSABLE
+                return _disposeHelper.DisposeAsync();
+#else
             return _disposeHelper.DisposeAsync();
+#endif
         }
 
         private async Task DisposeInternalAsync()
@@ -83,7 +93,11 @@ namespace AI4E.Remoting
 
             foreach (var connection in _physicalConnections.Values.SelectMany(_ => _))
             {
+#if !SUPPORTS_ASYNC_DISPOSABLE
                 disposalTasks.Add(connection.DisposeAsync());
+#else
+                disposalTasks.Add(connection.DisposeAsync().AsTask());
+#endif
             }
 
             await Task.WhenAll(disposalTasks);
@@ -182,6 +196,9 @@ namespace AI4E.Remoting
         }
 
         private sealed class Connection : IAsyncDisposable
+#if SUPPORTS_ASYNC_DISPOSABLE
+            , IDisposable
+#endif
         {
             private readonly TcpEndPoint _endPoint;
             private readonly Stream _stream;
@@ -220,9 +237,19 @@ namespace AI4E.Remoting
                 _disposeHelper.Dispose();
             }
 
-            public Task DisposeAsync()
+            public
+#if !SUPPORTS_ASYNC_DISPOSABLE
+                Task
+#else
+                ValueTask
+#endif
+                DisposeAsync()
             {
+#if !SUPPORTS_ASYNC_DISPOSABLE
                 return _disposeHelper.DisposeAsync();
+#else
+                return _disposeHelper.DisposeAsync();
+#endif
             }
 
             private async Task DisposeInternalAsync()

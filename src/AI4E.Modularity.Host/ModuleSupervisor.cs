@@ -36,6 +36,9 @@ namespace AI4E.Modularity.Host
     //       When the host crashed and is newly swaning now, there are modules running. 
     //       How can we recognize them und use them instead of starting a new process?
     public sealed class ModuleSupervisor : IAsyncDisposable, IModuleSupervisor
+#if SUPPORTS_ASYNC_DISPOSABLE
+        , IDisposable
+#endif
     {
         private readonly IMetadataReader _metadataReader;
         private readonly IRunningModuleManager _runningModuleManager;
@@ -201,14 +204,24 @@ namespace AI4E.Modularity.Host
             _disposeHelper.Dispose();
         }
 
-        public Task DisposeAsync()
+        public
+#if !SUPPORTS_ASYNC_DISPOSABLE
+            Task
+#else
+            ValueTask
+#endif
+            DisposeAsync()
         {
             return _disposeHelper.DisposeAsync();
         }
 
         private async Task DisposeInternalAsync()
         {
+#if !SUPPORTS_ASYNC_DISPOSABLE
             await _metadataLazy.DisposeAsync().HandleExceptionsAsync(_logger);
+#else
+            await _metadataLazy.DisposeAsync().AsTask().HandleExceptionsAsync(_logger); // TODO: HandleExceptionsAsync should accept a ValueTask
+#endif
             await _supervisorProcess.TerminateAsync().HandleExceptionsAsync(_logger);
         }
 
