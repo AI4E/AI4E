@@ -341,13 +341,13 @@ namespace AI4E.Storage.Projection
                 // TODO: Ensure that there are no two projection results with the same type and id. 
                 //       Otherwise bad things happen.
                 var projectionsPresent = false;
-                IAsyncEnumerator<IProjectionResult> projectionResultsEnumerator = null;
 
 #if SUPPORTS_ASYNC_ENUMERABLE
                 await foreach(var projectionResult in projectionResults)
                 {
 #else
-                    try
+                IAsyncEnumerator<IProjectionResult> projectionResultsEnumerator = null;
+                try
                 {
                     projectionResultsEnumerator = projectionResults.GetEnumerator();
 
