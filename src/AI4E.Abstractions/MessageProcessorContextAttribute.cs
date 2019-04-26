@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,25 +18,13 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using Newtonsoft.Json;
+using System;
 
-namespace AI4E.DispatchResults
+namespace AI4E
 {
-    public class ValidationFailureDispatchResult : FailureDispatchResult
-    {
-        public ValidationFailureDispatchResult() : base("Validation failure") { }
-
-        [JsonConstructor]
-        public ValidationFailureDispatchResult(IEnumerable<ValidationResult> validationResults) : this()
-        {
-            if (validationResults == null)
-                throw new System.ArgumentNullException(nameof(validationResults));
-
-            ValidationResults = validationResults.ToImmutableList();
-        }
-
-        public ImmutableList<ValidationResult> ValidationResults { get; }
-    }
+    /// <summary>
+    /// An attribute that identifies a message processor's context property.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+    public sealed class MessageProcessorContextAttribute : Attribute { }
 }

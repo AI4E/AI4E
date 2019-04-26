@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -22,22 +22,9 @@ using System;
 
 namespace AI4E
 {
-    public static class MessageHandlerRegistrationExtension
-    {
-        public static bool IsPublishOnly(this IMessageHandlerRegistration handlerRegistration)
-        {
-            if (handlerRegistration == null)
-                throw new ArgumentNullException(nameof(handlerRegistration));
-
-            return handlerRegistration.Configuration.IsEnabled<PublishOnlyMessageHandlerConfiguration>();
-        }
-
-        public static bool IsLocalDispatchOnly(this IMessageHandlerRegistration handlerRegistration)
-        {
-            if (handlerRegistration == null)
-                throw new ArgumentNullException(nameof(handlerRegistration));
-
-            return handlerRegistration.Configuration.IsEnabled<LocalDispatchOnlyMessageHandlerConfiguration>();
-        }
-    }
+    /// <summary>
+    /// An attribute that identifies a message handler's message-dispatcher property.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+    public class MessageDispatcherAttribute : Attribute { }
 }

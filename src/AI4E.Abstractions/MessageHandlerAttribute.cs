@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,25 +18,33 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using Newtonsoft.Json;
+using System;
 
-namespace AI4E.DispatchResults
+namespace AI4E
 {
-    public class ValidationFailureDispatchResult : FailureDispatchResult
+    /// <summary>
+    /// An attribute that marks the decorated type or member as message handler.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    public class MessageHandlerAttribute : Attribute
     {
-        public ValidationFailureDispatchResult() : base("Validation failure") { }
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessageDispatcherAttribute"/> type.
+        /// </summary>
+        public MessageHandlerAttribute() { }
 
-        [JsonConstructor]
-        public ValidationFailureDispatchResult(IEnumerable<ValidationResult> validationResults) : this()
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessageDispatcherAttribute"/> type.
+        /// </summary>
+        /// <param name="messageType">The type of message handled.</param>
+        public MessageHandlerAttribute(Type messageType)
         {
-            if (validationResults == null)
-                throw new System.ArgumentNullException(nameof(validationResults));
-
-            ValidationResults = validationResults.ToImmutableList();
+            MessageType = messageType;
         }
 
-        public ImmutableList<ValidationResult> ValidationResults { get; }
+        /// <summary>
+        /// Gets the type of message handled.
+        /// </summary>
+        public Type MessageType { get; }
     }
 }

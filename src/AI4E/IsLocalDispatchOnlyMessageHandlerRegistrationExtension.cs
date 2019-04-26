@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,25 +18,24 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using Newtonsoft.Json;
-
-namespace AI4E.DispatchResults
+namespace AI4E
 {
-    public class ValidationFailureDispatchResult : FailureDispatchResult
+    /// <summary>
+    /// Contains extension methods for the <see cref="IMessageHandlerRegistration"/> type.
+    /// </summary>
+    public static class IsLocalDispatchOnlyMessageHandlerRegistrationExtension
     {
-        public ValidationFailureDispatchResult() : base("Validation failure") { }
-
-        [JsonConstructor]
-        public ValidationFailureDispatchResult(IEnumerable<ValidationResult> validationResults) : this()
+        /// <summary>
+        /// Gets a boolean value indicating whether the 'local dispatch only' feature is enabled.
+        /// </summary>
+        /// <param name="handlerRegistration">The message handler registration.</param>
+        /// <returns>
+        /// True if the 'local dispatch only' feature is enabled for <paramref name="handlerRegistration"/>,
+        /// false otherwise.
+        /// </returns>
+        public static bool IsLocalDispatchOnly(this IMessageHandlerRegistration handlerRegistration)
         {
-            if (validationResults == null)
-                throw new System.ArgumentNullException(nameof(validationResults));
-
-            ValidationResults = validationResults.ToImmutableList();
+            return handlerRegistration.Configuration.IsEnabled<LocalDispatchOnlyMessageHandlerConfiguration>();
         }
-
-        public ImmutableList<ValidationResult> ValidationResults { get; }
     }
 }
