@@ -29,10 +29,24 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Manages the intialization of application services.
+    /// </summary>
     public sealed class ApplicationServiceManager
     {
+        /// <summary>
+        /// Gets a list of registered allocation service descriptors.
+        /// </summary>
         public IList<ApplicationServiceDescriptor> ApplicationServiceDescriptors { get; } = new List<ApplicationServiceDescriptor>();
 
+        /// <summary>
+        /// Asychronously initializes all registered application services.
+        /// </summary>
+        /// <param name="serviceProvider">The service provider used to access services.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public Task InitializeApplicationServicesAsync(IServiceProvider serviceProvider, CancellationToken cancellation)
         {
             if (serviceProvider == null)
@@ -68,8 +82,17 @@ namespace AI4E
         }
     }
 
+    /// <summary>
+    /// Describes an application service.
+    /// </summary>
     public sealed class ApplicationServiceDescriptor
     {
+        /// <summary>
+        /// Creates a new instance of the <see cref="ApplicationServiceDescriptor"/> type.
+        /// </summary>
+        /// <param name="serviceType">The type of application service.</param>
+        /// <param name="serviceInitialization">The asynchronous application service initialization.</param>
+        /// <param name="isRequiredService">A boolean value indicating whether the application service is mandatory.</param>
         public ApplicationServiceDescriptor(Type serviceType, Func<object, IServiceProvider, Task> serviceInitialization, bool isRequiredService)
         {
             if (serviceType == null)
@@ -83,13 +106,34 @@ namespace AI4E
             IsRequiredService = isRequiredService;
         }
 
+        /// <summary>
+        /// Gets the type of application service.
+        /// </summary>
         public Type ServiceType { get; }
+
+        /// <summary>
+        /// Gets the asynchronous application service initialization.
+        /// </summary>
         public Func<object, IServiceProvider, Task> ServiceInitialization { get; }
+
+        /// <summary>
+        /// Gets a boolean value indicating whether the application service is mandatory.
+        /// </summary>
         public bool IsRequiredService { get; }
     }
 
+    /// <summary>
+    /// Contains extensions for the <see cref="ApplicationServiceManager"/> type.
+    /// </summary>
     public static class ApplicationServiceManagerExtension
     {
+        /// <summary>
+        /// Adds an application service to the manager.
+        /// </summary>
+        /// <param name="applicationServiceManager">The application service manager.</param>
+        /// <param name="serviceType">The application service type.</param>
+        /// <param name="serviceInitialization">The asynchronous application service initialization. </param>
+        /// <param name="isRequiredService">A boolean value indicating whether the application service is mandatory.</param>
         public static void AddService(this ApplicationServiceManager applicationServiceManager,
                                       Type serviceType,
                                       Func<object, IServiceProvider, Task> serviceInitialization,
@@ -107,6 +151,13 @@ namespace AI4E
             applicationServiceManager.ApplicationServiceDescriptors.Add(new ApplicationServiceDescriptor(serviceType, serviceInitialization, isRequiredService));
         }
 
+        /// <summary>
+        /// Adds an application service to the manager.
+        /// </summary>
+        /// <param name="applicationServiceManager">The application service manager.</param>
+        /// <param name="serviceType">The application service type.</param>
+        /// <param name="serviceInitialization">The asynchronous application service initialization. </param>
+        /// <param name="isRequiredService">A boolean value indicating whether the application service is mandatory.</param>
         public static void AddService(this ApplicationServiceManager applicationServiceManager,
                                       Type serviceType,
                                       Action<object, IServiceProvider> serviceInitialization,
@@ -131,6 +182,12 @@ namespace AI4E
             applicationServiceManager.ApplicationServiceDescriptors.Add(new ApplicationServiceDescriptor(serviceType, ServiceInitialization, isRequiredService));
         }
 
+        /// <summary>
+        /// Adds an application service to the manager.
+        /// </summary>
+        /// <param name="applicationServiceManager">The application service manager.</param>
+        /// <param name="serviceType">The application service type.</param>
+        /// <param name="isRequiredService">A boolean value indicating whether the application service is mandatory.</param>
         public static void AddService(this ApplicationServiceManager applicationServiceManager,
                                       Type serviceType,
                                       bool isRequiredService = true)
@@ -154,6 +211,13 @@ namespace AI4E
             applicationServiceManager.ApplicationServiceDescriptors.Add(new ApplicationServiceDescriptor(serviceType, ServiceInitialization, isRequiredService));
         }
 
+        /// <summary>
+        /// Adds an application service to the manager.
+        /// </summary>
+        /// <typeparam name="TService">The application service type.</typeparam>
+        /// <param name="applicationServiceManager">The application service manager.</param>
+        /// <param name="serviceInitialization">The asynchronous application service initialization. </param>
+        /// <param name="isRequiredService">A boolean value indicating whether the application service is mandatory.</param>
         public static void AddService<TService>(this ApplicationServiceManager applicationServiceManager,
                                                 Func<TService, IServiceProvider, Task> serviceInitialization,
                                                 bool isRequiredService = true)
@@ -172,6 +236,14 @@ namespace AI4E
             applicationServiceManager.ApplicationServiceDescriptors.Add(new ApplicationServiceDescriptor(typeof(TService), ServiceInitialization, isRequiredService));
         }
 
+
+        /// <summary>
+        /// Adds an application service to the manager.
+        /// </summary>
+        /// <typeparam name="TService">The application service type.</typeparam>
+        /// <param name="applicationServiceManager">The application service manager.</param>
+        /// <param name="serviceInitialization">The synchronous application service initialization. </param>
+        /// <param name="isRequiredService">A boolean value indicating whether the application service is mandatory.</param>
         public static void AddService<TService>(this ApplicationServiceManager applicationServiceManager,
                                                 Action<TService, IServiceProvider> serviceInitialization,
                                                 bool isRequiredService = true)
@@ -191,6 +263,12 @@ namespace AI4E
             applicationServiceManager.ApplicationServiceDescriptors.Add(new ApplicationServiceDescriptor(typeof(TService), ServiceInitialization, isRequiredService));
         }
 
+        /// <summary>
+        /// Adds an application service to the manager.
+        /// </summary>
+        /// <typeparam name="TService">The application service type.</typeparam>
+        /// <param name="applicationServiceManager">The application service manager.</param>
+        /// <param name="isRequiredService">A boolean value indicating whether the application service is mandatory.</param>
         public static void AddService<TService>(this ApplicationServiceManager applicationServiceManager,
                                                 bool isRequiredService = true)
         {
@@ -199,7 +277,7 @@ namespace AI4E
 
             Task ServiceInitialization(object service, IServiceProvider serviceProvider)
             {
-                var s = ((TService)service);
+                var s = (TService)service;
 
                 if (s is IAsyncInitialization asyncInitialization)
                 {
