@@ -18,25 +18,41 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using Newtonsoft.Json;
 
 namespace AI4E.DispatchResults
 {
+    /// <summary>
+    /// Describes the result of a message dispatch operation thats validation failed.
+    /// </summary>
     public class ValidationFailureDispatchResult : FailureDispatchResult
     {
+        /// <summary>
+        /// Creates a new instance of the <see cref="ValidationFailureDispatchResult"/> type.
+        /// </summary>
         public ValidationFailureDispatchResult() : base("Validation failure") { }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="ValidationFailureDispatchResult"/> type.
+        /// </summary>
+        /// <param name="validationResults">
+        /// An enumerable of <see cref="ValidationResult"/>s that describe the failed validation.
+        /// </param>
         [JsonConstructor]
         public ValidationFailureDispatchResult(IEnumerable<ValidationResult> validationResults) : this()
         {
             if (validationResults == null)
-                throw new System.ArgumentNullException(nameof(validationResults));
+                throw new ArgumentNullException(nameof(validationResults));
 
             ValidationResults = validationResults.ToImmutableList();
         }
 
+        /// <summary>
+        /// Gets an enumerable of <see cref="ValidationResult"/>s that describe the failed validation.
+        /// </summary>
         public ImmutableList<ValidationResult> ValidationResults { get; }
     }
 }

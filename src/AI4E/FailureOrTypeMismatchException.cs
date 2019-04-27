@@ -23,7 +23,8 @@ using System.Runtime.Serialization;
 
 namespace AI4E
 {
-    public class FailureOrTypeMismatchException : Exception
+    // TODO: Remove me
+    internal class FailureOrTypeMismatchException : Exception
     {
         public FailureOrTypeMismatchException()
         {

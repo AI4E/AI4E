@@ -25,13 +25,20 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
+    /// <summary>
+    /// Contains extensions for the <see cref="IServiceCollection"/> type.
+    /// </summary>
     public static class ApplicationServiceManagerServiceCollectionExtension
     {
-        public static void ConfigureApplicationServices(this IServiceCollection services, Action<ApplicationServiceManager> configuration)
+        /// <summary>
+        /// Configures the application service manager.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configuration">The application service manager configuration.</param>
+        /// <returns>The service collection.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="configuration"/> is <c>null</c>.</exception>
+        public static IServiceCollection ConfigureApplicationServices(this IServiceCollection services, Action<ApplicationServiceManager> configuration)
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
@@ -44,6 +51,8 @@ namespace Microsoft.Extensions.DependencyInjection
 
             configuration(serviceManager);
             services.TryAddSingleton(serviceManager);
+
+            return services;
         }
     }
 }
