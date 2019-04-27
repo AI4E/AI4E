@@ -25,8 +25,16 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
+    /// <summary>
+    /// Contains extensions methods for the <see cref="IServiceCollection"/> enabling adding the messaging services.
+    /// </summary>
     public static class MessagingServiceCollectionExtension
     {
+        /// <summary>
+        /// Adds the messaging service to the service collection.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
         public static IMessagingBuilder AddMessaging(this IServiceCollection services)
         {
             services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
@@ -38,6 +46,13 @@ namespace Microsoft.Extensions.DependencyInjection
             return builder;
         }
 
+        /// <summary>
+        /// Adds the messaging service to the service collection.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configuration">Configures the messaging options.</param>
+        /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="configuration"/> is null.</exception>
         public static IMessagingBuilder AddMessaging(this IServiceCollection services, Action<MessagingOptions> configuration)
         {
             var builder = services.AddMessaging();

@@ -18,31 +18,26 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
+// TODO: Move to routing project https://github.com/AI4E/AI4E/issues/166
 
 namespace AI4E
 {
     /// <summary>
-    /// Represents the registration of a message processor.
+    /// Contains extension methods for the <see cref="IMessageHandlerRegistration"/> type.
     /// </summary>
-    public interface IMessageProcessorRegistration
+    public static class IsPublishOnlyMessageHandlerRegistrationExtension
     {
         /// <summary>
-        /// Creates an instance of the registered message processor within the scope of the specified service provider.
+        /// Gets a boolean value indicating whether the 'publish only' feature is enabled.
         /// </summary>
-        /// <param name="serviceProvider">The <see cref="IServiceProvider"/> that is used to obtain processor specific services.</param>
-        /// <returns>The created <see cref="IMessageProcessor"/>.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
-        IMessageProcessor CreateMessageProcessor(IServiceProvider serviceProvider);
-
-        /// <summary>
-        /// Gets the message processor type.
-        /// </summary>
-        Type MessageProcessorType { get; }
-
-        /// <summary>
-        /// Gets the message processor dependency descriptor.
-        /// </summary>
-        MessageProcessorDependency Dependency { get; }
+        /// <param name="handlerRegistration">The message handler registration.</param>
+        /// <returns>
+        /// True if the 'publish only' feature is enabled for <paramref name="handlerRegistration"/>,
+        /// false otherwise.
+        /// </returns>
+        public static bool IsPublishOnly(this IMessageHandlerRegistration handlerRegistration)
+        {
+            return handlerRegistration.Configuration.IsEnabled<PublishOnlyMessageHandlerConfiguration>();
+        }
     }
 }

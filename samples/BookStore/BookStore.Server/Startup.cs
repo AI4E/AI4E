@@ -5,7 +5,6 @@ using AI4E.Storage;
 using AI4E.Storage.Domain;
 using AI4E.Storage.MongoDB;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

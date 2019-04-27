@@ -19,25 +19,27 @@
  */
 
 using System;
+using System.Runtime.Serialization;
 
 namespace AI4E
 {
-    public static class MessageHandlerRegistrationExtension
+    // TODO: Remove me
+    internal class FailureOrTypeMismatchException : Exception
     {
-        public static bool IsPublishOnly(this IMessageHandlerRegistration handlerRegistration)
+        public FailureOrTypeMismatchException()
         {
-            if (handlerRegistration == null)
-                throw new ArgumentNullException(nameof(handlerRegistration));
-
-            return handlerRegistration.Configuration.IsEnabled<PublishOnlyMessageHandlerConfiguration>();
         }
 
-        public static bool IsLocalDispatchOnly(this IMessageHandlerRegistration handlerRegistration)
+        public FailureOrTypeMismatchException(string message) : base(message)
         {
-            if (handlerRegistration == null)
-                throw new ArgumentNullException(nameof(handlerRegistration));
+        }
 
-            return handlerRegistration.Configuration.IsEnabled<LocalDispatchOnlyMessageHandlerConfiguration>();
+        public FailureOrTypeMismatchException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+
+        protected FailureOrTypeMismatchException(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
         }
     }
 }

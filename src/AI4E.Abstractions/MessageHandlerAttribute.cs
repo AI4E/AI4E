@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -23,26 +23,28 @@ using System;
 namespace AI4E
 {
     /// <summary>
-    /// Represents the registration of a message processor.
+    /// An attribute that marks the decorated type or member as message handler.
     /// </summary>
-    public interface IMessageProcessorRegistration
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    public class MessageHandlerAttribute : Attribute
     {
         /// <summary>
-        /// Creates an instance of the registered message processor within the scope of the specified service provider.
+        /// Creates a new instance of the <see cref="MessageDispatcherAttribute"/> type.
         /// </summary>
-        /// <param name="serviceProvider">The <see cref="IServiceProvider"/> that is used to obtain processor specific services.</param>
-        /// <returns>The created <see cref="IMessageProcessor"/>.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
-        IMessageProcessor CreateMessageProcessor(IServiceProvider serviceProvider);
+        public MessageHandlerAttribute() { }
 
         /// <summary>
-        /// Gets the message processor type.
+        /// Creates a new instance of the <see cref="MessageDispatcherAttribute"/> type.
         /// </summary>
-        Type MessageProcessorType { get; }
+        /// <param name="messageType">The type of message handled.</param>
+        public MessageHandlerAttribute(Type messageType)
+        {
+            MessageType = messageType;
+        }
 
         /// <summary>
-        /// Gets the message processor dependency descriptor.
+        /// Gets the type of message handled.
         /// </summary>
-        MessageProcessorDependency Dependency { get; }
+        public Type MessageType { get; }
     }
 }

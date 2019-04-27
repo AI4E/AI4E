@@ -24,8 +24,16 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
+    /// <summary>
+    /// Contains extensions for the <see cref="IServiceCollection"/> type.
+    /// </summary>
     public static class DateTimeProviderServiceCollectionExtension
     {
+        /// <summary>
+        /// Adds the default implementation of the <see cref="IDateTimeProvider"/> type to the service collection.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <returns>A <see cref="IServiceCollection"/> that can be used to add services.</returns>
         public static IServiceCollection AddDateTimeProvider(this IServiceCollection services)
         {
             if (services == null)

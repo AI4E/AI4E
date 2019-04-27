@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -23,26 +23,8 @@ using System;
 namespace AI4E
 {
     /// <summary>
-    /// Represents the registration of a message processor.
+    /// An attribute that marks the decored type or member as not beeing a message handler.
     /// </summary>
-    public interface IMessageProcessorRegistration
-    {
-        /// <summary>
-        /// Creates an instance of the registered message processor within the scope of the specified service provider.
-        /// </summary>
-        /// <param name="serviceProvider">The <see cref="IServiceProvider"/> that is used to obtain processor specific services.</param>
-        /// <returns>The created <see cref="IMessageProcessor"/>.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
-        IMessageProcessor CreateMessageProcessor(IServiceProvider serviceProvider);
-
-        /// <summary>
-        /// Gets the message processor type.
-        /// </summary>
-        Type MessageProcessorType { get; }
-
-        /// <summary>
-        /// Gets the message processor dependency descriptor.
-        /// </summary>
-        MessageProcessorDependency Dependency { get; }
-    }
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    public sealed class NoMessageHandlerAttribute : Attribute { }
 }

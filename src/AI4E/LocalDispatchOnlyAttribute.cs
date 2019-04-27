@@ -18,6 +18,9 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+// TODO: Move to routing project https://github.com/AI4E/AI4E/issues/166
+#pragma warning disable CS1591
+
 using System;
 
 namespace AI4E

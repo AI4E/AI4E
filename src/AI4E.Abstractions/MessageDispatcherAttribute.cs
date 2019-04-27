@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -19,26 +19,12 @@
  */
 
 using System;
-using System.Runtime.Serialization;
 
 namespace AI4E
 {
-    public class FailureOrTypeMismatchException : Exception
-    {
-        public FailureOrTypeMismatchException()
-        {
-        }
-
-        public FailureOrTypeMismatchException(string message) : base(message)
-        {
-        }
-
-        public FailureOrTypeMismatchException(string message, Exception innerException) : base(message, innerException)
-        {
-        }
-
-        protected FailureOrTypeMismatchException(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
-        }
-    }
+    /// <summary>
+    /// An attribute that identifies a message handler's message-dispatcher property.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+    public class MessageDispatcherAttribute : Attribute { }
 }
