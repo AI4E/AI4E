@@ -1,14 +1,3 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        RemoteMessageDispatcher.cs 
- * Types:           (1) AI4E.Routing.RemoteMessageDispatcher
- *                  (2) AI4E.Routing.RemoteMessageDispatcher.SerializationBinder
- *                  (3) AI4E.Routing.RemoteMessageDispatcher.SerializedMessageHandler
- * Version:         1.0
- * Author:          Andreas Trütschel
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -55,10 +44,8 @@ namespace AI4E.Routing
         #region Fields
 
         private readonly IMessageRouterFactory _messageRouterFactory;
-        private readonly ITypeConversion _typeConversion;
         private readonly ILogger<RemoteMessageDispatcher> _logger;
         private readonly IList<IRoutesResolver> _routesResolver;
-
         private readonly MessageDispatcher _localMessageDispatcher;
         private readonly IMessageRouter _messageRouter;
 
@@ -70,7 +57,6 @@ namespace AI4E.Routing
 
         public RemoteMessageDispatcher(IMessageHandlerRegistry messageHandlerRegistry,
                                        IMessageRouterFactory messageRouterFactory,
-                                       ITypeConversion typeConversion,
                                        IServiceProvider serviceProvider,
                                        IOptions<RemoteMessagingOptions> optionsAccessor,
                                        ILogger<RemoteMessageDispatcher> logger)
@@ -81,9 +67,6 @@ namespace AI4E.Routing
             if (messageRouterFactory == null)
                 throw new ArgumentNullException(nameof(messageRouterFactory));
 
-            if (typeConversion == null)
-                throw new ArgumentNullException(nameof(typeConversion));
-
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
@@ -91,7 +74,6 @@ namespace AI4E.Routing
                 throw new ArgumentNullException(nameof(optionsAccessor));
 
             _messageRouterFactory = messageRouterFactory;
-            _typeConversion = typeConversion;
             _logger = logger;
             _routesResolver = optionsAccessor.Value?.RoutesResolvers ?? new IRoutesResolver[0];
 
@@ -244,14 +226,12 @@ namespace AI4E.Routing
         private sealed class SerializedMessageHandler : ISerializedMessageHandler
         {
             private readonly RemoteMessageDispatcher _remoteMessageDispatcher;
-            private readonly ITypeConversion _typeConversion;
 
             public SerializedMessageHandler(RemoteMessageDispatcher remoteMessageDispatcher)
             {
                 Assert(remoteMessageDispatcher != null);
 
                 _remoteMessageDispatcher = remoteMessageDispatcher;
-                _typeConversion = _remoteMessageDispatcher._typeConversion;
             }
 
             public async ValueTask<(IMessage response, bool handled)> HandleAsync(
@@ -267,7 +247,7 @@ namespace AI4E.Routing
                 if (request == null)
                     throw new ArgumentNullException(nameof(request));
 
-                var messageType = _typeConversion.DeserializeType(route.ToString());
+                var messageType = TypeLoadHelper.LoadTypeFromUnqualifiedName(route.ToString());
 
                 Assert(messageType != null);
 
@@ -411,7 +391,7 @@ namespace AI4E.Routing
             }
             else
             {
-                var route = new Route(_typeConversion.SerializeType(dispatchData.MessageType));
+                var route = new Route(dispatchData.MessageType.GetUnqualifiedTypeName());
                 var serializedMessage = new Message();
 
                 SerializeDispatchData(serializedMessage, dispatchData);

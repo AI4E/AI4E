@@ -73,7 +73,6 @@ namespace AI4E.Routing.SignalR.Client
             serviceCollection.AddDateTimeProvider();
             serviceCollection.AddSingleton(p => p.GetRequiredService<IMessageDispatcher>() as IRemoteMessageDispatcher);
             serviceCollection.AddMessaging().UseDispatcher<RemoteMessageDispatcher>();
-            serviceCollection.AddSingleton<ITypeConversion, TypeSerializer>();
 
             serviceCollection.AddSingleton<IClientEndPoint, ClientEndPoint>();
             serviceCollection.AddSingleton<IRequestReplyClientEndPoint, RequestReplyClientEndPoint>();
