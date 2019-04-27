@@ -44,14 +44,14 @@ namespace AI4E.Remoting
         private readonly TcpListener _tcpHost;
         private readonly ConcurrentDictionary<IPEndPoint, ImmutableList<Connection>> _physicalConnections;
         private readonly ILogger<TcpEndPoint> _logger;
-        private readonly AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)> _rxQueue;
+        private readonly AsyncProducerConsumerQueue<Transmission<IPEndPoint>> _rxQueue;
         private readonly AsyncDisposeHelper _disposeHelper;
 
         public TcpEndPoint(ILogger<TcpEndPoint> logger)
         {
             _logger = logger;
             _physicalConnections = new ConcurrentDictionary<IPEndPoint, ImmutableList<Connection>>();
-            _rxQueue = new AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)>();
+            _rxQueue = new AsyncProducerConsumerQueue<Transmission<IPEndPoint>>();
 
             _tcpHost = new TcpListener(new IPEndPoint(IPAddress.Loopback, 0));
             _tcpHost.Start();
@@ -145,7 +145,7 @@ namespace AI4E.Remoting
             _physicalConnections.AddOrUpdate(remoteAddress, ImmutableList<Connection>.Empty.Add(connection), (_, current) => current.Add(connection));
         }
 
-        public async Task<(IMessage message, IPEndPoint remoteAddress)> ReceiveAsync(CancellationToken cancellation)
+        public async Task<Transmission<IPEndPoint>> ReceiveAsync(CancellationToken cancellation)
         {
             try
             {
@@ -160,15 +160,18 @@ namespace AI4E.Remoting
             }
         }
 
-        public async Task SendAsync(IMessage message, IPEndPoint remoteAddress, CancellationToken cancellation)
+        public async Task SendAsync(Transmission<IPEndPoint> transmission, CancellationToken cancellation)
         {
+            if (transmission.Equals(default)) // TODO: Use ==
+                throw new ArgumentDefaultException(nameof(transmission));
+
             try
             {
                 using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
                 {
-                    var connection = await GetConnectionAsync(remoteAddress, guard.Cancellation);
+                    var connection = await GetConnectionAsync(transmission.RemoteAddress, guard.Cancellation);
                     Debug.Assert(connection != null);
-                    await connection.SendAsync(message, guard.Cancellation);
+                    await connection.SendAsync(transmission.Message, guard.Cancellation);
                 }
             }
             catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
@@ -271,7 +274,7 @@ namespace AI4E.Remoting
                     {
                         var message = await ReceiveAsync(cancellation);
 
-                        _endPoint._rxQueue.EnqueueAsync((message, RemoteAddress), cancellation).HandleExceptions();
+                        _endPoint._rxQueue.EnqueueAsync(new Transmission<IPEndPoint>(message, RemoteAddress), cancellation).HandleExceptions();
                     }
                     catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
                     catch (Exception exc)

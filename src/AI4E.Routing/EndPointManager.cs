@@ -365,7 +365,7 @@ namespace AI4E.Routing
             private Task SendEncodedMessageInternalAsync(IMessage encodedMessage, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
             {
                 var physicalEndPoint = _endPointManager.GetMultiplexPhysicalEndPoint(remoteEndPoint);
-                return physicalEndPoint.SendAsync(encodedMessage, remoteAddress, cancellation);
+                return physicalEndPoint.SendAsync(new Transmission<TAddress>(encodedMessage, remoteAddress), cancellation);
             }
 
             private Task RequestCancellationAsync(int corr, EndPointAddress remoteEndPoint, TAddress remoteAddress)
@@ -385,9 +385,9 @@ namespace AI4E.Routing
                     try
                     {
                         // Receive a single message
-                        var (message, remoteAddress) = await _physicalEndPoint.ReceiveAsync(cancellation);
+                        var transmission = await _physicalEndPoint.ReceiveAsync(cancellation);
 
-                        Task.Run(() => HandleMessageAsync(message, remoteAddress, cancellation)).HandleExceptions(_logger);
+                        Task.Run(() => HandleMessageAsync(transmission.Message, transmission.RemoteAddress, cancellation)).HandleExceptions(_logger);
                     }
                     catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                     catch (Exception exc)

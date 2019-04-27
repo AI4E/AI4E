@@ -58,7 +58,7 @@ namespace AI4E.Remoting
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly UdpClient _udpClient;
 
-        private readonly AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)> _rxQueue;
+        private readonly AsyncProducerConsumerQueue<Transmission<IPEndPoint>> _rxQueue;
         private readonly AsyncManualResetEvent _event = new AsyncManualResetEvent(set: false);
 
         private readonly AsyncProcess _receiveProcess;
@@ -79,7 +79,7 @@ namespace AI4E.Remoting
 
             _logger = logger;
             _dateTimeProvider = dateTimeProvider;
-            _rxQueue = new AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)>();
+            _rxQueue = new AsyncProducerConsumerQueue<Transmission<IPEndPoint>>();
 
             var localAddress = GetLocalAddress();
 
@@ -125,22 +125,19 @@ namespace AI4E.Remoting
 
         #endregion
 
-        public async Task SendAsync(IMessage message, IPEndPoint remoteAddress, CancellationToken cancellation)
+        public async Task SendAsync(Transmission<IPEndPoint> transmission, CancellationToken cancellation)
         {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
+            if (transmission.Equals(default)) // TODO: Use ==
+                throw new ArgumentDefaultException(nameof(transmission));
 
-            if (remoteAddress == null)
-                throw new ArgumentNullException(nameof(remoteAddress));
-
-            if (remoteAddress.Equals(LocalAddress))
+            if (transmission.RemoteAddress.Equals(LocalAddress))
             {
-                await _rxQueue.EnqueueAsync((message, LocalAddress), cancellation);
+                await _rxQueue.EnqueueAsync(new Transmission<IPEndPoint>(transmission.Message, LocalAddress), cancellation);
                 _event.Set();
                 return;
             }
 
-            var blocks = await Block.GetBlocksAsync(message, cancellation);
+            var blocks = await Block.GetBlocksAsync(transmission.Message, cancellation);
             var seqNum = Interlocked.Increment(ref _seqNum);
 
             for (var i = 0; i < blocks.Count; i++)
@@ -155,9 +152,9 @@ namespace AI4E.Remoting
 
                     blocks[i].Payload.CopyTo(buffer.AsMemory().Slice(12));
 
-                    Console.WriteLine($"UDP EndPoint: Transmit block #{ i } of { blocks.Count} to {remoteAddress.ToString()} with seq-num {seqNum}.");
+                    Console.WriteLine($"UDP EndPoint: Transmit block #{ i } of { blocks.Count} to {transmission.RemoteAddress.ToString()} with seq-num {seqNum}.");
 
-                    await _udpClient.SendAsync(buffer, blocks[i].Payload.Length + 12, remoteAddress).WithCancellation(cancellation);
+                    await _udpClient.SendAsync(buffer, blocks[i].Payload.Length + 12, transmission.RemoteAddress).WithCancellation(cancellation);
                 }
                 finally
                 {
@@ -166,7 +163,7 @@ namespace AI4E.Remoting
             }
         }
 
-        public Task<(IMessage message, IPEndPoint remoteAddress)> ReceiveAsync(CancellationToken cancellation)
+        public Task<Transmission<IPEndPoint>> ReceiveAsync(CancellationToken cancellation)
         {
             return _rxQueue.DequeueAsync(cancellation);
         }
@@ -318,7 +315,7 @@ namespace AI4E.Remoting
                 await message.ReadAsync(memoryStream, cancellation);
             }
 
-            await _rxQueue.EnqueueAsync((message, remoteEndPoint), cancellation);
+            await _rxQueue.EnqueueAsync(new Transmission<IPEndPoint>(message, remoteEndPoint), cancellation);
         }
 
         public IPEndPoint LocalAddress { get; }
