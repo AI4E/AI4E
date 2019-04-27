@@ -73,6 +73,22 @@ namespace AI4E.Remoting
 
         #endregion
 
+        #region AddressConversion
+
+        /// <inheritdoc />
+        public string AddressToString(TAddress address)
+        {
+            return _physicalEndPoint.AddressToString(address);
+        }
+
+        /// <inheritdoc />
+        public TAddress AddressFromString(string str)
+        {
+            return _physicalEndPoint.AddressFromString(str);
+        }
+
+        #endregion
+
         /// <summary>
         /// Gets the physical address of the underlying local physical end point.
         /// </summary>
@@ -229,6 +245,22 @@ namespace AI4E.Remoting
 
                 _rxQueue = _multiplexer.GetRxQueue(MultiplexName);
             }
+
+            #region AddressConversion
+
+            /// <inheritdoc />
+            public string AddressToString(TAddress address)
+            {
+                return _multiplexer.AddressToString(address);
+            }
+
+            /// <inheritdoc />
+            public TAddress AddressFromString(string str)
+            {
+                return _multiplexer.AddressFromString(str);
+            }
+
+            #endregion
 
             public TAddress LocalAddress => _multiplexer.LocalAddress;
 

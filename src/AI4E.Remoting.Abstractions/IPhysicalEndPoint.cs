@@ -31,7 +31,7 @@ namespace AI4E.Remoting
     /// <remarks>
     /// The physical end-point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
     /// </remarks>
-    public interface IPhysicalEndPoint<TAddress> : IDisposable
+    public interface IPhysicalEndPoint<TAddress> : IAddressConverter<TAddress>, IDisposable
     {
         /// <summary>
         /// Gets the physical address of the local physical end point.
@@ -60,5 +60,22 @@ namespace AI4E.Remoting
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="remoteAddress"/> is the default value of type <typeparamref name="TAddress"/>.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
         Task SendAsync(IMessage message, TAddress remoteAddress, CancellationToken cancellation = default); // TODO: Return ValueTask
+    }
+
+    public interface IAddressConverter<TAddress>
+    {
+        /// <summary>
+        /// Returns a string representation of the specified address.
+        /// </summary>
+        /// <param name="address">The address.</param>
+        /// <returns>The string representation of <paramref name="address"/>.</returns>
+        string AddressToString(TAddress address);
+
+        /// <summary>
+        /// Returns the address that is represented by the specified string.
+        /// </summary>
+        /// <param name="str">The string representing the address.</param>
+        /// <returns>The address that is represented by <paramref name="str"/>.</returns>
+        TAddress AddressFromString(string str);
     }
 }

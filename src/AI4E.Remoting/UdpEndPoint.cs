@@ -32,6 +32,7 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Internal;
 using AI4E.Utils;
 using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
@@ -107,6 +108,22 @@ namespace AI4E.Remoting
             _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
             _blockGCProcess = new AsyncProcess(BlockGCProcess, start: true);
         }
+
+        #region AddressConversion
+
+        /// <inheritdoc />
+        public string AddressToString(IPEndPoint address)
+        {
+            return IPEndPointConverter.AddressToString(address);
+        }
+
+        /// <inheritdoc />
+        public IPEndPoint AddressFromString(string str)
+        {
+            return IPEndPointConverter.AddressFromString(str);
+        }
+
+        #endregion
 
         public async Task SendAsync(IMessage message, IPEndPoint remoteAddress, CancellationToken cancellation)
         {

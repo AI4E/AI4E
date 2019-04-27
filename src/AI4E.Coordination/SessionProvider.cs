@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Text;
 using System.Threading;
 using AI4E.Remoting;
 
@@ -7,13 +8,12 @@ namespace AI4E.Coordination
     public sealed class SessionProvider<TAddress> : ISessionProvider
     {
         private readonly TAddress _address;
+        private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly IAddressConversion<TAddress> _addressConversion;
         private int _counter = 0;
 
         public SessionProvider(IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
-                               IDateTimeProvider dateTimeProvider,
-                               IAddressConversion<TAddress> addressConversion)
+                               IDateTimeProvider dateTimeProvider)
         {
             if (endPointMultiplexer == null)
                 throw new ArgumentNullException(nameof(endPointMultiplexer));
@@ -21,16 +21,13 @@ namespace AI4E.Coordination
             if (dateTimeProvider == null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
 
-            if (addressConversion == null)
-                throw new ArgumentNullException(nameof(addressConversion));
-
             _address = endPointMultiplexer.LocalAddress;
 
             if (_address.Equals(default(TAddress)))
                 throw new ArgumentException($"The end-points physical address must not be the default value of '{typeof(TAddress)}'.", nameof(endPointMultiplexer));
 
+            _endPointMultiplexer = endPointMultiplexer;
             _dateTimeProvider = dateTimeProvider;
-            _addressConversion = addressConversion;
         }
 
         public Session GetSession()
@@ -39,7 +36,7 @@ namespace AI4E.Coordination
             var ticks = _dateTimeProvider.GetCurrentTime().Ticks + count;
 
             var prefix = BitConverter.GetBytes(ticks);
-            var serializedAddress = _addressConversion.SerializeAddress(_address);
+            var serializedAddress = Encoding.UTF8.GetBytes(_endPointMultiplexer.AddressToString(_address)); // TODO: This allocates
 
             return new Session(prefix, serializedAddress);
         }

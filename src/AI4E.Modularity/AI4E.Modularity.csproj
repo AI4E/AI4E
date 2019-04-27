@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <Compile Include="..\Common\IdGenerator.cs" Link="Internal\IdGenerator.cs" />
+    <Compile Include="..\Common\IPEndPointConverter.cs" Link="Internal\IPEndPointConverter.cs" />
   </ItemGroup>
 
   <ItemGroup>

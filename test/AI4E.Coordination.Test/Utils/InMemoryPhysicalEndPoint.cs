@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Remoting;
@@ -28,46 +28,15 @@ namespace AI4E.Coordination.Utils
             return _rxQueue.EnqueueAsync(message, cancellation);
         }
 
-        public void Dispose() { }
-    }
-
-    public sealed class InMemoryPhysicalAddress
-    {
-        private InMemoryPhysicalAddress() { }
-
-        public static InMemoryPhysicalAddress Instance { get; } = new InMemoryPhysicalAddress();
-    }
-
-    public sealed class InMemoryPhysicalAddressConversion : IAddressConversion<InMemoryPhysicalAddress>
-    {
-        public byte[] SerializeAddress(InMemoryPhysicalAddress route)
+        public string AddressToString(InMemoryPhysicalAddress address)
         {
-            if (route == null)
-                return null;
-
-            return new byte[] { 123 };
-        }
-
-        public InMemoryPhysicalAddress DeserializeAddress(byte[] buffer)
-        {
-            if (buffer == null)
-                return null;
-
-            if (buffer.Length != 1 || buffer[0] != 123)
-                throw new ArgumentException();
-
-            return InMemoryPhysicalAddress.Instance;
-        }
-
-        public string ToString(InMemoryPhysicalAddress route)
-        {
-            if (route == null)
+            if (address == null)
                 return null;
 
             return "x";
         }
 
-        public InMemoryPhysicalAddress Parse(string str)
+        public InMemoryPhysicalAddress AddressFromString(string str)
         {
             if (str == null)
                 return null;
@@ -77,5 +46,14 @@ namespace AI4E.Coordination.Utils
 
             return InMemoryPhysicalAddress.Instance;
         }
+
+        public void Dispose() { }
+    }
+
+    public sealed class InMemoryPhysicalAddress
+    {
+        private InMemoryPhysicalAddress() { }
+
+        public static InMemoryPhysicalAddress Instance { get; } = new InMemoryPhysicalAddress();
     }
 }

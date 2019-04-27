@@ -41,13 +41,11 @@ namespace AI4E.Remoting
         public static void AddUdpEndPoint(this IServiceCollection services)
         {
             services.AddPhysicalEndPoint<IPEndPoint, UdpEndPoint>();
-            services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
         }
 
         public static void AddTcpEndPoint(this IServiceCollection services)
         {
             services.AddPhysicalEndPoint<IPEndPoint, TcpEndPoint>();
-            services.AddSingleton<IAddressConversion<IPEndPoint>, IPEndPointSerializer>();
         }
     }
 
