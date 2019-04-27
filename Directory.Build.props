@@ -4,8 +4,8 @@
     <Product>$(ProjectName)</Product>
     <Copyright>Copyright (c) Andreas Trütschel and contributors.</Copyright>
     <PackageLicenseExpression>LGPL-3.0-or-later</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/AI4E/AI4E.Utils</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/AI4E/AI4E.Utils</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/AI4E/AI4E</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/AI4E/AI4E</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
