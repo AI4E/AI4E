@@ -49,7 +49,7 @@ namespace AI4E.Remoting
         /// When evaluated, the tasks result contains the received message and the address of the remote physical end-point.
         /// </returns>
         /// <exception cref="OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
-        Task<Transmission<TAddress>> ReceiveAsync(CancellationToken cancellation = default); // TODO: Return ValueTask<(IMessage message, TAddress remoteAddress)>
+        ValueTask<Transmission<TAddress>> ReceiveAsync(CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously send a message to the remote physical end-point with the specified address.
@@ -61,7 +61,7 @@ namespace AI4E.Remoting
         /// <returns>A task representing the asynchronous operation.</returns>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="transmission"/> is <c>default</c>.</exception>
         /// <exception cref="OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
-        Task SendAsync(Transmission<TAddress> transmission, CancellationToken cancellation = default); // TODO: Return ValueTask
+        ValueTask SendAsync(Transmission<TAddress> transmission, CancellationToken cancellation = default);
     }
 
     public interface IAddressConverter<TAddress>

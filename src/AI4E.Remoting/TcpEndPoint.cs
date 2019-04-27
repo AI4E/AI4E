@@ -145,7 +145,7 @@ namespace AI4E.Remoting
             _physicalConnections.AddOrUpdate(remoteAddress, ImmutableList<Connection>.Empty.Add(connection), (_, current) => current.Add(connection));
         }
 
-        public async Task<Transmission<IPEndPoint>> ReceiveAsync(CancellationToken cancellation)
+        public async ValueTask<Transmission<IPEndPoint>> ReceiveAsync(CancellationToken cancellation)
         {
             try
             {
@@ -160,7 +160,7 @@ namespace AI4E.Remoting
             }
         }
 
-        public async Task SendAsync(Transmission<IPEndPoint> transmission, CancellationToken cancellation)
+        public async ValueTask SendAsync(Transmission<IPEndPoint> transmission, CancellationToken cancellation)
         {
             if (transmission.Equals(default)) // TODO: Use ==
                 throw new ArgumentDefaultException(nameof(transmission));

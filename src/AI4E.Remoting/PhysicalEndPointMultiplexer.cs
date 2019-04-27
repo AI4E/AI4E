@@ -261,7 +261,7 @@ namespace AI4E.Remoting
 
             public string MultiplexName { get; }
 
-            public async Task<Transmission<TAddress>> ReceiveAsync(CancellationToken cancellation = default)
+            public async ValueTask<Transmission<TAddress>> ReceiveAsync(CancellationToken cancellation = default)
             {
                 try
                 {
@@ -276,7 +276,7 @@ namespace AI4E.Remoting
                 }
             }
 
-            public async Task SendAsync(Transmission<TAddress> transmission, CancellationToken cancellation = default)
+            public async ValueTask SendAsync(Transmission<TAddress> transmission, CancellationToken cancellation = default)
             {
                 if (transmission.Equals(default)) // TODO: Use ==
                     throw new ArgumentDefaultException(nameof(transmission));
@@ -294,7 +294,7 @@ namespace AI4E.Remoting
                 }
             }
 
-            private async Task SendInternalAsync(Transmission<TAddress> transmission, CancellationToken cancellation)
+            private async ValueTask SendInternalAsync(Transmission<TAddress> transmission, CancellationToken cancellation)
             {
                 var frameIdx = transmission.Message.FrameIndex;
                 EncodeMultiplexName(transmission.Message, MultiplexName);

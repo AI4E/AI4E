@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Remoting;
+using AI4E.Utils;
 using Nito.AsyncEx;
 
 namespace AI4E.Coordination.Utils
@@ -12,14 +13,14 @@ namespace AI4E.Coordination.Utils
 
         public InMemoryPhysicalAddress LocalAddress => InMemoryPhysicalAddress.Instance;
 
-        public async Task<Transmission<InMemoryPhysicalAddress>> ReceiveAsync(CancellationToken cancellation)
+        public async ValueTask<Transmission<InMemoryPhysicalAddress>> ReceiveAsync(CancellationToken cancellation)
         {
             return new Transmission<InMemoryPhysicalAddress>(await _rxQueue.DequeueAsync(cancellation), InMemoryPhysicalAddress.Instance);
         }
 
-        public Task SendAsync(Transmission<InMemoryPhysicalAddress> transmission, CancellationToken cancellation)
+        public ValueTask SendAsync(Transmission<InMemoryPhysicalAddress> transmission, CancellationToken cancellation)
         {
-            return _rxQueue.EnqueueAsync(transmission.Message, cancellation);
+            return _rxQueue.EnqueueAsync(transmission.Message, cancellation).AsValueTask();
         }
 
         public string AddressToString(InMemoryPhysicalAddress address)

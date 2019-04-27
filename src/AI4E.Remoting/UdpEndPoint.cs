@@ -125,7 +125,7 @@ namespace AI4E.Remoting
 
         #endregion
 
-        public async Task SendAsync(Transmission<IPEndPoint> transmission, CancellationToken cancellation)
+        public async ValueTask SendAsync(Transmission<IPEndPoint> transmission, CancellationToken cancellation)
         {
             if (transmission.Equals(default)) // TODO: Use ==
                 throw new ArgumentDefaultException(nameof(transmission));
@@ -163,9 +163,9 @@ namespace AI4E.Remoting
             }
         }
 
-        public Task<Transmission<IPEndPoint>> ReceiveAsync(CancellationToken cancellation)
+        public ValueTask<Transmission<IPEndPoint>> ReceiveAsync(CancellationToken cancellation)
         {
-            return _rxQueue.DequeueAsync(cancellation);
+            return _rxQueue.DequeueAsync(cancellation).AsValueTask();
         }
 
         private async Task ReceiveProcess(CancellationToken cancellation)

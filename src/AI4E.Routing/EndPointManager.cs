@@ -365,7 +365,7 @@ namespace AI4E.Routing
             private Task SendEncodedMessageInternalAsync(IMessage encodedMessage, EndPointAddress remoteEndPoint, TAddress remoteAddress, CancellationToken cancellation)
             {
                 var physicalEndPoint = _endPointManager.GetMultiplexPhysicalEndPoint(remoteEndPoint);
-                return physicalEndPoint.SendAsync(new Transmission<TAddress>(encodedMessage, remoteAddress), cancellation);
+                return physicalEndPoint.SendAsync(new Transmission<TAddress>(encodedMessage, remoteAddress), cancellation).AsTask(); // TODO: This allocates
             }
 
             private Task RequestCancellationAsync(int corr, EndPointAddress remoteEndPoint, TAddress remoteAddress)
