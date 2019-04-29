@@ -151,7 +151,7 @@ namespace AI4E.Modularity.Module
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            return _disposeHelper.DisposeAsync();
+            return _disposeHelper.DisposeAsync().AsTask();
         }
 
         #endregion

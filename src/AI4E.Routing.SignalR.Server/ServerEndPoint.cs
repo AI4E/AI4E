@@ -398,7 +398,7 @@ namespace AI4E.Routing.SignalR.Server
                         {
                             if (_serverEndPoint._ackLookup.TryRemove(seqNum, out _))
                             {
-                                ackSource.TrySetExceptionOrCancelled(exc);
+                                ackSource.TrySetExceptionOrCanceled(exc);
                             }
 
                             throw;

@@ -3,10 +3,6 @@
   <PropertyGroup>
     <TargetFramework>$(NetStandardVersion)</TargetFramework>
     <RootNamespace>BookStore</RootNamespace>
-
-    <RestoreAdditionalProjectSources>
-      https://www.myget.org/F/ai4e-dev/api/v3/index.json
-    </RestoreAdditionalProjectSources>
   </PropertyGroup>
 
   <ItemGroup>

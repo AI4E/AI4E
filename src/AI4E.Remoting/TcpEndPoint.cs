@@ -37,7 +37,7 @@ using Nito.AsyncEx;
 
 namespace AI4E.Remoting
 {
-    public sealed class TcpEndPoint : IPhysicalEndPoint<IPEndPoint>
+    public sealed class TcpEndPoint : IPhysicalEndPoint<IPEndPoint>, IAsyncDisposable
     {
         private readonly AsyncProcess _connectionProcess;
         private readonly TcpListener _tcpHost;
@@ -70,7 +70,7 @@ namespace AI4E.Remoting
             _disposeHelper.Dispose();
         }
 
-        public Task DisposeAsync()
+        public ValueTask DisposeAsync()
         {
             return _disposeHelper.DisposeAsync();
         }
@@ -83,7 +83,7 @@ namespace AI4E.Remoting
 
             foreach (var connection in _physicalConnections.Values.SelectMany(_ => _))
             {
-                disposalTasks.Add(connection.DisposeAsync());
+                disposalTasks.Add(connection.DisposeAsync().AsTask());
             }
 
             await Task.WhenAll(disposalTasks);
@@ -181,7 +181,7 @@ namespace AI4E.Remoting
             return ConnectAsync().WithCancellation(cancellation);
         }
 
-        private sealed class Connection : IAsyncDisposable
+        private sealed class Connection : IAsyncDisposable, IDisposable
         {
             private readonly TcpEndPoint _endPoint;
             private readonly Stream _stream;
@@ -220,7 +220,7 @@ namespace AI4E.Remoting
                 _disposeHelper.Dispose();
             }
 
-            public Task DisposeAsync()
+            public ValueTask DisposeAsync()
             {
                 return _disposeHelper.DisposeAsync();
             }

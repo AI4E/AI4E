@@ -85,7 +85,7 @@ namespace AI4E.Modularity
 
             Assert(endPointEntry != null);
 
-            var entries = await endPointEntry.GetChildrenEntries().ToArray(cancellation);
+            var entries = await endPointEntry.GetChildrenEntries().ToArrayAsync(cancellation);
 
             return entries.Select(p => _addressConversion.DeserializeAddress(p.Value.ToArray()));
         }
