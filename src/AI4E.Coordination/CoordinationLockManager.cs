@@ -370,7 +370,7 @@ namespace AI4E.Coordination
             Assert(entry != null);
 
             var path = entry.Path;
-            var cancellation = (await _sessionTerminationSource).Token;
+            var cancellation = (await _sessionTerminationSource).CancellationToken;
             IStoredEntry start, desired;
 
             var session = await _sessionOwner.GetSessionAsync(cancellation);
@@ -538,7 +538,7 @@ namespace AI4E.Coordination
         {
             Assert(entry != null);
 
-            var cancellation = (await _sessionTerminationSource).Token;
+            var cancellation = (await _sessionTerminationSource).CancellationToken;
             IStoredEntry start, desired;
 
             var session = await _sessionOwner.GetSessionAsync(cancellation);

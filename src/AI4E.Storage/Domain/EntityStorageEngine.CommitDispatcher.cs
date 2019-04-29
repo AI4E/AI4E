@@ -9,7 +9,6 @@ using AI4E.Internal;
 using AI4E.Storage.Projection;
 using AI4E.Utils;
 using AI4E.Utils.Async;
-using AI4E.Utils.AsyncEnumerable;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

@@ -29,7 +29,6 @@ using static System.Diagnostics.Debug;
 
 #if !SUPPORTS_ASYNC_ENUMERABLE
 using System.Linq;
-using AI4E.Utils.AsyncEnumerable;
 #endif
 
 namespace AI4E.Storage.Projection

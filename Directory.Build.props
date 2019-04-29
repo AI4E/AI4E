@@ -9,7 +9,7 @@
     <RepositoryType>git</RepositoryType>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>0.1.2<!---pre$([System.DateTime]::UtcNow.ToString(yyMMddHH))--></Version>
+    <Version>0.1.3-pre$([System.DateTime]::UtcNow.ToString(yyMMddHH))</Version>
   </PropertyGroup>
     
   <PropertyGroup>
@@ -18,6 +18,12 @@
     <LangVersion>8.0</LangVersion>
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
     <NoWarn>NU5105</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <RestoreAdditionalProjectSources>
+      https://dotnet.myget.org/feed/rx/package/nuget/System.Linq.Async
+    </RestoreAdditionalProjectSources>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -50,12 +56,17 @@
     <FrameworkVersions>$(NetStandardVersions);$(NetCoreAppVersions)</FrameworkVersions>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <DefineConstants>$(DefineConstants);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;NETSTD20;SUPPORTS_ASYNC_DISPOSABLE;</DefineConstants>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
-    <DefineConstants>$(DefineConstants);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS</DefineConstants>
+    <DefineConstants>$(DefineConstants);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;NETSTD21;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.0'">
-    <DefineConstants>$(DefineConstants);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS</DefineConstants>
+    <DefineConstants>$(DefineConstants);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;NETCORE30;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS</DefineConstants>
   </PropertyGroup>
 
 </Project>

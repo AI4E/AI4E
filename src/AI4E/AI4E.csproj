@@ -5,15 +5,12 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Interactive.Async" Version="3.2.0" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
-    <PackageReference Include="System.Linq.Async" Version="4.0.0-preview.1.build.745 " />
+    <!-- We need this for the IAsyncDisposable and IAsyncEnumerable definition -->
+    <PackageReference Include="System.Linq.Async" Version="4.0.0-preview.2.build.760" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AI4E.Utils.ApplicationParts" Version="0.2.0-pre19042018" />
+    <PackageReference Include="AI4E.Utils.ApplicationParts" Version="0.2.0-pre19042918" />
     <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.2" />  
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
     <PackageReference Include="System.Collections.Immutable" Version="1.5.0" /> 
