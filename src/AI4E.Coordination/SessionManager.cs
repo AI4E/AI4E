@@ -187,32 +187,16 @@ namespace AI4E.Coordination
                 var delay = TimeSpan.FromSeconds(2);
                 var sessions = _storage.GetSessionsAsync(cancellation);
 
-#if SUPPORTS_ASYNC_ENUMERABLE
                 await foreach (var session in sessions)
                 {
-#else
-                var enumerator = sessions.GetEnumerator();
-                try
-                {
-                    while (await enumerator.MoveNext(cancellation))
-                    {
-                        var session = enumerator.Current;
-#endif
-                        if (_storedSessionManager.IsEnded(session))
-                            return session.Session;
+                    if (_storedSessionManager.IsEnded(session))
+                        return session.Session;
 
-                        var now = _dateTimeProvider.GetCurrentTime();
-                        var timeToWait = session.LeaseEnd - now;
+                    var now = _dateTimeProvider.GetCurrentTime();
+                    var timeToWait = session.LeaseEnd - now;
 
-                        if (timeToWait < delay)
-                            delay = timeToWait;
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                    }
-                }
-                finally
-                {
-                    enumerator.Dispose();
-#endif
+                    if (timeToWait < delay)
+                        delay = timeToWait;
                 }
 
                 await Task.Delay(delay, cancellation);

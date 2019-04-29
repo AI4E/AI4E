@@ -85,12 +85,7 @@ namespace AI4E.Modularity
 
             Assert(endPointEntry != null);
 
-            var entries = await endPointEntry.GetChildrenEntries()
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                .ToArray(cancellation);
-#else
-                .ToArrayAsync(cancellation);
-#endif
+            var entries = await endPointEntry.GetChildrenEntries().ToArrayAsync(cancellation);
 
             return entries.Select(p => _addressConversion.DeserializeAddress(p.Value.ToArray()));
         }

@@ -28,11 +28,8 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using AI4E.Utils.Async;
-
-#if SUPPORTS_ASYNC_ENUMERABLE
 using System;
-#endif
+using AI4E.Utils.Async;
 
 namespace AI4E.Storage.Projection
 {

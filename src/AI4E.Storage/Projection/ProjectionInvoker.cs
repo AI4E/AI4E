@@ -27,10 +27,6 @@ using AI4E.Handler;
 using Microsoft.Extensions.DependencyInjection;
 using static System.Diagnostics.Debug;
 
-#if !SUPPORTS_ASYNC_ENUMERABLE
-using System.Linq;
-#endif
-
 namespace AI4E.Storage.Projection
 {
     public sealed class ProjectionInvoker<TSource, TProjection> : IProjection<TSource, TProjection>
@@ -50,30 +46,12 @@ namespace AI4E.Storage.Projection
             _serviceProvider = serviceProvider;
         }
 
-#if !SUPPORTS_ASYNC_ENUMERABLE
-        public IAsyncEnumerable<TProjection> ProjectAsync(TSource source, CancellationToken cancellation)
-        {
-            if (source == null && !_projectionDescriptor.ProjectNonExisting)
-            {
-                return AsyncEnumerable.Empty<TProjection>();
-            }
-
-            return new AsyncEnumerable<TProjection>(() => ProjectInternalAsync(source, cancellation));
-        }
-
-        private async AsyncEnumerator<TProjection> ProjectInternalAsync(TSource source, CancellationToken cancellation)
-#else
         public async IAsyncEnumerable<TProjection> ProjectAsync(TSource source, CancellationToken cancellation)
-#endif
         {
-#if !SUPPORTS_ASYNC_ENUMERABLE
-            var yield = await AsyncEnumerator<TProjection>.Capture();
-#else
             if (source == null && !_projectionDescriptor.ProjectNonExisting)
             {
                 yield break;
             }
-#endif
 
             var member = _projectionDescriptor.Member;
             Assert(member != null);
@@ -122,11 +100,7 @@ namespace AI4E.Storage.Projection
 
                     foreach (var singleResult in enumerable)
                     {
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                        await yield.Return(singleResult);
-#else
                         yield return singleResult;
-#endif
                     }
                 }
                 else
@@ -134,17 +108,9 @@ namespace AI4E.Storage.Projection
                     var projectionResult = result as TProjection;
                     Assert(projectionResult != null);
 
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                    await yield.Return(projectionResult);
-#else
                     yield return projectionResult;
-#endif 
                 }
             }
-
-#if !SUPPORTS_ASYNC_ENUMERABLE
-            return yield.Break();
-#endif
         }
 
         internal sealed class Provider : IContextualProvider<IProjection<TSource, TProjection>>

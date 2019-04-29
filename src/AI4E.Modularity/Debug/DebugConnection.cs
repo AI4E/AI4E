@@ -68,11 +68,7 @@ namespace AI4E.Modularity.Debug
 
             _proxyHostLazy = new DisposableAsyncLazy<ProxyHost>(
                 factory: CreateProxyHostAsync,
-#if !SUPPORTS_ASYNC_DISPOSABLE
-                    disposal: proxyHost => proxyHost.DisposeAsync(),
-#else
-                    disposal: proxyHost => proxyHost.DisposeAsync().AsTask(), // TODO: This should accept a ValueTask
-#endif
+                disposal: proxyHost => proxyHost.DisposeAsync().AsTask(), // TODO: This should accept a ValueTask
                 options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
         }
 

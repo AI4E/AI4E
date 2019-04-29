@@ -257,12 +257,8 @@ namespace AI4E.Storage.Domain
                 var commits = await streamStore._persistence.GetCommitsAsync(bucketId,
                                                                              streamId, (snapshot?.StreamRevision + 1) ?? default,
                                                                              revision,
-                                                                             cancellation)
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                                                            .ToList(cancellation)
-#else
-                                                            .ToListAsync(cancellation)
-#endif
+                                                                             cancellation).ToListAsync(cancellation)
+
                     ?? Enumerable.Empty<ICommit>();
 
                 var isFixedRevision = revision != default;
@@ -370,11 +366,7 @@ namespace AI4E.Storage.Domain
                     throw new InvalidOperationException("Cannot modify a read-only stream view.");
 
                 var commits = await _streamStore._persistence.GetCommitsAsync(BucketId, StreamId, StreamRevision + 1, cancellation: cancellation)
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                                                            .ToList(cancellation);
-#else
-                                                            .ToListAsync(cancellation);
-#endif
+                    .ToListAsync(cancellation);
 
                 ExecuteExtensions(commits);
 

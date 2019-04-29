@@ -88,11 +88,7 @@ namespace AI4E.Storage.Domain
             return _database.GetAsync(predicate, cancellation)
                             .OrderByDescending(snapshot => snapshot.StreamRevision)
                             .Cast<ISnapshot>()
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                            .FirstOrDefault(cancellation);
-#else
                             .FirstOrDefaultAsync(cancellation).AsTask();
-#endif
         }
 
         public IAsyncEnumerable<ISnapshot> GetSnapshotsAsync(string bucketId, CancellationToken cancellation = default)
@@ -103,11 +99,7 @@ namespace AI4E.Storage.Domain
             return _database.GetAsync<Snapshot>(snapshot => snapshot.BucketId.Equals(bucketId), cancellation)
                             .GroupBy(snapshot => snapshot.StreamId)
                             .Select(group => group.OrderByDescending(snapshot => snapshot.StreamRevision)
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                                .FirstOrDefault(cancellation))
-#else
-                                .FirstOrDefaultAsync(cancellation))
-#endif
+                            .FirstOrDefaultAsync(cancellation))
                             .Evaluate();
 
         }
@@ -119,11 +111,7 @@ namespace AI4E.Storage.Domain
             return _database.GetAsync<Snapshot>(cancellation)
                             .GroupBy(snapshot => snapshot.StreamId)
                             .Select(group => group.OrderByDescending(snapshot => snapshot.StreamRevision)
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                                .FirstOrDefault(cancellation))
-#else
-                                .FirstOrDefaultAsync(cancellation))
-#endif
+                            .FirstOrDefaultAsync(cancellation))
                             .Evaluate();
         }
 
@@ -315,12 +303,8 @@ namespace AI4E.Storage.Domain
         private async ValueTask<StreamHead> AddStreamHeadAsync(string bucketId, string streamId, CancellationToken cancellation)
         {
             var commits = GetCommitsInternalAsync(bucketId, streamId);
-            var latestCommit = await commits
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                                .LastOrDefault(cancellation);
-#else
-                                .LastOrDefaultAsync(cancellation);
-#endif
+            var latestCommit = await commits.LastOrDefaultAsync(cancellation);
+
 
             if (latestCommit == null)
                 return null;
@@ -462,26 +446,14 @@ namespace AI4E.Storage.Domain
         {
             var result = default(Commit);
 
-#if SUPPORTS_ASYNC_ENUMERABLE
             await foreach (var commit in commits)
             {
-#else
-            using (var enumerator = commits.GetEnumerator())
-            {
-                while (await enumerator.MoveNext(cancellation))
-                {
-                    var commit = enumerator.Current;
-#endif
-
                 if (!commit.IsDispatched)
                 {
                     return result;
                 }
 
                 result = commit;
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                }
-#endif
             }
 
             return result;

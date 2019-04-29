@@ -337,17 +337,8 @@ namespace AI4E.Routing.SignalR.Server
                     {
                         var clients = rootNode.GetChildrenEntries();
 
-#if SUPPORTS_ASYNC_ENUMERABLE
                         await foreach(var client in clients)
                         {
-#else
-                        var enumerator = clients.GetEnumerator();
-                        try
-                        {
-                            while (await enumerator.MoveNext(cancellation))
-                            {
-                                var client = enumerator.Current;
-#endif
                                 var (securityToken, leaseEnd) = DecodePayload(client.Value.Span);
 
                                 var now = _dateTimeProvider.GetCurrentTime();
@@ -365,13 +356,6 @@ namespace AI4E.Routing.SignalR.Server
                                 var timeToWait = leaseEnd - now;
                                 if (timeToWait < delay)
                                     delay = timeToWait;
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                            }
-                        }
-                        finally
-                        {
-                            enumerator.Dispose();
-#endif
                         }
 
                         await Task.WhenAll(disconnectedClients.Select(p => _coordinationManager.DeleteAsync(p.Path, cancellation: cancellation).AsTask()));

@@ -115,12 +115,9 @@ namespace AI4E.Storage.Projection
                 // Write touched source metadata to database
                 foreach (var (originalMetadata, touchedMetadata) in _sourceMetadataCache.Values.Where(p => p.Touched))
                 {
-                    var comparandMetdata = await transactionalDatabase.GetAsync<ProjectionSourceMetadata>(p => p.Id == (originalMetadata ?? touchedMetadata).Id)
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                                                            .FirstOrDefault(cancellation);
-#else
-                                                            .FirstOrDefaultAsync(cancellation);
-#endif
+                    var comparandMetdata = await transactionalDatabase
+                        .GetAsync<ProjectionSourceMetadata>(p => p.Id == (originalMetadata ?? touchedMetadata).Id)
+                        .FirstOrDefaultAsync(cancellation);
 
                     if (!MatchesByRevision(originalMetadata, comparandMetdata))
                     {
@@ -341,41 +338,23 @@ namespace AI4E.Storage.Projection
                 // TODO: Ensure that there are no two projection results with the same type and id. 
                 //       Otherwise bad things happen.
                 var projectionsPresent = false;
-                IAsyncEnumerator<IProjectionResult> projectionResultsEnumerator = null;
 
-#if SUPPORTS_ASYNC_ENUMERABLE
-                await foreach(var projectionResult in projectionResults)
+                await foreach (var projectionResult in projectionResults)
                 {
-#else
-                    try
-                {
-                    projectionResultsEnumerator = projectionResults.GetEnumerator();
+                    projectionsPresent = true;
 
-                    while (await projectionResultsEnumerator.MoveNext(cancellation))
-                    {
-                        var projectionResult = projectionResultsEnumerator.Current;
-#endif
-                        projectionsPresent = true;
-                        
-                        var projection = new ProjectionTargetDescriptor(projectionResult.ResultType,
-                                                                        projectionResult.ResultId.ToString());
-                        projections.Add(projection);
+                    var projection = new ProjectionTargetDescriptor(projectionResult.ResultType,
+                                                                    projectionResult.ResultId.ToString());
+                    projections.Add(projection);
 
-                        // The target was not part of the last projection. Store ourself to the target metadata.
-                        var addEntityToProjections = !appliedProjections.Remove(projection);
+                    // The target was not part of the last projection. Store ourself to the target metadata.
+                    var addEntityToProjections = !appliedProjections.Remove(projection);
 
-                        //if (!appliedProjections.Remove(projection))
-                        //{
-                        await UpdateEntityToProjectionAsync(projectionResult, addEntityToProjections, cancellation);
+                    //if (!appliedProjections.Remove(projection))
+                    //{
+                    await UpdateEntityToProjectionAsync(projectionResult, addEntityToProjections, cancellation);
                     //}
                     //await _database.StoreAsync(projectionResult.ResultType, projectionResult.Result, cancellation);
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                    }
-                }
-                finally
-                {
-                    projectionResultsEnumerator?.Dispose();
-#endif
                 }
 
                 // We removed all current projections from applied projections. 
@@ -456,7 +435,7 @@ namespace AI4E.Storage.Projection
                 _sourceMetadataCache[_sourceDescriptor] = new ProjectionSourceMetadataCacheEntry(originalMetadata, metadata, touched: true);
             }
 
-#endregion
+            #endregion
 
             private ValueTask<ProjectionSourceMetadataCacheEntry> GetMetadataAsync(bool createIfNonExistent, CancellationToken cancellation)
             {
@@ -470,12 +449,9 @@ namespace AI4E.Storage.Projection
                 if (!_sourceMetadataCache.TryGetValue(sourceDescriptor, out var entry))
                 {
                     var entryId = ProjectionSourceMetadata.GenerateId(sourceDescriptor.SourceId, sourceDescriptor.SourceType.GetUnqualifiedTypeName());
-                    var metadata = await _database.GetAsync<ProjectionSourceMetadata>(p => p.Id == entryId, cancellation)
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                                                            .FirstOrDefault(cancellation);
-#else
-                                                            .FirstOrDefaultAsync(cancellation);
-#endif
+                    var metadata = await _database
+                        .GetAsync<ProjectionSourceMetadata>(p => p.Id == entryId, cancellation)
+                        .FirstOrDefaultAsync(cancellation);
 
                     var originalMetadata = metadata;
                     var touched = false;

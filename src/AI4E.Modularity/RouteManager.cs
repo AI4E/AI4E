@@ -159,19 +159,13 @@ namespace AI4E.Modularity
 
             return await entry.GetChildrenEntries()
                               .Select(p => Extract(p))
-#if !SUPPORTS_ASYNC_ENUMERABLE
-                              .Distinct(p => p.EndPoint) // TODO: Can we do anything about the case, that an end-point is registered with different options for the route?
-                              .ToArray(cancellation);
-#else
                               // TODO: Can we do anything about the case, that an end-point is registered with different options for the route?
                               .Distinct(RouteTargetEqualityComparer.Instance) 
                               .ToArrayAsync(cancellation);
-#endif
         }
 
         #endregion
 
-#if SUPPORTS_ASYNC_ENUMERABLE
         private sealed class RouteTargetEqualityComparer : IEqualityComparer<RouteTarget>
         {
             private RouteTargetEqualityComparer() { }
@@ -188,7 +182,6 @@ namespace AI4E.Modularity
                 return EqualityComparer<EndPointAddress>.Default.GetHashCode(obj.EndPoint);
             }
         }
-#endif
 
         private static CoordinationEntryPath GetPath(Route route)
         {
