@@ -46,6 +46,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\IdEqualityComparer.cs = src\Common\IdEqualityComparer.cs
 		src\Common\IdGenerator.cs = src\Common\IdGenerator.cs
 		src\Common\IPEndPointConverter.cs = src\Common\IPEndPointConverter.cs
+		src\Common\ReconnectionManagerBase.cs = src\Common\ReconnectionManagerBase.cs
 		src\Common\TypeConverter.cs = src\Common\TypeConverter.cs
 	EndProjectSection
 EndProject

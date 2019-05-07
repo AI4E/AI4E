@@ -5,13 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Internal\**" />
-    <EmbeddedResource Remove="Internal\**" />
-    <None Remove="Internal\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Include="..\AI4E.Routing.SignalR.Server\IServerCallStub.cs" Link="IServerCallStub.cs" />
+    <Compile Include="..\Common\ReconnectionManagerBase.cs" Link="Internal\ReconnectionManagerBase.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,6 +21,10 @@
     <ProjectReference Include="..\AI4E.Routing\AI4E.Routing.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
     <ProjectReference Include="..\AI4E.Routing.SignalR.Client.Abstractions\AI4E.Routing.SignalR.Client.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Internal\" />
   </ItemGroup>
 
 </Project>

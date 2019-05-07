@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Internal;
 using AI4E.Remoting;
 using AI4E.Routing.SignalR.Server;
 using AI4E.Utils;
@@ -61,6 +62,9 @@ namespace AI4E.Routing.SignalR.Client
             _stubRegistration = _hubConnection.Register(_client);
 
             _reconnectionManager = new ReconnectionManager(this);
+
+            // Intitially, we are unconnected and have to connect the fist time.
+            _reconnectionManager.Reconnect();
 
             // The process is started when the connection is established.
             _keepAliveProcess = new AsyncProcess(KeepAliveProcess, start: false);
@@ -171,10 +175,10 @@ namespace AI4E.Routing.SignalR.Client
         private Task UnderlyingConnectionLostAsync(Exception exception)
         {
             // TODO: Log exception?
-            return _reconnectionManager.ReconnectAsync(cancellation: default);
+            return _reconnectionManager.ReconnectAsync(cancellation: default).AsTask();
         }
 
-        private async Task OnConnectionEstablished(CancellationToken cancellation)
+        private async ValueTask OnConnectionEstablished(CancellationToken cancellation)
         {
             await _keepAliveProcess?.StartAsync(cancellation);
 
@@ -191,14 +195,14 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        private async Task OnConnectionEstablishing(CancellationToken cancellation)
+        private async ValueTask OnConnectionEstablishing(CancellationToken cancellation)
         {
             _logger?.LogDebug("Trying to (re)connect to server.");
 
             await _keepAliveProcess?.TerminateAsync(cancellation);
         }
 
-        private async Task<bool> ReconnectAsync(bool isInitialConnection, CancellationToken cancellation)
+        private async ValueTask ReconnectAsync(bool isInitialConnection, CancellationToken cancellation)
         {
             await _hubConnection.StopAsync(cancellation);
             await _hubConnection.StartAsync(cancellation);
@@ -221,7 +225,6 @@ namespace AI4E.Routing.SignalR.Client
             }
 
             SetLastSendOperation();
-            return isInitialConnection;
         }
 
         #endregion
@@ -415,197 +418,30 @@ namespace AI4E.Routing.SignalR.Client
             }
         }
 
-        private sealed class ReconnectionManager : IDisposable
+        private sealed class ReconnectionManager : ReconnectionManagerBase
         {
             private readonly ClientEndPoint _clientEndPoint;
-            private readonly ILogger _logger;
 
-            // Caches the delegate
-            private readonly Func<Task> _getConnectionLoseTask;
-
-            private readonly AsyncManualResetEvent _connectionLost = new AsyncManualResetEvent(set: true);
-            private readonly object _connectionLock = new object();
-            private Task _connectionTask;
-
-            private volatile CancellationTokenSource _disposalSource = new CancellationTokenSource();
-
-            public ReconnectionManager(ClientEndPoint clientEndPoint, ILogger logger = null)
+            public ReconnectionManager(ClientEndPoint clientEndPoint, ILogger logger = null) : base(logger)
             {
                 Debug.Assert(clientEndPoint != null);
-
                 _clientEndPoint = clientEndPoint;
-                _logger = logger;
-                _getConnectionLoseTask = GetConnectionLoseTask;
-                // Intitially, we are unconnected and have to connect the fist time.
-                Reconnect(true);
             }
 
-            public ConnectionLostToken ConnectionLost => new ConnectionLostToken(_getConnectionLoseTask);
-
-            private Task GetConnectionLoseTask()
+            protected override ValueTask OnConnectionEstablished(CancellationToken cancellation)
             {
-                // Initial state, or the connection is broken and not yet re-established.
-                var connectionLose = _connectionLost.WaitAsync();
-
-                if (connectionLose.IsCompleted)
-                {
-                    return Task.CompletedTask;
-                }
-
-                Task connectionTask;
-
-                lock (_connectionLock)
-                {
-                    connectionTask = _connectionTask;
-                }
-
-                // We are currently re-establishing the connection.
-                if (connectionTask != null)
-                {
-                    return Task.CompletedTask;
-                }
-
-                return connectionLose;
+                return _clientEndPoint.OnConnectionEstablished(cancellation);
             }
 
-            public void Reconnect()
+            protected override ValueTask OnConnectionEstablishing(CancellationToken cancellation)
             {
-                Reconnect(false);
+                return _clientEndPoint.OnConnectionEstablishing(cancellation);
             }
 
-            public Task ReconnectAsync(CancellationToken cancellation)
+            protected override ValueTask EstablishConnectionAsync(bool isInitialConnection, CancellationToken cancellation)
             {
-                return ReconnectAsync(false).WithCancellation(cancellation);
+                return _clientEndPoint.ReconnectAsync(isInitialConnection, cancellation);
             }
-
-            private void Reconnect(bool isInitialConnection)
-            {
-                ReconnectAsync(isInitialConnection).HandleExceptions(_logger);
-            }
-
-            // https://github.com/StephenCleary/AsyncEx/issues/151
-            private async Task ReconnectAsync(bool isInitialConnection)
-            {
-                var disposalSource = _disposalSource; // Volatile read op
-
-                if (disposalSource == null)
-                {
-                    // We are disposed.
-                    return;
-                }
-
-                _connectionLost.Set();
-
-                async Task Reconnect()
-                {
-                    await Task.Yield();
-                    try
-                    {
-                        // Reconnect
-                        await ReconnectCoreAsync(isInitialConnection, cancellation: disposalSource.Token);
-                        isInitialConnection = false;
-                    }
-                    finally
-                    {
-                        lock (_connectionLock)
-                        {
-                            _connectionTask = null;
-                        }
-                    }
-                }
-
-                await _clientEndPoint.OnConnectionEstablishing(disposalSource.Token);
-
-                Task connectionTask;
-                while (_connectionLost.IsSet || isInitialConnection)
-                {
-                    lock (_connectionLock)
-                    {
-                        if (_connectionTask == null)
-                            _connectionTask = Reconnect();
-
-                        connectionTask = _connectionTask;
-                    }
-
-                    await connectionTask;
-                }
-
-                await _clientEndPoint.OnConnectionEstablished(disposalSource.Token);
-            }
-
-            private async Task ReconnectCoreAsync(bool isInitialConnection, CancellationToken cancellation)
-            {
-                // We are waiting one second after the first failed attempt to connect.
-                // For each failed attempt, we increase the waited time to the next connection attempt,
-                // until we reach an upper limit of 12 seconds.
-                var timeToWait = new TimeSpan(1000 * TimeSpan.TicksPerMillisecond);
-                var timeToWaitMax = new TimeSpan(12000 * TimeSpan.TicksPerMillisecond);
-
-                while (cancellation.ThrowOrContinue())
-                {
-                    try
-                    {
-                        // We will re-establish the underlying connection now. => Reset the connection lost indicator.
-                        _connectionLost.Reset();
-
-                        isInitialConnection = await _clientEndPoint.ReconnectAsync(isInitialConnection, cancellation);
-
-
-                        // The underlying connection was not lost in the meantime.
-                        if (!_connectionLost.IsSet)
-                        {
-                            break;
-                        }
-                    }
-                    catch (ObjectDisposedException) { throw; }
-                    catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-                    catch (Exception exc)
-                    {
-                        Console.WriteLine("Error in ecc: " + exc.ToString()); // TODO: Log
-                        _logger?.LogWarning($"Reconnection failed. Trying again in {timeToWait.TotalSeconds} sec.");
-
-                        await Task.Delay(timeToWait, cancellation);
-
-                        if (timeToWait < timeToWaitMax)
-                            timeToWait = new TimeSpan(timeToWait.Ticks * 2);
-                    }
-                }
-            }
-
-            public void Dispose()
-            {
-                var disposalSource = Interlocked.Exchange(ref _disposalSource, null);
-
-                if (disposalSource != null)
-                {
-                    using (disposalSource)
-                    {
-                        disposalSource.Cancel();
-                    }
-                }
-            }
-        }
-    }
-
-    public readonly struct ConnectionLostToken
-    {
-        private readonly Func<Task> _connectionLose;
-
-        internal ConnectionLostToken(Func<Task> connectionLose)
-        {
-            _connectionLose = connectionLose;
-        }
-
-        public bool IsConnectionLost => _connectionLose?.Invoke()?.IsCompleted ?? true;
-
-        public Task AsTask()
-        {
-            return _connectionLose?.Invoke() ?? Task.CompletedTask;
-        }
-
-        public static implicit operator Task(ConnectionLostToken token)
-        {
-            return token.AsTask();
         }
     }
 }
