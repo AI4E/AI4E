@@ -28,7 +28,6 @@ namespace AI4E.Remoting
     {
         public static void AddPhysicalEndPoint<TAddress, TPhysicalEndPoint>(this IServiceCollection services)
             where TPhysicalEndPoint : class, IPhysicalEndPoint<TAddress>
-
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
@@ -36,11 +35,6 @@ namespace AI4E.Remoting
             services.AddSingleton<IPhysicalEndPoint<TAddress>, TPhysicalEndPoint>();
             services.AddSingleton(typeof(IPhysicalEndPointMultiplexer<>), typeof(PhysicalEndPointMultiplexer<>));
             services.AddSingleton(new PhysicalEndPointMarkerService(typeof(TAddress)));
-        }
-
-        public static void AddUdpEndPoint(this IServiceCollection services)
-        {
-            services.AddPhysicalEndPoint<IPEndPoint, UdpEndPoint>();
         }
 
         public static void AddTcpEndPoint(this IServiceCollection services)
