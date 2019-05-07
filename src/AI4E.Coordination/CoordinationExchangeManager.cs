@@ -116,28 +116,18 @@ namespace AI4E.Coordination
             var sessions = _sessionManager.GetSessionsAsync(cancellation);
             var localSession = await _sessionOwner.GetSessionAsync(cancellation);
 
-            var enumerator = sessions.GetEnumerator();
-            try
+            await foreach (var session in sessions)
             {
-                while (await enumerator.MoveNext(cancellation))
+                if (session == localSession)
                 {
-                    var session = enumerator.Current;
-
-                    if (session == localSession)
-                    {
-                        _lockWaitDirectory.NotifyReadLockRelease(path, session);
-                        continue;
-                    }
-
-                    // The session is the former read-lock owner.
-                    var message = EncodeMessage(MessageType.ReleasedReadLock, path, localSession);
-
-                    await SendMessageAsync(session, message, cancellation);
+                    _lockWaitDirectory.NotifyReadLockRelease(path, session);
+                    continue;
                 }
-            }
-            finally
-            {
-                enumerator.Dispose();
+
+                // The session is the former read-lock owner.
+                var message = EncodeMessage(MessageType.ReleasedReadLock, path, localSession);
+
+                await SendMessageAsync(session, message, cancellation);
             }
         }
 
@@ -146,28 +136,18 @@ namespace AI4E.Coordination
             var sessions = _sessionManager.GetSessionsAsync(cancellation);
             var localSession = await _sessionOwner.GetSessionAsync(cancellation);
 
-            var enumerator = sessions.GetEnumerator();
-            try
+            await foreach (var session in sessions)
             {
-                while (await enumerator.MoveNext(cancellation))
+                if (session == localSession)
                 {
-                    var session = enumerator.Current;
-
-                    if (session == localSession)
-                    {
-                        _lockWaitDirectory.NotifyWriteLockRelease(path, session);
-                        continue;
-                    }
-
-                    // The session is the former write-lock owner.
-                    var message = EncodeMessage(MessageType.ReleasedWriteLock, path, localSession);
-
-                    await SendMessageAsync(session, message, cancellation);
+                    _lockWaitDirectory.NotifyWriteLockRelease(path, session);
+                    continue;
                 }
-            }
-            finally
-            {
-                enumerator.Dispose();
+
+                // The session is the former write-lock owner.
+                var message = EncodeMessage(MessageType.ReleasedWriteLock, path, localSession);
+
+                await SendMessageAsync(session, message, cancellation);
             }
         }
 

@@ -15,9 +15,15 @@
   <PropertyGroup>
     <RepositoryRoot Condition="'$(RepositoryRoot)' == ''">$(MSBuildThisFileDirectory)</RepositoryRoot>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <LangVersion>latest</LangVersion>
+    <LangVersion>8.0</LangVersion>
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
     <NoWarn>NU5105</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <RestoreAdditionalProjectSources>
+      https://dotnet.myget.org/F/rx/api/v3/index.json;
+    </RestoreAdditionalProjectSources>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -42,8 +48,25 @@
   
   <PropertyGroup>
     <NetStandardVersion>netstandard2.0</NetStandardVersion>
+    <!--Enable netstandard2.1, when we can include System.Memory and System.Threading.Task.Extensions packages with .net standard 2.1 without blowing up everything -->
+    <!-- https://github.com/dotnet/standard/issues/1063 -->
+    <NetStandardVersions>$(NetStandardVersion)<!--;netstandard2.1--></NetStandardVersions>
     <NetCoreAppVersion>netcoreapp3.0</NetCoreAppVersion>
+    <NetCoreAppVersions>$(NetCoreAppVersion)</NetCoreAppVersions>
+    <FrameworkVersions>$(NetStandardVersions);$(NetCoreAppVersions)</FrameworkVersions>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <DefineConstants>$(DefineConstants);NETSTD20;</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <DefineConstants>$(DefineConstants);NETSTD21;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.0'">
+    <DefineConstants>$(DefineConstants);NETCORE30;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS</DefineConstants>
   </PropertyGroup>
 
 </Project>

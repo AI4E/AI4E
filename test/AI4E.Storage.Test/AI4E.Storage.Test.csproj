@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.2</TargetFramework> <!-- https://github.com/AI4E/AI4E.Utils/issues/26 -->
+    <TargetFramework>$(NetCoreAppVersion)</TargetFramework>
     <IsPackable>false</IsPackable>
     <RootNamespace>AI4E.Storage</RootNamespace>
   </PropertyGroup>

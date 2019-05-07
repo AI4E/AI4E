@@ -21,12 +21,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
 using System.Threading;
 using AI4E.Handler;
-using AI4E.Utils;
-using AI4E.Utils.AsyncEnumerable;
 using Microsoft.Extensions.DependencyInjection;
 using static System.Diagnostics.Debug;
 
@@ -37,8 +34,8 @@ namespace AI4E.Storage.Projection
         where TProjection : class
     {
         private readonly object _handler;
-        private ProjectionDescriptor _projectionDescriptor;
-        private IServiceProvider _serviceProvider;
+        private readonly ProjectionDescriptor _projectionDescriptor;
+        private readonly IServiceProvider _serviceProvider;
 
         private ProjectionInvoker(object handler,
                                   ProjectionDescriptor projectionDescriptor,
@@ -49,19 +46,12 @@ namespace AI4E.Storage.Projection
             _serviceProvider = serviceProvider;
         }
 
-        public IAsyncEnumerable<TProjection> ProjectAsync(TSource source, CancellationToken cancellation)
+        public async IAsyncEnumerable<TProjection> ProjectAsync(TSource source, CancellationToken cancellation)
         {
             if (source == null && !_projectionDescriptor.ProjectNonExisting)
             {
-                return AsyncEnumerable.Empty<TProjection>();
+                yield break;
             }
-
-            return new AsyncEnumerable<TProjection>(() => ProjectInternalAsync(source, cancellation));
-        }
-
-        private async AsyncEnumerator<TProjection> ProjectInternalAsync(TSource source, CancellationToken cancellation)
-        {
-            var yield = await AsyncEnumerator<TProjection>.Capture();
 
             var member = _projectionDescriptor.Member;
             Assert(member != null);
@@ -110,17 +100,17 @@ namespace AI4E.Storage.Projection
 
                     foreach (var singleResult in enumerable)
                     {
-                        await yield.Return(singleResult);
+                        yield return singleResult;
                     }
                 }
                 else
                 {
                     var projectionResult = result as TProjection;
                     Assert(projectionResult != null);
-                    await yield.Return(projectionResult);
+
+                    yield return projectionResult;
                 }
             }
-            return yield.Break();
         }
 
         internal sealed class Provider : IContextualProvider<IProjection<TSource, TProjection>>

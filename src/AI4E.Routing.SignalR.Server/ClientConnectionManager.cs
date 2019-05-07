@@ -337,12 +337,8 @@ namespace AI4E.Routing.SignalR.Server
                     {
                         var clients = rootNode.GetChildrenEntries();
 
-                        var enumerator = clients.GetEnumerator();
-                        try
+                        await foreach(var client in clients)
                         {
-                            while (await enumerator.MoveNext(cancellation))
-                            {
-                                var client = enumerator.Current;
                                 var (securityToken, leaseEnd) = DecodePayload(client.Value.Span);
 
                                 var now = _dateTimeProvider.GetCurrentTime();
@@ -360,11 +356,6 @@ namespace AI4E.Routing.SignalR.Server
                                 var timeToWait = leaseEnd - now;
                                 if (timeToWait < delay)
                                     delay = timeToWait;
-                            }
-                        }
-                        finally
-                        {
-                            enumerator.Dispose();
                         }
 
                         await Task.WhenAll(disconnectedClients.Select(p => _coordinationManager.DeleteAsync(p.Path, cancellation: cancellation).AsTask()));

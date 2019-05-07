@@ -136,25 +136,27 @@ namespace AI4E.Coordination
                 _entry = entry;
             }
 
-            public IAsyncEnumerator<IEntry> GetEnumerator()
+            public IAsyncEnumerator<IEntry> GetAsyncEnumerator(CancellationToken cancellationToken = default)
             {
-                return new ChildrenEnumerator(_entry);
+                return new ChildrenEnumerator(_entry, cancellationToken);
             }
         }
 
         private sealed class ChildrenEnumerator : IAsyncEnumerator<IEntry>
         {
             private readonly IEntry _entry;
+            private readonly CancellationToken _cancellation;
             private int _currentIndex = -1;
 
-            public ChildrenEnumerator(IEntry entry)
+            public ChildrenEnumerator(IEntry entry, CancellationToken cancellation)
             {
                 Assert(entry != null);
 
                 _entry = entry;
+                _cancellation = cancellation;
             }
 
-            public async Task<bool> MoveNext(CancellationToken cancellationToken)
+            public async ValueTask<bool> MoveNextAsync()
             {
                 IEntry next;
 
@@ -171,7 +173,7 @@ namespace AI4E.Coordination
 
                     child = _entry.Children[index];
                     var childFullName = _entry.Path.GetChildPath(child);
-                    next = await _entry.CoordinationManager.GetAsync(childFullName, cancellationToken);
+                    next = await _entry.CoordinationManager.GetAsync(childFullName, _cancellation);
                 }
                 while (next == null);
 
@@ -181,7 +183,7 @@ namespace AI4E.Coordination
 
             public IEntry Current { get; private set; } = default;
 
-            public void Dispose() { }
+            public ValueTask DisposeAsync() { return default; }
         }
     }
 }

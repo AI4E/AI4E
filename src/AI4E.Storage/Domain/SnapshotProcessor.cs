@@ -1,12 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
 using AI4E.Internal;
-using AI4E.Utils.Processing;
 using AI4E.Utils;
+using AI4E.Utils.Processing;
 using JsonDiffPatchDotNet;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -14,7 +12,7 @@ using Newtonsoft.Json.Linq;
 
 namespace AI4E.Storage.Domain
 {
-    public sealed class SnapshotProcessor : ISnapshotProcessor, IAsyncDisposable
+    public sealed class SnapshotProcessor : ISnapshotProcessor, IAsyncDisposable, IDisposable
     {
         private static JToken StreamRoot => JToken.Parse("{}");
 
@@ -106,10 +104,10 @@ namespace AI4E.Storage.Domain
             }
         }
 
-        public Task DisposeAsync()
+        public ValueTask  DisposeAsync()
         {
             Dispose();
-            return Disposal;
+            return Disposal.AsValueTask();
         }
 
         #endregion
@@ -119,7 +117,7 @@ namespace AI4E.Storage.Domain
             var interval = _options.SnapshotInterval;
 
             if (interval < 0)
-                interval = 60 * 60 * 1000;
+                interval = 60 * 60 * 1000; // TODO: This is never used?!
 
             while (cancellation.ThrowOrContinue())
             {
@@ -144,45 +142,33 @@ namespace AI4E.Storage.Domain
             if (snapshotRevisionThreshold < 0)
                 snapshotRevisionThreshold = 20;
 
-            using (var scope = _serviceProvider.CreateScope())
+            using var scope = _serviceProvider.CreateScope();
+
+            var scopedServiceProvider = scope.ServiceProvider;
+            var entityStorageEngine = scopedServiceProvider.GetRequiredService<IEntityStorageEngine>(); // TODO: This is not used?!
+
+            await foreach (var stream in _streamStore.OpenStreamsToSnapshotAsync(snapshotRevisionThreshold, cancellation))
             {
-                var scopedServiceProvider = scope.ServiceProvider;
-                var entityStorageEngine = scopedServiceProvider.GetRequiredService<IEntityStorageEngine>();
-                var enumerator = default(IAsyncEnumerator<IStream>);
-                try
+                if (stream.Snapshot == null && !stream.Commits.Any())
+                    continue;
+
+                var serializedEntity = default(JToken);
+
+                if (stream.Snapshot == null)
                 {
-                    enumerator = _streamStore.OpenStreamsToSnapshotAsync(snapshotRevisionThreshold, cancellation).GetEnumerator();
-
-                    while (await enumerator.MoveNext(cancellation))
-                    {
-                        var stream = enumerator.Current;
-
-                        if (stream.Snapshot == null && !stream.Commits.Any())
-                            continue;
-
-                        var serializedEntity = default(JToken);
-
-                        if (stream.Snapshot == null)
-                        {
-                            serializedEntity = StreamRoot;
-                        }
-                        else
-                        {
-                            serializedEntity = JToken.Parse(CompressionHelper.Unzip(stream.Snapshot.Payload as byte[]));
-                        }
-
-                        foreach (var commit in stream.Commits)
-                        {
-                            serializedEntity = _differ.Patch(serializedEntity, JToken.Parse(CompressionHelper.Unzip(commit.Body as byte[])));
-                        }
-
-                        await stream.AddSnapshotAsync(CompressionHelper.Zip(serializedEntity.ToString()), cancellation);
-                    }
+                    serializedEntity = StreamRoot;
                 }
-                finally
+                else
                 {
-                    enumerator?.Dispose();
+                    serializedEntity = JToken.Parse(CompressionHelper.Unzip(stream.Snapshot.Payload as byte[]));
                 }
+
+                foreach (var commit in stream.Commits)
+                {
+                    serializedEntity = _differ.Patch(serializedEntity, JToken.Parse(CompressionHelper.Unzip(commit.Body as byte[])));
+                }
+
+                await stream.AddSnapshotAsync(CompressionHelper.Zip(serializedEntity.ToString()), cancellation);
             }
         }
     }

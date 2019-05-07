@@ -39,7 +39,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Debug
 {
-    public sealed class DebugPort : IAsyncDisposable
+    public sealed class DebugPort : IAsyncDisposable, IDisposable
     {
         #region Fields
 
@@ -132,7 +132,7 @@ namespace AI4E.Modularity.Debug
             _disposeHelper.Dispose();
         }
 
-        public Task DisposeAsync()
+        public  ValueTask DisposeAsync()
         {
             return _disposeHelper.DisposeAsync();
         }
@@ -230,7 +230,7 @@ namespace AI4E.Modularity.Debug
 
                 _proxyHostLazy = new DisposableAsyncLazy<ProxyHost>(
                     factory: CreateProxyHostAsync,
-                    disposal: proxyHost => proxyHost.DisposeAsync(),
+                    disposal: proxyHost => proxyHost.DisposeAsync().AsTask(), // TODO: This should accept a ValueTask
                     options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
             }
 

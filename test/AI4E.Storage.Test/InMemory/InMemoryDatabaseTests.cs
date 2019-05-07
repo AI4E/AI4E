@@ -51,7 +51,7 @@ namespace AI4E.Storage.InMemory
         public async Task GetAsyncEmptyDatabaseTest()
         {
             var database = new InMemoryDatabase();
-            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToList();
+            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToListAsync();
 
             Assert.AreEqual(0, queryResults.Count);
         }
@@ -88,7 +88,7 @@ namespace AI4E.Storage.InMemory
             var entry2 = new TestEntry { Id = 2, String = "myString", Int = 1234 };
             var addSuccess1 = await database.AddAsync(entry1, cancellation: default);
             var addSuccess2 = await database.AddAsync(entry2, cancellation: default);
-            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToList();
+            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToListAsync();
 
             Assert.IsTrue(addSuccess1);
             Assert.IsTrue(addSuccess2);
@@ -108,7 +108,7 @@ namespace AI4E.Storage.InMemory
             var entry2 = new TestEntry { Id = 1, String = "xxx", Int = 345 };
             var addSuccess1 = await database.AddAsync(entry1, cancellation: default);
             var addSuccess2 = await database.AddAsync(entry2, cancellation: default);
-            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToList();
+            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToListAsync();
 
             Assert.IsTrue(addSuccess1);
             Assert.IsFalse(addSuccess2);
@@ -126,7 +126,7 @@ namespace AI4E.Storage.InMemory
             await database.AddAsync(entry1, cancellation: default);
             await database.AddAsync(entry2, cancellation: default);
             var removeSuccess = await database.RemoveAsync(new TestEntry { Id = 2 }, _ => true, cancellation: default);
-            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToList();
+            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToListAsync();
 
             Assert.IsTrue(removeSuccess);
             Assert.AreEqual(1, queryResults.Count);
@@ -143,7 +143,7 @@ namespace AI4E.Storage.InMemory
             await database.AddAsync(entry1, cancellation: default);
             await database.AddAsync(entry2, cancellation: default);
             var removeSuccess = await database.RemoveAsync(new TestEntry { Id = 2 }, e => e.String == "xxx", cancellation: default);
-            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToList();
+            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToListAsync();
 
             Assert.IsTrue(removeSuccess);
             Assert.AreEqual(1, queryResults.Count);
@@ -160,7 +160,7 @@ namespace AI4E.Storage.InMemory
             await database.AddAsync(entry1, cancellation: default);
             await database.AddAsync(entry2, cancellation: default);
             var removeSuccess = await database.RemoveAsync(new TestEntry { Id = 2 }, e => e.String == "yyy", cancellation: default);
-            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToList();
+            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToListAsync();
 
             Assert.IsFalse(removeSuccess);
             Assert.AreEqual(2, queryResults.Count);
@@ -180,7 +180,7 @@ namespace AI4E.Storage.InMemory
             await database.AddAsync(entry1, cancellation: default);
             await database.AddAsync(entry2, cancellation: default);
             var removeSuccess = await database.RemoveAsync(new TestEntry { Id = 3 }, _ => true, cancellation: default);
-            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToList();
+            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToListAsync();
 
             Assert.IsFalse(removeSuccess);
             Assert.AreEqual(2, queryResults.Count);
@@ -200,7 +200,7 @@ namespace AI4E.Storage.InMemory
             await database.AddAsync(entry1, cancellation: default);
             await database.AddAsync(entry2, cancellation: default);
             await database.Clear<TestEntry>(cancellation: default);
-            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToList();
+            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToListAsync();
 
             Assert.AreEqual(0, queryResults.Count);
         }
@@ -234,7 +234,7 @@ namespace AI4E.Storage.InMemory
             await database.AddAsync(entry1, cancellation: default);
             await database.AddAsync(entry2, cancellation: default);
             var updateSuccess = await database.UpdateAsync(updatedEntry, _ => true, cancellation: default);
-            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToList();
+            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToListAsync();
 
             Assert.IsTrue(updateSuccess);
             Assert.AreEqual(2, queryResults.Count);
@@ -256,7 +256,7 @@ namespace AI4E.Storage.InMemory
             await database.AddAsync(entry1, cancellation: default);
             await database.AddAsync(entry2, cancellation: default);
             var updateSuccess = await database.UpdateAsync(updatedEntry, e => e.String == "myString", cancellation: default);
-            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToList();
+            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToListAsync();
 
             Assert.IsTrue(updateSuccess);
             Assert.AreEqual(2, queryResults.Count);
@@ -278,7 +278,7 @@ namespace AI4E.Storage.InMemory
             await database.AddAsync(entry1, cancellation: default);
             await database.AddAsync(entry2, cancellation: default);
             var updateSuccess = await database.UpdateAsync(updatedEntry, e => e.String == "yyy", cancellation: default);
-            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToList();
+            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToListAsync();
 
             Assert.IsFalse(updateSuccess);
             Assert.AreEqual(2, queryResults.Count);
@@ -299,7 +299,7 @@ namespace AI4E.Storage.InMemory
             await database.AddAsync(entry1, cancellation: default);
             await database.AddAsync(entry2, cancellation: default);
             var updateSuccess = await database.UpdateAsync(new TestEntry { Id = 3 }, _ => true, cancellation: default);
-            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToList();
+            var queryResults = await database.GetAsync<TestEntry>(p => true, cancellation: default).ToListAsync();
 
             Assert.IsFalse(updateSuccess);
             Assert.AreEqual(2, queryResults.Count);

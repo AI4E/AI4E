@@ -160,7 +160,7 @@ namespace AI4E.Routing.SignalR.Client
                 // The operation was either cancellation from outside or the object is disposed or something is wrong.
                 if (_txQueue.TryRemove(seqNum, out _))
                 {
-                    ackSource.TrySetExceptionOrCancelled(exc);
+                    ackSource.TrySetExceptionOrCanceled(exc);
                 }
 
                 throw;

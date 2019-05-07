@@ -21,6 +21,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Utils;
 
 namespace AI4E.Storage.Projection
 {
@@ -88,10 +89,10 @@ namespace AI4E.Storage.Projection
                 }
             }
 
-            public Task DisposeAsync()
+            public ValueTask DisposeAsync()
             {
                 Dispose();
-                return Disposal;
+                return Disposal.AsValueTask();
             }
 
             public Task Disposal => _cancellationSource.Task;
