@@ -132,10 +132,12 @@ namespace AI4E.Routing.SignalR.Client
 
                 _logger?.LogDebug($"Sending message ({memory.Length} total bytes) with seq-num {seqNum}.");
 
+                var connectionLostToken = _reconnectionManager.ConnectionLost;
+
                 //  Cancel the send, if the collection is lost in the meantime, as is done in the ordinary send operation.
-                if (_reconnectionManager.IsConnected(out var connectionLose))
+                if (!connectionLostToken.IsConnectionLost)
                 {
-                    using var cancellationTokenSource = new TaskCancellationTokenSource(connectionLose, cancellation);
+                    using var cancellationTokenSource = new TaskCancellationTokenSource(connectionLostToken.AsTask(), cancellation);
 
                     try
                     {
@@ -176,10 +178,12 @@ namespace AI4E.Routing.SignalR.Client
         {
             await _keepAliveProcess?.StartAsync(cancellation);
 
+            var connectionLostToken = _reconnectionManager.ConnectionLost;
+
             // Cancel the retransmission, if the collection is lost in the meantime, as is done in the ordinary send operation.
-            if (_reconnectionManager.IsConnected(out var connectionLose))
+            if (!connectionLostToken.IsConnectionLost)
             {
-                using var cancellationTokenSource = new TaskCancellationTokenSource(connectionLose, cancellation);
+                using var cancellationTokenSource = new TaskCancellationTokenSource(connectionLostToken.AsTask(), cancellation);
 
                 // Resend all messages
                 await Task.WhenAll(_txQueue.ToList().Select(p => PushToServerAsync(seqNum: p.Key, payload: p.Value.bytes, cancellation: cancellationTokenSource.CancellationToken)));
@@ -416,6 +420,9 @@ namespace AI4E.Routing.SignalR.Client
             private readonly ClientEndPoint _clientEndPoint;
             private readonly ILogger _logger;
 
+            // Caches the delegate
+            private readonly Func<Task> _getConnectionLoseTask;
+
             private readonly AsyncManualResetEvent _connectionLost = new AsyncManualResetEvent(set: true);
             private readonly object _connectionLock = new object();
             private Task _connectionTask;
@@ -426,20 +433,23 @@ namespace AI4E.Routing.SignalR.Client
             {
                 Debug.Assert(clientEndPoint != null);
 
-                // Intitially, we are unconnected and have to connect the fist time.
-                Reconnect(true);
                 _clientEndPoint = clientEndPoint;
                 _logger = logger;
+                _getConnectionLoseTask = GetConnectionLoseTask;
+                // Intitially, we are unconnected and have to connect the fist time.
+                Reconnect(true);
             }
 
-            public bool IsConnected(out Task connectionLose)
+            public ConnectionLostToken ConnectionLost => new ConnectionLostToken(_getConnectionLoseTask);
+
+            private Task GetConnectionLoseTask()
             {
-                // Initial state, our the connection is broken and not yet re-established.
-                connectionLose = _connectionLost.WaitAsync();
+                // Initial state, or the connection is broken and not yet re-established.
+                var connectionLose = _connectionLost.WaitAsync();
 
                 if (connectionLose.IsCompleted)
                 {
-                    return false;
+                    return Task.CompletedTask;
                 }
 
                 Task connectionTask;
@@ -452,11 +462,10 @@ namespace AI4E.Routing.SignalR.Client
                 // We are currently re-establishing the connection.
                 if (connectionTask != null)
                 {
-                    connectionLose = Task.CompletedTask;
-                    return false;
+                    return Task.CompletedTask;
                 }
 
-                return true;
+                return connectionLose;
             }
 
             public void Reconnect()
@@ -575,6 +584,28 @@ namespace AI4E.Routing.SignalR.Client
                     }
                 }
             }
+        }
+    }
+
+    public readonly struct ConnectionLostToken
+    {
+        private readonly Func<Task> _connectionLose;
+
+        internal ConnectionLostToken(Func<Task> connectionLose)
+        {
+            _connectionLose = connectionLose;
+        }
+
+        public bool IsConnectionLost => _connectionLose?.Invoke()?.IsCompleted ?? true;
+
+        public Task AsTask()
+        {
+            return _connectionLose?.Invoke() ?? Task.CompletedTask;
+        }
+
+        public static implicit operator Task(ConnectionLostToken token)
+        {
+            return token.AsTask();
         }
     }
 }
