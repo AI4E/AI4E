@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -26,35 +26,74 @@ namespace AI4E.Remoting
 {
     public sealed class LocalAddressResolver : ILocalAddressResolver<IPAddress>
     {
+        private readonly IPAddressFilter _ipAddressFilter;
         private readonly Func<IPAddress, bool> _predicate;
 
-        public LocalAddressResolver(Func<IPAddress, bool> predicate = null)
+        public LocalAddressResolver(IPAddressFilter ipAddressFilter = default, Func<IPAddress, bool> predicate = null)
         {
+            _ipAddressFilter = ipAddressFilter;
             _predicate = predicate;
         }
 
         public IPAddress GetLocalAddress()
         {
+            IPAddress ipV4Address = null, ipV6Address = null;
+
             var host = Dns.GetHostEntry(Dns.GetHostName());
             foreach (var address in host.AddressList)
             {
-                if (address.AddressFamily != AddressFamily.InterNetwork
-                    || address.AddressFamily != AddressFamily.InterNetworkV6)
+                if (address.AddressFamily == AddressFamily.InterNetwork)
                 {
-                    continue;
-                }
+                    if (_ipAddressFilter == IPAddressFilter.InterNetworkV6
+                        || _predicate != null && !_predicate(address))
+                    {
+                        continue;
+                    }
 
-                if (_predicate != null && !_predicate(address))
+                    if (_ipAddressFilter == IPAddressFilter.Default)
+                    {
+                        return address;
+                    }
+
+                    ipV4Address = address;
+                }
+                else if (address.AddressFamily == AddressFamily.InterNetworkV6)
                 {
-                    continue;
-                }
+                    if (_ipAddressFilter == IPAddressFilter.InterNetwork
+                        || _predicate != null && !_predicate(address))
+                    {
+                        continue;
+                    }
 
-                // TODO: https://github.com/AI4E/AI4E/issues/31
-                // TODO: https://github.com/AI4E/AI4E/issues/30
-                return address;
+                    if (_ipAddressFilter == IPAddressFilter.Default)
+                    {
+                        return address;
+                    }
+
+                    ipV6Address = address;
+                }
+            }
+
+            if (_ipAddressFilter == IPAddressFilter.PreferInterNetwork)
+            {
+                return ipV4Address ?? ipV6Address ?? IPAddress.Loopback;
+            }
+
+            if (_ipAddressFilter == IPAddressFilter.PreferInterNetworkV6)
+            {
+                return ipV6Address ?? ipV4Address ?? IPAddress.Loopback;
             }
 
             return IPAddress.Loopback;
         }
+    }
+
+    public enum IPAddressFilter
+    {
+        Default,
+        InterNetwork,
+        InterNetworkV6,
+        PreferInterNetwork,
+        PreferInterNetworkV6
     }
 }
