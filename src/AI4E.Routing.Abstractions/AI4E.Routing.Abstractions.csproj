@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AI4E.Utils.Memory" Version="0.2.0-pre19042918" />
+    <PackageReference Include="AI4E.Utils.Memory" Version="0.2.0-pre19051016" />
   </ItemGroup>
 
   <ItemGroup>
