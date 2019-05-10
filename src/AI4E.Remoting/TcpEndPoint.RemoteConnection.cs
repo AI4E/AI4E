@@ -19,10 +19,12 @@
  */
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 
@@ -30,17 +32,18 @@ namespace AI4E.Remoting
 {
     public sealed partial class TcpEndPoint
     {
-        private sealed class RemoteConnection : IAsyncDisposable
+        internal sealed class RemoteConnection : IAsyncDisposable
         {
+            private readonly AsyncDisposeHelper _asyncDisposeHelper;
             private readonly AsyncProcess _receiveProcess;
-            private readonly Stream _stream;
 
             public RemoteConnection(RemoteEndPoint remoteEndPoint, Stream stream)
             {
                 RemoteEndPoint = remoteEndPoint;
-                _stream = stream;
+                Stream = stream;
 
                 _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
+                _asyncDisposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
                 _status = ConnectionStatus.Connected;
             }
 
@@ -62,6 +65,9 @@ namespace AI4E.Remoting
                 }
             }
 
+            // For test purposes only
+            internal Stream Stream { get; }
+
             #region ReceiveProcess
 
             private async Task ReceiveProcess(CancellationToken cancellation)
@@ -75,7 +81,7 @@ namespace AI4E.Remoting
                         var message = await ReceiveAsync(cancellation);
                         _ = Task.Run(() => ReceiveAsync(message, cancellation).HandleExceptions());
                     }
-                    catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+                    catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                     catch (Exception exc)
                     {
                         Logger?.LogWarning(exc,
@@ -90,12 +96,25 @@ namespace AI4E.Remoting
 
                 try
                 {
-                    await message.ReadAsync(_stream, cancellation);
+                    // The underlying network stream does not cancel the operation when we ask it for,
+                    // but we can just leave alone the operation, as we get cancelled only, if we dispose
+                    // so the next operation, we do is closing the underlying socket which will cancel the
+                    // operation anyway.
+                    await message.ReadAsync(Stream, cancellation).WithCancellation(cancellation);
+                }
+                catch (ObjectDisposedException)
+                {
+                    Dispose();
+                    _receiveProcess.Terminate();
+                    Debug.Assert(cancellation.IsCancellationRequested);
+                    throw new OperationCanceledException();
                 }
                 catch (IOException)
                 {
-                    _ = DisposeAsync();
-                    throw;
+                    Dispose();
+                    _receiveProcess.Terminate();
+                    Debug.Assert(cancellation.IsCancellationRequested);
+                    throw new OperationCanceledException();
                 }
 
                 return message;
@@ -105,13 +124,21 @@ namespace AI4E.Remoting
 
             public async ValueTask SendAsync(IMessage message, CancellationToken cancellation)
             {
+                if (_asyncDisposeHelper.IsDisposed)
+                    throw new OperationCanceledException();
+
                 try
                 {
-                    await message.WriteAsync(_stream, cancellation);
+                    await message.WriteAsync(Stream, cancellation);
+                }
+                catch (ObjectDisposedException)
+                {
+                    Dispose();
+                    throw new OperationCanceledException();
                 }
                 catch (IOException)
                 {
-                    _ = DisposeAsync();
+                    Dispose();
                     throw new OperationCanceledException();
                 }
             }
@@ -121,26 +148,63 @@ namespace AI4E.Remoting
                 return RemoteEndPoint.ReceiveAsync(message, cancellation);
             }
 
-            public ValueTask DisposeAsync()
+            #region Disposal
+
+            private async ValueTask DisposeInternalAsync()
             {
-                ValueTask result;
+#if DEBUG
                 try
                 {
-                    lock (_statusMutex)
+#endif
+                    try
                     {
-                        _status = ConnectionStatus.Unconnected;
+                        try
+                        {
+                            try
+                            {
+                                lock (_statusMutex)
+                                {
+                                    _status = ConnectionStatus.Unconnected;
+                                }
+                            }
+                            finally
+                            {
+                                await _receiveProcess.TerminateAsync();
+                            }
+                        }
+                        finally
+                        {
+                            Stream.Close();
+                        }
                     }
+                    finally
+                    {
+                        RemoteEndPoint.Reconnect();
+                    }
+#if DEBUG
                 }
-                finally
+                catch (Exception exc)
                 {
-                    result = _receiveProcess.TerminateAsync().AsValueTask();
+                    Debugger.Break();
+                    Debug.Fail(exc.Message);
                 }
-
-                return result;
+#endif
             }
+
+            public ValueTask DisposeAsync()
+            {
+                return _asyncDisposeHelper.DisposeAsync();
+            }
+
+            public void Dispose()
+            {
+                _asyncDisposeHelper.Dispose();
+            }
+
+            #endregion
         }
 
-        private enum ConnectionStatus
+        internal enum ConnectionStatus
         {
             Unconnected,
             Connected

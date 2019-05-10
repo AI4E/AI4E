@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -68,6 +69,218 @@ namespace AI4E.Remoting
 
             var message = BuildTestMessage();
             var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            var receivedTransmission = await endPointB.ReceiveAsync();
+
+            Assert.AreEqual(endPointA.LocalAddress, receivedTransmission.RemoteAddress);
+
+            TestTestMessage(receivedTransmission.Message);
+        }
+
+        [TestMethod]
+        public async Task Transmission2Test()
+        {
+            var localAddressResolver = BuildLocalAddressResolver();
+            var endPointA = new TcpEndPoint(localAddressResolver);
+
+            var portB = new Random().Next(8000, 9000);
+            var addressB = new IPEndPoint(localAddressResolver.LocalAddress, portB);
+
+            var message = BuildTestMessage();
+            var transmission = new Transmission<IPEndPoint>(message, addressB);
+            var sendTask = endPointA.SendAsync(transmission).AsTask();
+
+            await Task.Delay(20);
+
+            Assert.AreEqual(TaskStatus.WaitingForActivation, sendTask.Status);
+
+            var endPointB = new TcpEndPoint(localAddressResolver, portB);
+
+            await sendTask;
+
+            var receivedTransmission = await endPointB.ReceiveAsync();
+
+            Assert.AreEqual(endPointA.LocalAddress, receivedTransmission.RemoteAddress);
+
+            TestTestMessage(receivedTransmission.Message);
+        }
+
+        [TestMethod]
+        public async Task Transmission3Test()
+        {
+            var localAddressResolver = BuildLocalAddressResolver();
+            var endPointA = new TcpEndPoint(localAddressResolver);
+            var endPointB = new TcpEndPoint(localAddressResolver);
+
+            var message = BuildTestMessage();
+            var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            _ = await endPointB.ReceiveAsync();
+
+            message = BuildTestMessage();
+            transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            var receivedTransmission = await endPointB.ReceiveAsync();
+
+            Assert.AreEqual(endPointA.LocalAddress, receivedTransmission.RemoteAddress);
+
+            TestTestMessage(receivedTransmission.Message);
+        }
+
+        [TestMethod]
+        public async Task SenderListenerBreakdownTest()
+        {
+            var localAddressResolver = BuildLocalAddressResolver();
+            var endPointA = new TcpEndPoint(localAddressResolver);
+            var endPointB = new TcpEndPoint(localAddressResolver);
+
+            var message = BuildTestMessage();
+            var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            _ = await endPointB.ReceiveAsync();
+
+            endPointA.TcpListener.Stop();
+
+            message = BuildTestMessage();
+            transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            var receivedTransmission = await endPointB.ReceiveAsync();
+
+            Assert.AreEqual(endPointA.LocalAddress, receivedTransmission.RemoteAddress);
+
+            TestTestMessage(receivedTransmission.Message);
+        }
+
+        [TestMethod]
+        public async Task ReceiverListenerBreakdownTest()
+        {
+            var localAddressResolver = BuildLocalAddressResolver();
+            var endPointA = new TcpEndPoint(localAddressResolver);
+            var endPointB = new TcpEndPoint(localAddressResolver);
+
+            var message = BuildTestMessage();
+            var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            _ = await endPointB.ReceiveAsync();
+
+            endPointB.TcpListener.Stop();
+
+            message = BuildTestMessage();
+            transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            var receivedTransmission = await endPointB.ReceiveAsync();
+
+            Assert.AreEqual(endPointA.LocalAddress, receivedTransmission.RemoteAddress);
+
+            TestTestMessage(receivedTransmission.Message);
+        }
+
+        [TestMethod]
+        public async Task SenderConnectionDisposeTest()
+        {
+            var localAddressResolver = BuildLocalAddressResolver();
+            var endPointA = new TcpEndPoint(localAddressResolver);
+            var endPointB = new TcpEndPoint(localAddressResolver);
+
+            var message = BuildTestMessage();
+            var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            _ = await endPointB.ReceiveAsync();
+
+            Assert.IsTrue(endPointA.TryGetRemoteEndPoint(endPointB.LocalAddress, out var remoteEP));
+            await remoteEP.Connection.DisposeAsync();
+
+            message = BuildTestMessage();
+            transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            var receivedTransmission = await endPointB.ReceiveAsync();
+
+            Assert.AreEqual(endPointA.LocalAddress, receivedTransmission.RemoteAddress);
+
+            TestTestMessage(receivedTransmission.Message);
+        }
+
+        [TestMethod]
+        public async Task ReceiverConnectionDisposeTest()
+        {
+            var localAddressResolver = BuildLocalAddressResolver();
+            var endPointA = new TcpEndPoint(localAddressResolver);
+            var endPointB = new TcpEndPoint(localAddressResolver);
+
+            var message = BuildTestMessage();
+            var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            _ = await endPointB.ReceiveAsync();
+
+            Assert.IsTrue(endPointB.TryGetRemoteEndPoint(endPointA.LocalAddress, out var remoteEP));
+            await remoteEP.Connection.DisposeAsync();
+
+            message = BuildTestMessage();
+            transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            var receivedTransmission = await endPointB.ReceiveAsync();
+
+            Assert.AreEqual(endPointA.LocalAddress, receivedTransmission.RemoteAddress);
+
+            TestTestMessage(receivedTransmission.Message);
+        }
+
+        [TestMethod]
+        public async Task SenderConnectionBreakdownTest()
+        {
+            var localAddressResolver = BuildLocalAddressResolver();
+            var endPointA = new TcpEndPoint(localAddressResolver);
+            var endPointB = new TcpEndPoint(localAddressResolver);
+
+            var message = BuildTestMessage();
+            var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            _ = await endPointB.ReceiveAsync();
+
+            Assert.IsTrue(endPointA.TryGetRemoteEndPoint(endPointB.LocalAddress, out var remoteEP));
+            remoteEP.Connection.Stream.Close();
+
+            message = BuildTestMessage();
+            transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            var receivedTransmission = await endPointB.ReceiveAsync();
+
+            Assert.AreEqual(endPointA.LocalAddress, receivedTransmission.RemoteAddress);
+
+            TestTestMessage(receivedTransmission.Message);
+        }
+
+        [TestMethod]
+        public async Task ReceiverConnectionBreakdownTest()
+        {
+            var localAddressResolver = BuildLocalAddressResolver();
+            var endPointA = new TcpEndPoint(localAddressResolver);
+            var endPointB = new TcpEndPoint(localAddressResolver);
+
+            var message = BuildTestMessage();
+            var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
+
+            await endPointA.SendAsync(transmission);
+            _ = await endPointB.ReceiveAsync();
+
+            Assert.IsTrue(endPointB.TryGetRemoteEndPoint(endPointA.LocalAddress, out var remoteEP));
+            remoteEP.Connection.Stream.Close();
+
+            message = BuildTestMessage();
+            transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
 
             await endPointA.SendAsync(transmission);
             var receivedTransmission = await endPointB.ReceiveAsync();

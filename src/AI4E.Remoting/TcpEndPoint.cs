@@ -46,8 +46,6 @@ namespace AI4E.Remoting
         private readonly Dictionary<IPEndPoint, RemoteEndPoint> _remotes;
         private readonly object _remotesMutex = new object();
         private readonly AsyncProducerConsumerQueue<Transmission<IPEndPoint>> _rxQueue;
-
-        private readonly TcpListener _tcpHost;
         private readonly AsyncProcess _listenerProcess;
 
         private readonly AsyncDisposeHelper _disposeHelper;
@@ -71,9 +69,39 @@ namespace AI4E.Remoting
                 throw new Exception("Cannot evaluate local address."); // TODO: https://github.com/AI4E/AI4E/issues/32
             }
 
-            _tcpHost = new TcpListener(new IPEndPoint(localAddress, 0));
-            _tcpHost.Start();
-            LocalAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;
+            TcpListener = new TcpListener(new IPEndPoint(localAddress, 0));
+            TcpListener.Start();
+            LocalAddress = (IPEndPoint)TcpListener.Server.LocalEndPoint;
+            Debug.Assert(LocalAddress != null);
+
+            _listenerProcess = new AsyncProcess(ListenerProcess, start: true);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync); // TODO: Do we need synchronization enabled?
+        }
+
+        // For test purposes only. TODO: Open this for the public?
+        internal TcpEndPoint(
+            ILocalAddressResolver<IPAddress> addressResolver,
+            int port,
+            ILogger<TcpEndPoint> logger = null)
+        {
+            if (addressResolver == null)
+                throw new ArgumentNullException(nameof(addressResolver));
+
+            _logger = logger;
+
+            _remotes = new Dictionary<IPEndPoint, RemoteEndPoint>();
+            _rxQueue = new AsyncProducerConsumerQueue<Transmission<IPEndPoint>>();
+
+            var localAddress = addressResolver.GetLocalAddress();
+
+            if (localAddress == null)
+            {
+                throw new Exception("Cannot evaluate local address."); // TODO: https://github.com/AI4E/AI4E/issues/32
+            }
+
+            TcpListener = new TcpListener(new IPEndPoint(localAddress, port));
+            TcpListener.Start();
+            LocalAddress = (IPEndPoint)TcpListener.Server.LocalEndPoint;
             Debug.Assert(LocalAddress != null);
 
             _listenerProcess = new AsyncProcess(ListenerProcess, start: true);
@@ -82,6 +110,8 @@ namespace AI4E.Remoting
 
         /// <inheritdoc />
         public IPEndPoint LocalAddress { get; }
+
+        internal TcpListener TcpListener { get; }
 
         /// <inheritdoc />
         public async ValueTask<Transmission<IPEndPoint>> ReceiveAsync(CancellationToken cancellation = default)
@@ -152,14 +182,14 @@ namespace AI4E.Remoting
                 {
                     try
                     {
-                        var client = await _tcpHost.AcceptTcpClientAsync().WithCancellation(cancellation);
+                        var client = await TcpListener.AcceptTcpClientAsync().WithCancellation(cancellation);
 
                         Task.Run(() => OnClientConnectedAsync(client, cancellation)).HandleExceptions(_logger);
                     }
                     catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                     catch (SocketException)
                     {
-                        // The socket is down, we cannot do anything here unless cleanup the complete end-point.
+                        // The socket is down, we cannot do anything here unless cleaning up the complete end-point.
                         // TODO: Log this
                         Dispose();
                         Debug.Assert(cancellation.IsCancellationRequested);
@@ -174,7 +204,7 @@ namespace AI4E.Remoting
             finally
             {
                 // Kill the socket
-                _tcpHost.Stop();
+                TcpListener.Stop();
             }
         }
 
@@ -267,6 +297,15 @@ namespace AI4E.Remoting
             Debug.Assert(address.Equals(remoteEndPoint.RemoteAddress));
 
             return remoteEndPoint;
+        }
+
+        // For test purposes only.
+        internal bool TryGetRemoteEndPoint(IPEndPoint address, out RemoteEndPoint remoteEndPoint)
+        {
+            lock (_remotesMutex)
+            {
+                return _remotes.TryGetValue(address, out remoteEndPoint);
+            }
         }
     }
 }

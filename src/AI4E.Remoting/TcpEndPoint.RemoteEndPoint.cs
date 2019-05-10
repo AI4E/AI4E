@@ -39,7 +39,7 @@ namespace AI4E.Remoting
 {
     public sealed partial class TcpEndPoint
     {
-        private sealed class RemoteEndPoint : IAsyncDisposable
+        internal sealed class RemoteEndPoint : IAsyncDisposable
         {
             private readonly ILogger _logger;
 
@@ -75,6 +75,17 @@ namespace AI4E.Remoting
                 // Initially connect
                 _connection = new RemoteConnection(this, stream);
                 _reconnectionManager.Reconnect();
+            }
+
+            internal RemoteConnection Connection
+            {
+                get
+                {
+                    lock (_connectionMutex)
+                    {
+                        return _connection;
+                    }
+                }
             }
 
             public TcpEndPoint LocalEndPoint { get; }
@@ -115,8 +126,13 @@ namespace AI4E.Remoting
                         }
                         catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
                         {
+                            _reconnectionManager.Reconnect();
                             // The connection is broken. The message will be re-sent, when reconnected.
                         }
+                    }
+                    else
+                    {
+                        _reconnectionManager.Reconnect();
                     }
 
                     await ackSource.Task.WithCancellation(cancellation);
@@ -152,7 +168,19 @@ namespace AI4E.Remoting
                 }
 
                 Debug.Assert(connection != null);
-                await connection.SendAsync(message, cancellation);
+                try
+                {
+                    await connection.SendAsync(message, cancellation);
+                }
+                catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
+                {
+                    Reconnect();
+                }
+            }
+
+            internal void Reconnect()
+            {
+                _reconnectionManager.Reconnect();
             }
 
             internal async ValueTask ReceiveAsync(IMessage message, CancellationToken cancellation)
