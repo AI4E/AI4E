@@ -19,6 +19,8 @@
  */
 
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -30,6 +32,7 @@ using System.Threading.Tasks;
 using AI4E.Internal;
 using AI4E.Utils;
 using AI4E.Utils.Async;
+using AI4E.Utils.Memory;
 using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
@@ -105,6 +108,12 @@ namespace AI4E.Remoting
             {
                 using var guard = await _disposeHelper.GuardDisposalAsync(cancellation);
 
+                if (transmission.RemoteAddress.Equals(LocalAddress))
+                {
+                    await _rxQueue.EnqueueAsync(transmission);
+                    return;
+                }
+
                 var remoteEndPoint = GetRemoteEndPoint(transmission.RemoteAddress);
                 Debug.Assert(remoteEndPoint != null);
                 await remoteEndPoint.SendAsync(transmission.Message, guard.Cancellation);
@@ -171,17 +180,39 @@ namespace AI4E.Remoting
 
         private async Task OnClientConnectedAsync(TcpClient client, CancellationToken cancellation)
         {
-            var remoteAddress = (IPEndPoint)client.Client.RemoteEndPoint;
-            _logger?.LogDebug($"Physical-end-point {LocalAddress}: Remote {remoteAddress} connected.");
+            var stream = client.GetStream();
+            int remotePort;
 
-            RemoteEndPoint remoteEndPoint;
-
-            using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
+            using (ArrayPool<byte>.Shared.RentExact(4, out var buffer))
             {
-                remoteEndPoint = GetRemoteEndPoint(remoteAddress);
+                await stream.ReadExactAsync(buffer, cancellation);
+                remotePort = BinaryPrimitives.ReadInt32LittleEndian(buffer.Span);
             }
 
-            await remoteEndPoint.OnConnectionRequestedAsync(client);
+            var remoteAddress = new IPEndPoint(((IPEndPoint)client.Client.RemoteEndPoint).Address, remotePort);
+            _logger?.LogDebug($"Physical-end-point {LocalAddress}: Remote {remoteAddress} connected.");
+
+            using var guard = await _disposeHelper.GuardDisposalAsync(cancellation);
+            bool created;
+            RemoteEndPoint remoteEndPoint;
+
+            lock (_remotesMutex)
+            {
+                created = !_remotes.TryGetValue(remoteAddress, out remoteEndPoint);
+                if (created)
+                {
+                    remoteEndPoint = new RemoteEndPoint(this, remoteAddress, stream, _logger);
+                    _remotes.Add(remoteAddress, remoteEndPoint);
+                }
+            }
+
+            if (!created)
+            {
+                await remoteEndPoint.OnConnectionRequestedAsync(client);
+            }
+
+            Debug.Assert(remoteEndPoint != null);
+            Debug.Assert(remoteAddress.Equals(remoteEndPoint.RemoteAddress));
         }
 
         #endregion

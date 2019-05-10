@@ -19,6 +19,8 @@
  */
 
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -30,6 +32,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Utils;
 using AI4E.Utils.Async;
+using AI4E.Utils.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace AI4E.Remoting
@@ -60,12 +63,26 @@ namespace AI4E.Remoting
                 _reconnectionManager.Reconnect();
             }
 
+            public RemoteEndPoint(TcpEndPoint localEndPoint, IPEndPoint remoteAddress, Stream stream, ILogger logger)
+            {
+                LocalEndPoint = localEndPoint;
+                RemoteAddress = remoteAddress;
+
+                _logger = logger;
+                _txQueue = new ConcurrentDictionary<int, (IMessage message, ValueTaskCompletionSource ackSource)>();
+                _reconnectionManager = new ReconnectionManager(this, logger);
+
+                // Initially connect
+                _connection = new RemoteConnection(this, stream);
+                _reconnectionManager.Reconnect();
+            }
+
             public TcpEndPoint LocalEndPoint { get; }
             public IPEndPoint RemoteAddress { get; }
 
             public async ValueTask SendAsync(IMessage message, CancellationToken cancellation)
             {
-                var ackSource = new ValueTaskCompletionSource();
+                var ackSource = ValueTaskCompletionSource.Create();
                 var seqNum = GetNextSeqNum();
 
                 while (!_txQueue.TryAdd(seqNum, (message, ackSource)))
@@ -190,10 +207,10 @@ namespace AI4E.Remoting
 
             #region Connection/Reconnection
 
-            public async ValueTask OnConnectionRequestedAsync(TcpClient client)
+            public ValueTask OnConnectionRequestedAsync(TcpClient client)
             {
                 // Ensure we are not connecting to a foreign remote.
-                Debug.Assert(RemoteAddress.Equals(client.Client.RemoteEndPoint));
+                Debug.Assert(RemoteAddress.Address.Equals(((IPEndPoint)client.Client.RemoteEndPoint).Address));
 
                 lock (_connectionMutex)
                 {
@@ -207,6 +224,8 @@ namespace AI4E.Remoting
                         _connection = new RemoteConnection(this, client.GetStream());
                     }
                 }
+
+                return default;
             }
 
             public async ValueTask EstablishConnectionAsync(
@@ -218,10 +237,7 @@ namespace AI4E.Remoting
                         return;
                 }
 
-                var tcpClient = new TcpClient(LocalEndPoint.LocalAddress);
-                await tcpClient.ConnectAsync(RemoteAddress.Address, RemoteAddress.Port).WithCancellation(cancellation);
-
-                var connection = new RemoteConnection(this, tcpClient.GetStream());
+                var connection = await SetupConnectionAsync(cancellation);
 
                 lock (_connectionMutex)
                 {
@@ -231,6 +247,23 @@ namespace AI4E.Remoting
                         _connection = connection;
                     }
                 }
+            }
+
+            private async ValueTask<RemoteConnection> SetupConnectionAsync(CancellationToken cancellation)
+            {
+                var tcpClient = new TcpClient(new IPEndPoint(LocalEndPoint.LocalAddress.Address, 0));
+                await tcpClient.ConnectAsync(RemoteAddress.Address, RemoteAddress.Port).WithCancellation(cancellation);
+
+                var port = LocalEndPoint.LocalAddress.Port;
+                var stream = tcpClient.GetStream();
+
+                using (ArrayPool<byte>.Shared.RentExact(4, out var buffer))
+                {
+                    BinaryPrimitives.WriteInt32LittleEndian(buffer.Span, port);
+                    await stream.WriteAsync(buffer, cancellation);
+                }
+
+                return new RemoteConnection(this, stream);
             }
 
             public ValueTask OnConnectionEstablished(CancellationToken cancellation)
