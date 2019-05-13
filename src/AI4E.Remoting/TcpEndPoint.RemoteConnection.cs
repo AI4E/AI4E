@@ -90,17 +90,15 @@ namespace AI4E.Remoting
                 }
             }
 
-            private async Task<IMessage> ReceiveAsync(CancellationToken cancellation)
+            private async Task<ValueMessage> ReceiveAsync(CancellationToken cancellation)
             {
-                var message = new Message();
-
                 try
                 {
                     // The underlying network stream does not cancel the operation when we ask it for,
                     // but we can just leave alone the operation, as we get cancelled only, if we dispose
                     // so the next operation, we do is closing the underlying socket which will cancel the
                     // operation anyway.
-                    await message.ReadAsync(Stream, cancellation).WithCancellation(cancellation);
+                    return await ValueMessage.ReadFromStreamAsync(Stream, cancellation).WithCancellation(cancellation);
                 }
                 catch (ObjectDisposedException)
                 {
@@ -116,20 +114,18 @@ namespace AI4E.Remoting
                     Debug.Assert(cancellation.IsCancellationRequested);
                     throw new OperationCanceledException();
                 }
-
-                return message;
             }
 
             #endregion
 
-            public async ValueTask SendAsync(IMessage message, CancellationToken cancellation)
+            public async ValueTask SendAsync(ValueMessage message, CancellationToken cancellation)
             {
                 if (_asyncDisposeHelper.IsDisposed)
                     throw new OperationCanceledException();
 
                 try
                 {
-                    await message.WriteAsync(Stream, cancellation);
+                    await ValueMessage.WriteToStreamAsync(message, Stream, cancellation);
                 }
                 catch (ObjectDisposedException)
                 {
@@ -143,7 +139,7 @@ namespace AI4E.Remoting
                 }
             }
 
-            private ValueTask ReceiveAsync(IMessage message, CancellationToken cancellation)
+            private ValueTask ReceiveAsync(ValueMessage message, CancellationToken cancellation)
             {
                 return RemoteEndPoint.ReceiveAsync(message, cancellation);
             }

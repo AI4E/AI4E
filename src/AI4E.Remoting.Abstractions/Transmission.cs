@@ -18,8 +18,6 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-
 namespace AI4E.Remoting
 {
     /// <summary>
@@ -33,13 +31,9 @@ namespace AI4E.Remoting
         /// </summary>
         /// <param name="message">The transmit message.</param>
         /// <param name="remoteAddress">The address of the remote physical end-point.</param>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is <c>null</c>.</exception>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="remoteAddress"/> is <c>default</c>.</exception>
-        public Transmission(IMessage message, TAddress remoteAddress)
+        public Transmission(ValueMessage message, TAddress remoteAddress)
         {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
-
             if (remoteAddress == default)
                 throw new ArgumentDefaultException(nameof(remoteAddress));
 
@@ -50,7 +44,7 @@ namespace AI4E.Remoting
         /// <summary>
         /// Gets the transmit message.
         /// </summary>
-        public IMessage Message { get; }
+        public ValueMessage Message { get; }
 
         /// <summary>
         /// Gets the address of the remote physical end-point.

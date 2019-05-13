@@ -54,8 +54,6 @@ namespace AI4E.Remoting
             var receivedTransmission = await endPoint.ReceiveAsync();
 
             Assert.AreEqual(transmission.RemoteAddress, receivedTransmission.RemoteAddress);
-            // We can assume that the messages are actually the same, as we are testing the loopack case.
-            Assert.AreSame(message, receivedTransmission.Message);
 
             TestTestMessage(receivedTransmission.Message);
         }
@@ -301,36 +299,38 @@ namespace AI4E.Remoting
             };
         }
 
-        private IMessage BuildTestMessage()
+        private ValueMessage BuildTestMessage()
         {
-            var message = new Message();
+            var messageBuilder = new ValueMessageBuilder();
 
-            using (var frameStream = message.PushFrame().OpenStream())
+            using (var frameStream = messageBuilder.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(frameStream))
             {
                 writer.Write(4);
             }
 
-            using (var frameStream = message.PushFrame().OpenStream())
+            using (var frameStream = messageBuilder.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(frameStream))
             {
                 writer.Write(5);
             }
 
-            return message;
+            return messageBuilder.BuildMessage();
         }
 
-        private void TestTestMessage(IMessage message)
+        private void TestTestMessage(ValueMessage message)
         {
-            Assert.AreEqual(1, message.FrameIndex);
+            message = message.PopFrame(out var frame);
 
-            using (var frameStream = message.PopFrame().OpenStream())
+            using (var frameStream = frame.OpenStream())
             using (var reader = new BinaryReader(frameStream))
             {
                 Assert.AreEqual(5, reader.ReadInt32());
             }
 
-            using (var frameStream = message.PopFrame().OpenStream())
+            message = message.PopFrame(out frame);
+
+            using (var frameStream = frame.OpenStream())
             using (var reader = new BinaryReader(frameStream))
             {
                 Assert.AreEqual(4, reader.ReadInt32());

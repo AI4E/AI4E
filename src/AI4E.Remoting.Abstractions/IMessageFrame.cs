@@ -18,10 +18,12 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.IO;
 
 namespace AI4E.Remoting
 {
+    [Obsolete("Use ValueMessageFrame")]
     public interface IMessageFrame
     {
         long Length { get; }

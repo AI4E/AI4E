@@ -34,6 +34,7 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Remoting
 {
+    [Obsolete("Use ValueMessage")]
     [Serializable]
     public sealed class Message : IMessage
     {
@@ -232,6 +233,7 @@ namespace AI4E.Remoting
         }
     }
 
+    [Obsolete("Use ValueMessageFrame")]
     [Serializable]
     public sealed class MessageFrame : IMessageFrame
     {

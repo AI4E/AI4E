@@ -196,9 +196,9 @@ namespace AI4E.Coordination
                 try
                 {
                     var transmission = await physicalEndPoint.ReceiveAsync(cancellation);
-                    var (messageType, path, session) = DecodeMessage(transmission.Message);
+                    var (messageType, path, session) = DecodeMessage(transmission.Message.ToMessage());
 
-                    Task.Run(() => HandleMessageAsync(transmission.Message, messageType, path, session, cancellation)).HandleExceptions();
+                    Task.Run(() => HandleMessageAsync(transmission.Message.ToMessage(), messageType, path, session, cancellation)).HandleExceptions();
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
@@ -248,7 +248,7 @@ namespace AI4E.Coordination
 
             try
             {
-                await physicalEndPoint.SendAsync(new Transmission<TAddress>(message, remoteAddress), cancellation);
+                await physicalEndPoint.SendAsync(new Transmission<TAddress>(message.ToValueMessage(), remoteAddress), cancellation);
             }
             catch (SocketException) { }
             catch (IOException) { } // The remote session terminated or we just cannot transmit to it.

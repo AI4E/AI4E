@@ -25,6 +25,7 @@ using System.Threading.Tasks;
 
 namespace AI4E.Remoting
 {
+    [Obsolete("Use ValueMessage")]
     public interface IMessage
     {
         IMessageFrame CurrentFrame { get; }

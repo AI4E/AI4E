@@ -116,8 +116,8 @@ namespace AI4E.Remoting
 
         private Task HandleMessageAsync(Transmission<TAddress> transmission, CancellationToken cancellation)
         {
-            var multiplexName = DecodeMultiplexName(transmission.Message);
-            return GetRxQueue(multiplexName).EnqueueAsync(new Transmission<TAddress>(transmission.Message, transmission.RemoteAddress), cancellation);
+            var (message, multiplexName) = DecodeMultiplexName(transmission.Message);
+            return GetRxQueue(multiplexName).EnqueueAsync(new Transmission<TAddress>(message, transmission.RemoteAddress), cancellation);
         }
 
         #endregion
@@ -148,63 +148,42 @@ namespace AI4E.Remoting
 
         #region Coding
 
-        private static void EncodeMultiplexName(IMessage message, string multiplexName)
+        private static ValueMessage EncodeMultiplexName(ValueMessage message, string multiplexName)
         {
-            Assert(message != null);
             Assert(multiplexName != null);
 
-            var frameIdx = message.FrameIndex;
             var multiplexNameBytes = Encoding.UTF8.GetBytes(multiplexName);
+            var frameBuilder = new ValueMessageFrameBuilder();
 
-            try
+            using (var frameStream = frameBuilder.OpenStream())
+            using (var binaryWriter = new BinaryWriter(frameStream))
             {
-                using (var frameStream = message.PushFrame().OpenStream(overrideContent: true))
-                using (var binaryWriter = new BinaryWriter(frameStream))
-                {
-                    binaryWriter.Write(multiplexNameBytes.Length);
-                    binaryWriter.Write(multiplexNameBytes);
-                }
+                binaryWriter.Write(multiplexNameBytes.Length);
+                binaryWriter.Write(multiplexNameBytes);
             }
-            catch when (frameIdx != message.FrameIndex)
-            {
-                message.PopFrame();
 
-                Assert(frameIdx == message.FrameIndex);
+            return message.PushFrame(frameBuilder.BuildMessageFrame());
 
-                throw;
-            }
         }
 
-        private static string DecodeMultiplexName(IMessage message)
+        private static (ValueMessage message, string multiplexName) DecodeMultiplexName(ValueMessage message)
         {
-            Assert(message != null);
+            var multiplexName = default(string);
 
-            var frameIdx = message.FrameIndex;
-            var result = default(string);
+            message = message.PopFrame(out var frame);
 
-            try
+            using (var frameStream = frame.OpenStream())
+            using (var binaryReader = new BinaryReader(frameStream))
             {
-                using (var frameStream = message.PopFrame().OpenStream())
-                using (var binaryReader = new BinaryReader(frameStream))
-                {
-                    var multiplexNameLength = binaryReader.ReadInt32();
-                    var multiplexNameBytes = binaryReader.ReadBytes(multiplexNameLength);
+                var multiplexNameLength = binaryReader.ReadInt32();
+                var multiplexNameBytes = binaryReader.ReadBytes(multiplexNameLength);
 
-                    result = Encoding.UTF8.GetString(multiplexNameBytes);
-                }
-            }
-            catch when (frameIdx != message.FrameIndex)
-            {
-                message.PushFrame();
-
-                Assert(frameIdx == message.FrameIndex);
-
-                throw;
+                multiplexName = Encoding.UTF8.GetString(multiplexNameBytes);
             }
 
-            Assert(result != null);
+            Assert(multiplexName != null);
 
-            return result;
+            return (message, multiplexName);
         }
 
         #endregion
@@ -296,19 +275,8 @@ namespace AI4E.Remoting
 
             private async ValueTask SendInternalAsync(Transmission<TAddress> transmission, CancellationToken cancellation)
             {
-                var frameIdx = transmission.Message.FrameIndex;
-                EncodeMultiplexName(transmission.Message, MultiplexName);
-
-                try
-                {
-                    await _multiplexer._physicalEndPoint.SendAsync(transmission, cancellation);
-                }
-                catch when (frameIdx != transmission.Message.FrameIndex)
-                {
-                    transmission.Message.PopFrame();
-                    Assert(frameIdx == transmission.Message.FrameIndex);
-                    throw;
-                }
+                var message = EncodeMultiplexName(transmission.Message, MultiplexName);
+                await _multiplexer._physicalEndPoint.SendAsync(new Transmission<TAddress>(message, transmission.RemoteAddress), cancellation);
             }
 
             public void Dispose() { }
