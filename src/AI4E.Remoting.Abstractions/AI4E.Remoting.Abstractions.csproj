@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AI4E.Utils.Memory" Version="0.2.0-pre19051310" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
   </ItemGroup>
 
