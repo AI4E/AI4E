@@ -27,6 +27,7 @@ using AI4E.Utils;
 using AI4E.Utils.Async;
 using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
+using Nito.AsyncEx;
 
 namespace AI4E.Remoting
 {
@@ -36,6 +37,7 @@ namespace AI4E.Remoting
         {
             private readonly AsyncDisposeHelper _asyncDisposeHelper;
             private readonly AsyncProcess _receiveProcess;
+            private readonly AsyncLock _sendLock = new AsyncLock();
 
             public RemoteConnection(RemoteEndPoint remoteEndPoint, Stream stream)
             {
@@ -125,7 +127,10 @@ namespace AI4E.Remoting
 
                 try
                 {
-                    await ValueMessage.WriteToStreamAsync(message, Stream, cancellation);
+                    using (await _sendLock.LockAsync(cancellation))
+                    {
+                        await ValueMessage.WriteToStreamAsync(message, Stream, cancellation);
+                    }               
                 }
                 catch (ObjectDisposedException)
                 {
