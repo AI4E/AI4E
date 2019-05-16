@@ -112,7 +112,7 @@ namespace AI4E.Remoting
         /// <inheritdoc />
         public IPEndPoint LocalAddress { get; }
 
-        internal TcpListener TcpListener { get; }
+        private TcpListener TcpListener { get; }
 
         /// <inheritdoc />
         public async ValueTask<Transmission<IPEndPoint>> ReceiveAsync(CancellationToken cancellation = default)
@@ -188,6 +188,14 @@ namespace AI4E.Remoting
                         Task.Run(() => OnClientConnectedAsync(client, cancellation)).HandleExceptions(_logger);
                     }
                     catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
+                    catch (InvalidOperationException) when (!TcpListener.Server.IsBound)
+                    {
+                        // The socket is down, we cannot do anything here unless cleaning up the complete end-point.
+                        // TODO: Log this
+                        Dispose();
+                        Debug.Assert(cancellation.IsCancellationRequested);
+                        return;
+                    }
                     catch (SocketException)
                     {
                         // The socket is down, we cannot do anything here unless cleaning up the complete end-point.
@@ -204,8 +212,12 @@ namespace AI4E.Remoting
             }
             finally
             {
-                // Kill the socket
-                TcpListener.Stop();
+                try
+                {
+                    // Kill the socket
+                    TcpListener.Stop();
+                }
+                catch { /* TODO: Log? */}
             }
         }
 
