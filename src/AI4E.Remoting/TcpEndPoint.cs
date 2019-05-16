@@ -191,6 +191,7 @@ namespace AI4E.Remoting
                     catch (InvalidOperationException) when (!TcpListener.Server.IsBound)
                     {
                         // The socket is down, we cannot do anything here unless cleaning up the complete end-point.
+                        // TODO: We may try to bind the socket to the same end-point.
                         // TODO: Log this
                         Dispose();
                         Debug.Assert(cancellation.IsCancellationRequested);
@@ -199,6 +200,7 @@ namespace AI4E.Remoting
                     catch (SocketException)
                     {
                         // The socket is down, we cannot do anything here unless cleaning up the complete end-point.
+                        // TODO: We may try to bind the socket to the same end-point.
                         // TODO: Log this
                         Dispose();
                         Debug.Assert(cancellation.IsCancellationRequested);

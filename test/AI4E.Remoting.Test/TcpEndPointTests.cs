@@ -130,7 +130,6 @@ namespace AI4E.Remoting
             TestTestMessage(receivedTransmission.Message);
         }
 
-
         [TestMethod]
         public async Task SenderConnectionDisposeTest()
         {

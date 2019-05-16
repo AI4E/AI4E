@@ -171,11 +171,6 @@ namespace AI4E.Remoting
                 }
             }
 
-            internal void Reconnect()
-            {
-                _reconnectionManager.Reconnect();
-            }
-
             internal async ValueTask ReceiveAsync(ValueMessage message, CancellationToken cancellation)
             {
                 MessageType messageType;
@@ -231,6 +226,11 @@ namespace AI4E.Remoting
 
             #region Connection/Reconnection
 
+            internal void Reconnect()
+            {
+                _reconnectionManager.Reconnect();
+            }
+
             public ValueTask OnConnectionRequestedAsync(TcpClient client)
             {
                 // Ensure we are not connecting to a foreign remote.
@@ -240,13 +240,10 @@ namespace AI4E.Remoting
                 {
                     if (_connection != null && _connection.Status == ConnectionStatus.Connected)
                     {
-                        client.Close();
+                        _connection.Dispose();
                     }
-                    else
-                    {
-                        // We do not need to dispose the connection as it is already in its final (non-connected) state, or null.
-                        _connection = new RemoteConnection(this, client.GetStream());
-                    }
+
+                    _connection = new RemoteConnection(this, client.GetStream());
                 }
 
                 return default;
