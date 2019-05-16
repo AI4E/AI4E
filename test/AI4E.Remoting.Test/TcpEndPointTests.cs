@@ -24,6 +24,8 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using AI4E.Remoting.Mocks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Remoting
@@ -35,7 +37,7 @@ namespace AI4E.Remoting
         public void SetupTest()
         {
             var localAddressResolver = BuildLocalAddressResolver();
-            var endPoint = new TcpEndPoint(localAddressResolver);
+            var endPoint = new TcpEndPoint(localAddressResolver, BuildLogger());
 
             Assert.AreEqual(localAddressResolver.LocalAddress, endPoint.LocalAddress.Address);
             Assert.AreNotEqual(0, endPoint.LocalAddress.Port);
@@ -45,7 +47,7 @@ namespace AI4E.Remoting
         public async Task LoopbackTest()
         {
             var localAddressResolver = BuildLocalAddressResolver();
-            var endPoint = new TcpEndPoint(localAddressResolver);
+            var endPoint = new TcpEndPoint(localAddressResolver, BuildLogger());
 
             var message = BuildTestMessage();
             var transmission = new Transmission<IPEndPoint>(message, endPoint.LocalAddress);
@@ -62,8 +64,8 @@ namespace AI4E.Remoting
         public async Task TransmissionTest()
         {
             var localAddressResolver = BuildLocalAddressResolver();
-            var endPointA = new TcpEndPoint(localAddressResolver);
-            var endPointB = new TcpEndPoint(localAddressResolver);
+            var endPointA = new TcpEndPoint(localAddressResolver, BuildLogger());
+            var endPointB = new TcpEndPoint(localAddressResolver, BuildLogger());
 
             var message = BuildTestMessage();
             var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
@@ -80,7 +82,7 @@ namespace AI4E.Remoting
         public async Task Transmission2Test()
         {
             var localAddressResolver = BuildLocalAddressResolver();
-            var endPointA = new TcpEndPoint(localAddressResolver);
+            var endPointA = new TcpEndPoint(localAddressResolver, BuildLogger());
 
             var portB = new Random().Next(8000, 9000);
             var addressB = new IPEndPoint(localAddressResolver.LocalAddress, portB);
@@ -93,7 +95,7 @@ namespace AI4E.Remoting
 
             Assert.AreEqual(TaskStatus.WaitingForActivation, sendTask.Status);
 
-            var endPointB = new TcpEndPoint(localAddressResolver, portB);
+            var endPointB = new TcpEndPoint(localAddressResolver, portB, BuildLogger());
 
             await sendTask;
 
@@ -108,8 +110,8 @@ namespace AI4E.Remoting
         public async Task Transmission3Test()
         {
             var localAddressResolver = BuildLocalAddressResolver();
-            var endPointA = new TcpEndPoint(localAddressResolver);
-            var endPointB = new TcpEndPoint(localAddressResolver);
+            var endPointA = new TcpEndPoint(localAddressResolver, BuildLogger());
+            var endPointB = new TcpEndPoint(localAddressResolver, BuildLogger());
 
             var message = BuildTestMessage();
             var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
@@ -128,64 +130,13 @@ namespace AI4E.Remoting
             TestTestMessage(receivedTransmission.Message);
         }
 
-        [TestMethod]
-        public async Task SenderListenerBreakdownTest()
-        {
-            var localAddressResolver = BuildLocalAddressResolver();
-            var endPointA = new TcpEndPoint(localAddressResolver);
-            var endPointB = new TcpEndPoint(localAddressResolver);
-
-            var message = BuildTestMessage();
-            var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
-
-            await endPointA.SendAsync(transmission);
-            _ = await endPointB.ReceiveAsync();
-
-            endPointA.TcpListener.Stop();
-
-            message = BuildTestMessage();
-            transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
-
-            await endPointA.SendAsync(transmission);
-            var receivedTransmission = await endPointB.ReceiveAsync();
-
-            Assert.AreEqual(endPointA.LocalAddress, receivedTransmission.RemoteAddress);
-
-            TestTestMessage(receivedTransmission.Message);
-        }
-
-        [TestMethod]
-        public async Task ReceiverListenerBreakdownTest()
-        {
-            var localAddressResolver = BuildLocalAddressResolver();
-            var endPointA = new TcpEndPoint(localAddressResolver);
-            var endPointB = new TcpEndPoint(localAddressResolver);
-
-            var message = BuildTestMessage();
-            var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
-
-            await endPointA.SendAsync(transmission);
-            _ = await endPointB.ReceiveAsync();
-
-            endPointB.TcpListener.Stop();
-
-            message = BuildTestMessage();
-            transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
-
-            await endPointA.SendAsync(transmission);
-            var receivedTransmission = await endPointB.ReceiveAsync();
-
-            Assert.AreEqual(endPointA.LocalAddress, receivedTransmission.RemoteAddress);
-
-            TestTestMessage(receivedTransmission.Message);
-        }
 
         [TestMethod]
         public async Task SenderConnectionDisposeTest()
         {
             var localAddressResolver = BuildLocalAddressResolver();
-            var endPointA = new TcpEndPoint(localAddressResolver);
-            var endPointB = new TcpEndPoint(localAddressResolver);
+            var endPointA = new TcpEndPoint(localAddressResolver, BuildLogger());
+            var endPointB = new TcpEndPoint(localAddressResolver, BuildLogger());
 
             var message = BuildTestMessage();
             var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
@@ -211,8 +162,8 @@ namespace AI4E.Remoting
         public async Task ReceiverConnectionDisposeTest()
         {
             var localAddressResolver = BuildLocalAddressResolver();
-            var endPointA = new TcpEndPoint(localAddressResolver);
-            var endPointB = new TcpEndPoint(localAddressResolver);
+            var endPointA = new TcpEndPoint(localAddressResolver, BuildLogger());
+            var endPointB = new TcpEndPoint(localAddressResolver, BuildLogger());
 
             var message = BuildTestMessage();
             var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
@@ -238,8 +189,8 @@ namespace AI4E.Remoting
         public async Task SenderConnectionBreakdownTest()
         {
             var localAddressResolver = BuildLocalAddressResolver();
-            var endPointA = new TcpEndPoint(localAddressResolver);
-            var endPointB = new TcpEndPoint(localAddressResolver);
+            var endPointA = new TcpEndPoint(localAddressResolver, BuildLogger());
+            var endPointB = new TcpEndPoint(localAddressResolver, BuildLogger());
 
             var message = BuildTestMessage();
             var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
@@ -265,8 +216,8 @@ namespace AI4E.Remoting
         public async Task ReceiverConnectionBreakdownTest()
         {
             var localAddressResolver = BuildLocalAddressResolver();
-            var endPointA = new TcpEndPoint(localAddressResolver);
-            var endPointB = new TcpEndPoint(localAddressResolver);
+            var endPointA = new TcpEndPoint(localAddressResolver, BuildLogger());
+            var endPointB = new TcpEndPoint(localAddressResolver, BuildLogger());
 
             var message = BuildTestMessage();
             var transmission = new Transmission<IPEndPoint>(message, endPointB.LocalAddress);
@@ -297,6 +248,19 @@ namespace AI4E.Remoting
                                  .AddressList
                                  .FirstOrDefault(p => p.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) ?? IPAddress.Loopback
             };
+        }
+
+        private static ILogger<TcpEndPoint> BuildLogger()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging(loggingBuilder =>
+            {
+                loggingBuilder.SetMinimumLevel(LogLevel.Debug);
+                loggingBuilder.AddDebug();
+            });
+
+            var serviceProvider = services.BuildServiceProvider();
+            return serviceProvider.GetRequiredService<ILogger<TcpEndPoint>>();
         }
 
         private ValueMessage BuildTestMessage()
