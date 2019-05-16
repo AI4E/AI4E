@@ -21,6 +21,7 @@
 using System;
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AI4E.Remoting
 {
@@ -39,6 +40,8 @@ namespace AI4E.Remoting
 
         public static void AddTcpEndPoint(this IServiceCollection services)
         {
+            services.TryAddSingleton<ILocalAddressResolver<IPAddress>, LocalAddressResolver>();
+
             services.AddPhysicalEndPoint<IPEndPoint, TcpEndPoint>();
         }
     }
