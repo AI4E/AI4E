@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -24,9 +24,9 @@ using MongoDB.Driver;
 
 namespace AI4E.Storage.MongoDB
 {
-    internal static class MongoWriteHelper
+    internal static class MongoExceptionHelper
     {
-        public static async Task TryWriteOperation(Func<Task> operation)
+        public static async Task TryOperation(Func<Task> operation)
         {
             try
             {
@@ -40,10 +40,6 @@ namespace AI4E.Storage.MongoDB
             {
                 throw new StorageUnavailableException("The storage engine operation timed out.", exc);
             }
-            catch (MongoWriteException exc)
-            {
-                throw new StorageException("An unknown error occured.", exc);
-            }
             catch (TimeoutException exc)
             {
                 throw new StorageUnavailableException("The storage engine operation timed out.", exc);
@@ -51,6 +47,10 @@ namespace AI4E.Storage.MongoDB
             catch (MongoConnectionException exc)
             {
                 throw new StorageUnavailableException("The storage engine operation timed out.", exc);
+            }
+            catch (MongoException exc)
+            {
+                throw new StorageException("An unknown error occured.", exc);
             }
         }
 
@@ -68,10 +68,6 @@ namespace AI4E.Storage.MongoDB
             {
                 throw new StorageUnavailableException("The storage engine operation timed out.", exc);
             }
-            catch (MongoWriteException exc)
-            {
-                throw new StorageException("An unknown error occured.", exc);
-            }
             catch (TimeoutException exc)
             {
                 throw new StorageUnavailableException("The storage engine operation timed out.", exc);
@@ -79,6 +75,10 @@ namespace AI4E.Storage.MongoDB
             catch (MongoConnectionException exc)
             {
                 throw new StorageUnavailableException("The storage engine operation timed out.", exc);
+            }
+            catch (MongoException exc)
+            {
+                throw new StorageException("An unknown error occured.", exc);
             }
         }
     }
