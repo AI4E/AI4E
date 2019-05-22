@@ -169,7 +169,8 @@ namespace AI4E.Storage.MongoDB
             {
                 _currentBatch?.Dispose();
 
-                if (!await _asyncCursorInstance.MoveNextAsync(_cancellation))
+                // TODO: Catch all exceptions and abort the transaction
+                if (!await MongoExceptionHelper.TryWriteOperation(() => _asyncCursorInstance.MoveNextAsync(_cancellation)))
                 {
                     _endOfSeq = true;
                     return false;
