@@ -1,18 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        ITypeConversion.cs 
- * Types:           AI4E.Remoting.ITypeConversion
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   31.07.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -28,15 +18,13 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-
 namespace AI4E.Remoting
 {
-    [Obsolete]
-    public interface ITypeConversion
+    public static class ValueMessageExtensions
     {
-        string SerializeType(Type type);
-
-        Type DeserializeType(string serializedType);
+        public static ValueMessageBuilder ToBuilder(in this ValueMessage message)
+        {
+            return new ValueMessageBuilder(message);
+        }
     }
 }

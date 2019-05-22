@@ -1,20 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IPhysicalEndPoint.cs 
- * Types:           (1) AI4E.Remoting.IPhysicalEndPoint'1
- *                  (2) AI4E.Remoting.IInboundPhysicalEndPoint'1
- *                  (3) AI4E.Remoting.IOutboundPhysicalEndPoint'1
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   10.05.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -43,64 +31,53 @@ namespace AI4E.Remoting
     /// <remarks>
     /// The physical end-point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
     /// </remarks>
-    public interface IPhysicalEndPoint<TAddress> : IInboundPhysicalEndPoint<TAddress>, IOutboundPhysicalEndPoint<TAddress>, IDisposable
+    public interface IPhysicalEndPoint<TAddress> : IAddressConverter<TAddress>, IDisposable
     {
         /// <summary>
         /// Gets the physical address of the local physical end point.
         /// </summary>
-        new TAddress LocalAddress { get; }
-    }
+        TAddress LocalAddress { get; }
 
-    /// <summary>
-    /// Represents an inbound physical end-point that is able to receive messages.
-    /// </summary>
-    /// <typeparam name="TAddress">The type of physical address used.</typeparam>
-    /// <remarks>
-    /// The physical end-point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
-    /// </remarks>
-    public interface IInboundPhysicalEndPoint<TAddress> : IDisposable
-    {
         /// <summary>
         /// Asynchronously receives a message from the physical end-point.
         /// </summary>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>
         /// A task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the received message and the address of the remote physical end-point.
         /// </returns>
-        /// <exception cref="System.OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
-        Task<(IMessage message, TAddress remoteAddress)> ReceiveAsync(CancellationToken cancellation = default); // TODO: Return ValueTask<(IMessage message, TAddress remoteAddress)>
+        /// <exception cref="OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
+        ValueTask<Transmission<TAddress>> ReceiveAsync(CancellationToken cancellation = default);
 
-        /// <summary>
-        /// Gets the physical address of the local physical end-point.
-        /// </summary>
-        TAddress LocalAddress { get; }
-    }
-
-    /// <summary>
-    /// Represents an outbound physical end-point that is able to send messages.
-    /// </summary>
-    /// <typeparam name="TAddress">The type of physical address used.</typeparam>
-    /// <remarks>
-    /// The physical end point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
-    /// </remarks>
-    public interface IOutboundPhysicalEndPoint<TAddress> : IDisposable
-    {
         /// <summary>
         /// Asynchronously send a message to the remote physical end-point with the specified address.
         /// </summary>
-        /// <param name="message">The message to send.</param>
-        /// <param name="remoteAddress">The address of the remote physical end-point.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <param name="transmission">The message transmisstion.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        /// <exception cref="System.ArgumentNullException">Thrown if either <paramref name="message"/> or <paramref name="remoteAddress"/> is null.</exception>
-        /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="remoteAddress"/> is the default value of type <see cref="TAddress"/>.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
-        Task SendAsync(IMessage message, TAddress remoteAddress, CancellationToken cancellation = default); // TODO: Return ValueTask
+        /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="transmission"/> is <c>default</c>.</exception>
+        /// <exception cref="OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
+        ValueTask SendAsync(Transmission<TAddress> transmission, CancellationToken cancellation = default);
+    }
+
+    public interface IAddressConverter<TAddress>
+    {
+        /// <summary>
+        /// Returns a string representation of the specified address.
+        /// </summary>
+        /// <param name="address">The address.</param>
+        /// <returns>The string representation of <paramref name="address"/>.</returns>
+        string AddressToString(TAddress address);
 
         /// <summary>
-        /// Gets the physical address of the local physical end-point.
+        /// Returns the address that is represented by the specified string.
         /// </summary>
-        TAddress LocalAddress { get; }
+        /// <param name="str">The string representing the address.</param>
+        /// <returns>The address that is represented by <paramref name="str"/>.</returns>
+        TAddress AddressFromString(string str);
     }
 }

@@ -45,6 +45,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{483689
 		src\Common\EscapeHelper.cs = src\Common\EscapeHelper.cs
 		src\Common\IdEqualityComparer.cs = src\Common\IdEqualityComparer.cs
 		src\Common\IdGenerator.cs = src\Common\IdGenerator.cs
+		src\Common\IPEndPointConverter.cs = src\Common\IPEndPointConverter.cs
+		src\Common\ReconnectionManagerBase.cs = src\Common\ReconnectionManagerBase.cs
 		src\Common\TypeConverter.cs = src\Common\TypeConverter.cs
 	EndProjectSection
 EndProject
@@ -107,6 +109,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BookStore.Catalog.App", "samples\BookStore\modules\BookStore.Catalog\BookStore.Catalog.App\BookStore.Catalog.App.csproj", "{A22D2836-3621-4009-9F9A-8B5F08847C3B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BookStore.API", "samples\BookStore\BookStore.API\BookStore.API.csproj", "{FB370061-D630-4770-84D7-7356AA9BE08A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Remoting.Test", "Test\AI4E.Remoting.Test\AI4E.Remoting.Test.csproj", "{71A67FA4-77D2-4FB9-A5EB-B43CAFA24BB7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -258,6 +262,10 @@ Global
 		{FB370061-D630-4770-84D7-7356AA9BE08A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FB370061-D630-4770-84D7-7356AA9BE08A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FB370061-D630-4770-84D7-7356AA9BE08A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{71A67FA4-77D2-4FB9-A5EB-B43CAFA24BB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{71A67FA4-77D2-4FB9-A5EB-B43CAFA24BB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{71A67FA4-77D2-4FB9-A5EB-B43CAFA24BB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{71A67FA4-77D2-4FB9-A5EB-B43CAFA24BB7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -303,6 +311,7 @@ Global
 		{093C31B4-9138-4D52-A1E7-26770E97E5CF} = {431F3C76-7933-42B9-9975-261389A2B5B9}
 		{A22D2836-3621-4009-9F9A-8B5F08847C3B} = {431F3C76-7933-42B9-9975-261389A2B5B9}
 		{FB370061-D630-4770-84D7-7356AA9BE08A} = {36966E5D-2711-40B8-ADCE-98A68DEB0122}
+		{71A67FA4-77D2-4FB9-A5EB-B43CAFA24BB7} = {51EBAD3B-B475-4587-A6DE-2CCDDC1952F7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}

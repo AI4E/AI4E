@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,16 +18,10 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-using System.IO;
-
 namespace AI4E.Remoting
 {
-    [Obsolete("Use ValueMessageFrame")]
-    public interface IMessageFrame
+    public interface ILocalAddressResolver<TAddress>
     {
-        long Length { get; }
-
-        Stream OpenStream(bool overrideContent = false);
+        TAddress GetLocalAddress();
     }
 }
