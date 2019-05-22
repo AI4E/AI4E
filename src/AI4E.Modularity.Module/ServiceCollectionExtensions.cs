@@ -88,8 +88,7 @@ namespace AI4E.Modularity.Module
             }
             else
             {
-                // TODO: Why is this restricted to IPEndPoints?
-                return ActivatorUtilities.CreateInstance<CoordinationManager<IPEndPoint>>(serviceProvider);
+                return serviceProvider.GetRequiredService<ICoordinationManagerFactory>().CreateCoordinationManager();
             }
         }
 
