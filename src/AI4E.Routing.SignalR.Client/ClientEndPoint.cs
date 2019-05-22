@@ -63,11 +63,12 @@ namespace AI4E.Routing.SignalR.Client
 
             _reconnectionManager = new ReconnectionManager(this);
 
+            // The process is started when the connection is established.
+            // Create the keep-alive process before the first connection attempt, as the reconnection uses this.
+            _keepAliveProcess = new AsyncProcess(KeepAliveProcess, start: false);
+
             // Intitially, we are unconnected and have to connect the fist time.
             _reconnectionManager.Reconnect();
-
-            // The process is started when the connection is established.
-            _keepAliveProcess = new AsyncProcess(KeepAliveProcess, start: false);
         }
 
         #endregion
@@ -180,7 +181,7 @@ namespace AI4E.Routing.SignalR.Client
 
         private async ValueTask OnConnectionEstablished(CancellationToken cancellation)
         {
-            await _keepAliveProcess?.StartAsync(cancellation);
+            await _keepAliveProcess.StartAsync(cancellation);
 
             var connectionLostToken = _reconnectionManager.ConnectionLost;
 
@@ -199,7 +200,7 @@ namespace AI4E.Routing.SignalR.Client
         {
             _logger?.LogDebug("Trying to (re)connect to server.");
 
-            await _keepAliveProcess?.TerminateAsync(cancellation);
+            await _keepAliveProcess.TerminateAsync(cancellation);
         }
 
         private async ValueTask ReconnectAsync(bool isInitialConnection, CancellationToken cancellation)
