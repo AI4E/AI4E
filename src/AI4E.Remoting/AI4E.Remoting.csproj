@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AI4E.Utils.Memory" Version="0.2.0-pre19051310" />
+    <PackageReference Include="AI4E.Utils.Memory" Version="0.2.0-pre19052318" />
   </ItemGroup>
 
   <ItemGroup>

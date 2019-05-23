@@ -110,7 +110,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BookStore.Catalog.App", "sa
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BookStore.API", "samples\BookStore\BookStore.API\BookStore.API.csproj", "{FB370061-D630-4770-84D7-7356AA9BE08A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Remoting.Test", "Test\AI4E.Remoting.Test\AI4E.Remoting.Test.csproj", "{71A67FA4-77D2-4FB9-A5EB-B43CAFA24BB7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting.Test", "Test\AI4E.Remoting.Test\AI4E.Remoting.Test.csproj", "{71A67FA4-77D2-4FB9-A5EB-B43CAFA24BB7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
