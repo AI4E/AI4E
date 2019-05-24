@@ -31,10 +31,6 @@
 using System;
 using AI4E.Utils.Async;
 
-#if SUPPORTS_ASYNC_ENUMERABLE
-using System;
-#endif
-
 namespace AI4E.Storage.Projection
 {
     /// <summary>

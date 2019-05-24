@@ -23,10 +23,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Utils;
 
-#if SUPPORTS_ASYNC_DISPOSABLE
-using AI4E.Utils;
-#endif
-
 namespace AI4E.Storage.Projection
 {
     /// <summary>
