@@ -21,13 +21,13 @@
     <NoWarn>NU5105</NoWarn>
   </PropertyGroup>
 
-  <!-- Workaround for: https://github.com/dotnet/sdk/issues/3146 -->
   <PropertyGroup>
     <RestoreAdditionalProjectSources>
       https://dotnet.myget.org/F/rx/api/v3/index.json;
     </RestoreAdditionalProjectSources>
   </PropertyGroup>
 
+  <!-- Workaround for: https://github.com/dotnet/sdk/issues/3146 -->
   <PropertyGroup>
     <DepsFileGenerationMode>old</DepsFileGenerationMode>
   </PropertyGroup>
