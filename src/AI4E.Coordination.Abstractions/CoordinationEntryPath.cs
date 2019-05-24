@@ -9,6 +9,10 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Coordination
 {
+#if NETCORE30
+    using static System.MemoryExtensions;
+#endif
+
     public readonly struct CoordinationEntryPath : IEquatable<CoordinationEntryPath>
     {
         public const char PathDelimiter = '/';

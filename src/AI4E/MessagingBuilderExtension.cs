@@ -24,21 +24,45 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Contains extensions for the <see cref="IMessagingBuilder"/> type.
+    /// </summary>
     public static class MessagingBuilderExtension
     {
+        /// <summary>
+        /// Configures the messaging options.
+        /// </summary>
+        /// <param name="messagingBuilder">The messaging builder.</param>
+        /// <param name="configuration">A configuration for the messaging options.</param>
+        /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="configuration"/> is null.</exception>
         public static IMessagingBuilder Configure(
             this IMessagingBuilder messagingBuilder,
             Action<MessagingOptions> configuration)
         {
+            if (configuration == null)
+                throw new ArgumentNullException(nameof(configuration));
+
             messagingBuilder.Services.Configure(configuration);
 
             return messagingBuilder;
         }
 
+        /// <summary>
+        /// Configures the message handler that are registered with the messaging service.
+        /// </summary>
+        /// <param name="messagingBuilder">The messaging builder.</param>
+        /// <param name="configuration">A configuration that configures the registered message handlers.</param>
+        /// <returns></returns>
+        /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="configuration"/> is null.</exception>
         public static IMessagingBuilder ConfigureMessageHandlers(
             this IMessagingBuilder messagingBuilder,
             Action<IMessageHandlerRegistry, IServiceProvider> configuration)
         {
+            if (configuration == null)
+                throw new ArgumentNullException(nameof(configuration));
+
             messagingBuilder.Services.Decorate<IMessageHandlerRegistry>((registry, provider) =>
             {
                 configuration(registry, provider);
@@ -54,6 +78,13 @@ namespace AI4E
             services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
         }
 
+        /// <summary>
+        /// Uses the message dispatcher of the specified type to dispatch messages.
+        /// </summary>
+        /// <typeparam name="TMessageDispatcher">The type of message dispatcher.</typeparam>
+        /// <param name="messagingBuilder">The messaging builder.</param>
+        /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
+        /// <remarks>This replaces the currently used message dispatcher.</remarks>
         public static IMessagingBuilder UseDispatcher<TMessageDispatcher>(this IMessagingBuilder messagingBuilder)
             where TMessageDispatcher : class, IMessageDispatcher
         {
@@ -65,6 +96,14 @@ namespace AI4E
             return messagingBuilder;
         }
 
+        /// <summary>
+        /// Uses the specified message dispatcher.
+        /// </summary>
+        /// <param name="messagingBuilder">The messaging builder.</param>
+        /// <param name="instance">The message dispatcher that is used to dispatch messages.</param>
+        /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
+        /// <remarks>This replaces the currently used message dispatcher.</remarks>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="instance"/> is null.</exception>
         public static IMessagingBuilder UseDispatcher(
             this IMessagingBuilder messagingBuilder, IMessageDispatcher instance)
         {
@@ -76,6 +115,14 @@ namespace AI4E
             return messagingBuilder;
         }
 
+        /// <summary>
+        /// Uses the message dispatcher generated from the specified factory.
+        /// </summary>
+        /// <param name="messagingBuilder">The messaging builder.</param>
+        /// <param name="factory">The factory that is used to create the message dispatcher.</param>
+        /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
+        /// <remarks>This replaces the currently used message dispatcher.</remarks>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="factory"/> is null.</exception>
         public static IMessagingBuilder UseDispatcher(
             this IMessagingBuilder messagingBuilder, Func<IServiceProvider, IMessageDispatcher> factory)
         {
@@ -87,6 +134,13 @@ namespace AI4E
             return messagingBuilder;
         }
 
+        /// <summary>
+        /// Decorates the message dispatcher with the specified type.
+        /// </summary>
+        /// <typeparam name="TMessageDispatcher">The type of message dispatcher decorator.</typeparam>
+        /// <param name="messagingBuilder">The messaging builder.</param>
+        /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
+        /// <remarks>This does NOT replace the currently used message dispatcher.</remarks>
         public static IMessagingBuilder DecorateDispatcher<TMessageDispatcher>(
             this IMessagingBuilder messagingBuilder)
              where TMessageDispatcher : class, IMessageDispatcher
@@ -95,6 +149,14 @@ namespace AI4E
             return messagingBuilder;
         }
 
+        /// <summary>
+        /// Decorates the message dispatcher.
+        /// </summary>
+        /// <param name="messagingBuilder">The messaging builder.</param>
+        /// <param name="decorator">The decorator that is used to decorate the current messaging dispatcher.</param>
+        /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
+        /// <remarks>This does NOT replace the currently used message dispatcher.</remarks>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="decorator"/> is null.</exception>
         public static IMessagingBuilder DecorateDispatcher(
             this IMessagingBuilder messagingBuilder,
             Func<IMessageDispatcher, IMessageDispatcher> decorator)
@@ -106,6 +168,14 @@ namespace AI4E
             return messagingBuilder;
         }
 
+        /// <summary>
+        /// Decorates the message dispatcher.
+        /// </summary>
+        /// <param name="messagingBuilder">The messaging builder.</param>
+        /// <param name="decorator">The decorator that is used to decorate the current messaging dispatcher.</param>
+        /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
+        /// <remarks>This does NOT replace the currently used message dispatcher.</remarks>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="decorator"/> is null.</exception>
         public static IMessagingBuilder DecorateDispatcher(
             this IMessagingBuilder messagingBuilder,
             Func<IMessageDispatcher, IServiceProvider, IMessageDispatcher> decorator)

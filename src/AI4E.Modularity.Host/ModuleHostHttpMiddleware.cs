@@ -61,12 +61,31 @@ namespace AI4E.Modularity.Host
             if (context != null)
             {
                 var cancellation = context.RequestAborted;
-                var endPoint = await MapPathAsync(context, cancellation);
+                EndPointAddress endPoint;
+
+                try
+                {
+                    endPoint = await MapPathAsync(context, cancellation);
+                }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+                {
+                    return;
+                }
 
                 if (endPoint != EndPointAddress.UnknownAddress)
                 {
                     var requestMessage = await PackRequestMessage(context);
-                    var dispatchResult = await DispatchToEndPointAsync(endPoint, requestMessage, cancellation);
+
+                    IDispatchResult dispatchResult;
+
+                    try
+                    {
+                        dispatchResult = await DispatchToEndPointAsync(endPoint, requestMessage, cancellation);
+                    }
+                    catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+                    {
+                        return;
+                    }
 
                     if (dispatchResult.IsSuccessWithResult<ModuleHttpResponse>(out var responseMessage))
                     {

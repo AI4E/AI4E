@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using AI4E.Remoting;
 using AI4E.Storage;
-using AI4E.Storage.InMemory;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Coordination.Utils
@@ -16,7 +15,6 @@ namespace AI4E.Coordination.Utils
                     .UseInMemoryDatabase();
 
             services.AddPhysicalEndPoint<InMemoryPhysicalAddress, InMemoryPhysicalEndPoint>();
-            services.AddSingleton<IAddressConversion<InMemoryPhysicalAddress>, InMemoryPhysicalAddressConversion>();
 
             services.AddCoordinationService();
 

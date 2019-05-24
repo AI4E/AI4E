@@ -59,6 +59,14 @@ namespace BookStore.Server
             app.UseStaticFiles();
             app.UseSignalRServerRouting();
             app.UseModularity();
+
+            app.UseRouting();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapDefaultControllerRoute();
+            });
+
             //app.UseSignalR(route => route.MapHub<BlazorHub>(BlazorHub.DefaultPath));
             app.UseBlazor<App.Startup>();
         }

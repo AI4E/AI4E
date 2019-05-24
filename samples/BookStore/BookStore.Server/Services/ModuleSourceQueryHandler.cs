@@ -22,7 +22,7 @@ namespace BookStore.Server.Services
             CancellationToken cancellation = default)
         {
             // TODO: https://github.com/AI4E/AI4E/issues/144
-            return await _database.GetAsync<ModuleSourceListModel>(cancellation).ToArray(cancellation);
+            return await _database.GetAsync<ModuleSourceListModel>(cancellation).ToArrayAsync(cancellation);
         }
 
         public ValueTask<ModuleSourceModel> HandleAsync(

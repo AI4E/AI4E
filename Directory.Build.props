@@ -4,22 +4,34 @@
     <Product>$(ProjectName)</Product>
     <Copyright>Copyright (c) Andreas Trütschel and contributors.</Copyright>
     <PackageLicenseExpression>LGPL-3.0-or-later</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/AI4E/AI4E.Utils</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/AI4E/AI4E.Utils</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/AI4E/AI4E</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/AI4E/AI4E</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>0.1.2-pre$([System.DateTime]::UtcNow.ToString(yyMMddHH))</Version>
+    <Version>0.2.0-pre$([System.DateTime]::UtcNow.ToString(yyMMddHH))</Version>
   </PropertyGroup>
     
   <PropertyGroup>
     <RepositoryRoot Condition="'$(RepositoryRoot)' == ''">$(MSBuildThisFileDirectory)</RepositoryRoot>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <LangVersion>latest</LangVersion>
+    <LangVersion>8.0</LangVersion>
+    <RazorLangVersion>3.0</RazorLangVersion>
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
     <NoWarn>NU5105</NoWarn>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <RestoreAdditionalProjectSources>
+      https://dotnet.myget.org/F/rx/api/v3/index.json;
+    </RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <!-- Workaround for: https://github.com/dotnet/sdk/issues/3146 -->
+  <PropertyGroup>
+    <DepsFileGenerationMode>old</DepsFileGenerationMode>
+  </PropertyGroup>
+  
   <PropertyGroup>
     <RepositoryRootPath>$(RepositoryRoot)\</RepositoryRootPath>
     <RepositoryBuiltPath>$(RepositoryRootPath)artifacts\</RepositoryBuiltPath>
@@ -42,8 +54,32 @@
   
   <PropertyGroup>
     <NetStandardVersion>netstandard2.0</NetStandardVersion>
+    <!--Enable netstandard2.1, when we can include System.Memory and System.Threading.Task.Extensions packages with .net standard 2.1 without blowing up everything -->
+    <!-- https://github.com/dotnet/standard/issues/1063 -->
+    <NetStandardVersions>$(NetStandardVersion)<!--;netstandard2.1--></NetStandardVersions>
     <NetCoreAppVersion>netcoreapp3.0</NetCoreAppVersion>
+    <NetCoreAppVersions>$(NetCoreAppVersion)</NetCoreAppVersions>
+    <FrameworkVersions>$(NetStandardVersions);$(NetCoreAppVersions)</FrameworkVersions>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <DefineConstants>$(DefineConstants);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.0'">
+    <DefineConstants>$(DefineConstants);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <DefineConstants>$(DefineConstants);NETSTD20;</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <DefineConstants>$(DefineConstants);NETSTD21;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.0'">
+    <DefineConstants>$(DefineConstants);NETCORE30;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS</DefineConstants>
   </PropertyGroup>
 
 </Project>

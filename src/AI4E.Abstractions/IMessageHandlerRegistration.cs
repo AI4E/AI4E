@@ -45,6 +45,14 @@ namespace AI4E
         /// </summary>
         MessageHandlerConfiguration Configuration { get; }
 
+        /// <summary>
+        /// Attempts to retreive the message handler action descriptor.
+        /// </summary>
+        /// <param name="descriptor">
+        /// Contains the <see cref="MessageHandlerActionDescriptor"/> that was used to construct
+        /// the message handler registration if the operation succeeds.
+        /// </param>
+        /// <returns>True if the operation succeeds, false otherwise.</returns>
         bool TryGetDescriptor(out MessageHandlerActionDescriptor descriptor);
     }
 

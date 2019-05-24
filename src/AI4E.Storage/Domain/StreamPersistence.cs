@@ -6,7 +6,6 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
-using AI4E.Utils.AsyncEnumerable;
 
 namespace AI4E.Storage.Domain
 {
@@ -66,6 +65,7 @@ namespace AI4E.Storage.Domain
             return await _database.GetOneAsync<StreamHead>(head => head.BucketId.Equals(bucketId) && head.StreamId.Equals(streamId), cancellation);
         }
 
+        // TODO: This should return ValueTask<ISnapshot>
         public Task<ISnapshot> GetSnapshotAsync(string bucketId, string streamId, long maxRevision = default, CancellationToken cancellation = default)
         {
             if (maxRevision < 0)
@@ -88,17 +88,20 @@ namespace AI4E.Storage.Domain
             return _database.GetAsync(predicate, cancellation)
                             .OrderByDescending(snapshot => snapshot.StreamRevision)
                             .Cast<ISnapshot>()
-                            .FirstOrDefault(cancellation);
+                            .FirstOrDefaultAsync(cancellation).AsTask();
         }
 
         public IAsyncEnumerable<ISnapshot> GetSnapshotsAsync(string bucketId, CancellationToken cancellation = default)
         {
             // TODO: Check whether the database has query support. 
 
+
             return _database.GetAsync<Snapshot>(snapshot => snapshot.BucketId.Equals(bucketId), cancellation)
                             .GroupBy(snapshot => snapshot.StreamId)
-                            .Select(group => group.OrderByDescending(snapshot => snapshot.StreamRevision).FirstOrDefault(cancellation))
+                            .Select(group => group.OrderByDescending(snapshot => snapshot.StreamRevision)
+                            .FirstOrDefaultAsync(cancellation))
                             .Evaluate();
+
         }
 
         public IAsyncEnumerable<ISnapshot> GetSnapshotsAsync(CancellationToken cancellation = default)
@@ -107,7 +110,8 @@ namespace AI4E.Storage.Domain
 
             return _database.GetAsync<Snapshot>(cancellation)
                             .GroupBy(snapshot => snapshot.StreamId)
-                            .Select(group => group.OrderByDescending(snapshot => snapshot.StreamRevision).FirstOrDefault(cancellation))
+                            .Select(group => group.OrderByDescending(snapshot => snapshot.StreamRevision)
+                            .FirstOrDefaultAsync(cancellation))
                             .Evaluate();
         }
 
@@ -299,7 +303,8 @@ namespace AI4E.Storage.Domain
         private async ValueTask<StreamHead> AddStreamHeadAsync(string bucketId, string streamId, CancellationToken cancellation)
         {
             var commits = GetCommitsInternalAsync(bucketId, streamId);
-            var latestCommit = await commits.LastOrDefault();
+            var latestCommit = await commits.LastOrDefaultAsync(cancellation);
+
 
             if (latestCommit == null)
                 return null;
@@ -441,19 +446,14 @@ namespace AI4E.Storage.Domain
         {
             var result = default(Commit);
 
-            using (var enumerator = commits.GetEnumerator())
+            await foreach (var commit in commits)
             {
-                while (await enumerator.MoveNext(cancellation))
+                if (!commit.IsDispatched)
                 {
-                    var commit = enumerator.Current;
-
-                    if (!commit.IsDispatched)
-                    {
-                        return result;
-                    }
-
-                    result = commit;
+                    return result;
                 }
+
+                result = commit;
             }
 
             return result;

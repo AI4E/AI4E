@@ -16,9 +16,8 @@ The project main goal is to deliver a high-level framework to easily build and m
 
 ## Getting started
 
-The current (pre-)release available via nuget is [0.1.1](https://www.nuget.org/profiles/AI4E).
+The current (pre-)release available via nuget is [0.1.4](https://www.nuget.org/profiles/AI4E).
 *Please be aware that this is a prerelease and is not meant for production use.*
-Feel free to clone the project locally. If the project is more stable, this is subject to change.
 
 ## Roadmap
 
@@ -30,6 +29,10 @@ Currently there is no release, so the goal is to build a stable, manufacturing r
 |---|---|---|
 | 2019-04-09 | 0.1.0 | YES |
 | 2019-04-10 | 0.1.1 | YES |
+| 2019-04-27 | 0.1.2 | YES |
+| 2019-04-29 | 0.1.3 | YES |
+| 2019-05-22 | 0.1.4 | YES |
 | Q2 2019 | 0.2.0 | YES |
 | 2019 | 0.3.0 | YES |
+| 2019 | 0.4.0 | YES |
 | 2019 | 1.0.0 | NO |

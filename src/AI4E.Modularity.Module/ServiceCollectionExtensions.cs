@@ -45,9 +45,7 @@ namespace AI4E.Modularity.Module
             services.AddEndPointManager();
             services.AddMessageRouter();
             services.AddRemoteMessageDispatcher();
-            services.AddSingleton(ConfigureLogicalEndPoint);
-            services.AddSingleton(ConfigureCoordinationManager);
-            services.AddSingleton(ConfigureDebugConnection);
+
             services.AddSingleton<IMetadataAccessor, MetadataAccessor>();
             services.AddSingleton<IModuleManager, ModuleManager>();
             services.AddSingleton<IMetadataReader, MetadataReader>();
@@ -59,6 +57,11 @@ namespace AI4E.Modularity.Module
             services.AddSingleton<IRouteManagerFactory, RouteManagerFactory>();
             services.AddSingleton(typeof(IEndPointMap<>), typeof(EndPointMap<>));
             services.AddCoordinationService();
+
+            // Debugging:
+            services.AddSingleton(ConfigureLogicalEndPoint);
+            services.AddSingleton(ConfigureCoordinationManager);
+            services.AddSingleton(ConfigureDebugConnection);
 
             return services;
         }
@@ -85,8 +88,7 @@ namespace AI4E.Modularity.Module
             }
             else
             {
-                // TODO: Why is this restricted to IPEndPoints?
-                return ActivatorUtilities.CreateInstance<CoordinationManager<IPEndPoint>>(serviceProvider);
+                return serviceProvider.GetRequiredService<ICoordinationManagerFactory>().CreateCoordinationManager();
             }
         }
 

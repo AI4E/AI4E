@@ -1,18 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IMessage.cs 
- * Types:           AI4E.Remoting.IMessage
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -35,6 +25,7 @@ using System.Threading.Tasks;
 
 namespace AI4E.Remoting
 {
+    [Obsolete("Use ValueMessage")]
     public interface IMessage
     {
         IMessageFrame CurrentFrame { get; }

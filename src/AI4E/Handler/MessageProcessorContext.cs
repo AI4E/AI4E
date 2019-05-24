@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -19,11 +19,25 @@
  */
 
 using System;
+using System.Threading;
 
 namespace AI4E.Handler
 {
+    /// <summary>
+    /// Represents the context of a message processor.
+    /// </summary>
     public sealed class MessageProcessorContext : IMessageProcessorContext
     {
+        private readonly Lazy<MessageHandlerConfiguration> _messageHandlerConfiguration;
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessageProcessorContext"/> type.
+        /// </summary>
+        /// <param name="messageHandler">The message handler instance.</param>
+        /// <param name="messageHandlerAction">A descriptor that identifies the message handler.</param>
+        /// <param name="publish">A boolean value specifying whether the message is published to all handlers.</param>
+        /// <param name="isLocalDispatch">A boolean value specifying whether the message is dispatched locally.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="messageHandler"/> is <c>null</c>.</exception>
         public MessageProcessorContext(
             object messageHandler,
             MessageHandlerActionDescriptor messageHandlerAction,
@@ -37,13 +51,24 @@ namespace AI4E.Handler
             MessageHandlerAction = messageHandlerAction;
             IsPublish = publish;
             IsLocalDispatch = isLocalDispatch;
+
+            _messageHandlerConfiguration = new Lazy<MessageHandlerConfiguration>(
+                () => MessageHandlerAction.BuildConfiguration(), LazyThreadSafetyMode.None);
         }
 
-        public MessageHandlerConfiguration MessageHandlerConfiguration => MessageHandlerAction.BuildConfiguration();
+        /// <inheritdoc/>
+        public MessageHandlerConfiguration MessageHandlerConfiguration => _messageHandlerConfiguration.Value;
+
+        /// <inheritdoc/>
         public MessageHandlerActionDescriptor MessageHandlerAction { get; }
 
+        /// <inheritdoc/>
         public object MessageHandler { get; }
+
+        /// <inheritdoc/>
         public bool IsPublish { get; }
+
+        /// <inheritdoc/>
         public bool IsLocalDispatch { get; }
     }
 }

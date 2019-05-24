@@ -26,20 +26,20 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Internal;
 using AI4E.Modularity.Host;
-using AI4E.Utils.Proxying;
-using AI4E.Remoting;
 using AI4E.Routing;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 using AI4E.Utils.Processing;
+using AI4E.Utils.Proxying;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Debug
 {
-    public sealed class DebugPort : IAsyncDisposable
+    public sealed class DebugPort : IAsyncDisposable, IDisposable
     {
         #region Fields
 
@@ -60,7 +60,6 @@ namespace AI4E.Modularity.Debug
 
         public DebugPort(IServiceProvider serviceProvider,
                          IRunningModuleManager runningModuleManager,
-                         IAddressConversion<IPEndPoint> addressConversion,
                          IOptions<ModularityOptions> optionsAccessor,
                          IRemoteMessageDispatcher messageDispatcher,
                          ILoggerFactory loggerFactory = null)
@@ -70,9 +69,6 @@ namespace AI4E.Modularity.Debug
 
             if (runningModuleManager == null)
                 throw new ArgumentNullException(nameof(runningModuleManager));
-
-            if (addressConversion == null)
-                throw new ArgumentNullException(nameof(addressConversion));
 
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
@@ -88,7 +84,7 @@ namespace AI4E.Modularity.Debug
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory?.CreateLogger<DebugPort>();
 
-            var endPoint = addressConversion.Parse(options.DebugConnection);
+            var endPoint = IPEndPointConverter.AddressFromString(options.DebugConnection);
 
             _tcpHost = new TcpListener(endPoint);
             _connectionProcess = new AsyncProcess(ConnectProcedure);
@@ -136,7 +132,7 @@ namespace AI4E.Modularity.Debug
             _disposeHelper.Dispose();
         }
 
-        public Task DisposeAsync()
+        public ValueTask DisposeAsync()
         {
             return _disposeHelper.DisposeAsync();
         }
@@ -234,7 +230,7 @@ namespace AI4E.Modularity.Debug
 
                 _proxyHostLazy = new DisposableAsyncLazy<ProxyHost>(
                     factory: CreateProxyHostAsync,
-                    disposal: proxyHost => proxyHost.DisposeAsync(),
+                    disposal: proxyHost => proxyHost.DisposeAsync().AsTask(), // TODO: This should accept a ValueTask
                     options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
             }
 

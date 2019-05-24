@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
@@ -15,18 +16,18 @@ namespace AI4E.Modularity
         private static readonly CoordinationEntryPath _mapsRootPath = new CoordinationEntryPath("maps");
 
         private readonly ICoordinationManager _coordinationManager;
-        private readonly IAddressConversion<TAddress> _addressConversion;
+        private readonly IPhysicalEndPoint<TAddress> _physicalEndPoint;
 
-        public EndPointMap(ICoordinationManager coordinationManager, IAddressConversion<TAddress> addressConversion)
+        public EndPointMap(ICoordinationManager coordinationManager, IPhysicalEndPoint<TAddress> physicalEndPoint)
         {
             if (coordinationManager == null)
                 throw new ArgumentNullException(nameof(coordinationManager));
 
-            if (addressConversion == null)
-                throw new ArgumentNullException(nameof(addressConversion));
+            if (physicalEndPoint == null)
+                throw new ArgumentNullException(nameof(physicalEndPoint));
 
             _coordinationManager = coordinationManager;
-            _addressConversion = addressConversion;
+            _physicalEndPoint = physicalEndPoint;
         }
 
         #region IEndPointMap<TAddress>
@@ -45,7 +46,7 @@ namespace AI4E.Modularity
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var path = GetPath(endPoint, session);
 
-            await _coordinationManager.GetOrCreateAsync(path, _addressConversion.SerializeAddress(address), EntryCreationModes.Ephemeral, cancellation);
+            await _coordinationManager.GetOrCreateAsync(path, Encoding.UTF8.GetBytes(_physicalEndPoint.AddressToString(address)), EntryCreationModes.Ephemeral, cancellation);
         }
 
         public async Task UnmapEndPointAsync(EndPointAddress endPoint, TAddress address, CancellationToken cancellation)
@@ -59,7 +60,7 @@ namespace AI4E.Modularity
             if (address.Equals(default(TAddress)))
                 throw new ArgumentDefaultException(nameof(address));
 
-            var endPointEntry = await GetLogicalAddressEntryAsync(endPoint, cancellation);
+            var endPointEntry = await GetLogicalAddressEntryAsync(endPoint, cancellation); // TODO: This is never used?!
             var session = (await _coordinationManager.GetSessionAsync(cancellation)).ToString();
             var path = GetPath(endPoint, session);
 
@@ -85,9 +86,9 @@ namespace AI4E.Modularity
 
             Assert(endPointEntry != null);
 
-            var entries = await endPointEntry.GetChildrenEntries().ToArray(cancellation);
+            var entries = await endPointEntry.GetChildrenEntries().ToArrayAsync(cancellation);
 
-            return entries.Select(p => _addressConversion.DeserializeAddress(p.Value.ToArray()));
+            return entries.Select(p => _physicalEndPoint.AddressFromString(Encoding.UTF8.GetString(p.Value.Span)));
         }
 
         #endregion

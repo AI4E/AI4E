@@ -28,7 +28,7 @@ namespace AI4E.Modularity.Debug
 
             _proxyLazy = new DisposableAsyncLazy<IProxy<CoordinationManagerSkeleton>>(
                 factory: CreateProxyAsync,
-                disposal: p => p.DisposeAsync(),
+                disposal: p => p.DisposeAsync().AsTask(), // TODO: This should accept a ValueTask
                 options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
 
             _sessionLazy = new DisposableAsyncLazy<Session>(
