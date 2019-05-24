@@ -31,8 +31,7 @@ namespace BookStore.Server
             services.AddMvc().AddNewtonsoftJson();
 
             services.AddStorage()
-                    .UseInMemoryDatabase()
-                    //.UseMongoDB() /* MongoDB is broken on .Net Core 3.0 preview 4*/
+                    .UseMongoDB()
                     .UseDomainStorage();
 
             services.AddDomainServices();
@@ -57,6 +56,14 @@ namespace BookStore.Server
             app.UseStaticFiles();
             app.UseSignalRServerRouting();
             app.UseModularity();
+
+            app.UseRouting();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapDefaultControllerRoute();
+            });
+
             //app.UseSignalR(route => route.MapHub<BlazorHub>(BlazorHub.DefaultPath));
             app.UseBlazor<App.Startup>();
         }

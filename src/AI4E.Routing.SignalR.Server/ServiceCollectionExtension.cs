@@ -13,7 +13,7 @@ namespace AI4E.Routing.SignalR.Server
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            services.AddSignalR();
+            services.AddSignalR().AddNewtonsoftJsonProtocol();
             services.AddSingleton<ServerEndPoint>();
             services.AddSingleton<IServerEndPoint>(p => p.GetRequiredService<ServerEndPoint>());
             services.AddSingleton<IRequestReplyServerEndPoint, RequestReplyServerEndPoint>();

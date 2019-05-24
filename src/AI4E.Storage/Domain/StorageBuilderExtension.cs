@@ -20,14 +20,14 @@ namespace AI4E.Storage.Domain
             services.ConfigureApplicationParts(ConfigureFeatureProviders);
 
             // TODO: Replace
-            //services.AddSingleton(new JsonSerializerSettings
-            //{
-            //    TypeNameHandling = TypeNameHandling.Auto,
-            //    Formatting = Formatting.Indented,
-            //    PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-            //    ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
-            //    ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
-            //});
+            services.AddSingleton(new JsonSerializerSettings
+            {
+                TypeNameHandling = TypeNameHandling.Auto,
+                Formatting = Formatting.Indented,
+                PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+                ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
+                ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
+            });
 
             services.AddTransient<ISerializerSettingsResolver, SerializerSettingsResolver>();
 
@@ -56,7 +56,7 @@ namespace AI4E.Storage.Domain
         private static void AddStreamStore(IServiceCollection services)
         {
             services.AddSingleton<IStreamPersistence, StreamPersistence>();
-            services.AddScoped<IStreamStore, StreamStore>();
+            services.AddSingleton<IStreamStore, StreamStore>();
         }
 
         private static void AddDomainStorageEngine(IServiceCollection services)

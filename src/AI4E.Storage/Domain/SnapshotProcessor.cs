@@ -10,14 +10,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 
-#if !SUPPORTS_ASYNC_ENUMERABLE
-using System.Collections.Generic;
-#endif
-
-#if !SUPPORTS_ASYNC_DISPOSABLE
-using AI4E.Utils.Async;
-#endif
-
 namespace AI4E.Storage.Domain
 {
     public sealed class SnapshotProcessor : ISnapshotProcessor, IAsyncDisposable, IDisposable

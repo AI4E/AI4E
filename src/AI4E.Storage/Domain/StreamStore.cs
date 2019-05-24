@@ -59,6 +59,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -74,9 +75,10 @@ namespace AI4E.Storage.Domain
         private readonly ILogger _logger;
         private readonly IStreamPersistence _persistence;
         private readonly ICommitDispatcher _commitDispatcher;
-        private readonly IEnumerable<IStorageExtension> _extensions;
+        private readonly ImmutableArray<IStorageExtension> _extensions;
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly Dictionary<(string bucketId, string streamId, long revision), Stream> _streams;
+        private readonly Dictionary<(string bucketId, string streamId, long revision), StreamData> _streams;
+        private readonly object _streamsMutex = new object();
         private bool _isDisposed;
 
         #endregion
@@ -103,19 +105,19 @@ namespace AI4E.Storage.Domain
 
             _persistence = persistence;
             _commitDispatcher = commitDispatcher;
-            _extensions = extensions;
+            _extensions = extensions.ToImmutableArray();
             _dateTimeProvider = dateTimeProvider;
             _logger = logger;
 
-            _streams = new Dictionary<(string bucketId, string streamId, long revision), Stream>();
-
+            _streams = new Dictionary<(string bucketId, string streamId, long revision), StreamData>();
         }
 
         #endregion
 
         #region IStreamStore
 
-        public Task<IStream> OpenStreamAsync(string bucketId, string streamId, bool throwIfNotFound, CancellationToken cancellation)
+        /// <inheritdoc />
+        public ValueTask<IStream> OpenStreamAsync(string bucketId, string streamId, bool throwIfNotFound, CancellationToken cancellation)
         {
             var result = OpenStreamAsync(bucketId, streamId, revision: default, cancellation);
 
@@ -127,7 +129,7 @@ namespace AI4E.Storage.Domain
             return result;
         }
 
-        private async Task<IStream> ValidateStreamExistsAsync(Task<IStream> result)
+        private async ValueTask<IStream> ValidateStreamExistsAsync(ValueTask<IStream> result)
         {
             var stream = await result;
 
@@ -139,40 +141,115 @@ namespace AI4E.Storage.Domain
             return stream;
         }
 
-        public async Task<IStream> OpenStreamAsync(string bucketId, string streamId, long revision, CancellationToken cancellation)
+        /// <inheritdoc />   
+        public ValueTask<IStream> OpenStreamAsync(string bucketId, string streamId, long revision, CancellationToken cancellation)
         {
-            if (!_streams.TryGetValue((bucketId, streamId, revision), out var stream))
+            lock (_streamsMutex)
             {
-                stream = await Stream.OpenAsync(this, bucketId, streamId, revision, _dateTimeProvider, _logger, cancellation);
+                if (_streams.TryGetValue((bucketId, streamId, revision), out var streamData))
+                {
+                    Debug.Assert(!(streamData is null));
 
-                _streams.Add((bucketId, streamId, revision), stream);
+                    return new ValueTask<IStream>(Stream.FromData(this, streamData, _dateTimeProvider, _logger));
+                }
+            }
+
+            return new ValueTask<IStream>(OpenStreamUncachedAsync(bucketId, streamId, revision, cancellation));
+        }
+
+        private async Task<IStream> OpenStreamUncachedAsync(string bucketId, string streamId, long revision, CancellationToken cancellation)
+        {
+            Stream stream,
+                   desired = await Stream.OpenAsync(this, bucketId, streamId, revision, _dateTimeProvider, _logger, cancellation);
+
+            lock (_streamsMutex)
+            {
+                if (_streams.TryGetValue((bucketId, streamId, revision), out var streamData))
+                {
+                    Debug.Assert(!(streamData is null));
+                    stream = Stream.FromData(this, streamData, _dateTimeProvider, _logger);
+                }
+                else
+                {
+                    _streams[(bucketId, streamId, revision)] = desired.ToData();
+                    stream = desired;
+                }
             }
 
             return stream;
         }
 
-        public IAsyncEnumerable<IStream> OpenAllAsync(string bucketId, CancellationToken cancellation)
+        /// <inheritdoc />
+        public async IAsyncEnumerable<IStream> OpenAllAsync(string bucketId, CancellationToken cancellation)
         {
-            return _persistence.GetStreamHeadsAsync(bucketId, cancellation)
-                               .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, throwIfNotFound: false, cancellation));
+            var streamHeads = _persistence.GetStreamHeadsAsync(bucketId, cancellation);
+
+            await foreach (var streamHead in streamHeads.WithCancellation(cancellation))
+            {
+                IStream stream;
+
+                try
+                {
+                    stream = await OpenStreamAsync(streamHead.BucketId, streamHead.StreamId, throwIfNotFound: false, cancellation);
+                }
+                catch
+                {
+                    continue; // TODO: Do we really want to silently ignore the exception?
+                }
+
+                yield return stream;
+            }
         }
 
-        public IAsyncEnumerable<IStream> OpenAllAsync(CancellationToken cancellation)
+        /// <inheritdoc />
+        public async IAsyncEnumerable<IStream> OpenAllAsync(CancellationToken cancellation)
         {
-            return _persistence.GetStreamHeadsAsync(cancellation)
-                               .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, throwIfNotFound: false, cancellation));
+            var streamHeads = _persistence.GetStreamHeadsAsync(cancellation);
+
+            await foreach (var streamHead in streamHeads.WithCancellation(cancellation))
+            {
+                IStream stream;
+
+                try
+                {
+                    stream = await OpenStreamAsync(streamHead.BucketId, streamHead.StreamId, throwIfNotFound: false, cancellation);
+                }
+                catch
+                {
+                    continue; // TODO: Do we really want to silently ignore the exception?
+                }
+
+                yield return stream;
+            }
         }
 
-        public IAsyncEnumerable<IStream> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation)
+        /// <inheritdoc />
+        public async IAsyncEnumerable<IStream> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation)
         {
-            return _persistence.GetStreamsToSnapshotAsync(maxThreshold, cancellation)
-                               .SelectOrContinue(head => OpenStreamAsync(head.BucketId, head.StreamId, throwIfNotFound: false, cancellation));
+            var streamHeads = _persistence.GetStreamsToSnapshotAsync(maxThreshold, cancellation);
+
+            await foreach (var streamHead in streamHeads.WithCancellation(cancellation))
+            {
+                IStream stream;
+
+                try
+                {
+                    stream = await OpenStreamAsync(streamHead.BucketId, streamHead.StreamId, throwIfNotFound: false, cancellation);
+                }
+                catch
+                {
+                    continue; // TODO: Do we really want to silently ignore the exception?
+                }
+
+                yield return stream;
+            }
         }
 
         #endregion
 
         #region IDisposal
 
+        /// <inheritdoc />
         public void Dispose()
         {
             if (_isDisposed)
@@ -194,13 +271,25 @@ namespace AI4E.Storage.Domain
 
         #endregion
 
+        private void UpdateCache(Stream stream)
+        {
+            Debug.Assert(!stream.IsReadOnly);
+
+            lock (_streamsMutex)
+            {
+                if (!_streams.TryGetValue((stream.BucketId, stream.StreamId, revision: default), out var streamData)
+                    || streamData.StreamRevision < stream.StreamRevision)
+                {
+                    _streams[(stream.BucketId, stream.StreamId, revision: default)] = stream.ToData();
+                }
+            }
+        }
+
         private sealed class Stream : IStream
         {
-            private static readonly string _emptyConcurrencyToken = SGuid.Empty.Value;
-
             #region Fields
 
-            private readonly List<ICommit> _commits = new List<ICommit>();
+            private readonly ImmutableList<ICommit>.Builder _commits;
             private readonly StreamStore _streamStore;
             private readonly IDateTimeProvider _dateTimeProvider;
             private readonly ILogger _logger;
@@ -233,8 +322,15 @@ namespace AI4E.Storage.Domain
                 _logger = logger;
 
                 ExecuteExtensions(commits);
-                _commits.AddRange(commits);
 
+                _commits = (commits as ImmutableList<ICommit>.Builder) ?? (commits as ImmutableList<ICommit>)?.ToBuilder() ?? CreateCommitsBuilder(commits);
+            }
+
+            private static ImmutableList<ICommit>.Builder CreateCommitsBuilder(IEnumerable<ICommit> commits)
+            {
+                var result = ImmutableList.CreateBuilder<ICommit>();
+                result.AddRange(commits);
+                return result;
             }
 
             #endregion
@@ -273,20 +369,43 @@ namespace AI4E.Storage.Domain
                 return result;
             }
 
+            public static Stream FromData(StreamStore streamStore,
+                                          StreamData streamData,
+                                          IDateTimeProvider dateTimeProvider,
+                                          ILogger logger)
+            {
+                var result = new Stream(
+                    streamStore,
+                    streamData.BucketId,
+                    streamData.StreamId,
+                    streamData.Snapshot,
+                    streamData.Commits,
+                    streamData.IsReadOnly,
+                    dateTimeProvider,
+                    logger);
+
+                return result;
+            }
+
+            public StreamData ToData()
+            {
+                return new StreamData(BucketId, StreamId, Snapshot, Commits, IsReadOnly);
+            }
+
             public string BucketId { get; }
             public string StreamId { get; }
             public bool IsReadOnly { get; }
 
             public ISnapshot Snapshot { get; private set; }
-            public IEnumerable<ICommit> Commits => _commits.AsReadOnly();
+            public IEnumerable<ICommit> Commits => _commits.ToImmutable();
 
             public long StreamRevision => Commits.LastOrDefault()?.StreamRevision ?? Snapshot?.StreamRevision ?? 0;
-            public IReadOnlyDictionary<string, object> Headers => GetHeaders().ToImmutableDictionary();
+            public IReadOnlyDictionary<string, object> Headers => GetHeaders().ToImmutable();
             public IReadOnlyList<EventMessage> Events => Commits.SelectMany(commit => commit.Events ?? Enumerable.Empty<EventMessage>()).ToImmutableArray();
 
-            public IDictionary<string, object> GetHeaders()
+            private ImmutableDictionary<string, object>.Builder GetHeaders()
             {
-                var result = new Dictionary<string, object>();
+                var result = ImmutableDictionary.CreateBuilder<string, object>();
                 var commit = Commits.LastOrDefault();
                 var source = default(IReadOnlyDictionary<string, object>);
 
@@ -338,7 +457,7 @@ namespace AI4E.Storage.Domain
 
                 var commit = await PersistChangesAsync(events,
                                                        body,
-                                                       (headers as IReadOnlyDictionary<string, object>) ?? headers.ToImmutableDictionary(),
+                                                       headers.ToImmutable(),
                                                        cancellation);
 
                 // A concurrency conflict occured
@@ -348,6 +467,8 @@ namespace AI4E.Storage.Domain
 
                     return false;
                 }
+
+                _streamStore.UpdateCache(this);
 
                 _logger?.LogDebug($"Commit successfully appended to stream {StreamId}. Dispatching commit.");
 
@@ -374,6 +495,8 @@ namespace AI4E.Storage.Domain
                 {
                     _logger?.LogInformation(Resources.UnderlyingStreamHasChanged, StreamId);
                     _commits.AddRange(commits);
+                    _streamStore.UpdateCache(this);
+
                     return true;
                 }
 
@@ -400,15 +523,15 @@ namespace AI4E.Storage.Domain
 
                 foreach (var extension in _streamStore._extensions)
                 {
-                    _logger?.LogDebug("Pushing commit to pre-commit hook of type '{0}'.", /*attempt.ConcurrencyToken,*/ extension.GetType());
+                    _logger?.LogDebug("Pushing commit to pre-commit hook of type '{0}'.", extension.GetType());
                     if (!extension.OnCommit(attempt))
                     {
-                        _logger?.LogInformation("Pipeline hook of type '{0}' rejected commit attempt.", extension.GetType()/*, attempt.ConcurrencyToken*/);
+                        _logger?.LogInformation("Pipeline hook of type '{0}' rejected commit attempt.", extension.GetType());
                         return null; // TODO: This will cause the caller to assume a concurrency conflict.
                     }
                 }
 
-                _logger?.LogDebug("Pushing attempt on stream '{0}' to the underlying store.", /*newConcurrencyToken,*/ StreamId);
+                _logger?.LogDebug("Pushing attempt on stream '{0}' to the underlying store.", StreamId);
                 var commit = await _streamStore._persistence.CommitAsync(attempt, cancellation);
 
                 if (commit != null)
@@ -417,7 +540,7 @@ namespace AI4E.Storage.Domain
                     {
                         foreach (var extension in _streamStore._extensions)
                         {
-                            _logger?.LogDebug("Pushing commit to post-commit hook of type '{0}'.", /*attempt.ConcurrencyToken,*/ extension.GetType());
+                            _logger?.LogDebug("Pushing commit to post-commit hook of type '{0}'.", extension.GetType());
                             extension.OnCommited(commit);
                         }
                     }
@@ -470,6 +593,27 @@ namespace AI4E.Storage.Domain
             public IReadOnlyDictionary<string, object> Headers { get; }
 
             public long StreamRevision { get; }
+        }
+
+        private sealed class StreamData
+        {
+            public StreamData(string bucketId, string streamId, ISnapshot snapshot, IEnumerable<ICommit> commits, bool isReadOnly)
+            {
+                BucketId = bucketId;
+                StreamId = streamId;
+                Snapshot = snapshot;
+                Commits = (commits as ImmutableList<ICommit>) ?? (commits as ImmutableList<ICommit>.Builder)?.ToImmutable() ?? commits.ToImmutableList();
+                IsReadOnly = isReadOnly;
+            }
+
+            public string BucketId { get; }
+            public string StreamId { get; }
+            public bool IsReadOnly { get; }
+
+            public ISnapshot Snapshot { get; }
+            public ImmutableList<ICommit> Commits { get; }
+
+            public long StreamRevision => Commits.LastOrDefault()?.StreamRevision ?? Snapshot?.StreamRevision ?? 0;
         }
     }
 }

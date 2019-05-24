@@ -116,7 +116,7 @@ namespace AI4E.Routing.SignalR.Client
 
                 var objResult = await hubConnection.InvokeCoreAsync(method.Name, typeof(TResult), arguments, cancellation);
 
-                if(objResult != null)
+                if (objResult != null)
                 {
                     result = (TResult)objResult;
                 }

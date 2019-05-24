@@ -3,7 +3,7 @@
  * Filename:        IStreamStore.cs 
  * Types:           AI4E.Storage.Domain.IStreamStore
  * Version:         1.0
- * Author:          Andreas Trütschel
+ * Author:          Andreas TrÃ¼tschel
  * Last modified:   13.06.2018 
  * --------------------------------------------------------------------------------------------------------------------
  */
@@ -83,7 +83,7 @@ namespace AI4E.Storage.Domain
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         /// <exception cref="StreamNotFoundException">Thrown if the stream cannot be found and <paramref name="throwIfNotFound"/> is true.</exception>
-        Task<IStream> OpenStreamAsync(string bucketId, string streamId, bool throwIfNotFound = false, CancellationToken cancellation = default);
+        ValueTask<IStream> OpenStreamAsync(string bucketId, string streamId, bool throwIfNotFound = false, CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously opens a stream within the specified revision and returns a read-only view.
@@ -100,7 +100,7 @@ namespace AI4E.Storage.Domain
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="StorageException">Thrown if an exception occured in the storage system.</exception>
         /// <exception cref="StreamNotFoundException">Thrown if the stream either cannot be found or cannot be opened within the specified revision.</exception>
-        Task<IStream> OpenStreamAsync(string bucketId, string streamId, long revision, CancellationToken cancellation = default);
+        ValueTask<IStream> OpenStreamAsync(string bucketId, string streamId, long revision, CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously enumerates over all streams from the specified bucket.
