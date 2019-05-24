@@ -435,7 +435,7 @@ namespace AI4E.Storage.Projection
                 _sourceMetadataCache[_sourceDescriptor] = new ProjectionSourceMetadataCacheEntry(originalMetadata, metadata, touched: true);
             }
 
-            #endregion
+#endregion
 
             private ValueTask<ProjectionSourceMetadataCacheEntry> GetMetadataAsync(bool createIfNonExistent, CancellationToken cancellation)
             {

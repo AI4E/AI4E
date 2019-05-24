@@ -322,6 +322,8 @@ namespace AI4E.Routing.SignalR.Client
                 {
                     Console.WriteLine("Error in kap: " + exc.ToString());
                     // TODO: Log
+
+                    await Task.Delay(1000);
                 }
             }
         }

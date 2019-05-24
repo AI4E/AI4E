@@ -13,8 +13,8 @@
     <PackageReference Include="AI4E.Utils.ApplicationParts" Version="0.2.0-pre19052318" />
     <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.2" />  
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
-    <PackageReference Include="System.Collections.Immutable" Version="1.5.0" /> 
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.0.0-preview3.19153.1" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.6.0-preview5.19224.8" /> 
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.0.0-preview5.19227.9" />
   </ItemGroup>
 
   <ItemGroup>

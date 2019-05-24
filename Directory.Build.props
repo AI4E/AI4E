@@ -16,6 +16,7 @@
     <RepositoryRoot Condition="'$(RepositoryRoot)' == ''">$(MSBuildThisFileDirectory)</RepositoryRoot>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <LangVersion>8.0</LangVersion>
+    <RazorLangVersion>3.0</RazorLangVersion>
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
     <NoWarn>NU5105</NoWarn>
   </PropertyGroup>
@@ -26,6 +27,11 @@
     </RestoreAdditionalProjectSources>
   </PropertyGroup>
 
+  <!-- Workaround for: https://github.com/dotnet/sdk/issues/3146 -->
+  <PropertyGroup>
+    <DepsFileGenerationMode>old</DepsFileGenerationMode>
+  </PropertyGroup>
+  
   <PropertyGroup>
     <RepositoryRootPath>$(RepositoryRoot)\</RepositoryRootPath>
     <RepositoryBuiltPath>$(RepositoryRootPath)artifacts\</RepositoryBuiltPath>
@@ -55,6 +61,13 @@
     <NetCoreAppVersions>$(NetCoreAppVersion)</NetCoreAppVersions>
     <FrameworkVersions>$(NetStandardVersions);$(NetCoreAppVersions)</FrameworkVersions>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <DefineConstants>$(DefineConstants);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.0'">
+    <DefineConstants>$(DefineConstants);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">

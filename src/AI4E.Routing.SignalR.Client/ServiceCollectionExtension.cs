@@ -1,5 +1,4 @@
 using System;
-using AI4E.Remoting;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 

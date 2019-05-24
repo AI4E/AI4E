@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace BookStore.Server
 {
@@ -42,8 +43,7 @@ namespace BookStore.Server
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        [System.Obsolete] // TODO: Fixme pls
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             app.UseResponseCompression();
 
@@ -56,6 +56,14 @@ namespace BookStore.Server
             app.UseStaticFiles();
             app.UseSignalRServerRouting();
             app.UseModularity();
+
+            app.UseRouting();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapDefaultControllerRoute();
+            });
+
             //app.UseSignalR(route => route.MapHub<BlazorHub>(BlazorHub.DefaultPath));
             app.UseBlazor<App.Startup>();
         }

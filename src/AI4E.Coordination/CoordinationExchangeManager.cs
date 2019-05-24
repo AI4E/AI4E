@@ -172,7 +172,7 @@ namespace AI4E.Coordination
             _physicalEndPoint.Dispose();
         }
 
-        #endregion
+#endregion
 
         private async Task InvalidateCacheEntryAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {

@@ -132,7 +132,7 @@ namespace AI4E.Modularity.Debug
             _disposeHelper.Dispose();
         }
 
-        public  ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
         {
             return _disposeHelper.DisposeAsync();
         }
