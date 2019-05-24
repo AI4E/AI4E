@@ -10,12 +10,12 @@ using AI4E.Routing;
 using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using AI4E.Internal;
 
 namespace AI4E.Modularity.Debug
 {
     public sealed class DebugConnection : IDisposable
     {
-        private readonly IAddressConversion<IPEndPoint> _addressConversion;
         private readonly IMetadataAccessor _metadataAccessor;
         private readonly ModuleDebugOptions _options;
         private readonly RemoteMessagingOptions _remoteOptions;
@@ -28,17 +28,13 @@ namespace AI4E.Modularity.Debug
         private readonly DisposableAsyncLazy<TcpClient> _tcpClientLazy;
         private readonly DisposableAsyncLazy<ProxyHost> _proxyHostLazy;
 
-        public DebugConnection(IAddressConversion<IPEndPoint> addressConversion,
-                               IMetadataAccessor metadataAccessor,
+        public DebugConnection(IMetadataAccessor metadataAccessor,
                                IOptions<ModuleDebugOptions> optionsAccessor,
                                IOptions<RemoteMessagingOptions> remoteOptionsAccessor,
                                IServiceProvider serviceProvider,
                                ILoggerFactory loggerFactory = null)
         {
-
-            if (addressConversion == null)
-                throw new ArgumentNullException(nameof(addressConversion));
-
+       
             if (metadataAccessor == null)
                 throw new ArgumentNullException(nameof(metadataAccessor));
 
@@ -51,7 +47,6 @@ namespace AI4E.Modularity.Debug
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            _addressConversion = addressConversion;
             _metadataAccessor = metadataAccessor;
             _options = optionsAccessor.Value ?? new ModuleDebugOptions();
             _remoteOptions = remoteOptionsAccessor.Value ?? new RemoteMessagingOptions();
@@ -59,7 +54,7 @@ namespace AI4E.Modularity.Debug
             _loggerFactory = loggerFactory;
 
             _logger = _loggerFactory?.CreateLogger<DebugConnection>();
-            _debugPort = new Lazy<IPEndPoint>(() => _addressConversion.Parse(_options.DebugConnection), LazyThreadSafetyMode.PublicationOnly);
+            _debugPort = new Lazy<IPEndPoint>(() => IPEndPointConverter.AddressFromString(_options.DebugConnection), LazyThreadSafetyMode.PublicationOnly);
 
             _tcpClientLazy = new DisposableAsyncLazy<TcpClient>(
                 factory: CreateTcpClientAsync,
@@ -68,11 +63,7 @@ namespace AI4E.Modularity.Debug
 
             _proxyHostLazy = new DisposableAsyncLazy<ProxyHost>(
                 factory: CreateProxyHostAsync,
-#if !SUPPORTS_ASYNC_DISPOSABLE
-                    disposal: proxyHost => proxyHost.DisposeAsync(),
-#else
-                    disposal: proxyHost => proxyHost.DisposeAsync().AsTask(), // TODO: This should accept a ValueTask
-#endif
+                disposal: proxyHost => proxyHost.DisposeAsync().AsTask(), // TODO: This should accept a ValueTask
                 options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
         }
 

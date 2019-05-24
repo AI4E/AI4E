@@ -27,7 +27,6 @@ namespace AI4E.Coordination
         private readonly ICoordinationStorage _storage;
         private readonly CoordinationEntryCache _cache;
         private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
-        private readonly IAddressConversion<TAddress> _addressConversion;
         private readonly ILogger<CoordinationExchangeManager<TAddress>> _logger;
 
         private readonly CoordinationManagerOptions _options;
@@ -45,7 +44,6 @@ namespace AI4E.Coordination
                                            ICoordinationStorage storage,
                                            CoordinationEntryCache cache,
                                            IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
-                                           IAddressConversion<TAddress> addressConversion,
                                            IOptions<CoordinationManagerOptions> optionsAccessor,
                                            ILogger<CoordinationExchangeManager<TAddress>> logger = null)
         {
@@ -70,9 +68,6 @@ namespace AI4E.Coordination
             if (endPointMultiplexer == null)
                 throw new ArgumentNullException(nameof(endPointMultiplexer));
 
-            if (addressConversion == null)
-                throw new ArgumentNullException(nameof(addressConversion));
-
             _sessionOwner = sessionOwner;
             _sessionManager = sessionManager;
             _lockWaitDirectory = lockWaitDirectory;
@@ -80,7 +75,6 @@ namespace AI4E.Coordination
             _storage = storage;
             _cache = cache;
             _endPointMultiplexer = endPointMultiplexer;
-            _addressConversion = addressConversion;
             _logger = logger;
 
             _options = optionsAccessor.Value ?? new CoordinationManagerOptions();
@@ -122,34 +116,18 @@ namespace AI4E.Coordination
             var sessions = _sessionManager.GetSessionsAsync(cancellation);
             var localSession = await _sessionOwner.GetSessionAsync(cancellation);
 
-#if SUPPORTS_ASYNC_ENUMERABLE
-            await foreach(var session in sessions)
+            await foreach (var session in sessions)
             {
-#else
-            var enumerator = sessions.GetEnumerator();
-            try
-            {
-                while (await enumerator.MoveNext(cancellation))
+                if (session == localSession)
                 {
-                    var session = enumerator.Current;
-#endif
-                    if (session == localSession)
-                    {
-                        _lockWaitDirectory.NotifyReadLockRelease(path, session);
-                        continue;
-                    }
-
-                    // The session is the former read-lock owner.
-                    var message = EncodeMessage(MessageType.ReleasedReadLock, path, localSession);
-
-                    await SendMessageAsync(session, message, cancellation);
-#if !SUPPORTS_ASYNC_ENUMERABLE
+                    _lockWaitDirectory.NotifyReadLockRelease(path, session);
+                    continue;
                 }
-            }
-            finally
-            {
-                enumerator.Dispose();
-#endif 
+
+                // The session is the former read-lock owner.
+                var message = EncodeMessage(MessageType.ReleasedReadLock, path, localSession);
+
+                await SendMessageAsync(session, message, cancellation);
             }
         }
 
@@ -158,34 +136,18 @@ namespace AI4E.Coordination
             var sessions = _sessionManager.GetSessionsAsync(cancellation);
             var localSession = await _sessionOwner.GetSessionAsync(cancellation);
 
-#if SUPPORTS_ASYNC_ENUMERABLE
             await foreach (var session in sessions)
             {
-#else
-            var enumerator = sessions.GetEnumerator();
-            try
-            {
-                while (await enumerator.MoveNext(cancellation))
+                if (session == localSession)
                 {
-                    var session = enumerator.Current;
-#endif
-                    if (session == localSession)
-                    {
-                        _lockWaitDirectory.NotifyWriteLockRelease(path, session);
-                        continue;
-                    }
-
-                    // The session is the former write-lock owner.
-                    var message = EncodeMessage(MessageType.ReleasedWriteLock, path, localSession);
-
-                    await SendMessageAsync(session, message, cancellation);
-#if !SUPPORTS_ASYNC_ENUMERABLE
+                    _lockWaitDirectory.NotifyWriteLockRelease(path, session);
+                    continue;
                 }
-            }
-            finally
-            {
-                enumerator.Dispose();
-#endif
+
+                // The session is the former write-lock owner.
+                var message = EncodeMessage(MessageType.ReleasedWriteLock, path, localSession);
+
+                await SendMessageAsync(session, message, cancellation);
             }
         }
 
@@ -233,10 +195,10 @@ namespace AI4E.Coordination
             {
                 try
                 {
-                    var (message, _) = await physicalEndPoint.ReceiveAsync(cancellation);
-                    var (messageType, path, session) = DecodeMessage(message);
+                    var transmission = await physicalEndPoint.ReceiveAsync(cancellation);
+                    var (messageType, path, session) = DecodeMessage(transmission.Message.ToMessage());
 
-                    Task.Run(() => HandleMessageAsync(message, messageType, path, session, cancellation)).HandleExceptions();
+                    Task.Run(() => HandleMessageAsync(transmission.Message.ToMessage(), messageType, path, session, cancellation)).HandleExceptions();
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
@@ -278,7 +240,7 @@ namespace AI4E.Coordination
 
         private async Task SendMessageAsync(Session session, Message message, CancellationToken cancellation)
         {
-            var remoteAddress = _addressConversion.DeserializeAddress(session.PhysicalAddress.ToArray()); // TODO: This will copy everything to a new aray
+            var remoteAddress = _endPointMultiplexer.AddressFromString(Encoding.UTF8.GetString(session.PhysicalAddress.Span));
 
             Assert(remoteAddress != null);
 
@@ -286,7 +248,7 @@ namespace AI4E.Coordination
 
             try
             {
-                await physicalEndPoint.SendAsync(message, remoteAddress, cancellation);
+                await physicalEndPoint.SendAsync(new Transmission<TAddress>(message.ToValueMessage(), remoteAddress), cancellation);
             }
             catch (SocketException) { }
             catch (IOException) { } // The remote session terminated or we just cannot transmit to it.

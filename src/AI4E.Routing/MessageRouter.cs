@@ -9,6 +9,7 @@ using AI4E.Remoting;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 using AI4E.Utils.Processing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 
@@ -376,27 +377,33 @@ namespace AI4E.Routing
     public sealed class MessageRouterFactory : IMessageRouterFactory
     {
         private readonly IRouteManagerFactory _routeManagerFactory;
-        private readonly IEndPointManager _endPointManager;
+        //private readonly IEndPointManager _endPointManager;
         private readonly ILogicalEndPoint _logicalEndPoint;
+        private readonly IServiceProvider _serviceProvider;
         private readonly ILoggerFactory _loggerFactory;
 
         public MessageRouterFactory(IRouteManagerFactory routeManagerFactory,
-                                    IEndPointManager endPointManager,
+                                    //IEndPointManager endPointManager,
                                     ILogicalEndPoint logicalEndPoint,
+                                    IServiceProvider serviceProvider,
                                     ILoggerFactory loggerFactory = null)
         {
             if (routeManagerFactory == null)
                 throw new ArgumentNullException(nameof(routeManagerFactory));
 
-            if (endPointManager == null)
-                throw new ArgumentNullException(nameof(endPointManager));
+            //if (endPointManager == null)
+            //    throw new ArgumentNullException(nameof(endPointManager));
 
             if (logicalEndPoint == null)
                 throw new ArgumentNullException(nameof(logicalEndPoint));
 
+            if (serviceProvider == null)
+                throw new ArgumentNullException(nameof(serviceProvider));
+
             _routeManagerFactory = routeManagerFactory;
-            _endPointManager = endPointManager;
+            //_endPointManager = endPointManager;
             _logicalEndPoint = logicalEndPoint;
+            _serviceProvider = serviceProvider;
             _loggerFactory = loggerFactory;
         }
 
@@ -418,7 +425,9 @@ namespace AI4E.Routing
                 return CreateMessageRouterInternal(_logicalEndPoint, serializedMessageHandler);
             }
 
-            var logicalEndPoint = _endPointManager.CreateLogicalEndPoint(endPoint);
+            // TODO: This is a workaround for #178. Replace this in the long term.
+            var endPointManager = _serviceProvider.GetRequiredService<IEndPointManager>();
+            var logicalEndPoint = endPointManager.CreateLogicalEndPoint(endPoint);
             return CreateMessageRouterInternal(logicalEndPoint, serializedMessageHandler);
         }
 

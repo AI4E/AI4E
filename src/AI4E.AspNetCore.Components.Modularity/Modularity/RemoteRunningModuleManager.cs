@@ -25,6 +25,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Modularity;
 using AI4E.Modularity.Host;
+using AI4E.Utils;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.Logging;
 
@@ -79,12 +80,7 @@ namespace AI4E.AspNetCore.Components.Modularity
 
             if (added)
             {
-                var moduleStarted = Volatile.Read(ref ModuleStarted);
-
-                if (moduleStarted != null)
-                {
-                    EventInvocationHelper.Invoke(moduleStarted, d => d(this, module));
-                }
+                ModuleStarted?.InvokeAll(this, module);
             }
         }
 
@@ -103,12 +99,7 @@ namespace AI4E.AspNetCore.Components.Modularity
 
             if (removed)
             {
-                var moduleTerminated = Volatile.Read(ref ModuleTerminated);
-
-                if (moduleTerminated != null)
-                {
-                    EventInvocationHelper.Invoke(moduleTerminated, d => d(this, module));
-                }
+                ModuleTerminated?.InvokeAll(this, module);
             }
         }
 

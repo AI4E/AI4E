@@ -22,6 +22,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
+using AI4E.Utils;
 
 namespace AI4E.Modularity.Host
 {
@@ -57,12 +58,7 @@ namespace AI4E.Modularity.Host
             {
                 try
                 {
-                    var moduleStarted = Volatile.Read(ref ModuleStarted);
-
-                    if (moduleStarted != null)
-                    {
-                        EventInvocationHelper.Invoke(moduleStarted, d => d(this, module));
-                    }
+                    ModuleStarted?.InvokeAll(this, module);
                 }
                 finally
                 {
@@ -87,12 +83,7 @@ namespace AI4E.Modularity.Host
             {
                 try
                 {
-                    var moduleTerminated = Volatile.Read(ref ModuleTerminated);
-
-                    if (moduleTerminated != null)
-                    {
-                        EventInvocationHelper.Invoke(moduleTerminated, d => d(this, module));
-                    }
+                    ModuleTerminated?.InvokeAll(this, module);
                 }
                 finally
                 {

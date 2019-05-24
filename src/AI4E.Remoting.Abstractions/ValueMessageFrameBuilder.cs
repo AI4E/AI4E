@@ -20,24 +20,44 @@
 
 using System;
 
-namespace AI4E
+namespace AI4E.Remoting
 {
-    public static class MessageHandlerRegistrationExtension
+    public sealed class ValueMessageFrameBuilder
     {
-        public static bool IsPublishOnly(this IMessageHandlerRegistration handlerRegistration)
-        {
-            if (handlerRegistration == null)
-                throw new ArgumentNullException(nameof(handlerRegistration));
+        private ReadOnlyMemory<byte> _payload;
 
-            return handlerRegistration.Configuration.IsEnabled<PublishOnlyMessageHandlerConfiguration>();
+        public ValueMessageFrameBuilder()
+        {
+            _payload = Array.Empty<byte>();
         }
 
-        public static bool IsLocalDispatchOnly(this IMessageHandlerRegistration handlerRegistration)
+        public ValueMessageFrameBuilder(in ValueMessageFrame frame)
         {
-            if (handlerRegistration == null)
-                throw new ArgumentNullException(nameof(handlerRegistration));
+            _payload = frame.Payload;
+        }
 
-            return handlerRegistration.Configuration.IsEnabled<LocalDispatchOnlyMessageHandlerConfiguration>();
+        public int Length => BuildMessageFrame().Length;
+
+        public ReadOnlyMemory<byte> Payload
+        {
+            get => _payload;
+            set => _payload = value.CopyToArray();
+        }
+
+        // TODO: Should this be public (maybe hidden from IntelliSense)?
+        internal void UnsafeReplacePayloadWithoutCopy(ReadOnlyMemory<byte> payload)
+        {
+            _payload = payload;
+        }
+
+        public ValueMessageFrame BuildMessageFrame()
+        {
+            return ValueMessageFrame.UnsafeCreateWithoutCopy(Payload);
+        }
+
+        public ValueMessageFrameBuilderStream OpenStream(bool overrideContent = false)
+        {
+            return new ValueMessageFrameBuilderStream(this, overrideContent);
         }
     }
 }

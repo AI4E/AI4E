@@ -9,17 +9,10 @@
     <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Interactive.Async" Version="3.2.0" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
-    <PackageReference Include="System.Linq.Async" Version="4.0.0-preview.1.build.745 " />
-  </ItemGroup>
-
   <ItemGroup>
+    <PackageReference Include="System.Linq.Async" Version="4.0.0-preview.3.build.765" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.0.0-preview3.19153.1" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
     <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
   </ItemGroup>
 

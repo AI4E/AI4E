@@ -19,7 +19,8 @@
  */
 
 using System;
-using System.Collections.Concurrent;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -29,309 +30,296 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Internal;
 using AI4E.Utils;
 using AI4E.Utils.Async;
+using AI4E.Utils.Memory;
 using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 
 namespace AI4E.Remoting
 {
-    public sealed class TcpEndPoint : IPhysicalEndPoint<IPEndPoint>, IAsyncDisposable
+    public sealed partial class TcpEndPoint : IPhysicalEndPoint<IPEndPoint>
     {
-        private readonly AsyncProcess _connectionProcess;
-        private readonly TcpListener _tcpHost;
-        private readonly ConcurrentDictionary<IPEndPoint, ImmutableList<Connection>> _physicalConnections;
         private readonly ILogger<TcpEndPoint> _logger;
-        private readonly AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)> _rxQueue;
+
+        private readonly Dictionary<IPEndPoint, RemoteEndPoint> _remotes;
+        private readonly object _remotesMutex = new object();
+        private readonly AsyncProducerConsumerQueue<Transmission<IPEndPoint>> _rxQueue;
+        private readonly AsyncProcess _listenerProcess;
+
         private readonly AsyncDisposeHelper _disposeHelper;
 
-        public TcpEndPoint(ILogger<TcpEndPoint> logger)
+        public TcpEndPoint(
+            ILocalAddressResolver<IPAddress> addressResolver,
+            ILogger<TcpEndPoint> logger = null)
         {
+            if (addressResolver == null)
+                throw new ArgumentNullException(nameof(addressResolver));
+
             _logger = logger;
-            _physicalConnections = new ConcurrentDictionary<IPEndPoint, ImmutableList<Connection>>();
-            _rxQueue = new AsyncProducerConsumerQueue<(IMessage message, IPEndPoint remoteAddress)>();
 
-            _tcpHost = new TcpListener(new IPEndPoint(IPAddress.Loopback, 0));
-            _tcpHost.Start();
-            LocalAddress = (IPEndPoint)_tcpHost.Server.LocalEndPoint;
-            Debug.Assert(LocalAddress != null);
+            _remotes = new Dictionary<IPEndPoint, RemoteEndPoint>();
+            _rxQueue = new AsyncProducerConsumerQueue<Transmission<IPEndPoint>>();
 
-            _connectionProcess = new AsyncProcess(ConnectProcedure, start: true);
-            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
-        }
+            var localAddress = addressResolver.GetLocalAddress();
 
-        #region Disposal
-
-        public Task Disposal => _disposeHelper.Disposal;
-
-        public void Dispose()
-        {
-            _disposeHelper.Dispose();
-        }
-
-        public
-#if !SUPPORTS_ASYNC_DISPOSABLE
-                Task
-#else
-                ValueTask
-#endif
-                DisposeAsync()
-        {
-#if !SUPPORTS_ASYNC_DISPOSABLE
-                return _disposeHelper.DisposeAsync();
-#else
-            return _disposeHelper.DisposeAsync();
-#endif
-        }
-
-        private async Task DisposeInternalAsync()
-        {
-            await _connectionProcess.TerminateAsync();
-
-            var disposalTasks = new List<Task>();
-
-            foreach (var connection in _physicalConnections.Values.SelectMany(_ => _))
+            if (localAddress == null)
             {
-#if !SUPPORTS_ASYNC_DISPOSABLE
-                disposalTasks.Add(connection.DisposeAsync());
-#else
-                disposalTasks.Add(connection.DisposeAsync().AsTask());
-#endif
+                throw new Exception("Cannot evaluate local address."); // TODO: https://github.com/AI4E/AI4E/issues/32
             }
 
-            await Task.WhenAll(disposalTasks);
+            TcpListener = new TcpListener(new IPEndPoint(localAddress, 0));
+            TcpListener.Start();
+            LocalAddress = (IPEndPoint)TcpListener.Server.LocalEndPoint;
+            Debug.Assert(LocalAddress != null);
+
+            _listenerProcess = new AsyncProcess(ListenerProcess, start: true);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync); // TODO: Do we need synchronization enabled?
+        }
+
+        // For test purposes only. TODO: Open this for the public?
+        internal TcpEndPoint(
+            ILocalAddressResolver<IPAddress> addressResolver,
+            int port,
+            ILogger<TcpEndPoint> logger = null)
+        {
+            if (addressResolver == null)
+                throw new ArgumentNullException(nameof(addressResolver));
+
+            _logger = logger;
+
+            _remotes = new Dictionary<IPEndPoint, RemoteEndPoint>();
+            _rxQueue = new AsyncProducerConsumerQueue<Transmission<IPEndPoint>>();
+
+            var localAddress = addressResolver.GetLocalAddress();
+
+            if (localAddress == null)
+            {
+                throw new Exception("Cannot evaluate local address."); // TODO: https://github.com/AI4E/AI4E/issues/32
+            }
+
+            TcpListener = new TcpListener(new IPEndPoint(localAddress, port));
+            TcpListener.Start();
+            LocalAddress = (IPEndPoint)TcpListener.Server.LocalEndPoint;
+            Debug.Assert(LocalAddress != null);
+
+            _listenerProcess = new AsyncProcess(ListenerProcess, start: true);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync); // TODO: Do we need synchronization enabled?
+        }
+
+        /// <inheritdoc />
+        public IPEndPoint LocalAddress { get; }
+
+        private TcpListener TcpListener { get; }
+
+        /// <inheritdoc />
+        public async ValueTask<Transmission<IPEndPoint>> ReceiveAsync(CancellationToken cancellation = default)
+        {
+            try
+            {
+                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation);
+
+                return await _rxQueue.DequeueAsync(guard.Cancellation);
+            }
+            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
+            }
+        }
+
+        /// <inheritdoc />
+        public async ValueTask SendAsync(Transmission<IPEndPoint> transmission, CancellationToken cancellation = default)
+        {
+            if (transmission.Equals(default)) // TODO: Use ==
+                throw new ArgumentDefaultException(nameof(transmission));
+
+            try
+            {
+                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation);
+
+                if (transmission.RemoteAddress.Equals(LocalAddress))
+                {
+                    await _rxQueue.EnqueueAsync(transmission);
+                    return;
+                }
+
+                var remoteEndPoint = GetRemoteEndPoint(transmission.RemoteAddress);
+                Debug.Assert(remoteEndPoint != null);
+                await remoteEndPoint.SendAsync(transmission.Message, guard.Cancellation);
+            }
+            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
+            }
+        }
+
+        #region AddressConversion
+
+        /// <inheritdoc />
+        public string AddressToString(IPEndPoint address)
+        {
+            return IPEndPointConverter.AddressToString(address);
+        }
+
+        /// <inheritdoc />
+        public IPEndPoint AddressFromString(string str)
+        {
+            return IPEndPointConverter.AddressFromString(str);
         }
 
         #endregion
 
-        public IPEndPoint LocalAddress { get; }
+        #region ConnectionListener
 
-        private async Task ConnectProcedure(CancellationToken cancellation)
-        {
-            _logger?.LogDebug($"Started physical-end-point on local address '{LocalAddress}'.");
-
-            while (cancellation.ThrowOrContinue())
-            {
-                try
-                {
-                    var client = await _tcpHost.AcceptTcpClientAsync();
-
-                    Task.Run(() => OnConnectedAsync(client)).HandleExceptions();
-                }
-                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
-                catch (Exception exc) // TODO: This can end in an infinite loop, f.e. if the socket is down.
-                {
-                    _logger?.LogWarning(exc, $"Physical-end-point {LocalAddress}: Failure on waiting for incoming connections.");
-                }
-            }
-        }
-
-        private void OnConnectedAsync(TcpClient client)
-        {
-            var stream = client.GetStream();
-
-            Debug.Assert(stream != null);
-
-            var remoteAddress = (IPEndPoint)client.Client.RemoteEndPoint;
-
-            _logger?.LogDebug($"Physical-end-point {LocalAddress}: Remote {remoteAddress} connected.");
-
-            var connection = new Connection(this, remoteAddress, stream);
-
-            _physicalConnections.AddOrUpdate(remoteAddress, ImmutableList<Connection>.Empty.Add(connection), (_, current) => current.Add(connection));
-        }
-
-        public async Task<(IMessage message, IPEndPoint remoteAddress)> ReceiveAsync(CancellationToken cancellation)
+        private async Task ListenerProcess(CancellationToken cancellation)
         {
             try
             {
-                using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
-                {
-                    return await _rxQueue.DequeueAsync(guard.Cancellation);
-                }
-            }
-            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
-            {
-                throw new ObjectDisposedException(GetType().FullName);
-            }
-        }
-
-        public async Task SendAsync(IMessage message, IPEndPoint remoteAddress, CancellationToken cancellation)
-        {
-            try
-            {
-                using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
-                {
-                    var connection = await GetConnectionAsync(remoteAddress, guard.Cancellation);
-                    Debug.Assert(connection != null);
-                    await connection.SendAsync(message, guard.Cancellation);
-                }
-            }
-            catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
-            {
-                throw new ObjectDisposedException(GetType().FullName);
-            }
-        }
-
-        private Task<Connection> GetConnectionAsync(IPEndPoint address, CancellationToken cancellation)
-        {
-            if (_physicalConnections.TryGetValue(address, out var list) && list.Any())
-            {
-                return Task.FromResult(list.First());
-            }
-
-            async Task<Connection> ConnectAsync()
-            {
-                var client = new TcpClient();
-                await client.ConnectAsync(address.Address, address.Port);
-                var connection = new Connection(this, address, client.GetStream());
-
-                _physicalConnections.AddOrUpdate(address, ImmutableList<Connection>.Empty.Add(connection), (_, current) => current.Add(connection));
-
-                return connection;
-            }
-
-            return ConnectAsync().WithCancellation(cancellation);
-        }
-
-        private sealed class Connection : IAsyncDisposable
-#if SUPPORTS_ASYNC_DISPOSABLE
-            , IDisposable
-#endif
-        {
-            private readonly TcpEndPoint _endPoint;
-            private readonly Stream _stream;
-            private readonly AsyncProcess _receiveProcess;
-            private readonly AsyncDisposeHelper _disposeHelper;
-            private readonly AsyncLock _sendLock = new AsyncLock();
-
-            public Connection(TcpEndPoint endPoint, IPEndPoint address, Stream stream)
-            {
-                if (endPoint == null)
-                    throw new ArgumentNullException(nameof(endPoint));
-
-                if (address == null)
-                    throw new ArgumentNullException(nameof(address));
-
-                if (stream == null)
-                    throw new ArgumentNullException(nameof(stream));
-
-                _endPoint = endPoint;
-                RemoteAddress = address;
-                _stream = stream;
-                _receiveProcess = new AsyncProcess(ReceiveProcedure, start: true);
-                _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
-            }
-
-            public IPEndPoint LocalAddress => _endPoint.LocalAddress;
-            public IPEndPoint RemoteAddress { get; }
-            private ILogger Logger => _endPoint._logger;
-
-            #region Disposal
-
-            public Task Disposal => _disposeHelper.Disposal;
-
-            public void Dispose()
-            {
-                _disposeHelper.Dispose();
-            }
-
-            public
-#if !SUPPORTS_ASYNC_DISPOSABLE
-                Task
-#else
-                ValueTask
-#endif
-                DisposeAsync()
-            {
-#if !SUPPORTS_ASYNC_DISPOSABLE
-                return _disposeHelper.DisposeAsync();
-#else
-                return _disposeHelper.DisposeAsync();
-#endif
-            }
-
-            private async Task DisposeInternalAsync()
-            {
-                await _receiveProcess.TerminateAsync();
-                _stream.Close();
-
-                while (_endPoint._physicalConnections.TryGetValue(RemoteAddress, out var list))
-                {
-                    var newList = list.Remove(this);
-
-                    if (newList == list)
-                        break;
-
-                    if (_endPoint._physicalConnections.TryUpdate(RemoteAddress, newList, list))
-                        break;
-                }
-            }
-
-            #endregion
-
-            private async Task ReceiveProcedure(CancellationToken cancellation)
-            {
-                Logger?.LogDebug($"Physical-end-point '{_endPoint.LocalAddress}': Started receive process for remote address '{RemoteAddress}'.");
+                _logger?.LogDebug($"Started physical-end-point on local address '{LocalAddress}'.");
 
                 while (cancellation.ThrowOrContinue())
                 {
                     try
                     {
-                        var message = await ReceiveAsync(cancellation);
+                        var client = await TcpListener.AcceptTcpClientAsync().WithCancellation(cancellation);
 
-                        _endPoint._rxQueue.EnqueueAsync((message, RemoteAddress), cancellation).HandleExceptions();
+                        Task.Run(() => OnClientConnectedAsync(client, cancellation)).HandleExceptions(_logger);
                     }
-                    catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+                    catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
+                    catch (InvalidOperationException) when (!TcpListener.Server.IsBound)
+                    {
+                        // The socket is down, we cannot do anything here unless cleaning up the complete end-point.
+                        // TODO: We may try to bind the socket to the same end-point.
+                        // TODO: Log this
+                        Dispose();
+                        Debug.Assert(cancellation.IsCancellationRequested);
+                        return;
+                    }
+                    catch (SocketException)
+                    {
+                        // The socket is down, we cannot do anything here unless cleaning up the complete end-point.
+                        // TODO: We may try to bind the socket to the same end-point.
+                        // TODO: Log this
+                        Dispose();
+                        Debug.Assert(cancellation.IsCancellationRequested);
+                        return;
+                    }
                     catch (Exception exc)
                     {
-                        Logger?.LogWarning(exc, $"Physical-end-point '{_endPoint.LocalAddress}': Failure while receiving message from remote address '{RemoteAddress}'.");
+                        _logger?.LogWarning(exc, $"Physical-end-point {LocalAddress}: Failure on waiting for incoming connections.");
                     }
                 }
             }
-
-            public async Task SendAsync(IMessage message, CancellationToken cancellation)
+            finally
             {
                 try
                 {
-                    using (var guard = await _disposeHelper.GuardDisposalAsync(cancellation))
-                    {
-                        try
-                        {
-                            using (await _sendLock.LockAsync())
-                            {
-                                await message.WriteAsync(_stream, guard.Cancellation);
-                            }
-                        }
-                        catch (IOException)
-                        {
-                            Dispose();
-                            throw;
-                        }
-                    }
+                    // Kill the socket
+                    TcpListener.Stop();
                 }
-                catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
+                catch { /* TODO: Log? */}
+            }
+        }
+
+        private async Task OnClientConnectedAsync(TcpClient client, CancellationToken cancellation)
+        {
+            var stream = client.GetStream();
+            int remotePort;
+
+            using (ArrayPool<byte>.Shared.RentExact(4, out var buffer))
+            {
+                await stream.ReadExactAsync(buffer, cancellation);
+                remotePort = BinaryPrimitives.ReadInt32LittleEndian(buffer.Span);
+            }
+
+            var remoteAddress = new IPEndPoint(((IPEndPoint)client.Client.RemoteEndPoint).Address, remotePort);
+            _logger?.LogDebug($"Physical-end-point {LocalAddress}: Remote {remoteAddress} connected.");
+
+            using var guard = await _disposeHelper.GuardDisposalAsync(cancellation);
+            bool created;
+            RemoteEndPoint remoteEndPoint;
+
+            lock (_remotesMutex)
+            {
+                created = !_remotes.TryGetValue(remoteAddress, out remoteEndPoint);
+                if (created)
                 {
-                    throw new ObjectDisposedException(_endPoint.GetType().FullName);
+                    remoteEndPoint = new RemoteEndPoint(this, remoteAddress, stream, _logger);
+                    _remotes.Add(remoteAddress, remoteEndPoint);
                 }
             }
 
-            private async Task<IMessage> ReceiveAsync(CancellationToken cancellation)
+            if (!created)
             {
-                var message = new Message();
+                await remoteEndPoint.OnConnectionRequestedAsync(client);
+            }
 
-                try
+            Debug.Assert(remoteEndPoint != null);
+            Debug.Assert(remoteAddress.Equals(remoteEndPoint.RemoteAddress));
+        }
+
+        #endregion
+
+        #region Disposal
+
+        /// <inheritdoc/>
+        public void Dispose()
+        {
+            _disposeHelper.Dispose();
+        }
+
+        private async Task DisposeInternalAsync()
+        {
+            try
+            {
+                // Terminate the connection listener
+                _listenerProcess.Terminate();
+            }
+            finally
+            {
+                // Dispose all remote end-points
+                ImmutableList<RemoteEndPoint> remotes;
+
+                lock (_remotesMutex)
                 {
-                    await message.ReadAsync(_stream, cancellation);
-                }
-                catch (IOException)
-                {
-                    Dispose();
-                    throw;
+                    remotes = _remotes.Values.ToImmutableList();
                 }
 
-                return message;
+                await remotes.Select(p => p.DisposeAsync()).WhenAll();
+            }
+        }
+
+        #endregion
+
+        // The calles MUST guard this from disposal, otherwise, a RemoteEndPoint object
+        // may be allocated and stored in _remoted that does not get disposed.
+        private RemoteEndPoint GetRemoteEndPoint(IPEndPoint address)
+        {
+            RemoteEndPoint remoteEndPoint;
+            lock (_remotesMutex)
+            {
+                if (!_remotes.TryGetValue(address, out remoteEndPoint))
+                {
+                    remoteEndPoint = new RemoteEndPoint(this, address, _logger);
+
+                    _remotes.Add(address, remoteEndPoint);
+                }
+            }
+
+            Debug.Assert(remoteEndPoint != null);
+            Debug.Assert(address.Equals(remoteEndPoint.RemoteAddress));
+
+            return remoteEndPoint;
+        }
+
+        // For test purposes only.
+        internal bool TryGetRemoteEndPoint(IPEndPoint address, out RemoteEndPoint remoteEndPoint)
+        {
+            lock (_remotesMutex)
+            {
+                return _remotes.TryGetValue(address, out remoteEndPoint);
             }
         }
     }

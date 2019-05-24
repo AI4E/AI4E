@@ -4,8 +4,8 @@
     <Product>$(ProjectName)</Product>
     <Copyright>Copyright (c) Andreas Trütschel and contributors.</Copyright>
     <PackageLicenseExpression>LGPL-3.0-or-later</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/AI4E/AI4E.Utils</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/AI4E/AI4E.Utils</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/AI4E/AI4E</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/AI4E/AI4E</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -22,6 +22,12 @@
   </PropertyGroup>
 
   <!-- Workaround for: https://github.com/dotnet/sdk/issues/3146 -->
+  <PropertyGroup>
+    <RestoreAdditionalProjectSources>
+      https://dotnet.myget.org/F/rx/api/v3/index.json;
+    </RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
   <PropertyGroup>
     <DepsFileGenerationMode>old</DepsFileGenerationMode>
   </PropertyGroup>
@@ -62,6 +68,18 @@
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.0'">
     <DefineConstants>$(DefineConstants);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <DefineConstants>$(DefineConstants);NETSTD20;</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <DefineConstants>$(DefineConstants);NETSTD21;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.0'">
+    <DefineConstants>$(DefineConstants);NETCORE30;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS</DefineConstants>
   </PropertyGroup>
 
 </Project>

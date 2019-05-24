@@ -127,6 +127,13 @@ namespace AI4E.Validation
         /// </summary>
         public MethodInfo Member { get; }
 
+        /// <summary>
+        /// Attempty to retrieve the validation descriptor for the specified message handler and handled type.
+        /// </summary>
+        /// <param name="messageHandlerType">The message handler type.</param>
+        /// <param name="handledType">The type the message handler handles.</param>
+        /// <param name="descriptor">Contains the valdidation descriptor if the operation succeeds.</param>
+        /// <returns>True if the operation is successful, false otherwise.</returns>
         public static bool TryGetDescriptor(Type messageHandlerType, Type handledType, out ValidationDescriptor descriptor)
         {
             if (_descriptorsCache.TryGetValue(messageHandlerType, out var descriptors))

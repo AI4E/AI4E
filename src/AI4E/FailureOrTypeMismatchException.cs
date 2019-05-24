@@ -1,18 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        TypeSerializer.cs 
- * Types:           AI4E.Remoting.TypeSerializer
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   31.07.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -29,21 +19,27 @@
  */
 
 using System;
-using AI4E.Utils;
+using System.Runtime.Serialization;
 
-namespace AI4E.Remoting
+namespace AI4E
 {
-    [Obsolete]
-    public class TypeSerializer : ITypeConversion
+    // TODO: Remove me
+    internal class FailureOrTypeMismatchException : Exception
     {
-        public string SerializeType(Type type)
+        public FailureOrTypeMismatchException()
         {
-            return type.GetUnqualifiedTypeName();
         }
 
-        public Type DeserializeType(string serializedType)
+        public FailureOrTypeMismatchException(string message) : base(message)
         {
-            return TypeLoadHelper.LoadTypeFromUnqualifiedName(serializedType);
+        }
+
+        public FailureOrTypeMismatchException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+
+        protected FailureOrTypeMismatchException(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
         }
     }
 }

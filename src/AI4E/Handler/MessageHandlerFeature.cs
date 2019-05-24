@@ -26,13 +26,23 @@ using AI4E.Utils;
 
 namespace AI4E.Handler
 {
+    /// <summary>
+    /// Represents a message handler application feature.
+    /// </summary>
     public class MessageHandlerFeature
     {
+        /// <summary>
+        /// Gets the list of types that are message handlers.
+        /// </summary>
         public IList<Type> MessageHandlers { get; } = new List<Type>();
     }
 
+    /// <summary>
+    /// Represents a message handler feature provider.
+    /// </summary>
     public class MessageHandlerFeatureProvider : IApplicationFeatureProvider<MessageHandlerFeature>
     {
+        /// <inheritdoc/>
         public void PopulateFeature(IEnumerable<ApplicationPart> parts, MessageHandlerFeature feature)
         {
             foreach (var part in parts.OfType<IApplicationPartTypeProvider>())
@@ -70,6 +80,11 @@ namespace AI4E.Handler
             return type.BaseType != null && IsMessageHandler(type.BaseType, allowAbstract: true);
         }
 
+        /// <summary>
+        /// Returns a boolean value indicating whether the specified type is a message handler.
+        /// </summary>
+        /// <param name="type">The type to check.</param>
+        /// <returns>True if <paramref name="type"/> is a message handler, false otherwise.</returns>
         protected internal virtual bool IsMessageHandler(Type type)
         {
             return IsMessageHandler(type, allowAbstract: false);

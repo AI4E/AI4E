@@ -1,18 +1,8 @@
-﻿/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IPEndPointSerializer.cs 
- * Types:           AI4E.Remoting.IPEndPointSerializer
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   11.04.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -31,57 +21,27 @@
 using System;
 using System.Linq;
 using System.Net;
-using System.Text;
 
-namespace AI4E.Remoting
+namespace AI4E.Internal
 {
-    public sealed class IPEndPointSerializer : IAddressConversion<IPEndPoint>
+    internal static class IPEndPointConverter
     {
-        public byte[] SerializeAddress(IPEndPoint route)
+        public static string AddressToString(IPEndPoint address)
         {
-            var s = route.ToString();
-
-            return Encoding.UTF8.GetBytes(s);
-        }
-
-        public IPEndPoint DeserializeAddress(byte[] buffer)
-        {
-            var s = Encoding.UTF8.GetString(buffer);
-
-            return Parse(s);
-        }
-
-        public string ToString(IPEndPoint route)
-        {
-            return route.ToString();
-        }
-
-        IPEndPoint IAddressConversion<IPEndPoint>.Parse(string str)
-        {
-            return Parse(str);
+            return address.ToString();
         }
 
         // https://stackoverflow.com/questions/2727609/best-way-to-create-ipendpoint-from-string
-        private static IPEndPoint Parse(string endpointstring)
+        public static IPEndPoint AddressFromString(string str)
         {
-            return Parse(endpointstring, -1);
-        }
-
-        private static IPEndPoint Parse(string endpointstring, int defaultport)
-        {
-            if (string.IsNullOrEmpty(endpointstring) || endpointstring.Trim().Length == 0)
+            if (string.IsNullOrEmpty(str) || str.Trim().Length == 0)
             {
                 throw new ArgumentException("Endpoint descriptor may not be empty.");
             }
-
-            if (defaultport != -1 && (defaultport < IPEndPoint.MinPort || defaultport > IPEndPoint.MaxPort))
-            {
-                throw new ArgumentException(string.Format("Invalid default port '{0}'", defaultport));
-            }
-
-            var values = endpointstring.Split(new char[] { ':' });
+            var values = str.Split(new char[] { ':' });
             IPAddress ipaddy;
-            var port = -1;
+            var port = 0;
+            const int defaultport = 0;
 
             //check if we have an IPv6 or ports
             if (values.Length <= 2) // ipv4 or hostname
@@ -107,17 +67,14 @@ namespace AI4E.Remoting
                 }
                 else //[a:b:c] or a:b:c
                 {
-                    ipaddy = IPAddress.Parse(endpointstring);
+                    ipaddy = IPAddress.Parse(str);
                     port = defaultport;
                 }
             }
             else
             {
-                throw new FormatException(string.Format("Invalid endpoint ipaddress '{0}'", endpointstring));
+                throw new FormatException(string.Format("Invalid endpoint ipaddress '{0}'", str));
             }
-
-            if (port == -1)
-                throw new ArgumentException(string.Format("No port specified: '{0}'", endpointstring));
 
             return new IPEndPoint(ipaddy, port);
         }
@@ -141,7 +98,5 @@ namespace AI4E.Remoting
 
             return hosts[0];
         }
-
-
     }
 }
