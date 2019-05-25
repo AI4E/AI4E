@@ -20,18 +20,19 @@
 
 using System;
 using System.Reflection;
+using AI4E;
 using AI4E.AspNetCore.Components.Extensibility;
+using AI4E.AspNetCore.Components.Modularity;
 using AI4E.Modularity.Host;
 using AI4E.Routing.SignalR.Client;
 using AI4E.Utils.ApplicationParts;
 using BlazorSignalR;
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
-namespace AI4E.AspNetCore.Components.Modularity
+namespace Microsoft.Extensions.DependencyInjection
 {
-    public static class ServiceCollectionExtension
+    public static class ComponentsModularityServiceCollectionExtension
     {
         internal static readonly string _defaultHubUrl = "/MessageDispatcherHub"; // TODO: This should be configured only once.
 
