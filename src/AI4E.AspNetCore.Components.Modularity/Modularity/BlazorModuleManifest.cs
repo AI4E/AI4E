@@ -28,6 +28,6 @@ namespace AI4E.Blazor.Modularity
 
         [JsonConverter(typeof(VersionConverter))]
         public Version AssemblyVersion { get; set; }
-        public bool IsAppPart { get; set; }
+        public bool IsComponentAssembly { get; set; }
     }
 }

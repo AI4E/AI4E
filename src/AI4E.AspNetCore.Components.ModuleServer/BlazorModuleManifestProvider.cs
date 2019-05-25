@@ -67,7 +67,7 @@ namespace AI4E.Blazor.Module.Server
                     {
                         AssemblyName = dllFileRef.Name,
                         AssemblyVersion = dllFileRef.Version,
-                        IsAppPart = assembly == blazorBoot.Main
+                        IsComponentAssembly = assembly == blazorBoot.Main
                     });
                 }
             }

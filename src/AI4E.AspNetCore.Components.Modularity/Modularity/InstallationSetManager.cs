@@ -49,7 +49,7 @@ namespace AI4E.Blazor.Modularity
         private readonly ILogger<InstallationSetManager> _logger;
         private ISet<ModuleIdentifier> _running = new HashSet<ModuleIdentifier>();
 
-        private ImmutableDictionary<string, (Version version, bool isAppPart, ModuleIdentifier module)> _installedAssemblies;
+        private ImmutableDictionary<string, (Version version, bool isComponentAssembly, ModuleIdentifier module)> _installedAssemblies;
         private CancellationTokenSource _disposalCancellationSource = new CancellationTokenSource();
 
         #endregion
@@ -86,13 +86,13 @@ namespace AI4E.Blazor.Modularity
             _jSRuntime = jSRuntime;
             _logger = logger;
 
-            var installedAssemblyBuilder = ImmutableDictionary.CreateBuilder<string, (Version version, bool isAppPart, ModuleIdentifier module)>();
+            var installedAssemblyBuilder = ImmutableDictionary.CreateBuilder<string, (Version version, bool isComponentAssembly, ModuleIdentifier module)>();
 
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
-                var isAppPart = assemblyManager.Assemblies.Contains(asm);
+                var isComponentAssembly = assemblyManager.Assemblies.Contains(asm);
 
-                installedAssemblyBuilder.Add(asm.GetName().Name, (asm.GetName().Version, isAppPart, ModuleIdentifier.UnknownModule));
+                installedAssemblyBuilder.Add(asm.GetName().Name, (asm.GetName().Version, isComponentAssembly, ModuleIdentifier.UnknownModule));
             }
 
             _logger?.LogTrace("Initially loaded assemblies:\r\n" + installedAssemblyBuilder.Select(p => p.Key + " " + p.Value.version).Aggregate((e, n) => e + "\r\n" + n));
@@ -148,7 +148,7 @@ namespace AI4E.Blazor.Modularity
                 Environment.Exit(0);
             }
 
-            var registerAsAppPart = new HashSet<string>();
+            var registerAsComponentAssembly = new HashSet<string>();
             var installedAssemblies = _installedAssemblies.ToBuilder();
 
             foreach (var installedModule in installedModules)
@@ -172,13 +172,13 @@ namespace AI4E.Blazor.Modularity
                     // If no assembly with the same name name exists, we can just add it.
                     if (!installedAssemblies.TryGetValue(assembly.AssemblyName, out var existing))
                     {
-                        _logger?.LogDebug($"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. The assembly is {(!assembly.IsAppPart ? "not " : "")} an app-part.");
+                        _logger?.LogDebug($"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. The assembly is {(!assembly.IsComponentAssembly ? "not " : "")} an app-part.");
 
-                        installedAssemblies[assembly.AssemblyName] = (assembly.AssemblyVersion, assembly.IsAppPart, installedModule);
+                        installedAssemblies[assembly.AssemblyName] = (assembly.AssemblyVersion, assembly.IsComponentAssembly, installedModule);
 
-                        if (assembly.IsAppPart)
+                        if (assembly.IsComponentAssembly)
                         {
-                            registerAsAppPart.Add(assembly.AssemblyName);
+                            registerAsComponentAssembly.Add(assembly.AssemblyName);
                         }
 
                         continue;
@@ -190,14 +190,14 @@ namespace AI4E.Blazor.Modularity
                         _logger?.LogDebug(
                             $"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. " +
                             $"It is not necessary to install the assembly as it will already be installed in version {existing.version}. " +
-                            $"The assembly is {(!(existing.isAppPart || assembly.IsAppPart) ? "not " : "")} an app-part.");
+                            $"The assembly is {(!(existing.isComponentAssembly || assembly.IsComponentAssembly) ? "not " : "")} an app-part.");
 
                         // TODO: If the versions match, we could add ourself to the list of modules that the assembly can be loaded from. (Optional)
 
-                        if (!existing.isAppPart && assembly.IsAppPart)
+                        if (!existing.isComponentAssembly && assembly.IsComponentAssembly)
                         {
-                            registerAsAppPart.Add(assembly.AssemblyName);
-                            installedAssemblies[assembly.AssemblyName] = (existing.version, isAppPart: true, existing.module);
+                            registerAsComponentAssembly.Add(assembly.AssemblyName);
+                            installedAssemblies[assembly.AssemblyName] = (existing.version, isComponentAssembly: true, existing.module);
                         }
 
                         continue;
@@ -209,14 +209,14 @@ namespace AI4E.Blazor.Modularity
                         _logger?.LogDebug(
                             $"Successfully processed assembly {assembly.AssemblyName} {assembly.AssemblyVersion}. " +
                             $"Assembly will replace version {existing.version} in the future installation set. " +
-                            $"The assembly is {(!(existing.isAppPart || assembly.IsAppPart) ? "not " : "")} an app-part.");
+                            $"The assembly is {(!(existing.isComponentAssembly || assembly.IsComponentAssembly) ? "not " : "")} an app-part.");
 
                         // We are installing an assembly with a greater version than the existing and the existing is not yet installed.
-                        installedAssemblies[assembly.AssemblyName] = (assembly.AssemblyVersion, existing.isAppPart || assembly.IsAppPart, installedModule);
+                        installedAssemblies[assembly.AssemblyName] = (assembly.AssemblyVersion, existing.isComponentAssembly || assembly.IsComponentAssembly, installedModule);
 
-                        if (assembly.IsAppPart)
+                        if (assembly.IsComponentAssembly)
                         {
-                            registerAsAppPart.Add(assembly.AssemblyName);
+                            registerAsComponentAssembly.Add(assembly.AssemblyName);
                         }
 
                         continue;
@@ -227,10 +227,10 @@ namespace AI4E.Blazor.Modularity
                     // The version of the existing (installed) assembly is greater or equal than the one, we try to install.
                     //if (existingInstalled.version >= assembly.AssemblyVersion)
                     //{
-                    //    if (!existingInstalled.isAppPart && assembly.IsAppPart)
+                    //    if (!existingInstalled.isComponentAssembly && assembly.IsComponentAssembly)
                     //    {
-                    //        registerAsAppPart.Add(assembly.AssemblyName);
-                    //        installedAssemblies[assembly.AssemblyName] = (existingInstalled.version, isAppPart: true, existingInstalled.module);
+                    //        registerAsComponentAssembly.Add(assembly.AssemblyName);
+                    //        installedAssemblies[assembly.AssemblyName] = (existingInstalled.version, isComponentAssembly: true, existingInstalled.module);
                     //    }
 
                     //    continue;
@@ -249,10 +249,10 @@ namespace AI4E.Blazor.Modularity
                                 $"Cannnot install assembly {assembly.AssemblyName} {assembly.AssemblyVersion} as required by module {installedModule} " +
                                 $"as a minor version of the assembly is already installed by the host app, that cannot be unloaded. Ignoring the failure in good hope.");
 
-                            if (!existingInstalled.isAppPart && assembly.IsAppPart)
+                            if (!existingInstalled.isComponentAssembly && assembly.IsComponentAssembly)
                             {
-                                registerAsAppPart.Add(assembly.AssemblyName);
-                                installedAssemblies[assembly.AssemblyName] = (existingInstalled.version, isAppPart: true, existing.module);
+                                registerAsComponentAssembly.Add(assembly.AssemblyName);
+                                installedAssemblies[assembly.AssemblyName] = (existingInstalled.version, isComponentAssembly: true, existing.module);
                             }
 
                             reload = false;
@@ -284,7 +284,7 @@ namespace AI4E.Blazor.Modularity
                 await InstallAssemblyAsync(assembly, cancellation);
             }
 
-            foreach (var asmName in registerAsAppPart)
+            foreach (var asmName in registerAsComponentAssembly)
             {
                 _logger?.LogDebug($"Installing {asmName} as app part.");
 
@@ -301,7 +301,7 @@ namespace AI4E.Blazor.Modularity
             _installedAssemblies = installedAssemblies.ToImmutable();
         }
 
-        private async ValueTask InstallAssemblyAsync(KeyValuePair<string, (Version version, bool isAppPart, ModuleIdentifier module)> assembly, CancellationToken cancellation)
+        private async ValueTask InstallAssemblyAsync(KeyValuePair<string, (Version version, bool isComponentAssembly, ModuleIdentifier module)> assembly, CancellationToken cancellation)
         {
             Assembly asm;
             do
