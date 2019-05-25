@@ -20,20 +20,19 @@
 
 using System;
 using System.Reflection;
+using AI4E;
+using AI4E.AspNetCore.Components.Extensibility;
 using AI4E.AspNetCore.Components.Modularity;
-using AI4E.Blazor.Components;
-using AI4E.Blazor.Modularity;
 using AI4E.Modularity.Host;
 using AI4E.Routing.SignalR.Client;
 using AI4E.Utils.ApplicationParts;
 using BlazorSignalR;
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
-namespace AI4E.Blazor
+namespace Microsoft.Extensions.DependencyInjection
 {
-    public static class ServiceCollectionExtension
+    public static class ComponentsModularityServiceCollectionExtension
     {
         internal static readonly string _defaultHubUrl = "/MessageDispatcherHub"; // TODO: This should be configured only once.
 
@@ -42,7 +41,7 @@ namespace AI4E.Blazor
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
-            void ConfigureHubConnection(
+            static void ConfigureHubConnection(
                 IHubConnectionBuilder hubConnectionBuilder,
                 IServiceProvider serviceProvider)
             {
@@ -58,6 +57,9 @@ namespace AI4E.Blazor
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
+            services.AddSingleton(_ => new AssemblyManager(entryAssembly));
+            services.AddSingleton<IAssemblySource>(p => p.GetRequiredService<AssemblyManager>());
+
             services.AddBlazorMessageDispatcher();
 
             services.AddSingleton<IRunningModuleManager, RemoteRunningModuleManager>();
@@ -65,7 +67,6 @@ namespace AI4E.Blazor
             services.AddSingleton<IModuleManifestProvider, ModuleManifestProvider>();
             services.AddSingleton<IModuleAssemblyDownloader, ModuleAssemblyDownloader>();
             services.AddSingleton<IInstallationSetManager, InstallationSetManager>();
-            services.AddSingleton<ViewExtensionRenderer>();
 
             services.ConfigureApplicationParts(partManager => ConfigureApplicationParts(partManager, entryAssembly));
             services.ConfigureApplicationServices(ConfigureApplicationServices);
@@ -84,8 +85,6 @@ namespace AI4E.Blazor
 
         private static void ConfigureApplicationParts(ApplicationPartManager partManager, Assembly entryAssembly)
         {
-            partManager.FeatureProviders.Add(new ComponentFeatureProvider());
-            partManager.FeatureProviders.Add(new ViewExtensionFeatureProvider());
             partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
             partManager.ApplicationParts.Add(new AssemblyPart(entryAssembly));
         }

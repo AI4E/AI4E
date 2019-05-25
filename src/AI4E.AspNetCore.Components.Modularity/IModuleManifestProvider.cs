@@ -20,12 +20,23 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.AspNetCore.Components.Modularity;
+using AI4E.Modularity;
 
-namespace AI4E.AspNetCore.Components.ModuleServer
+namespace AI4E.AspNetCore.Components.Modularity
 {
-    public interface IBlazorModuleManifestProvider
+    internal interface IModuleManifestProvider
     {
-        ValueTask<BlazorModuleManifest> GetBlazorModuleManifestAsync(CancellationToken cancellation);
+        ValueTask<BlazorModuleManifest> GetModuleManifestAsync(ModuleIdentifier module, bool bypassCache, CancellationToken cancellation = default);
+    }
+
+    internal static class ModuleManifestProviderExtension
+    {
+        public static ValueTask<BlazorModuleManifest> GetModuleManifestAsync(
+            this IModuleManifestProvider moduleManifestProvider,
+            ModuleIdentifier module,
+            CancellationToken cancellation = default)
+        {
+            return moduleManifestProvider.GetModuleManifestAsync(module, bypassCache: false, cancellation);
+        }
     }
 }

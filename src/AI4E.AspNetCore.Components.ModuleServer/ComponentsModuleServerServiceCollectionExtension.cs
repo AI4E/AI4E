@@ -18,14 +18,29 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Threading;
-using System.Threading.Tasks;
-using AI4E.AspNetCore.Components.Modularity;
+using System;
+using System.Reflection;
+using AI4E.AspNetCore.Components.ModuleServer;
+using AI4E.Modularity;
+using AI4E.Utils.ApplicationParts;
 
-namespace AI4E.AspNetCore.Components.ModuleServer
+namespace Microsoft.Extensions.DependencyInjection
 {
-    public interface IBlazorModuleManifestProvider
+    public static class ComponentsModuleServerServiceCollectionExtension
     {
-        ValueTask<BlazorModuleManifest> GetBlazorModuleManifestAsync(CancellationToken cancellation);
+        public static void AddBlazorModuleServer(this IServiceCollection services, Assembly appAssembly)
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            services.ConfigureApplicationParts(ConfigureApplicationParts);
+            services.AddSingleton<IBlazorModuleManifestProvider, BlazorModuleManifestProvider>(
+                p => new BlazorModuleManifestProvider(appAssembly, p.GetRequiredService<IMetadataAccessor>()));
+        }
+
+        private static void ConfigureApplicationParts(ApplicationPartManager partManager)
+        {
+            partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
+        }
     }
 }

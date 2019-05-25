@@ -18,14 +18,36 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Threading;
-using System.Threading.Tasks;
-using AI4E.AspNetCore.Components.Modularity;
+using System;
+using System.Collections.Generic;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
-namespace AI4E.AspNetCore.Components.ModuleServer
+namespace AI4E.AspNetCore.Components.Modularity
 {
-    public interface IBlazorModuleManifestProvider
+#if BLAZOR
+    internal
+#else
+    public
+#endif
+        sealed class BlazorModuleManifest
     {
-        ValueTask<BlazorModuleManifest> GetBlazorModuleManifestAsync(CancellationToken cancellation);
+        public string Name { get; set; }
+
+        public List<BlazorModuleManifestAssemblyEntry> Assemblies { get; set; } = new List<BlazorModuleManifestAssemblyEntry>();
+    }
+
+#if BLAZOR
+    internal
+#else
+    public
+#endif
+        sealed class BlazorModuleManifestAssemblyEntry
+    {
+        public string AssemblyName { get; set; }
+
+        [JsonConverter(typeof(VersionConverter))]
+        public Version AssemblyVersion { get; set; }
+        public bool IsComponentAssembly { get; set; }
     }
 }
