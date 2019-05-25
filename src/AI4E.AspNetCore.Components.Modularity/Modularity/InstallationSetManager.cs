@@ -25,10 +25,10 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.AspNetCore.Components.Extensibility;
 using AI4E.Modularity;
 using AI4E.Modularity.Host;
 using AI4E.Utils;
-using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using static System.Diagnostics.Debug;
@@ -44,7 +44,7 @@ namespace AI4E.Blazor.Modularity
         #region Fields
 
         private readonly IModuleManifestProvider _moduleManifestProvider;
-        private readonly ApplicationPartManager _partManager;
+        private readonly AssemblyManager _assemblyManager;
         private readonly IJSRuntime _jSRuntime;
         private readonly ILogger<InstallationSetManager> _logger;
         private ISet<ModuleIdentifier> _running = new HashSet<ModuleIdentifier>();
@@ -60,7 +60,7 @@ namespace AI4E.Blazor.Modularity
             IRunningModuleManager runningModuleManager,
             IModuleAssemblyDownloader moduleAssemblyDownloader,
             IModuleManifestProvider moduleManifestProvider,
-            ApplicationPartManager partManager,
+            AssemblyManager assemblyManager,
             IJSRuntime jSRuntime,
             ILogger<InstallationSetManager> logger = null)
         {
@@ -73,8 +73,8 @@ namespace AI4E.Blazor.Modularity
             if (moduleManifestProvider == null)
                 throw new ArgumentNullException(nameof(moduleManifestProvider));
 
-            if (partManager == null)
-                throw new ArgumentNullException(nameof(partManager));
+            if (assemblyManager == null)
+                throw new ArgumentNullException(nameof(assemblyManager));
 
             if (jSRuntime == null)
                 throw new ArgumentNullException(nameof(jSRuntime));
@@ -82,7 +82,7 @@ namespace AI4E.Blazor.Modularity
             _runningModuleManager = runningModuleManager;
             _moduleAssemblyDownloader = moduleAssemblyDownloader;
             _moduleManifestProvider = moduleManifestProvider;
-            _partManager = partManager;
+            _assemblyManager = assemblyManager;
             _jSRuntime = jSRuntime;
             _logger = logger;
 
@@ -90,7 +90,7 @@ namespace AI4E.Blazor.Modularity
 
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
-                var isAppPart = partManager.ApplicationParts.OfType<AssemblyPart>().Any(p => p.Assembly == asm);
+                var isAppPart = assemblyManager.Assemblies.Contains(asm);
 
                 installedAssemblyBuilder.Add(asm.GetName().Name, (asm.GetName().Version, isAppPart, ModuleIdentifier.UnknownModule));
             }
@@ -294,8 +294,7 @@ namespace AI4E.Blazor.Modularity
 
                 if (asm != null)
                 {
-                    var assemblyPart = new AssemblyPart(asm);
-                    _partManager.ApplicationParts.Add(assemblyPart);
+                    _assemblyManager.AddAssembly(asm);
                 }
             }
 

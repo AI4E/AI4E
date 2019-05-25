@@ -28,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AI4E.AspNetCore.Components.Extensibility" Version="0.3.0-pre19052514" />
     <PackageReference Include="BlazorSignalR" Version="0.6.0-blazor-3.0.0-preview4-19216-03" />
     
     <PackageReference Include="Microsoft.AspNetCore.Components.Browser" Version="3.0.0-preview5-19227-01" />
