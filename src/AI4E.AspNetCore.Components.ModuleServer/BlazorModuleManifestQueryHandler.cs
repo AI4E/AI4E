@@ -23,7 +23,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Modularity;
 
-namespace AI4E.Blazor.Module.Server
+namespace AI4E.AspNetCore.Components.ModuleServer
 {
     [MessageHandler]
     internal sealed class BlazorModuleManifestQueryHandler

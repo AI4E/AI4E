@@ -24,7 +24,7 @@ using AI4E.Utils.ApplicationParts;
 using AI4E.Modularity;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.Blazor.Module.Server
+namespace AI4E.AspNetCore.Components.ModuleServer
 {
     public static class ServiceCollectionExtension
     {

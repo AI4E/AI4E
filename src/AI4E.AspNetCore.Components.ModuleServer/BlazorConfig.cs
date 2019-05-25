@@ -40,7 +40,7 @@ using System;
 using System.IO;
 using System.Linq;
 
-namespace AI4E.Blazor.Module.Server
+namespace AI4E.AspNetCore.Components.ModuleServer
 {
     internal class BlazorConfig
     {

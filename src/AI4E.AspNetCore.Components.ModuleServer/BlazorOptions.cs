@@ -36,7 +36,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-namespace AI4E.Blazor.Module.Server
+namespace AI4E.AspNetCore.Components.ModuleServer
 {
     public class BlazorOptions
     {

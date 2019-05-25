@@ -29,7 +29,7 @@ using AI4E.AspNetCore.Components.Modularity;
 using AI4E.Modularity;
 using Newtonsoft.Json;
 
-namespace AI4E.Blazor.Module.Server
+namespace AI4E.AspNetCore.Components.ModuleServer
 {
     public sealed class BlazorModuleManifestProvider : IBlazorModuleManifestProvider
     {

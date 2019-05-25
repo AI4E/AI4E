@@ -47,7 +47,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Net.Http.Headers;
 using Microsoft.AspNetCore.Hosting;
 
-namespace AI4E.Blazor.Module.Server
+namespace AI4E.AspNetCore.Components.ModuleServer
 {
     public static class ApplicationBuilderExtension
     {
