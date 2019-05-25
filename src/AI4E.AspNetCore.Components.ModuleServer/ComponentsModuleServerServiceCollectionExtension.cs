@@ -20,13 +20,13 @@
 
 using System;
 using System.Reflection;
-using AI4E.Utils.ApplicationParts;
+using AI4E.AspNetCore.Components.ModuleServer;
 using AI4E.Modularity;
-using Microsoft.Extensions.DependencyInjection;
+using AI4E.Utils.ApplicationParts;
 
-namespace AI4E.AspNetCore.Components.ModuleServer
+namespace Microsoft.Extensions.DependencyInjection
 {
-    public static class ServiceCollectionExtension
+    public static class ComponentsModuleServerServiceCollectionExtension
     {
         public static void AddBlazorModuleServer(this IServiceCollection services, Assembly appAssembly)
         {
