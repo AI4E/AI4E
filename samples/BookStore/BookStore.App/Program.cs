@@ -1,4 +1,3 @@
-using AI4E.AspNetCore.Components.Modularity;
 using Microsoft.AspNetCore.Blazor.Hosting;
 
 namespace BookStore.App

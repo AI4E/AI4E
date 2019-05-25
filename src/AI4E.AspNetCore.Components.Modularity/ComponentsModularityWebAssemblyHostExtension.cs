@@ -1,11 +1,11 @@
 using System;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Blazor.Hosting;
+using AI4E;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.AspNetCore.Components.Modularity
+namespace Microsoft.AspNetCore.Blazor.Hosting
 {
-    public static class WebAssemblyHostExtension
+    public static class ComponentsModularityWebAssemblyHostExtension
     {
         public static IWebAssemblyHost InitializeApplicationServices(this IWebAssemblyHost webhost)
         {
