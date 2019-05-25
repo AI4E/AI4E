@@ -33,7 +33,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Blazor.Modularity
+namespace AI4E.AspNetCore.Components.Modularity
 {
     internal sealed class InstallationSetManager : IInstallationSetManager, IDisposable
     {

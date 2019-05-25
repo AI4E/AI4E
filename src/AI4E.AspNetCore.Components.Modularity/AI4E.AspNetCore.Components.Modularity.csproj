@@ -6,7 +6,6 @@
     <OutputType>Library</OutputType>
     <IsPackable>true</IsPackable>
     <BlazorLinkOnBuild>false</BlazorLinkOnBuild>
-    <RootNamespace>AI4E.AspNetCore.Components</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

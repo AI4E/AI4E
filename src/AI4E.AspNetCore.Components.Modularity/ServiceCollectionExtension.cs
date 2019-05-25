@@ -19,24 +19,17 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Runtime.Loader;
-using AI4E.AspNetCore.Components;
 using AI4E.AspNetCore.Components.Extensibility;
-using AI4E.AspNetCore.Components.Modularity;
-using AI4E.Blazor.Modularity;
 using AI4E.Modularity.Host;
 using AI4E.Routing.SignalR.Client;
 using AI4E.Utils.ApplicationParts;
 using BlazorSignalR;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
-namespace AI4E.Blazor
+namespace AI4E.AspNetCore.Components.Modularity
 {
     public static class ServiceCollectionExtension
     {

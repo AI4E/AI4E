@@ -1,6 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Blazor.Modularity;
+using AI4E.AspNetCore.Components.Modularity;
 
 namespace AI4E.Blazor.Module.Server
 {

@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Blazor.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.Blazor
+namespace AI4E.AspNetCore.Components.Modularity
 {
     public static class WebAssemblyHostExtension
     {
@@ -23,7 +23,7 @@ namespace AI4E.Blazor
 
                     // Forces an asynchronous yield to the continuation that blocks synchronously
                     // We do not want the contiuations of applicationServiceManager.InitializeApplicationServicesAsync to be blocked indefinitely
-                    await Task.Yield(); 
+                    await Task.Yield();
                 }
 
                 // We cannot wait for the result currently, as this blocks the JsRuntime to be initialized that we need in the app-services.

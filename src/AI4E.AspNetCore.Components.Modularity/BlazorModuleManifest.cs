@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace AI4E.Blazor.Modularity
+namespace AI4E.AspNetCore.Components.Modularity
 {
 #if BLAZOR
     internal

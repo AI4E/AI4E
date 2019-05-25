@@ -6,7 +6,7 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <Compile Include="..\AI4E.AspNetCore.Components.Modularity\Modularity\BlazorModuleManifest.cs" Link="BlazorModuleManifest.cs" />
+    <Compile Include="..\AI4E.AspNetCore.Components.Modularity\BlazorModuleManifest.cs" Link="BlazorModuleManifest.cs" />
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
     <ProjectReference Include="..\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />

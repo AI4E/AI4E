@@ -10,7 +10,7 @@ using AI4E.Modularity.Host;
 using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 
-namespace AI4E.Blazor.Modularity
+namespace AI4E.AspNetCore.Components.Modularity
 {
     internal sealed class ModuleAssemblyDownloader : IModuleAssemblyDownloader
     {

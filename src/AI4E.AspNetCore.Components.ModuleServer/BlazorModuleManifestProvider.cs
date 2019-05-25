@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Blazor.Modularity;
+using AI4E.AspNetCore.Components.Modularity;
 using AI4E.Modularity;
 using Newtonsoft.Json;
 
