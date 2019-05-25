@@ -39,17 +39,17 @@
 using System;
 using System.IO;
 using System.Net.Mime;
-using Microsoft.AspNetCore.Builder;
+using AI4E.AspNetCore.Components.ModuleServer;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Net.Http.Headers;
-using Microsoft.AspNetCore.Hosting;
 
-namespace AI4E.AspNetCore.Components.ModuleServer
+namespace Microsoft.AspNetCore.Builder
 {
-    public static class ApplicationBuilderExtension
+    public static class ComponentsModuleServerApplicationBuilderExtension
     {
         public static IApplicationBuilder UseBlazorModule<TProgram>(this IApplicationBuilder applicationBuilder)
         {

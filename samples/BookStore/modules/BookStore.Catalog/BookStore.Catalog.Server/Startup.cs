@@ -1,4 +1,3 @@
-using AI4E.AspNetCore.Components.ModuleServer;
 using AI4E.Domain.Services;
 using AI4E.Modularity.Debug;
 using AI4E.Modularity.Module;
