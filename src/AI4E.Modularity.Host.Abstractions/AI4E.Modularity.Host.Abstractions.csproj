@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+    <RootNamespace>AI4E.Modularity.Host</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>
