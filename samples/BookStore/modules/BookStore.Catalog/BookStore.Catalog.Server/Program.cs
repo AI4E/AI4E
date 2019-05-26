@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using AI4E.AspNetCore;
+using AI4E.Modularity.Module;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
@@ -13,7 +14,7 @@ namespace BookStore.Catalog.Server
         {
             var webhost = WebHost
                 .CreateDefaultBuilder(args)
-                .UseModuleServer()
+                .UseModuleServer(module => module.UseDebugging())
                 .ConfigureLogging((hostingContext, logging) =>
                 {
                     logging.SetMinimumLevel(LogLevel.Debug);

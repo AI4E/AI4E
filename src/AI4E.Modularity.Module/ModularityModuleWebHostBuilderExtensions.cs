@@ -29,9 +29,6 @@ namespace Microsoft.AspNetCore.Hosting
     {
         public static IWebHostBuilder UseModuleServer(this IWebHostBuilder webHostBuilder)
         {
-            if (webHostBuilder == null)
-                throw new ArgumentNullException(nameof(webHostBuilder));
-
             webHostBuilder.ConfigureServices(services =>
             {
                 services.AddModuleServices();
@@ -41,19 +38,33 @@ namespace Microsoft.AspNetCore.Hosting
             return webHostBuilder;
         }
 
-        public static IWebHostBuilder UseModuleServer(this IWebHostBuilder webHostBuilder, Action<ModuleServerOptions> configuration)
+        public static IWebHostBuilder UseModuleServer(this IWebHostBuilder webHostBuilder, Action<IModuleBuilder> configuration)
         {
-            if (webHostBuilder == null)
-                throw new ArgumentNullException(nameof(webHostBuilder));
-
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
             var result = webHostBuilder.UseModuleServer();
+            var moduleBuilder = new ModuleBuilder(webHostBuilder);
 
-            webHostBuilder.ConfigureServices(services => services.Configure(configuration));
+            configuration(moduleBuilder);
 
             return result;
+        }
+
+        private sealed class ModuleBuilder : IModuleBuilder
+        {
+            private readonly IWebHostBuilder _webHostBuilder;
+
+            public ModuleBuilder(IWebHostBuilder webHostBuilder)
+            {
+                _webHostBuilder = webHostBuilder;
+            }
+
+            public IModuleBuilder ConfigureServices(Action<IServiceCollection> configureServices)
+            {
+                _webHostBuilder.ConfigureServices(configureServices);
+                return this;
+            }
         }
     }
 }
