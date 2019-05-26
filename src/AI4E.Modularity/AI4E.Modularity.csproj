@@ -6,7 +6,6 @@
 
   <ItemGroup>
     <Compile Include="..\Common\IdGenerator.cs" Link="Internal\IdGenerator.cs" />
-    <Compile Include="..\Common\IPEndPointConverter.cs" Link="Internal\IPEndPointConverter.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,7 +18,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.0.0-preview5.19227.9" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="3.0.0-preview5.19227.9" />
     <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="3.0.0-preview5.19227.9" />

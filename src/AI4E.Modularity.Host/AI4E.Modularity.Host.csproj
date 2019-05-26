@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AI4E.Modularity.Debug\AI4E.Modularity.Debug.csproj" />
     <ProjectReference Include="..\AI4E.Modularity\AI4E.Modularity.csproj" />
   </ItemGroup>
