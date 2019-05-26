@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AI4E.Modularity.Host
+namespace AI4E.Modularity
 {
     public interface IModulePropertiesLookup
     {

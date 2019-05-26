@@ -18,7 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-namespace AI4E.Modularity.Host
+namespace AI4E.Modularity
 {
     public sealed class ModuleTerminatedEvent
     {

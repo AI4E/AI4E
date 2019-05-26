@@ -23,7 +23,6 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Modularity;
-using AI4E.Modularity.Host;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 

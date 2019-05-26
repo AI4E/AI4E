@@ -24,7 +24,6 @@ using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Modularity;
-using AI4E.Modularity.Host;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.Logging;

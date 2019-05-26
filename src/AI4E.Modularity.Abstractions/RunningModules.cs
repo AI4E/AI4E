@@ -18,19 +18,17 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
 using System.Collections.Generic;
 
-namespace AI4E.Modularity.Host
+namespace AI4E.Modularity
 {
-    public interface IRunningModuleManager
+    public sealed class RunningModules
     {
-        void Started(ModuleIdentifier module);
-        void Terminated(ModuleIdentifier module);
+        public RunningModules(List<ModuleIdentifier> modules)
+        {
+            Modules = modules;
+        }
 
-        IReadOnlyCollection<ModuleIdentifier> Modules { get; }
-
-        event EventHandler<ModuleIdentifier> ModuleStarted;
-        event EventHandler<ModuleIdentifier> ModuleTerminated;
+        public List<ModuleIdentifier> Modules { get; }
     }
 }

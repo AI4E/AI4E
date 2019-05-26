@@ -18,17 +18,15 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
-
-namespace AI4E.Modularity.Host
+namespace AI4E.Modularity
 {
-    public sealed class RunningModules
+    public sealed class ModuleStartedEvent
     {
-        public RunningModules(List<ModuleIdentifier> modules)
+        public ModuleStartedEvent(ModuleIdentifier module)
         {
-            Modules = modules;
+            Module = module;
         }
 
-        public List<ModuleIdentifier> Modules { get; }
+        public ModuleIdentifier Module { get; }
     }
 }

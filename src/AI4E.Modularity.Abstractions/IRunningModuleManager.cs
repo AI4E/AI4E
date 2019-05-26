@@ -18,15 +18,19 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-namespace AI4E.Modularity.Host
-{
-    public sealed class ModuleStartedEvent
-    {
-        public ModuleStartedEvent(ModuleIdentifier module)
-        {
-            Module = module;
-        }
+using System;
+using System.Collections.Generic;
 
-        public ModuleIdentifier Module { get; }
+namespace AI4E.Modularity
+{
+    public interface IRunningModuleManager
+    {
+        void Started(ModuleIdentifier module);
+        void Terminated(ModuleIdentifier module);
+
+        IReadOnlyCollection<ModuleIdentifier> Modules { get; }
+
+        event EventHandler<ModuleIdentifier> ModuleStarted;
+        event EventHandler<ModuleIdentifier> ModuleTerminated;
     }
 }
