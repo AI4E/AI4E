@@ -27,6 +27,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using AI4E.Modularity.Debug;
 using AI4E.Routing;
 using AI4E.Utils;
 using AI4E.Utils.Async;
@@ -36,7 +37,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Modularity.Debug
+namespace AI4E.Modularity.Host.Debug
 {
     public sealed class DebugPort : IAsyncDisposable, IDisposable
     {

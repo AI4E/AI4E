@@ -24,15 +24,12 @@ using AI4E;
 using AI4E.Coordination;
 using AI4E.Domain.Services;
 using AI4E.Modularity;
-using AI4E.Modularity.Debug;
 using AI4E.Modularity.Host;
 using AI4E.Modularity.Metadata;
 using AI4E.Remoting;
 using AI4E.Routing;
 using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using static System.Diagnostics.Debug;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -50,8 +47,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddMessageRouter();
             services.AddRemoteMessageDispatcher();
             services.AddTcpEndPoint();
-            services.AddSingleton(ConfigureDebugPort);
-
+            
             services.AddSingleton<IRunningModuleManager, RunningModuleManager>();
             services.AddSingleton<IModuleManager, ModuleManager>();
             services.AddSingleton<IModulePropertiesLookup, ModulePropertiesLookup>();
@@ -80,29 +76,12 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static void ConfigureApplicationServices(ApplicationServiceManager serviceManager)
         {
-            serviceManager.AddService<DebugPort>(isRequiredService: false);
             serviceManager.AddService<IModuleInstallationManager>();
         }
 
         private static void ConfigureApplicationParts(ApplicationPartManager partManager)
         {
             partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
-            partManager.ApplicationParts.Add(new AssemblyPart(typeof(DebugPort).Assembly));
-        }
-
-        private static DebugPort ConfigureDebugPort(IServiceProvider serviceProvider)
-        {
-            Assert(serviceProvider != null);
-
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModularityDebugOptions>>();
-            var options = optionsAccessor.Value ?? new ModularityDebugOptions();
-
-            if (options.EnableDebugging)
-            {
-                return ActivatorUtilities.CreateInstance<DebugPort>(serviceProvider, optionsAccessor);
-            }
-
-            return null;
         }
 
         public static IModularityBuilder AddModularity(this IServiceCollection services, Action<ModularityOptions> configuration)

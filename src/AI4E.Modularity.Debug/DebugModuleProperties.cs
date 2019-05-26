@@ -46,8 +46,6 @@ namespace AI4E.Modularity.Debug
         public ModuleIdentifier Module { get; }
         public ModuleVersion Version { get; }
 
-
-
         public async Task WriteAsync(Stream stream, CancellationToken cancellation)
         {
             var bufferSize = 0;
@@ -113,8 +111,6 @@ namespace AI4E.Modularity.Debug
 
             return new DebugModuleProperties(endPoint, module, version);
         }
-
-
 
         public bool Equals(in DebugModuleProperties other)
         {
