@@ -23,7 +23,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Routing;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Host
 {
     /// <summary>
     /// Represents a mapper that maps uri paths to end-points.

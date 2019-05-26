@@ -25,7 +25,7 @@ using System.Threading.Tasks;
 using AI4E.Routing;
 using AI4E.Utils.Memory;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Host
 {
     public sealed class PathMapper : IPathMapper
     {
