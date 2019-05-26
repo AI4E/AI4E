@@ -85,8 +85,6 @@ namespace AI4E.Modularity.Module
             Features.Set<IHttpResponseFeature>(new HttpResponseFeature());
         }
 
-
-
         #region IModuleServer
 
         private IHttpRequestExecutor _requestExecutor;
