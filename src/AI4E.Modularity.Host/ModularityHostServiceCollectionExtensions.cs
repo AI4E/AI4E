@@ -20,9 +20,12 @@
 
 using System;
 using System.Reflection;
+using AI4E;
 using AI4E.Coordination;
 using AI4E.Domain.Services;
+using AI4E.Modularity;
 using AI4E.Modularity.Debug;
+using AI4E.Modularity.Host;
 using AI4E.Modularity.Metadata;
 using AI4E.Remoting;
 using AI4E.Routing;
@@ -31,9 +34,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Modularity.Host
+namespace Microsoft.Extensions.DependencyInjection
 {
-    public static class ServiceCollectionExtension
+    public static class ModularityHostServiceCollectionExtensions
     {
         public static IModularityBuilder AddModularity(this IServiceCollection services)
         {

@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using AI4E.AspNetCore;
-using AI4E.Modularity.Module;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;

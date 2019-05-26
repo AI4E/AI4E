@@ -19,22 +19,23 @@
  */
 
 using System;
-using System.Net;
 using System.Reflection;
-using AI4E.Utils.ApplicationParts;
+using AI4E;
 using AI4E.Coordination;
+using AI4E.Modularity;
 using AI4E.Modularity.Debug;
+using AI4E.Modularity.Metadata;
+using AI4E.Modularity.Module;
 using AI4E.Remoting;
 using AI4E.Routing;
-using Microsoft.Extensions.DependencyInjection;
+using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
-using AI4E.Modularity.Metadata;
 
-namespace AI4E.Modularity.Module
+namespace Microsoft.Extensions.DependencyInjection
 {
-    public static class ServiceCollectionExtensions
+    public static class ModularityModuleServiceCollectionExtensions
     {
         public static IServiceCollection AddModuleServices(this IServiceCollection services)
         {

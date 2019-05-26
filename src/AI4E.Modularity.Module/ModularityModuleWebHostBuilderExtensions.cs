@@ -19,13 +19,13 @@
  */
 
 using System;
-using Microsoft.AspNetCore.Hosting;
+using AI4E.Modularity.Module;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.Modularity.Module
+namespace Microsoft.AspNetCore.Hosting
 {
-    public static class WebHostBuilderExtension
+    public static class ModularityModuleWebHostBuilderExtensions
     {
         public static IWebHostBuilder UseModuleServer(this IWebHostBuilder webHostBuilder)
         {
@@ -35,7 +35,6 @@ namespace AI4E.Modularity.Module
             webHostBuilder.ConfigureServices(services =>
             {
                 services.AddModuleServices();
-
                 services.AddSingleton<IServer, ModuleServer>();
             });
 

@@ -19,12 +19,12 @@
  */
 
 using System;
-using Microsoft.AspNetCore.Builder;
+using AI4E.Modularity.Host;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.Modularity.Host
+namespace Microsoft.AspNetCore.Builder
 {
-    public static class ApplicationBuilderExtension
+    public static class ModularityHostApplicationBuilderExtensions
     {
         public static IApplicationBuilder UseModularity(this IApplicationBuilder builder)
         {
