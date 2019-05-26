@@ -5,19 +5,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Internal\**" />
-    <EmbeddedResource Remove="Internal\**" />
-    <None Remove="Internal\**" />
+    <Compile Include="..\Common\IPEndPointConverter.cs" Link="Internal\IPEndPointConverter.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E.Modularity.Debug\AI4E.Modularity.Debug.csproj" />
     <ProjectReference Include="..\AI4E.Modularity\AI4E.Modularity.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore" Version="2.2.0" />
+    <Folder Include="Internal\" />
   </ItemGroup>
-
 
 </Project>
