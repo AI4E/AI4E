@@ -17,7 +17,7 @@ namespace AI4E.Modularity.Debug
     public sealed class DebugConnection : IDisposable
     {
         private readonly IMetadataAccessor _metadataAccessor;
-        private readonly ModuleDebugOptions _options;
+        private readonly ModularityDebugOptions _options;
         private readonly RemoteMessagingOptions _remoteOptions;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILoggerFactory _loggerFactory;
@@ -29,7 +29,7 @@ namespace AI4E.Modularity.Debug
         private readonly DisposableAsyncLazy<ProxyHost> _proxyHostLazy;
 
         public DebugConnection(IMetadataAccessor metadataAccessor,
-                               IOptions<ModuleDebugOptions> optionsAccessor,
+                               IOptions<ModularityDebugOptions> optionsAccessor,
                                IOptions<RemoteMessagingOptions> remoteOptionsAccessor,
                                IServiceProvider serviceProvider,
                                ILoggerFactory loggerFactory = null)
@@ -48,7 +48,7 @@ namespace AI4E.Modularity.Debug
                 throw new ArgumentNullException(nameof(serviceProvider));
 
             _metadataAccessor = metadataAccessor;
-            _options = optionsAccessor.Value ?? new ModuleDebugOptions();
+            _options = optionsAccessor.Value ?? new ModularityDebugOptions();
             _remoteOptions = remoteOptionsAccessor.Value ?? new RemoteMessagingOptions();
             _serviceProvider = serviceProvider;
             _loggerFactory = loggerFactory;

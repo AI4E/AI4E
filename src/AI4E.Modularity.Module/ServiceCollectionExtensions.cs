@@ -79,10 +79,10 @@ namespace AI4E.Modularity.Module
 
         private static ICoordinationManager ConfigureCoordinationManager(IServiceProvider serviceProvider)
         {
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleDebugOptions>>();
-            var options = optionsAccessor.Value ?? new ModuleDebugOptions();
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModularityDebugOptions>>();
+            var options = optionsAccessor.Value ?? new ModularityDebugOptions();
 
-            if (options.UseDebugConnection)
+            if (options.EnableDebugging)
             {
                 return ActivatorUtilities.CreateInstance<DebugCoordinationManager>(serviceProvider);
             }
@@ -96,8 +96,8 @@ namespace AI4E.Modularity.Module
         {
             Assert(serviceProvider != null);
 
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleDebugOptions>>();
-            var options = optionsAccessor.Value ?? new ModuleDebugOptions();
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModularityDebugOptions>>();
+            var options = optionsAccessor.Value ?? new ModularityDebugOptions();
             var remoteOptionsAccessor = serviceProvider.GetRequiredService<IOptions<RemoteMessagingOptions>>();
             var remoteOptions = remoteOptionsAccessor.Value ?? new RemoteMessagingOptions();
 
@@ -106,7 +106,7 @@ namespace AI4E.Modularity.Module
                 throw new InvalidOperationException("A local end point must be specified.");
             }
 
-            if (options.UseDebugConnection)
+            if (options.EnableDebugging)
             {
                 var debugConnection = serviceProvider.GetRequiredService<DebugConnection>();
                 var logger = serviceProvider.GetService<ILogger<DebugLogicalEndPoint>>();
@@ -121,10 +121,10 @@ namespace AI4E.Modularity.Module
 
         private static DebugConnection ConfigureDebugConnection(IServiceProvider serviceProvider)
         {
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModuleDebugOptions>>();
-            var options = optionsAccessor.Value ?? new ModuleDebugOptions();
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModularityDebugOptions>>();
+            var options = optionsAccessor.Value ?? new ModularityDebugOptions();
 
-            if (!options.UseDebugConnection)
+            if (!options.EnableDebugging)
             {
                 return null;
             }

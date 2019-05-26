@@ -27,7 +27,6 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
-using AI4E.Modularity.Host;
 using AI4E.Routing;
 using AI4E.Utils;
 using AI4E.Utils.Async;
@@ -60,7 +59,7 @@ namespace AI4E.Modularity.Debug
 
         public DebugPort(IServiceProvider serviceProvider,
                          IRunningModuleManager runningModuleManager,
-                         IOptions<ModularityOptions> optionsAccessor,
+                         IOptions<ModularityDebugOptions> optionsAccessor,
                          IRemoteMessageDispatcher messageDispatcher,
                          ILoggerFactory loggerFactory = null)
         {
@@ -76,7 +75,7 @@ namespace AI4E.Modularity.Debug
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
-            var options = optionsAccessor.Value ?? new ModularityOptions();
+            var options = optionsAccessor.Value ?? new ModularityDebugOptions();
 
             _serviceProvider = serviceProvider;
             _runningModuleManager = runningModuleManager;

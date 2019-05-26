@@ -90,8 +90,8 @@ namespace AI4E.Modularity.Host
         {
             Assert(serviceProvider != null);
 
-            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModularityOptions>>();
-            var options = optionsAccessor.Value ?? new ModularityOptions();
+            var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModularityDebugOptions>>();
+            var options = optionsAccessor.Value ?? new ModularityDebugOptions();
 
             if (options.EnableDebugging)
             {

@@ -1,8 +1,8 @@
 namespace AI4E.Modularity.Debug
 {
-    public class ModuleDebugOptions
+    public class ModularityDebugOptions
     {
-        public bool UseDebugConnection { get; set; } = false;
+        public bool EnableDebugging { get; set; } = false;
 
         public string DebugConnection { get; set; } = "localhost:8080";
     }
