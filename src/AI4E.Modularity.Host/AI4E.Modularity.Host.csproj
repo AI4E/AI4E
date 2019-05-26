@@ -9,6 +9,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\AI4E.Domain.Services\AI4E.Domain.Services.csproj" />
+    <ProjectReference Include="..\AI4E.Domain\AI4E.Domain.csproj" />
     <ProjectReference Include="..\AI4E.Modularity.Debug\AI4E.Modularity.Debug.csproj" />
     <ProjectReference Include="..\AI4E.Modularity.Host.Abstractions\AI4E.Modularity.Host.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Modularity\AI4E.Modularity.csproj" />

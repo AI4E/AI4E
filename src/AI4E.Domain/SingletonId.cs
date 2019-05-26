@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using System.Runtime.CompilerServices;
 
-namespace AI4E.Modularity.Host
+namespace AI4E.Domain
 {
     public readonly struct SingletonId : IEquatable<SingletonId>
     {

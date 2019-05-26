@@ -32,6 +32,7 @@ using Microsoft.Extensions.Options;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
 using AI4E.Modularity.Metadata;
+using AI4E.Domain;
 
 namespace AI4E.Modularity.Host
 {
