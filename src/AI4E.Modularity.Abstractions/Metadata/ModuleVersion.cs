@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -55,10 +55,8 @@ namespace AI4E.Modularity.Metadata
 
         public bool Equals(ModuleVersion other)
         {
-            return MajorVersion == other.MajorVersion &&
-                   MinorVersion == other.MinorVersion &&
-                   Revision == other.Revision &&
-                   IsPreRelease == other.IsPreRelease;
+            return (MajorVersion, MinorVersion, Revision, IsPreRelease)
+                == (other.MajorVersion, other.MinorVersion, other.Revision, other.IsPreRelease);
         }
 
         public override bool Equals(object obj)
@@ -104,10 +102,7 @@ namespace AI4E.Modularity.Metadata
 
         public override int GetHashCode()
         {
-            return MajorVersion.GetHashCode() ^
-                   MinorVersion.GetHashCode() ^
-                   Revision.GetHashCode() ^
-                   IsPreRelease.GetHashCode();
+            return (MajorVersion, MinorVersion, Revision, IsPreRelease).GetHashCode();
         }
 
         public override string ToString()

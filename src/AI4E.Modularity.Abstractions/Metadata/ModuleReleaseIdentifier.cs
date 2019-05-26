@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -40,22 +40,6 @@ namespace AI4E.Modularity.Metadata
             }
         }
 
-        //public ModuleReleaseIdentifier(string name, ModuleVersion version)
-        //{
-        //    if (version == ModuleVersion.Unknown)
-        //    {
-        //        this = default;
-        //    }
-        //    else
-        //    {
-        //        Module = new ModuleIdentifier(name);
-        //        Version = version;
-        //    }
-        //}
-
-        // TODO: These should be read-only. 
-        //       The in-memory database and json.net have problems to recreate the object.
-        //       Maybe a custom type converter can help here.
         [JsonProperty]
         public ModuleIdentifier Module { get; }
 
@@ -64,8 +48,7 @@ namespace AI4E.Modularity.Metadata
 
         public bool Equals(ModuleReleaseIdentifier other)
         {
-            return other.Module == Module &&
-                   other.Version == Version;
+            return (other.Module, other.Version) == (Module, Version);
         }
 
         public override bool Equals(object obj)
@@ -75,7 +58,7 @@ namespace AI4E.Modularity.Metadata
 
         public override int GetHashCode()
         {
-            return Module.GetHashCode() ^ Version.GetHashCode();
+            return (Module, Version).GetHashCode();
         }
 
         public override string ToString()

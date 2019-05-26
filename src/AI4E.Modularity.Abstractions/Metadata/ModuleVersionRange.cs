@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -155,13 +155,9 @@ namespace AI4E.Modularity.Metadata
 
         public bool Equals(in ModuleVersionRange other)
         {
-            return MinMajor == other.MinMajor &&
-                   MinMinor == other.MinMinor &&
-                   MinRevision == other.MinRevision &&
-                   MaxMajor == other.MaxMajor &&
-                   MaxMinor == other.MaxMinor &&
-                   MaxRevision == other.MaxRevision &&
-                   AllowPreReleases == other.AllowPreReleases;
+            return (MinMajor, MinMinor, MinRevision, MaxMajor, MaxMinor, MaxRevision, AllowPreReleases)
+                == (other.MinMajor, other.MinMinor, other.MinRevision,
+                other.MaxMajor, other.MaxMinor, other.MaxRevision, other.AllowPreReleases);
         }
 
         public bool Equals(ModuleVersionRange other)
@@ -176,13 +172,7 @@ namespace AI4E.Modularity.Metadata
 
         public override int GetHashCode()
         {
-            return MinMajor?.GetHashCode() ?? 0 ^
-                   MinMinor?.GetHashCode() ?? 0 ^
-                   MinRevision?.GetHashCode() ?? 0 ^
-                   MaxMajor?.GetHashCode() ?? 0 ^
-                   MaxMinor?.GetHashCode() ?? 0 ^
-                   MaxRevision?.GetHashCode() ?? 0 ^
-                   AllowPreReleases.GetHashCode();
+            return (MinMajor, MinMinor, MinRevision, MaxMajor, MaxMinor, MaxRevision, AllowPreReleases).GetHashCode();
         }
 
         public override string ToString()
