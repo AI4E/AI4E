@@ -28,6 +28,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Domain;
+using AI4E.Modularity.Metadata;
 using AI4E.Utils;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
@@ -164,8 +165,7 @@ namespace AI4E.Modularity.Host
                 return null;
 
             Assert(!parts.Any(p => p.ContainsWhitespace()));
-
-            string PreprocessSearchPhrasePart(string part)
+            static string PreprocessSearchPhrasePart(string part)
             {
                 var resultBuilder = new StringBuilder();
 
@@ -208,7 +208,7 @@ namespace AI4E.Modularity.Host
                 return resultBuilder.ToString();
             }
 
-            StringBuilder AppendPattern(StringBuilder regexBuilder, string subPattern)
+            static StringBuilder AppendPattern(StringBuilder regexBuilder, string subPattern)
             {
                 if (regexBuilder.Length != 0)
                 {
@@ -239,27 +239,25 @@ namespace AI4E.Modularity.Host
 
             try
             {
-                using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true))
-                using (var package = new ZipArchive(fileStream, ZipArchiveMode.Read))
+                using var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+                using var package = new ZipArchive(fileStream, ZipArchiveMode.Read);
+                var manifest = package.GetEntry("module.json");
+
+                // Invalid package
+                if (manifest == null)
                 {
-                    var manifest = package.GetEntry("module.json");
+                    // TODO: Log
+                    return null;
+                }
 
-                    // Invalid package
-                    if (manifest == null)
-                    {
-                        // TODO: Log
-                        return null;
-                    }
-
-                    try
-                    {
-                        return await moduleMetadataReader.ReadMetadataAsync(manifest.Open(), cancellation);
-                    }
-                    catch (ModuleMetadataFormatException)
-                    {
-                        // TODO: Log
-                        return null;
-                    }
+                try
+                {
+                    return await moduleMetadataReader.ReadMetadataAsync(manifest.Open(), cancellation);
+                }
+                catch (ModuleMetadataFormatException)
+                {
+                    // TODO: Log
+                    return null;
                 }
             }
             catch (FileNotFoundException) // The file was deleted concurrently.

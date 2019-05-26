@@ -23,7 +23,7 @@ using System.ComponentModel;
 using System.Globalization;
 using Newtonsoft.Json;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Metadata
 {
     // A handle for a module (f.e. AI4E.Clustering)
     [TypeConverter(typeof(ModuleIdentifierTypeConverter))]

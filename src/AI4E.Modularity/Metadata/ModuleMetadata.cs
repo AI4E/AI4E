@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Metadata
 {
     public sealed class ModuleMetadata : IModuleMetadata
     {
@@ -85,6 +85,6 @@ namespace AI4E.Modularity
 
         IEnumerable<ModuleDependency> IModuleMetadata.Dependencies => _dependencies ?? Enumerable.Empty<ModuleDependency>();
 
-        public ModuleDependencyCollection Dependencies => _dependencies = _dependencies ?? new ModuleDependencyCollection();
+        public ModuleDependencyCollection Dependencies => _dependencies ??= new ModuleDependencyCollection();
     }
 }

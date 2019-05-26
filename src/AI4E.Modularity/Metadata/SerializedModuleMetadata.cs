@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
+using AI4E.Modularity.Metadata;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Metadata
 {
     internal sealed class SerializedModuleMetadata : IModuleMetadata
     {

@@ -26,6 +26,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Modularity;
+using AI4E.Modularity.Metadata;
 using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 
@@ -138,7 +139,7 @@ namespace AI4E.AspNetCore.Components.Modularity
 
             if (!assemblyUri.EndsWith("/", StringComparison.OrdinalIgnoreCase))
             {
-                assemblyUri = assemblyUri + "/";
+                assemblyUri += "/";
             }
 
             assemblyUri = assemblyUri + "_framework/_bin/" + assemblyName + ".dll"; // TODO: Is this necessary? Can we avoid this?

@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Domain;
+using AI4E.Modularity.Metadata;
 using Newtonsoft.Json;
 
 namespace AI4E.Modularity.Host

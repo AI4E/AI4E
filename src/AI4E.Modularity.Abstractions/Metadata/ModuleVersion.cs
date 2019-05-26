@@ -24,7 +24,7 @@ using System.Globalization;
 using System.Linq;
 using Newtonsoft.Json;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Metadata
 {
     [TypeConverter(typeof(ModuleVersionConverter))]
     public readonly struct ModuleVersion : IEquatable<ModuleVersion>, IComparable<ModuleVersion>

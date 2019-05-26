@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Modularity.Metadata;
 using AI4E.Utils;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;

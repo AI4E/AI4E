@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using AI4E.Modularity.Metadata;
 using Newtonsoft.Json;
 
 namespace AI4E.Modularity.Host

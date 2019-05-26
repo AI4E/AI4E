@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using AI4E.Utils;
 using Newtonsoft.Json;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Metadata
 {
     public sealed class MetadataReader : IMetadataReader
     {

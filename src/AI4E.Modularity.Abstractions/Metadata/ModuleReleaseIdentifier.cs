@@ -21,7 +21,7 @@
 using System;
 using Newtonsoft.Json;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Metadata
 {
     public readonly struct ModuleReleaseIdentifier : IEquatable<ModuleReleaseIdentifier>
     {

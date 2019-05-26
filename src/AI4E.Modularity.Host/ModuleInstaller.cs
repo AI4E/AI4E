@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Modularity.Metadata;
 using AI4E.Storage.Domain;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -70,11 +71,9 @@ namespace AI4E.Modularity.Host
         // TODO: Refactor to own component
         private async ValueTask<Module> GetModuleAsync(ModuleIdentifier module, CancellationToken cancellation)
         {
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var storageEngine = scope.ServiceProvider.GetRequiredService<IEntityStorageEngine>();
-                return await storageEngine.GetByIdAsync<Module>(module.ToString(), cancellation);
-            }
+            using var scope = _serviceProvider.CreateScope();
+            var storageEngine = scope.ServiceProvider.GetRequiredService<IEntityStorageEngine>();
+            return await storageEngine.GetByIdAsync<Module>(module.ToString(), cancellation);
         }
     }
 }

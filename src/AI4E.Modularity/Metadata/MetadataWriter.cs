@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Metadata
 {
     public sealed class MetadataWriter : IMetadataWriter
     {

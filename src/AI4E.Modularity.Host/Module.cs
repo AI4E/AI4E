@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using AI4E.Domain;
+using AI4E.Modularity.Metadata;
 using AI4E.Utils;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;

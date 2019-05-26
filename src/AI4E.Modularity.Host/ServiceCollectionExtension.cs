@@ -23,6 +23,7 @@ using System.Reflection;
 using AI4E.Coordination;
 using AI4E.Domain.Services;
 using AI4E.Modularity.Debug;
+using AI4E.Modularity.Metadata;
 using AI4E.Remoting;
 using AI4E.Routing;
 using AI4E.Utils.ApplicationParts;

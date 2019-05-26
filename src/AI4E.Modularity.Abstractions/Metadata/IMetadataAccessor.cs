@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Metadata
 {
     public interface IMetadataAccessor
     {

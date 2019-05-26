@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -23,7 +23,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Metadata
 {
     [TypeConverter(typeof(ModuleVersionRangeTypeConverter))]
     public readonly struct ModuleVersionRange : IEquatable<ModuleVersionRange>

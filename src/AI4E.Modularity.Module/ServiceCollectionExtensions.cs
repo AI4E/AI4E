@@ -30,6 +30,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static System.Diagnostics.Debug;
+using AI4E.Modularity.Metadata;
 
 namespace AI4E.Modularity.Module
 {
@@ -130,36 +131,6 @@ namespace AI4E.Modularity.Module
             }
 
             return ActivatorUtilities.CreateInstance<DebugConnection>(serviceProvider, optionsAccessor);
-        }
-    }
-
-    internal static class ServiceCollectionHelper
-    {
-        private static IServiceCollection AddSingletonConditional<TService, TInstance, TOptions>(this IServiceCollection services, Func<TOptions, bool> condition)
-           where TService : class
-           where TInstance : class, TService
-           where TOptions : class, new()
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            if (condition == null)
-                throw new ArgumentNullException(nameof(condition));
-
-            services.AddSingleton<TService, TInstance>(serviceProvider =>
-            {
-                var optionsAccessor = serviceProvider.GetService<IOptions<TOptions>>();
-                var options = optionsAccessor?.Value ?? new TOptions();
-
-                if (!condition(options))
-                {
-                    return null;
-                }
-
-                return ActivatorUtilities.CreateInstance<TInstance>(serviceProvider);
-            });
-
-            return services;
         }
     }
 }

@@ -31,12 +31,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
+using AI4E.Modularity.Metadata;
 
 namespace AI4E.Modularity.Host
 {
     public sealed class ModuleInstallationManager : IModuleInstallationManager
     {
-        private readonly IMetadataReader _metadataReader;
         private readonly IModuleInstaller _moduleInstaller;
         private readonly IModuleSupervisorFactory _moduleSupervisorFactory;
         private readonly IServiceProvider _serviceProvider;
@@ -45,15 +45,12 @@ namespace AI4E.Modularity.Host
         private readonly DirectoryInfo _installationDirectory;
         private readonly AsyncInitializationHelper _initializationHelper;
 
-        public ModuleInstallationManager(IMetadataReader metadataReader,
-                             IModuleInstaller moduleInstaller,
-                             IModuleSupervisorFactory moduleSupervisorFactory,
-                             IServiceProvider serviceProvider,
-                             IOptions<ModuleManagementOptions> optionsAccessor)
+        public ModuleInstallationManager(
+            IModuleInstaller moduleInstaller,
+            IModuleSupervisorFactory moduleSupervisorFactory,
+            IServiceProvider serviceProvider,
+            IOptions<ModuleManagementOptions> optionsAccessor)
         {
-            if (metadataReader == null)
-                throw new ArgumentNullException(nameof(metadataReader));
-
             if (moduleInstaller == null)
                 throw new ArgumentNullException(nameof(moduleInstaller));
 
@@ -66,7 +63,6 @@ namespace AI4E.Modularity.Host
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
 
-            _metadataReader = metadataReader;
             _moduleInstaller = moduleInstaller;
             _moduleSupervisorFactory = moduleSupervisorFactory;
             _serviceProvider = serviceProvider;
@@ -98,18 +94,16 @@ namespace AI4E.Modularity.Host
         // TODO: This should be abstracted in order to support clustering.
         private async Task<ResolvedInstallationSet> GetInstallationSetAsync(CancellationToken cancellation)
         {
-            using (var scope = _serviceProvider.CreateScope())
+            using var scope = _serviceProvider.CreateScope();
+            var storageEngine = scope.ServiceProvider.GetRequiredService<IEntityStorageEngine>();
+            var installationConfiguration = await storageEngine.GetByIdAsync<ModuleInstallationConfiguration>(default(SingletonId).ToString(), cancellation);
+
+            if (installationConfiguration == null)
             {
-                var storageEngine = scope.ServiceProvider.GetRequiredService<IEntityStorageEngine>();
-                var installationConfiguration = await storageEngine.GetByIdAsync<ModuleInstallationConfiguration>(default(SingletonId).ToString(), cancellation);
-
-                if (installationConfiguration == null)
-                {
-                    return ResolvedInstallationSet.EmptyInstallationSet;
-                }
-
-                return installationConfiguration.ResolvedModules;
+                return ResolvedInstallationSet.EmptyInstallationSet;
             }
+
+            return installationConfiguration.ResolvedModules;
         }
 
         public async Task ConfigureInstallationSetAsync(ResolvedInstallationSet installationSet, CancellationToken cancellation)

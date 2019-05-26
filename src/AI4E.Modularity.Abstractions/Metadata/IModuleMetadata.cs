@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Metadata
 {
     public interface IModuleMetadata
     {

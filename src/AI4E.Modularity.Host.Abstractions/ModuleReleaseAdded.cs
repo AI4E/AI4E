@@ -1,4 +1,6 @@
-﻿namespace AI4E.Modularity.Host
+using AI4E.Modularity.Metadata;
+
+namespace AI4E.Modularity.Host
 {
     public sealed class ModuleReleaseAdded
     {

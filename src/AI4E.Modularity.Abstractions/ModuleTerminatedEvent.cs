@@ -18,6 +18,8 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using AI4E.Modularity.Metadata;
+
 namespace AI4E.Modularity
 {
     public sealed class ModuleTerminatedEvent

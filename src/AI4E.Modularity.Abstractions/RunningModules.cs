@@ -19,6 +19,7 @@
  */
 
 using System.Collections.Generic;
+using AI4E.Modularity.Metadata;
 
 namespace AI4E.Modularity
 {

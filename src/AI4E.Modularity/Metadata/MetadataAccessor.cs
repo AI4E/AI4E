@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AI4E.Modularity
+namespace AI4E.Modularity.Metadata
 {
     public sealed class MetadataAccessor : IMetadataAccessor
     {
@@ -51,10 +51,8 @@ namespace AI4E.Modularity
 
         private async ValueTask<IModuleMetadata> GetMetadataFromManifestResourceAsync(Assembly entryAssembly, string metadataFullName, CancellationToken cancellation)
         {
-            using (var manifestStream = entryAssembly.GetManifestResourceStream(metadataFullName))
-            {
-                return await _metadataReader.ReadMetadataAsync(manifestStream, cancellation);
-            }
+            using var manifestStream = entryAssembly.GetManifestResourceStream(metadataFullName);
+            return await _metadataReader.ReadMetadataAsync(manifestStream, cancellation);
         }
 
         private async ValueTask<IModuleMetadata> GetMetadataCoreAsync(Assembly entryAssembly, string metadataPath, CancellationToken cancellation)
@@ -63,10 +61,8 @@ namespace AI4E.Modularity
             {
                 try
                 {
-                    using (var stream = new FileStream(metadataPath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true))
-                    {
-                        return await _metadataReader.ReadMetadataAsync(stream, cancellation);
-                    }
+                    using var stream = new FileStream(metadataPath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+                    return await _metadataReader.ReadMetadataAsync(stream, cancellation);
                 }
                 catch (FileNotFoundException) { }
                 catch (DirectoryNotFoundException) { }

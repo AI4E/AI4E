@@ -1,7 +1,8 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Modularity.Metadata;
 
 namespace AI4E.Modularity.Host
 {
