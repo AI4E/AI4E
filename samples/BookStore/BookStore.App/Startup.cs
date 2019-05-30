@@ -1,6 +1,5 @@
 using System.Linq;
 using System.Reflection;
-using AI4E.Blazor;
 using AI4E.Utils.ApplicationParts;
 using Microsoft.AspNetCore.Components.Builder;
 using Microsoft.Extensions.DependencyInjection;

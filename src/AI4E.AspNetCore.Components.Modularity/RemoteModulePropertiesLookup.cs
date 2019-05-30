@@ -27,7 +27,7 @@ using AI4E.Modularity.Host;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Blazor.Modularity
+namespace AI4E.AspNetCore.Components.Modularity
 {
     public sealed class RemoteModulePropertiesLookup : IModulePropertiesLookup
     {

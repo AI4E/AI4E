@@ -18,14 +18,17 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.AspNetCore.Components.Modularity;
+using AI4E.Modularity;
 
-namespace AI4E.AspNetCore.Components.ModuleServer
+namespace AI4E.AspNetCore.Components.Modularity
 {
-    public interface IBlazorModuleManifestProvider
+    internal interface IModuleAssemblyDownloader
     {
-        ValueTask<BlazorModuleManifest> GetBlazorModuleManifestAsync(CancellationToken cancellation);
+        Assembly GetAssembly(string assemblyName);
+
+        ValueTask<Assembly> InstallAssemblyAsync(ModuleIdentifier module, string assemblyName, CancellationToken cancellation);
     }
 }

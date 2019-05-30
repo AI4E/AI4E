@@ -1,8 +1,29 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Modularity;
@@ -10,7 +31,7 @@ using AI4E.Modularity.Host;
 using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 
-namespace AI4E.Blazor.Modularity
+namespace AI4E.AspNetCore.Components.Modularity
 {
     internal sealed class ModuleAssemblyDownloader : IModuleAssemblyDownloader
     {
@@ -115,26 +136,28 @@ namespace AI4E.Blazor.Modularity
 
         private string GetAssemblyUri(string prefix, string assemblyName)
         {
-            var assemblyUri = NormalizePrefix(prefix);
+            var assemblyUriBuilder = new StringBuilder();
+            var baseAddress = _httpClient.BaseAddress.ToString();
 
-            if (!assemblyUri.EndsWith("/", StringComparison.OrdinalIgnoreCase))
+            assemblyUriBuilder.Append(baseAddress);
+
+            if (!baseAddress.EndsWith("/", StringComparison.OrdinalIgnoreCase))
             {
-                assemblyUri = assemblyUri + "/";
+                assemblyUriBuilder.Append('/');
             }
 
-            assemblyUri = assemblyUri + "_framework/_bin/" + assemblyName + ".dll"; // TODO: Is this necessary? Can we avoid this?
+            assemblyUriBuilder.Append(prefix);
 
-            return assemblyUri;
-        }
-
-        private string NormalizePrefix(string prefix)
-        {
             if (!prefix.StartsWith("/", StringComparison.OrdinalIgnoreCase))
             {
-                prefix = "/" + prefix;
+                assemblyUriBuilder.Append('/');
             }
 
-            return prefix;
+            assemblyUriBuilder.Append("_framework/_bin/");
+            assemblyUriBuilder.Append(Uri.EscapeDataString(assemblyName));
+            assemblyUriBuilder.Append(".dll");
+
+            return assemblyUriBuilder.ToString();
         }
     }
 }

@@ -10,6 +10,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AI4E.AspNetCore.Components.Extensibility" Version="0.3.0-pre19052514" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\src\AI4E.Abstractions\AI4E.Abstractions.csproj" />
   </ItemGroup>
 

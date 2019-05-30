@@ -20,7 +20,7 @@
 
 using System;
 
-namespace AI4E.Blazor.Modularity
+namespace AI4E.AspNetCore.Components.Modularity
 {
     internal interface IInstallationSetManager
     {

@@ -6,15 +6,14 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <Compile Include="..\AI4E.AspNetCore.Components.Modularity\Modularity\BlazorModuleManifest.cs" Link="BlazorModuleManifest.cs" />
+    <Compile Include="..\AI4E.AspNetCore.Components.Modularity\BlazorModuleManifest.cs" Link="BlazorModuleManifest.cs" />
     <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
     <ProjectReference Include="..\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
     <ProjectReference Include="..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
   </ItemGroup>
 
-  <ItemGroup> 
-    <PackageReference Include="Microsoft.AspNetCore.Components.Server" Version="3.0.0-preview3-19153-02" />
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Blazor.Server" Version="3.0.0-preview5-19227-01" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.2.0" />
   </ItemGroup>
