@@ -1,23 +1,5 @@
 ﻿@page "/modulesources/{id:guid}"
-@inherits ComponentBase<ModuleSourceModel>
-@functions{
-    [Parameter] private Guid Id { get; set; }
-
-    protected override async ValueTask<ModuleSourceModel>
-        LoadModelAsync(CancellationToken cancellation)
-    {
-        var queryResult = await MessageDispatcher.QueryByIdAsync<ModuleSourceModel>
-            (Id, cancellation);
-        return EvaluateQueryResult(queryResult);
-    }
-
-    public async Task RenameAsync()
-    {
-        var command = new ModuleSourceRenameCommand(Id, Model.ConcurrencyToken, Model.Name);
-        var commandResult = await MessageDispatcher.DispatchAsync(command); // TODO: Cancellation
-        EvaluateCommandResult(commandResult);
-    }
-}
+@inherits Index_
 
 <div class="container">
     @if (IsLoading)

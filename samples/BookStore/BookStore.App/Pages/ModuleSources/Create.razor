@@ -1,27 +1,5 @@
 ﻿@page "/modulesources/create"
-@inherits ComponentBase<ModuleSourceCreateModel>
-@inject IUriHelper UriHelper
-@functions{
-    protected override ValueTask<ModuleSourceCreateModel> LoadModelAsync(CancellationToken cancellation)
-    {
-        return new ValueTask<ModuleSourceCreateModel>(new ModuleSourceCreateModel());
-    }
-
-    public async Task StoreAsync()
-    {
-        var command = new ModuleSourceCreateCommand(Guid.NewGuid(), Model.Name, Model.Location);
-        var commandResult = await MessageDispatcher.DispatchAsync(command); // TODO: Cancellation
-
-        if (commandResult.IsSuccess)
-        {
-            UriHelper.NavigateTo("/modulesources/" + command.Id.ToString());
-        }
-        else
-        {
-            EvaluateCommandResult(commandResult);
-        }
-    }
-}
+@inherits Create_
 <div class="container">
     <EditForm Model="Model" OnValidSubmit="StoreAsync">
         <div class="form-group">

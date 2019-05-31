@@ -1,33 +1,5 @@
 ﻿@page "/modulesources/delete/{id:guid}"
-@inherits ComponentBase<ModuleSourceDeleteModel>
-@inject IUriHelper UriHelper
-@functions{
-    [Parameter] private Guid Id { get; set; }
-
-    protected override async ValueTask<ModuleSourceDeleteModel>
-        LoadModelAsync(CancellationToken cancellation)
-    {
-        var queryResult = await MessageDispatcher.QueryByIdAsync<ModuleSourceDeleteModel>
-            (Id, cancellation);
-        return EvaluateQueryResult(queryResult);
-    }
-
-    public async Task DeleteAsync()
-    {
-        var command = new ModuleSourceDeleteCommand(Id, Model.ConcurrencyToken);
-        var commandResult = await MessageDispatcher.DispatchAsync(command); // TODO: Cancellation
-
-        if (commandResult.IsSuccess)
-        {
-            UriHelper.NavigateTo("/modulesources");
-        }
-        else
-        {
-            EvaluateCommandResult(commandResult);
-        }
-    }
-}
-
+@inherits Delete_
 <div class="container">
     @if (IsLoading)
     {

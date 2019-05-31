@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using AI4E;
 using AI4E.Utils;
@@ -22,21 +23,11 @@ namespace BookStore.Alerts
             _dateTimeProvider = dateTimeProvider;
         }
 
-        public AlertPlacement PlaceAlert(in AlertMessage alertMessage)
+        internal void PlaceAlert(LinkedListNode<AlertMessage> node)
         {
-            if (!alertMessage.AlertType.IsValid())
-            {
-                throw new ArgumentException($"The alert type must be one of the values defined in {typeof(AlertType)}.", nameof(alertMessage));
-            }
+            Debug.Assert(node != null);
 
-            if (alertMessage.AlertType == AlertType.None)
-            {
-                return default;
-            }
-
-            var node = new LinkedListNode<AlertMessage>(alertMessage);
-
-            if (alertMessage.Expiration == null)
+            if (node.Value.Expiration == null)
             {
                 lock (_mutex)
                 {
@@ -46,16 +37,16 @@ namespace BookStore.Alerts
 
                 OnAlertsChanged();
 
-                return new AlertPlacement(this, node);
+                return;
             }
 
             var now = _dateTimeProvider.GetCurrentTime();
-            var delay = (DateTime)alertMessage.Expiration - now;
+            var delay = (DateTime)node.Value.Expiration - now;
 
             // The message is expired already, do not add it.
             if (delay <= TimeSpan.Zero)
             {
-                return default;
+                return;
             }
 
             // We have to add the message before scheduling the continuation
@@ -81,7 +72,22 @@ namespace BookStore.Alerts
 
                 OnAlertsChanged();
             }).HandleExceptions();
+        }
 
+        public AlertPlacement PlaceAlert(in AlertMessage alertMessage)
+        {
+            if (!alertMessage.AlertType.IsValid())
+            {
+                throw new ArgumentException($"The alert type must be one of the values defined in {typeof(AlertType)}.", nameof(alertMessage));
+            }
+
+            if (alertMessage.AlertType == AlertType.None)
+            {
+                return default;
+            }
+
+            var node = new LinkedListNode<AlertMessage>(alertMessage);
+            PlaceAlert(node);
             return new AlertPlacement(this, node);
         }
 

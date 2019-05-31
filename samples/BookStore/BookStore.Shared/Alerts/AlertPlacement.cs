@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
@@ -6,15 +6,15 @@ namespace BookStore.Alerts
 {
     public readonly struct AlertPlacement : IEquatable<AlertPlacement>, IDisposable
     {
-        private readonly AlertMessageManager _alertMessageManager;
+        private readonly IAlertMessages _alertMessages;
 
         internal AlertPlacement(
-            AlertMessageManager alertMessageManager,
+            IAlertMessages alertMessages,
             LinkedListNode<AlertMessage> node)
         {
-            Debug.Assert(alertMessageManager != null);
+            Debug.Assert(alertMessages != null);
 
-            _alertMessageManager = alertMessageManager;
+            _alertMessages = alertMessages;
             Node = node;
         }
 
@@ -22,7 +22,7 @@ namespace BookStore.Alerts
 
         public void Dispose()
         {
-            _alertMessageManager?.CancelAlert(this);
+            _alertMessages?.CancelAlert(this);
         }
 
         public bool Equals(AlertPlacement other)
