@@ -8,7 +8,7 @@ using AI4E.Utils;
 
 namespace BookStore.Alerts
 {
-    public sealed class AlertMessageManager : IAlertMessageManager
+    public sealed partial class AlertMessageManager : IAlertMessageManager
     {
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly LinkedList<AlertMessage> _alertMessages = new LinkedList<AlertMessage>();
@@ -23,7 +23,7 @@ namespace BookStore.Alerts
             _dateTimeProvider = dateTimeProvider;
         }
 
-        internal void PlaceAlert(LinkedListNode<AlertMessage> node)
+        private void PlaceAlert(LinkedListNode<AlertMessage> node)
         {
             Debug.Assert(node != null);
 
@@ -91,17 +91,24 @@ namespace BookStore.Alerts
             return new AlertPlacement(this, node);
         }
 
-        public void CancelAlert(in AlertPlacement alertPlacement)
+        private void CancelAlert(in AlertPlacement alertPlacement, bool checkDisposal)
         {
             var node = alertPlacement.Node;
 
             lock (_mutex)
             {
-                CheckDisposed();
+                if (checkDisposal)
+                    CheckDisposed();
+
                 _alertMessages.Remove(node);
             }
 
             OnAlertsChanged();
+        }
+
+        public void CancelAlert(in AlertPlacement alertPlacement)
+        {
+            CancelAlert(alertPlacement, checkDisposal: true);
         }
 
         public void Dismiss(Alert alert)
@@ -189,89 +196,6 @@ namespace BookStore.Alerts
 
                 _alertMessages.Clear();
                 OnAlertsChanged();
-            }
-        }
-
-        public IAlertMessageManagerScope CreateScope()
-        {
-            return new AlertMessageManagerScope(this);
-        }
-
-        private sealed class AlertMessageManagerScope : IAlertMessageManagerScope
-        {
-            private readonly HashSet<AlertPlacement> _alertPlacements = new HashSet<AlertPlacement>();
-            private readonly AlertMessageManager _alertMessageManager;
-            private readonly object _mutex = new object();
-            private bool _isDisposed = false;
-
-            public AlertMessageManagerScope(AlertMessageManager alertMessageManager)
-            {
-                _alertMessageManager = alertMessageManager;
-            }
-
-            public IAlertMessageManager AlertMessageManager => _alertMessageManager;
-
-            public AlertPlacement PlaceAlert(in AlertMessage alertMessage)
-            {
-                lock (_mutex)
-                {
-                    CheckDisposed();
-                    var alertPlacement = _alertMessageManager.PlaceAlert(alertMessage);
-                    _alertPlacements.Add(alertPlacement);
-                    return alertPlacement;
-                }
-            }
-
-            public void CancelAlert(in AlertPlacement alertPlacement)
-            {
-                lock (_mutex)
-                {
-                    CheckDisposed();
-                    _alertMessageManager.CancelAlert(alertPlacement);
-                    _alertPlacements.Remove(alertPlacement);
-                }
-            }
-
-            public void ClearAlerts()
-            {
-                lock (_mutex)
-                {
-                    CheckDisposed();
-                    foreach (var alertPlacement in _alertPlacements)
-                    {
-                        _alertMessageManager.CancelAlert(alertPlacement);
-                    }
-                    _alertPlacements.Clear();
-                }
-            }
-
-            private void CheckDisposed()
-            {
-                if (_isDisposed)
-                    throw new ObjectDisposedException(GetType().FullName);
-            }
-
-            public void Dispose()
-            {
-                lock (_mutex)
-                {
-                    if (_isDisposed)
-                        return;
-
-                    _isDisposed = true;
-
-                    foreach (var alertPlacement in _alertPlacements)
-                    {
-                        try
-                        {
-                            _alertMessageManager.CancelAlert(alertPlacement);
-                        }
-                        // TODO: Add a separate method that does not throw on disposal.
-                        catch (ObjectDisposedException) { }
-                    }
-
-                    _alertPlacements.Clear();
-                }
             }
         }
     }
