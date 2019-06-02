@@ -63,8 +63,7 @@ namespace AI4E.Storage.Projection
             Type type,
             IProjectionRegistry projectionRegistry)
         {
-            var inspector = new ProjectionInspector(type);
-            var projectionDescriptors = inspector.GetDescriptors();
+            var projectionDescriptors = ProjectionInspector.Instance.InspectType(type);
 
             foreach (var projectionDescriptor in projectionDescriptors)
             {

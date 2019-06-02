@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -22,6 +22,6 @@ using System;
 
 namespace AI4E.Storage.Projection
 {
-    [Projection]
-    public abstract class Projection { }
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method)]
+    public sealed class NoProjectionAttribute : Attribute { }
 }

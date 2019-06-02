@@ -22,95 +22,115 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using AI4E.Handler;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 
 namespace AI4E.Storage.Projection
 {
-    public sealed class ProjectionInspector
+    public sealed class ProjectionInspector : TypeMemberInspector<ProjectionDescriptor, ProjectionParameters>
     {
-        private readonly Type _type;
+        [ThreadStatic] private static ProjectionInspector _instance;
 
-        public ProjectionInspector(Type type)
+        /// <summary>
+        /// Gets the singleton <see cref="ProjectionInspector"/> instance for the current thread.
+        /// </summary>
+        public static ProjectionInspector Instance
         {
-            if (type == null)
-                throw new ArgumentNullException(nameof(type));
+            get
+            {
+                if (_instance == null)
+                    _instance = new ProjectionInspector();
 
-            _type = type;
+                return _instance;
+            }
         }
 
-        public IEnumerable<ProjectionDescriptor> GetDescriptors()
+        private ProjectionInspector() { }
+
+        protected override ProjectionDescriptor CreateDescriptor(
+            Type type,
+            MethodInfo member,
+            ProjectionParameters parameters)
         {
-            var members = _type.GetMethods();
-            var descriptors = new List<ProjectionDescriptor>();
-
-            foreach (var member in members)
-            {
-                if (TryGetHandlingMember(member, out var descriptor))
-                {
-                    descriptors.Add(descriptor);
-                }
-            }
-
-            return descriptors;
+            return new ProjectionDescriptor(
+                type,
+                parameters.SourceType,
+                parameters.TargetType,
+                parameters.MultipleResults,
+                parameters.ProjectNonExisting,
+                member);
         }
 
-        private bool TryGetHandlingMember(MethodInfo member, out ProjectionDescriptor descriptor)
+        private static bool IsAssignableToEnumerable(Type type, out Type elementType)
         {
-            var parameters = member.GetParameters();
-
-            if (parameters.Length == 0)
+            static bool IsEnumerable(Type type)
             {
-                descriptor = default;
+                return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>);
+            }
+
+            if (IsEnumerable(type))
+            {
+                elementType = type.GetGenericArguments().First();
+                return true;
+            }
+
+            elementType = null;
+            var candidates = type.GetInterfaces().Where(p => IsEnumerable(p)).Select(p => type.GetGenericArguments().First());
+            var bestMatch = default(Type);
+
+            foreach (var candidate in candidates)
+            {
+                if (bestMatch == null)
+                    bestMatch = candidate;
+
+                if (bestMatch.IsAssignableFrom(candidate))
+                    bestMatch = candidate;
+
+                if (candidate.IsAssignableFrom(bestMatch))
+                    continue;
+
+                // The type implements IEnumerable for multiple element types.
+                // As no one of them superseeds them all in the type hierachy,
+                // we have a conflict here.
+                elementType = null;
                 return false;
             }
 
-            if (parameters.Any(p => p.ParameterType.IsByRef))
+            if (bestMatch != null)
             {
-                descriptor = default;
-                return false;
+                elementType = bestMatch;
+                return true;
             }
 
-            if (member.IsGenericMethod || member.IsGenericMethodDefinition)
-            {
-                descriptor = default;
-                return false;
-            }
+            return false;
+        }
 
-            if (member.IsDefined<NoProjectionMemberAttribute>())
-            {
-                descriptor = default;
-                return false;
-            }
-
+        protected override ProjectionParameters GetParameters(
+            Type type,
+            MethodInfo member,
+            IReadOnlyList<ParameterInfo> parameters,
+            AwaitableTypeDescriptor returnTypeDescriptor)
+        {
             var sourceType = parameters[0].ParameterType;
-            var memberAttribute = member.GetCustomAttribute<ProjectionMemberAttribute>();
-
-            var targetType = default(Type);
-
-            var returnTypeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(member.ReturnType);
-
-            if (IsSynchronousHandler(member, memberAttribute, returnTypeDescriptor) ||
-                IsAsynchronousHandler(member, memberAttribute, returnTypeDescriptor))
-            {
-                targetType = returnTypeDescriptor.ResultType;
-            }
-            else
-            {
-                descriptor = default;
-                return false;
-            }
-
+            var targetType = returnTypeDescriptor.ResultType;
             var projectNonExisting = false;
             var multipleResults = false;
             Type multipleResultsType = null;
 
-            // TODO: Do we allow types that are assignable to IEnumerable? What about IAsyncEnumerable?
-            if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            // TODO: Allow IAsyncEnumerable?
+            if (IsAssignableToEnumerable(targetType, out var elementType))
             {
                 multipleResultsType = targetType;
-                targetType = multipleResultsType.GetGenericArguments().First();
+                targetType = elementType;
                 multipleResults = true;
+            }
+
+            var memberAttribute = member.GetCustomAttribute<ProjectionAttribute>(inherit: true);
+
+            if (memberAttribute == null)
+            {
+                memberAttribute = type.GetCustomAttribute<ProjectionAttribute>(inherit: true);
             }
 
             if (memberAttribute != null)
@@ -152,24 +172,63 @@ namespace AI4E.Storage.Projection
                 projectNonExisting = memberAttribute.ProjectNonExisting;
             }
 
-            descriptor = new ProjectionDescriptor(_type, sourceType, targetType, multipleResults, projectNonExisting, member);
+            return new ProjectionParameters(sourceType, targetType, projectNonExisting, multipleResults);
+        }
+
+        protected override bool IsValidReturnType(AwaitableTypeDescriptor returnTypeDescriptor)
+        {
             return true;
         }
 
-        private static bool IsAsynchronousHandler(
-            MethodInfo member,
-            ProjectionMemberAttribute memberAttribute,
-            AwaitableTypeDescriptor returnTypeDescriptor)
+        protected override bool IsValidMember(MethodInfo member)
         {
-            return (member.Name.StartsWith("Project") || memberAttribute != null) && returnTypeDescriptor.IsAwaitable;
+            if (!base.IsValidMember(member))
+                return false;
+
+            // There is defined a NoMessageHandlerAttribute on the member somewhere in the inheritance hierarchy.
+            if (member.IsDefined<NoProjectionAttribute>(inherit: true))
+            {
+                // The member on the current type IS decorated with a NoProjectionAttribute OR
+                // The member on the current type IS NOT decorated with a ProjectionAttribute
+                // TODO: Test this.
+                if (member.IsDefined<NoProjectionAttribute>(inherit: false) || !member.IsDefined<ProjectionAttribute>(inherit: false))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
-        private static bool IsSynchronousHandler(
-            MethodInfo member,
-            ProjectionMemberAttribute memberAttribute,
-            AwaitableTypeDescriptor returnTypeDescriptor)
+        protected override bool IsValidParameter(ParameterInfo parameter)
         {
-            return (member.Name.StartsWith("Project") && !member.Name.EndsWith("Async") || memberAttribute != null) && !returnTypeDescriptor.IsAwaitable;
+            return !parameter.ParameterType.IsByRef;
         }
+
+        protected override bool IsAsynchronousMember(MethodInfo member, AwaitableTypeDescriptor returnTypeDescriptor)
+        {
+            return member.Name.StartsWith("Project") && member.Name.EndsWith("Async") || member.IsDefined<MessageHandlerAttribute>(inherit: true);
+        }
+
+        protected override bool IsSychronousMember(MethodInfo member, AwaitableTypeDescriptor returnTypeDescriptor)
+        {
+            return member.Name.StartsWith("Project") && !member.Name.EndsWith("Async") || member.IsDefined<MessageHandlerAttribute>(inherit: true);
+        }
+    }
+
+    public readonly struct ProjectionParameters
+    {
+        public ProjectionParameters(Type sourceType, Type targetType, bool projectNonExisting, bool multipleResults)
+        {
+            SourceType = sourceType;
+            TargetType = targetType;
+            ProjectNonExisting = projectNonExisting;
+            MultipleResults = multipleResults;
+        }
+
+        public Type SourceType { get; }
+        public Type TargetType { get; }
+        public bool ProjectNonExisting { get; }
+        public bool MultipleResults { get; }
     }
 }
