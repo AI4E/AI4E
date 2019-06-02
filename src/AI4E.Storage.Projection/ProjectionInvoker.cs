@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -19,8 +19,9 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using AI4E.Handler;
@@ -29,6 +30,63 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Projection
 {
+    public static class ProjectionInvoker
+    {
+        private static readonly Type _projectionInvokerTypeDefinition = typeof(ProjectionInvoker<,>);
+        private static readonly ConcurrentDictionary<(Type, Type), Func<object, ProjectionDescriptor, IServiceProvider, IProjection>> _factories
+            = new ConcurrentDictionary<(Type, Type), Func<object, ProjectionDescriptor, IServiceProvider, IProjection>>();
+
+        private static readonly Func<(Type, Type), Func<object, ProjectionDescriptor, IServiceProvider, IProjection>> _factoryBuilderCache = BuildFactory;
+
+        public static IProjection CreateInvoker(
+            Type handlerType,
+            ProjectionDescriptor projectionDescriptor,
+            IServiceProvider serviceProvider)
+        {
+            if (serviceProvider is null)
+                throw new ArgumentNullException(nameof(serviceProvider));
+
+            var handler = ActivatorUtilities.CreateInstance(serviceProvider, handlerType);
+            Assert(handler != null);
+            return CreateInvokerInternal(handler, projectionDescriptor, serviceProvider);
+        }
+
+        private static IProjection CreateInvokerInternal(
+            object handler,
+            ProjectionDescriptor projectionDescriptor,
+            IServiceProvider serviceProvider)
+        {
+            var sourceType = projectionDescriptor.SourceType;
+            var projectionType = projectionDescriptor.ProjectionType;
+
+            var factory = _factories.GetOrAdd((sourceType, projectionType), _factoryBuilderCache);
+            return factory(handler, projectionDescriptor, serviceProvider);
+        }
+
+        private static Func<object, ProjectionDescriptor, IServiceProvider, IProjection> BuildFactory(
+           (Type sourceType, Type projectionType) _)
+        {
+            var projectionInvokerType = _projectionInvokerTypeDefinition.MakeGenericType(_.sourceType, _.projectionType);
+            var ctor = projectionInvokerType.GetConstructor(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                Type.DefaultBinder,
+                types: new[] { typeof(object), typeof(ProjectionDescriptor), typeof(IServiceProvider) },
+                modifiers: null);
+
+            Assert(ctor != null);
+
+            var handlerParameter = Expression.Parameter(typeof(object), "handler");
+            var projectionDescriptorParameter = Expression.Parameter(typeof(ProjectionDescriptor), "projectionDescriptor");
+            var serviceProviderParameter = Expression.Parameter(typeof(IServiceProvider), "serviceProvider");
+            var ctorCall = Expression.New(ctor, handlerParameter, projectionDescriptorParameter, serviceProviderParameter);
+            var convertedInvoker = Expression.Convert(ctorCall, typeof(IProjection));
+            var lambda = Expression.Lambda<Func<object, ProjectionDescriptor, IServiceProvider, IProjection>>(
+               convertedInvoker, handlerParameter, projectionDescriptorParameter, serviceProviderParameter);
+
+            return lambda.Compile();
+        }
+    }
+
     public sealed class ProjectionInvoker<TSource, TProjection> : IProjection<TSource, TProjection>
         where TSource : class
         where TProjection : class
@@ -46,7 +104,9 @@ namespace AI4E.Storage.Projection
             _serviceProvider = serviceProvider;
         }
 
-        public async IAsyncEnumerable<TProjection> ProjectAsync(TSource source, CancellationToken cancellation)
+        public async IAsyncEnumerable<TProjection> ProjectAsync(
+            TSource source,
+            CancellationToken cancellation)
         {
             if (source == null && !_projectionDescriptor.ProjectNonExisting)
             {
@@ -113,28 +173,14 @@ namespace AI4E.Storage.Projection
             }
         }
 
-        internal sealed class Provider : IContextualProvider<IProjection<TSource, TProjection>>
+#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
+        Type IProjection.SourceType => typeof(TSource);
+        Type IProjection.ProjectionType => typeof(TProjection);
+
+        IAsyncEnumerable<object> IProjection.ProjectAsync(object source, CancellationToken cancellation)
         {
-            private readonly Type _type;
-            private readonly ProjectionDescriptor _projectionDescriptor;
-
-            public Provider(Type type, ProjectionDescriptor projectionDescriptor)
-            {
-                _type = type;
-                _projectionDescriptor = projectionDescriptor;
-            }
-
-            public IProjection<TSource, TProjection> ProvideInstance(IServiceProvider serviceProvider)
-            {
-                if (serviceProvider == null)
-                    throw new ArgumentNullException(nameof(serviceProvider));
-
-                var handler = ActivatorUtilities.CreateInstance(serviceProvider, _type);
-
-                Debug.Assert(handler != null);
-
-                return new ProjectionInvoker<TSource, TProjection>(handler, _projectionDescriptor, serviceProvider);
-            }
+            return ProjectAsync(source as TSource, cancellation);
         }
+#endif
     }
 }

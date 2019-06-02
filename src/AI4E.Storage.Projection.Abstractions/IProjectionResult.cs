@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -17,23 +17,29 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  * --------------------------------------------------------------------------------------------------------------------
  */
-
 using System;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Projection
 {
-    [Obsolete]
-    internal sealed class ContextualProvider<T> : IContextualProvider<T>
+    public interface IProjectionResult
     {
-        public ContextualProvider() { }
+        object ResultId { get; }
+        object Result { get; }
+        Type ResultIdType { get; }
+        Type ResultType { get; }
+    }
 
-        public T ProvideInstance(IServiceProvider serviceProvider)
-        {
-            if (serviceProvider == null)
-                throw new ArgumentNullException(nameof(serviceProvider));
+    public interface IProjectionResult<TProjectionId, TProjection> : IProjectionResult
+        where TProjection : class
+    {
+        new TProjectionId ResultId { get; }
+        new TProjection Result { get; }
 
-            return serviceProvider.GetRequiredService<T>();
-        }
+#if SUPPORTS_DEFAULT_INTERFACE_METHODS      
+        object IProjectionResult.ResultId => ResultId;
+        object IProjectionResult.Result => Result;
+        Type IProjectionResult.ResultIdType => typeof(TProjectionId);
+        Type IProjectionResult.ResultType => typeof(TProjection);
+#endif
     }
 }

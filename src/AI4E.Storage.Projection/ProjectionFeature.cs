@@ -56,5 +56,13 @@ namespace AI4E.Storage.Projection
                    !type.IsDefined<NoProjectionAttribute>() &&
                    (type.Name.EndsWith("Projection", StringComparison.OrdinalIgnoreCase) || type.IsDefined<ProjectionAttribute>());
         }
+
+        internal static void Configure(ApplicationPartManager partManager)
+        {
+            if (!partManager.FeatureProviders.OfType<ProjectionFeatureProvider>().Any())
+            {
+                partManager.FeatureProviders.Add(new ProjectionFeatureProvider());
+            }
+        }
     }
 }

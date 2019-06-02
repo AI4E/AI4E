@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -19,21 +19,27 @@
  */
 
 using System;
+using System.Collections.Generic;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Projection
 {
     /// <summary>
-    /// Represents a contextual provider for the specified type.
+    /// Represents a provider of projections.
     /// </summary>
-    /// <typeparam name="T">The type that the provider can deliver an instance of.</typeparam>
-    [Obsolete]
-    public interface IContextualProvider<out T>
+    public interface IProjectionProvider
     {
         /// <summary>
-        /// Provides an instance of type <typeparamref name="T"/> within a context.
+        /// Returns an ordered collection of projection registrations for the specified source type.
         /// </summary>
-        /// <param name="serviceProvider">The service provider that can be used to get services from the context.</param>
-        /// <returns>An object of type <typeparamref name="T"/>.</returns>
-        T ProvideInstance(IServiceProvider serviceProvider);
+        /// <param name="sourceType">The source type.</param>
+        /// <returns>An ordered collection of projection registrations for <paramref name="sourceType"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="sourceType"/> is <c>null</c>.</exception>
+        IReadOnlyList<IProjectionRegistration> GetProjectionRegistrations(Type sourceType);
+
+        /// <summary>
+        /// Returns an ordered collection of all projection registrations.
+        /// </summary>
+        /// <returns>An ordered collection of projection registrations.</returns>
+        IReadOnlyList<IProjectionRegistration> GetProjectionRegistrations();
     }
 }

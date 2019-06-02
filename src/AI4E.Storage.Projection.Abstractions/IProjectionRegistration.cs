@@ -1,18 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IProjectionRegistration.cs 
- * Types:           AI4E.Storage.Projection.IProjectionRegistration
- *                  AI4E.Storage.Projection.IProjectionRegistration'1
- * Version:         1.0
- * Author:          Andreas Trütschel
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -29,26 +19,60 @@
  */
 
 using System;
-using AI4E.Utils.Async;
 
 namespace AI4E.Storage.Projection
 {
     /// <summary>
-    /// Represents a cancellable handler registration.
-    /// </summary> 
-    public interface IProjectionRegistration : IAsyncDisposable, IAsyncInitialization
+    /// Represents the registration of a projection.
+    /// </summary>
+    public interface IProjectionRegistration
     {
+        /// <summary>
+        /// Creates an instance of the registered projection within the scope of the specified service provider.
+        /// </summary>
+        /// <param name="serviceProvider">The service provider that is used to obtain handler specific services.</param>
+        /// <returns>The created instance.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
+        IProjection CreateProjection(IServiceProvider serviceProvider);
+
+        /// <summary>
+        /// Gets the type of the source elements the projection projects.
+        /// </summary>
+        Type SourceType { get; }
+
+        /// <summary>
+        /// Gets the type of the target elements the projection projects to.
+        /// </summary>
+        Type ProjectionType { get; }
+
+        bool TryGetDescriptor(out ProjectionDescriptor descriptor);
     }
 
     /// <summary>
-    /// Represents a cancellable handler registration of the specified type of handler.
+    /// Represents the registration of a projection for the specifies source and target types.
     /// </summary>
-    /// <typeparam name="TProjection">The type of projection.</typeparam>
-    public interface IProjectionRegistration<TProjection> : IProjectionRegistration
+    /// <typeparam name="TSource">The type of the source elements the projection projects</typeparam>
+    /// <typeparam name="TProjection">The type of the target elements the projection projects to.</typeparam>
+    public interface IProjectionRegistration<TSource, TProjection> : IProjectionRegistration
+        where TSource : class
+        where TProjection : class
     {
         /// <summary>
-        /// Gets a contextual provider that provides instances of the registered handler.
+        /// Creates an instance of the registered projection within the scope of the specified service provider.
         /// </summary>
-        IContextualProvider<TProjection> Projection { get; }
+        /// <param name="serviceProvider">The service provider that is used to obtain handler specific services.</param>
+        /// <returns>The created instance.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
+        new IProjection<TSource, TProjection> CreateProjection(IServiceProvider serviceProvider);
+
+#if SUPPORTS_DEFAULT_INTERFACE_METHODS
+        IProjection IProjectionRegistration.CreateProjection(IServiceProvider serviceProvider)
+        {
+            return CreateProjection(serviceProvider);
+        }
+
+        Type IProjectionRegistration.SourceType => typeof(TSource);
+        Type IProjectionRegistration.ProjectionType => typeof(TProjection);
+#endif
     }
 }

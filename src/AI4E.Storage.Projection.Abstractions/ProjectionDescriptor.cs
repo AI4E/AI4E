@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -23,9 +23,14 @@ using System.Reflection;
 
 namespace AI4E.Storage.Projection
 {
-    public class ProjectionDescriptor
+    public readonly struct ProjectionDescriptor
     {
-        public ProjectionDescriptor(Type sourceType, Type projectionType, bool multipleResults, bool projectNonExisting, MethodInfo member)
+        public ProjectionDescriptor(
+            Type sourceType,
+            Type projectionType,
+            bool multipleResults,
+            bool projectNonExisting,
+            MethodInfo member)
         {
             if (sourceType == null)
                 throw new ArgumentNullException(nameof(sourceType));

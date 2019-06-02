@@ -27,146 +27,117 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+// TODO: This is a 100% copy of MessageHandlerRegistry.
+// Can we provide a generic implementation that works for both cases?
+
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
-using System.Threading;
+using AI4E.Utils;
 
 namespace AI4E.Storage.Projection
 {
-    /// <summary>
-    /// Represents an asychronous registry with multiple handlers activated at once.
-    /// </summary>
-    /// <typeparam name="THandler">The type of handler.</typeparam>
-    public sealed class ProjectionRegistry<THandler> : IProjectionRegistry<THandler>
+    public sealed class ProjectionRegistry : IProjectionRegistry
     {
-        private volatile ImmutableList<IContextualProvider<THandler>> _handlers = ImmutableList<IContextualProvider<THandler>>.Empty;
+        private readonly Dictionary<Type, OrderedSet<IProjectionRegistration>> _projectionRegistrations;
 
         /// <summary>
-        /// Creates a new instance of the <see cref="AsyncSingleHandlerRegistry{THandler}"/> type.
+        /// Creates a new instance of the <see cref="ProjectionRegistry"/> type.
         /// </summary>
-        public ProjectionRegistry() { }
-
-        /// <summary>
-        /// Registers a handler.
-        /// </summary>
-        /// <param name="provider">The handler to register.</param>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="provider"/> is null.</exception>
-        public bool Register(IContextualProvider<THandler> handler)
+        public ProjectionRegistry()
         {
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-
-            Debug.Assert(_handlers != null);
-
-            ImmutableList<IContextualProvider<THandler>> current = _handlers, // Volatile read op.
-                                                         start;
-            do
-            {
-                start = current;
-
-                // We can assume that the to be registered handler (provider) is a single time in the collection at most.
-                // We check if the handler (provider) is the top of stack. If this is true, nothing has to be done.
-
-                // handler is never null
-                if (start.LastOrDefault() == handler)
-                {
-                    return false;
-                }
-
-                // If the collection does already contain the handler (provider), we do nothing.
-                if (start.Contains(handler))
-                {
-                    return false;
-                }
-
-                current = Interlocked.CompareExchange(ref _handlers, start.Add(handler), start);
-            }
-            while (start != current);
-
-            return true;
+            _projectionRegistrations = new Dictionary<Type, OrderedSet<IProjectionRegistration>>();
         }
 
-        /// <summary>
-        /// Unregisters a handler.
-        /// </summary>
-        /// <param name="provider">The handler to unregister.</param>
-        /// <returns>
-        /// A boolean value indicating whether the handler was actually found and unregistered.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="provider"/> is null.</exception>
-        public bool Unregister(IContextualProvider<THandler> handler)
+        /// <inheritdoc />
+        public bool Register(IProjectionRegistration projectionRegistration)
         {
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
+            if (projectionRegistration == null)
+                throw new ArgumentNullException(nameof(projectionRegistration));
 
-            Debug.Assert(_handlers != null);
+            var handlerCollection = _projectionRegistrations.GetOrAdd(projectionRegistration.SourceType, _ => new OrderedSet<IProjectionRegistration>());
+            var result = true;
 
-            ImmutableList<IContextualProvider<THandler>> current = _handlers, // Volatile read op.
-                                                         start,
-                                                         desired;
-
-            do
+            if (handlerCollection.Remove(projectionRegistration))
             {
-                start = current;
-
-                // If no handlers are present, we cannot remove anything.
-                if (start.IsEmpty)
-                {
-                    return false;
-                }
-
-                // Read the top of stack
-                var tos = start.Last();
-
-                // If handlers are present, there has to be a top of stack.
-                Debug.Assert(tos != null);
-
-                // If the handler to remove is on top of stack, remove the top of stack.
-                if (handler == tos)
-                {
-                    desired = start.RemoveAt(start.Count - 1);
-                }
-                else
-                {
-                    desired = start.Remove(handler);
-
-                    if (desired == start)
-                    {
-                        return false;
-                    }
-                }
-
-                current = Interlocked.CompareExchange(ref _handlers, desired, start);
+                result = false; // TODO: Does this conform with spec?
             }
-            while (start != current);
 
-            return true;
+            handlerCollection.Add(projectionRegistration);
+
+            return result;
         }
 
-        /// <summary>
-        /// Tries to retrieve the currently activated handler.
-        /// </summary>
-        /// <param name="handler">Contains the handler if true is returned, otherwise the value is undefined.</param>
-        /// <returns>True if a handler was found, false otherwise.</returns>
-        public bool TryGetHandler(out IContextualProvider<THandler> handler)
+        /// <inheritdoc />
+        public bool Unregister(IProjectionRegistration projectionRegistration)
         {
-            var handlers = _handlers; // Volatile read op.
+            if (projectionRegistration == null)
+                throw new ArgumentNullException(nameof(projectionRegistration));
 
-            Debug.Assert(handlers != null);
-
-            if (handlers.IsEmpty)
+            if (!_projectionRegistrations.TryGetValue(projectionRegistration.SourceType, out var handlerCollection))
             {
-                handler = null;
                 return false;
             }
 
-            handler = handlers.Last();
+            if (!handlerCollection.Remove(projectionRegistration))
+            {
+                return false;
+            }
+
+            if (!handlerCollection.Any())
+            {
+                _projectionRegistrations.Remove(projectionRegistration.SourceType);
+            }
+
             return true;
         }
 
-        public IEnumerable<IContextualProvider<THandler>> Handlers => _handlers; // Volatile read op.
+        /// <inheritdoc />
+        public IProjectionProvider ToProvider()
+        {
+            return new ProjectionProvider(_projectionRegistrations);
+        }
+
+        private sealed class ProjectionProvider : IProjectionProvider
+        {
+            private readonly ImmutableDictionary<Type, ImmutableList<IProjectionRegistration>> _projectionRegistrations;
+            private readonly ImmutableList<IProjectionRegistration> _combinedRegistrations;
+
+            public ProjectionProvider(Dictionary<Type, OrderedSet<IProjectionRegistration>> projectionRegistrations)
+            {
+                _projectionRegistrations = projectionRegistrations.ToImmutableDictionary(
+                    keySelector: kvp => kvp.Key,
+                    elementSelector: kvp => kvp.Value.Reverse().ToImmutableList()); // TODO: Reverse is not very performant
+
+                _combinedRegistrations = BuildCombinedCollection().ToImmutableList();
+            }
+
+            private IEnumerable<IProjectionRegistration> BuildCombinedCollection()
+            {
+                foreach (var type in _projectionRegistrations.Keys)
+                {
+                    foreach (var handler in GetProjectionRegistrations(type))
+                    {
+                        yield return handler;
+                    }
+                }
+            }
+
+            public IReadOnlyList<IProjectionRegistration> GetProjectionRegistrations(Type sourceType)
+            {
+                if (!_projectionRegistrations.TryGetValue(sourceType, out var result))
+                {
+                    result = ImmutableList<IProjectionRegistration>.Empty;
+                }
+
+                return result;
+            }
+
+            public IReadOnlyList<IProjectionRegistration> GetProjectionRegistrations()
+            {
+                return _combinedRegistrations;
+            }
+        }
     }
 }

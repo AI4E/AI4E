@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,12 +18,21 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 
 namespace AI4E.Storage.Projection
 {
-    public interface IProjection<TSource, TProjection>
+    public interface IProjection
+    {
+        IAsyncEnumerable<object> ProjectAsync(object source, CancellationToken cancellation = default);
+
+        Type SourceType { get; }
+        Type ProjectionType { get; }
+    }
+
+    public interface IProjection<TSource, TProjection> : IProjection
         where TSource : class
         where TProjection : class
     {
@@ -34,6 +43,16 @@ namespace AI4E.Storage.Projection
         /// <returns>
         /// An async enumerable that enumerates the projection results.
         /// </returns>
-        IAsyncEnumerable<TProjection> ProjectAsync(TSource source, CancellationToken cancellation);
+        IAsyncEnumerable<TProjection> ProjectAsync(TSource source, CancellationToken cancellation = default);
+
+#if SUPPORTS_DEFAULT_INTERFACE_METHODS
+        Type IProjection.SourceType => typeof(TSource);
+        Type IProjection.ProjectionType => typeof(TProjection);
+
+        IAsyncEnumerable<object> IProjection.ProjectAsync(object source, CancellationToken cancellation)
+        {
+            return ProjectAsync(source as TSource, cancellation);
+        }
+#endif
     }
 }

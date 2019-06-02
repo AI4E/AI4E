@@ -1,8 +1,8 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -21,48 +21,30 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace AI4E.Storage.Projection
 {
+    // TODO: Rename to ProjectionExecutor and ProjectAsync to ExecuteProjectionAsync?
     public interface IProjector
     {
-        IAsyncEnumerable<IProjectionResult> ProjectAsync(Type sourceType, object source, IServiceProvider serviceProvider, CancellationToken cancellation);
-        //Task<IEnumerable<IProjectionResult>> ProjectAsync<TSource>(TSource source, IServiceProvider serviceProvider, CancellationToken cancellation)
-        //    where TSource : class;
+        IProjectionProvider ProjectionProvider { get; }
 
-        IProjectionRegistration<IProjection<TSource, TProjection>> RegisterProjection<TSource, TProjection>(
-            IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
-            where TSource : class
-            where TProjection : class;
-
-    }
-
-    public interface IProjectionResult
-    {
-        object ResultId { get; }
-        object Result { get; }
-        Type ResultType { get; }
-    }
-
-    public interface IProjectionResult<TProjectionId, TProjection> : IProjectionResult
-        where TProjection : class
-    {
-        new TProjectionId ResultId { get; }
-        new TProjection Result { get; }
+        IAsyncEnumerable<IProjectionResult> ProjectAsync(
+            Type sourceType,
+            object source,
+            IServiceProvider serviceProvider,
+            CancellationToken cancellation);
     }
 
     public static class ProjectorExtension
     {
-        public static IAsyncEnumerable<IProjectionResult> ProjectAsync<TSource>(this IProjector projector,
-                                                                                 TSource source,
-                                                                                 IServiceProvider serviceProvider,
-                                                                                 CancellationToken cancellation)
+        public static IAsyncEnumerable<IProjectionResult> ProjectAsync<TSource>(
+            this IProjector projector,
+            TSource source,
+            IServiceProvider serviceProvider,
+            CancellationToken cancellation)
             where TSource : class
         {
-            if (projector == null)
-                throw new ArgumentNullException(nameof(projector));
-
             return projector.ProjectAsync(typeof(TSource), source, serviceProvider, cancellation);
         }
     }

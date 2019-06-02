@@ -1,17 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IHandlerRegistry.cs 
- * Types:           AI4E.Storage.Projection.IHandlerRegistry'1
- * Version:         1.0
- * Author:          Andreas Trütschel
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -27,43 +18,35 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
+using System;
 
 namespace AI4E.Storage.Projection
 {
     /// <summary>
-    /// Represents a handler registry.
+    /// Represents a registry where projections can be registered.
     /// </summary>
-    /// <typeparam name="THandler">The type of handler.</typeparam>
-    public interface IProjectionRegistry<THandler>
+    public interface IProjectionRegistry
     {
         /// <summary>
-        /// Registers a handler.
+        /// Registers a projection.
         /// </summary>
-        /// <param name="provider">The handler to register.</param>
-        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="provider"/> is null.</exception>
-        bool Register(IContextualProvider<THandler> provider);
+        /// <param name="projectionRegistration">The projection to register.</param>
+        /// <returns>True, if the projection was registered, false if a projection of the specified type was already registered.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="projectionRegistration"/> is null.</exception>
+        bool Register(IProjectionRegistration projectionRegistration);
 
         /// <summary>
-        /// Unregisters a handler.
+        /// Unregisters a projection.
         /// </summary>
-        /// <param name="provider">The handler to unregister.</param>
-        /// <returns>
-        /// A boolean value indicating whether the handler was actually found and unregistered.
-        /// </returns>
-        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="provider"/> is null.</exception>
-        bool Unregister(IContextualProvider<THandler> provider);
+        /// <param name="projectionRegistration">The projection to unregister.</param>
+        /// <returns>True, if the projection was unregistered, false if a projection of the specified type was not registered.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="projectionRegistration"/> is null.</exception>
+        bool Unregister(IProjectionRegistration projectionRegistration);
 
         /// <summary>
-        /// Tries to retrieve the latest, registered handler.
+        /// Creates a <see cref="IProjectionProvider"/> of the current snapshot of projection registrations.
         /// </summary>
-        /// <param name="provider">Contains the handler if true is returned, otherwise the value is undefined.</param>
-        /// <returns>True if a handler was found, false otherwise.</returns>
-        bool TryGetHandler(out IContextualProvider<THandler> provider);
-
-        /// <summary>
-        /// Gets the collection of registered handlers.
-        /// </summary>
-        IEnumerable<IContextualProvider<THandler>> Handlers { get; }
+        /// <returns>The created <see cref="IProjectionProvider"/>.</returns>
+        IProjectionProvider ToProvider();
     }
 }

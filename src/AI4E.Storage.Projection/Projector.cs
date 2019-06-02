@@ -1,34 +1,75 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using AI4E.Internal;
 using AI4E.Utils;
-using static System.Diagnostics.Debug;
-using static AI4E.Utils.DebugEx;
 
 namespace AI4E.Storage.Projection
 {
     public sealed class Projector : IProjector
     {
-        private TypedProjectorLookup _typedProjectors;
+        private readonly IProjectionRegistry _projectionRegistry;
+        private volatile IProjectionProvider _projectionProvider;
 
-        public Projector()
+        public Projector(IProjectionRegistry projectionRegistry)
         {
-            _typedProjectors = new TypedProjectorLookup();
+            if (projectionRegistry is null)
+                throw new ArgumentNullException(nameof(projectionRegistry));
+
+            _projectionRegistry = projectionRegistry;
         }
 
-        public IProjectionRegistration<IProjection<TSource, TProjection>> RegisterProjection<TSource, TProjection>(
-            IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
-            where TSource : class
-            where TProjection : class
+        // TODO: Do we allow projections reload?
+        private void ReloadProjections()
         {
-            if (projectionProvider == null)
-                throw new ArgumentNullException(nameof(projectionProvider));
+            _projectionProvider = null; // Volatile write op.
+        }
 
-            return _typedProjectors.GetProjector<TSource, TProjection>()
-                                   .RegisterProjection(projectionProvider);
+        /// <summary>
+        /// Gets the <see cref="IProjectionProvider"/> that is used to load projections.
+        /// </summary>
+        public IProjectionProvider ProjectionProvider => GetProjectionProvider();
+
+        private IProjectionProvider GetProjectionProvider()
+        {
+            var projectionProvider = _projectionProvider; // Volatile read op.
+
+            if (projectionProvider == null)
+            {
+                projectionProvider = _projectionRegistry.ToProvider();
+                var previous = Interlocked.CompareExchange(ref _projectionProvider, projectionProvider, null);
+
+                if (previous != null)
+                {
+                    projectionProvider = previous;
+                }
+            }
+
+            Debug.Assert(projectionProvider != null);
+
+            return projectionProvider;
         }
 
         public IAsyncEnumerable<IProjectionResult> ProjectAsync(Type sourceType,
@@ -36,272 +77,126 @@ namespace AI4E.Storage.Projection
                                                                 IServiceProvider serviceProvider,
                                                                 CancellationToken cancellation)
         {
-            if (sourceType == null)
-                throw new ArgumentNullException(nameof(sourceType));
-
-            if (serviceProvider == null)
-                throw new ArgumentNullException(nameof(serviceProvider));
+            if (source is null)
+            {
+                return AsyncEnumerable.Empty<IProjectionResult>();
+            }
 
             if (sourceType.IsValueType || sourceType.IsDelegate())
                 throw new ArgumentException("The argument must be a reference type.", nameof(sourceType));
 
-            if (source != null && !sourceType.IsAssignableFrom(source.GetType()))
+            if (!sourceType.IsAssignableFrom(source.GetType()))
                 throw new ArgumentException($"The argument '{nameof(source)}' must be of the type specified by '{nameof(sourceType)}' or a derived type.");
 
-            var typedProjectors = _typedProjectors.GetProjectors(sourceType);
+            return ProjectInternalAsync(sourceType, source, serviceProvider, cancellation);
+        }
+
+        private static IEnumerable<Type> GetProjectionTypeHierarchy(Type sourceType)
+        {
+            var currType = sourceType;
+
+            do
+            {
+                yield return currType;
+            }
+            while (!currType.IsInterface && (currType = currType.BaseType) != null);
+        }
+
+        private IAsyncEnumerable<IProjectionResult> ProjectInternalAsync(
+            Type sourceType,
+            object source,
+            IServiceProvider serviceProvider,
+            CancellationToken cancellation)
+        {
+            var projectionProvider = GetProjectionProvider();
 
             // There is no parallelism (with Task.WhenAll(projectors.Select(...)) used because we cannot guarantee that it is allowed to access 'source' concurrently.
             // But it is possible to change the return type to IAsyncEnumerable<IProjectionResult> and process each batch on access. 
             // This allows to remove the up-front evaluation and storage of the results.
-            return typedProjectors.ToAsyncEnumerable().SelectMany(projector => projector.ProjectAsync(source, serviceProvider, cancellation));
+
+            return GetProjectionTypeHierarchy(sourceType)
+                .SelectMany(type => projectionProvider.GetProjectionRegistrations(type)).ToAsyncEnumerable()
+                .SelectMany(provider => ExecuteSingleProjectionAsync(provider, sourceType, source, serviceProvider, cancellation));
         }
 
-        private interface ITypedProjector
+        private IAsyncEnumerable<IProjectionResult> ExecuteSingleProjectionAsync(
+            IProjectionRegistration projectionRegistration,
+            Type sourceType,
+            object source,
+            IServiceProvider serviceProvider,
+            CancellationToken cancellation)
         {
-            IAsyncEnumerable<IProjectionResult> ProjectAsync(object source,
-                                                             IServiceProvider serviceProvider,
-                                                             CancellationToken cancellation);
+            var projection = projectionRegistration.CreateProjection(serviceProvider);
 
-            Type SourceType { get; }
-            Type ProjectionType { get; }
-        }
-
-        private interface ITypedProjector<TSource> : ITypedProjector
-            where TSource : class
-        {
-            IAsyncEnumerable<IProjectionResult> ProjectAsync(TSource source,
-                                                             IServiceProvider serviceProvider,
-                                                             CancellationToken cancellation);
-        }
-
-        private interface ITypedProjector<TSource, TProjection> : ITypedProjector<TSource>
-            where TSource : class
-            where TProjection : class
-        {
-            IProjectionRegistration<IProjection<TSource, TProjection>> RegisterProjection(
-                IContextualProvider<IProjection<TSource, TProjection>> projectionProvider);
-        }
-
-        private sealed class TypedProjector<TSource, TProjectionId, TProjection> : ITypedProjector<TSource, TProjection>
-            where TSource : class
-            where TProjection : class
-
-        {
-            private readonly ProjectionRegistry<IProjection<TSource, TProjection>> _projections;
-
-            public TypedProjector()
+            if (projection == null)
             {
-                _projections = new ProjectionRegistry<IProjection<TSource, TProjection>>();
+                throw new InvalidOperationException($"Cannot execute a projection for source type '{projection.SourceType}' that is null.");
             }
 
-            public Type SourceType => typeof(TSource);
-            public Type ProjectionType => typeof(TProjection);
-
-            // There is no parallelism (with Task.WhenAll(projections.Select(...)) used because we cannot guarantee that it is allowed to access 'source' concurrently.
-            // But it is possible to change the return type to IAsyncEnumerable<IProjectionResult> and process each batch on access. 
-            // This allows to remove the up-front evaluation and storage of the results.
-            public IAsyncEnumerable<IProjectionResult> ProjectAsync(TSource source,
-                                                                           IServiceProvider serviceProvider,
-                                                                           CancellationToken cancellation)
+            if (!projection.SourceType.IsAssignableFrom(sourceType))
             {
-                Assert(serviceProvider != null);
-
-                IAsyncEnumerable<ProjectionResult<TProjectionId, TProjection>> ExecuteProjection(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
-                {
-                    var projection = projectionProvider.ProvideInstance(serviceProvider);
-
-                    return projection.ProjectAsync(source, cancellation)
-                                     .Where(p => p != null)
-                                     .Select(p => new ProjectionResult<TProjectionId, TProjection>(p));
-                }
-
-                return _projections.Handlers.ToAsyncEnumerable().SelectMany(ExecuteProjection);
+                throw new InvalidOperationException($"Cannot execute a projection for source type '{projection.SourceType}' with a source of type '{sourceType}'.");
             }
 
-            public IAsyncEnumerable<IProjectionResult> ProjectAsync(object source,
-                                                                    IServiceProvider serviceProvider,
-                                                                    CancellationToken cancellation)
-            {
-                Assert(source != null, source is TSource);
-
-                Assert(serviceProvider != null);
-
-                return ProjectAsync(source as TSource, serviceProvider, cancellation);
-            }
-
-            public IProjectionRegistration<IProjection<TSource, TProjection>> RegisterProjection(IContextualProvider<IProjection<TSource, TProjection>> projectionProvider)
-            {
-                Assert(projectionProvider != null);
-                return ProjectionRegistration.CreateRegistration(_projections, projectionProvider);
-            }
-        }
-
-        private sealed class ProjectionResult<TProjectionId, TProjection> : IProjectionResult<TProjectionId, TProjection>
-            where TProjection : class
-        {
-            public ProjectionResult(TProjection result)
-            {
-                Assert(result != null);
-
-                Result = result;
-                ResultId = DataPropertyHelper.GetId<TProjectionId, TProjection>(result);
-            }
-
-            public TProjectionId ResultId { get; }
-
-            public Type ResultIdType => typeof(TProjectionId);
-
-            public TProjection Result { get; }
-
-            public Type ResultType => typeof(TProjection);
-
-            object IProjectionResult.ResultId => ResultId;
-
-            object IProjectionResult.Result => Result;
-        }
-
-        private sealed class TypedProjectorLookup
-        {
-            private static readonly Type _typedProjectorTypeDefintion = typeof(TypedProjector<,,>);
-
-            private readonly object _lock = new object();
-            private readonly Dictionary<(Type sourceType, Type projectionType), object> _projectors;
-            private readonly Dictionary<Type, ImmutableList<object>> _sourceProjectors;
-
-            public TypedProjectorLookup()
-            {
-                _projectors = new Dictionary<(Type sourceType, Type projectionType), object>();
-                _sourceProjectors = new Dictionary<Type, ImmutableList<object>>();
-            }
-
-            public bool TryGetProjector<TSource, TProjection>(out ITypedProjector<TSource, TProjection> projector)
-                where TSource : class
-                where TProjection : class
-            {
-                bool result;
-                object untypedProjector;
-
-                lock (_lock)
-                {
-                    result = _projectors.TryGetValue((typeof(TSource), typeof(TProjection)), out untypedProjector);
-                }
-
-                if (!result)
-                {
-                    projector = null;
-                    return false;
-                }
-
-                projector = untypedProjector as ITypedProjector<TSource, TProjection>;
-
-                Assert(projector != null);
-
-                return true;
-            }
-
-            public ITypedProjector<TSource, TProjection> GetProjector<TSource, TProjection>()
-                where TSource : class
-                where TProjection : class
-            {
-                object projector;
-                bool found;
-
-                lock (_lock)
-                {
-                    found = _projectors.TryGetValue((typeof(TSource), typeof(TProjection)), out projector);
-                }
-
-                if (!found)
-                {
-                    projector = CreateProjector<TSource, TProjection>();
-
-                    lock (_lock)
-                    {
-                        if (_projectors.TryGetValue((typeof(TSource), typeof(TProjection)), out var p))
-                        {
-                            projector = p;
-                        }
-                        else
-                        {
-                            _projectors.Add((typeof(TSource), typeof(TProjection)), projector);
-
-                            if (!_sourceProjectors.TryGetValue(typeof(TSource), out var sourceProjectors))
-                            {
-                                sourceProjectors = ImmutableList<object>.Empty;
-                            }
-
-                            _sourceProjectors[typeof(TSource)] = sourceProjectors.Add(projector);
-                        }
-                    }
-                }
-
-                Assert(projector != null);
-                var result = projector as ITypedProjector<TSource, TProjection>;
-                Assert(result != null);
-                return result;
-            }
-
-            public IEnumerable<ITypedProjector<TSource>> GetProjectors<TSource>()
-                where TSource : class
-            {
-                var sourceProjectors = GetProjectorsInternal(typeof(TSource));
-                return sourceProjectors.Cast<ITypedProjector<TSource>>();
-            }
-
-            private ImmutableList<object> GetProjectorsInternal(Type sourceType)
-            {
-                ImmutableList<object> sourceProjectors;
-
-                lock (_lock)
-                {
-                    if (!_sourceProjectors.TryGetValue(sourceType, out sourceProjectors))
-                    {
-                        sourceProjectors = ImmutableList<object>.Empty;
-                    }
-                }
-
-                Assert(sourceProjectors != null);
-                return sourceProjectors;
-            }
-
-            public IEnumerable<ITypedProjector> GetProjectors(Type sourceType)
-            {
-                Assert(sourceType != null);
-                Assert(!sourceType.IsValueType);
-
-                var sourceProjectors = GetProjectorsInternal(sourceType);
-                return sourceProjectors.Cast<ITypedProjector>();
-            }
-
-            private ITypedProjector<TSource, TProjection> CreateProjector<TSource, TProjection>()
-                where TSource : class
-                where TProjection : class
-            {
-                var sourceType = typeof(TSource);
-                var projectionType = typeof(TProjection);
-                var projectionIdType = DataPropertyHelper.GetIdType(projectionType);
-
-                if (projectionIdType == null)
-                {
-                    throw new InvalidOperationException(); // TODO
-                }
-
-                var projectorType = MakeProjectorType(sourceType, projectionType, projectionIdType);
-                var typedProjector = Activator.CreateInstance(projectorType);
-
-                Assert(typedProjector != null);
-
-                return (ITypedProjector<TSource, TProjection>)typedProjector;
-            }
-
-            private static Type MakeProjectorType(Type sourceType, Type projectionType, Type projectionIdType)
-            {
-                return _typedProjectorTypeDefintion.MakeGenericType(sourceType,
-                                                                    projectionIdType,
-                                                                    projectionType);
-            }
+            return projection.ProjectAsync(source, cancellation)
+                                    .Where(p => !(p is null))
+                                    .Select(p => new ProjectionResult(projection.ProjectionType, p));
         }
     }
 
+    public sealed class ProjectionResult : IProjectionResult
+    {
+        public ProjectionResult(Type resultType, object result)
+        {
+            if (resultType is null)
+                throw new ArgumentNullException(nameof(resultType));
 
+            if (result is null)
+                throw new ArgumentNullException(nameof(result));
+
+            // TODO: Check whether result is assignable to result-type
+
+            ResultType = resultType;
+            Result = result;
+
+            ResultIdType = DataPropertyHelper.GetIdType(ResultType);
+            ResultId = DataPropertyHelper.GetId(ResultType, Result);
+
+            // TODO: Check whether an id can be accessed.
+        }
+
+        public object ResultId { get; }
+
+        public object Result { get; }
+
+        public Type ResultIdType { get; }
+
+        public Type ResultType { get; }
+    }
+
+    public sealed class ProjectionResult<TProjectionId, TProjection> : IProjectionResult<TProjectionId, TProjection>
+             where TProjection : class
+    {
+        public ProjectionResult(TProjection result)
+        {
+            if (result is null)
+                throw new ArgumentNullException(nameof(result));
+
+            Result = result;
+            ResultId = DataPropertyHelper.GetId<TProjectionId, TProjection>(result);
+        }
+
+        /// <inheritdoc />
+        public TProjectionId ResultId { get; }
+
+        /// <inheritdoc />
+        public TProjection Result { get; }
+
+#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
+        object IProjectionResult.ResultId => ResultId;
+        object IProjectionResult.Result => Result;
+        Type IProjectionResult.ResultIdType => typeof(TProjectionId);
+        Type IProjectionResult.ResultType => typeof(TProjection);
+#endif
+    }
 }
