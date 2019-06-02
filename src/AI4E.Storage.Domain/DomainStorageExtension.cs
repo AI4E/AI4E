@@ -14,7 +14,6 @@ namespace AI4E.Storage.Domain
             if (extensions == null)
                 throw new ArgumentNullException(nameof(extensions));
 
-
             // TODO
             return builder; // .Configure(options => options.Extensions.AddRange(hooks));
         }

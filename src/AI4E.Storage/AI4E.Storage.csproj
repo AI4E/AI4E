@@ -5,11 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\CompressionHelper.cs" Link="Internal\CompressionHelper.cs" />
-    <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
-    <Compile Include="..\Common\EscapeHelper.cs" Link="Internal\EscapeHelper.cs" />
     <Compile Include="..\Common\IdEqualityComparer.cs" Link="Internal\IdEqualityComparer.cs" />
-    <Compile Include="..\Common\IdGenerator.cs" Link="Internal\IdGenerator.cs" />
+    <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,21 +23,6 @@
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Compile Update="Resources.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

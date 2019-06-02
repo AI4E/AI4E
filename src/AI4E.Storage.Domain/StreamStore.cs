@@ -259,7 +259,7 @@ namespace AI4E.Storage.Domain
 
             _isDisposed = true;
 
-            _logger?.LogInformation(Resources.ShuttingDownStore);
+            _logger?.LogInformation("Shutting down event store.");
 
             foreach (var extension in _extensions)
             {
@@ -450,7 +450,7 @@ namespace AI4E.Storage.Domain
                 if (IsReadOnly)
                     throw new InvalidOperationException("Cannot modify a read-only stream view.");
 
-                _logger?.LogDebug(Resources.AttemptingToCommitChanges, StreamId);
+                _logger?.LogDebug("Attempting to commit all changes on stream '{0}' to the underlying store.", StreamId);
 
                 var headers = GetHeaders();
                 headerGenerator(headers);
@@ -493,7 +493,7 @@ namespace AI4E.Storage.Domain
 
                 if (commits.Any())
                 {
-                    _logger?.LogInformation(Resources.UnderlyingStreamHasChanged, StreamId);
+                    _logger?.LogInformation("The underlying stream '{0}' has changed since the last known commit, refreshing the stream.", StreamId);
                     _commits.AddRange(commits);
                     _streamStore.UpdateCache(this);
 

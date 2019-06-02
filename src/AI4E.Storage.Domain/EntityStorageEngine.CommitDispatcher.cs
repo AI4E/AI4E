@@ -70,7 +70,7 @@ namespace AI4E.Storage.Domain
 
         private async Task InitializeInternalAsync(CancellationToken cancellation)
         {
-            _logger?.LogDebug(Resources.GettingUndispatchedCommits);
+            _logger?.LogDebug("Getting undispatched commits from persistence engine.");
             foreach (var commit in await _persistence.GetUndispatchedCommitsAsync(cancellation))
             {
                 DispatchInternalAsync(commit, tcs: null, cancellation).HandleExceptions(_logger);

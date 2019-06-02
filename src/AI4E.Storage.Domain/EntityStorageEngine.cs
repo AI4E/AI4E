@@ -51,12 +51,14 @@ namespace AI4E.Storage.Domain
     {
         internal const string ConcurrencyTokenHeaderKey = "ConcurrencyToken";
 
-        private readonly DomainStorageOptions _options;
+
         #region Fields
 
         private readonly IStreamStore _streamStore;
         private readonly IEntityPropertyAccessor _entityPropertyAccessor;
         private readonly ILogger<EntityStorageEngine> _logger;
+
+        private readonly DomainStorageOptions _options;
         private readonly JsonDiffPatch _differ;
         private readonly JsonSerializer _jsonSerializer;
         private readonly Dictionary<(string bucket, string id, long requestedRevision), (object entity, long revision)> _lookup;
@@ -488,7 +490,7 @@ namespace AI4E.Storage.Domain
             return entity;
         }
 
-        private const string _seperatorString = "->";
+        private const string _separatorString = "->";
 
         private string GetBucket(Type entityType)
         {
@@ -513,14 +515,14 @@ namespace AI4E.Storage.Domain
             resultsBuilder.Append(_options.Scope);
             EscapeHelper.Escape(resultsBuilder, sepIndex + 2);
             // We need to ensure that the created entry is unique.
-            resultsBuilder[sepIndex] = _seperatorString[0];
-            resultsBuilder[sepIndex + 1] = _seperatorString[1];
+            resultsBuilder[sepIndex] = _separatorString[0];
+            resultsBuilder[sepIndex + 1] = _separatorString[1];
             return resultsBuilder.ToString();
         }
 
         internal static bool IsInScope(string bucket, string scope, out string typeName)
         {
-            var index = bucket.IndexOf(_seperatorString);
+            var index = bucket.IndexOf(_separatorString);
 
             if (string.IsNullOrWhiteSpace(scope))
             {

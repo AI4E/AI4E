@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Common\CompressionHelper.cs" Link="Internal\CompressionHelper.cs" />
+    <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
+    <Compile Include="..\Common\EscapeHelper.cs" Link="Internal\EscapeHelper.cs" />
+    <Compile Include="..\Common\IdGenerator.cs" Link="Internal\IdGenerator.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AI4E.Storage.Domain.Abstractions\AI4E.Storage.Domain.Abstractions.csproj" />
+    <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Internal\" />
+  </ItemGroup>
+
+</Project>
