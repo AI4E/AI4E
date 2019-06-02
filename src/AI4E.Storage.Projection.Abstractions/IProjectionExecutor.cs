@@ -24,28 +24,14 @@ using System.Threading;
 
 namespace AI4E.Storage.Projection
 {
-    // TODO: Rename to ProjectionExecutor and ProjectAsync to ExecuteProjectionAsync?
-    public interface IProjector
+    public interface IProjectionExecutor
     {
         IProjectionProvider ProjectionProvider { get; }
 
-        IAsyncEnumerable<IProjectionResult> ProjectAsync(
+        IAsyncEnumerable<IProjectionResult> ExecuteProjectionAsync(
             Type sourceType,
             object source,
             IServiceProvider serviceProvider,
             CancellationToken cancellation);
-    }
-
-    public static class ProjectorExtension
-    {
-        public static IAsyncEnumerable<IProjectionResult> ProjectAsync<TSource>(
-            this IProjector projector,
-            TSource source,
-            IServiceProvider serviceProvider,
-            CancellationToken cancellation)
-            where TSource : class
-        {
-            return projector.ProjectAsync(typeof(TSource), source, serviceProvider, cancellation);
-        }
     }
 }

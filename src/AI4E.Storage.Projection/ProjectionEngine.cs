@@ -28,12 +28,12 @@ namespace AI4E.Storage.Projection
 {
     public sealed partial class ProjectionEngine : IProjectionEngine
     {
-        private readonly IProjector _projector;
+        private readonly IProjectionExecutor _projector;
         private readonly IDatabase _database;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ProjectionEngine> _logger;
 
-        public ProjectionEngine(IProjector projector,
+        public ProjectionEngine(IProjectionExecutor projector,
                                 IDatabase database,
                                 IServiceProvider serviceProvider,
                                 ILogger<ProjectionEngine> logger = default)

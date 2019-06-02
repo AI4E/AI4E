@@ -23,6 +23,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using AI4E.Handler;
 using Microsoft.Extensions.DependencyInjection;
@@ -96,7 +97,12 @@ namespace AI4E.Storage.Projection
         private readonly ProjectionDescriptor _projectionDescriptor;
         private readonly IServiceProvider _serviceProvider;
 
+        // This is needed for reflection (dynamic compiled code).
+        // If this is changed, adapt the caller in ProjectionInvoker.BuildFactory
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+#pragma warning disable IDE0051
         private ProjectionInvoker(object handler,
+#pragma warning restore IDE0051
                                   ProjectionDescriptor projectionDescriptor,
                                   IServiceProvider serviceProvider)
         {

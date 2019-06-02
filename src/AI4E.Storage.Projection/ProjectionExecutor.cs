@@ -28,12 +28,12 @@ using AI4E.Utils;
 
 namespace AI4E.Storage.Projection
 {
-    public sealed class Projector : IProjector
+    public sealed class ProjectionExecutor : IProjectionExecutor
     {
         private readonly IProjectionRegistry _projectionRegistry;
         private volatile IProjectionProvider _projectionProvider;
 
-        public Projector(IProjectionRegistry projectionRegistry)
+        public ProjectionExecutor(IProjectionRegistry projectionRegistry)
         {
             if (projectionRegistry is null)
                 throw new ArgumentNullException(nameof(projectionRegistry));
@@ -72,10 +72,11 @@ namespace AI4E.Storage.Projection
             return projectionProvider;
         }
 
-        public IAsyncEnumerable<IProjectionResult> ProjectAsync(Type sourceType,
-                                                                object source, // May be null
-                                                                IServiceProvider serviceProvider,
-                                                                CancellationToken cancellation)
+        public IAsyncEnumerable<IProjectionResult> ExecuteProjectionAsync(
+            Type sourceType,
+            object source, // May be null
+            IServiceProvider serviceProvider,
+            CancellationToken cancellation)
         {
             if (source is null)
             {
@@ -88,7 +89,7 @@ namespace AI4E.Storage.Projection
             if (!sourceType.IsAssignableFrom(source.GetType()))
                 throw new ArgumentException($"The argument '{nameof(source)}' must be of the type specified by '{nameof(sourceType)}' or a derived type.");
 
-            return ProjectInternalAsync(sourceType, source, serviceProvider, cancellation);
+            return ExecuteProjectionInternalAsync(sourceType, source, serviceProvider, cancellation);
         }
 
         private static IEnumerable<Type> GetProjectionTypeHierarchy(Type sourceType)
@@ -102,7 +103,7 @@ namespace AI4E.Storage.Projection
             while (!currType.IsInterface && (currType = currType.BaseType) != null);
         }
 
-        private IAsyncEnumerable<IProjectionResult> ProjectInternalAsync(
+        private IAsyncEnumerable<IProjectionResult> ExecuteProjectionInternalAsync(
             Type sourceType,
             object source,
             IServiceProvider serviceProvider,

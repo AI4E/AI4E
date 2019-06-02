@@ -36,7 +36,7 @@ namespace AI4E.Storage.Projection
         private readonly struct SourceScopedProjectionEngine
         {
             private readonly ProjectionSourceDescriptor _sourceDescriptor;
-            private readonly IProjector _projector;
+            private readonly IProjectionExecutor _projector;
             private readonly IDatabase _database;
             private readonly IServiceProvider _serviceProvider;
 
@@ -44,7 +44,7 @@ namespace AI4E.Storage.Projection
             private readonly IDictionary<Type, ITargetScopedProjectionEngine> _targetScopedProjectionEngines;
 
             public SourceScopedProjectionEngine(in ProjectionSourceDescriptor sourceDescriptor,
-                                                IProjector projector,
+                                                IProjectionExecutor projector,
                                                 IDatabase database,
                                                 IServiceProvider serviceProvider)
             {
@@ -350,7 +350,7 @@ namespace AI4E.Storage.Projection
             private async Task<bool> ProjectCoreAsync(object entity, IServiceProvider serviceProvider, CancellationToken cancellation)
             {
                 var entityType = _sourceDescriptor.SourceType;
-                var projectionResults = _projector.ProjectAsync(entityType, entity, serviceProvider, cancellation);
+                var projectionResults = _projector.ExecuteProjectionAsync(entityType, entity, serviceProvider, cancellation);
                 var appliedProjections = new HashSet<ProjectionTargetDescriptor>(await GetAppliedProjectionsAsync(cancellation));
                 var projections = new List<ProjectionTargetDescriptor>();
 
@@ -455,7 +455,7 @@ namespace AI4E.Storage.Projection
                 _sourceMetadataCache[_sourceDescriptor] = new ProjectionSourceMetadataCacheEntry(originalMetadata, metadata, touched: true);
             }
 
-#endregion
+            #endregion
 
             private ValueTask<ProjectionSourceMetadataCacheEntry> GetMetadataAsync(bool createIfNonExistent, CancellationToken cancellation)
             {
