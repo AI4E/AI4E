@@ -29,12 +29,12 @@ namespace AI4E.Storage.Projection
         IAsyncEnumerable<object> ProjectAsync(object source, CancellationToken cancellation = default);
 
         Type SourceType { get; }
-        Type ProjectionType { get; }
+        Type TargetType { get; }
     }
 
-    public interface IProjection<TSource, TProjection> : IProjection
+    public interface IProjection<TSource, TTarget> : IProjection
         where TSource : class
-        where TProjection : class
+        where TTarget : class
     {
         /// <summary>
         /// Asynchronously projects the specified source object.
@@ -43,11 +43,11 @@ namespace AI4E.Storage.Projection
         /// <returns>
         /// An async enumerable that enumerates the projection results.
         /// </returns>
-        IAsyncEnumerable<TProjection> ProjectAsync(TSource source, CancellationToken cancellation = default);
+        IAsyncEnumerable<TTarget> ProjectAsync(TSource source, CancellationToken cancellation = default);
 
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
         Type IProjection.SourceType => typeof(TSource);
-        Type IProjection.ProjectionType => typeof(TProjection);
+        Type IProjection.TargetType => typeof(TTarget);
 
         IAsyncEnumerable<object> IProjection.ProjectAsync(object source, CancellationToken cancellation)
         {

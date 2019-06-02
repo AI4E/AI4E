@@ -29,21 +29,21 @@ namespace AI4E.Storage.Projection
 
         public ProjectionRegistration(
             Type sourceType,
-            Type projectionType,
+            Type targetType,
             Func<IServiceProvider, IProjection> factory,
             in ProjectionDescriptor? descriptor = null)
         {
             if (sourceType is null)
                 throw new ArgumentNullException(nameof(sourceType));
 
-            if (projectionType is null)
-                throw new ArgumentNullException(nameof(projectionType));
+            if (targetType is null)
+                throw new ArgumentNullException(nameof(targetType));
 
             if (factory is null)
                 throw new ArgumentNullException(nameof(factory));
 
             SourceType = sourceType;
-            ProjectionType = projectionType;
+            TargetType = targetType;
             _factory = factory;
             _descriptor = descriptor;
         }
@@ -61,15 +61,15 @@ namespace AI4E.Storage.Projection
             if (result.SourceType != SourceType)
                 throw new InvalidOperationException($"The projection provided must projection objects of type {SourceType}.");
 
-            if (result.ProjectionType != ProjectionType)
-                throw new InvalidOperationException($"The projection provided must projection to objects of type {ProjectionType}.");
+            if (result.TargetType != TargetType)
+                throw new InvalidOperationException($"The projection provided must projection to objects of type {TargetType}.");
 
             return result;
         }
 
         public Type SourceType { get; }
 
-        public Type ProjectionType { get; }
+        public Type TargetType { get; }
 
         /// <inheritdoc />
         public bool TryGetDescriptor(out ProjectionDescriptor descriptor)
@@ -79,15 +79,15 @@ namespace AI4E.Storage.Projection
         }
     }
 
-    public sealed class ProjectionRegistration<TSource, TProjection> : IProjectionRegistration<TSource, TProjection>
+    public sealed class ProjectionRegistration<TSource, TTarget> : IProjectionRegistration<TSource, TTarget>
         where TSource : class
-        where TProjection : class
+        where TTarget : class
     {
-        private readonly Func<IServiceProvider, IProjection<TSource, TProjection>> _factory;
+        private readonly Func<IServiceProvider, IProjection<TSource, TTarget>> _factory;
         private readonly ProjectionDescriptor? _descriptor;
 
         public ProjectionRegistration(
-            Func<IServiceProvider, IProjection<TSource, TProjection>> factory,
+            Func<IServiceProvider, IProjection<TSource, TTarget>> factory,
             in ProjectionDescriptor? descriptor = null)
         {
             if (factory is null)
@@ -97,7 +97,7 @@ namespace AI4E.Storage.Projection
             _descriptor = descriptor;
         }
 
-        public IProjection<TSource, TProjection> CreateProjection(IServiceProvider serviceProvider)
+        public IProjection<TSource, TTarget> CreateProjection(IServiceProvider serviceProvider)
         {
             if (serviceProvider is null)
                 throw new ArgumentNullException(nameof(serviceProvider));
@@ -126,7 +126,7 @@ namespace AI4E.Storage.Projection
 
         Type IProjectionRegistration.SourceType => typeof(TSource);
 
-        Type IProjectionRegistration.ProjectionType => typeof(TProjection);
+        Type IProjectionRegistration.TargetType => typeof(TTarget);
 
 #endif
     }

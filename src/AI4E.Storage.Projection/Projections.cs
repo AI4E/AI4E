@@ -77,7 +77,7 @@ namespace AI4E.Storage.Projection
         {
             return new ProjectionRegistration(
                 projectionDescriptor.SourceType,
-                projectionDescriptor.ProjectionType,
+                projectionDescriptor.TargetType,
                 serviceProvider => ProjectionInvoker.CreateInvoker(handlerType, projectionDescriptor, serviceProvider),
                 projectionDescriptor);
         }

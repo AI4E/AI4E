@@ -36,7 +36,7 @@ namespace AI4E.Storage.Projection
     {
         public ProjectionMemberAttribute() { }
 
-        public Type ProjectionType { get; set; }
+        public Type TargetType { get; set; }
 
         public Type SourceType { get; set; }
 

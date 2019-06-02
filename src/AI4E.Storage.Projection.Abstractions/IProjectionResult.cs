@@ -30,17 +30,17 @@ namespace AI4E.Storage.Projection
         Type ResultType { get; }
     }
 
-    public interface IProjectionResult<TProjectionId, TProjection> : IProjectionResult
-        where TProjection : class
+    public interface IProjectionResult<TResultId, TResult> : IProjectionResult
+        where TResult : class
     {
-        new TProjectionId ResultId { get; }
-        new TProjection Result { get; }
+        new TResultId ResultId { get; }
+        new TResult Result { get; }
 
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS      
         object IProjectionResult.ResultId => ResultId;
         object IProjectionResult.Result => Result;
-        Type IProjectionResult.ResultIdType => typeof(TProjectionId);
-        Type IProjectionResult.ResultType => typeof(TProjection);
+        Type IProjectionResult.ResultIdType => typeof(TResultId);
+        Type IProjectionResult.ResultType => typeof(TResult);
 #endif
     }
 }

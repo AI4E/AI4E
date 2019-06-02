@@ -22,7 +22,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using AI4E.Handler;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 
@@ -87,14 +86,14 @@ namespace AI4E.Storage.Projection
             var sourceType = parameters[0].ParameterType;
             var memberAttribute = member.GetCustomAttribute<ProjectionMemberAttribute>();
 
-            var projectionType = default(Type);
+            var targetType = default(Type);
 
             var returnTypeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(member.ReturnType);
 
             if (IsSynchronousHandler(member, memberAttribute, returnTypeDescriptor) ||
                 IsAsynchronousHandler(member, memberAttribute, returnTypeDescriptor))
             {
-                projectionType = returnTypeDescriptor.ResultType;
+                targetType = returnTypeDescriptor.ResultType;
             }
             else
             {
@@ -107,10 +106,10 @@ namespace AI4E.Storage.Projection
             Type multipleResultsType = null;
 
             // TODO: Do we allow types that are assignable to IEnumerable? What about IAsyncEnumerable?
-            if (projectionType.IsGenericType && projectionType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
             {
-                multipleResultsType = projectionType;
-                projectionType = multipleResultsType.GetGenericArguments().First();
+                multipleResultsType = targetType;
+                targetType = multipleResultsType.GetGenericArguments().First();
                 multipleResults = true;
             }
 
@@ -126,14 +125,14 @@ namespace AI4E.Storage.Projection
                     sourceType = memberAttribute.SourceType;
                 }
 
-                if (memberAttribute.ProjectionType != null)
+                if (memberAttribute.TargetType != null)
                 {
-                    if (member.ReturnType == typeof(void) || !memberAttribute.ProjectionType.IsAssignableFrom(projectionType))
+                    if (member.ReturnType == typeof(void) || !memberAttribute.TargetType.IsAssignableFrom(targetType))
                     {
                         throw new InvalidOperationException();
                     }
 
-                    projectionType = memberAttribute.ProjectionType;
+                    targetType = memberAttribute.TargetType;
                 }
 
                 if (memberAttribute.MultipleResults != null)
@@ -145,7 +144,7 @@ namespace AI4E.Storage.Projection
 
                     if (multipleResults && !(bool)memberAttribute.MultipleResults)
                     {
-                        projectionType = multipleResultsType;
+                        targetType = multipleResultsType;
                         multipleResults = false;
                     }
                 }
@@ -153,7 +152,7 @@ namespace AI4E.Storage.Projection
                 projectNonExisting = memberAttribute.ProjectNonExisting;
             }
 
-            descriptor = new ProjectionDescriptor(sourceType, projectionType, multipleResults, projectNonExisting, member);
+            descriptor = new ProjectionDescriptor(sourceType, targetType, multipleResults, projectNonExisting, member);
             return true;
         }
 

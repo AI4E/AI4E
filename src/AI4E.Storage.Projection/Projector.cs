@@ -140,7 +140,7 @@ namespace AI4E.Storage.Projection
 
             return projection.ProjectAsync(source, cancellation)
                                     .Where(p => !(p is null))
-                                    .Select(p => new ProjectionResult(projection.ProjectionType, p));
+                                    .Select(p => new ProjectionResult(projection.TargetType, p));
         }
     }
 
@@ -174,29 +174,29 @@ namespace AI4E.Storage.Projection
         public Type ResultType { get; }
     }
 
-    public sealed class ProjectionResult<TProjectionId, TProjection> : IProjectionResult<TProjectionId, TProjection>
-             where TProjection : class
+    public sealed class ProjectionResult<TResultId, TResult> : IProjectionResult<TResultId, TResult>
+             where TResult : class
     {
-        public ProjectionResult(TProjection result)
+        public ProjectionResult(TResult result)
         {
             if (result is null)
                 throw new ArgumentNullException(nameof(result));
 
             Result = result;
-            ResultId = DataPropertyHelper.GetId<TProjectionId, TProjection>(result);
+            ResultId = DataPropertyHelper.GetId<TResultId, TResult>(result);
         }
 
         /// <inheritdoc />
-        public TProjectionId ResultId { get; }
+        public TResultId ResultId { get; }
 
         /// <inheritdoc />
-        public TProjection Result { get; }
+        public TResult Result { get; }
 
 #if !SUPPORTS_DEFAULT_INTERFACE_METHODS
         object IProjectionResult.ResultId => ResultId;
         object IProjectionResult.Result => Result;
-        Type IProjectionResult.ResultIdType => typeof(TProjectionId);
-        Type IProjectionResult.ResultType => typeof(TProjection);
+        Type IProjectionResult.ResultIdType => typeof(TResultId);
+        Type IProjectionResult.ResultType => typeof(TResult);
 #endif
     }
 }

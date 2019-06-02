@@ -39,13 +39,13 @@ namespace AI4E.Storage.Projection
             Task<bool> WriteToDatabaseAsync(IScopedDatabase transactionalDatabase, CancellationToken cancellation);
         }
 
-        private sealed class TargetScopedProjectionEngine<TProjectionId, TProjection> : ITargetScopedProjectionEngine
-            where TProjection : class
+        private sealed class TargetScopedProjectionEngine<TTargetId, TTarget> : ITargetScopedProjectionEngine
+            where TTarget : class
         {
             private readonly IDatabase _database;
             private readonly IDictionary<ProjectionTargetDescriptor, ProjectionTargetMetadataCacheEntry> _targetMetadataCache;
-            private readonly List<TProjection> _targetsToUpdate = new List<TProjection>();
-            private readonly List<TProjection> _targetsToDelete = new List<TProjection>();
+            private readonly List<TTarget> _targetsToUpdate = new List<TTarget>();
+            private readonly List<TTarget> _targetsToDelete = new List<TTarget>();
 
             public TargetScopedProjectionEngine(IDatabase database)
             {
@@ -116,7 +116,7 @@ namespace AI4E.Storage.Projection
                 {
                     var projectionId = GetProjectionId(projectionResult);
 
-                    var addedProjection = new ProjectionTargetDescriptor<TProjectionId>(typeof(TProjection), projectionId);
+                    var addedProjection = new ProjectionTargetDescriptor<TTargetId>(typeof(TTarget), projectionId);
                     var (originalMetadata, metadata) = await GetMetadataAsync(addedProjection, cancellation);
 
                     Assert(!metadata.ProjectionSources.Any(p => p.Id == projectionSource.SourceId &&
@@ -135,7 +135,7 @@ namespace AI4E.Storage.Projection
                                                                                                    touched: true);
                 }
 
-                _targetsToUpdate.Add((TProjection)projectionResult.Result);
+                _targetsToUpdate.Add((TTarget)projectionResult.Result);
             }
 
             public async Task RemoveEntityFromProjectionAsync(ProjectionSourceDescriptor projectionSource,
@@ -162,7 +162,7 @@ namespace AI4E.Storage.Projection
                                                                                                      metadata: null,
                                                                                                      touched: true);
 
-                    var predicate = DataPropertyHelper.BuildPredicate<TProjectionId, TProjection>(metadata.TargetId);
+                    var predicate = DataPropertyHelper.BuildPredicate<TTargetId, TTarget>(metadata.TargetId);
                     var projection = await _database.GetAsync(predicate, cancellation).FirstOrDefaultAsync(cancellation);
 
                     if (projection != null)
@@ -177,24 +177,24 @@ namespace AI4E.Storage.Projection
                                                                                                  touched: true);
             }
 
-            private static TProjectionId GetProjectionId(IProjectionResult projectionResult)
+            private static TTargetId GetProjectionId(IProjectionResult projectionResult)
             {
-                TProjectionId projectionId;
+                TTargetId projectionId;
 
-                if (projectionResult is IProjectionResult<TProjectionId, TProjection> typedProjectionResult)
+                if (projectionResult is IProjectionResult<TTargetId, TTarget> typedProjectionResult)
                 {
-                    Assert(typedProjectionResult.ResultType == typeof(TProjection));
+                    Assert(typedProjectionResult.ResultType == typeof(TTarget));
 
                     projectionId = typedProjectionResult.ResultId;
                 }
                 else
                 {
                     Assert(projectionResult != null);
-                    Assert(projectionResult.ResultType == typeof(TProjection));
+                    Assert(projectionResult.ResultType == typeof(TTarget));
                     Assert(projectionResult.ResultId != null);
-                    Assert(projectionResult.ResultId is TProjectionId);
+                    Assert(projectionResult.ResultId is TTargetId);
 
-                    projectionId = (TProjectionId)projectionResult.ResultId;
+                    projectionId = (TTargetId)projectionResult.ResultId;
                 }
 
                 return projectionId;
@@ -226,7 +226,7 @@ namespace AI4E.Storage.Projection
                 }
             }
 
-            private async ValueTask<ProjectionTargetMetadataCacheEntry> GetMetadataAsync(ProjectionTargetDescriptor<TProjectionId> target,
+            private async ValueTask<ProjectionTargetMetadataCacheEntry> GetMetadataAsync(ProjectionTargetDescriptor<TTargetId> target,
                                                                                          CancellationToken cancellation)
             {
                 if (!_targetMetadataCache.TryGetValue(target, out var entry))
@@ -308,7 +308,7 @@ namespace AI4E.Storage.Projection
 
                 public long MetadataRevision { get; set; } = 1;
 
-                public TProjectionId TargetId { get; set; }
+                public TTargetId TargetId { get; set; }
                 public string StringifiedTargetId
                 {
                     get

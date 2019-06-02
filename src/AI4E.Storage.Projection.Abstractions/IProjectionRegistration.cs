@@ -43,7 +43,7 @@ namespace AI4E.Storage.Projection
         /// <summary>
         /// Gets the type of the target elements the projection projects to.
         /// </summary>
-        Type ProjectionType { get; }
+        Type TargetType { get; }
 
         bool TryGetDescriptor(out ProjectionDescriptor descriptor);
     }
@@ -52,10 +52,10 @@ namespace AI4E.Storage.Projection
     /// Represents the registration of a projection for the specifies source and target types.
     /// </summary>
     /// <typeparam name="TSource">The type of the source elements the projection projects</typeparam>
-    /// <typeparam name="TProjection">The type of the target elements the projection projects to.</typeparam>
-    public interface IProjectionRegistration<TSource, TProjection> : IProjectionRegistration
+    /// <typeparam name="TTarget">The type of the target elements the projection projects to.</typeparam>
+    public interface IProjectionRegistration<TSource, TTarget> : IProjectionRegistration
         where TSource : class
-        where TProjection : class
+        where TTarget : class
     {
         /// <summary>
         /// Creates an instance of the registered projection within the scope of the specified service provider.
@@ -63,7 +63,7 @@ namespace AI4E.Storage.Projection
         /// <param name="serviceProvider">The service provider that is used to obtain handler specific services.</param>
         /// <returns>The created instance.</returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
-        new IProjection<TSource, TProjection> CreateProjection(IServiceProvider serviceProvider);
+        new IProjection<TSource, TTarget> CreateProjection(IServiceProvider serviceProvider);
 
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
         IProjection IProjectionRegistration.CreateProjection(IServiceProvider serviceProvider)
@@ -72,7 +72,7 @@ namespace AI4E.Storage.Projection
         }
 
         Type IProjectionRegistration.SourceType => typeof(TSource);
-        Type IProjectionRegistration.ProjectionType => typeof(TProjection);
+        Type IProjectionRegistration.TargetType => typeof(TTarget);
 #endif
     }
 }

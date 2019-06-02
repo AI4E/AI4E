@@ -57,16 +57,16 @@ namespace AI4E.Storage.Projection
             IServiceProvider serviceProvider)
         {
             var sourceType = projectionDescriptor.SourceType;
-            var projectionType = projectionDescriptor.ProjectionType;
+            var targetType = projectionDescriptor.TargetType;
 
-            var factory = _factories.GetOrAdd((sourceType, projectionType), _factoryBuilderCache);
+            var factory = _factories.GetOrAdd((sourceType, targetType), _factoryBuilderCache);
             return factory(handler, projectionDescriptor, serviceProvider);
         }
 
         private static Func<object, ProjectionDescriptor, IServiceProvider, IProjection> BuildFactory(
-           (Type sourceType, Type projectionType) _)
+           (Type sourceType, Type targetType) _)
         {
-            var projectionInvokerType = _projectionInvokerTypeDefinition.MakeGenericType(_.sourceType, _.projectionType);
+            var projectionInvokerType = _projectionInvokerTypeDefinition.MakeGenericType(_.sourceType, _.targetType);
             var ctor = projectionInvokerType.GetConstructor(
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 Type.DefaultBinder,
@@ -87,9 +87,9 @@ namespace AI4E.Storage.Projection
         }
     }
 
-    public sealed class ProjectionInvoker<TSource, TProjection> : IProjection<TSource, TProjection>
+    public sealed class ProjectionInvoker<TSource, TTarget> : IProjection<TSource, TTarget>
         where TSource : class
-        where TProjection : class
+        where TTarget : class
     {
         private readonly object _handler;
         private readonly ProjectionDescriptor _projectionDescriptor;
@@ -104,7 +104,7 @@ namespace AI4E.Storage.Projection
             _serviceProvider = serviceProvider;
         }
 
-        public async IAsyncEnumerable<TProjection> ProjectAsync(
+        public async IAsyncEnumerable<TTarget> ProjectAsync(
             TSource source,
             CancellationToken cancellation)
         {
@@ -155,7 +155,7 @@ namespace AI4E.Storage.Projection
             {
                 if (_projectionDescriptor.MultipleResults)
                 {
-                    var enumerable = result as IEnumerable<TProjection>;
+                    var enumerable = result as IEnumerable<TTarget>;
                     Assert(enumerable != null);
 
                     foreach (var singleResult in enumerable)
@@ -165,7 +165,7 @@ namespace AI4E.Storage.Projection
                 }
                 else
                 {
-                    var projectionResult = result as TProjection;
+                    var projectionResult = result as TTarget;
                     Assert(projectionResult != null);
 
                     yield return projectionResult;
@@ -175,7 +175,7 @@ namespace AI4E.Storage.Projection
 
 #if !SUPPORTS_DEFAULT_INTERFACE_METHODS
         Type IProjection.SourceType => typeof(TSource);
-        Type IProjection.ProjectionType => typeof(TProjection);
+        Type IProjection.TargetType => typeof(TTarget);
 
         IAsyncEnumerable<object> IProjection.ProjectAsync(object source, CancellationToken cancellation)
         {
