@@ -26,12 +26,16 @@ namespace AI4E.Storage.Projection
     public readonly struct ProjectionDescriptor
     {
         public ProjectionDescriptor(
+            Type handlerType,
             Type sourceType,
             Type targetType,
             bool multipleResults,
             bool projectNonExisting,
             MethodInfo member)
         {
+            if (handlerType is null)
+                throw new ArgumentNullException(nameof(handlerType));
+
             if (sourceType == null)
                 throw new ArgumentNullException(nameof(sourceType));
 
@@ -41,6 +45,9 @@ namespace AI4E.Storage.Projection
             if (member == null)
                 throw new ArgumentNullException(nameof(member));
 
+            // TODO: Add validation.
+
+            HandlerType = handlerType;
             SourceType = sourceType;
             TargetType = targetType;
             MultipleResults = multipleResults;
@@ -48,6 +55,7 @@ namespace AI4E.Storage.Projection
             Member = member;
         }
 
+        public Type HandlerType { get; }
         public Type SourceType { get; }
         public Type TargetType { get; }
         public bool MultipleResults { get; }

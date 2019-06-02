@@ -39,14 +39,15 @@ namespace AI4E.Storage.Projection
         private static readonly Func<(Type, Type), Func<object, ProjectionDescriptor, IServiceProvider, IProjection>> _factoryBuilderCache = BuildFactory;
 
         public static IProjection CreateInvoker(
-            Type handlerType,
             ProjectionDescriptor projectionDescriptor,
             IServiceProvider serviceProvider)
         {
             if (serviceProvider is null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
+            var handlerType = projectionDescriptor.HandlerType;
             var handler = ActivatorUtilities.CreateInstance(serviceProvider, handlerType);
+
             Assert(handler != null);
             return CreateInvokerInternal(handler, projectionDescriptor, serviceProvider);
         }

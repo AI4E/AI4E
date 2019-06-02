@@ -152,7 +152,7 @@ namespace AI4E.Storage.Projection
                 projectNonExisting = memberAttribute.ProjectNonExisting;
             }
 
-            descriptor = new ProjectionDescriptor(sourceType, targetType, multipleResults, projectNonExisting, member);
+            descriptor = new ProjectionDescriptor(_type, sourceType, targetType, multipleResults, projectNonExisting, member);
             return true;
         }
 

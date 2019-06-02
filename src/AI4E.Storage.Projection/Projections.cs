@@ -68,15 +68,15 @@ namespace AI4E.Storage.Projection
 
             foreach (var projectionDescriptor in projectionDescriptors)
             {
-                var registration = CreateProjectionRegistration(type, projectionDescriptor);
+                var registration = CreateProjectionRegistration(projectionDescriptor);
                 projectionRegistry.Register(registration);
             }
         }
 
-        private static IProjectionRegistration CreateProjectionRegistration(Type handlerType, ProjectionDescriptor projectionDescriptor)
+        private static IProjectionRegistration CreateProjectionRegistration(ProjectionDescriptor projectionDescriptor)
         {
             return new ProjectionRegistration(
-                serviceProvider => ProjectionInvoker.CreateInvoker(handlerType, projectionDescriptor, serviceProvider),
+                serviceProvider => ProjectionInvoker.CreateInvoker(projectionDescriptor, serviceProvider),
                 projectionDescriptor);
         }
     }
