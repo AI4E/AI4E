@@ -28,10 +28,22 @@ namespace AI4E.Storage.Projection
         private readonly ProjectionDescriptor? _descriptor;
 
         public ProjectionRegistration(
+            Func<IServiceProvider, IProjection> factory,
+            in ProjectionDescriptor descriptor)
+        {
+            if (factory is null)
+                throw new ArgumentNullException(nameof(factory));
+
+            SourceType = descriptor.SourceType;
+            TargetType = descriptor.TargetType;
+            _factory = factory;
+            _descriptor = descriptor;
+        }
+
+        public ProjectionRegistration(
             Type sourceType,
             Type targetType,
-            Func<IServiceProvider, IProjection> factory,
-            in ProjectionDescriptor? descriptor = null)
+            Func<IServiceProvider, IProjection> factory)
         {
             if (sourceType is null)
                 throw new ArgumentNullException(nameof(sourceType));
@@ -45,7 +57,6 @@ namespace AI4E.Storage.Projection
             SourceType = sourceType;
             TargetType = targetType;
             _factory = factory;
-            _descriptor = descriptor;
         }
 
         public IProjection CreateProjection(IServiceProvider serviceProvider)
@@ -92,6 +103,15 @@ namespace AI4E.Storage.Projection
         {
             if (factory is null)
                 throw new ArgumentNullException(nameof(factory));
+
+            if (descriptor != null)
+            {
+                if (descriptor.Value.SourceType != typeof(TSource))
+                    throw new ArgumentException($"The descriptor must specify the source type {typeof(TSource)}.");
+
+                if (descriptor.Value.TargetType != typeof(TTarget))
+                    throw new ArgumentException($"The descriptor must specify the target type {typeof(TTarget)}.");
+            }
 
             _factory = factory;
             _descriptor = descriptor;
