@@ -74,7 +74,7 @@ namespace AI4E.Storage.Projection
                 return;
             }
 
-            var scopedEngine = new SourceScopedProjectionEngine(entityDescriptor, _projector, _database, _serviceProvider);
+            var scopedEngine = new SourceProjector(entityDescriptor, _projector, _database, _serviceProvider);
             var dependents = await scopedEngine.ProjectAsync(cancellation);
 
             processedEntities.Add(entityDescriptor);
