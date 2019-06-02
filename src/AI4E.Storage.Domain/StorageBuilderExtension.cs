@@ -16,9 +16,6 @@ namespace AI4E.Storage.Domain
 
             var services = builder.Services;
 
-            // Configure necessary application parts
-            services.ConfigureApplicationParts(ConfigureFeatureProviders);
-
             // TODO: Replace
             services.AddSingleton(new JsonSerializerSettings
             {
@@ -33,8 +30,10 @@ namespace AI4E.Storage.Domain
 
             AddStreamStore(services);
             AddDomainStorageEngine(services);
-            AddProjectionEngine(services);
             AddMessageProcessors(services);
+
+            services.AddScoped<IProjectionSourceLoader, ProjectionSourceLoader>();
+            builder.AddProjection();
 
             return new DomainStorageBuilder(builder);
         }
@@ -70,15 +69,6 @@ namespace AI4E.Storage.Domain
 
             // Helpers
             services.AddSingleton<IEntityPropertyAccessor, EntityPropertyAccessor>();
-
-            //services.AddSingleton(typeof(IEntityIdAccessor<,>), typeof(DefaultEntityIdAccessor<,>));
-        }
-
-        private static void AddProjectionEngine(IServiceCollection services)
-        {
-            services.AddSingleton(BuildProjector);
-            services.AddSingleton<IProjectionEngine, ProjectionEngine>();
-            services.AddScoped<IProjectionSourceLoader, ProjectionSourceLoader>();
         }
 
         private static void AddMessageProcessors(IServiceCollection services)
@@ -87,42 +77,6 @@ namespace AI4E.Storage.Domain
             {
                 options.MessageProcessors.Add(MessageProcessorRegistration.Create<EntityMessageHandlerProcessor>());
             });
-        }
-
-        private static IProjector BuildProjector(IServiceProvider serviceProvider)
-        {
-            var projector = new Projector();
-            var partManager = serviceProvider.GetRequiredService<ApplicationPartManager>();
-            var projectionFeature = new ProjectionFeature();
-
-            partManager.PopulateFeature(projectionFeature);
-
-            foreach (var type in projectionFeature.Projections)
-            {
-                var inspector = new ProjectionInspector(type);
-                var descriptors = inspector.GetDescriptors();
-
-                foreach (var descriptor in descriptors)
-                {
-                    var provider = Activator.CreateInstance(typeof(ProjectionInvoker<,>.Provider).MakeGenericType(descriptor.SourceType, descriptor.ProjectionType),
-                                                            type,
-                                                            descriptor);
-
-                    var registerMethodDefinition = typeof(IProjector).GetMethods().Single(p => p.Name == "RegisterProjection" && p.IsGenericMethodDefinition && p.GetGenericArguments().Length == 2);
-                    var registerMethod = registerMethodDefinition.MakeGenericMethod(descriptor.SourceType, descriptor.ProjectionType);
-                    registerMethod.Invoke(projector, new object[] { provider });
-                }
-            }
-
-            return projector;
-        }
-
-        private static void ConfigureFeatureProviders(ApplicationPartManager partManager)
-        {
-            if (!partManager.FeatureProviders.OfType<ProjectionFeatureProvider>().Any())
-            {
-                partManager.FeatureProviders.Add(new ProjectionFeatureProvider());
-            }
         }
 
         private sealed class SerializerSettingsResolver : ISerializerSettingsResolver
