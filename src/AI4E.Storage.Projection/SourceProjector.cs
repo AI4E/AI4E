@@ -65,62 +65,47 @@ namespace AI4E.Storage.Projection
         // Projects the source entity and returns the descriptors of all dependent source entities. 
         public async Task<IEnumerable<ProjectionSourceDescriptor>> ProjectAsync(CancellationToken cancellation)
         {
+            IEnumerable<ProjectionSourceDescriptor> dependents;
             using var scopedDatabase = _database.CreateScope();
 
             do
             {
-                do
+                await ExecuteProjectionAsync(cancellation);
+                dependents = await GetDependentsAsync(cancellation);
+            }
+            while (!await WriteToDatabaseAsync(scopedDatabase, cancellation) || !await scopedDatabase.TryCommitAsync(cancellation));
+
+            return dependents;
+        }
+
+        private async Task ExecuteProjectionAsync(CancellationToken cancellation)
+        {
+            do
+            {
+                _sourceMetadataCache.Clear();
+                _targetScopedProjectionEngines.Clear();
+
+                using var scope = _serviceProvider.CreateScope();
+                var scopedServiceProvider = scope.ServiceProvider;
+                var projectionSourceLoader = scopedServiceProvider.GetRequiredService<IProjectionSourceLoader>();
+                var (source, sourceRevision) = await projectionSourceLoader.LoadAsync(_sourceDescriptor.SourceType, _sourceDescriptor.SourceId, cancellation);
+                var (updateNeeded, conflict) = await GetProjectionStateAsync(projectionSourceLoader, sourceRevision, cancellation);
+
+                if (!conflict)
                 {
-                    _sourceMetadataCache.Clear();
-                    _targetScopedProjectionEngines.Clear();
-
-                    using var scope = _serviceProvider.CreateScope();
-                    var scopedServiceProvider = scope.ServiceProvider;
-                    var projectionSourceLoader = scopedServiceProvider.GetRequiredService<IProjectionSourceLoader>();
-                    var (source, sourceRevision) = await projectionSourceLoader.LoadAsync(_sourceDescriptor.SourceType, _sourceDescriptor.SourceId, cancellation);
-
-                    var (updateNeeded, conflict) = await GetProjectionStateAsync(projectionSourceLoader, sourceRevision, cancellation);
-
-                    if (conflict)
-                    {
-                        // TODO: Log conflict
-                        // TODO: Currently we are allocating a completely new storage engine. It is more performant to reuse the current storageEngine. 
-                        //       For this to work, it needs a way to flush its cache and refresh all cached streams on entity load.
-                        continue;
-                    }
-
-                    if (updateNeeded &&
-                        await ProjectCoreAsync(source, scopedServiceProvider, cancellation))
+                    if (updateNeeded && await ProjectCoreAsync(source, scopedServiceProvider, cancellation))
                     {
                         // Only update dependencies if there are any projections.
                         var dependencies = GetDependencies(projectionSourceLoader);
                         await UpdateDependenciesAsync(dependencies, cancellation); // TODO: Do we have to clear the dependency list, if there are no projections?
                     }
 
-                    break;
+                    return;
                 }
-                while (true);
 
-                var dependents = await GetDependentsAsync(cancellation);
-
-                try
-                {
-                    if (!await WriteToDatabaseAsync(scopedDatabase, cancellation))
-                    {
-                        await scopedDatabase.RollbackAsync();
-                        continue;
-                    }
-
-                    if (await scopedDatabase.TryCommitAsync(cancellation))
-                    {
-                        return dependents;
-                    }
-                }
-                catch
-                {
-                    await scopedDatabase.RollbackAsync();
-                    throw;
-                }
+                // TODO: Log conflict
+                // TODO: Currently we are allocating a completely new storage engine. It is more performant to reuse the current storageEngine. 
+                //       For this to work, it needs a way to flush its cache and refresh all cached streams on entity load.
             }
             while (true);
         }
@@ -136,6 +121,7 @@ namespace AI4E.Storage.Projection
 
                 if (!MatchesByRevision(originalMetadata, comparandMetdata))
                 {
+                    await scopedDatabase.RollbackAsync();
                     return false;
                 }
 
@@ -157,6 +143,7 @@ namespace AI4E.Storage.Projection
             {
                 if (!await targetTypedScopedEngine.WriteToDatabaseAsync(scopedDatabase, cancellation))
                 {
+                    await scopedDatabase.RollbackAsync();
                     return false;
                 }
             }
