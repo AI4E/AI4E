@@ -19,17 +19,18 @@
  */
 
 using System;
+using System.Collections.Generic;
 
 namespace AI4E.Storage.Projection
 {
-    internal readonly struct ProjectionTargetDescriptor : IEquatable<ProjectionTargetDescriptor>
+    public readonly struct ProjectionTargetDescriptor : IEquatable<ProjectionTargetDescriptor>
     {
         public ProjectionTargetDescriptor(Type targetType, string targetId)
         {
-            if (targetType == null)
+            if (targetType is null)
                 throw new ArgumentNullException(nameof(targetType));
 
-            if (targetId == null || targetId.Equals(default))
+            if (targetId is null || targetId.Equals(default))
                 throw new ArgumentDefaultException(nameof(targetId));
 
             TargetType = targetType;
@@ -46,15 +47,18 @@ namespace AI4E.Storage.Projection
 
         public bool Equals(ProjectionTargetDescriptor other)
         {
-            return other.TargetType == null && TargetType == null || other.TargetType == TargetType && other.TargetId.Equals(TargetId);
+            if (other.TargetType is null && TargetType is null)
+                return true;
+
+            return (other.TargetType, other.TargetId) == (TargetType, TargetId);
         }
 
         public override int GetHashCode()
         {
-            if (TargetType == null)
+            if (TargetType is null)
                 return 0;
 
-            return TargetType.GetHashCode() ^ TargetId.GetHashCode();
+            return (TargetType, TargetId).GetHashCode();
         }
 
         public static bool operator ==(in ProjectionTargetDescriptor left, in ProjectionTargetDescriptor right)
@@ -68,7 +72,7 @@ namespace AI4E.Storage.Projection
         }
     }
 
-    internal readonly struct ProjectionTargetDescriptor<TId> : IEquatable<ProjectionTargetDescriptor<TId>>
+    public readonly struct ProjectionTargetDescriptor<TId> : IEquatable<ProjectionTargetDescriptor<TId>>
     {
         public ProjectionTargetDescriptor(Type targetType, TId targetId)
         {
@@ -93,7 +97,10 @@ namespace AI4E.Storage.Projection
 
         public bool Equals(ProjectionTargetDescriptor<TId> other)
         {
-            return other.TargetType == null && TargetType == null || other.TargetType == TargetType && other.TargetId.Equals(TargetId);
+            if (other.TargetType is null && TargetType is null)
+                return true;
+
+            return other.TargetType == TargetType && EqualityComparer<TId>.Default.Equals(other.TargetId, TargetId);
         }
 
         public override int GetHashCode()
@@ -101,7 +108,7 @@ namespace AI4E.Storage.Projection
             if (TargetType == null)
                 return 0;
 
-            return TargetType.GetHashCode() ^ TargetId.GetHashCode();
+            return (TargetType, TargetId).GetHashCode();
         }
 
         public static bool operator ==(in ProjectionTargetDescriptor<TId> left, in ProjectionTargetDescriptor<TId> right)

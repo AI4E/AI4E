@@ -22,7 +22,7 @@ using System;
 
 namespace AI4E.Storage.Projection
 {
-    internal readonly struct ProjectionSourceDescriptor : IEquatable<ProjectionSourceDescriptor>
+    public readonly struct ProjectionSourceDescriptor : IEquatable<ProjectionSourceDescriptor>
     {
         public ProjectionSourceDescriptor(Type sourceType, string sourceId)
         {
@@ -46,15 +46,18 @@ namespace AI4E.Storage.Projection
 
         public bool Equals(ProjectionSourceDescriptor other)
         {
-            return other.SourceType == null && SourceType == null || other.SourceType == SourceType && other.SourceId.Equals(SourceId);
+            if (other.SourceType is null && SourceType is null)
+                return true;
+
+            return (other.SourceType, other.SourceId) == (SourceType, SourceId);
         }
 
         public override int GetHashCode()
         {
-            if (SourceType == null)
+            if (SourceType is null)
                 return 0;
 
-            return SourceType.GetHashCode() ^ SourceId.GetHashCode();
+            return (SourceType, SourceId).GetHashCode();
         }
 
         public static bool operator ==(in ProjectionSourceDescriptor left, in ProjectionSourceDescriptor right)

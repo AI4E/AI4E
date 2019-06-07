@@ -23,8 +23,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using AI4E.Internal;
-using AI4E.Utils;
 
 namespace AI4E.Storage.Projection
 {
@@ -83,7 +81,7 @@ namespace AI4E.Storage.Projection
                 return AsyncEnumerable.Empty<IProjectionResult>();
             }
 
-            if (sourceType.IsValueType || sourceType.IsDelegate())
+            if (sourceType.IsValueType || typeof(Delegate).IsAssignableFrom(sourceType) /*sourceType.IsDelegate()*/) // TODO
                 throw new ArgumentException("The argument must be a reference type.", nameof(sourceType));
 
             if (!sourceType.IsAssignableFrom(source.GetType()))
