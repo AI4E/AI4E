@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        EntityStorageEngine.cs 
  * Types:           (1) AI4E.Storage.Domain.EntityStorageEngine
@@ -49,11 +49,22 @@ namespace AI4E.Storage.Domain
             _storageEngine = storageEngine;
         }
 
-        public IEnumerable<(Type type, string id, long revision)> LoadedSources => _storageEngine.LoadedEntries.Select(p => (p.type, p.id, p.revision));
+        public IEnumerable<ProjectionSourceDependency> LoadedSources => _storageEngine.LoadedEntries.Select(p => new ProjectionSourceDependency(p.type, p.id, p.revision));
 
-        public ValueTask<(object projectionSource, long revision)> LoadAsync(Type projectionSourceType, string projectionSourceId, CancellationToken cancellation)
+        public ValueTask<object> GetSourceAsync(
+            ProjectionSourceDescriptor projectionSource,
+            bool bypassCache,
+            CancellationToken cancellation)
         {
-            return _storageEngine.LoadEntityAsync(projectionSourceType, projectionSourceId, cancellation);
+            return _storageEngine.GetByIdAsync(projectionSource.SourceType, projectionSource.SourceId, bypassCache, cancellation);
+        }
+
+        public ValueTask<long> GetSourceRevisionAsync(
+            ProjectionSourceDescriptor projectionSource,
+            bool bypassCache,
+            CancellationToken cancellation)
+        {
+            return _storageEngine.GetRevisionAsync(projectionSource.SourceType, projectionSource.SourceId, bypassCache, cancellation);
         }
     }
 }

@@ -14,4 +14,8 @@
     <PackageReference Include="AI4E.Utils" Version="0.2.0-pre19052318" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+  </ItemGroup>
+
 </Project>

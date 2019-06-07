@@ -83,34 +83,23 @@ namespace AI4E.Storage.Projection
 
         private async Task ExecuteProjectionAsync(CancellationToken cancellation)
         {
-            do
+            _metadataCache.Clear();
+            _targetScopedProjectionEngines.Clear();
+
+            using var scope = _serviceProvider.CreateScope();
+            var scopedServiceProvider = scope.ServiceProvider;
+            var projectionSourceLoader = scopedServiceProvider.GetRequiredService<IProjectionSourceLoader>();
+            var updateNeeded = await GetProjectionStateAsync(projectionSourceLoader, cancellation);
+
+            if (!updateNeeded)
+                return;
+
+            if (await ProjectCoreAsync(projectionSourceLoader, scopedServiceProvider, cancellation))
             {
-                _metadataCache.Clear();
-                _targetScopedProjectionEngines.Clear();
-
-                using var scope = _serviceProvider.CreateScope();
-                var scopedServiceProvider = scope.ServiceProvider;
-                var projectionSourceLoader = scopedServiceProvider.GetRequiredService<IProjectionSourceLoader>();
-                var (source, sourceRevision) = await projectionSourceLoader.LoadAsync(_sourceDescriptor.SourceType, _sourceDescriptor.SourceId, cancellation);
-                var (updateNeeded, conflict) = await GetProjectionStateAsync(projectionSourceLoader, sourceRevision, cancellation);
-
-                if (!conflict)
-                {
-                    if (updateNeeded && await ProjectCoreAsync(source, scopedServiceProvider, cancellation))
-                    {
-                        // Only update dependencies if there are any projections.
-                        var dependencies = GetDependencies(projectionSourceLoader);
-                        await UpdateDependenciesAsync(dependencies, cancellation); // TODO: Do we have to clear the dependency list, if there are no projections?
-                    }
-
-                    return;
-                }
-
-                // TODO: Log conflict
-                // TODO: Currently we are allocating a completely new storage engine. It is more performant to reuse the current storageEngine. 
-                //       For this to work, it needs a way to flush its cache and refresh all cached streams on entity load.
+                // Only update dependencies if there are any projections.
+                var dependencies = GetDependencies(projectionSourceLoader);
+                await UpdateDependenciesAsync(dependencies, cancellation); // TODO: Do we have to clear the dependency list, if there are no projections?
             }
-            while (true);
         }
 
         private async Task<bool> WriteToDatabaseAsync(IScopedDatabase scopedDatabase, CancellationToken cancellation)
@@ -138,9 +127,8 @@ namespace AI4E.Storage.Projection
         // We have to project if
         // - the version of our entity is greater than the projection version
         // - the version of any of our dependencies is greater than the projection version
-        private async ValueTask<(bool updateNeeded, bool conflict)> GetProjectionStateAsync(
+        private async ValueTask<bool> GetProjectionStateAsync(
             IProjectionSourceLoader projectionSourceLoader,
-            long sourceRevision,
             CancellationToken cancellation)
         {
             // We load all dependencies from the entity store. 
@@ -153,52 +141,81 @@ namespace AI4E.Storage.Projection
 
             if (metadata == null)
             {
-                return (updateNeeded: true, conflict: false);
+                return true;
             }
 
-            var projectionRevision = metadata.ProjectionRevision;
-            var projectionLaterEntity = sourceRevision < projectionRevision;
-            var entityLaterProjection = sourceRevision > projectionRevision;
-
-            foreach (var (dependency, dependencyProjectionRevision) in metadata.Dependencies)
-            {
-                var (dependencyEntity, dependencyRevision) = await projectionSourceLoader.LoadAsync(dependency.SourceType, dependency.SourceId, cancellation);
-
-                if (dependencyRevision < dependencyProjectionRevision)
-                {
-                    projectionLaterEntity = true;
-                }
-                else if (dependencyRevision > dependencyProjectionRevision)
-                {
-                    entityLaterProjection = true;
-                }
-            }
-
-            var updateNeeded = entityLaterProjection && !projectionLaterEntity;
-            var conflict = entityLaterProjection && projectionLaterEntity;
+            var updateNeeded = await CheckUpdateNeededAsync(metadata, projectionSourceLoader, cancellation);
 
             if (updateNeeded)
             {
+                var sourceRevision = await GetSourceRevisionAsync(_sourceDescriptor, metadata.ProjectionRevision, projectionSourceLoader, cancellation);
                 metadata.ProjectionRevision = sourceRevision;
                 _metadataCache.Update(metadata);
             }
 
-            return (updateNeeded, conflict);
+            return updateNeeded;
+        }
+
+        private async ValueTask<bool> CheckUpdateNeededAsync(
+            IProjectionSourceMetdata metadata,
+            IProjectionSourceLoader projectionSourceLoader,
+            CancellationToken cancellation)
+        {
+            var sourceRevision = await GetSourceRevisionAsync(_sourceDescriptor, metadata.ProjectionRevision, projectionSourceLoader, cancellation);
+            Debug.Assert(sourceRevision >= metadata.ProjectionRevision);
+
+            if (sourceRevision > metadata.ProjectionRevision)
+            {
+                return true;
+            }
+
+            foreach (var (dependency, dependencyProjectionRevision) in metadata.Dependencies)
+            {
+                var dependencyRevision = await GetSourceRevisionAsync(_sourceDescriptor, metadata.ProjectionRevision, projectionSourceLoader, cancellation);
+                Debug.Assert(dependencyRevision >= dependencyProjectionRevision);
+
+                if (dependencyRevision > dependencyProjectionRevision)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private async ValueTask<long> GetSourceRevisionAsync(
+            ProjectionSourceDescriptor projectionSource,
+            long projectionRevision,
+            IProjectionSourceLoader projectionSourceLoader,
+            CancellationToken cancellation)
+        {
+            long sourceRevision;
+            var sourceOutOfDate = false;
+
+            do
+            {
+                sourceRevision = await projectionSourceLoader.GetSourceRevisionAsync(
+                    projectionSource, bypassCache: sourceOutOfDate, cancellation);
+
+                sourceOutOfDate = sourceRevision < projectionRevision;
+
+            } while (sourceRevision < projectionRevision);
+
+            return sourceRevision;
         }
 
         // Gets our dependencies from the entity store.
         private IEnumerable<ProjectionSourceDependency> GetDependencies(IProjectionSourceLoader projectionSourceLoader)
         {
-            var entityDescriptor = _sourceDescriptor;
+            var sourceDescriptor = _sourceDescriptor;
 
-            bool IsCurrentEntity((Type type, string id, long revision) cacheEntry)
+            bool IsCurrentEntity(ProjectionSourceDependency cacheEntry)
             {
-                return cacheEntry.id == entityDescriptor.SourceId && cacheEntry.type == entityDescriptor.SourceType;
+                return cacheEntry.Dependency.SourceId == sourceDescriptor.SourceId && cacheEntry.Dependency.SourceType == sourceDescriptor.SourceType;
             }
 
             return projectionSourceLoader.LoadedSources
                                          .Where(p => !IsCurrentEntity(p))
-                                         .Select(p => new ProjectionSourceDependency(p.type, p.id, p.revision))
                                          .ToArray();
         }
 
@@ -276,10 +293,11 @@ namespace AI4E.Storage.Projection
 
         #region ProjectCore
 
-        private async Task<bool> ProjectCoreAsync(object entity, IServiceProvider serviceProvider, CancellationToken cancellation)
+        private async Task<bool> ProjectCoreAsync(IProjectionSourceLoader projectionSourceLoader, IServiceProvider serviceProvider, CancellationToken cancellation)
         {
-            var entityType = _sourceDescriptor.SourceType;
-            var projectionResults = _projector.ExecuteProjectionAsync(entityType, entity, serviceProvider, cancellation);
+            var source = await projectionSourceLoader.GetSourceAsync(_sourceDescriptor, bypassCache: false, cancellation);
+            var sourceType = _sourceDescriptor.SourceType;
+            var projectionResults = _projector.ExecuteProjectionAsync(sourceType, source, serviceProvider, cancellation);
             var appliedProjections = new HashSet<ProjectionTargetDescriptor>(await GetAppliedProjectionsAsync(cancellation));
             var projections = new List<ProjectionTargetDescriptor>();
 

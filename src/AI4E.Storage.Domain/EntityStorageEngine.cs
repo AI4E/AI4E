@@ -107,11 +107,6 @@ namespace AI4E.Storage.Domain
 
         #region IEntityStorageEngine
 
-        public ValueTask<object> GetByIdAsync(Type entityType, string id, CancellationToken cancellation)
-        {
-            return GetByIdAsync(entityType, id, revision: default, cancellation: cancellation);
-        }
-
         public ValueTask<object> GetByIdAsync(Type entityType, string id, long revision, CancellationToken cancellation)
         {
             if (entityType == null)
@@ -128,21 +123,104 @@ namespace AI4E.Storage.Domain
                 return new ValueTask<object>(result: null);
             }
 
-            return CachedDeserializeAsync(entityType, id, revision, cancellation);
-        }
-
-        public async ValueTask<(object entity, long revision)> LoadEntityAsync(Type entityType, string id, CancellationToken cancellation = default)
-        {
             var bucketId = GetBucket(entityType);
 
-            if (!_lookup.TryGetValue((bucketId, id, requestedRevision: default), out var result))
+            if (_lookup.TryGetValue((bucketId, id, revision), out var cachedResult))
             {
-                var stream = await _streamStore.OpenStreamAsync(bucketId, id, revision: default, cancellation);
-                var entity = Deserialize(entityType, stream);
-                result = (entity, revision: stream.StreamRevision);
-
-                _lookup[(bucketId, stream.StreamId, requestedRevision: default)] = result;
+                return new ValueTask<object>(result: cachedResult.entity);
             }
+
+            return GetByIdCoreAsync(bucketId, entityType, id, revision, cancellation);
+        }
+
+        public async ValueTask<object> GetByIdCoreAsync(string bucketId, Type entityType, string id, long revision, CancellationToken cancellation)
+        {
+            IStream stream;
+
+            try
+            {
+                stream = await _streamStore.OpenStreamAsync(bucketId, id, revision, cancellation);
+            }
+            catch (StreamNotFoundException) // TODO: Add an overload that returns a "null-stream"
+            {
+                return null;
+            }
+
+            Assert(revision != default, stream.StreamRevision == revision);
+            var entity = Deserialize(entityType, stream);
+
+            _lookup[(bucketId, stream.StreamId, revision)] = (entity, revision: stream.StreamRevision);
+
+            return entity;
+        }
+
+        public ValueTask<object> GetByIdAsync(Type entityType, string id, bool bypassCache, CancellationToken cancellation)
+        {
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            if (entityType.IsValueType)
+                throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
+
+            if (id == null)
+            {
+                return new ValueTask<object>(result: null);
+            }
+
+            var bucketId = GetBucket(entityType);
+
+            if (!bypassCache && _lookup.TryGetValue((bucketId, id, requestedRevision: default), out var result))
+            {
+                return new ValueTask<object>(result.entity);
+            }
+
+            return GetByIdCoreAsync(bucketId, entityType, id, cancellation);
+        }
+
+        private async ValueTask<object> GetByIdCoreAsync(string bucketId, Type entityType, string id, CancellationToken cancellation)
+        {
+            return (await LoadEntityAsync(bucketId, entityType, id, cancellation)).entity;
+        }
+
+        public ValueTask<long> GetRevisionAsync(Type entityType, string id, bool bypassCache, CancellationToken cancellation)
+        {
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            if (entityType.IsValueType)
+                throw new ArgumentException("The argument must specify a reference type.", nameof(entityType));
+
+            if (id == null)
+            {
+                return new ValueTask<long>(0);
+            }
+
+            var bucketId = GetBucket(entityType);
+
+            if (!bypassCache && _lookup.TryGetValue((bucketId, id, requestedRevision: default), out var result))
+            {
+                return new ValueTask<long>(result.revision);
+            }
+
+            return GetRevisionCoreAsync(bucketId, entityType, id, cancellation);
+        }
+
+        private async ValueTask<long> GetRevisionCoreAsync(string bucketId, Type entityType, string id, CancellationToken cancellation)
+        {
+            return (await LoadEntityAsync(bucketId, entityType, id, cancellation)).revision;
+        }
+
+        private async ValueTask<(object entity, long revision)> LoadEntityAsync(string bucketId, Type entityType, string id, CancellationToken cancellation)
+        {
+            var stream = await _streamStore.OpenStreamAsync(bucketId, id, throwIfNotFound: false, cancellation);
+
+            if (stream.StreamRevision == 0)
+                return (null, 0);
+
+            var entity = Deserialize(entityType, stream);
+            var result = (entity, revision: stream.StreamRevision);
+
+            _lookup[(bucketId, stream.StreamId, requestedRevision: default)] = result;
 
             return result;
         }
@@ -462,28 +540,6 @@ namespace AI4E.Storage.Domain
             Assert(revision != default, stream.StreamRevision == revision);
             var entity = Deserialize(entityType, stream);
             Assert(entity == null || entityType.IsAssignableFrom(entity.GetType()));
-
-            _lookup[(bucketId, stream.StreamId, revision)] = (entity, revision: stream.StreamRevision);
-
-            return entity;
-        }
-
-        private async ValueTask<object> CachedDeserializeAsync(Type entityType,
-                                                               string id,
-                                                               long revision,
-                                                               CancellationToken cancellation)
-        {
-            var bucketId = GetBucket(entityType);
-
-            if (_lookup.TryGetValue((bucketId, id, revision), out var cachedResult))
-            {
-                return cachedResult.entity;
-            }
-
-            var stream = await _streamStore.OpenStreamAsync(bucketId, id, revision, cancellation);
-
-            Assert(revision != default, stream.StreamRevision == revision);
-            var entity = Deserialize(entityType, stream);
 
             _lookup[(bucketId, stream.StreamId, revision)] = (entity, revision: stream.StreamRevision);
 

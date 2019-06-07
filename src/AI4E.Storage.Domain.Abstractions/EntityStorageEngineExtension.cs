@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -70,22 +70,6 @@ namespace AI4E.Storage.Domain
             return (await storageEngine.GetByIdAsync(typeof(TEntity), id, revision, cancellation)) as TEntity;
         }
 
-        public static async ValueTask<(TEntity entity, long revision)> LoadEntityAsync<TEntity>(this IEntityStorageEngine storageEngine, string id, CancellationToken cancellation = default)
-            where TEntity : class
-        {
-            if (storageEngine == null)
-                throw new ArgumentNullException(nameof(storageEngine));
-
-            var (entity, revision) = await storageEngine.LoadEntityAsync(typeof(TEntity), id, cancellation);
-
-            if (!(entity is TEntity convertedEntity))
-            {
-                return (null, default);
-            }
-
-            return (convertedEntity, revision);
-        }
-
         public static IAsyncEnumerable<TEntity> GetAllAsync<TEntity>(this IEntityStorageEngine storageEngine, CancellationToken cancellation = default)
             where TEntity : class
         {
@@ -153,6 +137,24 @@ namespace AI4E.Storage.Domain
            where TEntity : class
         {
             return storageEngine.TryDeleteAsync(typeof(TEntity), entity, cancellation);
+        }
+
+        public static ValueTask<object> GetByIdAsync(
+            this IEntityStorageEngine storageEngine,
+            Type entityType,
+            string id,
+            CancellationToken cancellation = default)
+        {
+            return storageEngine.GetByIdAsync(entityType, id, bypassCache: false, cancellation);
+        }
+
+        public static ValueTask<long> GetRevisionAsync(
+            this IEntityStorageEngine storageEngine,
+            Type entityType,
+            string id,
+            CancellationToken cancellation = default)
+        {
+            return storageEngine.GetRevisionAsync(entityType, id, bypassCache: false, cancellation);
         }
     }
 }

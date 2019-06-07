@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -27,11 +27,11 @@ namespace AI4E.Storage.Domain
 {
     public interface IEntityStorageEngine : IDisposable
     {
-        ValueTask<object> GetByIdAsync(Type entityType, string id, CancellationToken cancellation = default);
+        ValueTask<object> GetByIdAsync(Type entityType, string id, bool bypassCache, CancellationToken cancellation = default);
 
         ValueTask<object> GetByIdAsync(Type entityType, string id, long revision, CancellationToken cancellation = default);
 
-        ValueTask<(object entity, long revision)> LoadEntityAsync(Type entityType, string id, CancellationToken cancellation = default);
+        ValueTask<long> GetRevisionAsync(Type entityType, string id, bool bypassCache, CancellationToken cancellation = default);
 
         IAsyncEnumerable<object> GetAllAsync(Type entityType, CancellationToken cancellation = default);
 
@@ -46,5 +46,18 @@ namespace AI4E.Storage.Domain
         Task<bool> TryDeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation = default);
 
         IEnumerable<(Type type, string id, long revision, object entity)> LoadedEntries { get; }
+
+#if SUPPORTS_DEFAULT_INTERFACE_METHODS
+
+        public ValueTask<object> GetByIdAsync(Type entityType, string id, CancellationToken cancellation = default)
+        {
+            return GetByIdAsync(entityType, id, bypassCache: false, cancellation);
+        }
+
+        public ValueTask<long> GetRevisionAsync(Type entityType, string id, CancellationToken cancellation = default)
+        {
+            return GetRevisionAsync(entityType, id, bypassCache: false, cancellation);
+        }
+#endif
     }
 }
