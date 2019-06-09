@@ -15,6 +15,24 @@ namespace AI4E.Storage
         Task RemoveAsync<TData>(TData data, CancellationToken cancellation = default)
             where TData : class;
 
+#if SUPPORTS_DEFAULT_INTERFACE_METHODS
+        public Task StoreAsync(
+            Type dataType,
+            object data,
+            CancellationToken cancellation = default)
+        {
+            return ScopedDatabaseExtension.StoreAsync(this, dataType, data, cancellation);
+        }
+
+        public Task RemoveAsync(
+            Type dataType,
+            object data,
+            CancellationToken cancellation = default)
+        {
+            return ScopedDatabaseExtension.RemoveAsync(this, dataType, data, cancellation);
+        }
+#endif
+
         // Returns all entries of type 'TData' where predicate matches.
         IAsyncEnumerable<TData> GetAsync<TData>(Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
             where TData : class;
