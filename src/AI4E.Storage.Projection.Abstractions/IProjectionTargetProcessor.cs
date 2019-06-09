@@ -18,8 +18,6 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-// TODO: Move me to Projections.Abstractions, when we can remove the dependency on IScopedDatabase
-
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

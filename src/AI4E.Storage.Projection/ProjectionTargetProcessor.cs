@@ -580,7 +580,7 @@ namespace AI4E.Storage.Projection
 
         public IProjectionTargetProcessor CreateInstance(ProjectionSourceDescriptor projectedSource)
         {
-            return new SourceMetadataCache(projectedSource, _database);
+            return new ProjectionTargetProcessor(projectedSource, _database);
         }
     }
 
