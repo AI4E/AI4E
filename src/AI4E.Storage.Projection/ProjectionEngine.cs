@@ -21,38 +21,48 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
+#if NETSTD20
+using AI4E.Utils;
+#else
+using System.Linq;
+#endif
 
 namespace AI4E.Storage.Projection
 {
     public sealed partial class ProjectionEngine : IProjectionEngine
     {
         private readonly IProjectionExecutor _projector;
-        private readonly IDatabase _database;
+        private readonly IProjectionSourceProcessorFactory _sourceProcessorFactory;
+        private readonly IProjectionTargetProcessorFactory _targetProcessorFactory;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ProjectionEngine> _logger;
 
         public ProjectionEngine(IProjectionExecutor projector,
-                                IDatabase database,
-                                IServiceProvider serviceProvider,
-                                ILogger<ProjectionEngine> logger = default)
+            IProjectionSourceProcessorFactory sourceProcessorFactory,
+            IProjectionTargetProcessorFactory targetProcessorFactory,
+            IServiceProvider serviceProvider,
+            ILogger<ProjectionEngine> logger = default)
         {
             if (projector == null)
                 throw new ArgumentNullException(nameof(projector));
 
-            if (database == null)
-                throw new ArgumentNullException(nameof(database));
+            if (sourceProcessorFactory is null)
+                throw new ArgumentNullException(nameof(sourceProcessorFactory));
+
+            if (targetProcessorFactory is null)
+                throw new ArgumentNullException(nameof(targetProcessorFactory));
 
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
             _projector = projector;
-            _database = database;
+            _sourceProcessorFactory = sourceProcessorFactory;
+            _targetProcessorFactory = targetProcessorFactory;
             _serviceProvider = serviceProvider;
             _logger = logger;
         }
@@ -78,7 +88,7 @@ namespace AI4E.Storage.Projection
                 return;
             }
 
-            var targetProcessor = new ProjectionTargetProcessor(source, _database); // TODO: Inject an instance of IProjectionTargetProcessorFactory
+            var targetProcessor = _targetProcessorFactory.CreateInstance(source, _serviceProvider);
             var dependents = await ProjectAsync(targetProcessor, cancellation);
 
             processedSources.Add(source);
@@ -109,14 +119,14 @@ namespace AI4E.Storage.Projection
 
             using var scope = _serviceProvider.CreateScope();
             var scopedServiceProvider = scope.ServiceProvider;
-            var projectionSourceLoader = scopedServiceProvider.GetRequiredService<IProjectionSourceLoader>();
-            var updateNeeded = await CheckUpdateNeededAsync(projectionSourceLoader, targetProcessor, cancellation);
+            var sourceProcessor = _sourceProcessorFactory.CreateInstance(targetProcessor.ProjectedSource, scope.ServiceProvider);
+            var updateNeeded = await CheckUpdateNeededAsync(sourceProcessor, targetProcessor, cancellation);
 
             if (!updateNeeded)
                 return;
 
-            var source = await projectionSourceLoader.GetSourceAsync(targetProcessor.ProjectedSource, bypassCache: false, cancellation);
-            var sourceRevision = await projectionSourceLoader.GetSourceRevisionAsync(targetProcessor.ProjectedSource, bypassCache: false, cancellation);
+            var source = await sourceProcessor.GetSourceAsync(targetProcessor.ProjectedSource, bypassCache: false, cancellation);
+            var sourceRevision = await sourceProcessor.GetSourceRevisionAsync(targetProcessor.ProjectedSource, bypassCache: false, cancellation);
 
             var projectionResults = _projector.ExecuteProjectionAsync(targetProcessor.ProjectedSource.SourceType, source, scopedServiceProvider, cancellation);
 
@@ -145,9 +155,7 @@ namespace AI4E.Storage.Projection
                 await targetProcessor.RemoveEntityFromProjectionAsync(removedProjection, cancellation);
             }
 
-            var dependencies = GetDependencies(projectionSourceLoader, targetProcessor.ProjectedSource);
-
-            var updatedMetadata = new SourceMetadata(dependencies, targets, sourceRevision);
+            var updatedMetadata = new SourceMetadata(sourceProcessor.Dependencies, targets, sourceRevision);
             await targetProcessor.UpdateAsync(updatedMetadata, cancellation);
         }
 
@@ -156,7 +164,7 @@ namespace AI4E.Storage.Projection
         // - the version of our entity is greater than the projection version
         // - the version of any of our dependencies is greater than the projection version
         private async ValueTask<bool> CheckUpdateNeededAsync(
-            IProjectionSourceLoader projectionSourceLoader,
+            IProjectionSourceProcessor sourceProcessor,
             IProjectionTargetProcessor targetProcessor,
             CancellationToken cancellation)
         {
@@ -173,16 +181,15 @@ namespace AI4E.Storage.Projection
                 return true;
             }
 
-            return await CheckUpdateNeededAsync(targetProcessor.ProjectedSource, metadata, projectionSourceLoader, cancellation);
+            return await CheckUpdateNeededAsync(sourceProcessor, metadata, cancellation);
         }
 
         private async ValueTask<bool> CheckUpdateNeededAsync(
-            ProjectionSourceDescriptor projectionSource,
+            IProjectionSourceProcessor sourceProcessor,
             SourceMetadata metadata,
-            IProjectionSourceLoader projectionSourceLoader,
             CancellationToken cancellation)
         {
-            var sourceRevision = await GetSourceRevisionAsync(projectionSource, metadata.ProjectionRevision, projectionSourceLoader, cancellation);
+            var sourceRevision = await GetSourceRevisionAsync(sourceProcessor, metadata.ProjectionRevision, cancellation);
             Debug.Assert(sourceRevision >= metadata.ProjectionRevision);
 
             if (sourceRevision > metadata.ProjectionRevision)
@@ -192,7 +199,7 @@ namespace AI4E.Storage.Projection
 
             foreach (var (dependency, dependencyProjectionRevision) in metadata.Dependencies)
             {
-                var dependencyRevision = await GetSourceRevisionAsync(projectionSource, metadata.ProjectionRevision, projectionSourceLoader, cancellation);
+                var dependencyRevision = await GetSourceRevisionAsync(sourceProcessor, metadata.ProjectionRevision, cancellation);
                 Debug.Assert(dependencyRevision >= dependencyProjectionRevision);
 
                 if (dependencyRevision > dependencyProjectionRevision)
@@ -205,9 +212,8 @@ namespace AI4E.Storage.Projection
         }
 
         private async ValueTask<long> GetSourceRevisionAsync(
-            ProjectionSourceDescriptor projectionSource,
+            IProjectionSourceProcessor sourceProcessor,
             long projectionRevision,
-            IProjectionSourceLoader projectionSourceLoader,
             CancellationToken cancellation)
         {
             long sourceRevision;
@@ -215,20 +221,14 @@ namespace AI4E.Storage.Projection
 
             do
             {
-                sourceRevision = await projectionSourceLoader.GetSourceRevisionAsync(
-                    projectionSource, bypassCache: sourceOutOfDate, cancellation);
+                sourceRevision = await sourceProcessor.GetSourceRevisionAsync(
+                    bypassCache: sourceOutOfDate, cancellation);
 
                 sourceOutOfDate = sourceRevision < projectionRevision;
 
             } while (sourceRevision < projectionRevision);
 
             return sourceRevision;
-        }
-
-        // Gets our dependencies from the entity store.
-        private IEnumerable<ProjectionSourceDependency> GetDependencies(IProjectionSourceLoader projectionSourceLoader, ProjectionSourceDescriptor projectionSource)
-        {
-            return projectionSourceLoader.LoadedSources.Where(p => p.Dependency != projectionSource).ToArray();
         }
     }
 }

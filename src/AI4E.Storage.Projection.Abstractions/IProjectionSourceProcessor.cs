@@ -18,24 +18,51 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace AI4E.Storage.Projection
 {
-    public interface IProjectionSourceLoader
+    public interface IProjectionSourceProcessor
     {
+        ProjectionSourceDescriptor ProjectedSource { get; }
+
         ValueTask<object> GetSourceAsync(
             ProjectionSourceDescriptor projectionSource,
             bool bypassCache,
             CancellationToken cancellation = default);
 
-        public ValueTask<long> GetSourceRevisionAsync(
+        ValueTask<long> GetSourceRevisionAsync(
             ProjectionSourceDescriptor projectionSource,
             bool bypassCache,
             CancellationToken cancellation = default);
 
-        IEnumerable<ProjectionSourceDependency> LoadedSources { get; }
+        IEnumerable<ProjectionSourceDependency> Dependencies { get; }
+    }
+
+    public interface IProjectionSourceProcessorFactory
+    {
+        IProjectionSourceProcessor CreateInstance(ProjectionSourceDescriptor projectedSource, IServiceProvider serviceProvider);
+    }
+
+    public static class ProjectionSourceProcessorExtension
+    {
+        public static ValueTask<object> GetSourceAsync(
+            this IProjectionSourceProcessor sourceProcessor,
+            bool bypassCache,
+            CancellationToken cancellation = default)
+        {
+            return sourceProcessor.GetSourceAsync(sourceProcessor.ProjectedSource, bypassCache, cancellation);
+        }
+
+        public static ValueTask<long> GetSourceRevisionAsync(
+            this IProjectionSourceProcessor sourceProcessor,
+            bool bypassCache,
+            CancellationToken cancellation = default)
+        {
+            return sourceProcessor.GetSourceRevisionAsync(sourceProcessor.ProjectedSource, bypassCache, cancellation);
+        }
     }
 }

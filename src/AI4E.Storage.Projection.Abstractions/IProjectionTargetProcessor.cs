@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -48,6 +49,6 @@ namespace AI4E.Storage.Projection
 
     public interface IProjectionTargetProcessorFactory
     {
-        IProjectionTargetProcessor CreateInstance(ProjectionSourceDescriptor projectedSource);
+        IProjectionTargetProcessor CreateInstance(ProjectionSourceDescriptor projectedSource, IServiceProvider serviceProvider);
     }
 }

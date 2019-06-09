@@ -8,14 +8,10 @@
     <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
     <Compile Include="..\Common\IdGenerator.cs" Link="Internal\IdGenerator.cs" />
   </ItemGroup>
-
+  
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Storage.Projection.Abstractions\AI4E.Storage.Projection.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal\" />
   </ItemGroup>
 
   <ItemGroup>

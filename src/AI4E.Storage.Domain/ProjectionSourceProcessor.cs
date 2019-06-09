@@ -30,26 +30,35 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Storage.Projection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Domain
 {
-    public sealed class ProjectionSourceLoader : IProjectionSourceLoader
+    public sealed class ProjectionSourceProcessor : IProjectionSourceProcessor
     {
         private readonly IEntityStorageEngine _storageEngine;
 
-        public ProjectionSourceLoader(IEntityStorageEngine storageEngine)
+        public ProjectionSourceProcessor(IEntityStorageEngine storageEngine, ProjectionSourceDescriptor projectedSource)
         {
             if (storageEngine == null)
                 throw new ArgumentNullException(nameof(storageEngine));
 
             _storageEngine = storageEngine;
+            ProjectedSource = projectedSource;
         }
 
-        public IEnumerable<ProjectionSourceDependency> LoadedSources => _storageEngine.LoadedEntries.Select(p => new ProjectionSourceDependency(p.type, p.id, p.revision));
+        public ProjectionSourceDescriptor ProjectedSource { get; }
+
+        public IEnumerable<ProjectionSourceDependency> Dependencies => _storageEngine
+            .LoadedEntries
+            .Select(p => new ProjectionSourceDependency(p.type, p.id, p.revision))
+            .Where(p => p.Dependency != ProjectedSource)
+            .ToImmutableList();
 
         public ValueTask<object> GetSourceAsync(
             ProjectionSourceDescriptor projectionSource,
@@ -65,6 +74,15 @@ namespace AI4E.Storage.Domain
             CancellationToken cancellation)
         {
             return _storageEngine.GetRevisionAsync(projectionSource.SourceType, projectionSource.SourceId, bypassCache, cancellation);
+        }
+    }
+
+    public sealed class ProjectionSourceProcessorFactory : IProjectionSourceProcessorFactory
+    {
+        public IProjectionSourceProcessor CreateInstance(ProjectionSourceDescriptor projectedSource, IServiceProvider serviceProvider)
+        {
+            var storageEngine = serviceProvider.GetRequiredService<IEntityStorageEngine>();
+            return new ProjectionSourceProcessor(storageEngine, projectedSource);
         }
     }
 }

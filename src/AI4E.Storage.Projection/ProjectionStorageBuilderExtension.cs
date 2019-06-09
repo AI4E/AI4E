@@ -34,6 +34,8 @@ namespace AI4E.Storage
 
             services.TryAddSingleton<IProjectionRegistry, ProjectionRegistry>();
             services.TryAddSingleton<IProjectionEngine, ProjectionEngine>();
+            services.TryAddSingleton<IProjectionTargetProcessor, ProjectionTargetProcessor>();
+            // TODO: Register a default instance for ProjectionSourceProcessor
             services.ConfigureApplicationParts(ProjectionFeatureProvider.Configure);
             Projections.Register(storageBuilder);
 

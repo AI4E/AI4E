@@ -113,6 +113,9 @@ namespace AI4E.Storage.Projection
 
         public async IAsyncEnumerable<TTarget> ProjectAsync(
             TSource source,
+#if !NETSTD20
+            [EnumeratorCancellation]
+#endif
             CancellationToken cancellation)
         {
             if (source == null && !_projectionDescriptor.ProjectNonExisting)

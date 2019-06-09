@@ -30,6 +30,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
 using AI4E.Utils;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Projection
 {
@@ -393,19 +394,11 @@ namespace AI4E.Storage.Projection
 
     public sealed class ProjectionTargetProcessorFactory : IProjectionTargetProcessorFactory
     {
-        private readonly IDatabase _database;
-
-        public ProjectionTargetProcessorFactory(IDatabase database)
+        public IProjectionTargetProcessor CreateInstance(ProjectionSourceDescriptor projectedSource, IServiceProvider serviceProvider)
         {
-            if (database is null)
-                throw new ArgumentNullException(nameof(database));
+            var database = serviceProvider.GetRequiredService<IDatabase>();
 
-            _database = database;
-        }
-
-        public IProjectionTargetProcessor CreateInstance(ProjectionSourceDescriptor projectedSource)
-        {
-            return new ProjectionTargetProcessor(projectedSource, _database);
+            return new ProjectionTargetProcessor(projectedSource, database);
         }
     }
 
