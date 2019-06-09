@@ -19,9 +19,12 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
@@ -38,7 +41,7 @@ namespace AI4E.Storage.Projection
         private readonly IDatabase _database;
         private readonly IServiceProvider _serviceProvider;
 
-        private readonly IDictionary<Type, IProjectionTargetProcessor> _targetScopedProjectionEngines;
+        private readonly ProjectionTargetProcessor _targetScopedProjectionEngine;
 
         private readonly SourceMetadataCache _metadataCache;
 
@@ -61,8 +64,7 @@ namespace AI4E.Storage.Projection
 
             _metadataCache = new SourceMetadataCache(_sourceDescriptor, _database);
 
-
-            _targetScopedProjectionEngines = new Dictionary<Type, IProjectionTargetProcessor>();
+            _targetScopedProjectionEngine = new ProjectionTargetProcessor(_database);
         }
 
         // Projects the source entity and returns the descriptors of all dependent source entities. 
@@ -84,7 +86,7 @@ namespace AI4E.Storage.Projection
         private async Task ProjectCoreAsync(CancellationToken cancellation)
         {
             _metadataCache.Clear();
-            _targetScopedProjectionEngines.Clear();
+            _targetScopedProjectionEngine.Clear();
 
             using var scope = _serviceProvider.CreateScope();
             var scopedServiceProvider = scope.ServiceProvider;
@@ -140,13 +142,10 @@ namespace AI4E.Storage.Projection
                 return false;
             }
 
-            foreach (var targetTypedScopedEngine in _targetScopedProjectionEngines.Values)
+            if (!await _targetScopedProjectionEngine.WriteToDatabaseAsync(scopedDatabase, cancellation))
             {
-                if (!await targetTypedScopedEngine.WriteToDatabaseAsync(scopedDatabase, cancellation))
-                {
-                    await scopedDatabase.RollbackAsync();
-                    return false;
-                }
+                await scopedDatabase.RollbackAsync();
+                return false;
             }
 
             return true;
@@ -233,69 +232,54 @@ namespace AI4E.Storage.Projection
 
         #region ProjectCore
 
-        private IProjectionTargetProcessor GetTargetScopedProjectionEngine(Type targetType)
-        {
-            if (!_targetScopedProjectionEngines.TryGetValue(targetType, out var result))
-            {
-                var typeDefinition = typeof(ProjectionTargetProcessor<,>);
-                var idType = DataPropertyHelper.GetIdType(targetType);
-                var type = typeDefinition.MakeGenericType(idType, targetType);
-
-                result = (IProjectionTargetProcessor)Activator.CreateInstance(type, _database);
-                _targetScopedProjectionEngines.Add(targetType, result);
-            }
-
-            return result;
-        }
-
         private Task RemoveEntityFromProjectionAsync(ProjectionTargetDescriptor removedProjection,
                                                      CancellationToken cancellation)
         {
-            var targetScopedProjectionEngine = GetTargetScopedProjectionEngine(removedProjection.TargetType);
-
-            return targetScopedProjectionEngine.RemoveEntityFromProjectionAsync(_sourceDescriptor, removedProjection, cancellation);
+            return _targetScopedProjectionEngine.RemoveEntityFromProjectionAsync(_sourceDescriptor, removedProjection, cancellation);
         }
 
         private Task UpdateEntityToProjectionAsync(IProjectionResult projectionResult,
                                                 bool addEntityToProjections,
                                                 CancellationToken cancellation)
         {
-            var targetScopedProjectionEngine = GetTargetScopedProjectionEngine(projectionResult.ResultType);
-            return targetScopedProjectionEngine.UpdateEntityToProjectionAsync(_sourceDescriptor, projectionResult, addEntityToProjections, cancellation);
+            return _targetScopedProjectionEngine.UpdateEntityToProjectionAsync(_sourceDescriptor, projectionResult, addEntityToProjections, cancellation);
         }
 
         #endregion
 
-        private interface IProjectionTargetProcessor
+        private sealed class ProjectionTargetProcessor
         {
-            Task RemoveEntityFromProjectionAsync(
-                ProjectionSourceDescriptor projectionSource,
-                ProjectionTargetDescriptor removedProjection,
-                CancellationToken cancellation);
+            private static readonly MethodInfo _loadTargetMethodDefinition;
 
-            Task UpdateEntityToProjectionAsync(
-                ProjectionSourceDescriptor projectionSource,
-                IProjectionResult projectionResult,
-                bool addEntityToProjections,
-                CancellationToken cancellation);
+            private static readonly ConcurrentDictionary<Type, Func<IDatabase, object, CancellationToken, ValueTask<object>>> _loadTargetMethods
+                           = new ConcurrentDictionary<Type, Func<IDatabase, object, CancellationToken, ValueTask<object>>>();
 
-            Task<bool> WriteToDatabaseAsync(
-                IScopedDatabase scopedDatabase,
-                CancellationToken cancellation);
-        }
+            private static readonly Func<Type, Func<IDatabase, object, CancellationToken, ValueTask<object>>> _buildLoadTargetMethodCache = BuildLoadTargetMethod;
 
-        private sealed class ProjectionTargetProcessor<TTargetId, TTarget> : IProjectionTargetProcessor
-            where TTarget : class
-        {
+            static ProjectionTargetProcessor()
+            {
+                _loadTargetMethodDefinition = typeof(ProjectionTargetProcessor)
+                    .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+                    .Single(p => p.Name == nameof(ProjectionTargetProcessor.LoadTargetAsync) &&
+                                 p.IsGenericMethodDefinition);
+            }
+
             private readonly IDatabase _database;
             private readonly IDictionary<ProjectionTargetDescriptor, ProjectionTargetMetadataCacheEntry> _targetMetadataCache;
-            private readonly List<TTarget> _targetsToUpdate = new List<TTarget>();
-            private readonly List<TTarget> _targetsToDelete = new List<TTarget>();
+            private readonly Dictionary<ProjectionTargetDescriptor, object> _targetsToUpdate = new Dictionary<ProjectionTargetDescriptor, object>();
+            private readonly Dictionary<ProjectionTargetDescriptor, object> _targetsToDelete = new Dictionary<ProjectionTargetDescriptor, object>();
 
             public ProjectionTargetProcessor(IDatabase database)
             {
                 _targetMetadataCache = new Dictionary<ProjectionTargetDescriptor, ProjectionTargetMetadataCacheEntry>();
                 _database = database;
+            }
+
+            public void Clear()
+            {
+                _targetMetadataCache.Clear();
+                _targetsToUpdate.Clear();
+                _targetsToDelete.Clear();
             }
 
             public async Task<bool> WriteToDatabaseAsync(IScopedDatabase transactionalDatabase, CancellationToken cancellation)
@@ -304,10 +288,10 @@ namespace AI4E.Storage.Projection
                 foreach (var (originalMetadata, touchedMetadata) in _targetMetadataCache.Values.Where(p => p.Touched))
                 {
                     var comparandMetdata = await transactionalDatabase
-                        .GetAsync<ProjectionTargetMetadata>(p => p.Id == (originalMetadata ?? touchedMetadata).Id)
+                        .GetAsync<ProjectionTargetMetadataEntry>(p => p.Id == (originalMetadata ?? touchedMetadata).Id)
                         .FirstOrDefaultAsync(cancellation);
 
-                    if (!MatchesByRevision(originalMetadata, comparandMetdata))
+                    if (!ProjectionTargetMetadataEntry.MatchesByRevision(originalMetadata, comparandMetdata))
                     {
                         return false;
                     }
@@ -328,182 +312,204 @@ namespace AI4E.Storage.Projection
 
                 // TODO: Do we have to check whether the targets were updated concurrently?
 
-                foreach (var targetToUpdate in _targetsToUpdate)
+                foreach (var target in _targetsToUpdate)
                 {
-                    await transactionalDatabase.StoreAsync(targetToUpdate, cancellation);
+                    await transactionalDatabase.StoreAsync(target.Key.TargetType, target.Value, cancellation);
                 }
 
-                foreach (var targetToDelete in _targetsToDelete)
+                foreach (var target in _targetsToDelete)
                 {
-                    await transactionalDatabase.RemoveAsync(targetToDelete, cancellation);
+                    await transactionalDatabase.RemoveAsync(target.Key.TargetType, target.Value, cancellation);
                 }
 
                 return true;
             }
 
-            private bool MatchesByRevision(ProjectionTargetMetadata original, ProjectionTargetMetadata comparand)
+            public async Task UpdateEntityToProjectionAsync(
+                ProjectionSourceDescriptor source,
+                IProjectionResult projectionResult,
+                bool addToTargetMetadata,
+                CancellationToken cancellation)
             {
-                if (original is null)
-                    return comparand is null;
+                var target = new ProjectionTargetDescriptor(projectionResult.ResultType, projectionResult.ResultId.ToString()); // TODO: Can the id be null?
+                _targetsToUpdate[target] = projectionResult.Result;
 
-                if (comparand is null)
-                    return false;
-
-                return original.MetadataRevision == comparand.MetadataRevision;
-            }
-
-            public async Task UpdateEntityToProjectionAsync(ProjectionSourceDescriptor projectionSource,
-                                                         IProjectionResult projectionResult,
-                                                         bool addEntityToProjections,
-                                                         CancellationToken cancellation)
-            {
-                if (addEntityToProjections)
+                if (!addToTargetMetadata)
                 {
-                    var projectionId = projectionResult.GetId<TTargetId>();
-                    var addedProjection = new ProjectionTargetDescriptor<TTargetId>(typeof(TTarget), projectionId);
-                    var (originalMetadata, metadata) = await GetMetadataAsync(addedProjection, cancellation);
-
-                    Debug.Assert(!metadata.ProjectionSources.Any(p => p.Id == projectionSource.SourceId &&
-                                                                p.Type == projectionSource.SourceType.GetUnqualifiedTypeName()));
-
-                    var storedProjectionSource = new ProjectionSource
-                    {
-                        Id = projectionSource.SourceId,
-                        Type = projectionSource.SourceType.GetUnqualifiedTypeName()
-                    };
-
-                    metadata.ProjectionSources.Add(storedProjectionSource);
-
-                    _targetMetadataCache[addedProjection] = new ProjectionTargetMetadataCacheEntry(originalMetadata,
-                                                                                                   metadata,
-                                                                                                   touched: true);
+                    return;
                 }
 
-                _targetsToUpdate.Add((TTarget)projectionResult.Result);
+                var entry = await GetEntryAsync(target, cancellation) ?? new ProjectionTargetMetadataEntry
+                {
+                    TargetId = projectionResult.ResultId,
+                    TargetType = projectionResult.ResultType.GetUnqualifiedTypeName()
+                };
+
+                entry.ProjectionSources.Add(new ProjectionSourceEntry(source));
+
+                UpdateEntry(entry);
             }
 
             public async Task RemoveEntityFromProjectionAsync(ProjectionSourceDescriptor projectionSource,
                                                               ProjectionTargetDescriptor removedProjection,
                                                               CancellationToken cancellation)
             {
-                var (originalMetadata, metadata) = await GetMetadataAsync(removedProjection, cancellation);
+                var entry = await GetEntryAsync(removedProjection, cancellation);
 
-                if (metadata == null)
+                if (entry == null)
                 {
-                    Debug.Assert(false);
                     return;
                 }
 
-                var removed = metadata.ProjectionSources
+                var removed = entry.ProjectionSources
                                       .RemoveFirstWhere(p => p.Id == projectionSource.SourceId &&
                                                              p.Type == projectionSource.SourceType.GetUnqualifiedTypeName());
 
-                Debug.Assert(removed != null);
-
-                if (!metadata.ProjectionSources.Any())
+                if (!entry.ProjectionSources.Any())
                 {
-                    _targetMetadataCache[removedProjection] = new ProjectionTargetMetadataCacheEntry(originalMetadata,
-                                                                                                     metadata: null,
-                                                                                                     touched: true);
+                    DeleteEntry(entry);
 
-                    var predicate = DataPropertyHelper.BuildPredicate<TTargetId, TTarget>(metadata.TargetId);
-                    var projection = await _database.GetAsync(predicate, cancellation).FirstOrDefaultAsync(cancellation);
+                    object projection = LoadTargetAsync(_database, removedProjection.TargetType, entry.TargetId, cancellation);
 
                     if (projection != null)
                     {
-                        _targetsToDelete.Add(projection);
-                        //await _database.RemoveAsync(projection, cancellation);
+                        _targetsToDelete[removedProjection] = projection;
                     }
                 }
+                else
+                {
+                    UpdateEntry(entry);
+                }
+            }
 
-                _targetMetadataCache[removedProjection] = new ProjectionTargetMetadataCacheEntry(originalMetadata,
-                                                                                                 metadata,
-                                                                                                 touched: true);
+            private static Func<IDatabase, object, CancellationToken, ValueTask<object>> BuildLoadTargetMethod(Type targetType)
+            {
+                Debug.Assert(_loadTargetMethodDefinition.IsGenericMethodDefinition);
+                Debug.Assert(_loadTargetMethodDefinition.GetGenericArguments().Length == 2);
+
+                var idType = DataPropertyHelper.GetIdType(targetType);
+                var method = _loadTargetMethodDefinition.MakeGenericMethod(idType, targetType);
+
+                Debug.Assert(method.ReturnType == typeof(ValueTask<object>));
+                Debug.Assert(method.GetParameters().Select(p => p.ParameterType).SequenceEqual(new Type[] { typeof(IDatabase), idType, typeof(CancellationToken) }));
+
+                var databaseParameter = Expression.Parameter(typeof(IDatabase), "database");
+                var idParameter = Expression.Parameter(typeof(object), "id");
+                var cancellationParameter = Expression.Parameter(typeof(CancellationToken), "cancellation");
+                var convertedId = Expression.Convert(idParameter, idType);
+                var call = Expression.Call(method, databaseParameter, convertedId, cancellationParameter);
+                var lambda = Expression.Lambda<Func<IDatabase, object, CancellationToken, ValueTask<object>>>(call, databaseParameter, idParameter, cancellationParameter);
+                return lambda.Compile();
+            }
+
+            private ValueTask<object> LoadTargetAsync(IDatabase database, Type targetType, object id, CancellationToken cancellation)
+            {
+                var invoker = _loadTargetMethods.GetOrAdd(targetType, _buildLoadTargetMethodCache);
+                return invoker.Invoke(database, id, cancellation);
+            }
+
+            private static async ValueTask<object> LoadTargetAsync<TId, TTarget>(IDatabase database, TId id, CancellationToken cancellation)
+                where TTarget : class
+            {
+                var predicate = DataPropertyHelper.BuildPredicate<TId, TTarget>(id);
+                return await database.GetOneAsync(predicate, cancellation);
             }
 
             private readonly struct ProjectionTargetMetadataCacheEntry
             {
-                public ProjectionTargetMetadataCacheEntry(ProjectionTargetMetadata originalMetadata,
-                                                          ProjectionTargetMetadata metadata,
+                public ProjectionTargetMetadataCacheEntry(ProjectionTargetMetadataEntry originalEntry,
+                                                          ProjectionTargetMetadataEntry entry,
                                                           bool touched)
                 {
-                    if (originalMetadata == null && metadata == null)
-                        touched = false;
+                    Debug.Assert(originalEntry != null || entry != null);
 
-                    OriginalMetadata = originalMetadata;
-                    Metadata = metadata;
+                    OriginalEntry = originalEntry;
+                    Entry = entry;
                     Touched = touched;
                 }
 
-                public ProjectionTargetMetadata OriginalMetadata { get; }
-                public ProjectionTargetMetadata Metadata { get; }
+                public ProjectionTargetMetadataEntry OriginalEntry { get; }
+                public ProjectionTargetMetadataEntry Entry { get; }
                 public bool Touched { get; }
 
-                public void Deconstruct(out ProjectionTargetMetadata originalMetadata,
-                                        out ProjectionTargetMetadata metadata)
+                public void Deconstruct(out ProjectionTargetMetadataEntry originalMetadata,
+                                        out ProjectionTargetMetadataEntry metadata)
                 {
-                    originalMetadata = OriginalMetadata;
-                    metadata = Metadata;
+                    originalMetadata = OriginalEntry;
+                    metadata = Entry;
                 }
             }
 
-            private async ValueTask<ProjectionTargetMetadataCacheEntry> GetMetadataAsync(ProjectionTargetDescriptor<TTargetId> target,
-                                                                                         CancellationToken cancellation)
+            private void UpdateEntry(ProjectionTargetMetadataEntry entry)
             {
-                if (!_targetMetadataCache.TryGetValue(target, out var entry))
+                Debug.Assert(entry != null);
+
+                var targetType = entry.TargetType;
+                var targetId = entry.StringifiedTargetId;
+                var targetDescriptor = new ProjectionTargetDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(targetType), targetId);
+
+                if (!_targetMetadataCache.TryGetValue(targetDescriptor, out var cacheEntry))
                 {
-                    var entryId = ProjectionTargetMetadata
-                        .GenerateId(target.TargetId.ToString(), target.TargetType.GetUnqualifiedTypeName());
+                    cacheEntry = default;
+                }
 
-                    var metadata = await _database
-                        .GetAsync<ProjectionTargetMetadata>(p => p.Id == entryId, cancellation)
-                        .FirstOrDefaultAsync(cancellation);
+                _targetMetadataCache[targetDescriptor] = new ProjectionTargetMetadataCacheEntry(cacheEntry.OriginalEntry, entry.DeepClone(), touched: true);
+            }
 
-                    var originalMetadata = metadata;
-                    var touched = false;
+            private void DeleteEntry(ProjectionTargetMetadataEntry entry)
+            {
+                Debug.Assert(entry != null);
 
-                    if (metadata == null)
-                    {
-                        metadata = new ProjectionTargetMetadata
-                        {
-                            TargetId = target.TargetId,
-                            TargetType = target.TargetType.GetUnqualifiedTypeName()
-                        };
+                var targetType = entry.TargetType;
+                var targetId = entry.StringifiedTargetId;
+                var targetDescriptor = new ProjectionTargetDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(targetType), targetId);
 
-                        touched = true;
-                    }
+                if (!_targetMetadataCache.TryGetValue(targetDescriptor, out var cacheEntry))
+                {
+                    return;
+                }
 
-                    entry = new ProjectionTargetMetadataCacheEntry(originalMetadata, metadata, touched);
-                    _targetMetadataCache.Add(target, entry);
+                if (cacheEntry.OriginalEntry is null)
+                {
+                    _targetMetadataCache.Remove(targetDescriptor);
+                }
+
+                _targetMetadataCache[targetDescriptor] = new ProjectionTargetMetadataCacheEntry(cacheEntry.OriginalEntry, null, touched: true);
+            }
+
+            private ValueTask<ProjectionTargetMetadataEntry> GetEntryAsync(
+                ProjectionTargetDescriptor target,
+                CancellationToken cancellation)
+            {
+                if (_targetMetadataCache.TryGetValue(target, out var cacheEntry))
+                {
+                    return new ValueTask<ProjectionTargetMetadataEntry>(cacheEntry.Entry.DeepClone());
+                }
+
+                return GetEntryCoreAsync(target, cancellation);
+            }
+
+            private async ValueTask<ProjectionTargetMetadataEntry> GetEntryCoreAsync(
+                ProjectionTargetDescriptor target,
+                CancellationToken cancellation)
+            {
+                var entryId = ProjectionTargetMetadataEntry.GenerateId(
+                    target.TargetId,
+                    target.TargetType.GetUnqualifiedTypeName());
+
+                var entry = await _database.GetOneAsync<ProjectionTargetMetadataEntry>(p => p.Id == entryId, cancellation);
+
+                if (entry != null)
+                {
+                    var originalEntry = entry.DeepClone();
+                    var cacheEntry = new ProjectionTargetMetadataCacheEntry(originalEntry, entry, touched: false);
+                    _targetMetadataCache.Add(target, cacheEntry);
                 }
 
                 return entry;
             }
 
-            private async ValueTask<ProjectionTargetMetadataCacheEntry> GetMetadataAsync(ProjectionTargetDescriptor target,
-                                                                                         CancellationToken cancellation)
-            {
-                if (!_targetMetadataCache.TryGetValue(target, out var entry))
-                {
-                    var entryId = ProjectionTargetMetadata
-                        .GenerateId(target.TargetId, target.TargetType.GetUnqualifiedTypeName());
-
-                    var metadata = await _database
-                        .GetAsync<ProjectionTargetMetadata>(p => p.Id == entryId, cancellation)
-                        .FirstOrDefaultAsync(cancellation);
-
-                    entry = new ProjectionTargetMetadataCacheEntry(metadata, metadata, touched: false);
-
-                    if (metadata != null)
-                    {
-                        _targetMetadataCache.Add(target, entry);
-                    }
-                }
-
-                return entry;
-            }
-
-            private sealed class ProjectionTargetMetadata
+            private sealed class ProjectionTargetMetadataEntry
             {
                 private string _id;
                 private string _stringifiedTargetId;
@@ -529,7 +535,7 @@ namespace AI4E.Storage.Projection
 
                 public long MetadataRevision { get; set; } = 1;
 
-                public TTargetId TargetId { get; set; }
+                public object TargetId { get; set; }
                 public string StringifiedTargetId
                 {
                     get
@@ -545,11 +551,30 @@ namespace AI4E.Storage.Projection
                 }
 
                 public string TargetType { get; set; }
-                public List<ProjectionSource> ProjectionSources { get; private set; } = new List<ProjectionSource>();
+                public List<ProjectionSourceEntry> ProjectionSources { get; private set; } = new List<ProjectionSourceEntry>();
+
+                public static bool MatchesByRevision(ProjectionTargetMetadataEntry original, ProjectionTargetMetadataEntry comparand)
+                {
+                    if (original is null)
+                        return comparand is null;
+
+                    if (comparand is null)
+                        return false;
+
+                    return original.MetadataRevision == comparand.MetadataRevision;
+                }
             }
 
-            private sealed class ProjectionSource
+            private sealed class ProjectionSourceEntry
             {
+                public ProjectionSourceEntry() { }
+
+                public ProjectionSourceEntry(ProjectionSourceDescriptor source)
+                {
+                    Id = source.SourceId;
+                    Type = source.SourceType.ToString();
+                }
+
                 public string Id { get; set; }
                 public string Type { get; set; }
             }

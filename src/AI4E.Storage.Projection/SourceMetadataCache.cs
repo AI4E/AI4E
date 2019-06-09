@@ -60,14 +60,14 @@ namespace AI4E.Storage.Projection
 
         public async ValueTask<IEnumerable<ProjectionSourceDescriptor>> GetDependentsAsync(CancellationToken cancellation)
         {
-            var entry = await GetEntryAsync(ProjectedSource, createIfNonExistent: false, cancellation);
+            var entry = await GetEntryAsync(ProjectedSource, cancellation);
 
             return entry == null ? Enumerable.Empty<ProjectionSourceDescriptor>() : entry.Dependents.Select(p => p.ToDescriptor()).ToImmutableList();
         }
 
         public async ValueTask<SourceMetadata> GetMetadataAsync(CancellationToken cancellation)
         {
-            var entry = await GetEntryAsync(ProjectedSource, createIfNonExistent: false, cancellation);
+            var entry = await GetEntryAsync(ProjectedSource, cancellation);
 
             if (entry == null)
                 return default;
@@ -77,7 +77,10 @@ namespace AI4E.Storage.Projection
 
         public async ValueTask UpdateAsync(SourceMetadata metadata, CancellationToken cancellation)
         {
-            var entry = await GetEntryAsync(ProjectedSource, createIfNonExistent: true, cancellation);
+            var entry = await GetEntryAsync(ProjectedSource, cancellation) ??
+                        new ProjectionSourceMetadataEntry(
+                            ProjectedSource.SourceId,
+                            ProjectedSource.SourceType.GetUnqualifiedTypeName());
 
             // Write the new source revision to the metadata
             entry.ProjectionRevision = metadata.ProjectionRevision;
@@ -105,7 +108,10 @@ namespace AI4E.Storage.Projection
                     if (dependency == default)
                         throw new ArgumentDefaultException(nameof(dependency));
 
-                    var entry = await GetEntryAsync(dependency, createIfNonExistent: true, cancellation);
+                    var entry = await GetEntryAsync(dependency, cancellation) ??
+                        new ProjectionSourceMetadataEntry(
+                            dependency.SourceId,
+                            dependency.SourceType.GetUnqualifiedTypeName());
 
                     entry.Dependents.Add(new DependentEntry(ProjectedSource));
                     UpdateEntry(entry);
@@ -122,7 +128,11 @@ namespace AI4E.Storage.Projection
                     if (dependency == default)
                         throw new ArgumentDefaultException(nameof(dependency));
 
-                    var entry = await GetEntryAsync(dependency, createIfNonExistent: true, cancellation);
+                    var entry = await GetEntryAsync(dependency, cancellation) ??
+                        new ProjectionSourceMetadataEntry(
+                            dependency.SourceId,
+                            dependency.SourceType.GetUnqualifiedTypeName());
+
                     var removed = entry.Dependents.Remove(new DependentEntry(ProjectedSource));
 
                     Debug.Assert(removed);
@@ -189,53 +199,29 @@ namespace AI4E.Storage.Projection
 
         private ValueTask<ProjectionSourceMetadataEntry> GetEntryAsync(
             ProjectionSourceDescriptor sourceDescriptor,
-            bool createIfNonExistent,
             CancellationToken cancellation)
         {
-            if (!_sourceMetadataCache.TryGetValue(sourceDescriptor, out var cacheEntry))
+            if (_sourceMetadataCache.TryGetValue(sourceDescriptor, out var cacheEntry))
             {
-                return GetEntryCoreAsync(sourceDescriptor, createIfNonExistent, cancellation);
+                return new ValueTask<ProjectionSourceMetadataEntry>(cacheEntry.Entry.DeepClone());
             }
 
-            if (cacheEntry.Entry == null && createIfNonExistent)
-            {
-                var entry = new ProjectionSourceMetadataEntry(
-                    sourceDescriptor.SourceId,
-                    sourceDescriptor.SourceType.GetUnqualifiedTypeName());
-
-                cacheEntry = new CacheEntry(cacheEntry.OriginalEntry, entry, touched: true);
-                _sourceMetadataCache[sourceDescriptor] = cacheEntry;
-            }
-
-            return new ValueTask<ProjectionSourceMetadataEntry>(cacheEntry.Entry);
+            return GetEntryCoreAsync(sourceDescriptor, cancellation);
         }
 
         private async ValueTask<ProjectionSourceMetadataEntry> GetEntryCoreAsync(
             ProjectionSourceDescriptor sourceDescriptor,
-            bool createIfNonExistent,
             CancellationToken cancellation)
         {
             var entry = await QueryEntryAsync(sourceDescriptor, cancellation);
             var touched = false;
 
-            if (entry == null && createIfNonExistent)
-            {
-                entry = new ProjectionSourceMetadataEntry(
-                    sourceDescriptor.SourceId,
-                    sourceDescriptor.SourceType.GetUnqualifiedTypeName());
-
-                touched = true;
-            }
-
-            var originalEntry = default(ProjectionSourceMetadataEntry);
-
             if (entry != null)
             {
-                originalEntry = entry.DeepClone();
+                var originalEntry = entry.DeepClone();
+                var cacheEntry = new CacheEntry(originalEntry, entry, touched);
+                _sourceMetadataCache[sourceDescriptor] = cacheEntry;
             }
-
-            var cacheEntry = new CacheEntry(originalEntry, entry, touched);
-            _sourceMetadataCache[sourceDescriptor] = cacheEntry;
 
             return entry;
         }
@@ -244,11 +230,10 @@ namespace AI4E.Storage.Projection
             ProjectionSourceDescriptor sourceDescriptor, CancellationToken cancellation)
         {
             var entryId = ProjectionSourceMetadataEntry.GenerateId(
-                sourceDescriptor.SourceId, sourceDescriptor.SourceType.GetUnqualifiedTypeName());
+                sourceDescriptor.SourceId,
+                sourceDescriptor.SourceType.GetUnqualifiedTypeName());
 
-            return await _database
-                .GetAsync<ProjectionSourceMetadataEntry>(p => p.Id == entryId, cancellation)
-                .FirstOrDefaultAsync(cancellation);
+            return await _database.GetOneAsync<ProjectionSourceMetadataEntry>(p => p.Id == entryId, cancellation);
         }
 
         private void UpdateEntry(ProjectionSourceMetadataEntry entry)
@@ -264,7 +249,7 @@ namespace AI4E.Storage.Projection
                 cacheEntry = default;
             }
 
-            _sourceMetadataCache[sourceDescriptor] = new CacheEntry(cacheEntry.OriginalEntry, entry, touched: true);
+            _sourceMetadataCache[sourceDescriptor] = new CacheEntry(cacheEntry.OriginalEntry, entry.DeepClone(), touched: true);
         }
 
         private void DeleteEntry(ProjectionSourceMetadataEntry entry)
