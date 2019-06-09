@@ -59,7 +59,7 @@ namespace AI4E.Storage.Projection
             _database = database;
             _serviceProvider = serviceProvider;
 
-            _metadataCache = new SourceMetadataCache(_database);
+            _metadataCache = new SourceMetadataCache(_sourceDescriptor, _database);
 
 
             _targetScopedProjectionEngines = new Dictionary<Type, IProjectionTargetProcessor>();
@@ -73,15 +73,15 @@ namespace AI4E.Storage.Projection
 
             do
             {
-                await ExecuteProjectionAsync(cancellation);
-                dependents = await GetDependentsAsync(cancellation);
+                await ProjectCoreAsync(cancellation);
+                dependents = await _metadataCache.GetDependentsAsync(cancellation);
             }
             while (!await WriteToDatabaseAsync(scopedDatabase, cancellation) || !await scopedDatabase.TryCommitAsync(cancellation));
 
             return dependents;
         }
 
-        private async Task ExecuteProjectionAsync(CancellationToken cancellation)
+        private async Task ProjectCoreAsync(CancellationToken cancellation)
         {
             _metadataCache.Clear();
             _targetScopedProjectionEngines.Clear();
@@ -89,17 +89,46 @@ namespace AI4E.Storage.Projection
             using var scope = _serviceProvider.CreateScope();
             var scopedServiceProvider = scope.ServiceProvider;
             var projectionSourceLoader = scopedServiceProvider.GetRequiredService<IProjectionSourceLoader>();
-            var updateNeeded = await GetProjectionStateAsync(projectionSourceLoader, cancellation);
+            var updateNeeded = await CheckUpdateNeededAsync(projectionSourceLoader, cancellation);
 
             if (!updateNeeded)
                 return;
 
-            if (await ProjectCoreAsync(projectionSourceLoader, scopedServiceProvider, cancellation))
+            var source = await projectionSourceLoader.GetSourceAsync(_sourceDescriptor, bypassCache: false, cancellation);
+            var sourceRevision = await projectionSourceLoader.GetSourceRevisionAsync(_sourceDescriptor, bypassCache: false, cancellation);
+
+            var projectionResults = _projector.ExecuteProjectionAsync(_sourceDescriptor.SourceType, source, scopedServiceProvider, cancellation);
+
+            var metadata = await _metadataCache.GetMetadataAsync(cancellation);
+            var appliedTargets = metadata.Targets.ToHashSet();
+
+            var targets = new List<ProjectionTargetDescriptor>();
+
+            // TODO: Ensure that there are no two projection results with the same type and id. 
+            //       Otherwise bad things happen.
+
+            await foreach (var projectionResult in projectionResults)
             {
-                // Only update dependencies if there are any projections.
-                var dependencies = GetDependencies(projectionSourceLoader);
-                await UpdateDependenciesAsync(dependencies, cancellation); // TODO: Do we have to clear the dependency list, if there are no projections?
+                var projection = projectionResult.ToTargetDescriptor();
+                targets.Add(projection);
+
+                // The target was not part of the last projection. Store ourself to the target metadata.
+                var addEntityToProjections = !appliedTargets.Remove(projection);
+
+                await UpdateEntityToProjectionAsync(projectionResult, addEntityToProjections, cancellation);
             }
+
+            // We removed all targets from 'applied projections' that are still present. 
+            // The remaining ones are removed targets.
+            foreach (var removedProjection in appliedTargets)
+            {
+                await RemoveEntityFromProjectionAsync(removedProjection, cancellation);
+            }
+
+            var dependencies = GetDependencies(projectionSourceLoader);
+
+            var updatedMetadata = new SourceMetadata(dependencies, targets, sourceRevision);
+            await _metadataCache.UpdateAsync(updatedMetadata, cancellation);
         }
 
         private async Task<bool> WriteToDatabaseAsync(IScopedDatabase scopedDatabase, CancellationToken cancellation)
@@ -127,7 +156,7 @@ namespace AI4E.Storage.Projection
         // We have to project if
         // - the version of our entity is greater than the projection version
         // - the version of any of our dependencies is greater than the projection version
-        private async ValueTask<bool> GetProjectionStateAsync(
+        private async ValueTask<bool> CheckUpdateNeededAsync(
             IProjectionSourceLoader projectionSourceLoader,
             CancellationToken cancellation)
         {
@@ -137,27 +166,18 @@ namespace AI4E.Storage.Projection
             // For that reason, performance should not suffer very much 
             // in comparison to not checking whether an update is needed.
 
-            var metadata = await _metadataCache.GetMetadataAsync(_sourceDescriptor, createIfNonExistent: false, cancellation);
+            var metadata = await _metadataCache.GetMetadataAsync(cancellation);
 
-            if (metadata == null)
+            if (metadata.ProjectionRevision == 0)
             {
                 return true;
             }
 
-            var updateNeeded = await CheckUpdateNeededAsync(metadata, projectionSourceLoader, cancellation);
-
-            if (updateNeeded)
-            {
-                var sourceRevision = await GetSourceRevisionAsync(_sourceDescriptor, metadata.ProjectionRevision, projectionSourceLoader, cancellation);
-                metadata.ProjectionRevision = sourceRevision;
-                _metadataCache.Update(metadata);
-            }
-
-            return updateNeeded;
+            return await CheckUpdateNeededAsync(metadata, projectionSourceLoader, cancellation);
         }
 
         private async ValueTask<bool> CheckUpdateNeededAsync(
-            IProjectionSourceMetdata metadata,
+            SourceMetadata metadata,
             IProjectionSourceLoader projectionSourceLoader,
             CancellationToken cancellation)
         {
@@ -208,134 +228,10 @@ namespace AI4E.Storage.Projection
         private IEnumerable<ProjectionSourceDependency> GetDependencies(IProjectionSourceLoader projectionSourceLoader)
         {
             var sourceDescriptor = _sourceDescriptor;
-
-            bool IsCurrentEntity(ProjectionSourceDependency cacheEntry)
-            {
-                return cacheEntry.Dependency.SourceId == sourceDescriptor.SourceId && cacheEntry.Dependency.SourceType == sourceDescriptor.SourceType;
-            }
-
-            return projectionSourceLoader.LoadedSources
-                                         .Where(p => !IsCurrentEntity(p))
-                                         .ToArray();
-        }
-
-        // Gets our dependents.
-        private async ValueTask<IEnumerable<ProjectionSourceDescriptor>> GetDependentsAsync(CancellationToken cancellation)
-        {
-            var metadata = await _metadataCache.GetMetadataAsync(_sourceDescriptor, createIfNonExistent: false, cancellation);
-
-            if (metadata == null)
-            {
-                return Enumerable.Empty<ProjectionSourceDescriptor>();
-            }
-
-            return metadata.Dependents;
-        }
-
-        // Updates our dependency list to match the specified dependencies.
-        private async Task UpdateDependenciesAsync(IEnumerable<ProjectionSourceDependency> dependencies, CancellationToken cancellation)
-        {
-            var metadata = await _metadataCache.GetMetadataAsync(_sourceDescriptor, createIfNonExistent: true, cancellation);
-            var storedDependencies = metadata.Dependencies.Select(p => p.Dependency);
-
-            foreach (var added in dependencies.Select(p => p.Dependency).Except(storedDependencies))
-            {
-                await AddDependentAsync(added, cancellation);
-            }
-
-            foreach (var removed in storedDependencies.Except(dependencies.Select(p => p.Dependency)))
-            {
-                await RemoveDependentAsync(removed, cancellation);
-            }
-
-            metadata.Dependencies.Clear();
-            metadata.Dependencies.AddRange(dependencies);
-
-            _metadataCache.Update(metadata);
-        }
-
-        // Add ourself as dependent to `dependency`.
-        private async Task AddDependentAsync(ProjectionSourceDescriptor dependency,
-                                             CancellationToken cancellation)
-        {
-            if (dependency == default)
-                throw new ArgumentDefaultException(nameof(dependency));
-
-            var metadata = await _metadataCache.GetMetadataAsync(dependency, createIfNonExistent: true, cancellation);
-
-            metadata.Dependents.Add(_sourceDescriptor);
-            _metadataCache.Update(metadata);
-        }
-
-        // Remove ourself as dependent from `dependency`.
-        private async Task RemoveDependentAsync(ProjectionSourceDescriptor dependency,
-                                                CancellationToken cancellation)
-        {
-            if (dependency == default)
-                throw new ArgumentDefaultException(nameof(dependency));
-
-            var entityDescriptor = _sourceDescriptor;
-            var metadata = await _metadataCache.GetMetadataAsync(dependency, createIfNonExistent: true, cancellation);
-            var removed = metadata.Dependents.Remove(entityDescriptor);
-
-            Debug.Assert(removed);
-
-            if (metadata.ProjectionTargets.Any() || metadata.Dependents.Any())
-            {
-                _metadataCache.Update(metadata);
-            }
-            else
-            {
-                Debug.Assert(!metadata.Dependencies.Any());
-                _metadataCache.Delete(metadata);
-            }
+            return projectionSourceLoader.LoadedSources.Where(p => p.Dependency != sourceDescriptor).ToArray();
         }
 
         #region ProjectCore
-
-        private async Task<bool> ProjectCoreAsync(IProjectionSourceLoader projectionSourceLoader, IServiceProvider serviceProvider, CancellationToken cancellation)
-        {
-            var source = await projectionSourceLoader.GetSourceAsync(_sourceDescriptor, bypassCache: false, cancellation);
-            var sourceType = _sourceDescriptor.SourceType;
-            var projectionResults = _projector.ExecuteProjectionAsync(sourceType, source, serviceProvider, cancellation);
-            var appliedProjections = new HashSet<ProjectionTargetDescriptor>(await GetAppliedProjectionsAsync(cancellation));
-            var projections = new List<ProjectionTargetDescriptor>();
-
-
-            // TODO: Ensure that there are no two projection results with the same type and id. 
-            //       Otherwise bad things happen.
-            var projectionsPresent = false;
-
-            await foreach (var projectionResult in projectionResults)
-            {
-                projectionsPresent = true;
-
-                var projection = new ProjectionTargetDescriptor(projectionResult.ResultType,
-                                                                projectionResult.ResultId.ToString());
-                projections.Add(projection);
-
-                // The target was not part of the last projection. Store ourself to the target metadata.
-                var addEntityToProjections = !appliedProjections.Remove(projection);
-
-                //if (!appliedProjections.Remove(projection))
-                //{
-                await UpdateEntityToProjectionAsync(projectionResult, addEntityToProjections, cancellation);
-                //}
-                //await _database.StoreAsync(projectionResult.ResultType, projectionResult.Result, cancellation);
-            }
-
-            // We removed all current projections from applied projections. 
-            // The remaining ones are removed projections.
-            foreach (var removedProjection in appliedProjections)
-            {
-                await RemoveEntityFromProjectionAsync(removedProjection, cancellation);
-            }
-
-            // Update the projection's metadata in the database
-            await UpdateAppliedProjectionsAsync(projections, cancellation);
-
-            return projectionsPresent;
-        }
 
         private IProjectionTargetProcessor GetTargetScopedProjectionEngine(Type targetType)
         {
@@ -365,38 +261,7 @@ namespace AI4E.Storage.Projection
                                                 CancellationToken cancellation)
         {
             var targetScopedProjectionEngine = GetTargetScopedProjectionEngine(projectionResult.ResultType);
-
             return targetScopedProjectionEngine.UpdateEntityToProjectionAsync(_sourceDescriptor, projectionResult, addEntityToProjections, cancellation);
-        }
-
-        // Gets the projection targets that are currently in the db.
-        private async ValueTask<IEnumerable<ProjectionTargetDescriptor>> GetAppliedProjectionsAsync(CancellationToken cancellation)
-        {
-            var metadata = await _metadataCache.GetMetadataAsync(_sourceDescriptor, createIfNonExistent: false, cancellation);
-
-            return metadata?.ProjectionTargets ?? Enumerable.Empty<ProjectionTargetDescriptor>();
-        }
-
-        private async Task UpdateAppliedProjectionsAsync(IEnumerable<ProjectionTargetDescriptor> projections, CancellationToken cancellation)
-        {
-            var metadata = await _metadataCache.GetMetadataAsync(_sourceDescriptor, createIfNonExistent: true, cancellation);
-
-            if (projections.Any())
-            {
-                metadata.ProjectionTargets.Clear();
-                metadata.ProjectionTargets.AddRange(projections);
-                _metadataCache.Update(metadata);
-            }
-            else
-            {
-                if (!metadata.Dependents.Any())
-                {
-                    _metadataCache.Delete(metadata);
-                    return;
-                }
-
-                await UpdateDependenciesAsync(Enumerable.Empty<ProjectionSourceDependency>(), cancellation);
-            }
         }
 
         #endregion

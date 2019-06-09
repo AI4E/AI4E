@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -29,78 +30,217 @@ using AI4E.Utils;
 
 namespace AI4E.Storage.Projection
 {
-    internal sealed class SourceMetadataCache
+    public sealed class SourceMetadataCache : ISourceMetadataCache
     {
+        #region Fields
+
         private readonly IDictionary<ProjectionSourceDescriptor, CacheEntry> _sourceMetadataCache;
         private readonly IDatabase _database;
 
-        public SourceMetadataCache(IDatabase database)
+        #endregion
+
+        #region C'tor
+
+        public SourceMetadataCache(ProjectionSourceDescriptor projectedSource, IDatabase database)
         {
             if (database is null)
                 throw new ArgumentNullException(nameof(database));
 
             _sourceMetadataCache = new Dictionary<ProjectionSourceDescriptor, CacheEntry>();
+
+            ProjectedSource = projectedSource;
             _database = database;
         }
 
-        public ValueTask<IProjectionSourceMetdata> GetMetadataAsync(
-            ProjectionSourceDescriptor sourceDescriptor,
-            bool createIfNonExistent,
-            CancellationToken cancellation)
+        #endregion
+
+        #region ISourceMetadataCache
+
+        public ProjectionSourceDescriptor ProjectedSource { get; }
+
+        public async ValueTask<IEnumerable<ProjectionSourceDescriptor>> GetDependentsAsync(CancellationToken cancellation)
         {
-            if (!_sourceMetadataCache.TryGetValue(sourceDescriptor, out var entry))
-            {
-                return GetMetadataCoreAsync(sourceDescriptor, createIfNonExistent, cancellation);
-            }
+            var entry = await GetEntryAsync(ProjectedSource, createIfNonExistent: false, cancellation);
 
-            if (entry.Metadata == null && createIfNonExistent)
-            {
-                var metadata = new ProjectionSourceMetadataEntry
-                {
-                    SourceId = sourceDescriptor.SourceId,
-                    SourceType = sourceDescriptor.SourceType.GetUnqualifiedTypeName()
-                };
-
-                entry = new CacheEntry(entry.OriginalMetadata, metadata, touched: true);
-                _sourceMetadataCache[sourceDescriptor] = entry;
-            }
-
-            return new ValueTask<IProjectionSourceMetdata>(new ProjectionSourceMetdata(entry));
+            return entry == null ? Enumerable.Empty<ProjectionSourceDescriptor>() : entry.Dependents.Select(p => p.ToDescriptor()).ToImmutableList();
         }
 
-        public async ValueTask<IProjectionSourceMetdata> GetMetadataCoreAsync(
+        public async ValueTask<SourceMetadata> GetMetadataAsync(CancellationToken cancellation)
+        {
+            var entry = await GetEntryAsync(ProjectedSource, createIfNonExistent: false, cancellation);
+
+            if (entry == null)
+                return default;
+
+            return entry.ToSourceMetadata();
+        }
+
+        public async ValueTask UpdateAsync(SourceMetadata metadata, CancellationToken cancellation)
+        {
+            var entry = await GetEntryAsync(ProjectedSource, createIfNonExistent: true, cancellation);
+
+            // Write the new source revision to the metadata
+            entry.ProjectionRevision = metadata.ProjectionRevision;
+
+            // Write the set of applied transactions to the metadata
+            entry.ProjectionTargets.Clear();
+            if (metadata.Targets.Any())
+            {
+                entry.ProjectionTargets.AddRange(metadata.Targets.Select(p => new ProjectionTargetEntry(p)));
+            }
+            else if (!entry.Dependents.Any())
+            {
+                DeleteEntry(entry);
+                return;
+            }
+
+            // Write our dependencies to the metadata
+            var storedDependencies = entry.Dependencies.Select(p => p.ToDescriptor().Dependency);
+
+            foreach (var dependency in metadata.Dependencies.Select(p => p.Dependency).Except(storedDependencies))
+            {
+                // Add ourself as dependent to `dependency`.
+                async Task AddDependentAsync()
+                {
+                    if (dependency == default)
+                        throw new ArgumentDefaultException(nameof(dependency));
+
+                    var entry = await GetEntryAsync(dependency, createIfNonExistent: true, cancellation);
+
+                    entry.Dependents.Add(new DependentEntry(ProjectedSource));
+                    UpdateEntry(entry);
+                }
+
+                await AddDependentAsync();
+            }
+
+            foreach (var dependency in storedDependencies.Except(metadata.Dependencies.Select(p => p.Dependency)))
+            {
+                // Remove ourself as dependent from `dependency`.
+                async Task RemoveDependentAsync()
+                {
+                    if (dependency == default)
+                        throw new ArgumentDefaultException(nameof(dependency));
+
+                    var entry = await GetEntryAsync(dependency, createIfNonExistent: true, cancellation);
+                    var removed = entry.Dependents.Remove(new DependentEntry(ProjectedSource));
+
+                    Debug.Assert(removed);
+
+                    if (entry.ProjectionTargets.Any() || entry.Dependents.Any())
+                    {
+                        UpdateEntry(entry);
+                    }
+                    else
+                    {
+                        Debug.Assert(!entry.Dependencies.Any());
+                        DeleteEntry(entry);
+                    }
+                }
+
+                await RemoveDependentAsync();
+            }
+
+            entry.Dependencies.Clear();
+            entry.Dependencies.AddRange(metadata.Dependencies.Select(p => new DependencyEntry(p)));
+
+            UpdateEntry(entry);
+        }
+
+        public async ValueTask<bool> CommitAsync(IScopedDatabase scopedDatabase, CancellationToken cancellation)
+        {
+            if (scopedDatabase is null)
+                throw new ArgumentNullException(nameof(scopedDatabase));
+
+            // Write touched source metadata to database
+            foreach (var cacheEntry in _sourceMetadataCache.Values.Where(p => p.Touched))
+            {
+                var comparandMetdata = await scopedDatabase
+                    .GetAsync<ProjectionSourceMetadataEntry>(p => p.Id == (cacheEntry.OriginalEntry ?? cacheEntry.Entry).Id)
+                    .FirstOrDefaultAsync(cancellation);
+
+                if (!ProjectionSourceMetadataEntry.MatchesByRevision(cacheEntry.OriginalEntry, comparandMetdata))
+                {
+                    return false;
+                }
+
+                if (cacheEntry.Entry == null)
+                {
+                    Debug.Assert(cacheEntry.OriginalEntry != null);
+
+                    await scopedDatabase.RemoveAsync(cacheEntry.OriginalEntry, cancellation);
+                }
+                else
+                {
+                    cacheEntry.Entry.MetadataRevision = (cacheEntry.OriginalEntry?.MetadataRevision ?? 0) + 1;
+                    await scopedDatabase.StoreAsync(cacheEntry.Entry, cancellation);
+                }
+            }
+
+            return true;
+        }
+
+        public void Clear()
+        {
+            _sourceMetadataCache.Clear();
+        }
+
+        #endregion
+
+        private ValueTask<ProjectionSourceMetadataEntry> GetEntryAsync(
             ProjectionSourceDescriptor sourceDescriptor,
             bool createIfNonExistent,
             CancellationToken cancellation)
         {
-            var metadata = await QueryMetadataAsync(sourceDescriptor, cancellation);
+            if (!_sourceMetadataCache.TryGetValue(sourceDescriptor, out var cacheEntry))
+            {
+                return GetEntryCoreAsync(sourceDescriptor, createIfNonExistent, cancellation);
+            }
+
+            if (cacheEntry.Entry == null && createIfNonExistent)
+            {
+                var entry = new ProjectionSourceMetadataEntry(
+                    sourceDescriptor.SourceId,
+                    sourceDescriptor.SourceType.GetUnqualifiedTypeName());
+
+                cacheEntry = new CacheEntry(cacheEntry.OriginalEntry, entry, touched: true);
+                _sourceMetadataCache[sourceDescriptor] = cacheEntry;
+            }
+
+            return new ValueTask<ProjectionSourceMetadataEntry>(cacheEntry.Entry);
+        }
+
+        private async ValueTask<ProjectionSourceMetadataEntry> GetEntryCoreAsync(
+            ProjectionSourceDescriptor sourceDescriptor,
+            bool createIfNonExistent,
+            CancellationToken cancellation)
+        {
+            var entry = await QueryEntryAsync(sourceDescriptor, cancellation);
             var touched = false;
 
-            if (metadata == null && createIfNonExistent)
+            if (entry == null && createIfNonExistent)
             {
-                metadata = new ProjectionSourceMetadataEntry
-                {
-                    SourceId = sourceDescriptor.SourceId,
-                    SourceType = sourceDescriptor.SourceType.GetUnqualifiedTypeName()
-                };
+                entry = new ProjectionSourceMetadataEntry(
+                    sourceDescriptor.SourceId,
+                    sourceDescriptor.SourceType.GetUnqualifiedTypeName());
 
                 touched = true;
             }
 
-            var originalMetadata = default(ProjectionSourceMetadataEntry);
+            var originalEntry = default(ProjectionSourceMetadataEntry);
 
-            if (metadata != null)
+            if (entry != null)
             {
-                originalMetadata = metadata.DeepClone();
+                originalEntry = entry.DeepClone();
             }
 
-            var entry = new CacheEntry(originalMetadata, metadata, touched);
-            _sourceMetadataCache[sourceDescriptor] = entry;
+            var cacheEntry = new CacheEntry(originalEntry, entry, touched);
+            _sourceMetadataCache[sourceDescriptor] = cacheEntry;
 
-            return new ProjectionSourceMetdata(entry);
+            return entry;
         }
 
-        private async ValueTask<ProjectionSourceMetadataEntry> QueryMetadataAsync(
+        private async ValueTask<ProjectionSourceMetadataEntry> QueryEntryAsync(
             ProjectionSourceDescriptor sourceDescriptor, CancellationToken cancellation)
         {
             var entryId = ProjectionSourceMetadataEntry.GenerateId(
@@ -111,79 +251,129 @@ namespace AI4E.Storage.Projection
                 .FirstOrDefaultAsync(cancellation);
         }
 
-        public void Update(IProjectionSourceMetdata metdata)
+        private void UpdateEntry(ProjectionSourceMetadataEntry entry)
         {
-            if (metdata is null)
-                throw new ArgumentNullException(nameof(metdata));
+            Debug.Assert(entry != null);
 
-            var sourceType = metdata.SourceType;
-            var sourceId = metdata.SourceId;
-            var sourceDescriptor = new ProjectionSourceDescriptor(sourceType, sourceId);
+            var sourceType = entry.SourceType;
+            var sourceId = entry.SourceId;
+            var sourceDescriptor = new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(sourceType), sourceId);
 
-            (metdata as ProjectionSourceMetdata).Touched = true;
-            _sourceMetadataCache[sourceDescriptor] = (metdata as ProjectionSourceMetdata).ToCacheEntry();
+            if (!_sourceMetadataCache.TryGetValue(sourceDescriptor, out var cacheEntry))
+            {
+                cacheEntry = default;
+            }
+
+            _sourceMetadataCache[sourceDescriptor] = new CacheEntry(cacheEntry.OriginalEntry, entry, touched: true);
         }
 
-        public void Delete(IProjectionSourceMetdata metdata)
+        private void DeleteEntry(ProjectionSourceMetadataEntry entry)
         {
-            if (metdata is null)
-                throw new ArgumentNullException(nameof(metdata));
+            Debug.Assert(entry != null);
 
-            var sourceType = metdata.SourceType;
-            var sourceId = metdata.SourceId;
-            var sourceDescriptor = new ProjectionSourceDescriptor(sourceType, sourceId);
+            var sourceType = entry.SourceType;
+            var sourceId = entry.SourceId;
+            var sourceDescriptor = new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(sourceType), sourceId);
 
-            var original = (metdata as ProjectionSourceMetdata).Original;
+            if (!_sourceMetadataCache.TryGetValue(sourceDescriptor, out var cacheEntry))
+            {
+                return;
+            }
 
-            if (original is null)
+            if (cacheEntry.OriginalEntry is null)
             {
                 _sourceMetadataCache.Remove(sourceDescriptor);
             }
-            else
-            {
-                _sourceMetadataCache[sourceDescriptor] = new CacheEntry(original, null, touched: true);
-            }
+
+            _sourceMetadataCache[sourceDescriptor] = new CacheEntry(cacheEntry.OriginalEntry, null, touched: true);
         }
 
-        public void Clear()
+        private readonly struct CacheEntry
         {
-            _sourceMetadataCache.Clear();
-        }
-
-        public async Task<bool> CommitAsync(IScopedDatabase scopedDatabase, CancellationToken cancellation)
-        {
-            if (scopedDatabase is null)
-                throw new ArgumentNullException(nameof(scopedDatabase));
-
-            // Write touched source metadata to database
-            foreach (var (originalMetadata, touchedMetadata) in _sourceMetadataCache.Values.Where(p => p.Touched))
+            public CacheEntry(ProjectionSourceMetadataEntry originalEntry, ProjectionSourceMetadataEntry entry, bool touched)
             {
-                var comparandMetdata = await scopedDatabase
-                    .GetAsync<ProjectionSourceMetadataEntry>(p => p.Id == (originalMetadata ?? touchedMetadata).Id)
-                    .FirstOrDefaultAsync(cancellation);
+                Debug.Assert(originalEntry != null || entry != null);
 
-                if (!MatchesByRevision(originalMetadata, comparandMetdata))
-                {
-                    return false;
-                }
-
-                if (touchedMetadata == null)
-                {
-                    Debug.Assert(originalMetadata != null);
-
-                    await scopedDatabase.RemoveAsync(originalMetadata, cancellation);
-                }
-                else
-                {
-                    touchedMetadata.MetadataRevision = originalMetadata?.MetadataRevision ?? 1;
-                    await scopedDatabase.StoreAsync(touchedMetadata, cancellation);
-                }
+                OriginalEntry = originalEntry;
+                Entry = entry;
+                Touched = touched;
             }
 
-            return true;
+            public ProjectionSourceMetadataEntry OriginalEntry { get; }
+            public ProjectionSourceMetadataEntry Entry { get; }
+            public bool Touched { get; }
+        }
+    }
+
+    public sealed class SourceMetadataCacheFactory : ISourceMetadataCacheFactory
+    {
+        private readonly IDatabase _database;
+
+        public SourceMetadataCacheFactory(IDatabase database)
+        {
+            if (database is null)
+                throw new ArgumentNullException(nameof(database));
+
+            _database = database;
         }
 
-        private bool MatchesByRevision(ProjectionSourceMetadataEntry original, ProjectionSourceMetadataEntry comparand)
+        public ISourceMetadataCache CreateInstance(ProjectionSourceDescriptor projectedSource)
+        {
+            return new SourceMetadataCache(projectedSource, _database);
+        }
+    }
+
+    internal sealed class ProjectionSourceMetadataEntry
+    {
+        private string _id;
+
+        public ProjectionSourceMetadataEntry()
+        {
+            SourceId = SourceType = string.Empty;
+        }
+
+        public ProjectionSourceMetadataEntry(string sourceId, string sourceType)
+        {
+            SourceId = sourceId;
+            SourceType = sourceType;
+        }
+
+        public static string GenerateId(string sourceId, string sourceType)
+        {
+            return IdGenerator.GenerateId(sourceId, sourceType);
+        }
+
+        public string Id
+        {
+            get
+            {
+                if (_id == null)
+                {
+                    _id = GenerateId(SourceId, SourceType);
+                }
+
+                return _id;
+            }
+            set => _id = value;
+        }
+
+        public long MetadataRevision { get; set; } = 1;
+        public string SourceId { get; set; }
+        public string SourceType { get; set; }
+        public long ProjectionRevision { get; set; }
+        public List<ProjectionTargetEntry> ProjectionTargets { get; private set; } = new List<ProjectionTargetEntry>();
+        public List<DependencyEntry> Dependencies { get; private set; } = new List<DependencyEntry>();
+        public List<DependentEntry> Dependents { get; private set; } = new List<DependentEntry>();
+
+        public SourceMetadata ToSourceMetadata()
+        {
+            return new SourceMetadata(
+                Dependencies.Select(p => p.ToDescriptor()),
+                ProjectionTargets.Select(p => p.ToDescriptor()),
+                ProjectionRevision);
+        }
+
+        public static bool MatchesByRevision(ProjectionSourceMetadataEntry original, ProjectionSourceMetadataEntry comparand)
         {
             if (original is null)
                 return comparand is null;
@@ -193,223 +383,87 @@ namespace AI4E.Storage.Projection
 
             return original.MetadataRevision == comparand.MetadataRevision;
         }
+    }
 
-        private sealed class ProjectionSourceMetdata : IProjectionSourceMetdata
+    internal sealed class ProjectionTargetEntry
+    {
+        public ProjectionTargetEntry()
         {
-            public ProjectionSourceMetdata(in CacheEntry cacheEntry)
-                : this(cacheEntry.Metadata, cacheEntry.OriginalMetadata, cacheEntry.Touched)
-            { }
-
-            public ProjectionSourceMetdata(
-                ProjectionSourceMetadataEntry entry,
-                ProjectionSourceMetadataEntry original,
-                bool touched)
-            {
-                Debug.Assert(entry != null);
-
-                Entry = entry;
-                Original = original;
-                Touched = touched;
-
-                ProjectionTargets = new WrapperCollection<ProjectionTargetDescriptor, ProjectionTargetEntry>(
-                    entry.ProjectionTargets,
-                    unwrap: descriptor => new ProjectionTargetEntry(descriptor),
-                    wrap: entry => entry.ToDescriptor());
-
-                Dependencies = new WrapperCollection<ProjectionSourceDependency, DependencyEntry>(
-                    entry.Dependencies,
-                    unwrap: descriptor => new DependencyEntry(descriptor),
-                    wrap: entry => entry.ToDescriptor());
-
-                Dependents = new WrapperCollection<ProjectionSourceDescriptor, DependentEntry>(
-                    entry.Dependents,
-                    unwrap: descriptor => new DependentEntry(descriptor),
-                    wrap: entry => entry.ToDescriptor());
-            }
-
-            public ProjectionSourceMetadataEntry Entry { get; }
-            public ProjectionSourceMetadataEntry Original { get; }
-            public bool Touched { get; set; }
-
-            public string SourceId => Entry.SourceId;
-
-            public Type SourceType => TypeLoadHelper.LoadTypeFromUnqualifiedName(Entry.SourceType);
-
-            public long ProjectionRevision
-            {
-                get => Entry.ProjectionRevision;
-                set
-                {
-                    if (value < 0)
-                        throw new ArgumentOutOfRangeException(nameof(value));
-
-                    Entry.ProjectionRevision = value;
-                }
-            }
-
-            public ICollection<ProjectionTargetDescriptor> ProjectionTargets { get; }
-
-            public ICollection<ProjectionSourceDependency> Dependencies { get; }
-
-            public ICollection<ProjectionSourceDescriptor> Dependents { get; }
-
-            public CacheEntry ToCacheEntry()
-            {
-                return new CacheEntry(Original, Entry, Touched);
-            }
+            Id = Type = string.Empty;
         }
 
-        private readonly struct CacheEntry
+        public ProjectionTargetEntry(in ProjectionTargetDescriptor descriptor)
         {
-            public CacheEntry(ProjectionSourceMetadataEntry originalMetadata, ProjectionSourceMetadataEntry metadata, bool touched)
-            {
-                if (originalMetadata == null && metadata == null)
-                    touched = false;
-
-                OriginalMetadata = originalMetadata;
-                Metadata = metadata;
-                Touched = touched;
-            }
-
-            public ProjectionSourceMetadataEntry OriginalMetadata { get; }
-            public ProjectionSourceMetadataEntry Metadata { get; }
-            public bool Touched { get; }
-
-            public void Deconstruct(out ProjectionSourceMetadataEntry originalMetadata,
-                                    out ProjectionSourceMetadataEntry metadata)
-            {
-                originalMetadata = OriginalMetadata;
-                metadata = Metadata;
-            }
+            Type = descriptor.TargetType.GetUnqualifiedTypeName();
+            Id = descriptor.TargetId;
         }
 
-        private sealed class ProjectionSourceMetadataEntry
+        public string Id { get; set; }
+        public string Type { get; set; }
+
+        public ProjectionTargetDescriptor ToDescriptor()
         {
-            private string _id;
-
-            public ProjectionSourceMetadataEntry()
-            {
-                SourceId = SourceType = string.Empty;
-            }
-
-            public static string GenerateId(string sourceId, string sourceType)
-            {
-                return IdGenerator.GenerateId(sourceId, sourceType);
-            }
-
-            public string Id
-            {
-                get
-                {
-                    if (_id == null)
-                    {
-                        _id = GenerateId(SourceId, SourceType);
-                    }
-
-                    return _id;
-                }
-                set => _id = value;
-            }
-
-            public long MetadataRevision { get; set; } = 1;
-            public string SourceId { get; set; }
-            public string SourceType { get; set; }
-            public long ProjectionRevision { get; set; }
-            public List<ProjectionTargetEntry> ProjectionTargets { get; private set; } = new List<ProjectionTargetEntry>();
-            public List<DependencyEntry> Dependencies { get; private set; } = new List<DependencyEntry>();
-            public List<DependentEntry> Dependents { get; private set; } = new List<DependentEntry>();
-        }
-
-        private sealed class ProjectionTargetEntry
-        {
-            public ProjectionTargetEntry()
-            {
-                Id = Type = string.Empty;
-            }
-
-            public ProjectionTargetEntry(in ProjectionTargetDescriptor descriptor)
-            {
-                Type = descriptor.TargetType.GetUnqualifiedTypeName();
-                Id = descriptor.TargetId;
-            }
-
-            public string Id { get; set; }
-            public string Type { get; set; }
-
-            public ProjectionTargetDescriptor ToDescriptor()
-            {
-                return new ProjectionTargetDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(Type), Id);
-            }
-        }
-
-        private sealed class DependencyEntry
-        {
-            public DependencyEntry()
-            {
-                Id = Type = string.Empty;
-            }
-
-            public DependencyEntry(in ProjectionSourceDescriptor dependency, long projectionRevision)
-            {
-                if (projectionRevision < 0)
-                    throw new ArgumentOutOfRangeException(nameof(projectionRevision));
-
-                Id = dependency.SourceId;
-                Type = dependency.SourceType.GetUnqualifiedTypeName();
-                ProjectionRevision = projectionRevision;
-            }
-
-
-            public DependencyEntry(in ProjectionSourceDependency descriptor)
-            {
-                Id = descriptor.Dependency.SourceId;
-                Type = descriptor.Dependency.SourceType.GetUnqualifiedTypeName();
-                ProjectionRevision = descriptor.ProjectionRevision;
-            }
-
-            public string Id { get; set; }
-            public string Type { get; set; }
-
-            public long ProjectionRevision { get; set; }
-
-            public ProjectionSourceDependency ToDescriptor()
-            {
-                return new ProjectionSourceDependency(
-                    new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(Type), Id),
-                    ProjectionRevision);
-            }
-        }
-
-        private sealed class DependentEntry
-        {
-            public DependentEntry()
-            {
-                Id = Type = string.Empty;
-            }
-
-            public DependentEntry(in ProjectionSourceDescriptor descriptor)
-            {
-                Id = descriptor.SourceId;
-                Type = descriptor.SourceType.GetUnqualifiedTypeName();
-            }
-
-            public string Id { get; set; }
-            public string Type { get; set; }
-
-            internal ProjectionSourceDescriptor ToDescriptor()
-            {
-                return new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(Type), Id);
-            }
+            return new ProjectionTargetDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(Type), Id);
         }
     }
 
-    public interface IProjectionSourceMetdata
+    internal sealed class DependencyEntry
     {
-        ICollection<ProjectionSourceDependency> Dependencies { get; }
-        ICollection<ProjectionSourceDescriptor> Dependents { get; }
-        long ProjectionRevision { get; set; }
-        ICollection<ProjectionTargetDescriptor> ProjectionTargets { get; }
-        string SourceId { get; }
-        Type SourceType { get; }
+        public DependencyEntry()
+        {
+            Id = Type = string.Empty;
+        }
+
+        public DependencyEntry(in ProjectionSourceDescriptor dependency, long projectionRevision)
+        {
+            if (projectionRevision < 0)
+                throw new ArgumentOutOfRangeException(nameof(projectionRevision));
+
+            Id = dependency.SourceId;
+            Type = dependency.SourceType.GetUnqualifiedTypeName();
+            ProjectionRevision = projectionRevision;
+        }
+
+
+        public DependencyEntry(in ProjectionSourceDependency descriptor)
+        {
+            Id = descriptor.Dependency.SourceId;
+            Type = descriptor.Dependency.SourceType.GetUnqualifiedTypeName();
+            ProjectionRevision = descriptor.ProjectionRevision;
+        }
+
+        public string Id { get; set; }
+        public string Type { get; set; }
+
+        public long ProjectionRevision { get; set; }
+
+        public ProjectionSourceDependency ToDescriptor()
+        {
+            return new ProjectionSourceDependency(
+                new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(Type), Id),
+                ProjectionRevision);
+        }
+    }
+
+    internal sealed class DependentEntry
+    {
+        public DependentEntry()
+        {
+            Id = Type = string.Empty;
+        }
+
+        public DependentEntry(in ProjectionSourceDescriptor descriptor)
+        {
+            Id = descriptor.SourceId;
+            Type = descriptor.SourceType.GetUnqualifiedTypeName();
+        }
+
+        public string Id { get; set; }
+        public string Type { get; set; }
+
+        internal ProjectionSourceDescriptor ToDescriptor()
+        {
+            return new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(Type), Id);
+        }
     }
 }

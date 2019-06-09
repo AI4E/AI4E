@@ -18,26 +18,29 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Diagnostics;
+// TODO: Move me to Projections.Abstractions, when we can remove the dependency on IScopedDatabase
+
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace AI4E.Storage.Projection
 {
-    internal static class ProjectionResultExtension
+    public interface ISourceMetadataCache
     {
-        public static ProjectionTargetDescriptor ToTargetDescriptor(
-            this IProjectionResult projectionResult)
-        {
-            return new ProjectionTargetDescriptor(
-                projectionResult.ResultType,
-                projectionResult.ResultId.ToString());
-        }
+        ProjectionSourceDescriptor ProjectedSource { get; }
 
-        public static TTargetId GetId<TTargetId>(this IProjectionResult projectionResult)
-        {
-            Debug.Assert(projectionResult.ResultId != null);
-            Debug.Assert(projectionResult.ResultId is TTargetId);
+        ValueTask<IEnumerable<ProjectionSourceDescriptor>> GetDependentsAsync(CancellationToken cancellation);
 
-            return (TTargetId)projectionResult.ResultId;
-        }
+        ValueTask<SourceMetadata> GetMetadataAsync(CancellationToken cancellation);
+        ValueTask UpdateAsync(SourceMetadata metadata, CancellationToken cancellation);
+        ValueTask<bool> CommitAsync(IScopedDatabase scopedDatabase, CancellationToken cancellation);
+
+        void Clear();
+    }
+
+    public interface ISourceMetadataCacheFactory
+    {
+        ISourceMetadataCache CreateInstance(ProjectionSourceDescriptor projectedSource);
     }
 }
