@@ -19,15 +19,11 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
 using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -40,9 +36,10 @@ namespace AI4E.Storage.Projection
         private readonly IProjectionExecutor _projector;
         private readonly IDatabase _database;
         private readonly IServiceProvider _serviceProvider;
-        private readonly ISourceMetadataCache _metadataCache;
 
-        public SourceProjector( // TODO: Inject an instance of ISourceMetadataCacheFactory
+        private readonly IProjectionTargetProcessor _targetProcessor;
+
+        public SourceProjector( // TODO: Inject an instance of IProjectionTargetProcessorFactory
             in ProjectionSourceDescriptor sourceDescriptor,
             IProjectionExecutor projector,
             IDatabase database,
@@ -59,7 +56,7 @@ namespace AI4E.Storage.Projection
             _database = database;
             _serviceProvider = serviceProvider;
 
-            _metadataCache = new SourceMetadataCache(_sourceDescriptor, _database);
+            _targetProcessor = new ProjectionTargetProcessor(_sourceDescriptor, _database);
         }
 
         // Projects the source entity and returns the descriptors of all dependent source entities. 
@@ -70,16 +67,16 @@ namespace AI4E.Storage.Projection
             do
             {
                 await ProjectCoreAsync(cancellation);
-                dependents = await _metadataCache.GetDependentsAsync(cancellation);
+                dependents = await _targetProcessor.GetDependentsAsync(cancellation);
             }
-            while (!await _metadataCache.CommitAsync(cancellation));
+            while (!await _targetProcessor.CommitAsync(cancellation));
 
             return dependents;
         }
 
         private async Task ProjectCoreAsync(CancellationToken cancellation)
         {
-            _metadataCache.Clear();
+            _targetProcessor.Clear();
 
             using var scope = _serviceProvider.CreateScope();
             var scopedServiceProvider = scope.ServiceProvider;
@@ -94,7 +91,7 @@ namespace AI4E.Storage.Projection
 
             var projectionResults = _projector.ExecuteProjectionAsync(_sourceDescriptor.SourceType, source, scopedServiceProvider, cancellation);
 
-            var metadata = await _metadataCache.GetMetadataAsync(cancellation);
+            var metadata = await _targetProcessor.GetMetadataAsync(cancellation);
             var appliedTargets = metadata.Targets.ToHashSet();
 
             var targets = new List<ProjectionTargetDescriptor>();
@@ -109,20 +106,20 @@ namespace AI4E.Storage.Projection
 
                 // The target was not part of the last projection. Store ourself to the target metadata.
                 var addEntityToProjections = !appliedTargets.Remove(projection);
-                await _metadataCache.UpdateEntityToProjectionAsync(projectionResult, addEntityToProjections, cancellation);
+                await _targetProcessor.UpdateEntityToProjectionAsync(projectionResult, addEntityToProjections, cancellation);
             }
 
             // We removed all targets from 'applied projections' that are still present. 
             // The remaining ones are removed targets.
             foreach (var removedProjection in appliedTargets)
             {
-                await _metadataCache.RemoveEntityFromProjectionAsync(removedProjection, cancellation);
+                await _targetProcessor.RemoveEntityFromProjectionAsync(removedProjection, cancellation);
             }
 
             var dependencies = GetDependencies(projectionSourceLoader);
 
             var updatedMetadata = new SourceMetadata(dependencies, targets, sourceRevision);
-            await _metadataCache.UpdateAsync(updatedMetadata, cancellation);
+            await _targetProcessor.UpdateAsync(updatedMetadata, cancellation);
         }
 
         // Checks whether the projection is up-to date our if we have to reproject.
@@ -139,7 +136,7 @@ namespace AI4E.Storage.Projection
             // For that reason, performance should not suffer very much 
             // in comparison to not checking whether an update is needed.
 
-            var metadata = await _metadataCache.GetMetadataAsync(cancellation);
+            var metadata = await _targetProcessor.GetMetadataAsync(cancellation);
 
             if (metadata.ProjectionRevision == 0)
             {

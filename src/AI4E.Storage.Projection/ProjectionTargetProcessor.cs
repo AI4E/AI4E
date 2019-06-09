@@ -33,7 +33,7 @@ using AI4E.Utils;
 
 namespace AI4E.Storage.Projection
 {
-    public sealed class SourceMetadataCache : ISourceMetadataCache
+    public sealed class ProjectionTargetProcessor : IProjectionTargetProcessor
     {
         #region Fields
 
@@ -48,7 +48,7 @@ namespace AI4E.Storage.Projection
 
         #region C'tor
 
-        public SourceMetadataCache(ProjectionSourceDescriptor projectedSource, IDatabase database)
+        public ProjectionTargetProcessor(ProjectionSourceDescriptor projectedSource, IDatabase database)
         {
             if (database is null)
                 throw new ArgumentNullException(nameof(database));
@@ -347,11 +347,11 @@ namespace AI4E.Storage.Projection
 
         private static readonly Func<Type, Func<IDatabase, object, CancellationToken, ValueTask<object>>> _buildLoadTargetMethodCache = BuildLoadTargetMethod;
 
-        static SourceMetadataCache()
+        static ProjectionTargetProcessor()
         {
-            _loadTargetMethodDefinition = typeof(SourceMetadataCache)
+            _loadTargetMethodDefinition = typeof(ProjectionTargetProcessor)
                 .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
-                .Single(p => p.Name == nameof(SourceMetadataCache.LoadTargetAsync) &&
+                .Single(p => p.Name == nameof(ProjectionTargetProcessor.LoadTargetAsync) &&
                              p.IsGenericMethodDefinition);
         }
 
@@ -566,11 +566,11 @@ namespace AI4E.Storage.Projection
         Updated
     }
 
-    public sealed class SourceMetadataCacheFactory : ISourceMetadataCacheFactory
+    public sealed class ProjectionTargetProcessorFactory : IProjectionTargetProcessorFactory
     {
         private readonly IDatabase _database;
 
-        public SourceMetadataCacheFactory(IDatabase database)
+        public ProjectionTargetProcessorFactory(IDatabase database)
         {
             if (database is null)
                 throw new ArgumentNullException(nameof(database));
@@ -578,7 +578,7 @@ namespace AI4E.Storage.Projection
             _database = database;
         }
 
-        public ISourceMetadataCache CreateInstance(ProjectionSourceDescriptor projectedSource)
+        public IProjectionTargetProcessor CreateInstance(ProjectionSourceDescriptor projectedSource)
         {
             return new SourceMetadataCache(projectedSource, _database);
         }

@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 
 namespace AI4E.Storage.Projection
 {
-    public interface ISourceMetadataCache
+    public interface IProjectionTargetProcessor
     {
         ProjectionSourceDescriptor ProjectedSource { get; }
 
@@ -48,8 +48,8 @@ namespace AI4E.Storage.Projection
         void Clear();
     }
 
-    public interface ISourceMetadataCacheFactory
+    public interface IProjectionTargetProcessorFactory
     {
-        ISourceMetadataCache CreateInstance(ProjectionSourceDescriptor projectedSource);
+        IProjectionTargetProcessor CreateInstance(ProjectionSourceDescriptor projectedSource);
     }
 }
