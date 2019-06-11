@@ -1,5 +1,4 @@
 using System;
-using AI4E.Storage.Projection;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 
@@ -30,8 +29,7 @@ namespace AI4E.Storage.Domain
             AddDomainStorageEngine(services);
             AddMessageProcessors(services);
 
-            services.AddSingleton<IProjectionSourceProcessorFactory, ProjectionSourceProcessorFactory>();
-            builder.AddProjection();
+            builder.AddProjection(projection => projection.UseSourceProcessor<EntityStorageEngineProjectionSourceProcessorFactory>());
 
             return new DomainStorageBuilder(builder);
         }
