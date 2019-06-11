@@ -54,7 +54,7 @@ namespace AI4E.Handler
         /// </exception>
         /// <remarks>
         /// This overload creates the message handler specified by <paramref name="memberDescriptor"/>
-        /// and resolved its depdendencies from <paramref name="serviceProvider"/>.
+        /// and resolves its depdendencies from <paramref name="serviceProvider"/>.
         /// </remarks>
         public static IMessageHandler CreateInvoker(
             MessageHandlerActionDescriptor memberDescriptor,

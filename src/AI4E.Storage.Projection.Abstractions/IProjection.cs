@@ -24,14 +24,39 @@ using System.Threading;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Represents a projection.
+    /// </summary>
     public interface IProjection
     {
+        /// <summary>
+        /// Asynchronously projects the specified source object.
+        /// </summary>
+        /// <param name="source">The source object.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// An <see cref="IAsyncEnumerable{T}"/> that enumerates the projection results.
+        /// </returns>
         IAsyncEnumerable<object> ProjectAsync(object source, CancellationToken cancellation = default);
 
+        /// <summary>
+        /// Gets the type of projection source.
+        /// </summary>
         Type SourceType { get; }
+
+        /// <summary>
+        /// Gets the type of projection target.
+        /// </summary>
         Type TargetType { get; }
     }
 
+    /// <summary>
+    /// Represents a projection with the specified source and target types.
+    /// </summary>
+    /// <typeparam name="TSource">The type of projection source.</typeparam>
+    /// <typeparam name="TTarget">The type of projection target.</typeparam>
     public interface IProjection<TSource, TTarget> : IProjection
         where TSource : class
         where TTarget : class
@@ -40,8 +65,11 @@ namespace AI4E.Storage.Projection
         /// Asynchronously projects the specified source object.
         /// </summary>
         /// <param name="source">The source object.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>
-        /// An async enumerable that enumerates the projection results.
+        /// An <see cref="IAsyncEnumerable{T}"/> that enumerates the projection results.
         /// </returns>
         IAsyncEnumerable<TTarget> ProjectAsync(TSource source, CancellationToken cancellation = default);
 

@@ -31,6 +31,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Contains factory methods to create generic projection invokers.
+    /// </summary>
     public static class ProjectionInvoker
     {
         private static readonly Type _projectionInvokerTypeDefinition = typeof(ProjectionInvoker<,>);
@@ -39,6 +42,15 @@ namespace AI4E.Storage.Projection
 
         private static readonly Func<(Type, Type), Func<object, ProjectionDescriptor, IServiceProvider, IProjection>> _factoryBuilderCache = BuildFactory;
 
+        /// <summary>
+        /// Creates a <see cref="ProjectionInvoker{TSource, TTarget}"/> from the specified parameters.
+        /// </summary>
+        /// <param name="projectionDescriptor">The descriptor that specified the projection type and member.</param>
+        /// <param name="serviceProvider">A <see cref="IServiceProvider"/> used to obtain services.</param>
+        /// <returns>The created <see cref="ProjectionInvoker{TSource, TTarget}"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
         public static IProjection CreateInvoker(
             ProjectionDescriptor projectionDescriptor,
             IServiceProvider serviceProvider)
@@ -89,6 +101,11 @@ namespace AI4E.Storage.Projection
         }
     }
 
+    /// <summary>
+    /// Represents projections as <see cref="IProjection"/>.
+    /// </summary>
+    /// <typeparam name="TSource">The tyep of projection source.</typeparam>
+    /// <typeparam name="TTarget">The type of projection target.</typeparam>
     public sealed class ProjectionInvoker<TSource, TTarget> : IProjection<TSource, TTarget>
         where TSource : class
         where TTarget : class
@@ -101,16 +118,19 @@ namespace AI4E.Storage.Projection
         // If this is changed, adapt the caller in ProjectionInvoker.BuildFactory
         [MethodImpl(MethodImplOptions.PreserveSig)]
 #pragma warning disable IDE0051
-        private ProjectionInvoker(object handler,
+        private ProjectionInvoker(
 #pragma warning restore IDE0051
-                                  ProjectionDescriptor projectionDescriptor,
-                                  IServiceProvider serviceProvider)
+            object handler,
+
+            ProjectionDescriptor projectionDescriptor,
+            IServiceProvider serviceProvider)
         {
             _handler = handler;
             _projectionDescriptor = projectionDescriptor;
             _serviceProvider = serviceProvider;
         }
 
+        /// <inheritdoc/>
         public async IAsyncEnumerable<TTarget> ProjectAsync(
             TSource source,
 #if !NETSTD20
