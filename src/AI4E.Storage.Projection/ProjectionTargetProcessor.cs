@@ -40,10 +40,10 @@ namespace AI4E.Storage.Projection
 
         private readonly IDatabase _database;
 
+        private readonly MetadataCache<ProjectionSourceDescriptor, ProjectionSourceMetadataEntry> _sourceMetadataCache;
         private readonly MetadataCache<ProjectionTargetDescriptor, ProjectionTargetMetadataEntry> _targetMetadataCache;
         private readonly Dictionary<ProjectionTargetDescriptor, object> _targetsToUpdate = new Dictionary<ProjectionTargetDescriptor, object>();
         private readonly Dictionary<ProjectionTargetDescriptor, object> _targetsToDelete = new Dictionary<ProjectionTargetDescriptor, object>();
-        private readonly MetadataCache<ProjectionSourceDescriptor, ProjectionSourceMetadataEntry> _sourceMetadataCache;
 
         #endregion
 
@@ -54,27 +54,18 @@ namespace AI4E.Storage.Projection
             if (database is null)
                 throw new ArgumentNullException(nameof(database));
 
-            _targetMetadataCache = new MetadataCache<ProjectionTargetDescriptor, ProjectionTargetMetadataEntry>(
-                database,
-                ProjectionTargetMetadataEntry.GetDescriptor,
-                BuildQuery);
-
             _sourceMetadataCache = new MetadataCache<ProjectionSourceDescriptor, ProjectionSourceMetadataEntry>(
                 database,
                 ProjectionSourceMetadataEntry.GetDescriptor,
                 BuildQuery);
 
+            _targetMetadataCache = new MetadataCache<ProjectionTargetDescriptor, ProjectionTargetMetadataEntry>(
+                database,
+                ProjectionTargetMetadataEntry.GetDescriptor,
+                BuildQuery);
+
             ProjectedSource = projectedSource;
             _database = database;
-        }
-
-        private static Expression<Func<ProjectionTargetMetadataEntry, bool>> BuildQuery(ProjectionTargetDescriptor target)
-        {
-            var entryId = ProjectionTargetMetadataEntry.GenerateId(
-                target.TargetId,
-                target.TargetType.GetUnqualifiedTypeName());
-
-            return p => p.Id == entryId;
         }
 
         private static Expression<Func<ProjectionSourceMetadataEntry, bool>> BuildQuery(ProjectionSourceDescriptor source)
@@ -82,6 +73,15 @@ namespace AI4E.Storage.Projection
             var entryId = ProjectionSourceMetadataEntry.GenerateId(
                 source.SourceId,
                 source.SourceType.GetUnqualifiedTypeName());
+
+            return p => p.Id == entryId;
+        }
+
+        private static Expression<Func<ProjectionTargetMetadataEntry, bool>> BuildQuery(ProjectionTargetDescriptor target)
+        {
+            var entryId = ProjectionTargetMetadataEntry.GenerateId(
+                target.TargetId,
+                target.TargetType.GetUnqualifiedTypeName());
 
             return p => p.Id == entryId;
         }
@@ -119,7 +119,7 @@ namespace AI4E.Storage.Projection
             // Write the new source revision to the metadata
             entry.ProjectionRevision = metadata.ProjectionRevision;
 
-            // Write the set of applied transactions to the metadata
+            // Write the set of applied targets to the metadata
             entry.ProjectionTargets.Clear();
             if (metadata.Targets.Any())
             {
@@ -136,53 +136,37 @@ namespace AI4E.Storage.Projection
 
             foreach (var dependency in metadata.Dependencies.Select(p => p.Dependency).Except(storedDependencies))
             {
-                // Add ourself as dependent to `dependency`.
-                async Task AddDependentAsync()
-                {
-                    if (dependency == default)
-                        throw new ArgumentDefaultException(nameof(dependency));
+                // Add ourself as dependent to `dependency`.            
+                var dependencyEntry = await _sourceMetadataCache.GetEntryAsync(dependency, cancellation) ??
+                    new ProjectionSourceMetadataEntry(
+                        dependency.SourceId,
+                        dependency.SourceType.GetUnqualifiedTypeName());
 
-                    var entry = await _sourceMetadataCache.GetEntryAsync(dependency, cancellation) ??
-                        new ProjectionSourceMetadataEntry(
-                            dependency.SourceId,
-                            dependency.SourceType.GetUnqualifiedTypeName());
-
-                    entry.Dependents.Add(new DependentEntry(ProjectedSource));
-                    _sourceMetadataCache.UpdateEntry(entry);
-                }
-
-                await AddDependentAsync();
+                dependencyEntry.Dependents.Add(new DependentEntry(ProjectedSource));
+                _sourceMetadataCache.UpdateEntry(dependencyEntry);
             }
 
             foreach (var dependency in storedDependencies.Except(metadata.Dependencies.Select(p => p.Dependency)))
             {
                 // Remove ourself as dependent from `dependency`.
-                async Task RemoveDependentAsync()
+                var dependencyEntry = await _sourceMetadataCache.GetEntryAsync(dependency, cancellation) ??
+                    new ProjectionSourceMetadataEntry(
+                        dependency.SourceId,
+                        dependency.SourceType.GetUnqualifiedTypeName());
+
+                var removed = dependencyEntry.Dependents.Remove(new DependentEntry(ProjectedSource));
+
+                Debug.Assert(removed);
+
+                if (dependencyEntry.ProjectionTargets.Any() || dependencyEntry.Dependents.Any())
                 {
-                    if (dependency == default)
-                        throw new ArgumentDefaultException(nameof(dependency));
-
-                    var entry = await _sourceMetadataCache.GetEntryAsync(dependency, cancellation) ??
-                        new ProjectionSourceMetadataEntry(
-                            dependency.SourceId,
-                            dependency.SourceType.GetUnqualifiedTypeName());
-
-                    var removed = entry.Dependents.Remove(new DependentEntry(ProjectedSource));
-
-                    Debug.Assert(removed);
-
-                    if (entry.ProjectionTargets.Any() || entry.Dependents.Any())
-                    {
-                        _sourceMetadataCache.UpdateEntry(entry);
-                    }
-                    else
-                    {
-                        Debug.Assert(!entry.Dependencies.Any());
-                        _sourceMetadataCache.DeleteEntry(entry);
-                    }
+                    _sourceMetadataCache.UpdateEntry(dependencyEntry);
                 }
-
-                await RemoveDependentAsync();
+                else
+                {
+                    Debug.Assert(!dependencyEntry.Dependencies.Any());
+                    _sourceMetadataCache.DeleteEntry(dependencyEntry);
+                }
             }
 
             entry.Dependencies.Clear();

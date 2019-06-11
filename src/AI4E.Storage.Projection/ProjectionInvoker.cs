@@ -21,13 +21,13 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using AI4E.Handler;
 using Microsoft.Extensions.DependencyInjection;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Projection
 {
@@ -49,7 +49,7 @@ namespace AI4E.Storage.Projection
             var handlerType = projectionDescriptor.HandlerType;
             var handler = ActivatorUtilities.CreateInstance(serviceProvider, handlerType);
 
-            Assert(handler != null);
+            Debug.Assert(handler != null);
             return CreateInvokerInternal(handler, projectionDescriptor, serviceProvider);
         }
 
@@ -75,7 +75,7 @@ namespace AI4E.Storage.Projection
                 types: new[] { typeof(object), typeof(ProjectionDescriptor), typeof(IServiceProvider) },
                 modifiers: null);
 
-            Assert(ctor != null);
+            Debug.Assert(ctor != null);
 
             var handlerParameter = Expression.Parameter(typeof(object), "handler");
             var projectionDescriptorParameter = Expression.Parameter(typeof(ProjectionDescriptor), "projectionDescriptor");
@@ -124,7 +124,7 @@ namespace AI4E.Storage.Projection
             }
 
             var member = _projectionDescriptor.Member;
-            Assert(member != null);
+            Debug.Assert(member != null);
             var invoker = HandlerActionInvoker.GetInvoker(member);
 
             object ResolveParameter(ParameterInfo parameter)
@@ -166,7 +166,7 @@ namespace AI4E.Storage.Projection
                 if (_projectionDescriptor.MultipleResults)
                 {
                     var enumerable = result as IEnumerable<TTarget>;
-                    Assert(enumerable != null);
+                    Debug.Assert(enumerable != null);
 
                     foreach (var singleResult in enumerable)
                     {
@@ -176,7 +176,7 @@ namespace AI4E.Storage.Projection
                 else
                 {
                     var projectionResult = result as TTarget;
-                    Assert(projectionResult != null);
+                    Debug.Assert(projectionResult != null);
 
                     yield return projectionResult;
                 }
