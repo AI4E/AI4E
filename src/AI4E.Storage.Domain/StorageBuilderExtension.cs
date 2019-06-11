@@ -30,6 +30,11 @@ namespace AI4E.Storage.Domain
             AddMessageProcessors(services);
 
             builder.AddProjection(projection => projection.UseSourceProcessor<EntityStorageEngineProjectionSourceProcessorFactory>());
+            services.AddMessaging().ConfigureMessageHandlers((registry, _) =>
+            {
+                registry.Register(new MessageHandlerRegistration<ProjectEntityMessage>(
+                    serviceProvider => ActivatorUtilities.CreateInstance<ProjectEntityMessageHandler>(serviceProvider)));
+            });
 
             return new DomainStorageBuilder(builder);
         }

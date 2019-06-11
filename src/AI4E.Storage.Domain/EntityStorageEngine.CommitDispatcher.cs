@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -84,17 +85,18 @@ namespace AI4E.Storage.Domain
             await _initializationHelper.Initialization;
             var tcs = new TaskCompletionSource<object>();
             DispatchInternalAsync(commit, tcs, cancellation).HandleExceptions(_logger);
-            await tcs.Task;
+
+            var timeout = Task.Delay(500); // TODO: This should be configurable.
+            await Task.WhenAny(tcs.Task, timeout);
         }
 
         private async Task DispatchInternalAsync(ICommit commit, TaskCompletionSource<object> tcs, CancellationToken cancellation)
         {
-            var bucket = commit.BucketId;
+            var events = BuildEventsList(commit);
 
-            // The commit is not in our scope.
-            // TODO: Remove the dependency on EntityStorageEngine. Add a type for bucket-id to type and type to bucket-id translation.
-            if (!EntityStorageEngine.IsInScope(bucket, _options.Scope, out var typeName))
+            if (!events.Any())
             {
+                Task.Run(() => tcs?.TrySetResult(null)).HandleExceptions();
                 return;
             }
 
@@ -113,18 +115,17 @@ namespace AI4E.Storage.Domain
                         _logger?.LogDebug($"Dispatching commit '{commit.Headers[EntityStorageEngine.ConcurrencyTokenHeaderKey]}' of stream '{commit.StreamId}' ({attempt}. attempt).");
                     }
 
-                    var projection = ProjectAsync(typeName, commit.StreamId, tcs, cancellation);
-                    var dispatch = DispatchCoreAsync(commit, cancellation);
-
-                    await Task.WhenAll(projection, dispatch);
-
-                    var success = await dispatch;
+                    var success = await DispatchCoreAsync(events, cancellation);
 
                     if (success)
                     {
                         await _persistence.MarkCommitAsDispatchedAsync(commit, cancellation);
                         Task.Run(() => tcs?.TrySetResult(null)).HandleExceptions();
                         return;
+                    }
+                    else
+                    {
+                        _logger?.LogWarning($"Dispatching commit {commit.Headers[EntityStorageEngine.ConcurrencyTokenHeaderKey]} of stream {commit.StreamId} failed.");
                     }
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
@@ -144,70 +145,57 @@ namespace AI4E.Storage.Domain
             _logger?.LogError($"Dispatching commit '{commit.Headers[EntityStorageEngine.ConcurrencyTokenHeaderKey]}' of stream '{commit.StreamId}' finally failed.");
         }
 
-        private async Task<bool> DispatchCoreAsync(ICommit commit, CancellationToken cancellation)
+        private async Task<bool> DispatchCoreAsync(ImmutableList<object> events, CancellationToken cancellation)
         {
-            IEnumerable<object> events;
-
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var storageEngine = scope.ServiceProvider.GetRequiredService<IEntityStorageEngine>();
-                var settingsResolver = scope.ServiceProvider.GetRequiredService<ISerializerSettingsResolver>();
-                var jsonSerializer = JsonSerializer.Create(settingsResolver.ResolveSettings(storageEngine));
-
-                object Deserialize(byte[] data)
-                {
-                    if (data == null)
-                        return null;
-
-                    var str = CompressionHelper.Unzip(data);
-
-                    using (var textReader = new StringReader(str))
-                    {
-                        return jsonSerializer.Deserialize(textReader, typeof(object));
-                    }
-                }
-
-                // We need to evaluate the enumerable here, to ensure that the Deserialize method is not called outside the scope.
-                events = commit.Events.Select(p => Deserialize(p.Body as byte[])).ToList();
-            }
-
             var dispatchResults = await ValueTaskHelper.WhenAll(events.Select(p => DispatchEventAsync(p, cancellation)), preserveOrder: false);
             var dispatchResult = new AggregateDispatchResult(dispatchResults);
+            return dispatchResult.IsSuccess;
+        }
 
-            if (!dispatchResult.IsSuccess)
+        private ImmutableList<object> BuildEventsList(ICommit commit)
+        {
+            // The commit is not in our scope.
+            // TODO: Remove the dependency on EntityStorageEngine. Add a type for bucket-id to type and type to bucket-id translation.
+            if (!EntityStorageEngine.IsInScope(commit.BucketId, _options.Scope, out var typeName))
             {
-                _logger?.LogWarning($"Dispatching commit {commit.Headers[EntityStorageEngine.ConcurrencyTokenHeaderKey]} of stream {commit.StreamId} failed for reason: {dispatchResult.Message}.");
+                return ImmutableList<object>.Empty; ;
             }
 
-            return dispatchResult.IsSuccess;
+            var entityType = TypeLoadHelper.LoadTypeFromUnqualifiedName(typeName);
+            var entityId = commit.StreamId;
+
+            var events = ImmutableList.CreateBuilder<object>();
+            events.Add(new ProjectEntityMessage(entityType, entityId));
+
+            using var scope = _serviceProvider.CreateScope();
+            var storageEngine = scope.ServiceProvider.GetRequiredService<IEntityStorageEngine>();
+            var settingsResolver = scope.ServiceProvider.GetRequiredService<ISerializerSettingsResolver>();
+            var jsonSerializer = JsonSerializer.Create(settingsResolver.ResolveSettings(storageEngine));
+
+            object Deserialize(byte[] data)
+            {
+                if (data == null)
+                    return null;
+
+                var str = CompressionHelper.Unzip(data);
+
+                using var textReader = new StringReader(str);
+                return jsonSerializer.Deserialize(textReader, typeof(object));
+            }
+
+            // We need to evaluate the enumerable here, to ensure that the Deserialize method is not called outside the scope.
+            foreach (var eventMessage in commit.Events)
+            {
+                events.Add(Deserialize(eventMessage.Body as byte[]));
+            }
+
+            return events.ToImmutable();
         }
 
         private ValueTask<IDispatchResult> DispatchEventAsync(object evt, CancellationToken cancellation)
         {
             var dispatchData = DispatchDataDictionary.Create(evt.GetType(), evt);
             return _eventDispatcher.DispatchLocalAsync(dispatchData, publish: true, cancellation);
-        }
-
-        private async Task ProjectAsync(string bucketId, string id, TaskCompletionSource<object> tcs, CancellationToken cancellation)
-        {
-            try
-            {
-                var type = TypeLoadHelper.LoadTypeFromUnqualifiedName(bucketId);
-
-                if (type == null)
-                {
-                    throw new InvalidOperationException($"Unable to load type for bucket '{bucketId}'");
-                }
-
-                await _projectionEngine.ProjectAsync(type, id, cancellation);
-                Task.Run(() => tcs?.TrySetResult(null)).HandleExceptions();
-            }
-            catch (Exception exc)
-            {
-                Task.Run(() => tcs?.TrySetException(exc)).HandleExceptions();
-
-                throw;
-            }
         }
 
         // Adapted from: https://stackoverflow.com/questions/383587/how-do-you-do-integer-exponentiation-in-c
