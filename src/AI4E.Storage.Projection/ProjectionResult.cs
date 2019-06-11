@@ -23,8 +23,19 @@ using AI4E.Internal;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Represents the result of a projection.
+    /// </summary>
     public sealed class ProjectionResult : IProjectionResult
     {
+        /// <summary>
+        /// Creates a new instance of the <see cref="ProjectionResult"/> type.
+        /// </summary>
+        /// <param name="resultType">The type of projection result.</param>
+        /// <param name="result">The projection result.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="resultType"/> or <paramref name="result"/> is <c>null</c>.
+        /// </exception>
         public ProjectionResult(Type resultType, object result)
         {
             if (resultType is null)
@@ -55,31 +66,5 @@ namespace AI4E.Storage.Projection
 
         /// <inheritdoc />
         public Type ResultType { get; }
-    }
-
-    public sealed class ProjectionResult<TResultId, TResult> : IProjectionResult<TResultId, TResult>
-             where TResult : class
-    {
-        public ProjectionResult(TResult result)
-        {
-            if (result is null)
-                throw new ArgumentNullException(nameof(result));
-
-            Result = result;
-            ResultId = DataPropertyHelper.GetId<TResultId, TResult>(result);
-        }
-
-        /// <inheritdoc />
-        public TResultId ResultId { get; }
-
-        /// <inheritdoc />
-        public TResult Result { get; }
-
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
-        object IProjectionResult.ResultId => ResultId;
-        object IProjectionResult.Result => Result;
-        Type IProjectionResult.ResultIdType => typeof(TResultId);
-        Type IProjectionResult.ResultType => typeof(TResult);
-#endif
     }
 }

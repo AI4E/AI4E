@@ -22,25 +22,29 @@ using System;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Represents the result of a projection.
+    /// </summary>
     public interface IProjectionResult
     {
+        /// <summary>
+        /// Gets the projection result id.
+        /// </summary>
         object ResultId { get; }
+
+        /// <summary>
+        /// Gets the projection result.
+        /// </summary>
         object Result { get; }
+
+        /// <summary>
+        /// Gets the type of id of the projection result.
+        /// </summary>
         Type ResultIdType { get; }
+
+        /// <summary>
+        /// Gets the projection result type.
+        /// </summary>
         Type ResultType { get; }
-    }
-
-    public interface IProjectionResult<TResultId, TResult> : IProjectionResult
-        where TResult : class
-    {
-        new TResultId ResultId { get; }
-        new TResult Result { get; }
-
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS      
-        object IProjectionResult.ResultId => ResultId;
-        object IProjectionResult.Result => Result;
-        Type IProjectionResult.ResultIdType => typeof(TResultId);
-        Type IProjectionResult.ResultType => typeof(TResult);
-#endif
     }
 }
