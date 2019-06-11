@@ -54,6 +54,8 @@ namespace AI4E.Storage.Projection
             _database = database;
             _idAccessor = idAccessor;
             _queryBuilder = queryBuilder;
+
+            _cache = new Dictionary<TId, CacheEntry>();
         }
 
         public IEnumerable<MetadataCacheEntry<TEntry>> GetEntries()
