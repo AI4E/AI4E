@@ -57,9 +57,9 @@ namespace AI4E.Storage.Projection
                 type,
                 parameters.SourceType,
                 parameters.TargetType,
+                member,
                 parameters.MultipleResults,
-                parameters.ProjectNonExisting,
-                member);
+                parameters.ProjectNonExisting);
         }
 
         private static bool IsAssignableToEnumerable(Type type, out Type elementType)
