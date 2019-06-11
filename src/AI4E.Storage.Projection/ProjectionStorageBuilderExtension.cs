@@ -25,14 +25,31 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AI4E.Storage
 {
+    /// <summary>
+    /// Contains extensions for the <see cref="IStorageBuilder"/> type.
+    /// </summary>
     public static class ProjectionStorageBuilderExtension
     {
+        /// <summary>
+        /// Adds the projection engine to the storage system.
+        /// </summary>
+        /// <param name="storageBuilder">The storage builder.</param>
+        /// <returns>The storage builder.</returns>
         public static IStorageBuilder AddProjection(this IStorageBuilder storageBuilder)
         {
             AddProjectionCore(storageBuilder);
             return storageBuilder;
         }
 
+        /// <summary>
+        /// Adds the projection engine to the storage system.
+        /// </summary>
+        /// <param name="storageBuilder">The storage builder.</param>
+        /// <param name="configuration">An action that configures the projection engine.</param>
+        /// <returns>The storage builder.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="configuration"/> is <c>null</c>.
+        /// </exception>
         public static IStorageBuilder AddProjection(
             this IStorageBuilder storageBuilder,
             Action<IProjectionBuilder> configuration)
@@ -46,7 +63,7 @@ namespace AI4E.Storage
             return storageBuilder;
         }
 
-        public static IProjectionBuilder AddProjectionCore(this IStorageBuilder storageBuilder)
+        private static IProjectionBuilder AddProjectionCore(this IStorageBuilder storageBuilder)
         {
             var services = storageBuilder.Services;
 

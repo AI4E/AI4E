@@ -20,6 +20,9 @@
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// An abstract base class that can be used to implement projections.
+    /// </summary>
     [Projection]
     public abstract class Projection { }
 }

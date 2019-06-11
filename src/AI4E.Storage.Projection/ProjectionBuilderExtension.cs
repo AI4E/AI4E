@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -19,14 +19,25 @@
  */
 
 using System;
-using AI4E.Storage.Projection;
 using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Contains extensions for the <see cref="IProjectionBuilder"/> type.
+    /// </summary>
     public static class ProjectionBuilderExtension
     {
+        /// <summary>
+        /// Configres the registered projections.
+        /// </summary>
+        /// <param name="projectionBuilder">The projection builder.</param>
+        /// <param name="configuration">The projection configuration.</param>
+        /// <returns>The projection builder.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="configuration"/> is <c>null</c>.
+        /// </exception>
         public static IProjectionBuilder ConfigureProjections(
             this IProjectionBuilder projectionBuilder,
             Action<IProjectionRegistry, IServiceProvider> configuration)
@@ -48,6 +59,14 @@ namespace AI4E.Storage
             return projectionBuilder;
         }
 
+        /// <summary>
+        /// Uses the specified type of projection source processor factory.
+        /// </summary>
+        /// <typeparam name="TSourceProcessorFactory">
+        /// The type of projection source processor factory.
+        /// </typeparam>
+        /// <param name="projectionBuilder">The projection builder.</param>
+        /// <returns>The projection builder.</returns>
         public static IProjectionBuilder UseSourceProcessor<TSourceProcessorFactory>(
             this IProjectionBuilder projectionBuilder)
             where TSourceProcessorFactory : class, IProjectionSourceProcessorFactory
@@ -62,10 +81,20 @@ namespace AI4E.Storage
             return projectionBuilder;
         }
 
+        /// <summary>
+        /// Uses the specified projection source processor factory.
+        /// </summary>
+        /// <param name="projectionBuilder">The projection builder.</param>
+        /// <param name="sourceProcessorFactory">The projection source processor factory.</param>
+        /// <returns>The projection builder.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="sourceProcessorFactory"/> is <c>null</c>.</exception>
         public static IProjectionBuilder UseSourceProcessor(
             this IProjectionBuilder projectionBuilder,
             IProjectionSourceProcessorFactory sourceProcessorFactory)
         {
+            if (sourceProcessorFactory is null)
+                throw new ArgumentNullException(nameof(sourceProcessorFactory));
+
             void ConfigureProjections(IServiceCollection services)
             {
                 services.AddSingleton(sourceProcessorFactory);
@@ -76,6 +105,14 @@ namespace AI4E.Storage
             return projectionBuilder;
         }
 
+        /// <summary>
+        /// Uses the specified type of projection target processor factory.
+        /// </summary>
+        /// <typeparam name="TTargetProcessorFactory">
+        /// The type of projection target processor factory.
+        /// </typeparam>
+        /// <param name="projectionBuilder">The projection builder.</param>
+        /// <returns>The projection builder.</returns>
         public static IProjectionBuilder UseTargetProcessor<TTargetProcessorFactory>(
             this IProjectionBuilder projectionBuilder)
             where TTargetProcessorFactory : class, IProjectionTargetProcessorFactory
@@ -90,10 +127,19 @@ namespace AI4E.Storage
             return projectionBuilder;
         }
 
+        /// <summary>
+        /// Uses the specified projection target processor factory.
+        /// </summary>
+        /// <param name="projectionBuilder">The projection builder.</param>
+        /// <param name="targetProcessorFactory">The projection target processor factory.</param>
+        /// <returns>The projection builder.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="targetProcessorFactory"/> is <c>null</c>.</exception>
         public static IProjectionBuilder UseTargetProcessor(
             this IProjectionBuilder projectionBuilder,
             IProjectionTargetProcessorFactory targetProcessorFactory)
         {
+            if (targetProcessorFactory is null)
+                throw new ArgumentNullException(nameof(targetProcessorFactory));
             void ConfigureProjections(IServiceCollection services)
             {
                 services.AddSingleton(targetProcessorFactory);

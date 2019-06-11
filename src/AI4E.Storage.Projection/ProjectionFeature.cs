@@ -26,13 +26,23 @@ using AI4E.Utils;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Represents a projection application feature.
+    /// </summary>
     public class ProjectionFeature
     {
+        /// <summary>
+        /// Gets the list of types that desclare projections.
+        /// </summary>
         public IList<Type> Projections { get; } = new List<Type>();
     }
 
+    /// <summary>
+    /// Represents a projection feature provider.
+    /// </summary>
     public class ProjectionFeatureProvider : IApplicationFeatureProvider<ProjectionFeature>
     {
+        /// <inheritdoc/>
         public void PopulateFeature(IEnumerable<ApplicationPart> parts, ProjectionFeature feature)
         {
             foreach (var part in parts.OfType<IApplicationPartTypeProvider>())

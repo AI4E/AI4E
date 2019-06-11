@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -21,10 +21,19 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Represents a projection builder.
+    /// </summary>
     public interface IProjectionBuilder
     {
+        /// <summary>
+        /// Configures the projection services.
+        /// </summary>
+        /// <param name="configuration">The service configuration.</param>
+        /// <returns>The projection builder.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="configuration"/> is <c>null</c>.</exception>
         IProjectionBuilder ConfigureServices(Action<IServiceCollection> configuration);
     }
 }

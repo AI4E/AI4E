@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -22,15 +22,30 @@ using System;
 
 namespace AI4E.Storage.Projection
 {
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method)]
+    /// <summary>
+    /// An attribute that marks the decorated type or member as projection.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public sealed class ProjectionAttribute : Attribute
     {
+        /// <summary>
+        /// Gets or sets the type of projection target.
+        /// </summary>
         public Type TargetType { get; set; }
 
+        /// <summary>
+        /// Gets or sets the type of projection source.
+        /// </summary>
         public Type SourceType { get; set; }
 
+        /// <summary>
+        /// Gets or sets a boolean value indicating whether the projection projections to multiple targets.
+        /// </summary>
         public bool? MultipleResults { get; set; }
 
+        /// <summary>
+        /// Gets or sets a boolean value inidicating whether the projection shall be invoked for non-existing sources.
+        /// </summary>
         public bool ProjectNonExisting { get; set; }
     }
 }

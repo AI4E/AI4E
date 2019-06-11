@@ -22,11 +22,23 @@ using System;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Represents the registration of a projection.
+    /// </summary>
     public sealed class ProjectionRegistration : IProjectionRegistration
     {
         private readonly Func<IServiceProvider, IProjection> _factory;
         private readonly ProjectionDescriptor? _descriptor;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="ProjectionRegistration"/> type.
+        /// </summary>
+        /// <param name="factory">A factory function that is used to obtain the projection.</param>
+        /// <param name="descriptor">A descriptor describing the projection.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="factory"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="descriptor"/> does not specify both, a projection source or target type.
+        /// </exception>
         public ProjectionRegistration(
             Func<IServiceProvider, IProjection> factory,
             in ProjectionDescriptor descriptor)
@@ -34,12 +46,25 @@ namespace AI4E.Storage.Projection
             if (factory is null)
                 throw new ArgumentNullException(nameof(factory));
 
+            if (descriptor.SourceType is null || descriptor.TargetType is null)
+                throw new ArgumentException("The descriptor must specify both, a projection source and target type.", nameof(descriptor));
+
             SourceType = descriptor.SourceType;
             TargetType = descriptor.TargetType;
             _factory = factory;
             _descriptor = descriptor;
         }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="ProjectionRegistration"/> type.
+        /// </summary>
+        /// <param name="sourceType">The type of projection source.</param>
+        /// <param name="targetType">The type of projection target.</param>
+        /// <param name="factory">A factory function that is used to obtain the projection.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="factory"/>, <paramref name="sourceType"/>
+        /// or <paramref name="targetType"/> is <c>null</c>.
+        /// </exception>
         public ProjectionRegistration(
             Type sourceType,
             Type targetType,
@@ -59,6 +84,7 @@ namespace AI4E.Storage.Projection
             _factory = factory;
         }
 
+        /// <inheritdoc />
         public IProjection CreateProjection(IServiceProvider serviceProvider)
         {
             if (serviceProvider is null)
@@ -78,8 +104,10 @@ namespace AI4E.Storage.Projection
             return result;
         }
 
+        /// <inheritdoc />
         public Type SourceType { get; }
 
+        /// <inheritdoc />
         public Type TargetType { get; }
 
         /// <inheritdoc />
@@ -90,6 +118,11 @@ namespace AI4E.Storage.Projection
         }
     }
 
+    /// <summary>
+    /// Represents the registration of a projection.
+    /// </summary>
+    /// <typeparam name="TSource">The type of projection source.</typeparam>
+    /// <typeparam name="TTarget">The type of projection targer.</typeparam>
     public sealed class ProjectionRegistration<TSource, TTarget> : IProjectionRegistration<TSource, TTarget>
         where TSource : class
         where TTarget : class
@@ -97,6 +130,16 @@ namespace AI4E.Storage.Projection
         private readonly Func<IServiceProvider, IProjection<TSource, TTarget>> _factory;
         private readonly ProjectionDescriptor? _descriptor;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="ProjectionRegistration"/> type.
+        /// </summary>
+        /// <param name="factory">A factory function that is used to obtain the projection.</param>
+        /// <param name="descriptor">A descriptor describing the projection.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="factory"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="descriptor"/> does not specify the same projection source and target types
+        /// as <typeparamref name="TSource"/> and <typeparamref name="TTarget"/> respectively.
+        /// </exception>
         public ProjectionRegistration(
             Func<IServiceProvider, IProjection<TSource, TTarget>> factory,
             in ProjectionDescriptor? descriptor = null)
@@ -117,6 +160,7 @@ namespace AI4E.Storage.Projection
             _descriptor = descriptor;
         }
 
+        /// <inheritdoc />
         public IProjection<TSource, TTarget> CreateProjection(IServiceProvider serviceProvider)
         {
             if (serviceProvider is null)

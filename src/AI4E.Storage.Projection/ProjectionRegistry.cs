@@ -29,6 +29,9 @@ using AI4E.Utils;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Represents a registry where projections can be registered.
+    /// </summary>
     public sealed class ProjectionRegistry : IProjectionRegistry
     {
         private readonly Dictionary<Type, OrderedSet<IProjectionRegistration>> _projectionRegistrations;

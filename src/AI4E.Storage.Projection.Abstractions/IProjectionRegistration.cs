@@ -45,6 +45,11 @@ namespace AI4E.Storage.Projection
         /// </summary>
         Type TargetType { get; }
 
+        /// <summary>
+        /// Tries to retrieve the <see cref="ProjectionDescriptor"/> that the instance was created with.
+        /// </summary>
+        /// <param name="descriptor">Contains the <see cref="ProjectionDescriptor"/> if the operation suceeds.</param>
+        /// <returns>True if the operation was successful, false otherwise.</returns>
         bool TryGetDescriptor(out ProjectionDescriptor descriptor);
     }
 
