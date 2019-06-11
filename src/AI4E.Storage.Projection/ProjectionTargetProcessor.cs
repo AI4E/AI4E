@@ -99,7 +99,7 @@ namespace AI4E.Storage.Projection
             return entry == null ? Enumerable.Empty<ProjectionSourceDescriptor>() : entry.Dependents.Select(p => p.ToDescriptor()).ToImmutableList();
         }
 
-        public async ValueTask<SourceMetadata> GetMetadataAsync(CancellationToken cancellation)
+        public async ValueTask<ProjectionMetadata> GetMetadataAsync(CancellationToken cancellation)
         {
             var entry = await _sourceMetadataCache.GetEntryAsync(ProjectedSource, cancellation);
 
@@ -109,7 +109,7 @@ namespace AI4E.Storage.Projection
             return entry.ToSourceMetadata();
         }
 
-        public async ValueTask UpdateAsync(SourceMetadata metadata, CancellationToken cancellation)
+        public async ValueTask UpdateAsync(ProjectionMetadata metadata, CancellationToken cancellation)
         {
             var entry = await _sourceMetadataCache.GetEntryAsync(ProjectedSource, cancellation) ??
                         new ProjectionSourceMetadataEntry(
@@ -519,9 +519,9 @@ namespace AI4E.Storage.Projection
         public List<DependencyEntry> Dependencies { get; private set; } = new List<DependencyEntry>();
         public List<DependentEntry> Dependents { get; private set; } = new List<DependentEntry>();
 
-        public SourceMetadata ToSourceMetadata()
+        public ProjectionMetadata ToSourceMetadata()
         {
-            return new SourceMetadata(
+            return new ProjectionMetadata(
                 Dependencies.Select(p => p.ToDescriptor()),
                 ProjectionTargets.Select(p => p.ToDescriptor()),
                 ProjectionRevision);

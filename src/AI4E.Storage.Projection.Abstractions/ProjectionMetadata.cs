@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -24,9 +24,9 @@ using System.Collections.Immutable;
 
 namespace AI4E.Storage.Projection
 {
-    public readonly struct SourceMetadata
+    public readonly struct ProjectionMetadata
     {
-        public SourceMetadata(
+        public ProjectionMetadata(
             IEnumerable<ProjectionSourceDependency> dependencies,
             IEnumerable<ProjectionTargetDescriptor> targets,
             long projectionRevision)

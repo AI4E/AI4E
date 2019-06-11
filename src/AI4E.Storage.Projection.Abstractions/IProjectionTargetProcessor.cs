@@ -31,8 +31,8 @@ namespace AI4E.Storage.Projection
 
         ValueTask<IEnumerable<ProjectionSourceDescriptor>> GetDependentsAsync(CancellationToken cancellation);
 
-        ValueTask<SourceMetadata> GetMetadataAsync(CancellationToken cancellation);
-        ValueTask UpdateAsync(SourceMetadata metadata, CancellationToken cancellation);
+        ValueTask<ProjectionMetadata> GetMetadataAsync(CancellationToken cancellation);
+        ValueTask UpdateAsync(ProjectionMetadata metadata, CancellationToken cancellation);
         ValueTask<bool> CommitAsync(CancellationToken cancellation);
 
         ValueTask UpdateEntityToProjectionAsync(

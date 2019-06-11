@@ -155,7 +155,7 @@ namespace AI4E.Storage.Projection
                 await targetProcessor.RemoveEntityFromProjectionAsync(removedProjection, cancellation);
             }
 
-            var updatedMetadata = new SourceMetadata(sourceProcessor.Dependencies, targets, sourceRevision);
+            var updatedMetadata = new ProjectionMetadata(sourceProcessor.Dependencies, targets, sourceRevision);
             await targetProcessor.UpdateAsync(updatedMetadata, cancellation);
         }
 
@@ -186,7 +186,7 @@ namespace AI4E.Storage.Projection
 
         private async ValueTask<bool> CheckUpdateNeededAsync(
             IProjectionSourceProcessor sourceProcessor,
-            SourceMetadata metadata,
+            ProjectionMetadata metadata,
             CancellationToken cancellation)
         {
             var sourceRevision = await GetSourceRevisionAsync(sourceProcessor, metadata.ProjectionRevision, cancellation);
