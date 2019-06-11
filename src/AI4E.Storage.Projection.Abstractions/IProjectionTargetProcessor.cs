@@ -125,7 +125,7 @@ namespace AI4E.Storage.Projection
     public interface IProjectionTargetProcessorFactory
     {
         /// <summary>
-        /// Creates a new instance.
+        /// Creates a new <see cref="IProjectionTargetProcessor"/>.
         /// </summary>
         /// <param name="projectedSource">A descriptor for the projected source.</param>
         /// <param name="serviceProvider">The <see cref="IServiceProvider"/> that shall be used to load services.</param>
