@@ -71,6 +71,25 @@ namespace AI4E
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
         ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, bool publish, bool localDispatch, CancellationToken cancellation);
 
-        // TODO: When we have default interface implementation support, provide a default implementation for the base interfaces members.
+#if SUPPORTS_DEFAULT_INTERFACE_METHODS
+        ValueTask<IDispatchResult> IMessageHandler.HandleAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            bool localDispatch,
+            CancellationToken cancellation)
+        {
+            if (!(dispatchData.Message is TMessage))
+                throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{typeof(TMessage)}'.");
+
+            if (!(dispatchData is DispatchDataDictionary<TMessage> typedDispatchData))
+            {
+                typedDispatchData = new DispatchDataDictionary<TMessage>(dispatchData.Message as TMessage, dispatchData);
+            }
+
+            return HandleAsync(typedDispatchData, publish, localDispatch, cancellation);
+        }
+
+        Type IMessageHandler.MessageType => typeof(TMessage);
+#endif
     }
 }
