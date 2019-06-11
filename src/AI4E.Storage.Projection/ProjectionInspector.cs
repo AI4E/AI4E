@@ -28,6 +28,9 @@ using AI4E.Utils.Async;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Inspected the members of a projection declaring type.
+    /// </summary>
     public sealed class ProjectionInspector : TypeMemberInspector<ProjectionDescriptor, ProjectionParameters>
     {
         [ThreadStatic] private static ProjectionInspector _instance;
@@ -48,6 +51,7 @@ namespace AI4E.Storage.Projection
 
         private ProjectionInspector() { }
 
+        /// <inheritdoc/>
         protected override ProjectionDescriptor CreateDescriptor(
             Type type,
             MethodInfo member,
@@ -106,6 +110,7 @@ namespace AI4E.Storage.Projection
             return false;
         }
 
+        /// <inheritdoc/>
         protected override ProjectionParameters GetParameters(
             Type type,
             MethodInfo member,
@@ -172,14 +177,16 @@ namespace AI4E.Storage.Projection
                 projectNonExisting = memberAttribute.ProjectNonExisting;
             }
 
-            return new ProjectionParameters(sourceType, targetType, projectNonExisting, multipleResults);
+            return new ProjectionParameters(sourceType, targetType, multipleResults, projectNonExisting);
         }
 
+        /// <inheritdoc/>
         protected override bool IsValidReturnType(AwaitableTypeDescriptor returnTypeDescriptor)
         {
             return true;
         }
 
+        /// <inheritdoc/>
         protected override bool IsValidMember(MethodInfo member)
         {
             if (!base.IsValidMember(member))
@@ -200,35 +207,67 @@ namespace AI4E.Storage.Projection
             return true;
         }
 
+        /// <inheritdoc/>
         protected override bool IsValidParameter(ParameterInfo parameter)
         {
             return !parameter.ParameterType.IsByRef;
         }
 
+        /// <inheritdoc/>
         protected override bool IsAsynchronousMember(MethodInfo member, AwaitableTypeDescriptor returnTypeDescriptor)
         {
             return member.Name.StartsWith("Project") && member.Name.EndsWith("Async") || member.IsDefined<MessageHandlerAttribute>(inherit: true);
         }
 
+        /// <inheritdoc/>
         protected override bool IsSychronousMember(MethodInfo member, AwaitableTypeDescriptor returnTypeDescriptor)
         {
             return member.Name.StartsWith("Project") && !member.Name.EndsWith("Async") || member.IsDefined<MessageHandlerAttribute>(inherit: true);
         }
     }
 
+    /// <summary>
+    /// Represents the parameters of a projection.
+    /// </summary>
     public readonly struct ProjectionParameters
     {
-        public ProjectionParameters(Type sourceType, Type targetType, bool projectNonExisting, bool multipleResults)
+        /// <summary>
+        /// Creates a new instance of the <see cref="ProjectionParameters"/> type.
+        /// </summary>
+        /// <param name="sourceType">The projection source type.</param>
+        /// <param name="targetType">The projection target type.</param>
+        /// <param name="multipleResults">
+        /// A boolean value indicating whether the projection projections to multiple targets.
+        /// </param>
+        /// <param name="projectNonExisting">
+        /// A boolean value inidicating whether the projection shall be invoked for non-existing sources.
+        /// </param>
+        public ProjectionParameters(Type sourceType, Type targetType, bool multipleResults, bool projectNonExisting)
         {
             SourceType = sourceType;
             TargetType = targetType;
-            ProjectNonExisting = projectNonExisting;
             MultipleResults = multipleResults;
+            ProjectNonExisting = projectNonExisting;
         }
 
+        /// <summary>
+        /// Gets the projection source type.
+        /// </summary>
         public Type SourceType { get; }
+
+        /// <summary>
+        /// Gets the projection target type.
+        /// </summary>
         public Type TargetType { get; }
-        public bool ProjectNonExisting { get; }
+
+        /// <summary>
+        /// Gets a boolean value indicating whether the projection projections to multiple targets.
+        /// </summary>
         public bool MultipleResults { get; }
+
+        /// <summary>
+        /// Gets a boolean value inidicating whether the projection shall be invoked for non-existing sources.
+        /// </summary>
+        public bool ProjectNonExisting { get; }
     }
 }
