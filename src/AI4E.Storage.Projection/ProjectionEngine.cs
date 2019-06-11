@@ -33,6 +33,9 @@ using AI4E.Utils;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Represents a projection engine.
+    /// </summary>
     public sealed partial class ProjectionEngine : IProjectionEngine
     {
         private readonly IProjectionExecutor _projector;
@@ -41,7 +44,20 @@ namespace AI4E.Storage.Projection
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ProjectionEngine> _logger;
 
-        public ProjectionEngine(IProjectionExecutor projector,
+        /// <summary>
+        /// Creates a new instance of type <see cref="ProjectionEngine"/>.
+        /// </summary>
+        /// <param name="projector">The <see cref="IProjectionExecutor"/> used to execute projections.</param>
+        /// <param name="sourceProcessorFactory">The projection source processor.</param>
+        /// <param name="targetProcessorFactory">The projection target processor.</param>
+        /// <param name="serviceProvider">The <see cref="IServiceProvider"/> used to obtain services.</param>
+        /// <param name="logger">A logger used to log messages or <c>null</c>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any od <paramref name="projector"/>, <paramref name="sourceProcessorFactory"/>,
+        /// <paramref name="targetProcessorFactory"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
+        public ProjectionEngine(
+            IProjectionExecutor projector,
             IProjectionSourceProcessorFactory sourceProcessorFactory,
             IProjectionTargetProcessorFactory targetProcessorFactory,
             IServiceProvider serviceProvider,
@@ -66,6 +82,7 @@ namespace AI4E.Storage.Projection
             _logger = logger;
         }
 
+        /// <inheritdoc/>
         public Task ProjectAsync(Type entityType, string id, CancellationToken cancellation = default)
         {
             if (entityType == null)

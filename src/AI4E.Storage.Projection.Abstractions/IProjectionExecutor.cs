@@ -47,7 +47,7 @@ namespace AI4E.Storage.Projection
         /// An <see cref="IAsyncEnumerable{T}"/> that enumerated the projection results.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if either of <paramref name="sourceType"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// Thrown if either <paramref name="sourceType"/> or <paramref name="serviceProvider"/> is <c>null</c>.
         /// </exception>
         /// <exception cref="ArgumentException">
         /// Thrown if either <paramref name="source"/> is not convertible to the type specified by <paramref name="sourceType"/> or

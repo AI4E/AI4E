@@ -24,8 +24,26 @@ using System.Threading.Tasks;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Represents a projection engine.
+    /// </summary>
     public interface IProjectionEngine
     {
+        /// <summary>
+        /// Projects the specified projection source.
+        /// </summary>
+        /// <param name="sourceType">The type of projection source.</param>
+        /// <param name="sourceId">Type projection source id.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="sourceType"/> or <paramref name="sourceId"/> is <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="sourceType"/> specifies an invalid source type.
+        /// </exception>
         Task ProjectAsync(
             Type sourceType,
             string sourceId,
