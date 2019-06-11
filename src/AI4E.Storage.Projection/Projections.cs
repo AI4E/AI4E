@@ -28,14 +28,17 @@ namespace AI4E.Storage.Projection
 {
     internal static class Projections
     {
-        public static void Register(IStorageBuilder builder)
+        public static void Register(IProjectionBuilder builder)
         {
-            // Protect us from registering the projections multiple times.
-            if (builder.Services.Any(p => p.ServiceType == typeof(ProjectionRegisteredMarker)))
-                return;
+            builder.ConfigureServices(services =>
+            {
+                // Protect us from registering the projections multiple times.
+                if (services.Any(p => p.ServiceType == typeof(ProjectionRegisteredMarker)))
+                    return;
 
-            builder.Services.AddSingleton<ProjectionRegisteredMarker>(_ => null);
-            builder.ConfigureProjections(Configure);
+                services.AddSingleton<ProjectionRegisteredMarker>(_ => null);
+                builder.ConfigureProjections(Configure);
+            });
         }
 
         private sealed class ProjectionRegisteredMarker { }

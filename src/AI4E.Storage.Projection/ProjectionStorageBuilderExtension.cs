@@ -20,7 +20,6 @@
 
 using System;
 using AI4E.Storage.Projection;
-using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -30,6 +29,25 @@ namespace AI4E.Storage
     {
         public static IStorageBuilder AddProjection(this IStorageBuilder storageBuilder)
         {
+            AddProjectionCore(storageBuilder);
+            return storageBuilder;
+        }
+
+        public static IStorageBuilder AddProjection(
+            this IStorageBuilder storageBuilder,
+            Action<IProjectionBuilder> configuration)
+        {
+            if (configuration is null)
+                throw new ArgumentNullException(nameof(configuration));
+
+            var projectionBuilder = AddProjectionCore(storageBuilder);
+            configuration(projectionBuilder);
+
+            return storageBuilder;
+        }
+
+        public static IProjectionBuilder AddProjectionCore(this IStorageBuilder storageBuilder)
+        {
             var services = storageBuilder.Services;
 
             services.TryAddSingleton<IProjectionRegistry, ProjectionRegistry>();
@@ -37,25 +55,29 @@ namespace AI4E.Storage
             services.TryAddSingleton<IProjectionTargetProcessor, ProjectionTargetProcessor>();
             // TODO: Register a default instance for ProjectionSourceProcessor
             services.ConfigureApplicationParts(ProjectionFeatureProvider.Configure);
-            Projections.Register(storageBuilder);
 
-            return storageBuilder;
+            var projectionBuilder = new ProjectionBuilder(storageBuilder);
+
+            Projections.Register(projectionBuilder);
+
+            return projectionBuilder;
         }
 
-        public static IStorageBuilder ConfigureProjections(
-            this IStorageBuilder storageBuilder,
-            Action<IProjectionRegistry, IServiceProvider> configuration)
+        private sealed class ProjectionBuilder : IProjectionBuilder
         {
-            if (configuration is null)
-                throw new ArgumentNullException(nameof(configuration));
+            private readonly IStorageBuilder _storageBuilder;
 
-            storageBuilder.Services.Decorate<IProjectionRegistry>((registry, provider) =>
+            public ProjectionBuilder(IStorageBuilder storageBuilder)
             {
-                configuration(registry, provider);
-                return registry;
-            });
+                _storageBuilder = storageBuilder;
+            }
 
-            return storageBuilder;
+            public IProjectionBuilder ConfigureServices(Action<IServiceCollection> configuration)
+            {
+                configuration(_storageBuilder.Services);
+
+                return this;
+            }
         }
     }
 }
