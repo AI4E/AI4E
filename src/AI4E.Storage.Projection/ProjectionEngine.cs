@@ -141,17 +141,14 @@ namespace AI4E.Storage.Projection
             {
                 var projection = projectionResult.ToTargetDescriptor();
                 targets.Add(projection);
-
-                // The target was not part of the last projection. Store ourself to the target metadata.
-                var addEntityToProjections = !appliedTargets.Remove(projection);
-                await targetProcessor.UpdateEntityToProjectionAsync(projectionResult, addEntityToProjections, cancellation);
+                await targetProcessor.UpdateTargetAsync(projectionResult, cancellation);
             }
 
             // We removed all targets from 'applied projections' that are still present. 
             // The remaining ones are removed targets.
             foreach (var removedProjection in appliedTargets)
             {
-                await targetProcessor.RemoveEntityFromProjectionAsync(removedProjection, cancellation);
+                await targetProcessor.RemoveTargetAsync(removedProjection, cancellation);
             }
 
             var updatedMetadata = new ProjectionMetadata(sourceProcessor.Dependencies, targets, sourceRevision);

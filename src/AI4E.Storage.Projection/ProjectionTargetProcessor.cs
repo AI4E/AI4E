@@ -34,6 +34,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Represents a projection target processor, that stored the targets in a database.
+    /// </summary>
     public sealed class ProjectionTargetProcessor : IProjectionTargetProcessor
     {
         #region Fields
@@ -49,8 +52,18 @@ namespace AI4E.Storage.Projection
 
         #region C'tor
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="ProjectionTargetProcessor"/> type.
+        /// </summary>
+        /// <param name="projectedSource">A descriptor for the projected source.</param>
+        /// <param name="database">The database that the targets and metadata shall be stored in.</param>
+        /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="projectedSource"/> is <c>default</c>.</exception>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="database"/> is <c>null</c>.</exception>
         public ProjectionTargetProcessor(ProjectionSourceDescriptor projectedSource, IDatabase database)
         {
+            if (projectedSource == default)
+                throw new ArgumentDefaultException(nameof(projectedSource));
+
             if (database is null)
                 throw new ArgumentNullException(nameof(database));
 
@@ -90,8 +103,10 @@ namespace AI4E.Storage.Projection
 
         #region ISourceMetadataCache
 
+        /// <inheritdoc/>
         public ProjectionSourceDescriptor ProjectedSource { get; }
 
+        /// <inheritdoc/>
         public async ValueTask<IEnumerable<ProjectionSourceDescriptor>> GetDependentsAsync(CancellationToken cancellation)
         {
             var entry = await _sourceMetadataCache.GetEntryAsync(ProjectedSource, cancellation);
@@ -99,6 +114,7 @@ namespace AI4E.Storage.Projection
             return entry == null ? Enumerable.Empty<ProjectionSourceDescriptor>() : entry.Dependents.Select(p => p.ToDescriptor()).ToImmutableList();
         }
 
+        /// <inheritdoc/>
         public async ValueTask<ProjectionMetadata> GetMetadataAsync(CancellationToken cancellation)
         {
             var entry = await _sourceMetadataCache.GetEntryAsync(ProjectedSource, cancellation);
@@ -109,6 +125,7 @@ namespace AI4E.Storage.Projection
             return entry.ToSourceMetadata();
         }
 
+        /// <inheritdoc/>
         public async ValueTask UpdateAsync(ProjectionMetadata metadata, CancellationToken cancellation)
         {
             var entry = await _sourceMetadataCache.GetEntryAsync(ProjectedSource, cancellation) ??
@@ -175,6 +192,7 @@ namespace AI4E.Storage.Projection
             _sourceMetadataCache.UpdateEntry(entry);
         }
 
+        /// <inheritdoc/>
         public async ValueTask<bool> CommitAsync(CancellationToken cancellation)
         {
             using var scopedDatabase = _database.CreateScope();
@@ -254,6 +272,7 @@ namespace AI4E.Storage.Projection
             return await scopedDatabase.TryCommitAsync(cancellation);
         }
 
+        /// <inheritdoc/>
         public void Clear()
         {
             _sourceMetadataCache.Clear();
@@ -262,9 +281,9 @@ namespace AI4E.Storage.Projection
             _targetsToDelete.Clear();
         }
 
-        public async ValueTask UpdateEntityToProjectionAsync(
+        /// <inheritdoc/>
+        public async ValueTask UpdateTargetAsync(
             IProjectionResult projectionResult,
-            bool addToTargetMetadata,
             CancellationToken cancellation)
         {
             if (projectionResult is null)
@@ -273,27 +292,28 @@ namespace AI4E.Storage.Projection
             var target = new ProjectionTargetDescriptor(projectionResult.ResultType, projectionResult.ResultId.ToString()); // TODO: Can the id be null?
             _targetsToUpdate[target] = projectionResult.Result;
 
-            if (!addToTargetMetadata)
-            {
-                return;
-            }
-
             var entry = await _targetMetadataCache.GetEntryAsync(target, cancellation) ?? new ProjectionTargetMetadataEntry
             {
                 TargetId = projectionResult.ResultId,
                 TargetType = projectionResult.ResultType.GetUnqualifiedTypeName()
             };
 
-            entry.ProjectionSources.Add(new ProjectionSourceEntry(ProjectedSource));
-
-            _targetMetadataCache.UpdateEntry(entry);
+            if (!entry.ProjectionSources.Any(p => p.ToDescriptor() == ProjectedSource))
+            {
+                entry.ProjectionSources.Add(new ProjectionSourceEntry(ProjectedSource));
+                _targetMetadataCache.UpdateEntry(entry);
+            }
         }
 
-        public async ValueTask RemoveEntityFromProjectionAsync(
-            ProjectionTargetDescriptor removedProjection,
+        /// <inheritdoc/>
+        public async ValueTask RemoveTargetAsync(
+            ProjectionTargetDescriptor target,
             CancellationToken cancellation)
         {
-            var entry = await _targetMetadataCache.GetEntryAsync(removedProjection, cancellation);
+            if (target == default)
+                throw new ArgumentDefaultException(nameof(target));
+
+            var entry = await _targetMetadataCache.GetEntryAsync(target, cancellation);
 
             if (entry == null)
             {
@@ -308,11 +328,11 @@ namespace AI4E.Storage.Projection
             {
                 _targetMetadataCache.DeleteEntry(entry);
 
-                object projection = LoadTargetAsync(_database, removedProjection.TargetType, entry.TargetId, cancellation);
+                object projection = LoadTargetAsync(_database, target.TargetType, entry.TargetId, cancellation);
 
                 if (projection != null)
                 {
-                    _targetsToDelete[removedProjection] = projection;
+                    _targetsToDelete[target] = projection;
                 }
             }
             else
@@ -376,8 +396,12 @@ namespace AI4E.Storage.Projection
         #endregion
     }
 
+    /// <summary>
+    /// A projection target processor factory that can be used to create instances of type <see cref="ProjectionTargetProcessor"/>.
+    /// </summary>
     public sealed class ProjectionTargetProcessorFactory : IProjectionTargetProcessorFactory
     {
+        /// <inheritdoc/>
         public IProjectionTargetProcessor CreateInstance(ProjectionSourceDescriptor projectedSource, IServiceProvider serviceProvider)
         {
             var database = serviceProvider.GetRequiredService<IDatabase>();
@@ -459,6 +483,11 @@ namespace AI4E.Storage.Projection
 
         public string Id { get; set; }
         public string Type { get; set; }
+
+        public ProjectionSourceDescriptor ToDescriptor()
+        {
+            return new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(Type), Id);
+        }
     }
 
     internal sealed class ProjectionSourceMetadataEntry
