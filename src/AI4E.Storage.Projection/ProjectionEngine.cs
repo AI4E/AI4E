@@ -25,11 +25,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 
 #if NETSTD20
 using AI4E.Utils;
-#else
-using System.Linq;
 #endif
 
 namespace AI4E.Storage.Projection
@@ -197,12 +196,12 @@ namespace AI4E.Storage.Projection
                 return true;
             }
 
-            foreach (var (dependency, dependencyProjectionRevision) in metadata.Dependencies)
+            foreach (var projectionRevision in metadata.Dependencies.Select(p => p.ProjectionRevision))
             {
                 var dependencyRevision = await GetSourceRevisionAsync(sourceProcessor, metadata.ProjectionRevision, cancellation);
-                Debug.Assert(dependencyRevision >= dependencyProjectionRevision);
+                Debug.Assert(dependencyRevision >= projectionRevision);
 
-                if (dependencyRevision > dependencyProjectionRevision)
+                if (dependencyRevision > projectionRevision)
                 {
                     return true;
                 }
