@@ -29,7 +29,7 @@ using AI4E.Utils;
 
 namespace AI4E.Storage.Projection
 {
-    public sealed class MetadataCache<TId, TEntry>
+    internal sealed class MetadataCache<TId, TEntry>
         where TEntry : class
     {
         private readonly IDatabase _database;
@@ -182,7 +182,7 @@ namespace AI4E.Storage.Projection
         }
     }
 
-    public readonly struct MetadataCacheEntry<TEntry>
+    internal readonly struct MetadataCacheEntry<TEntry>
     {
         public MetadataCacheEntry(TEntry entry, TEntry originalEntry, MetadataCacheEntryState state)
         {
@@ -196,7 +196,7 @@ namespace AI4E.Storage.Projection
         public MetadataCacheEntryState State { get; }
     }
 
-    public enum MetadataCacheEntryState
+    internal enum MetadataCacheEntryState
     {
         Unchanged,
         Created,
