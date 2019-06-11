@@ -24,8 +24,26 @@ using System.Collections.Immutable;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Represents the metadata of a projection.
+    /// </summary>
     public readonly struct ProjectionMetadata
     {
+        private readonly ImmutableList<ProjectionSourceDependency> _dependencies;
+        private readonly ImmutableList<ProjectionTargetDescriptor> _targets;
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="ProjectionMetadata"/> type.
+        /// </summary>
+        /// <param name="dependencies">The projection dependencies.</param>
+        /// <param name="targets">The projection targets.</param>
+        /// <param name="projectionRevision">The projection revision.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="dependencies"/> or <paramref name="targets"/> is <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown if <paramref name="projectionRevision"/> is negative.
+        /// </exception>
         public ProjectionMetadata(
             IEnumerable<ProjectionSourceDependency> dependencies,
             IEnumerable<ProjectionTargetDescriptor> targets,
@@ -40,13 +58,26 @@ namespace AI4E.Storage.Projection
             if (projectionRevision < 0)
                 throw new ArgumentOutOfRangeException(nameof(projectionRevision));
 
-            Dependencies = (dependencies as ImmutableList<ProjectionSourceDependency>) ?? dependencies.ToImmutableList();
-            Targets = (targets as ImmutableList<ProjectionTargetDescriptor>) ?? targets.ToImmutableList();
+            _dependencies = (dependencies as ImmutableList<ProjectionSourceDependency>) ?? dependencies.ToImmutableList();
+            _targets = (targets as ImmutableList<ProjectionTargetDescriptor>) ?? targets.ToImmutableList();
             ProjectionRevision = projectionRevision;
         }
 
-        public IReadOnlyCollection<ProjectionSourceDependency> Dependencies { get; }
-        public IReadOnlyCollection<ProjectionTargetDescriptor> Targets { get; }
+        /// <summary>
+        /// Gets the projection dependencies.
+        /// </summary>
+        public IReadOnlyCollection<ProjectionSourceDependency> Dependencies
+            => _dependencies ?? ImmutableList<ProjectionSourceDependency>.Empty;
+
+        /// <summary>
+        /// Gets projection targets.
+        /// </summary>
+        public IReadOnlyCollection<ProjectionTargetDescriptor> Targets
+            => _targets ?? ImmutableList<ProjectionTargetDescriptor>.Empty;
+
+        /// <summary>
+        /// Gets the projection revision.
+        /// </summary>
         public long ProjectionRevision { get; }
     }
 }
