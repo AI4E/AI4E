@@ -26,11 +26,18 @@ using System.Threading;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Represents a projection executor that is used to execute single projections.
+    /// </summary>
     public sealed class ProjectionExecutor : IProjectionExecutor
     {
         private readonly IProjectionRegistry _projectionRegistry;
         private volatile IProjectionProvider _projectionProvider;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="ProjectionExecutor"/> type.
+        /// </summary>
+        /// <param name="projectionRegistry">The projection registry that contains all registered projections.</param>
         public ProjectionExecutor(IProjectionRegistry projectionRegistry)
         {
             if (projectionRegistry is null)
@@ -39,15 +46,7 @@ namespace AI4E.Storage.Projection
             _projectionRegistry = projectionRegistry;
         }
 
-        // TODO: Do we allow projections reload?
-        private void ReloadProjections()
-        {
-            _projectionProvider = null; // Volatile write op.
-        }
-
-        /// <summary>
-        /// Gets the <see cref="IProjectionProvider"/> that is used to load projections.
-        /// </summary>
+        /// <inheritdoc/>
         public IProjectionProvider ProjectionProvider => GetProjectionProvider();
 
         private IProjectionProvider GetProjectionProvider()
@@ -70,19 +69,24 @@ namespace AI4E.Storage.Projection
             return projectionProvider;
         }
 
+        /// <inheritdoc/>
         public IAsyncEnumerable<IProjectionResult> ExecuteProjectionAsync(
             Type sourceType,
             object source, // May be null
             IServiceProvider serviceProvider,
             CancellationToken cancellation)
         {
-            if (source is null)
-            {
-                return AsyncEnumerable.Empty<IProjectionResult>();
-            }
+            if (sourceType is null)
+                throw new ArgumentNullException(nameof(sourceType));
+
+            if (serviceProvider is null)
+                throw new ArgumentNullException(nameof(serviceProvider));
 
             if (sourceType.IsValueType || typeof(Delegate).IsAssignableFrom(sourceType) /*sourceType.IsDelegate()*/) // TODO
                 throw new ArgumentException("The argument must be a reference type.", nameof(sourceType));
+
+            if (source is null)
+                return AsyncEnumerable.Empty<IProjectionResult>();
 
             if (!sourceType.IsAssignableFrom(source.GetType()))
                 throw new ArgumentException($"The argument '{nameof(source)}' must be of the type specified by '{nameof(sourceType)}' or a derived type.");

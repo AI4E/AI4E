@@ -24,14 +24,39 @@ using System.Threading;
 
 namespace AI4E.Storage.Projection
 {
+    /// <summary>
+    /// Represents a projection executor that is used to execute single projections.
+    /// </summary>
     public interface IProjectionExecutor
     {
+        /// <summary>
+        /// Gets the <see cref="IProjectionProvider"/> that is used to load projections.
+        /// </summary>
         IProjectionProvider ProjectionProvider { get; }
 
+        /// <summary>
+        /// Asynchronously executed a single projection.
+        /// </summary>
+        /// <param name="sourceType">The type of projection source.</param>
+        /// <param name="source">The projection source.</param>
+        /// <param name="serviceProvider">The <see cref="IServiceProvider"/> used to obtain services.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// An <see cref="IAsyncEnumerable{T}"/> that enumerated the projection results.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either of <paramref name="sourceType"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if either <paramref name="source"/> is not convertible to the type specified by <paramref name="sourceType"/> or
+        /// <paramref name="sourceType"/> specifies an invalid type or <paramref name="source"/> is an instance of an invalid type.
+        /// </exception>
         IAsyncEnumerable<IProjectionResult> ExecuteProjectionAsync(
             Type sourceType,
             object source,
             IServiceProvider serviceProvider,
-            CancellationToken cancellation);
+            CancellationToken cancellation = default);
     }
 }
