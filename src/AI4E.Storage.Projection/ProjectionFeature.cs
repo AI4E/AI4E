@@ -31,7 +31,7 @@ namespace AI4E.Storage.Projection
         public IList<Type> Projections { get; } = new List<Type>();
     }
 
-    public sealed class ProjectionFeatureProvider : IApplicationFeatureProvider<ProjectionFeature>
+    public class ProjectionFeatureProvider : IApplicationFeatureProvider<ProjectionFeature>
     {
         public void PopulateFeature(IEnumerable<ApplicationPart> parts, ProjectionFeature feature)
         {
@@ -47,14 +47,37 @@ namespace AI4E.Storage.Projection
             }
         }
 
-        private bool IsProjection(Type type)
+        private bool IsProjection(Type type, bool allowAbstract)
         {
-            return (type.IsClass || type.IsValueType && !type.IsEnum) &&
-                   !type.IsAbstract &&
-                   type.IsPublic &&
-                   !type.ContainsGenericParameters &&
-                   !type.IsDefined<NoProjectionAttribute>() &&
-                   (type.Name.EndsWith("Projection", StringComparison.OrdinalIgnoreCase) || type.IsDefined<ProjectionAttribute>());
+            if (type.IsInterface || type.IsEnum)
+                return false;
+
+            if (!allowAbstract && type.IsAbstract)
+                return false;
+
+            if (type.ContainsGenericParameters)
+                return false;
+
+            if (type.IsDefined<NoProjectionAttribute>(inherit: false))
+                return false;
+
+            if (type.Name.EndsWith("Projection", StringComparison.OrdinalIgnoreCase) && type.IsPublic)
+                return true;
+
+            if (type.IsDefined<ProjectionAttribute>(inherit: false))
+                return true;
+
+            return type.BaseType != null && IsProjection(type.BaseType, allowAbstract: true);
+        }
+
+        /// <summary>
+        /// Returns a boolean value indicating whether the specified type is a projection.
+        /// </summary>
+        /// <param name="type">The type to check.</param>
+        /// <returns>True if <paramref name="type"/> is a projection, false otherwise.</returns>
+        protected internal virtual bool IsProjection(Type type)
+        {
+            return IsProjection(type, allowAbstract: false);
         }
 
         internal static void Configure(ApplicationPartManager partManager)
