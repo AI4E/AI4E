@@ -251,7 +251,9 @@ namespace AI4E.Storage.Projection
                     }
                 }
 
-                // TODO: Do we have to check whether the targets were updated concurrently?
+                // We do not need to check whether the targets were updated concurrently as
+                // we are already checking the metadata for concurrent changes and the projection targets are
+                // only updated/deleted in combination with the repective metadata transactionally.
 
                 foreach (var target in _targetsToUpdate)
                 {
@@ -289,7 +291,7 @@ namespace AI4E.Storage.Projection
             if (projectionResult is null)
                 throw new ArgumentNullException(nameof(projectionResult));
 
-            var target = new ProjectionTargetDescriptor(projectionResult.ResultType, projectionResult.ResultId.ToString()); // TODO: Can the id be null?
+            var target = new ProjectionTargetDescriptor(projectionResult.ResultType, projectionResult.ResultId.ToString());
             _targetsToUpdate[target] = projectionResult.Result;
 
             var entry = await _targetMetadataCache.GetEntryAsync(target, cancellation) ?? new ProjectionTargetMetadataEntry
@@ -328,7 +330,7 @@ namespace AI4E.Storage.Projection
             {
                 _targetMetadataCache.DeleteEntry(entry);
 
-                object projection = LoadTargetAsync(_database, target.TargetType, entry.TargetId, cancellation);
+                var projection = await LoadTargetAsync(_database, target.TargetType, entry.TargetId, cancellation);
 
                 if (projection != null)
                 {
