@@ -24,6 +24,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Modularity.Metadata;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 using AI4E.Utils.Processing;

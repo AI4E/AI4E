@@ -133,6 +133,8 @@ namespace AI4E.Internal
             return default;
         }
 
+        private readonly AsyncLock _establishConnectionLock = new AsyncLock();
+
         protected abstract ValueTask EstablishConnectionAsync(bool isInitialConnection, CancellationToken cancellation);
 
         private async ValueTask ReconnectCoreAsync(bool isInitialConnection, CancellationToken cancellation)
@@ -150,7 +152,10 @@ namespace AI4E.Internal
                     // We will re-establish the underlying connection now. => Reset the connection lost indicator.
                     _connectionLost.Reset();
 
-                    await EstablishConnectionAsync(isInitialConnection, cancellation);
+                    using (await _establishConnectionLock.LockAsync(cancellation))
+                    {
+                        await EstablishConnectionAsync(isInitialConnection, cancellation);
+                    }
 
                     // The underlying connection was not lost in the meantime.
                     if (!_connectionLost.IsSet)
