@@ -61,7 +61,11 @@ namespace AI4E.Modularity.Host
 
         public static bool IsValid(string value, out string message)
         {
-            // TODO: Validate value
+            if(string.IsNullOrWhiteSpace(value))
+            {
+                message = "The module source name must not be empty.";
+                return false;
+            }
 
             message = default;
             return true;

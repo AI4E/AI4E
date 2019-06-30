@@ -103,7 +103,7 @@ namespace AI4E.Modularity.Host
             }
         }
 
-        string IModuleSource.Id => Id.ToString();
+        Guid IModuleSource.Id => Id;
 
         public async Task<IEnumerable<ModuleReleaseIdentifier>> GetAvailableAsync(string searchPhrase,
                                                                                   bool includePreReleases,

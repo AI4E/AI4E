@@ -23,6 +23,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Modularity;
@@ -135,26 +136,28 @@ namespace AI4E.AspNetCore.Components.Modularity
 
         private string GetAssemblyUri(string prefix, string assemblyName)
         {
-            var assemblyUri = NormalizePrefix(prefix);
+            var assemblyUriBuilder = new StringBuilder();
+            var baseAddress = _httpClient.BaseAddress.ToString();
 
-            if (!assemblyUri.EndsWith("/", StringComparison.OrdinalIgnoreCase))
+            assemblyUriBuilder.Append(baseAddress);
+
+            if (!baseAddress.EndsWith("/", StringComparison.OrdinalIgnoreCase))
             {
-                assemblyUri += "/";
+                assemblyUriBuilder.Append('/');
             }
 
-            assemblyUri = assemblyUri + "_framework/_bin/" + assemblyName + ".dll"; // TODO: Is this necessary? Can we avoid this?
+            assemblyUriBuilder.Append(prefix);
 
-            return assemblyUri;
-        }
-
-        private string NormalizePrefix(string prefix)
-        {
             if (!prefix.StartsWith("/", StringComparison.OrdinalIgnoreCase))
             {
-                prefix = "/" + prefix;
+                assemblyUriBuilder.Append('/');
             }
 
-            return prefix;
+            assemblyUriBuilder.Append("_framework/_bin/");
+            assemblyUriBuilder.Append(Uri.EscapeDataString(assemblyName));
+            assemblyUriBuilder.Append(".dll");
+
+            return assemblyUriBuilder.ToString();
         }
     }
 }
