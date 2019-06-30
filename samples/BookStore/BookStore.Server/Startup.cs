@@ -1,3 +1,4 @@
+using AI4E;
 using AI4E.Domain.Services;
 using AI4E.Modularity.Host;
 using AI4E.Routing.SignalR.Server;
@@ -40,6 +41,8 @@ namespace BookStore.Server
             // Bind Configuration
             services.Configure<MongoOptions>(Configuration.GetSection("MongoDB"));
             services.Configure<ModularityOptions>(Configuration.GetSection("Modularity"));
+
+            services.AddMessaging().UseValidation();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

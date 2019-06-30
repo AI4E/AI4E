@@ -16,10 +16,6 @@
     <ProjectReference Include="..\BookStore.Shared\BookStore.Shared.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Services\" />
-  </ItemGroup>
-
   <!-- See: https://github.com/aspnet/AspNetCore/issues/8414 -->
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Copy SourceFiles="$(TargetDir)\System.Memory.dll" DestinationFolder="$(TargetDir)dist\_framework\_bin\" />

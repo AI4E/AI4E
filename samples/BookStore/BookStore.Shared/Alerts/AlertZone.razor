@@ -1,9 +1,7 @@
-﻿@using BookStore.Alerts
-@implements IDisposable
-@inject AlertMessageManager AlertMessageManager
+﻿@implements IDisposable
+@inject IAlertMessageManager AlertMessageManager
 @inject IUriHelper UriHelper
 @functions {
-
     private string _baseUri;
     private string _relativeUri;
     private Alert Alert { get; set; }
