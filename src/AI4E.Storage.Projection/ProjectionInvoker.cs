@@ -133,10 +133,7 @@ namespace AI4E.Storage.Projection
         /// <inheritdoc/>
         public async IAsyncEnumerable<TTarget> ProjectAsync(
             TSource source,
-#if !NETSTD20
-            [EnumeratorCancellation]
-#endif
-            CancellationToken cancellation)
+            [EnumeratorCancellation] CancellationToken cancellation)
         {
             if (source == null && !_projectionDescriptor.ProjectNonExisting)
             {
@@ -167,19 +164,7 @@ namespace AI4E.Storage.Projection
                 }
             }
 
-            object result;
-
-            //try
-            //{
-            result = await invoker.InvokeAsync(_handler, source, ResolveParameter); // TODO: Await
-            //}
-            //catch (Exception exc)
-            //{
-            //    // TODO: What can we do here?
-            //    // TODO: Log this and rethrow
-
-            //    throw;
-            //}
+            var result = await invoker.InvokeAsync(_handler, source, ResolveParameter);
 
             if (result != null)
             {
