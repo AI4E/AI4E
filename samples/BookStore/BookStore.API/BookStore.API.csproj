@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AI4E.AspNetCore.Components.Extensibility" Version="0.3.0-pre19052514" />
+    <PackageReference Include="AI4E.AspNetCore.Components.Extensibility" Version="0.3.1" />
   </ItemGroup>
 
   <ItemGroup>

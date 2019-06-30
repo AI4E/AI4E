@@ -11,7 +11,7 @@
         <EditForm Model="Model" OnValidSubmit="RenameAsync">
             <div class="form-group">
                 <label for="Name">Name</label>
-                <InputText Id="Name" bind-Value="@Model.Name" class="form-control" />
+                <InputText Id="Name" @bind-Value="@Model.Name" class="form-control" />
             </div>
             <div class="form-group">
                 <label for="Location">Location</label>
