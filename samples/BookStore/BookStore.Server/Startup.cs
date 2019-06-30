@@ -1,6 +1,7 @@
 using AI4E;
 using AI4E.Domain.Services;
 using AI4E.Modularity.Host;
+using AI4E.Modularity.Debug;
 using AI4E.Routing.SignalR.Server;
 using AI4E.Storage;
 using AI4E.Storage.Domain;
@@ -36,7 +37,8 @@ namespace BookStore.Server
                     .UseDomainStorage();
 
             services.AddDomainServices();
-            services.AddModularity();
+            services.AddModularity()
+                    .UseDebugging();
 
             // Bind Configuration
             services.Configure<MongoOptions>(Configuration.GetSection("MongoDB"));

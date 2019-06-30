@@ -20,7 +20,7 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Modularity;
+using AI4E.Modularity.Metadata;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {

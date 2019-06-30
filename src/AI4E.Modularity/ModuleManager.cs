@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -30,14 +30,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
 using AI4E.Internal;
+using AI4E.Modularity.Metadata;
 using AI4E.Routing;
 using AI4E.Utils;
 using AI4E.Utils.Memory;
 using static System.Diagnostics.Debug;
-
-#if !SUPPORTS_SPAN_APIS
-using AI4E.Utils.Memory.Compatibility;
-#endif
 
 namespace AI4E.Modularity
 {
@@ -311,27 +308,25 @@ namespace AI4E.Modularity
                     prefixes.UnionWith(existingPrefixes);
                 }
 
-                using (var stream = new MemoryStream())
+                using var stream = new MemoryStream();
+                using (var writer = new BinaryWriter(stream))
                 {
-                    using (var writer = new BinaryWriter(stream))
+                    writer.Write(endPoints.Count);
+
+                    foreach (var endPoint in endPoints)
                     {
-                        writer.Write(endPoints.Count);
-
-                        foreach (var endPoint in endPoints)
-                        {
-                            writer.Write(endPoint);
-                        }
-
-                        writer.Write(prefixes.Count);
-
-                        foreach (var prefix in prefixes)
-                        {
-                            WritePrefix(writer, prefix);
-                        }
+                        writer.Write(endPoint);
                     }
 
-                    payload = stream.ToArray();
+                    writer.Write(prefixes.Count);
+
+                    foreach (var prefix in prefixes)
+                    {
+                        WritePrefix(writer, prefix);
+                    }
                 }
+
+                payload = stream.ToArray();
 
             }
             while (!await AddOrUpdateAsync());
@@ -346,27 +341,25 @@ namespace AI4E.Modularity
 
             var path = GetPrefixPath(normalizedPrefix, endPoint, session, normalize: false);
 
-            using (var stream = new MemoryStream())
+            using var stream = new MemoryStream();
+            using (var writer = new BinaryWriter(stream))
             {
-                using (var writer = new BinaryWriter(stream))
-                {
-                    writer.Write(endPoint);
-                }
-
-                var payload = stream.ToArray();
-                var entry = await _coordinationManager.GetOrCreateAsync(path, payload, EntryCreationModes.Ephemeral, cancellation);
+                writer.Write(endPoint);
             }
+
+            var payload = stream.ToArray();
+            var entry = await _coordinationManager.GetOrCreateAsync(path, payload, EntryCreationModes.Ephemeral, cancellation);
+
+            // TODO: entry is never used?
         }
-
-
 
         private void WritePrefix(BinaryWriter writer, ReadOnlyMemory<char> prefix)
         {
             var normalizedPrefix = NormalizePrefix(prefix);
 
-            using (ArrayPool<byte>.Shared.RentExact(Encoding.UTF8.GetByteCount(prefix.Span), out var memory))
+            using (ArrayPool<byte>.Shared.RentExact(Encoding.UTF8.GetByteCount(normalizedPrefix.Span), out var memory))
             {
-                var byteCount = Encoding.UTF8.GetBytes(prefix.Span, memory.Span);
+                var byteCount = Encoding.UTF8.GetBytes(normalizedPrefix.Span, memory.Span);
                 Assert(byteCount == memory.Length);
 
                 writer.Write(byteCount);

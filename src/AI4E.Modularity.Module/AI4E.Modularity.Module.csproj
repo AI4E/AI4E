@@ -11,11 +11,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E.Modularity\AI4E.Modularity.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="2.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.2.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore" Version="2.2.0" />
+    <ProjectReference Include="..\AI4E.Modularity.Module.Abstractions\AI4E.Modularity.Module.Abstractions.csproj" />
+    <ProjectReference Include="..\AI4E.Modularity\AI4E.Modularity.csproj" />
   </ItemGroup>
 
 
