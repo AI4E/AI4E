@@ -156,7 +156,7 @@ namespace AI4E.Storage.Projection
 
             await foreach (var projectionResult in projectionResults)
             {
-                var projection = projectionResult.ToTargetDescriptor();
+                var projection = projectionResult.AsTargetDescriptor();
                 targets.Add(projection);
                 await targetProcessor.UpdateTargetAsync(projectionResult, cancellation);
             }

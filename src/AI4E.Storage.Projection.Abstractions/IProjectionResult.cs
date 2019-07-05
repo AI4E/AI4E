@@ -46,5 +46,35 @@ namespace AI4E.Storage.Projection
         /// Gets the projection result type.
         /// </summary>
         Type ResultType { get; }
+
+#if SUPPORTS_DEFAULT_INTERFACE_METHODS
+        /// <summary>
+        /// Returns the projection target descriptor that describes the projection result.
+        /// </summary>
+        /// <returns>A <see cref="ProjectionTargetDescriptor"/> that describes the projection result.</returns>
+        public ProjectionTargetDescriptor AsTargetDescriptor()
+        {
+            return ProjectionResultExtension.AsTargetDescriptor(this);
+        }
+#endif
+    }
+
+    /// <summary>
+    /// Contains extensions for the <see cref="IProjectionResult"/> type.
+    /// </summary>
+    public static class ProjectionResultExtension
+    {
+        /// <summary>
+        /// Returns the projection target descriptor that describes the projection result.
+        /// </summary>
+        /// <param name="projectionResult">The projection result.</param>
+        /// <returns>A <see cref="ProjectionTargetDescriptor"/> that describes the projection result.</returns>
+        public static ProjectionTargetDescriptor AsTargetDescriptor(
+            this IProjectionResult projectionResult)
+        {
+            return new ProjectionTargetDescriptor(
+                projectionResult.ResultType,
+                projectionResult.ResultId.ToString());
+        }
     }
 }
