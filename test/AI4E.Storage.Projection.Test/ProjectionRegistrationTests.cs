@@ -1,13 +1,11 @@
 using System;
-using System.Collections.Generic;
-using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Storage.Projection
 {
     [TestClass]
-    public class ProjectionRegistrationTest
+    public class ProjectionRegistrationTests
     {
         [TestMethod]
         public void CreateAndFactoryTest()
@@ -89,23 +87,5 @@ namespace AI4E.Storage.Projection
                 projectionRegistration.CreateProjection(serviceProvider);
             });
         }
-    }
-
-    public sealed class ProjectionSource { }
-    public sealed class ProjectionTarget { }
-
-    public sealed class ProjectionRegistrationTestProjection : IProjection<ProjectionSource, ProjectionTarget>
-    {
-        public ProjectionRegistrationTestProjection(IServiceProvider serviceProvider)
-        {
-            ServiceProvider = serviceProvider;
-        }
-
-        public IAsyncEnumerable<ProjectionTarget> ProjectAsync(ProjectionSource source, CancellationToken cancellation = default)
-        {
-            throw null;
-        }
-
-        public IServiceProvider ServiceProvider { get; }
     }
 }
