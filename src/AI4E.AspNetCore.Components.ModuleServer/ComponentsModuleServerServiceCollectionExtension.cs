@@ -21,7 +21,7 @@
 using System;
 using System.Reflection;
 using AI4E.AspNetCore.Components.ModuleServer;
-using AI4E.Modularity;
+using AI4E.Modularity.Metadata;
 using AI4E.Utils.ApplicationParts;
 
 namespace Microsoft.Extensions.DependencyInjection

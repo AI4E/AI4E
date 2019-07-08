@@ -22,6 +22,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
+using AI4E.Modularity.Metadata;
 using AI4E.Utils;
 
 namespace AI4E.Modularity.Host

@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -21,6 +21,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Modularity.Metadata;
 using AI4E.Routing;
 using AI4E.Utils;
 using AI4E.Utils.Async;
@@ -37,7 +38,6 @@ namespace AI4E.Modularity.Module
         private readonly IRemoteMessageDispatcher _messageDispatcher;
         private readonly IMetadataAccessor _metadataAccessor;
         private readonly IModuleManager _moduleManager;
-        private readonly IServiceProvider _serviceProvider;
         private readonly ILoggerFactory _loggerFactory;
 
         private readonly ILogger<ModuleServer> _logger;
@@ -51,7 +51,6 @@ namespace AI4E.Modularity.Module
         public ModuleServer(IRemoteMessageDispatcher messageDispatcher,
                             IMetadataAccessor metadataAccessor,
                             IModuleManager runningModules,
-                            IServiceProvider serviceProvider,
                             IOptions<ModuleServerOptions> optionsAccessor,
                             ILoggerFactory loggerFactory)
         {
@@ -63,9 +62,6 @@ namespace AI4E.Modularity.Module
 
             if (runningModules == null)
                 throw new ArgumentNullException(nameof(runningModules));
-
-            if (serviceProvider == null)
-                throw new ArgumentNullException(nameof(serviceProvider));
 
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
@@ -80,7 +76,6 @@ namespace AI4E.Modularity.Module
             _messageDispatcher = messageDispatcher;
             _metadataAccessor = metadataAccessor;
             _moduleManager = runningModules;
-            _serviceProvider = serviceProvider;
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory?.CreateLogger<ModuleServer>();
 
@@ -89,8 +84,6 @@ namespace AI4E.Modularity.Module
             Features.Set<IHttpRequestFeature>(new HttpRequestFeature());
             Features.Set<IHttpResponseFeature>(new HttpResponseFeature());
         }
-
-
 
         #region IModuleServer
 
@@ -114,31 +107,29 @@ namespace AI4E.Modularity.Module
             if (application == null)
                 throw new ArgumentNullException(nameof(application));
 
-            using (var guard = await _disposeHelper.GuardDisposalAsync(cancellationToken))
+            using var guard = await _disposeHelper.GuardDisposalAsync(cancellationToken);
+            cancellationToken = guard.Cancellation;
+
+            using (await _lock.LockAsync(cancellationToken))
             {
-                cancellationToken = guard.Cancellation;
-
-                using (await _lock.LockAsync(cancellationToken))
+                if (_isStarted)
                 {
-                    if (_isStarted)
-                    {
-                        return;
-                    }
+                    return;
+                }
 
-                    _isStarted = true;
-                    _requestExecutor = CreateRequestExecutor(application);
+                _isStarted = true;
+                _requestExecutor = CreateRequestExecutor(application);
 
-                    try
-                    {
-                        await RegisterModuleAsync(cancellationToken);
-                    }
-                    catch
-                    {
-                        await UnregisterModuleAsync().HandleExceptionsAsync(_logger);
-                        _isStarted = false;
+                try
+                {
+                    await RegisterModuleAsync(cancellationToken);
+                }
+                catch
+                {
+                    await UnregisterModuleAsync().HandleExceptionsAsync(_logger);
+                    _isStarted = false;
 
-                        throw;
-                    }
+                    throw;
                 }
             }
         }

@@ -1,0 +1,43 @@
+﻿@page "/modulesources"
+@page "/modulesources/list"
+@inherits List_
+<div class="container">
+    <div>
+        @if (IsLoading)
+        {
+            <h2>Loading...</h2>
+        }
+        else
+        {
+            var count = Model.Count();
+            if (count == 0)
+            {
+                <h2>No module sources found</h2>
+            }
+            else if (count == 1)
+            {
+                <h2>One module source</h2>
+            }
+            else
+            {
+                <h2>@count module sources</h2>
+            }
+
+            @if (count > 0)
+            {
+                <ul class="list-group">
+                    @foreach (var model in Model)
+                    {
+                        <a href="/modulesources/@(model.Id)" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            @(model.Name)
+                            <p><small>@(model.Location)</small></p>
+                        </a>
+                    }
+                </ul>
+            }
+        }
+    </div>
+    <p>
+        <a class="btn btn-primary" href="/modulesources/create">Create</a>
+    </p>
+</div>

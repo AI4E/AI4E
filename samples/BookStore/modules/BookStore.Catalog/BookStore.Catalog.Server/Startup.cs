@@ -33,9 +33,9 @@ namespace BookStore.Catalog.Server
                 options.Prefix = _prefix;
             });
 
-            services.Configure<ModuleDebugOptions>(options =>
+            services.Configure<ModularityDebugOptions>(options =>
             {
-                options.UseDebugConnection = true;
+                options.EnableDebugging = true;
                 options.DebugConnection = "localhost:8080";
             });
 

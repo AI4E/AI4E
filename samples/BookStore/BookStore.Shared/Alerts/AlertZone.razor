@@ -1,9 +1,7 @@
-﻿@using BookStore.Alerts
-@implements IDisposable
-@inject AlertMessageManager AlertMessageManager
+﻿@implements IDisposable
+@inject IAlertMessageManager AlertMessageManager
 @inject IUriHelper UriHelper
 @functions {
-
     private string _baseUri;
     private string _relativeUri;
     private Alert Alert { get; set; }
@@ -34,7 +32,7 @@
         StateHasChanged();
     }
 
-    private void OnLocationChanged(object sender, string location)
+    private void OnLocationChanged(object sender, LocationChangedEventArgs e)
     {
         UpdateRelativeUri();
         UpdateAlert();
@@ -92,7 +90,7 @@
             <span style="flex: 1 1 auto;">@(Alert.Message ?? string.Empty)</span>
             @if (Alert.AllowDismiss)
             {
-                <button class="icon-btn" onclick="@(_ => Alert.Dismiss())">
+                <button class="icon-btn" @onclick="@(_ => Alert.Dismiss())">
                     <span class="oi oi-x"></span>
                 </button>
             }

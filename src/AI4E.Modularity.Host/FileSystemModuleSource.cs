@@ -28,6 +28,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Domain;
+using AI4E.Modularity.Metadata;
 using AI4E.Utils;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
@@ -102,7 +103,7 @@ namespace AI4E.Modularity.Host
             }
         }
 
-        string IModuleSource.Id => Id.ToString();
+        Guid IModuleSource.Id => Id;
 
         public async Task<IEnumerable<ModuleReleaseIdentifier>> GetAvailableAsync(string searchPhrase,
                                                                                   bool includePreReleases,
@@ -164,8 +165,7 @@ namespace AI4E.Modularity.Host
                 return null;
 
             Assert(!parts.Any(p => p.ContainsWhitespace()));
-
-            string PreprocessSearchPhrasePart(string part)
+            static string PreprocessSearchPhrasePart(string part)
             {
                 var resultBuilder = new StringBuilder();
 
@@ -208,7 +208,7 @@ namespace AI4E.Modularity.Host
                 return resultBuilder.ToString();
             }
 
-            StringBuilder AppendPattern(StringBuilder regexBuilder, string subPattern)
+            static StringBuilder AppendPattern(StringBuilder regexBuilder, string subPattern)
             {
                 if (regexBuilder.Length != 0)
                 {
@@ -239,27 +239,25 @@ namespace AI4E.Modularity.Host
 
             try
             {
-                using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true))
-                using (var package = new ZipArchive(fileStream, ZipArchiveMode.Read))
+                using var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+                using var package = new ZipArchive(fileStream, ZipArchiveMode.Read);
+                var manifest = package.GetEntry("module.json");
+
+                // Invalid package
+                if (manifest == null)
                 {
-                    var manifest = package.GetEntry("module.json");
+                    // TODO: Log
+                    return null;
+                }
 
-                    // Invalid package
-                    if (manifest == null)
-                    {
-                        // TODO: Log
-                        return null;
-                    }
-
-                    try
-                    {
-                        return await moduleMetadataReader.ReadMetadataAsync(manifest.Open(), cancellation);
-                    }
-                    catch (ModuleMetadataFormatException)
-                    {
-                        // TODO: Log
-                        return null;
-                    }
+                try
+                {
+                    return await moduleMetadataReader.ReadMetadataAsync(manifest.Open(), cancellation);
+                }
+                catch (ModuleMetadataFormatException)
+                {
+                    // TODO: Log
+                    return null;
                 }
             }
             catch (FileNotFoundException) // The file was deleted concurrently.
@@ -482,46 +480,6 @@ namespace AI4E.Modularity.Host
             //public ModuleReleaseIdentifier Release { get; }
             public string Path { get; set; }
             public IModuleMetadata Metadata { get; set; }
-        }
-    }
-
-    internal static partial class PathInternal
-    {
-        /// <summary>Returns a comparison that can be used to compare file and directory names for equality.</summary>
-        internal static StringComparison StringComparison => IsCaseSensitive ?
-                                                             StringComparison.Ordinal :
-                                                             StringComparison.OrdinalIgnoreCase;
-
-        /// <summary>Gets whether the system is case-sensitive.</summary>
-        internal static bool IsCaseSensitive { get; } = GetIsCaseSensitive();
-
-        /// <summary>
-        /// Determines whether the file system is case sensitive.
-        /// </summary>
-        /// <remarks>
-        /// Ideally we'd use something like pathconf with _PC_CASE_SENSITIVE, but that is non-portable, 
-        /// not supported on Windows or Linux, etc. For now, this function creates a tmp file with capital letters 
-        /// and then tests for its existence with lower-case letters.  This could return invalid results in corner 
-        /// cases where, for example, different file systems are mounted with differing sensitivities.
-        /// </remarks>
-        private static bool GetIsCaseSensitive()
-        {
-            try
-            {
-                var pathWithUpperCase = Path.Combine(Path.GetTempPath(), "CASESENSITIVETEST" + Guid.NewGuid().ToString("N"));
-                using (new FileStream(pathWithUpperCase, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 0x1000, FileOptions.DeleteOnClose))
-                {
-                    var lowerCased = pathWithUpperCase.ToLowerInvariant();
-                    return !File.Exists(lowerCased);
-                }
-            }
-            catch (Exception exc)
-            {
-                // In case something goes terribly wrong, we don't want to fail just because
-                // of a casing test, so we assume case-insensitive-but-preserving.
-                System.Diagnostics.Debug.Fail("Casing test failed: " + exc);
-                return false;
-            }
         }
     }
 }

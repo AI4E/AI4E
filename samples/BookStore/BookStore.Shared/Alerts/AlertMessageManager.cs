@@ -2,18 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading.Tasks;
 using AI4E;
 using AI4E.Utils;
 
 namespace BookStore.Alerts
 {
-    public sealed class AlertMessageManager
+    public sealed partial class AlertMessageManager : IAlertMessageManager
     {
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly LinkedList<AlertMessage> _alertMessages = new LinkedList<AlertMessage>();
         private readonly object _mutex = new object();
+        private bool _isDisposed = false;
 
         public AlertMessageManager(IDateTimeProvider dateTimeProvider)
         {
@@ -21,6 +21,57 @@ namespace BookStore.Alerts
                 throw new ArgumentNullException(nameof(dateTimeProvider));
 
             _dateTimeProvider = dateTimeProvider;
+        }
+
+        private void PlaceAlert(LinkedListNode<AlertMessage> node)
+        {
+            Debug.Assert(node != null);
+
+            if (node.Value.Expiration == null)
+            {
+                lock (_mutex)
+                {
+                    CheckDisposed();
+                    _alertMessages.AddLast(node);
+                }
+
+                OnAlertsChanged();
+
+                return;
+            }
+
+            var now = _dateTimeProvider.GetCurrentTime();
+            var delay = (DateTime)node.Value.Expiration - now;
+
+            // The message is expired already, do not add it.
+            if (delay <= TimeSpan.Zero)
+            {
+                return;
+            }
+
+            // We have to add the message before scheduling the continuation
+            // to prevent a race when delay is small and the continuation is
+            // invoked before the message is added actually.
+            lock (_mutex)
+            {
+                CheckDisposed();
+                _alertMessages.AddLast(node);
+            }
+
+            OnAlertsChanged();
+
+            Task.Delay(delay).ContinueWith(_ =>
+            {
+                lock (_mutex)
+                {
+                    if (!_isDisposed)
+                    {
+                        _alertMessages.Remove(node);
+                    }
+                }
+
+                OnAlertsChanged();
+            }).HandleExceptions();
         }
 
         public AlertPlacement PlaceAlert(in AlertMessage alertMessage)
@@ -36,58 +87,28 @@ namespace BookStore.Alerts
             }
 
             var node = new LinkedListNode<AlertMessage>(alertMessage);
-
-            if (alertMessage.Expiration == null)
-            {
-
-                lock (_mutex)
-                {
-                    _alertMessages.AddLast(node);
-                }
-                OnAlertsChanged();
-
-                return new AlertPlacement(this, node);
-            }
-
-            var now = _dateTimeProvider.GetCurrentTime();
-            var delay = (DateTime)alertMessage.Expiration - now;
-
-            // The message is expired already, do not add it.
-            if (delay <= TimeSpan.Zero)
-            {
-                return default;
-            }
-
-            // We have to add the message before scheduling the continuation
-            // to prevent a race when delay is small and the continuation is
-            // invoked before the message is added actually.
-            lock (_mutex)
-            {
-                _alertMessages.AddLast(node);
-            }
-            OnAlertsChanged();
-
-            Task.Delay(delay).ContinueWith(_ =>
-            {
-                lock (_mutex)
-                {
-                    _alertMessages.Remove(node);
-                }
-                OnAlertsChanged();
-            }).HandleExceptions();
-
+            PlaceAlert(node);
             return new AlertPlacement(this, node);
         }
 
-        public void CancelAlert(in AlertPlacement alertPlacement)
+        private void CancelAlert(in AlertPlacement alertPlacement, bool checkDisposal)
         {
             var node = alertPlacement.Node;
 
             lock (_mutex)
             {
+                if (checkDisposal)
+                    CheckDisposed();
+
                 _alertMessages.Remove(node);
             }
+
             OnAlertsChanged();
+        }
+
+        public void CancelAlert(in AlertPlacement alertPlacement)
+        {
+            CancelAlert(alertPlacement, checkDisposal: true);
         }
 
         public void Dismiss(Alert alert)
@@ -96,8 +117,10 @@ namespace BookStore.Alerts
 
             lock (_mutex)
             {
+                CheckDisposed();
                 _alertMessages.Remove(node);
             }
+
             OnAlertsChanged();
         }
 
@@ -105,6 +128,8 @@ namespace BookStore.Alerts
         {
             lock (_mutex)
             {
+                CheckDisposed();
+
                 if (_alertMessages.Count == 0)
                 {
                     return ImmutableList<Alert>.Empty;
@@ -133,6 +158,8 @@ namespace BookStore.Alerts
         {
             lock (_mutex)
             {
+                CheckDisposed();
+
                 for (var current = _alertMessages.Last; current != null; current = current.Previous)
                 {
                     if (current.Value.UriFilter.IsMatch(relativeUri))
@@ -151,107 +178,44 @@ namespace BookStore.Alerts
         {
             AlertsChanged?.Invoke(this, EventArgs.Empty);
         }
-    }
 
-    public readonly struct AlertPlacement : IDisposable
-    {
-        private readonly AlertMessageManager _alertMessageManager;
-
-        internal AlertPlacement(
-            AlertMessageManager alertMessageManager,
-            LinkedListNode<AlertMessage> node)
+        private void CheckDisposed()
         {
-            Debug.Assert(alertMessageManager != null);
-
-            _alertMessageManager = alertMessageManager;
-            Node = node;
+            if (_isDisposed)
+                throw new ObjectDisposedException(GetType().FullName);
         }
-
-        internal LinkedListNode<AlertMessage> Node { get; }
 
         public void Dispose()
         {
-            _alertMessageManager?.CancelAlert(this);
-        }
-    }
+            lock (_mutex)
+            {
+                if (_isDisposed)
+                    return;
 
-    public readonly struct Alert : IEquatable<Alert>
-    {
-        private readonly AlertMessageManager _alertMessageManager;
+                _isDisposed = true;
 
-        internal Alert(
-            AlertMessageManager alertMessageManager,
-            LinkedListNode<AlertMessage> node)
-        {
-            Debug.Assert(alertMessageManager != null);
-            Debug.Assert(node != null);
-            _alertMessageManager = alertMessageManager;
-            Node = node;
-        }
-
-        internal LinkedListNode<AlertMessage> Node { get; }
-
-        public bool Equals(Alert other)
-        {
-            // TODO: Is it necessary to include the AlertMessageManager into comparison?
-            // A node belongs to a single AlertMessageManager in its complete lifetime,
-            // so it should be suffice to compare the nodes.
-
-            return Node == other.Node;
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is Alert alert && Equals(alert);
-        }
-
-        public override int GetHashCode()
-        {
-            // TODO: Is it necessary to include the AlertMessageManager into hash code generation?
-            //       See Equals(Alert)
-
-            return Node.GetHashCode();
-        }
-
-        public static bool operator ==(Alert left, Alert right)
-        {
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(Alert left, Alert right)
-        {
-            return !left.Equals(right);
-        }
-
-        public bool IsExpired => Node == null || Node.List == null;
-
-        /// <summary>
-        /// Gets the type of alert.
-        /// </summary>
-        public AlertType AlertType => Node?.Value.AlertType ?? AlertType.None;
-
-        /// <summary>
-        /// Gets the alert message.
-        /// </summary>
-        public string Message => Node?.Value.Message;
-
-        /// <summary>
-        /// Gets a boolean value indicating whether the alert may be dismissed.
-        /// </summary>
-        public bool AllowDismiss => !IsExpired && Node.Value.AllowDismiss;
-
-        // TODO: Do we need another property for the expiration?
-
-        public void Dismiss()
-        {
-            _alertMessageManager?.Dismiss(this);
+                _alertMessages.Clear();
+                OnAlertsChanged();
+            }
         }
     }
 
     public static class AlertMessageManagerExtension
     {
         public static AlertPlacement PlaceAlert(
-            this AlertMessageManager alertMessageManager,
+            this IAlertMessageManager alertMessageManager,
+            AlertType alertType,
+            string message,
+            DateTime? expiration = null,
+            bool allowDismiss = false,
+            UriFilter uriFilter = default)
+        {
+            var alertMessage = new AlertMessage(alertType, message, expiration, allowDismiss, uriFilter);
+            return alertMessageManager.PlaceAlert(alertMessage);
+        }
+
+        public static AlertPlacement PlaceAlert(
+            this IAlertMessageManagerScope alertMessageManager,
             AlertType alertType,
             string message,
             DateTime? expiration = null,
