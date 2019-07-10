@@ -117,7 +117,12 @@ namespace AI4E.Storage.Domain
                 }
 
                 var originalEntity = entity;
-                var dispatchResult = await next(dispatchData);
+
+                IDispatchResult dispatchResult;
+                using (DomainServiceResolver.UseDomainServices(_serviceProvider))
+                {
+                    dispatchResult = await next(dispatchData);
+                }
 
                 if (!dispatchResult.IsSuccess)
                 {

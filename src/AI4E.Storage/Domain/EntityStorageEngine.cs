@@ -52,6 +52,7 @@ namespace AI4E.Storage.Domain
         internal const string ConcurrencyTokenHeaderKey = "ConcurrencyToken";
 
         private readonly DomainStorageOptions _options;
+
         #region Fields
 
         private readonly IStreamStore _streamStore;
