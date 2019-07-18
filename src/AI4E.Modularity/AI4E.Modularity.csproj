@@ -6,13 +6,10 @@
 
   <ItemGroup>
     <Compile Include="..\Common\IdGenerator.cs" Link="Internal\IdGenerator.cs" />
-    <Compile Include="..\Common\IPEndPointConverter.cs" Link="Internal\IPEndPointConverter.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Coordination\AI4E.Coordination.csproj" />
-    <ProjectReference Include="..\AI4E.Domain.Services\AI4E.Domain.Services.csproj" />
-    <ProjectReference Include="..\AI4E.Domain\AI4E.Domain.csproj" />
     <ProjectReference Include="..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Routing\AI4E.Routing.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
@@ -20,15 +17,15 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor" Version="2.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.0.0-preview5.19227.9" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="3.0.0-preview5.19227.9" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="3.0.0-preview5.19227.9" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.0.0-preview5.19227.9" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="3.0.0-preview5.19227.9" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.0.0-preview5.19227.9" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.0.0-preview5.19227.9" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="3.0.0-preview5.19227.9" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="3.0.0-preview5.19227.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.0.0-preview6.19304.6" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="3.0.0-preview6.19304.6" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="3.0.0-preview6.19304.6" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.0.0-preview6.19304.6" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="3.0.0-preview6.19304.6" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.0.0-preview6.19304.6" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.0.0-preview6.19304.6" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="3.0.0-preview6.19304.6" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="3.0.0-preview6.19304.6" />
     <PackageReference Include="AI4E.Utils.Proxying" Version="0.2.0-pre19052318" />
   </ItemGroup>
 

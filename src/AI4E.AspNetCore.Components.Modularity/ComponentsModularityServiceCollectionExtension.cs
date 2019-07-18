@@ -23,7 +23,7 @@ using System.Reflection;
 using AI4E;
 using AI4E.AspNetCore.Components.Extensibility;
 using AI4E.AspNetCore.Components.Modularity;
-using AI4E.Modularity.Host;
+using AI4E.Modularity;
 using AI4E.Routing.SignalR.Client;
 using AI4E.Utils.ApplicationParts;
 using BlazorSignalR;

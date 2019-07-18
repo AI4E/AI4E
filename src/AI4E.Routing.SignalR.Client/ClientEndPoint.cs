@@ -32,7 +32,6 @@ namespace AI4E.Routing.SignalR.Client
         private volatile CancellationTokenSource _disposalSource = new CancellationTokenSource();
 
         private int _nextSeqNum;
-
         private string _address, _endPoint, _securityToken;
 
 
@@ -205,7 +204,9 @@ namespace AI4E.Routing.SignalR.Client
 
         private async ValueTask ReconnectAsync(bool isInitialConnection, CancellationToken cancellation)
         {
-            await _hubConnection.StopAsync(cancellation);
+            // TODO: When enabled,we fail to reonnection since the migration to Asp.Net Core 3.0 preview 6
+            // https://github.com/AI4E/AI4E/issues/188
+            //await _hubConnection.StopAsync(cancellation);
             await _hubConnection.StartAsync(cancellation);
 
             // _timeout is not synchronized.
@@ -345,7 +346,9 @@ namespace AI4E.Routing.SignalR.Client
 
                     _reconnectionManager.Dispose();
                     _hubConnection.Closed -= UnderlyingConnectionLostAsync;
-                    _hubConnection.StopAsync().HandleExceptions(); // TODO
+
+                    // TODO: We must call StopAsync only AFTER the reconnection manager ensured that there is no reconnection in progress.
+                    _hubConnection.StopAsync().HandleExceptions(); 
                     _stubRegistration.Dispose();
                     _keepAliveProcess.Terminate();
                 }

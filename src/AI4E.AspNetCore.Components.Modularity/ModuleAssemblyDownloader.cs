@@ -27,7 +27,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Modularity;
-using AI4E.Modularity.Host;
+using AI4E.Modularity.Metadata;
 using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 

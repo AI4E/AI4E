@@ -151,10 +151,27 @@ namespace AI4E.Storage.Projection
 
             var targets = new List<ProjectionTargetDescriptor>();
 
-            // TODO: Ensure that there are no two projection results with the same type and id. 
-            //       Otherwise bad things happen.
+            // Ensure that there are no two projection results with the same type and id. 
+            async IAsyncEnumerable<IProjectionResult> ProjectionResultsWithoutDuplicates()
+            {
+                var processedResults = new HashSet<IProjectionResult>(ProjectionResultComparer.Instance);
 
-            await foreach (var projectionResult in projectionResults)
+                await foreach (var projectionResult in projectionResults)
+                {
+                    if (!processedResults.Add(projectionResult))
+                    {
+                        _logger.LogWarning(
+                            $"Duplicate projection target with type {projectionResult.ResultType} and id {projectionResult.ResultId} " +
+                            $"while projecting source '{sourceProcessor.ProjectedSource}'.");
+
+                        continue;
+                    }
+
+                    yield return projectionResult;
+                }
+            }
+
+            await foreach (var projectionResult in ProjectionResultsWithoutDuplicates())
             {
                 var projection = projectionResult.AsTargetDescriptor();
                 targets.Add(projection);

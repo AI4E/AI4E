@@ -1,0 +1,18 @@
+﻿@page "/modulesources/delete/{id:guid}"
+@inherits Delete_
+<div class="container">
+    @if (IsLoading)
+    {
+        <h2>Loading...</h2>
+    }
+    else
+    {
+        <div class="alert alert-danger" role="alert">
+            Do you really want to delete the module source <code>@Model.Name</code>?<br />
+            This action cannot be undone.
+        </div>
+
+        <a href="modulesources/@Model.Id" class="btn btn-primary">Back</a>
+        <button class="btn btn-danger" @onclick="@DeleteAsync">Delete</button>
+    }
+</div>

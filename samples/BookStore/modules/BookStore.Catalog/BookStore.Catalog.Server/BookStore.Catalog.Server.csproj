@@ -16,6 +16,8 @@
     <ProjectReference Include="..\..\..\..\..\src\AI4E.AspNetCore.Components.ModuleServer\AI4E.AspNetCore.Components.ModuleServer.csproj" />
     <ProjectReference Include="..\..\..\..\..\src\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
     <ProjectReference Include="..\..\..\..\..\src\AI4E.Domain.Services\AI4E.Domain.Services.csproj" />
+    <ProjectReference Include="..\..\..\..\..\src\AI4E.Modularity.Debug\AI4E.Modularity.Debug.csproj" />
+    <ProjectReference Include="..\..\..\..\..\src\AI4E.Modularity.Module.Debug\AI4E.Modularity.Module.Debug.csproj" />
     <ProjectReference Include="..\..\..\..\..\src\AI4E.Modularity.Module\AI4E.Modularity.Module.csproj" />
     <ProjectReference Include="..\..\..\..\..\src\AI4E.Modularity\AI4E.Modularity.csproj" />
     <ProjectReference Include="..\..\..\..\..\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
