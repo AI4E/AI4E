@@ -160,14 +160,17 @@ namespace AI4E.Storage.Projection
                     targetType = memberAttribute.TargetType;
                 }
 
-                if (memberAttribute.MultipleResults != null)
+                if (memberAttribute.MultipleResults.IsValid() &&
+                    memberAttribute.MultipleResults != MultipleProjectionResults.Unset)
                 {
-                    if (!multipleResults && (bool)memberAttribute.MultipleResults)
+                    var explicitMultipleResults = memberAttribute.MultipleResults == MultipleProjectionResults.MultipleResults;
+
+                    if (!multipleResults && explicitMultipleResults)
                     {
                         throw new InvalidOperationException();
                     }
 
-                    if (multipleResults && !(bool)memberAttribute.MultipleResults)
+                    if (multipleResults && !explicitMultipleResults)
                     {
                         targetType = multipleResultsType;
                         multipleResults = false;
@@ -216,13 +219,13 @@ namespace AI4E.Storage.Projection
         /// <inheritdoc/>
         protected override bool IsAsynchronousMember(MethodInfo member, AwaitableTypeDescriptor returnTypeDescriptor)
         {
-            return member.Name.StartsWith("Project") && member.Name.EndsWith("Async") || member.IsDefined<MessageHandlerAttribute>(inherit: true);
+            return member.Name.StartsWith("Project") && member.Name.EndsWith("Async") || member.IsDefined<ProjectionAttribute>(inherit: true);
         }
 
         /// <inheritdoc/>
         protected override bool IsSychronousMember(MethodInfo member, AwaitableTypeDescriptor returnTypeDescriptor)
         {
-            return member.Name.StartsWith("Project") && !member.Name.EndsWith("Async") || member.IsDefined<MessageHandlerAttribute>(inherit: true);
+            return member.Name.StartsWith("Project") && !member.Name.EndsWith("Async") || member.IsDefined<ProjectionAttribute>(inherit: true);
         }
     }
 

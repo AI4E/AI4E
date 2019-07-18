@@ -39,13 +39,20 @@ namespace AI4E.Storage.Projection
         public Type SourceType { get; set; }
 
         /// <summary>
-        /// Gets or sets a boolean value indicating whether the projection projections to multiple targets.
+        /// Gets or sets a value indicating whether the projection projects to multiple targets.
         /// </summary>
-        public bool? MultipleResults { get; set; }
+        public MultipleProjectionResults MultipleResults { get; set; }
 
         /// <summary>
         /// Gets or sets a boolean value inidicating whether the projection shall be invoked for non-existing sources.
         /// </summary>
         public bool ProjectNonExisting { get; set; }
+    }
+
+    public enum MultipleProjectionResults
+    {
+        Unset = 0,
+        SingleResult = 1,
+        MultipleResults = 2
     }
 }

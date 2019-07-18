@@ -18,7 +18,4 @@ namespace AI4E.Storage.Projection
 
         public IServiceProvider ServiceProvider { get; }
     }
-
-    public sealed class ProjectionSource { }
-    public sealed class ProjectionTarget { }
 }
