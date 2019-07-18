@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Storage.Projection\AI4E.Storage.Projection.csproj" />
   </ItemGroup>
 

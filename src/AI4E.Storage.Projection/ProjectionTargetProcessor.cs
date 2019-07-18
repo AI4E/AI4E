@@ -144,7 +144,7 @@ namespace AI4E.Storage.Projection
             }
             else if (!entry.Dependents.Any())
             {
-                _sourceMetadataCache.DeleteEntry(entry);
+                await _sourceMetadataCache.DeleteEntryAsync(entry, cancellation);
                 return;
             }
 
@@ -160,7 +160,7 @@ namespace AI4E.Storage.Projection
                         dependency.SourceType.GetUnqualifiedTypeName());
 
                 dependencyEntry.Dependents.Add(new DependentEntry(ProjectedSource));
-                _sourceMetadataCache.UpdateEntry(dependencyEntry);
+                await _sourceMetadataCache.UpdateEntryAsync(dependencyEntry, cancellation);
             }
 
             foreach (var dependency in storedDependencies.Except(metadata.Dependencies.Select(p => p.Dependency)))
@@ -177,19 +177,19 @@ namespace AI4E.Storage.Projection
 
                 if (dependencyEntry.ProjectionTargets.Any() || dependencyEntry.Dependents.Any())
                 {
-                    _sourceMetadataCache.UpdateEntry(dependencyEntry);
+                    await _sourceMetadataCache.UpdateEntryAsync(dependencyEntry, cancellation);
                 }
                 else
                 {
                     Debug.Assert(!dependencyEntry.Dependencies.Any());
-                    _sourceMetadataCache.DeleteEntry(dependencyEntry);
+                    await _sourceMetadataCache.DeleteEntryAsync(dependencyEntry, cancellation);
                 }
             }
 
             entry.Dependencies.Clear();
             entry.Dependencies.AddRange(metadata.Dependencies.Select(p => new DependencyEntry(p)));
 
-            _sourceMetadataCache.UpdateEntry(entry);
+           await _sourceMetadataCache.UpdateEntryAsync(entry, cancellation);
         }
 
         /// <inheritdoc/>
@@ -200,7 +200,7 @@ namespace AI4E.Storage.Projection
             try
             {
                 // Write touched source metadata to database
-                foreach (var cacheEntry in _sourceMetadataCache.GetEntries().Where(p => p.State != MetadataCacheEntryState.Unchanged))
+                foreach (var cacheEntry in _sourceMetadataCache.GetTrackedEntries().Where(p => p.State != MetadataCacheEntryState.Unchanged))
                 {
                     // Check whether there are concurrent changes on the metadata.
                     var comparandMetdata = await scopedDatabase
@@ -221,12 +221,12 @@ namespace AI4E.Storage.Projection
                     }
                     else
                     {
-                        await scopedDatabase.RemoveAsync(cacheEntry.Entry, cancellation);
+                        await scopedDatabase.RemoveAsync(cacheEntry.OriginalEntry, cancellation);
                     }
                 }
 
                 // Write touched target metadata to database
-                foreach (var cacheEntry in _targetMetadataCache.GetEntries().Where(p => p.State != MetadataCacheEntryState.Unchanged))
+                foreach (var cacheEntry in _targetMetadataCache.GetTrackedEntries().Where(p => p.State != MetadataCacheEntryState.Unchanged))
                 {
                     // Check whether there are concurrent changes on the metadata.
                     var comparandMetdata = await scopedDatabase
@@ -301,7 +301,7 @@ namespace AI4E.Storage.Projection
             if (!entry.ProjectionSources.Any(p => p.ToDescriptor() == ProjectedSource))
             {
                 entry.ProjectionSources.Add(new ProjectionSourceEntry(ProjectedSource));
-                _targetMetadataCache.UpdateEntry(entry);
+                await _targetMetadataCache.UpdateEntryAsync(entry, cancellation);
             }
         }
 
@@ -326,7 +326,7 @@ namespace AI4E.Storage.Projection
 
             if (!entry.ProjectionSources.Any())
             {
-                _targetMetadataCache.DeleteEntry(entry);
+                await _targetMetadataCache.DeleteEntryAsync(entry, cancellation);
 
                 object projection = LoadTargetAsync(_database, target.TargetType, entry.TargetId, cancellation);
 
@@ -337,7 +337,7 @@ namespace AI4E.Storage.Projection
             }
             else
             {
-                _targetMetadataCache.UpdateEntry(entry);
+                await _targetMetadataCache.UpdateEntryAsync(entry, cancellation);
             }
         }
 

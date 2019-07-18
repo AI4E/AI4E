@@ -58,40 +58,78 @@ namespace AI4E.Storage.Projection
             _cache = new Dictionary<TId, CacheEntry>();
         }
 
-        public IEnumerable<MetadataCacheEntry<TEntry>> GetEntries()
+        public IEnumerable<MetadataCacheEntry<TEntry>> GetTrackedEntries()
         {
             var resultBuilder = ImmutableList.CreateBuilder<MetadataCacheEntry<TEntry>>();
 
             foreach (var cacheEntry in _cache.Values)
             {
+                TEntry originalEntry = null,
+                       entry = null;
+                MetadataCacheEntryState entryState;
+
                 if (!cacheEntry.Touched)
                 {
                     Debug.Assert(cacheEntry.OriginalEntry != null);
-
-                    var originalEntryCopy = cacheEntry.OriginalEntry.DeepClone();
-                    resultBuilder.Add(new MetadataCacheEntry<TEntry>(originalEntryCopy, originalEntryCopy, MetadataCacheEntryState.Unchanged));
+                    originalEntry = cacheEntry.OriginalEntry.DeepClone();
+                    entry = originalEntry;
+                    entryState = MetadataCacheEntryState.Unchanged;
                 }
                 else if (cacheEntry.Entry is null)
                 {
                     Debug.Assert(cacheEntry.OriginalEntry != null);
-
-                    var originalEntryCopy = cacheEntry.OriginalEntry.DeepClone();
-                    resultBuilder.Add(new MetadataCacheEntry<TEntry>(originalEntryCopy, originalEntryCopy, MetadataCacheEntryState.Deleted));
+                    originalEntry = cacheEntry.OriginalEntry.DeepClone();
+                    entryState = MetadataCacheEntryState.Deleted;
                 }
                 else if (cacheEntry.OriginalEntry is null)
                 {
                     Debug.Assert(cacheEntry.Entry != null);
-                    resultBuilder.Add(new MetadataCacheEntry<TEntry>(cacheEntry.Entry.DeepClone(), originalEntry: null, MetadataCacheEntryState.Created));
+                    entry = cacheEntry.Entry.DeepClone();
+                    entryState = MetadataCacheEntryState.Created;
                 }
                 else
                 {
                     Debug.Assert(cacheEntry.OriginalEntry != null);
                     Debug.Assert(cacheEntry.Entry != null);
-                    resultBuilder.Add(new MetadataCacheEntry<TEntry>(cacheEntry.Entry.DeepClone(), cacheEntry.OriginalEntry.DeepClone(), MetadataCacheEntryState.Updated));
+                    originalEntry = cacheEntry.OriginalEntry.DeepClone();
+                    entry = cacheEntry.Entry.DeepClone();
+                    entryState = MetadataCacheEntryState.Updated;
                 }
+
+                resultBuilder.Add(new MetadataCacheEntry<TEntry>(entry, originalEntry, entryState));
             }
 
             return resultBuilder.ToImmutable();
+        }
+
+        public MetadataCacheEntryState GetEntryState(TEntry entry)
+        {
+            if (entry is null)
+                throw new ArgumentNullException(nameof(entry));
+
+            Debug.Assert(entry != null);
+
+            var id = _idAccessor(entry);
+
+            if (!_cache.TryGetValue(id, out var cacheEntry))
+            {
+                return MetadataCacheEntryState.Untracked;
+            }
+
+            if (!cacheEntry.Touched)
+            {
+                return MetadataCacheEntryState.Unchanged;
+            }
+            if (cacheEntry.Entry is null)
+            {
+                return MetadataCacheEntryState.Deleted;
+            }
+            if (cacheEntry.OriginalEntry is null)
+            {
+                return MetadataCacheEntryState.Created;
+            }
+
+            return MetadataCacheEntryState.Updated;
         }
 
         public void Clear()
@@ -115,17 +153,26 @@ namespace AI4E.Storage.Projection
             TId id,
             CancellationToken cancellation)
         {
+            var cacheEntry = await GetCacheEntryAsync(id, cancellation);
+            return cacheEntry.Entry;
+        }
+
+        private async ValueTask<CacheEntry> GetCacheEntryAsync(
+           TId id,
+           CancellationToken cancellation)
+        {
             var entry = await QueryEntryAsync(id, cancellation);
-            var touched = false;
 
             if (entry != null)
             {
                 var originalEntry = entry.DeepClone();
-                var cacheEntry = new CacheEntry(originalEntry, entry, touched);
+                var cacheEntry = new CacheEntry(originalEntry, entry);
                 _cache[id] = cacheEntry;
+
+                return cacheEntry;
             }
 
-            return entry;
+            return default;
         }
 
         private async ValueTask<TEntry> QueryEntryAsync(
@@ -134,7 +181,7 @@ namespace AI4E.Storage.Projection
             return await _database.GetOneAsync(_queryBuilder(id), cancellation);
         }
 
-        public void UpdateEntry(TEntry entry)
+        public async ValueTask UpdateEntryAsync(TEntry entry, CancellationToken cancellation)
         {
             Debug.Assert(entry != null);
 
@@ -142,13 +189,13 @@ namespace AI4E.Storage.Projection
 
             if (!_cache.TryGetValue(id, out var cacheEntry))
             {
-                cacheEntry = default;
+                cacheEntry = await GetCacheEntryAsync(id, cancellation);
             }
 
-            _cache[id] = new CacheEntry(cacheEntry.OriginalEntry, entry.DeepClone(), touched: true);
+            _cache[id] = cacheEntry.Update(entry);
         }
 
-        public void DeleteEntry(TEntry entry)
+        public async ValueTask DeleteEntryAsync(TEntry entry, CancellationToken cancellation)
         {
             Debug.Assert(entry != null);
 
@@ -156,20 +203,25 @@ namespace AI4E.Storage.Projection
 
             if (!_cache.TryGetValue(id, out var cacheEntry))
             {
-                return;
+                cacheEntry = await GetCacheEntryAsync(id, cancellation);
             }
 
             if (cacheEntry.OriginalEntry is null)
             {
                 _cache.Remove(id);
             }
-
-            _cache[id] = new CacheEntry(cacheEntry.OriginalEntry, null, touched: true);
+            else
+            {
+                _cache[id] = cacheEntry.Delete();
+            }
         }
 
         private readonly struct CacheEntry
         {
-            public CacheEntry(TEntry originalEntry, TEntry entry, bool touched)
+            public CacheEntry(TEntry originalEntry, TEntry entry) : this(originalEntry, entry, touched: false)
+            { }
+
+            private CacheEntry(TEntry originalEntry, TEntry entry, bool touched)
             {
                 Debug.Assert(originalEntry != null || entry != null);
 
@@ -181,6 +233,16 @@ namespace AI4E.Storage.Projection
             public TEntry OriginalEntry { get; }
             public TEntry Entry { get; }
             public bool Touched { get; }
+
+            public CacheEntry Update(TEntry entry)
+            {
+                return new CacheEntry(OriginalEntry, entry, touched: true);
+            }
+
+            public CacheEntry Delete()
+            {
+                return new CacheEntry(OriginalEntry, null, touched: true);
+            }
         }
     }
 
@@ -200,6 +262,7 @@ namespace AI4E.Storage.Projection
 
     internal enum MetadataCacheEntryState
     {
+        Untracked = default,
         Unchanged,
         Created,
         Deleted,
