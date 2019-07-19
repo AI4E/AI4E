@@ -172,6 +172,31 @@ namespace AI4E.Storage.Projection
         }
 
         [TestMethod]
+        public void WithMultipleResultAsyncEnumerableProjectionTest()
+        {
+            var descriptor = ProjectionInspector.Instance.InspectType(typeof(WithMultipleResultAsyncEnumerableProjection)).Single();
+
+            Assert.AreEqual(typeof(ProjectionSource), descriptor.SourceType);
+            Assert.AreEqual(typeof(ProjectionTarget), descriptor.TargetType);
+            Assert.IsTrue(descriptor.MultipleResults);
+            Assert.AreEqual(typeof(WithMultipleResultAsyncEnumerableProjection), descriptor.HandlerType);
+            Assert.AreEqual(typeof(WithMultipleResultAsyncEnumerableProjection).GetMethod("Project"), descriptor.Member);
+        }
+
+        [TestMethod]
+        public void WithMultipleResultAsyncAsyncEnumerableProjectionTest()
+        {
+            var descriptor = ProjectionInspector.Instance.InspectType(typeof(WithMultipleResultAsyncAsyncEnumerableProjection)).Single();
+
+            Assert.AreEqual(typeof(ProjectionSource), descriptor.SourceType);
+            Assert.AreEqual(typeof(ProjectionTarget), descriptor.TargetType);
+            Assert.IsTrue(descriptor.MultipleResults);
+            Assert.AreEqual(typeof(WithMultipleResultAsyncAsyncEnumerableProjection), descriptor.HandlerType);
+            Assert.AreEqual(typeof(WithMultipleResultAsyncAsyncEnumerableProjection).GetMethod("ProjectAsync"), descriptor.Member);
+        }
+
+
+        [TestMethod]
         public void WithEnumerableResultExplicitNoMultipleResultProjectionTest()
         {
             var descriptor = ProjectionInspector.Instance.InspectType(typeof(WithEnumerableResultExplicitNoMultipleResultProjection)).Single();
@@ -380,6 +405,22 @@ namespace AI4E.Storage.Projection
     public sealed class WithMultipleResultAsyncProjection
     {
         public Task<IEnumerable<ProjectionTarget>> ProjectAsync(ProjectionSource x, int y)
+        {
+            throw null;
+        }
+    }
+
+    public sealed class WithMultipleResultAsyncEnumerableProjection
+    {
+        public IAsyncEnumerable<ProjectionTarget> Project(ProjectionSource x, int y)
+        {
+            throw null;
+        }
+    }
+
+    public sealed class WithMultipleResultAsyncAsyncEnumerableProjection
+    {
+        public Task<IAsyncEnumerable<ProjectionTarget>> ProjectAsync(ProjectionSource x, int y)
         {
             throw null;
         }

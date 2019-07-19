@@ -118,10 +118,9 @@ namespace AI4E.Storage.Projection
         // If this is changed, adapt the caller in ProjectionInvoker.BuildFactory
         [MethodImpl(MethodImplOptions.PreserveSig)]
 #pragma warning disable IDE0051
-        private ProjectionInvoker(
+        internal ProjectionInvoker(
 #pragma warning restore IDE0051
             object handler,
-
             ProjectionDescriptor projectionDescriptor,
             IServiceProvider serviceProvider)
         {
@@ -166,26 +165,40 @@ namespace AI4E.Storage.Projection
 
             var result = await invoker.InvokeAsync(_handler, source, ResolveParameter);
 
-            if (result != null)
+            if (result == null)
             {
-                if (_projectionDescriptor.MultipleResults)
-                {
-                    var enumerable = result as IEnumerable<TTarget>;
-                    Debug.Assert(enumerable != null);
+                yield break;
+            }
 
-                    foreach (var singleResult in enumerable)
+            if (_projectionDescriptor.MultipleResults)
+            {
+                if (result is IAsyncEnumerable<TTarget> asyncEnumerable)
+                {
+                    await foreach(var target in asyncEnumerable)
                     {
-                        yield return singleResult;
+                        yield return target;
                     }
                 }
-                else
+                else if (result is IEnumerable<TTarget> enumerable)
                 {
-                    var projectionResult = result as TTarget;
-                    Debug.Assert(projectionResult != null);
-
-                    yield return projectionResult;
+                    foreach (var target in enumerable)
+                    {
+                        yield return target;
+                    }
                 }
             }
+            else if (result is TTarget projectionResult)
+            {
+                yield return projectionResult;
+            }
+
+            // This is possible if the projection descriptor we are working with
+            // does not match the projection.
+            // This may be the case f.e. if the descriptors states that we are handling
+            // a single targets projection but it is a multiple targets projection actually.
+
+            // TODO: Do we want to throw here or silently ignore this?
+            //       At least, we have to log a warning.
         }
 
 #if !SUPPORTS_DEFAULT_INTERFACE_METHODS

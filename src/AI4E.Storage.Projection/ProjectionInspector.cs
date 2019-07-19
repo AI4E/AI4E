@@ -70,7 +70,13 @@ namespace AI4E.Storage.Projection
         {
             static bool IsEnumerable(Type type)
             {
-                return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>);
+                if (!type.IsGenericType)
+                    return false;
+
+                var typeDefinition = type.GetGenericTypeDefinition();
+
+                return typeDefinition == typeof(IEnumerable<>)
+                    || typeDefinition == typeof(IAsyncEnumerable<>);
             }
 
             if (IsEnumerable(type))
@@ -123,7 +129,6 @@ namespace AI4E.Storage.Projection
             var multipleResults = false;
             Type multipleResultsType = null;
 
-            // TODO: Allow IAsyncEnumerable?
             if (IsAssignableToEnumerable(targetType, out var elementType))
             {
                 multipleResultsType = targetType;
