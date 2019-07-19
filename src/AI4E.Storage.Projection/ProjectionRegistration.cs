@@ -96,10 +96,10 @@ namespace AI4E.Storage.Projection
                 throw new InvalidOperationException("The projection provided must not be null.");
 
             if (result.SourceType != SourceType)
-                throw new InvalidOperationException($"The projection provided must projection objects of type {SourceType}.");
+                throw new InvalidOperationException($"The projection provided must project objects of type {SourceType}.");
 
             if (result.TargetType != TargetType)
-                throw new InvalidOperationException($"The projection provided must projection to objects of type {TargetType}.");
+                throw new InvalidOperationException($"The projection provided must project to objects of type {TargetType}.");
 
             return result;
         }

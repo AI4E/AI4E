@@ -82,14 +82,17 @@ namespace AI4E.Storage.Projection
             if (serviceProvider is null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            if (sourceType.IsValueType || typeof(Delegate).IsAssignableFrom(sourceType) /*sourceType.IsDelegate()*/) // TODO
+            // TODO
+            if (sourceType.IsValueType || typeof(Delegate).IsAssignableFrom(sourceType) /*sourceType.IsDelegate()*/)
                 throw new ArgumentException("The argument must be a reference type.", nameof(sourceType));
 
             if (source is null)
                 return AsyncEnumerable.Empty<IProjectionResult>();
 
             if (!sourceType.IsAssignableFrom(source.GetType()))
-                throw new ArgumentException($"The argument '{nameof(source)}' must be of the type specified by '{nameof(sourceType)}' or a derived type.");
+                throw new ArgumentException(
+                    $"The argument '{nameof(source)}' must be of the type specified by '{nameof(sourceType)}'" +
+                    $" or a derived type.");
 
             return ExecuteProjectionInternalAsync(sourceType, source, serviceProvider, cancellation);
         }
@@ -113,13 +116,15 @@ namespace AI4E.Storage.Projection
         {
             var projectionProvider = GetProjectionProvider();
 
-            // There is no parallelism (with Task.WhenAll(projectors.Select(...)) used because we cannot guarantee that it is allowed to access 'source' concurrently.
-            // But it is possible to change the return type to IAsyncEnumerable<IProjectionResult> and process each batch on access. 
-            // This allows to remove the up-front evaluation and storage of the results.
+            // There is no parallelism (with Task.WhenAll(projectors.Select(...)) used because we cannot guarantee
+            // that it is allowed to access 'source' concurrently. It is possible to use the return type
+            // IAsyncEnumerable<IProjectionResult> and process each batch on access. This allows to remove the up-front
+            // evaluation and storage of the results.
 
             return GetProjectionTypeHierarchy(sourceType)
                 .SelectMany(type => projectionProvider.GetProjectionRegistrations(type)).ToAsyncEnumerable()
-                .SelectMany(provider => ExecuteSingleProjectionAsync(provider, sourceType, source, serviceProvider, cancellation));
+                .SelectMany(provider => ExecuteSingleProjectionAsync(
+                    provider, sourceType, source, serviceProvider, cancellation));
         }
 
         private IAsyncEnumerable<IProjectionResult> ExecuteSingleProjectionAsync(
@@ -133,17 +138,20 @@ namespace AI4E.Storage.Projection
 
             if (projection == null)
             {
-                throw new InvalidOperationException($"Cannot execute a projection for source type '{projection.SourceType}' that is null.");
+                throw new InvalidOperationException(
+                    $"Cannot execute a projection for source-type '{projection.SourceType}' that is null.");
             }
 
             if (!projection.SourceType.IsAssignableFrom(sourceType))
             {
-                throw new InvalidOperationException($"Cannot execute a projection for source type '{projection.SourceType}' with a source of type '{sourceType}'.");
+                throw new InvalidOperationException(
+                    $"Cannot execute a projection for source-type '{projection.SourceType}'" +
+                    $" with a source of type '{sourceType}'.");
             }
 
             return projection.ProjectAsync(source, cancellation)
-                                    .Where(p => !(p is null))
-                                    .Select(p => new ProjectionResult(projection.TargetType, p));
+                .Where(p => !(p is null))
+                .Select(p => new ProjectionResult(projection.TargetType, p));
         }
     }
 }

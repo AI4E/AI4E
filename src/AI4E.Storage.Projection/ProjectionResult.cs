@@ -50,9 +50,7 @@ namespace AI4E.Storage.Projection
             Result = result;
 
             ResultIdType = DataPropertyHelper.GetIdType(ResultType);
-            ResultId = DataPropertyHelper.GetId(ResultType, Result);
-
-            // TODO: Check whether an id can be accessed.
+            ResultId = ResultIdType == null ? null : DataPropertyHelper.GetId(ResultType, Result);
         }
 
         /// <inheritdoc />
