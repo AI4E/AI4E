@@ -1,4 +1,4 @@
-namespace AI4E.Storage.Projection
+namespace AI4E.Storage.Projection.TestTypes
 {
     public sealed class ProjectionTarget
     {

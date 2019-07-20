@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace AI4E.Storage.Projection
+namespace AI4E.Storage.Projection.TestTypes
 {
     public sealed class ProjectionRegistrationTestProjection : IProjection<ProjectionSource, ProjectionTarget>
     {

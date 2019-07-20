@@ -1,4 +1,5 @@
 using System.Linq;
+using AI4E.Storage.Projection.TestTypes;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Storage.Projection

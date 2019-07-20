@@ -53,7 +53,7 @@ namespace AI4E.Storage.Projection
         /// <param name="serviceProvider">The <see cref="IServiceProvider"/> used to obtain services.</param>
         /// <param name="logger">A logger used to log messages or <c>null</c>.</param>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if any od <paramref name="projector"/>, <paramref name="sourceProcessorFactory"/>,
+        /// Thrown if any of <paramref name="projector"/>, <paramref name="sourceProcessorFactory"/>,
         /// <paramref name="targetProcessorFactory"/> or <paramref name="serviceProvider"/> is <c>null</c>.
         /// </exception>
         public ProjectionEngine(
@@ -83,16 +83,16 @@ namespace AI4E.Storage.Projection
         }
 
         /// <inheritdoc/>
-        public Task ProjectAsync(Type entityType, string id, CancellationToken cancellation = default)
+        public Task ProjectAsync(Type sourceType, string id, CancellationToken cancellation = default)
         {
-            if (entityType == null)
-                throw new ArgumentNullException(nameof(entityType));
+            if (sourceType == null)
+                throw new ArgumentNullException(nameof(sourceType));
 
             if (id == null)
                 throw new ArgumentNullException(nameof(id));
 
             var processedSources = new HashSet<ProjectionSourceDescriptor>();
-            return ProjectAsync(new ProjectionSourceDescriptor(entityType, id), processedSources, cancellation);
+            return ProjectAsync(new ProjectionSourceDescriptor(sourceType, id), processedSources, cancellation);
         }
 
         private async Task ProjectAsync(ProjectionSourceDescriptor source,
@@ -115,7 +115,9 @@ namespace AI4E.Storage.Projection
             }
         }
 
-        private async Task<IEnumerable<ProjectionSourceDescriptor>> ProjectAsync(IProjectionTargetProcessor targetProcessor, CancellationToken cancellation)
+        private async Task<IEnumerable<ProjectionSourceDescriptor>> ProjectAsync(
+            IProjectionTargetProcessor targetProcessor,
+            CancellationToken cancellation)
         {
             IEnumerable<ProjectionSourceDescriptor> dependents;
 
@@ -135,16 +137,20 @@ namespace AI4E.Storage.Projection
 
             using var scope = _serviceProvider.CreateScope();
             var scopedServiceProvider = scope.ServiceProvider;
-            var sourceProcessor = _sourceProcessorFactory.CreateInstance(targetProcessor.ProjectedSource, scope.ServiceProvider);
+            var sourceProcessor = _sourceProcessorFactory.CreateInstance(
+                targetProcessor.ProjectedSource, scope.ServiceProvider);
             var updateNeeded = await CheckUpdateNeededAsync(sourceProcessor, targetProcessor, cancellation);
 
             if (!updateNeeded)
                 return;
 
-            var source = await sourceProcessor.GetSourceAsync(targetProcessor.ProjectedSource, bypassCache: false, cancellation);
-            var sourceRevision = await sourceProcessor.GetSourceRevisionAsync(targetProcessor.ProjectedSource, bypassCache: false, cancellation);
+            var source = await sourceProcessor.GetSourceAsync(
+                targetProcessor.ProjectedSource, bypassCache: false, cancellation);
+            var sourceRevision = await sourceProcessor.GetSourceRevisionAsync(
+                targetProcessor.ProjectedSource, bypassCache: false, cancellation);
 
-            var projectionResults = _projector.ExecuteProjectionAsync(targetProcessor.ProjectedSource.SourceType, source, scopedServiceProvider, cancellation);
+            var projectionResults = _projector.ExecuteProjectionAsync(
+                targetProcessor.ProjectedSource.SourceType, source, scopedServiceProvider, cancellation);
 
             var metadata = await targetProcessor.GetMetadataAsync(cancellation);
             var appliedTargets = metadata.Targets.ToHashSet();
@@ -161,8 +167,9 @@ namespace AI4E.Storage.Projection
                     if (!processedResults.Add(projectionResult))
                     {
                         _logger.LogWarning(
-                            $"Duplicate projection target with type {projectionResult.ResultType} and id {projectionResult.ResultId} " +
-                            $"while projecting source '{sourceProcessor.ProjectedSource}'.");
+                            $"Duplicate projection target with type {projectionResult.ResultType}" +
+                            $" and id {projectionResult.ResultId} while projecting source" +
+                            $" '{sourceProcessor.ProjectedSource}'.");
 
                         continue;
                     }
@@ -189,7 +196,7 @@ namespace AI4E.Storage.Projection
             await targetProcessor.UpdateAsync(updatedMetadata, cancellation);
         }
 
-        // Checks whether the projection is up-to date our if we have to reproject.
+        // Checks whether the projection is up-to date or if we have to reproject.
         // We have to project if
         // - the version of our entity is greater than the projection version
         // - the version of any of our dependencies is greater than the projection version
@@ -219,7 +226,8 @@ namespace AI4E.Storage.Projection
             ProjectionMetadata metadata,
             CancellationToken cancellation)
         {
-            var sourceRevision = await GetSourceRevisionAsync(sourceProcessor, metadata.ProjectionRevision, cancellation);
+            var sourceRevision = await GetSourceRevisionAsync(
+                sourceProcessor, metadata.ProjectionRevision, cancellation);
             Debug.Assert(sourceRevision >= metadata.ProjectionRevision);
 
             if (sourceRevision > metadata.ProjectionRevision)
@@ -229,7 +237,8 @@ namespace AI4E.Storage.Projection
 
             foreach (var projectionRevision in metadata.Dependencies.Select(p => p.ProjectionRevision))
             {
-                var dependencyRevision = await GetSourceRevisionAsync(sourceProcessor, metadata.ProjectionRevision, cancellation);
+                var dependencyRevision = await GetSourceRevisionAsync(
+                    sourceProcessor, metadata.ProjectionRevision, cancellation);
                 Debug.Assert(dependencyRevision >= projectionRevision);
 
                 if (dependencyRevision > projectionRevision)
