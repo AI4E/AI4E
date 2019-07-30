@@ -6,9 +6,9 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="AI4E.AspNetCore.Blazor.Logging" Version="0.3.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="3.0.0-preview6.19307.2" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="3.0.0-preview6.19304.6" />
+    <PackageReference Include="AI4E.AspNetCore.Blazor.Logging" Version="0.3.2-pre19073015" />
+    <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="3.0.0-preview7.19365.7" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="3.0.0-preview7.19362.4" />
   </ItemGroup>
 
   <ItemGroup>
