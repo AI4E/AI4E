@@ -21,6 +21,7 @@ namespace AI4E.Routing.SignalR.Client
             HubConnection BuildHubConnection(IServiceProvider provider)
             {
                 var hubConnectionBuilder = new HubConnectionBuilder();
+                hubConnectionBuilder.AddNewtonsoftJsonProtocol();
                 configuration(hubConnectionBuilder, provider);
                 return hubConnectionBuilder.Build();
             }
