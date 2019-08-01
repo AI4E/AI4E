@@ -204,7 +204,7 @@ namespace AI4E.Storage.Projection
                 {
                     // Check whether there are concurrent changes on the metadata.
                     var comparandMetdata = await scopedDatabase
-                        .GetAsync<ProjectionSourceMetadataEntry>(p => p.Id == cacheEntry.Entry.Id)
+                        .GetAsync<ProjectionSourceMetadataEntry>(p => p.Id == (cacheEntry.Entry ?? cacheEntry.OriginalEntry).Id)
                         .FirstOrDefaultAsync(cancellation);
 
                     if (!ProjectionSourceMetadataEntry.MatchesByRevision(cacheEntry.OriginalEntry, comparandMetdata))
@@ -230,7 +230,7 @@ namespace AI4E.Storage.Projection
                 {
                     // Check whether there are concurrent changes on the metadata.
                     var comparandMetdata = await scopedDatabase
-                        .GetAsync<ProjectionTargetMetadataEntry>(p => p.Id == cacheEntry.Entry.Id)
+                        .GetAsync<ProjectionTargetMetadataEntry>(p => p.Id == (cacheEntry.Entry ?? cacheEntry.OriginalEntry).Id)
                         .FirstOrDefaultAsync(cancellation);
 
                     if (!ProjectionTargetMetadataEntry.MatchesByRevision(cacheEntry.OriginalEntry, comparandMetdata))
@@ -247,7 +247,7 @@ namespace AI4E.Storage.Projection
                     }
                     else
                     {
-                        await scopedDatabase.RemoveAsync(cacheEntry.Entry, cancellation);
+                        await scopedDatabase.RemoveAsync(cacheEntry.OriginalEntry, cancellation);
                     }
                 }
 
