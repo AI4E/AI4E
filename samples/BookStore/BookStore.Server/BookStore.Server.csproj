@@ -12,6 +12,7 @@
     <ProjectReference Include="..\..\..\src\AI4E.Modularity.Host\AI4E.Modularity.Host.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.Routing.SignalR.Server\AI4E.Routing.SignalR.Server.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.Routing\AI4E.Routing.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.Storage.MongoDB\AI4E.Storage.MongoDB.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\BookStore.App\BookStore.App.csproj" />
@@ -19,8 +20,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Server" Version="3.0.0-preview3-19153-02" />
-    <PackageReference Include="Microsoft.AspNetCore.Blazor.Server" Version="3.0.0-preview6.19307.2" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="3.0.0-preview6.19307.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Blazor.Server" Version="3.0.0-preview7.19365.7" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="3.0.0-preview7.19365.7" />
   </ItemGroup>
 
 </Project>

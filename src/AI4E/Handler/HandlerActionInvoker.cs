@@ -85,8 +85,7 @@ namespace AI4E.Handler
         /// When evaluated, the tasks result contains the result that was returned from the action.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if any of <paramref name="instance"/>, <paramref name="argument"/>
-        /// or <paramref name="parameterResolver"/> is <c> null.</c>
+        /// Thrown if either of <paramref name="instance"/> or <paramref name="parameterResolver"/> is <c>null</c>.
         /// </exception>
         /// <exception cref="ArgumentException">
         /// Thrown if <paramref name="instance"/> is not assignable to the actions declaring type is the type
@@ -97,16 +96,13 @@ namespace AI4E.Handler
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
 
-            if (FirstParameterType != typeof(void) && argument == null)
-                throw new ArgumentNullException(nameof(argument));
-
             if (parameterResolver == null)
                 throw new ArgumentNullException(nameof(parameterResolver));
 
             if (!Method.DeclaringType.IsAssignableFrom(instance.GetType()))
                 throw new ArgumentException($"The argument must be of type '{Method.DeclaringType.ToString()}' or an assignable type in order to be used as instance.", nameof(instance));
 
-            if (FirstParameterType != typeof(void) && !FirstParameterType.IsAssignableFrom(argument.GetType()))
+            if (FirstParameterType != typeof(void) && !(argument is null) && !FirstParameterType.IsAssignableFrom(argument.GetType()))
                 throw new ArgumentException($"The argument must be of type '{FirstParameterType}' or an assignable type in order to be used as first argument.", nameof(argument));
 
             var result = _invoker(instance, argument, parameterResolver);

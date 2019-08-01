@@ -5,42 +5,24 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\CompressionHelper.cs" Link="Internal\CompressionHelper.cs" />
-    <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
-    <Compile Include="..\Common\EscapeHelper.cs" Link="Internal\EscapeHelper.cs" />
     <Compile Include="..\Common\IdEqualityComparer.cs" Link="Internal\IdEqualityComparer.cs" />
-    <Compile Include="..\Common\IdGenerator.cs" Link="Internal\IdGenerator.cs" />
+    <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="JsonDiffPatch.Net" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.0.0-preview6.19304.6" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.0.0-preview6.19304.6" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="3.0.0-preview6.19304.6" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.0.0-preview7.19362.4" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.0.0-preview7.19362.4" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="3.0.0-preview7.19362.4" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
     <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.2" />
     <PackageReference Include="Nito.Collections.Deque" Version="1.0.4" />
-    <PackageReference Include="System.Collections.Immutable" Version="1.6.0-preview6.19303.8" />  
+    <PackageReference Include="System.Collections.Immutable" Version="1.6.0-preview7.19362.9" />  
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Compile Update="Resources.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

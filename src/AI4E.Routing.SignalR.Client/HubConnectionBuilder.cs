@@ -1,11 +1,17 @@
 using System;
 using System.ComponentModel;
+using System.Net;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Routing.SignalR.Client
 {
     // Adapted from https://github.com/aspnet/SignalR/blob/dev/src/Microsoft.AspNetCore.SignalR.Client.Core/HubConnectionBuilder.cs
+
+    /// <summary>
+    /// A builder for configuring <see cref="HubConnection"/> instances.
+    /// </summary>
     public class HubConnectionBuilder : IHubConnectionBuilder
     {
         private bool _hubConnectionBuilt;
@@ -18,25 +24,19 @@ namespace AI4E.Routing.SignalR.Client
         /// </summary>
         public HubConnectionBuilder(IServiceCollection services)
         {
-            if (services == null)
+            if (services is null)
                 throw new ArgumentNullException(nameof(services));
 
             Services = services;
             Services.AddSingleton<HubConnection>();
             Services.AddLogging();
-            this.AddNewtonsoftJsonProtocol();
+            this.AddJsonProtocol();
         }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="HubConnectionBuilder"/> class.
         /// </summary>
-        public HubConnectionBuilder()
-        {
-            Services = new ServiceCollection();
-            Services.AddSingleton<HubConnection>();
-            Services.AddLogging();
-            this.AddNewtonsoftJsonProtocol();
-        }
+        public HubConnectionBuilder() : this(new ServiceCollection()) { }
 
         /// <inheritdoc />
         public HubConnection Build()
@@ -52,11 +52,11 @@ namespace AI4E.Routing.SignalR.Client
             // The service provider is disposed by the HubConnection
             var serviceProvider = Services.BuildServiceProvider();
 
-            var connectionFactory = serviceProvider.GetService<IConnectionFactory>();
-            if (connectionFactory == null)
-            {
+            var connectionFactory = serviceProvider.GetService<IConnectionFactory>() ??
                 throw new InvalidOperationException($"Cannot create {nameof(HubConnection)} instance. An {nameof(IConnectionFactory)} was not configured.");
-            }
+
+            var endPoint = serviceProvider.GetService<EndPoint>() ??
+                throw new InvalidOperationException($"Cannot create {nameof(HubConnection)} instance. An {nameof(EndPoint)} was not configured.");
 
             return serviceProvider.GetService<HubConnection>();
         }

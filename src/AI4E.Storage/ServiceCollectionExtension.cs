@@ -33,7 +33,7 @@ namespace AI4E.Storage
 
             services.AddOptions();
             services.AddDateTimeProvider();
-            services.TryAddSingleton(typeof(IContextualProvider<>), typeof(ContextualProvider<>));
+           
             services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
 
             return new StorageBuilder(services);

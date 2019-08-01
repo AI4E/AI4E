@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\..\..\..\src\AI4E.Modularity.Module\AI4E.Modularity.Module.csproj" />
     <ProjectReference Include="..\..\..\..\..\src\AI4E.Modularity\AI4E.Modularity.csproj" />
     <ProjectReference Include="..\..\..\..\..\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\..\src\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj" />
     <ProjectReference Include="..\..\..\..\..\src\AI4E.Storage.MongoDB\AI4E.Storage.MongoDB.csproj" />
     <ProjectReference Include="..\..\..\..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\BookStore.Catalog.API\BookStore.Catalog.API.csproj" />
