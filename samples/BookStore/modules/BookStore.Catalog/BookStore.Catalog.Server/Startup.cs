@@ -26,7 +26,6 @@ namespace BookStore.Catalog.Server
                     .UseDomainStorage();
 
             services.AddDomainServices();
-            services.AddModuleServices();
 
             services.Configure<ModuleServerOptions>(options =>
             {

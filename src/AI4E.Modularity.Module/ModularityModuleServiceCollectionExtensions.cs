@@ -31,7 +31,7 @@ using AI4E.Utils.ApplicationParts;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public static class ModularityModuleServiceCollectionExtensions
+    internal static class ModularityModuleServiceCollectionExtensions
     {
         public static IServiceCollection AddModuleServices(this IServiceCollection services)
         {
@@ -64,6 +64,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             serviceManager.AddService<HostProcessMonitor>(isRequiredService: true);
         }
+
         private static void ConfigureApplicationParts(ApplicationPartManager partManager)
         {
             partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));

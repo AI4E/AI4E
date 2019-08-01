@@ -26,7 +26,6 @@ using AI4E.AspNetCore.Components.Modularity;
 using AI4E.Modularity;
 using AI4E.Routing.SignalR.Client;
 using AI4E.Utils.ApplicationParts;
-using BlazorSignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.JSInterop;
 
