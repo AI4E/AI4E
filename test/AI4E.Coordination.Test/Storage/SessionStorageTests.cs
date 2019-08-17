@@ -172,7 +172,7 @@ namespace AI4E.Coordination.Storage
 
             await storage.UpdateSessionAsync(entry1, null, cancellation: default);
             await storage.UpdateSessionAsync(entry2, null, cancellation: default);
-            var queryResults = await storage.GetSessionsAsync(cancellation: default).ToList();
+            var queryResults = await storage.GetSessionsAsync(cancellation: default).ToListAsync();
 
             Assert.AreEqual(2, queryResults.Count);
             AssertEquality(entry1, queryResults.Single(p => p.Session == _session1));

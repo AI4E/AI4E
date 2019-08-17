@@ -23,6 +23,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.DispatchResults;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace AI4E.Validation
@@ -120,5 +121,23 @@ namespace AI4E.Validation
 
             return HandleAsync(typedDispatchData, publish, localDispatch, cancellation);
         }
+
+        private static void Configure(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
+        {
+            messageHandlerRegistry.Register(new MessageHandlerRegistration<Validate>(
+                    dispatchServices => ActivatorUtilities.CreateInstance<ValidationMessageHandler>(dispatchServices)));
+        }
+
+        public static void Register(IMessagingBuilder builder)
+        {
+            // Protect us from registering the validation-handler multiple times.
+            if (builder.Services.Any(p => p.ServiceType == typeof(ValidationMessageHandlerMarker)))
+                return;
+
+            builder.Services.AddSingleton<ValidationMessageHandlerMarker>(_ => null);
+            builder.ConfigureMessageHandlers(Configure);
+        }
+
+        private sealed class ValidationMessageHandlerMarker { }
     }
 }

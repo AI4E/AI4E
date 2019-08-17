@@ -27,7 +27,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
 using AI4E.Utils;
-using AI4E.Utils.AsyncEnumerable;
 using Nito.AsyncEx;
 
 namespace AI4E.Storage.InMemory
@@ -201,7 +200,9 @@ namespace AI4E.Storage.InMemory
 
             var copy = data.DeepClone();
 
+#pragma warning disable IDE1006
             return await ExecuteAsync(data, p, (_1, _2) => _entries[id] = copy, cancellation);
+#pragma warning restore IDE1006
         }
 
         public async Task<bool> AddAsync(TEntry data, CancellationToken cancellation = default)

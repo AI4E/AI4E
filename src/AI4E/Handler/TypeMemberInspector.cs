@@ -30,7 +30,31 @@ namespace AI4E.Handler
     /// A base type for type member inspectors.
     /// </summary>
     /// <typeparam name="TMemberDescriptor">The type of descriptor that is used for inspected members.</typeparam>
-    public abstract class TypeMemberInspector<TMemberDescriptor>
+    public abstract class TypeMemberInspector<TMemberDescriptor> : TypeMemberInspector<TMemberDescriptor, Type>
+    {
+        /// <summary>
+        /// Return the parameter type of the specified member.
+        /// </summary>
+        /// <param name="type">The type that is inspected.</param>
+        /// <param name="member">The member thats parameter type shall be obtained.</param>
+        /// <param name="parameters">A collection that represents the members parameters.</param>
+        /// <returns>The parameter type of <paramref name="member"/>.</returns>
+        protected override Type GetParameters(
+            Type type,
+            MethodInfo member,
+            IReadOnlyList<ParameterInfo> parameters,
+            AwaitableTypeDescriptor returnTypeDescriptor)
+        {
+            return parameters[0].ParameterType;
+        }
+    }
+
+    /// <summary>
+    /// A base type for type member inspectors.
+    /// </summary>
+    /// <typeparam name="TMemberDescriptor">The type of descriptor that is used for inspected members.</typeparam>
+    /// <typeparam name="TParameters">The type of parameters.</typeparam>
+    public abstract class TypeMemberInspector<TMemberDescriptor, TParameters>
     {
         /// <summary>
         /// Inspected the members of the specified type and returns a collection of descriptors for the inspected members.
@@ -80,17 +104,17 @@ namespace AI4E.Handler
                 return false;
             }
 
-            var parameterType = GetParameterType(type, member, parameters);
+            var p = GetParameters(type, member, parameters, returnTypeDescriptor);
 
             if (IsSychronousMember(member, returnTypeDescriptor) && !returnTypeDescriptor.IsAwaitable)
             {
-                descriptor = CreateDescriptor(type, member, parameterType);
+                descriptor = CreateDescriptor(type, member, p);
                 return true;
             }
 
             if (IsAsynchronousMember(member, returnTypeDescriptor) && returnTypeDescriptor.IsAwaitable)
             {
-                descriptor = CreateDescriptor(type, member, parameterType);
+                descriptor = CreateDescriptor(type, member, p);
                 return true;
             }
 
@@ -134,10 +158,11 @@ namespace AI4E.Handler
         /// <param name="member">The member thats parameter type shall be obtained.</param>
         /// <param name="parameters">A collection that represents the members parameters.</param>
         /// <returns>The parameter type of <paramref name="member"/>.</returns>
-        protected virtual Type GetParameterType(Type type, MethodInfo member, IReadOnlyList<ParameterInfo> parameters)
-        {
-            return parameters[0].ParameterType;
-        }
+        protected abstract TParameters GetParameters(
+            Type type,
+            MethodInfo member,
+            IReadOnlyList<ParameterInfo> parameters,
+            AwaitableTypeDescriptor returnTypeDescriptor);
 
         /// <summary>
         /// Returns a boolean value indicating whether the specified member is a synchronous result.
@@ -160,8 +185,8 @@ namespace AI4E.Handler
         /// </summary>
         /// <param name="type">The type that is inspected.</param>
         /// <param name="member">The member that a descriptor shall be created for.</param>
-        /// <param name="parameterType">The members parameter type.</param>
+        /// <param name="parameters">The parameters.</param>
         /// <returns>The created member descriptor.</returns>
-        protected abstract TMemberDescriptor CreateDescriptor(Type type, MethodInfo member, Type parameterType);
+        protected abstract TMemberDescriptor CreateDescriptor(Type type, MethodInfo member, TParameters parameters);
     }
 }

@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetCoreAppVersion)</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Domain.Services\AI4E.Domain.Services.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Modularity.Debug\AI4E.Modularity.Debug.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Modularity.Host.Debug\AI4E.Modularity.Host.Debug.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Modularity.Host\AI4E.Modularity.Host.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Routing.SignalR.Server\AI4E.Routing.SignalR.Server.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Routing\AI4E.Routing.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Storage.MongoDB\AI4E.Storage.MongoDB.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
+    <ProjectReference Include="..\BookStore.App\BookStore.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Server" Version="3.0.0-preview3-19153-02" />
+    <PackageReference Include="Microsoft.AspNetCore.Blazor.Server" Version="3.0.0-preview7.19365.7" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="3.0.0-preview7.19365.7" />
+  </ItemGroup>
+
+</Project>

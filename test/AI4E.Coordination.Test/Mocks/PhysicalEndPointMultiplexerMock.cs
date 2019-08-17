@@ -74,6 +74,16 @@ namespace AI4E.Coordination.Mocks
 
         public void Dispose() { }
 
+        public string AddressToString(TAddress address)
+        {
+            throw new NotImplementedException();
+        }
+
+        public TAddress AddressFromString(string str)
+        {
+            throw new NotImplementedException();
+        }
+
         private sealed class MultiplexPhysicalEndPoint : IMultiplexPhysicalEndPoint<TAddress>
         {
             public MultiplexPhysicalEndPoint(string multiplexName, IPhysicalEndPoint<TAddress> physicalEndPoint)
@@ -86,19 +96,29 @@ namespace AI4E.Coordination.Mocks
             public TAddress LocalAddress => PhysicalEndPoint.LocalAddress;
             public IPhysicalEndPoint<TAddress> PhysicalEndPoint { get; }
 
-            public Task<(IMessage message, TAddress remoteAddress)> ReceiveAsync(CancellationToken cancellation = default)
+            public void Dispose()
+            {
+                PhysicalEndPoint.Dispose();
+            }
+
+            public ValueTask<Transmission<TAddress>> ReceiveAsync(CancellationToken cancellation)
             {
                 return PhysicalEndPoint.ReceiveAsync(cancellation);
             }
 
-            public Task SendAsync(IMessage message, TAddress remoteAddress, CancellationToken cancellation = default)
+            public ValueTask SendAsync(Transmission<TAddress> transmission, CancellationToken cancellation = default)
             {
-                return PhysicalEndPoint.SendAsync(message, remoteAddress, cancellation);
+                return PhysicalEndPoint.SendAsync(transmission, cancellation);
             }
 
-            public void Dispose()
+            public string AddressToString(TAddress address)
             {
-                PhysicalEndPoint.Dispose();
+                throw new NotImplementedException();
+            }
+
+            public TAddress AddressFromString(string str)
+            {
+                throw new NotImplementedException();
             }
         }
     }

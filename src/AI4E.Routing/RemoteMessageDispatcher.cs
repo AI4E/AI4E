@@ -1,14 +1,3 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        RemoteMessageDispatcher.cs 
- * Types:           (1) AI4E.Routing.RemoteMessageDispatcher
- *                  (2) AI4E.Routing.RemoteMessageDispatcher.SerializationBinder
- *                  (3) AI4E.Routing.RemoteMessageDispatcher.SerializedMessageHandler
- * Version:         1.0
- * Author:          Andreas Trütschel
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -57,7 +46,6 @@ namespace AI4E.Routing
         private readonly IMessageRouterFactory _messageRouterFactory;
         private readonly ILogger<RemoteMessageDispatcher> _logger;
         private readonly IList<IRoutesResolver> _routesResolver;
-
         private readonly MessageDispatcher _localMessageDispatcher;
         private readonly IMessageRouter _messageRouter;
 
@@ -105,6 +93,7 @@ namespace AI4E.Routing
                 var routeRegistrations = GetRouteRegistrations(messageHandlerProvider);
                 var registrationOperations = routeRegistrations.Select(p => _messageRouter.RegisterRouteAsync(p, cancellation: default));
                 await Task.WhenAll(registrationOperations);
+                _logger?.LogDebug("Remote message dispatcher initialized.");
             }
 
             async Task DisposeAsync()
@@ -474,7 +463,9 @@ namespace AI4E.Routing
 
             try
             {
+#pragma warning disable CS0612
                 return await _localMessageDispatcher.TryDispatchAsync(dispatchData, publish, localDispatch, allowRouteDescend, cancellation);
+#pragma warning restore CS0612
             }
             finally
             {

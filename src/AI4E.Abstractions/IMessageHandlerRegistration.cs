@@ -45,6 +45,14 @@ namespace AI4E
         /// </summary>
         MessageHandlerConfiguration Configuration { get; }
 
+        /// <summary>
+        /// Attempts to retreive the message handler action descriptor.
+        /// </summary>
+        /// <param name="descriptor">
+        /// Contains the <see cref="MessageHandlerActionDescriptor"/> that was used to construct
+        /// the message handler registration if the operation succeeds.
+        /// </param>
+        /// <returns>True if the operation succeeds, false otherwise.</returns>
         bool TryGetDescriptor(out MessageHandlerActionDescriptor descriptor);
     }
 
@@ -53,7 +61,7 @@ namespace AI4E
     /// </summary>
     /// <typeparam name="TMessage">The type of message the handler is registered for.</typeparam>
     public interface IMessageHandlerRegistration<TMessage> : IMessageHandlerRegistration
-            where TMessage : class
+        where TMessage : class
     {
         /// <summary>
         /// Creates an instance of the registered message handler within the scope of the specified service provider.
@@ -62,5 +70,14 @@ namespace AI4E
         /// <returns>The created instance.</returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
         new IMessageHandler<TMessage> CreateMessageHandler(IServiceProvider serviceProvider);
+
+#if SUPPORTS_DEFAULT_INTERFACE_METHODS
+        IMessageHandler IMessageHandlerRegistration.CreateMessageHandler(IServiceProvider serviceProvider)
+        {
+            return CreateMessageHandler(serviceProvider);
+        }
+
+        Type IMessageHandlerRegistration.MessageType => typeof(TMessage);
+#endif
     }
 }

@@ -1,17 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>$(NetStandardVersion)</TargetFramework>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
   </PropertyGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <!-- We need this for the IAsyncDisposable and IAsyncEnumerable definition -->
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.0.0-preview8.19405.3" />
+  </ItemGroup>
+
   <ItemGroup>
-    <PackageReference Include="AI4E.Utils.ApplicationParts" Version="0.2.0-pre19032611" />
-    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.2.0" />   
+    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="3.0.0-preview8-28405-07" />
+    <PackageReference Include="AI4E.Utils.ApplicationParts" Version="0.2.0-pre19052318" />
     <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.2" />  
-    <PackageReference Include="System.Interactive.Async" Version="3.2.0" />
-    <PackageReference Include="Nito.AsyncEx.Coordination" Version="1.0.2" />
-    <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
+    <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.6.0-preview7.19362.9" /> 
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.0.0-preview7.19362.4" />
   </ItemGroup>
 
   <ItemGroup>

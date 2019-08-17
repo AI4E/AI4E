@@ -1,21 +1,39 @@
-﻿using System;
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+using System;
 using System.IO;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Modularity.Host
 {
     public sealed class ModuleSupervisorFactory : IModuleSupervisorFactory
     {
-        private readonly IMetadataReader _metadataReader;
-        private readonly ILoggerFactory _loggerFactory;
+        private readonly IServiceProvider _serviceProvider;
 
-        public ModuleSupervisorFactory(IMetadataReader metadataReader, ILoggerFactory loggerFactory = null)
+        public ModuleSupervisorFactory(IServiceProvider serviceProvider)
         {
-            if (metadataReader == null)
-                throw new ArgumentNullException(nameof(metadataReader));
+            if (serviceProvider == null)
+                throw new ArgumentNullException(nameof(serviceProvider));
 
-            _metadataReader = metadataReader;
-            _loggerFactory = loggerFactory;
+            _serviceProvider = serviceProvider;
         }
 
         public IModuleSupervisor CreateSupervisor(DirectoryInfo directory)
@@ -23,9 +41,7 @@ namespace AI4E.Modularity.Host
             if (directory == null)
                 throw new ArgumentNullException(nameof(directory));
 
-            var logger = _loggerFactory?.CreateLogger<ModuleSupervisor>();
-
-            return new ModuleSupervisor(directory, _metadataReader, logger);
+            return ActivatorUtilities.CreateInstance<ModuleSupervisor>(_serviceProvider, directory);
         }
     }
 }

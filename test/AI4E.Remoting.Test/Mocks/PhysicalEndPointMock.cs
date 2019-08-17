@@ -22,6 +22,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Utils;
 using Nito.AsyncEx;
 
 namespace AI4E.Remoting.Mocks
@@ -33,35 +34,45 @@ namespace AI4E.Remoting.Mocks
         public PhysicalEndPointMock(TAddress localAddress)
         {
             LocalAddress = localAddress;
-            RxQueue = new AsyncProducerConsumerQueue<(IMessage message, TAddress remoteAddress)>();
-            TxQueue = new List<(IMessage message, TAddress remoteAddress)>();
+            RxQueue = new AsyncProducerConsumerQueue<Transmission<TAddress>>();
+            TxQueue = new List<Transmission<TAddress>>();
         }
 
         public TAddress LocalAddress { get; }
-        public AsyncProducerConsumerQueue<(IMessage message, TAddress remoteAddress)> RxQueue { get; }
-        public List<(IMessage message, TAddress remoteAddress)> TxQueue { get; }
-
-        public Task<(IMessage message, TAddress remoteAddress)> ReceiveAsync(CancellationToken cancellation)
-        {
-            if (_isDisposed)
-                throw new ObjectDisposedException(GetType().FullName);
-
-            return RxQueue.DequeueAsync(cancellation);
-        }
-
-        public Task SendAsync(IMessage message, TAddress remoteAddress, CancellationToken cancellation)
-        {
-            if (_isDisposed)
-                throw new ObjectDisposedException(GetType().FullName);
-
-            TxQueue.Add((message, remoteAddress));
-
-            return Task.CompletedTask;
-        }
+        public AsyncProducerConsumerQueue<Transmission<TAddress>> RxQueue { get; }
+        public List<Transmission<TAddress>> TxQueue { get; }
 
         public void Dispose()
         {
             _isDisposed = true;
+        }
+
+        public ValueTask<Transmission<TAddress>> ReceiveAsync(CancellationToken cancellation = default)
+        {
+            if (_isDisposed)
+                throw new ObjectDisposedException(GetType().FullName);
+
+            return RxQueue.DequeueAsync(cancellation).AsValueTask();
+        }
+
+        public ValueTask SendAsync(Transmission<TAddress> transmission, CancellationToken cancellation = default)
+        {
+            if (_isDisposed)
+                throw new ObjectDisposedException(GetType().FullName);
+
+            TxQueue.Add(transmission);
+
+            return default;
+        }
+
+        public string AddressToString(TAddress address)
+        {
+            throw new NotImplementedException();
+        }
+
+        public TAddress AddressFromString(string str)
+        {
+            throw new NotImplementedException();
         }
     }
 }

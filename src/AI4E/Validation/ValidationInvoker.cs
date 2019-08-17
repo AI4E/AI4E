@@ -55,7 +55,7 @@ namespace AI4E.Validation
         /// </exception>
         public static IValidationInvoker CreateInvoker(
             Type messageType,
-            IList<IMessageProcessorRegistration> messageProcessors,
+            IEnumerable<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
         {
             if (messageType == null)
@@ -75,10 +75,10 @@ namespace AI4E.Validation
             var validationInvokerType = _validationInvokerTypeDefinition.MakeGenericType(messageType);
             var ctor = validationInvokerType.GetConstructor(
                 BindingFlags.Instance | BindingFlags.Public, Type.DefaultBinder,
-                new[] { typeof(IList<IMessageProcessorRegistration>), typeof(IServiceProvider) },
+                new[] { typeof(IEnumerable<IMessageProcessorRegistration>), typeof(IServiceProvider) },
                 modifiers: null);
             var messageProcessorsParameter = Expression.Parameter(
-                typeof(IList<IMessageProcessorRegistration>), "messageProcessors");
+                typeof(IEnumerable<IMessageProcessorRegistration>), "messageProcessors");
             var serviceProviderParameter = Expression.Parameter(typeof(IServiceProvider), "serviceProvider");
             var instanciation = Expression.New(ctor, messageProcessorsParameter, serviceProviderParameter);
             var lambda = Expression.Lambda<InvokerFactory>(
@@ -87,7 +87,7 @@ namespace AI4E.Validation
         }
 
         private delegate IValidationInvoker InvokerFactory(
-            IList<IMessageProcessorRegistration> messageProcessors,
+            IEnumerable<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider);
     }
 
@@ -137,7 +137,7 @@ namespace AI4E.Validation
         /// Thrown if either <paramref name="messageProcessors"/> or <paramref name="serviceProvider"/> is <c>null</c>.
         /// </exception>
         public ValidationInvoker(
-            IList<IMessageProcessorRegistration> messageProcessors,
+            IEnumerable<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider) : base(messageProcessors, serviceProvider)
         {
             if (serviceProvider == null)
@@ -197,11 +197,8 @@ namespace AI4E.Validation
                 return new ValueTask<IDispatchResult>(new SuccessDispatchResult());
             }
 
-            var parameterType = ValidationMessageProcessor.GetMessageHandlerMessageType(descriptor);
-
             // The handler has no validation.
-            if (!ValidationMessageProcessor.TryGetDescriptor(
-                descriptor.MessageHandlerType, parameterType, out var validation))
+            if (!descriptor.TryGetValidationDescriptor(out var validationDescriptor))
             {
                 return new ValueTask<IDispatchResult>(new SuccessDispatchResult());
             }
@@ -211,9 +208,9 @@ namespace AI4E.Validation
 
             ValueTask<IDispatchResult> InvokeValidation(DispatchDataDictionary<TMessage> nextDispatchData)
             {
-                var invokeResult = ValidationMessageProcessor.InvokeValidationAsync(
+                var invokeResult = ValidationEvaluator.EvaluateAsync(
                     handler,
-                    validation,
+                    validationDescriptor,
                     nextDispatchData,
                     _serviceProvider,
                     cancellation);
@@ -228,12 +225,7 @@ namespace AI4E.Validation
         /// <inheritdoc/>
         protected override bool ExecuteProcessor(IMessageProcessorRegistration messageProcessorRegistration)
         {
-            var processorType = messageProcessorRegistration.MessageProcessorType;
-
-            var callOnValidationAttribute = processorType
-                .GetCustomAttribute<CallOnValidationAttribute>(inherit: true);
-
-            return callOnValidationAttribute != null && callOnValidationAttribute.CallOnValidation;
+            return messageProcessorRegistration.CallOnValidation();
         }
 
         private async ValueTask<IDispatchResult> EvaluateValidationInvokation(

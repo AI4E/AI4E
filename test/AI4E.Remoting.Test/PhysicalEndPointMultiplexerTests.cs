@@ -18,12 +18,14 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using AI4E.Remoting.Mocks;
 using AI4E.Remoting.Utils;
+using AI4E.Utils.Memory;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Remoting
@@ -51,67 +53,72 @@ namespace AI4E.Remoting
         public async Task EncodeMultiplexNameTest()
         {
             var physicalEndPoint = new PhysicalEndPointMock<TestMessagingSystemAddress>(new TestMessagingSystemAddress(1));
-            var physicalEndPointMultiplexer = new PhysicalEndPointMultiplexer<TestMessagingSystemAddress>(physicalEndPoint);
+            using var physicalEndPointMultiplexer = new PhysicalEndPointMultiplexer<TestMessagingSystemAddress>(physicalEndPoint);
             var multiplexPhysicalEndPoint = physicalEndPointMultiplexer.GetPhysicalEndPoint("multiplexName");
-            var txMessage = new Message();
 
             var payload = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+            var txMessage = ValueMessage.FromFrames(payload);
+            var txTransmission = new Transmission<TestMessagingSystemAddress>(
+                txMessage,
+                new TestMessagingSystemAddress(2));
 
-            using (var frameStream = txMessage.PushFrame().OpenStream())
-            {
-                frameStream.Write(payload, 0, payload.Length);
-            }
+            await multiplexPhysicalEndPoint.SendAsync(txTransmission);
 
-            await multiplexPhysicalEndPoint.SendAsync(txMessage, new TestMessagingSystemAddress(2));
-
-            var (rxMessage, remoteAddress) = physicalEndPoint.TxQueue.Single();
-
+            var rxTransmission = physicalEndPoint.TxQueue.Single();
             var multiplexNameBytes = Encoding.UTF8.GetBytes("multiplexName");
 
-            Assert.AreEqual(new TestMessagingSystemAddress(2), remoteAddress);
-            Assert.AreEqual(2, rxMessage.FrameCount);
+            Assert.AreEqual(new TestMessagingSystemAddress(2), rxTransmission.RemoteAddress);
+            Assert.AreEqual(2, rxTransmission.Message.Frames.Count);
 
-            using (var frameStream = rxMessage.PopFrame().OpenStream())
+            var rxMessage = rxTransmission.Message;
+            rxMessage = rxMessage.PopFrame(out var frame);
+
+            using (var frameStream = frame.OpenStream())
             using (var reader = new BinaryReader(frameStream))
             {
                 Assert.AreEqual(multiplexNameBytes.Length, reader.ReadInt32());
                 Assert.IsTrue(multiplexNameBytes.SequenceEqual(reader.ReadBytes(multiplexNameBytes.Length)));
             }
 
-            Assert.IsTrue(ToArray(rxMessage.PopFrame().OpenStream()).SequenceEqual(payload));
+            rxMessage.PopFrame(out frame);
+            Assert.IsTrue(frame.Payload.Span.SequenceEqual(payload));
         }
 
         [TestMethod]
         public async Task DecodeMultiplexNameTest()
         {
             var physicalEndPoint = new PhysicalEndPointMock<TestMessagingSystemAddress>(new TestMessagingSystemAddress(1));
-            var physicalEndPointMultiplexer = new PhysicalEndPointMultiplexer<TestMessagingSystemAddress>(physicalEndPoint);
+            using var physicalEndPointMultiplexer = new PhysicalEndPointMultiplexer<TestMessagingSystemAddress>(physicalEndPoint);
             var multiplexPhysicalEndPoint = physicalEndPointMultiplexer.GetPhysicalEndPoint("multiplexName");
-            var txMessage = new Message();
 
             var payload = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-
-            using (var frameStream = txMessage.PushFrame().OpenStream())
-            {
-                frameStream.Write(payload, 0, payload.Length);
-            }
+            var txMessageBuilder = new ValueMessageBuilder();
+            txMessageBuilder.PushFrame(payload);
 
             var multiplexNameBytes = Encoding.UTF8.GetBytes("multiplexName");
 
-            using (var frameStream = txMessage.PushFrame().OpenStream())
+            using (var frameStream = txMessageBuilder.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(frameStream))
             {
                 writer.Write(multiplexNameBytes.Length);
                 writer.Write(multiplexNameBytes);
             }
 
-            physicalEndPoint.RxQueue.Enqueue((txMessage, new TestMessagingSystemAddress(2)));
+            var txMessage = txMessageBuilder.BuildMessage();
+            var txTransmission = new Transmission<TestMessagingSystemAddress>(
+               txMessage,
+               new TestMessagingSystemAddress(2));
 
-            var (rxMessage, remoteAddress) = await multiplexPhysicalEndPoint.ReceiveAsync();
+            physicalEndPoint.RxQueue.Enqueue(txTransmission);
 
-            Assert.AreEqual(new TestMessagingSystemAddress(2), remoteAddress);
-            Assert.AreEqual(2, rxMessage.FrameCount);
-            Assert.IsTrue(ToArray(rxMessage.PopFrame().OpenStream()).SequenceEqual(payload));
+            var transmission = await multiplexPhysicalEndPoint.ReceiveAsync();
+
+            Assert.AreEqual(new TestMessagingSystemAddress(2), transmission.RemoteAddress);
+            Assert.AreEqual(2, transmission.Message.Frames.Count);
+
+            transmission.Message.PopFrame(out var frame);
+
+            Assert.IsTrue(frame.Payload.Span.SequenceEqual(payload));
         }
 
         [TestMethod]
@@ -127,33 +134,25 @@ namespace AI4E.Remoting
         {
             var multiplexPhysicalEndPoint1 = PhysicalEndPointMultiplexer1.GetPhysicalEndPoint("multiplex");
             var multiplexPhysicalEndPoint2 = PhysicalEndPointMultiplexer2.GetPhysicalEndPoint("multiplex");
-
-            var txMessage = new Message();
-
             var payload = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+            var txMessage = ValueMessage.FromFrames(payload);
+            var txTransmission = new Transmission<TestMessagingSystemAddress>(
+               txMessage,
+               multiplexPhysicalEndPoint2.LocalAddress);
 
-            using (var frameStream = txMessage.PushFrame().OpenStream())
-            {
-                frameStream.Write(payload, 0, payload.Length);
-            }
 
-            await multiplexPhysicalEndPoint1.SendAsync(txMessage, multiplexPhysicalEndPoint2.LocalAddress);
-            var (rxMessage, remoteAddress) = await multiplexPhysicalEndPoint2.ReceiveAsync();
 
-            Assert.AreEqual(multiplexPhysicalEndPoint1.LocalAddress, remoteAddress);
-            Assert.IsTrue(ToArray(rxMessage.PopFrame().OpenStream()).SequenceEqual(payload));
+
+            await multiplexPhysicalEndPoint1.SendAsync(txTransmission);
+            var rxTransmission = await multiplexPhysicalEndPoint2.ReceiveAsync();
+
+            Assert.AreEqual(multiplexPhysicalEndPoint1.LocalAddress, rxTransmission.RemoteAddress);
+
+            rxTransmission.Message.PopFrame(out var frame);
+
+            Assert.IsTrue(frame.Payload.Span.SequenceEqual(payload));
         }
 
         // TODO: Test cancellation, disposal, end-point deallocation
-
-        private byte[] ToArray(Stream stream)
-        {
-            if (!(stream is MemoryStream memoryStream))
-            {
-                memoryStream = new MemoryStream();
-                stream.CopyTo(memoryStream);
-            }
-            return memoryStream.ToArray();
-        }
     }
 }

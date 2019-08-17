@@ -51,7 +51,6 @@ namespace AI4E.Coordination.Locking
         private readonly ILockWaitDirectory _lockWaitDirectory;
         private readonly IInvalidationCallbackDirectory _invalidationCallbackDirectory;
         private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
-        private readonly IAddressConversion<TAddress> _addressConversion;
         private readonly ILogger<CoordinationExchangeManager<TAddress>> _logger;
 
         private readonly CoordinationManagerOptions _options;
@@ -82,9 +81,6 @@ namespace AI4E.Coordination.Locking
         /// An <see cref="IPhysicalEndPointMultiplexer{TAddress}"/> to communicate with other
         /// coordination service sessions.
         /// </param>
-        /// <param name="addressConversion">
-        /// An <see cref="IAddressConversion{TAddress}"/> that serializes addresses.
-        /// </param>
         /// <param name="optionsAccessor">
         /// An <see cref="IOptions{TOptions}"/> that is used to access the <see cref="CoordinationManagerOptions"/>.
         /// </param>
@@ -92,8 +88,7 @@ namespace AI4E.Coordination.Locking
         /// <exception cref="ArgumentNullException">
         /// Thrown if any of <paramref name="sessionOwner"/>, <paramref name="sessionManager"/>,
         /// <paramref name="lockWaitDirectory"/>, <paramref name="invalidationCallbackDirectory"/>,
-        /// <paramref name="endPointMultiplexer"/>, <paramref name="addressConversion"/> or
-        /// <paramref name="optionsAccessor"/> is <c>null</c>.
+        /// <paramref name="endPointMultiplexer"/> or <paramref name="optionsAccessor"/> is <c>null</c>.
         /// </exception>
         public CoordinationExchangeManager(
             ISessionOwner sessionOwner,
@@ -101,7 +96,6 @@ namespace AI4E.Coordination.Locking
             ILockWaitDirectory lockWaitDirectory,
             IInvalidationCallbackDirectory invalidationCallbackDirectory,
             IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
-            IAddressConversion<TAddress> addressConversion,
             IOptions<CoordinationManagerOptions> optionsAccessor,
             ILogger<CoordinationExchangeManager<TAddress>> logger = null)
         {
@@ -120,15 +114,11 @@ namespace AI4E.Coordination.Locking
             if (endPointMultiplexer == null)
                 throw new ArgumentNullException(nameof(endPointMultiplexer));
 
-            if (addressConversion == null)
-                throw new ArgumentNullException(nameof(addressConversion));
-
             _sessionOwner = sessionOwner;
             _sessionManager = sessionManager;
             _lockWaitDirectory = lockWaitDirectory;
             _invalidationCallbackDirectory = invalidationCallbackDirectory;
             _endPointMultiplexer = endPointMultiplexer;
-            _addressConversion = addressConversion;
             _logger = logger;
 
             _options = optionsAccessor.Value ?? new CoordinationManagerOptions();
@@ -167,62 +157,40 @@ namespace AI4E.Coordination.Locking
         /// <inheritdoc />
         public async ValueTask NotifyReadLockReleasedAsync(string key, CancellationToken cancellation)
         {
-            var sessions = _sessionManager.GetSessionsAsync(cancellation);
             var localSession = await _sessionOwner.GetSessionIdentifierAsync(cancellation);
 
-            var enumerator = sessions.GetEnumerator();
-            try
+            await foreach (var session in _sessionManager.GetSessionsAsync(cancellation))
             {
-                while (await enumerator.MoveNext(cancellation))
+                if (session == localSession)
                 {
-                    var session = enumerator.Current;
-
-                    if (session == localSession)
-                    {
-                        _lockWaitDirectory.NotifyReadLockRelease(key, session);
-                        continue;
-                    }
-
-                    // The session is the former read-lock owner.
-                    var message = EncodeMessage(MessageType.ReleasedReadLock, key, localSession);
-
-                    await SendMessageAsync(session, message, cancellation);
+                    _lockWaitDirectory.NotifyReadLockRelease(key, session);
+                    continue;
                 }
-            }
-            finally
-            {
-                enumerator.Dispose();
+
+                // The session is the former read-lock owner.
+                var message = EncodeMessage(MessageType.ReleasedReadLock, key, localSession);
+
+                await SendMessageAsync(session, message, cancellation);
             }
         }
 
         /// <inheritdoc />
         public async ValueTask NotifyWriteLockReleasedAsync(string key, CancellationToken cancellation)
         {
-            var sessions = _sessionManager.GetSessionsAsync(cancellation);
             var localSession = await _sessionOwner.GetSessionIdentifierAsync(cancellation);
 
-            var enumerator = sessions.GetEnumerator();
-            try
+            await foreach (var session in _sessionManager.GetSessionsAsync(cancellation))
             {
-                while (await enumerator.MoveNext(cancellation))
+                if (session == localSession)
                 {
-                    var session = enumerator.Current;
-
-                    if (session == localSession)
-                    {
-                        _lockWaitDirectory.NotifyWriteLockRelease(key, session);
-                        continue;
-                    }
-
-                    // The session is the former write-lock owner.
-                    var message = EncodeMessage(MessageType.ReleasedWriteLock, key, localSession);
-
-                    await SendMessageAsync(session, message, cancellation);
+                    _lockWaitDirectory.NotifyWriteLockRelease(key, session);
+                    continue;
                 }
-            }
-            finally
-            {
-                enumerator.Dispose();
+
+                // The session is the former write-lock owner.
+                var message = EncodeMessage(MessageType.ReleasedWriteLock, key, localSession);
+
+                await SendMessageAsync(session, message, cancellation);
             }
         }
 
@@ -253,14 +221,14 @@ namespace AI4E.Coordination.Locking
 
         private async Task ReceiveProcess(CancellationToken cancellation)
         {
-            var physicalEndPoint = await GetPhysicalEndPointAsync(cancellation);
+            var physicalEndPoint = await GetPhysicalEndPointAsync(cancellation); // TODO: Do we need to dispose this?
 
             while (cancellation.ThrowOrContinue())
             {
                 try
                 {
-                    var (message, _) = await physicalEndPoint.ReceiveAsync(cancellation);
-                    var (messageType, key, session) = DecodeMessage(message);
+                    var transmission = await physicalEndPoint.ReceiveAsync(cancellation);
+                    var (messageType, key, session) = DecodeMessage(transmission.Message);
 
                     Task.Run(() => HandleMessageAsync(messageType, key, session, cancellation)).HandleExceptions();
                 }
@@ -303,9 +271,11 @@ namespace AI4E.Coordination.Locking
             }
         }
 
-        private async Task SendMessageAsync(SessionIdentifier session, Message message, CancellationToken cancellation)
+        private async Task SendMessageAsync(SessionIdentifier session, ValueMessage message, CancellationToken cancellation)
         {
-            var remoteAddress = _addressConversion.DeserializeAddress(session.PhysicalAddress.ToArray()); // TODO: This will copy everything to a new aray
+            // TODO: This allocates. Can we cache this?
+            var stringifiedAddress = Encoding.UTF8.GetString(session.PhysicalAddress.Span);
+            var remoteAddress = _endPointMultiplexer.AddressFromString(stringifiedAddress);
 
             Assert(remoteAddress != null);
 
@@ -313,7 +283,7 @@ namespace AI4E.Coordination.Locking
 
             try
             {
-                await physicalEndPoint.SendAsync(message, remoteAddress, cancellation);
+                await physicalEndPoint.SendAsync(new Transmission<TAddress>(message, remoteAddress), cancellation);
             }
             catch (SocketException) { }
             catch (IOException) { } // The remote session terminated or we just cannot transmit to it.
@@ -345,49 +315,44 @@ namespace AI4E.Coordination.Locking
             return prefix + session.ToString();
         }
 
-        private (MessageType messageType, string key, SessionIdentifier session) DecodeMessage(IMessage message)
+        private (MessageType messageType, string key, SessionIdentifier session) DecodeMessage(ValueMessage message)
         {
-            Assert(message != null);
+            using var frameStream = message.PeekFrame().OpenStream();
+            using var binaryReader = new BinaryReader(frameStream);
 
-            using (var frameStream = message.PopFrame().OpenStream())
-            using (var binaryReader = new BinaryReader(frameStream))
-            {
-                var messageType = (MessageType)binaryReader.ReadByte();
+            var messageType = (MessageType)binaryReader.ReadByte();
+            var key = binaryReader.ReadString();
+            var sessionLength = binaryReader.ReadInt32();
+            var sessionBytes = binaryReader.ReadBytes(sessionLength);
+            var session = SessionIdentifier.FromChars(Encoding.UTF8.GetString(sessionBytes).AsSpan());
 
-                var key = binaryReader.ReadString();
-                var sessionLength = binaryReader.ReadInt32();
-                var sessionBytes = binaryReader.ReadBytes(sessionLength);
-                var session = SessionIdentifier.FromChars(Encoding.UTF8.GetString(sessionBytes).AsSpan());
-
-                return (messageType, key, session);
-            }
+            return (messageType, key, session);
         }
 
-        private Message EncodeMessage(MessageType messageType, string key, SessionIdentifier session)
+        private ValueMessage EncodeMessage(MessageType messageType, string key, SessionIdentifier session)
         {
-            var message = new Message();
+            var messageBuilder = new ValueMessageBuilder();
 
-            EncodeMessage(message, messageType, key, session);
+            EncodeMessage(messageBuilder, messageType, key, session);
 
-            return message;
+            return messageBuilder.BuildMessage();
         }
 
-        private void EncodeMessage(IMessage message, MessageType messageType, string key, SessionIdentifier session)
+        private void EncodeMessage(ValueMessageBuilder messageBuilder, MessageType messageType, string key, SessionIdentifier session)
         {
-            Assert(message != null);
+            Assert(messageBuilder != null);
             // Modify if other message types are added
             Assert(messageType >= MessageType.InvalidateCacheEntry && messageType <= MessageType.ReleasedWriteLock);
 
-            using (var frameStream = message.PushFrame().OpenStream())
-            using (var binaryWriter = new BinaryWriter(frameStream))
-            {
-                binaryWriter.Write((byte)messageType);
-                binaryWriter.Write(key);
+            using var frameStream = messageBuilder.PushFrame().OpenStream();
+            using var binaryWriter = new BinaryWriter(frameStream);
 
-                var sessionBytes = Encoding.UTF8.GetBytes(session.ToString());
-                binaryWriter.Write(sessionBytes.Length);
-                binaryWriter.Write(sessionBytes);
-            }
+            binaryWriter.Write((byte)messageType);
+            binaryWriter.Write(key);
+
+            var sessionBytes = Encoding.UTF8.GetBytes(session.ToString());
+            binaryWriter.Write(sessionBytes.Length);
+            binaryWriter.Write(sessionBytes);
         }
 
         private enum MessageType : byte

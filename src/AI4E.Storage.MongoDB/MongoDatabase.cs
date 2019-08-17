@@ -47,7 +47,7 @@ using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
-using static AI4E.Storage.MongoDB.MongoWriteHelper;
+using static AI4E.Storage.MongoDB.MongoExceptionHelper;
 
 namespace AI4E.Storage.MongoDB
 {
@@ -216,7 +216,7 @@ namespace AI4E.Storage.MongoDB
             try
             {
                 lookupEntry = new CollectionLookupEntry { CollectionKey = collectionKey, CollectionName = "data-store#" + collectionId };
-                await TryWriteOperation(() => _collectionLookupCollection.InsertOneAsync(lookupEntry, default, cancellationToken: default));// TODO: Use the disposal token
+                await TryOperation(() => _collectionLookupCollection.InsertOneAsync(lookupEntry, default, cancellationToken: default));// TODO: Use the disposal token
             }
             catch (DuplicateKeyException)
             {
@@ -300,7 +300,7 @@ namespace AI4E.Storage.MongoDB
 
             try
             {
-                await TryWriteOperation(() => collection.InsertOneAsync(entry, new InsertOneOptions { }, cancellation));
+                await TryOperation(() => collection.InsertOneAsync(entry, new InsertOneOptions { }, cancellation));
             }
             catch (DuplicateKeyException)
             {
@@ -372,7 +372,7 @@ namespace AI4E.Storage.MongoDB
            where TEntry : class
         {
             var collection = GetCollectionAsync<TEntry>(cancellation);
-            return new MongoQueryEvaluator<TEntry>(collection, predicate, cancellation);
+            return new MongoQueryEvaluator<TEntry>(collection, predicate);
         }
 
         public async ValueTask<TEntry> GetOneAsync<TEntry>(Expression<Func<TEntry, bool>> predicate,
@@ -409,7 +409,7 @@ namespace AI4E.Storage.MongoDB
                 return (IMongoQueryable<TResult>)queryShaper(collection.AsQueryable());
             }
 
-            var queryEvaluator = new MongoQueryEvaluator<TResult>(GetCursorSourceAsync(), cancellation);
+            var queryEvaluator = new MongoQueryEvaluator<TResult>(GetCursorSourceAsync());
 
             return queryEvaluator;
         }
@@ -513,10 +513,18 @@ namespace AI4E.Storage.MongoDB
                     {
                         updateResult = await TryWriteOperation(() => collection.ReplaceOneAsync(session, predicate, data, options: new UpdateOptions { IsUpsert = true }, cancellationToken: cancellation));
                     }
-                    catch (MongoCommandException exc) when (exc.Code == 112) // Write conflict.
+                    catch (MongoCommandException exc) when
+                        (exc.Code == (int)MongoErrorCode.WriteConflict
+                        || exc.Code == (int)MongoErrorCode.LockTimeout
+                        || exc.Code == (int)MongoErrorCode.NoSuchTransaction)
                     {
                         await AbortAsync(session, cancellation);
                         return;
+                    }
+                    catch
+                    {
+                        await AbortAsync(session, cancellation);
+                        throw;
                     }
 
                     if (!updateResult.IsAcknowledged)
@@ -571,10 +579,18 @@ namespace AI4E.Storage.MongoDB
                     {
                         deleteResult = await TryWriteOperation(() => collection.DeleteOneAsync(session, predicate, cancellationToken: cancellation));
                     }
-                    catch (MongoCommandException exc) when (exc.Code == 112) // Write conflict.
+                    catch (MongoCommandException exc) when
+                        (exc.Code == (int)MongoErrorCode.WriteConflict
+                        || exc.Code == (int)MongoErrorCode.LockTimeout
+                        || exc.Code == (int)MongoErrorCode.NoSuchTransaction)
                     {
                         await AbortAsync(session, cancellation);
                         return;
+                    }
+                    catch
+                    {
+                        await AbortAsync(session, cancellation);
+                        throw;
                     }
 
                     if (!deleteResult.IsAcknowledged)
@@ -593,9 +609,9 @@ namespace AI4E.Storage.MongoDB
             public IAsyncEnumerable<TData> GetAsync<TData>(Expression<Func<TData, bool>> predicate, CancellationToken cancellation = default)
                 where TData : class
             {
-                async Task<IAsyncCursor<TData>> BuildAsyncCursor()
+                async ValueTask<IAsyncCursor<TData>> BuildAsyncCursor(CancellationToken sequenceCancellation)
                 {
-                    var session = await GetClientSessionHandle(cancellation);
+                    var session = await GetClientSessionHandle(sequenceCancellation);
 
                     if (Interlocked.Exchange(ref _operationInProgress, 1) != 0)
                     {
@@ -611,7 +627,7 @@ namespace AI4E.Storage.MongoDB
                         }
 
                         EnsureTransaction(session);
-                        var collection = await GetCollection<TData>(session, cancellation);
+                        var collection = await GetCollection<TData>(session, sequenceCancellation);
                         if (collection == null)
                         {
                             Assert(_abortTransaction);
@@ -621,15 +637,18 @@ namespace AI4E.Storage.MongoDB
 
                         _logger.LogTrace($"Performing query via mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
 
-                        return await collection.FindAsync<TData>(session, predicate, cancellationToken: cancellation);
+                        return await collection.FindAsync<TData>(session, predicate, cancellationToken: sequenceCancellation);
                     }
-                    catch (MongoCommandException exc) when (exc.Code == 251) // No such transaction
+                    catch (MongoCommandException exc) when
+                        (exc.Code == (int)MongoErrorCode.LockTimeout
+                        || exc.Code == (int)MongoErrorCode.NoSuchTransaction)
                     {
-                        await AbortAsync(session, cancellation);
+                        await AbortAsync(session, sequenceCancellation);
                         return null;
                     }
                     catch
                     {
+                        await AbortAsync(session, sequenceCancellation);
                         throw;
                     }
                 }
@@ -708,7 +727,7 @@ namespace AI4E.Storage.MongoDB
                     await session.CommitTransactionAsync(cancellation);
                     return true;
                 }
-                catch (MongoCommandException exc) when (exc.Code == 251) // No such transaction (Commit after abort)
+                catch (MongoCommandException exc) when (exc.Code == (int)MongoErrorCode.NoSuchTransaction)
                 {
                     return false;
                 }

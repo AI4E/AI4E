@@ -1,3 +1,23 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,6 +28,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Domain;
+using AI4E.Modularity.Metadata;
 using AI4E.Utils;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
@@ -82,7 +103,7 @@ namespace AI4E.Modularity.Host
             }
         }
 
-        string IModuleSource.Id => Id.ToString();
+        Guid IModuleSource.Id => Id;
 
         public async Task<IEnumerable<ModuleReleaseIdentifier>> GetAvailableAsync(string searchPhrase,
                                                                                   bool includePreReleases,
@@ -144,8 +165,7 @@ namespace AI4E.Modularity.Host
                 return null;
 
             Assert(!parts.Any(p => p.ContainsWhitespace()));
-
-            string PreprocessSearchPhrasePart(string part)
+            static string PreprocessSearchPhrasePart(string part)
             {
                 var resultBuilder = new StringBuilder();
 
@@ -188,7 +208,7 @@ namespace AI4E.Modularity.Host
                 return resultBuilder.ToString();
             }
 
-            StringBuilder AppendPattern(StringBuilder regexBuilder, string subPattern)
+            static StringBuilder AppendPattern(StringBuilder regexBuilder, string subPattern)
             {
                 if (regexBuilder.Length != 0)
                 {
@@ -219,27 +239,25 @@ namespace AI4E.Modularity.Host
 
             try
             {
-                using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true))
-                using (var package = new ZipArchive(fileStream, ZipArchiveMode.Read))
+                using var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+                using var package = new ZipArchive(fileStream, ZipArchiveMode.Read);
+                var manifest = package.GetEntry("module.json");
+
+                // Invalid package
+                if (manifest == null)
                 {
-                    var manifest = package.GetEntry("module.json");
+                    // TODO: Log
+                    return null;
+                }
 
-                    // Invalid package
-                    if (manifest == null)
-                    {
-                        // TODO: Log
-                        return null;
-                    }
-
-                    try
-                    {
-                        return await moduleMetadataReader.ReadMetadataAsync(manifest.Open(), cancellation);
-                    }
-                    catch (ModuleMetadataFormatException)
-                    {
-                        // TODO: Log
-                        return null;
-                    }
+                try
+                {
+                    return await moduleMetadataReader.ReadMetadataAsync(manifest.Open(), cancellation);
+                }
+                catch (ModuleMetadataFormatException)
+                {
+                    // TODO: Log
+                    return null;
                 }
             }
             catch (FileNotFoundException) // The file was deleted concurrently.
@@ -376,7 +394,7 @@ namespace AI4E.Modularity.Host
                 return null;
             }
 
-            // We have to search for the module be opening all files (except the ones, we already looked at.
+            // We have to search for the module by opening all files, except the ones, we already inspected.
             try
             {
                 var files = Directory.GetFiles(_location.Location, $"*.aep", SearchOption.AllDirectories)
@@ -397,7 +415,11 @@ namespace AI4E.Modularity.Host
         }
 
         // TODO: Add a type to manage module packages.
-        private async Task<DirectoryInfo> ExtractCoreAsync(DirectoryInfo directory, IModuleMetadata metadata, string file, CancellationToken cancellation)
+        private Task<DirectoryInfo> ExtractCoreAsync(
+            DirectoryInfo directory,
+            IModuleMetadata metadata,
+            string file,
+            CancellationToken cancellation)
         {
             if (file == null)
             {
@@ -411,52 +433,14 @@ namespace AI4E.Modularity.Host
 
             var moduleDirectory = Path.Combine(directory.FullName, metadata.Release.ToString());
 
-            using (var memoryStream = new MemoryStream())
+            if (Directory.Exists(moduleDirectory))
             {
-                try
-                {
-                    // Copy package to memory.
-                    using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true))
-                    {
-                        await fileStream.CopyToAsync(memoryStream, bufferSize: 4096);
-                    }
-                }
-                catch (FileNotFoundException) // The file was deleted concurrently.
-                {
-                    return null;
-                }
-                catch (IOException)
-                {
-                    // TODO: Log
-                    return null;
-                }
-
-                do
-                {
-                    memoryStream.Position = 0;
-
-                    if (!Directory.Exists(moduleDirectory))
-                    {
-                        Directory.CreateDirectory(moduleDirectory);
-                    }
-
-                    try
-                    {
-                        using (var package = new ZipArchive(memoryStream, ZipArchiveMode.Read))
-                        {
-                            await package.ExtractToDirectoryAsync(moduleDirectory, overwrite: true, cancellation);
-                        }
-                    }
-                    catch (DirectoryNotFoundException)
-                    {
-                        continue;
-                    }
-
-                    return new DirectoryInfo(moduleDirectory);
-
-                }
-                while (true);
+                Directory.Delete(moduleDirectory);
             }
+
+            ZipFile.ExtractToDirectory(file, moduleDirectory);
+
+            return Task.FromResult( new DirectoryInfo(moduleDirectory));
         }
 
         protected override void DoDispose()

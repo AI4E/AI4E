@@ -35,7 +35,7 @@ namespace AI4E.Routing
         private static void AddHelperServices(this IServiceCollection services)
         {
             services.AddOptions();
-            services.AddCoreServices();
+            services.AddDateTimeProvider();
 
             services.AddSingleton(typeof(IEndPointScheduler<>), typeof(RandomEndPointScheduler<>));
         }
@@ -56,9 +56,11 @@ namespace AI4E.Routing
 
         public static void AddRemoteMessageDispatcher(this IServiceCollection services)
         {
-            services.AddCoreServices();
+            services.AddDateTimeProvider();
             services.ConfigureApplicationServices(RemoteMessageDispatcherInitialization);
-            services.AddMessageDispatcher<IRemoteMessageDispatcher, RemoteMessageDispatcher>();
+
+            services.AddSingleton(p => p.GetRequiredService<IMessageDispatcher>() as IRemoteMessageDispatcher);
+            services.AddMessaging().UseDispatcher<RemoteMessageDispatcher>();
         }
 
         private static void RemoteMessageDispatcherInitialization(ApplicationServiceManager serviceManager)

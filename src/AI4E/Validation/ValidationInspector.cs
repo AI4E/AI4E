@@ -19,7 +19,10 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 using System.Reflection;
 using AI4E.Handler;
 using AI4E.Utils.Async;
@@ -91,6 +94,9 @@ namespace AI4E.Validation
     /// </summary>
     public readonly struct ValidationDescriptor
     {
+        private static readonly ConcurrentDictionary<Type, ImmutableDictionary<Type, ValidationDescriptor>> _descriptorsCache
+                   = new ConcurrentDictionary<Type, ImmutableDictionary<Type, ValidationDescriptor>>();
+
         /// <summary>
         /// Create a new instance of the <see cref="ValidationDescriptor"/> type.
         /// </summary>
@@ -120,5 +126,48 @@ namespace AI4E.Validation
         /// Gets a <see cref="MethodInfo"/> instance that specifies the member.
         /// </summary>
         public MethodInfo Member { get; }
+
+        /// <summary>
+        /// Attempty to retrieve the validation descriptor for the specified message handler and handled type.
+        /// </summary>
+        /// <param name="messageHandlerType">The message handler type.</param>
+        /// <param name="handledType">The type the message handler handles.</param>
+        /// <param name="descriptor">Contains the valdidation descriptor if the operation succeeds.</param>
+        /// <returns>True if the operation is successful, false otherwise.</returns>
+        public static bool TryGetDescriptor(Type messageHandlerType, Type handledType, out ValidationDescriptor descriptor)
+        {
+            if (_descriptorsCache.TryGetValue(messageHandlerType, out var descriptors))
+            {
+                return descriptors.TryGetValue(handledType, out descriptor);
+            }
+
+            var members = ValidationInspector.Instance.InspectType(messageHandlerType);
+            var duplicates = members.GroupBy(p => p.ParameterType).Where(p => p.Count() > 1);
+
+            if (duplicates.Any(p => p.Key == handledType))
+            {
+                throw new InvalidOperationException("Ambigous validation");
+            }
+
+            var descriptorL = members.Where(p => p.ParameterType == handledType);
+            var result = false;
+
+            if (descriptorL.Any())
+            {
+                descriptor = descriptorL.First();
+                result = true;
+            }
+            else
+            {
+                descriptor = default;
+            }
+
+            if (!duplicates.Any())
+            {
+                _descriptorsCache.TryAdd(messageHandlerType, members.ToImmutableDictionary(p => p.ParameterType));
+            }
+
+            return result;
+        }
     }
 }

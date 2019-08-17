@@ -21,6 +21,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,7 +34,7 @@ namespace AI4E.Handler
     public abstract class InvokerBase<TMessage>
         where TMessage : class
     {
-        private readonly IList<IMessageProcessorRegistration> _messageProcessors;
+        private readonly List<IMessageProcessorRegistration> _messageProcessors;
         private readonly IServiceProvider _serviceProvider;
 
         /// <summary>
@@ -45,7 +46,7 @@ namespace AI4E.Handler
         /// Thrown if either <paramref name="messageProcessors"/> or <paramref name="serviceProvider"/> is <c>null</c>.
         /// </exception>
         protected InvokerBase(
-            IList<IMessageProcessorRegistration> messageProcessors,
+            IEnumerable<IMessageProcessorRegistration> messageProcessors,
             IServiceProvider serviceProvider)
         {
             if (messageProcessors == null)
@@ -54,11 +55,33 @@ namespace AI4E.Handler
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            _messageProcessors = messageProcessors;
+            _messageProcessors = AsList(messageProcessors.TopologicalSort(p => messageProcessors.Where(p.Dependency.IsDependency), throwOnCycle: true));
             _serviceProvider = serviceProvider;
         }
 
+        private static List<IMessageProcessorRegistration> AsList(IEnumerable<IMessageProcessorRegistration> messageProcessors)
+        {
+            if (messageProcessors is List<IMessageProcessorRegistration> result)
+            {
+                return result;
+            }
 
+            return messageProcessors.ToList();
+        }
+
+        /// <summary>
+        /// Executes the message processor chain.
+        /// </summary>
+        /// <param name="handler">The message handler.</param>
+        /// <param name="memberDescriptor">The message handler action descriptor.</param>
+        /// <param name="dispatchData">The dispatch data dictionary that contains the message.</param>
+        /// <param name="publish">A boolean value indicating whether the message sent via publish-subscribe.</param>
+        /// <param name="localDispatch">A boolean value indicating whether the dispatch operation is locally.</param>
+        /// <param name="invokeCore">An asynchronous function that invokes the message handler.</param>
+        /// <param name="cancellation">A cancellation token.</param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
+        /// </returns>
         protected ValueTask<IDispatchResult> InvokeChainAsync(
             object handler,
             MessageHandlerActionDescriptor memberDescriptor,
@@ -101,6 +124,11 @@ namespace AI4E.Handler
             return next(dispatchData);
         }
 
+        /// <summary>
+        /// Returns a boolean value specifying whether a message processor shall be executed.
+        /// </summary>
+        /// <param name="messageProcessorRegistration">Describes the message processor to execute.</param>
+        /// <returns>True if the message processor described by <paramref name="messageProcessorRegistration"/> shall be executed, false otherwise.</returns>
         protected virtual bool ExecuteProcessor(IMessageProcessorRegistration messageProcessorRegistration)
         {
             return true;

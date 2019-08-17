@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -61,12 +61,31 @@ namespace AI4E.Modularity.Host
             if (context != null)
             {
                 var cancellation = context.RequestAborted;
-                var endPoint = await MapPathAsync(context, cancellation);
+                EndPointAddress endPoint;
+
+                try
+                {
+                    endPoint = await MapPathAsync(context, cancellation);
+                }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+                {
+                    return;
+                }
 
                 if (endPoint != EndPointAddress.UnknownAddress)
                 {
                     var requestMessage = await PackRequestMessage(context);
-                    var dispatchResult = await DispatchToEndPointAsync(endPoint, requestMessage, cancellation);
+
+                    IDispatchResult dispatchResult;
+
+                    try
+                    {
+                        dispatchResult = await DispatchToEndPointAsync(endPoint, requestMessage, cancellation);
+                    }
+                    catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+                    {
+                        return;
+                    }
 
                     if (dispatchResult.IsSuccessWithResult<ModuleHttpResponse>(out var responseMessage))
                     {

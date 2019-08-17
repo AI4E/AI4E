@@ -49,7 +49,7 @@ namespace AI4E.Handler
             var handler = new TestMessageHandler();
             var messageHandler = new MessageHandlerInvoker<string>(handler, memberDescriptor, processors, serviceProvider);
 
-            Assert.AreEqual(typeof(string), messageHandler.MessageType);
+            Assert.AreEqual(typeof(string), ((IMessageHandler)messageHandler).MessageType);
         }
 
         [TestMethod]
@@ -251,7 +251,7 @@ namespace AI4E.Handler
             var messageHandler = new MessageHandlerInvoker<string>(handler, memberDescriptor, processors, serviceProvider);
             var dispatchData = new DispatchDataDictionary<string>("abc");
 
-            var result = await messageHandler.HandleAsync((DispatchDataDictionary)dispatchData, true, true, default);
+            var result = await ((IMessageHandler)messageHandler).HandleAsync((DispatchDataDictionary)dispatchData, true, true, default);
 
             Assert.IsInstanceOfType(result, typeof(SuccessDispatchResult<int>));
             Assert.AreEqual(5, ((SuccessDispatchResult<int>)result).Result);

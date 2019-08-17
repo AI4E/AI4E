@@ -36,8 +36,7 @@ namespace AI4E.Coordination.Session
             var localAddress = new StringAddress("local-address");
             var endPointMultiplexer = new PhysicalEndPointMultiplexerMock<StringAddress>(localAddress);
             var dateTimeProvider = new DateTimeProviderMock();
-            var addressConversion = new StringAddressConversion();
-            var sessionProvider = new SessionIdentifierProvider<StringAddress>(endPointMultiplexer, dateTimeProvider, addressConversion);
+            var sessionProvider = new SessionIdentifierProvider<StringAddress>(endPointMultiplexer, dateTimeProvider);
 
             var session = sessionProvider.CreateUniqueSessionIdentifier();
 
@@ -51,8 +50,7 @@ namespace AI4E.Coordination.Session
             var localAddress = new StringAddress("local-address");
             var endPointMultiplexer = new PhysicalEndPointMultiplexerMock<StringAddress>(localAddress);
             var dateTimeProvider = new DateTimeProviderMock();
-            var addressConversion = new StringAddressConversion();
-            var sessionProvider = new SessionIdentifierProvider<StringAddress>(endPointMultiplexer, dateTimeProvider, addressConversion);
+            var sessionProvider = new SessionIdentifierProvider<StringAddress>(endPointMultiplexer, dateTimeProvider);
 
             var session1 = sessionProvider.CreateUniqueSessionIdentifier();
             var session2 = sessionProvider.CreateUniqueSessionIdentifier();

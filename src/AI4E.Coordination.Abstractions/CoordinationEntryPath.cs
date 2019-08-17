@@ -28,6 +28,10 @@ using AI4E.Utils.Memory;
 
 namespace AI4E.Coordination
 {
+#if NETCORE30
+    using static System.MemoryExtensions;
+#endif
+
     /// <summary>
     /// Represents a coordination entry path.
     /// </summary>

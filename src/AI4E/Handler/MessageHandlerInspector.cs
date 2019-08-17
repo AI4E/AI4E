@@ -89,9 +89,9 @@ namespace AI4E.Handler
         }
 
         /// <inheritdoc/>
-        protected override Type GetParameterType(Type type, MethodInfo member, IReadOnlyList<ParameterInfo> parameters)
+        protected override Type GetParameters(Type type, MethodInfo member, IReadOnlyList<ParameterInfo> parameters, AwaitableTypeDescriptor returnTypeDescriptor)
         {
-            var parameterType = base.GetParameterType(type, member, parameters);
+            var parameterType = base.GetParameters(type, member, parameters, returnTypeDescriptor);
 
             var actionAttribute = member.GetCustomAttribute<MessageHandlerAttribute>(inherit: true);
 

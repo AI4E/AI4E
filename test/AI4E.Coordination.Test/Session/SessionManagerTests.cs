@@ -56,7 +56,7 @@ namespace AI4E.Coordination.Session
         public async Task TryBeginSessionTest()
         {
             var result = await SessionManager.TryBeginSessionAsync(_session1, DateTimeProvider.CurrentTime + TimeSpan.FromSeconds(30), cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.IsTrue(result);
             Assert.AreEqual(_session1, entries.Single().Session);
@@ -80,7 +80,7 @@ namespace AI4E.Coordination.Session
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
 
             var result = await SessionManager.TryBeginSessionAsync(_session1, DateTimeProvider.CurrentTime + TimeSpan.FromSeconds(30), cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.IsFalse(result);
             AssertEquality(existingEntry, entries.Single());
@@ -100,7 +100,7 @@ namespace AI4E.Coordination.Session
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
 
             var result = await SessionManager.TryBeginSessionAsync(_session1, DateTimeProvider.CurrentTime + TimeSpan.FromSeconds(30), cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.IsFalse(result);
             AssertEquality(existingEntry, entries.Single());
@@ -120,7 +120,7 @@ namespace AI4E.Coordination.Session
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
 
             await SessionManager.UpdateSessionAsync(_session1, DateTimeProvider.CurrentTime + TimeSpan.FromSeconds(30), cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(_session1, entries.Single().Session);
             Assert.AreEqual(DateTimeProvider.CurrentTime + TimeSpan.FromSeconds(30), entries.Single().LeaseEnd);
@@ -137,7 +137,7 @@ namespace AI4E.Coordination.Session
                 await SessionManager.UpdateSessionAsync(_session1, DateTimeProvider.CurrentTime + TimeSpan.FromSeconds(30), cancellation: default);
             });
 
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
             Assert.AreEqual(0, entries.Count());
         }
 
@@ -159,7 +159,7 @@ namespace AI4E.Coordination.Session
                 await SessionManager.UpdateSessionAsync(_session1, DateTimeProvider.CurrentTime + TimeSpan.FromSeconds(30), cancellation: default);
             });
 
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
             AssertEquality(existingEntry, entries.Single());
         }
 
@@ -181,7 +181,7 @@ namespace AI4E.Coordination.Session
                 await SessionManager.UpdateSessionAsync(_session1, DateTimeProvider.CurrentTime + TimeSpan.FromSeconds(30), cancellation: default);
             });
 
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
             AssertEquality(existingEntry, entries.Single());
         }
 
@@ -199,7 +199,7 @@ namespace AI4E.Coordination.Session
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
 
             await SessionManager.EndSessionAsync(_session1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(0, entries.Count());
         }
@@ -219,7 +219,7 @@ namespace AI4E.Coordination.Session
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
 
             await SessionManager.EndSessionAsync(_session1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(_session1, entries.Single().Session);
             Assert.AreEqual(DateTimeProvider.CurrentTime + TimeSpan.FromSeconds(20), entries.Single().LeaseEnd);
@@ -243,7 +243,7 @@ namespace AI4E.Coordination.Session
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
 
             await SessionManager.EndSessionAsync(_session1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             AssertEquality(existingEntry, entries.Single());
         }
@@ -262,7 +262,7 @@ namespace AI4E.Coordination.Session
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
 
             await SessionManager.EndSessionAsync(_session1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(0, entries.Count());
         }
@@ -282,7 +282,7 @@ namespace AI4E.Coordination.Session
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
 
             await SessionManager.EndSessionAsync(_session1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             AssertEquality(existingEntry, entries.Single());
         }
@@ -301,7 +301,7 @@ namespace AI4E.Coordination.Session
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
 
             await SessionManager.EndSessionAsync(_session1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(0, entries.Count());
         }
@@ -310,7 +310,7 @@ namespace AI4E.Coordination.Session
         public async Task EndNonExistingSessionTest()
         {
             await SessionManager.EndSessionAsync(_session1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(0, entries.Count());
         }
@@ -408,7 +408,7 @@ namespace AI4E.Coordination.Session
             await SessionStorage.UpdateSessionAsync(entry2, null);
             await SessionStorage.UpdateSessionAsync(entry3, null);
 
-            var entries = await SessionManager.GetSessionsAsync(cancellation: default).ToList();
+            var entries = await SessionManager.GetSessionsAsync(cancellation: default).ToListAsync();
 
             Assert.AreEqual(3, entries.Count());
             Assert.IsTrue(entries.ToHashSet().SetEquals(new[] { _session1, _session2, _session3 }));
@@ -445,7 +445,7 @@ namespace AI4E.Coordination.Session
             await SessionStorage.UpdateSessionAsync(entry2, null);
             await SessionStorage.UpdateSessionAsync(entry3, null);
 
-            var entries = await SessionManager.GetSessionsAsync(cancellation: default).ToList();
+            var entries = await SessionManager.GetSessionsAsync(cancellation: default).ToListAsync();
 
             Assert.AreEqual(1, entries.Count());
             Assert.AreEqual(_session1, entries.Single());
@@ -464,7 +464,7 @@ namespace AI4E.Coordination.Session
 
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
             await SessionManager.AddSessionEntryAsync(_session1, _entryPath1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(_entryPath1, entries.Single().EntryPaths.Single());
         }
@@ -483,7 +483,7 @@ namespace AI4E.Coordination.Session
 
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
             await SessionManager.AddSessionEntryAsync(_session1, _entryPath1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(_entryPath1, entries.Single().EntryPaths.Single());
         }
@@ -506,7 +506,7 @@ namespace AI4E.Coordination.Session
                 await SessionManager.AddSessionEntryAsync(_session1, _entryPath1, cancellation: default);
             });
 
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.IsTrue(entries.Single().EntryPaths.IsDefaultOrEmpty);
         }
@@ -529,7 +529,7 @@ namespace AI4E.Coordination.Session
                 await SessionManager.AddSessionEntryAsync(_session1, _entryPath1, cancellation: default);
             });
 
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.IsTrue(entries.Single().EntryPaths.IsDefaultOrEmpty);
         }
@@ -542,7 +542,7 @@ namespace AI4E.Coordination.Session
                 await SessionManager.AddSessionEntryAsync(_session1, _entryPath1, cancellation: default);
             });
 
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(0, entries.Count());
         }
@@ -561,7 +561,7 @@ namespace AI4E.Coordination.Session
 
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
             await SessionManager.RemoveSessionEntryAsync(_session1, _entryPath1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.IsTrue(entries.Single().EntryPaths.IsDefaultOrEmpty);
         }
@@ -580,7 +580,7 @@ namespace AI4E.Coordination.Session
 
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
             await SessionManager.RemoveSessionEntryAsync(_session1, _entryPath1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.IsTrue(entries.Single().EntryPaths.IsDefaultOrEmpty);
         }
@@ -599,7 +599,7 @@ namespace AI4E.Coordination.Session
 
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
             await SessionManager.RemoveSessionEntryAsync(_session1, _entryPath1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(_entryPath2, entries.Single().EntryPaths.Single());
         }
@@ -618,7 +618,7 @@ namespace AI4E.Coordination.Session
 
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
             await SessionManager.RemoveSessionEntryAsync(_session1, _entryPath1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(_entryPath2, entries.Single().EntryPaths.Single());
         }
@@ -627,7 +627,7 @@ namespace AI4E.Coordination.Session
         public async Task RemoveSessionEntryFromNonExistingSessionTest()
         {
             await SessionManager.RemoveSessionEntryAsync(_session1, _entryPath1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(0, entries.Count());
         }
@@ -646,7 +646,7 @@ namespace AI4E.Coordination.Session
 
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
             await SessionManager.RemoveSessionEntryAsync(_session1, _entryPath1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(0, entries.Count());
         }
@@ -665,7 +665,7 @@ namespace AI4E.Coordination.Session
 
             await SessionStorage.UpdateSessionAsync(existingEntry, null);
             await SessionManager.RemoveSessionEntryAsync(_session1, _entryPath1, cancellation: default);
-            var entries = await SessionStorage.GetSessionsAsync().ToList();
+            var entries = await SessionStorage.GetSessionsAsync().ToListAsync();
 
             Assert.AreEqual(0, entries.Count());
         }

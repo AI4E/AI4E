@@ -19,20 +19,25 @@
  */
 
 using System.Collections.Generic;
-using AI4E.Validation;
 
 namespace AI4E
 {
+    /// <summary>
+    /// Represents the messaging options.
+    /// </summary>
     public class MessagingOptions
     {
+        /// <summary>
+        /// Creates a new instance of the <see cref="MessagingOptions"/> type.
+        /// </summary>
         public MessagingOptions()
         {
-            MessageProcessors = new List<IMessageProcessorRegistration>()
-            {
-                MessageProcessorRegistration.Create<ValidationMessageProcessor>() // TOOD: Remove me??
-            };
+            MessageProcessors = new List<IMessageProcessorRegistration>();
         }
 
+        /// <summary>
+        /// Gets a list of <see cref="IMessageProcessorRegistration"/> that describe the registered message processors.
+        /// </summary>
         public IList<IMessageProcessorRegistration> MessageProcessors { get; }
     }
 }

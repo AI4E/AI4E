@@ -213,7 +213,7 @@ namespace AI4E.Coordination.Locking
                 throw new ArgumentNullException(nameof(entry));
 
             var key = entry.Key;
-            var cancellation = (await _sessionTerminationSource).Token;
+            var cancellation = (await _sessionTerminationSource).CancellationToken;
             IStoredEntry start, desired;
 
             var session = await _sessionOwner.GetSessionIdentifierAsync(cancellation);
@@ -348,7 +348,7 @@ namespace AI4E.Coordination.Locking
 
             Assert(entry != null);
 
-            var cancellation = (await _sessionTerminationSource).Token;
+            var cancellation = (await _sessionTerminationSource).CancellationToken;
             IStoredEntry start, desired;
 
             var session = await _sessionOwner.GetSessionIdentifierAsync(cancellation);

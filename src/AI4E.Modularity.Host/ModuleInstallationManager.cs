@@ -1,3 +1,23 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,12 +31,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Nito.AsyncEx;
 using static System.Diagnostics.Debug;
+using AI4E.Modularity.Metadata;
+using AI4E.Domain;
 
 namespace AI4E.Modularity.Host
 {
     public sealed class ModuleInstallationManager : IModuleInstallationManager
     {
-        private readonly IMetadataReader _metadataReader;
         private readonly IModuleInstaller _moduleInstaller;
         private readonly IModuleSupervisorFactory _moduleSupervisorFactory;
         private readonly IServiceProvider _serviceProvider;
@@ -25,15 +46,12 @@ namespace AI4E.Modularity.Host
         private readonly DirectoryInfo _installationDirectory;
         private readonly AsyncInitializationHelper _initializationHelper;
 
-        public ModuleInstallationManager(IMetadataReader metadataReader,
-                             IModuleInstaller moduleInstaller,
-                             IModuleSupervisorFactory moduleSupervisorFactory,
-                             IServiceProvider serviceProvider,
-                             IOptions<ModuleManagementOptions> optionsAccessor)
+        public ModuleInstallationManager(
+            IModuleInstaller moduleInstaller,
+            IModuleSupervisorFactory moduleSupervisorFactory,
+            IServiceProvider serviceProvider,
+            IOptions<ModuleManagementOptions> optionsAccessor)
         {
-            if (metadataReader == null)
-                throw new ArgumentNullException(nameof(metadataReader));
-
             if (moduleInstaller == null)
                 throw new ArgumentNullException(nameof(moduleInstaller));
 
@@ -46,7 +64,6 @@ namespace AI4E.Modularity.Host
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
 
-            _metadataReader = metadataReader;
             _moduleInstaller = moduleInstaller;
             _moduleSupervisorFactory = moduleSupervisorFactory;
             _serviceProvider = serviceProvider;
@@ -78,18 +95,16 @@ namespace AI4E.Modularity.Host
         // TODO: This should be abstracted in order to support clustering.
         private async Task<ResolvedInstallationSet> GetInstallationSetAsync(CancellationToken cancellation)
         {
-            using (var scope = _serviceProvider.CreateScope())
+            using var scope = _serviceProvider.CreateScope();
+            var storageEngine = scope.ServiceProvider.GetRequiredService<IEntityStorageEngine>();
+            var installationConfiguration = await storageEngine.GetByIdAsync<ModuleInstallationConfiguration>(default(SingletonId).ToString(), cancellation);
+
+            if (installationConfiguration == null)
             {
-                var storageEngine = scope.ServiceProvider.GetRequiredService<IEntityStorageEngine>();
-                var installationConfiguration = await storageEngine.GetByIdAsync<ModuleInstallationConfiguration>(default(SingletonId).ToString(), cancellation);
-
-                if (installationConfiguration == null)
-                {
-                    return ResolvedInstallationSet.EmptyInstallationSet;
-                }
-
-                return installationConfiguration.ResolvedModules;
+                return ResolvedInstallationSet.EmptyInstallationSet;
             }
+
+            return installationConfiguration.ResolvedModules;
         }
 
         public async Task ConfigureInstallationSetAsync(ResolvedInstallationSet installationSet, CancellationToken cancellation)
@@ -143,20 +158,30 @@ namespace AI4E.Modularity.Host
             await supervisor.DisposeAsync();
             _supervisors.Remove(supervisor);
 
-            while (cancellation.ThrowOrContinue())
+            while (!DeleteModuleDirectory(moduleInstallationDirectory))
             {
-                try
+                cancellation.ThrowIfCancellationRequested();
+                await Task.Delay(1000);
+            }
+        }
+
+        private bool DeleteModuleDirectory(DirectoryInfo moduleInstallationDirectory)
+        {
+            try
+            {
+                if (moduleInstallationDirectory.Exists)
                 {
                     moduleInstallationDirectory.Delete(recursive: true);
                 }
-                catch (DirectoryNotFoundException) { }
-                catch
-                {
-                    // TODO: Log warning
-
-                    await Task.Delay(1000);
-                }
             }
+            catch (DirectoryNotFoundException) { }
+            catch
+            {
+                // TODO: Log error
+                return false;
+            }
+
+            return true;
         }
 
         private async Task<IDictionary<ModuleReleaseIdentifier, IModuleSupervisor>> GetSupervisorsAsync(CancellationToken cancellation)

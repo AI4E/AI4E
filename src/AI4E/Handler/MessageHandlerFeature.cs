@@ -26,13 +26,23 @@ using AI4E.Utils;
 
 namespace AI4E.Handler
 {
+    /// <summary>
+    /// Represents a message handler application feature.
+    /// </summary>
     public class MessageHandlerFeature
     {
+        /// <summary>
+        /// Gets the list of types that are message handlers.
+        /// </summary>
         public IList<Type> MessageHandlers { get; } = new List<Type>();
     }
 
+    /// <summary>
+    /// Represents a message handler feature provider.
+    /// </summary>
     public class MessageHandlerFeatureProvider : IApplicationFeatureProvider<MessageHandlerFeature>
     {
+        /// <inheritdoc/>
         public void PopulateFeature(IEnumerable<ApplicationPart> parts, MessageHandlerFeature feature)
         {
             foreach (var part in parts.OfType<IApplicationPartTypeProvider>())
@@ -47,13 +57,45 @@ namespace AI4E.Handler
             }
         }
 
+        private bool IsMessageHandler(Type type, bool allowAbstract)
+        {
+            if (type.IsInterface || type.IsEnum)
+                return false;
+
+            if (!allowAbstract && type.IsAbstract)
+                return false;
+
+            if (type.ContainsGenericParameters)
+                return false;
+
+            if (type.IsDefined<NoMessageHandlerAttribute>(inherit: false))
+                return false;
+
+            if (type.Name.EndsWith("Handler", StringComparison.OrdinalIgnoreCase) && type.IsPublic)
+                return true;
+
+            if (type.IsDefined<MessageHandlerAttribute>(inherit: false))
+                return true;
+
+            return type.BaseType != null && IsMessageHandler(type.BaseType, allowAbstract: true);
+        }
+
+        /// <summary>
+        /// Returns a boolean value indicating whether the specified type is a message handler.
+        /// </summary>
+        /// <param name="type">The type to check.</param>
+        /// <returns>True if <paramref name="type"/> is a message handler, false otherwise.</returns>
         protected internal virtual bool IsMessageHandler(Type type)
         {
-            return (type.IsClass || type.IsValueType && !type.IsEnum) &&
-                   !type.IsAbstract &&
-                   !type.ContainsGenericParameters &&
-                   !type.IsDefined<NoMessageHandlerAttribute>(inherit: false) &&
-                   (type.Name.EndsWith("Handler", StringComparison.OrdinalIgnoreCase) && type.IsPublic || type.IsDefined<MessageHandlerAttribute>(inherit: false));
+            return IsMessageHandler(type, allowAbstract: false);
+        }
+
+        internal static void Configure(ApplicationPartManager partManager)
+        {
+            if (!partManager.FeatureProviders.OfType<MessageHandlerFeatureProvider>().Any())
+            {
+                partManager.FeatureProviders.Add(new MessageHandlerFeatureProvider());
+            }
         }
     }
 }

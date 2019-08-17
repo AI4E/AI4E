@@ -32,7 +32,6 @@ namespace AI4E.Coordination.Locking
     [TestClass]
     public class CoordinationExchangeManagerTests
     {
-        public TestMessagingSystemAddressConversion AddressConversion { get; set; }
         public TestMessagingSystem MessagingSystem { get; set; }
         public IPhysicalEndPoint<TestMessagingSystemAddress> PhysicalEndPoint1 { get; set; }
         public IPhysicalEndPoint<TestMessagingSystemAddress> PhysicalEndPoint2 { get; set; }
@@ -62,10 +61,19 @@ namespace AI4E.Coordination.Locking
         public CoordinationExchangeManager<TestMessagingSystemAddress> CoordinationExchangeManager2 { get; set; }
         public CoordinationExchangeManager<TestMessagingSystemAddress> CoordinationExchangeManager3 { get; set; }
 
+        private static byte[] SerializeAddress(TestMessagingSystemAddress address)
+        {
+            return BitConverter.GetBytes(address.RawAddress);
+        }
+
+        private static TestMessagingSystemAddress DeserializeAddress(byte[] bytes)
+        {
+            return new TestMessagingSystemAddress(BitConverter.ToInt32(bytes));
+        }
+
         [TestInitialize]
         public void Setup()
         {
-            AddressConversion = new TestMessagingSystemAddressConversion();
             MessagingSystem = new TestMessagingSystem();
             PhysicalEndPoint1 = MessagingSystem.CreatePhysicalEndPoint();
             PhysicalEndPoint2 = MessagingSystem.CreatePhysicalEndPoint();
@@ -78,11 +86,11 @@ namespace AI4E.Coordination.Locking
             SessionManager = new SessionManagerMock(DateTimeProvider);
 
             CoordinationSessionOwner1 = new SessionOwnerMock(
-                new SessionIdentifier(ReadOnlySpan<byte>.Empty, AddressConversion.SerializeAddress(PhysicalEndPointMultiplexer1.LocalAddress)));
+                new SessionIdentifier(ReadOnlySpan<byte>.Empty, SerializeAddress(PhysicalEndPointMultiplexer1.LocalAddress)));
             CoordinationSessionOwner2 = new SessionOwnerMock(
-                new SessionIdentifier(ReadOnlySpan<byte>.Empty, AddressConversion.SerializeAddress(PhysicalEndPointMultiplexer2.LocalAddress)));
+                new SessionIdentifier(ReadOnlySpan<byte>.Empty, SerializeAddress(PhysicalEndPointMultiplexer2.LocalAddress)));
             CoordinationSessionOwner3 = new SessionOwnerMock(
-                new SessionIdentifier(ReadOnlySpan<byte>.Empty, AddressConversion.SerializeAddress(PhysicalEndPointMultiplexer3.LocalAddress)));
+                new SessionIdentifier(ReadOnlySpan<byte>.Empty, SerializeAddress(PhysicalEndPointMultiplexer3.LocalAddress)));
 
             SessionManager.TryBeginSessionAsync(CoordinationSessionOwner1.Session, DateTimeProvider.CurrentTime + TimeSpan.FromSeconds(30));
             SessionManager.TryBeginSessionAsync(CoordinationSessionOwner2.Session, DateTimeProvider.CurrentTime + TimeSpan.FromSeconds(30));
@@ -100,17 +108,17 @@ namespace AI4E.Coordination.Locking
 
             CoordinationExchangeManager1 = new CoordinationExchangeManager<TestMessagingSystemAddress>(
                 CoordinationSessionOwner1, SessionManager, LockWaitDirectory1,
-                InvalidationCallbackDirectory1, PhysicalEndPointMultiplexer1, AddressConversion,
+                InvalidationCallbackDirectory1, PhysicalEndPointMultiplexer1,
                 OptionsAccessor);
 
             CoordinationExchangeManager2 = new CoordinationExchangeManager<TestMessagingSystemAddress>(
                 CoordinationSessionOwner2, SessionManager, LockWaitDirectory2,
-                InvalidationCallbackDirectory2, PhysicalEndPointMultiplexer2, AddressConversion,
+                InvalidationCallbackDirectory2, PhysicalEndPointMultiplexer2,
                 OptionsAccessor);
 
             CoordinationExchangeManager3 = new CoordinationExchangeManager<TestMessagingSystemAddress>(
                 CoordinationSessionOwner3, SessionManager, LockWaitDirectory3,
-                InvalidationCallbackDirectory3, PhysicalEndPointMultiplexer3, AddressConversion,
+                InvalidationCallbackDirectory3, PhysicalEndPointMultiplexer3,
                 OptionsAccessor);
         }
 

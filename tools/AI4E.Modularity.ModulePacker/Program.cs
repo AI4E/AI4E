@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Modularity.Metadata;
 using AI4E.Utils;
 
 namespace AI4E.Modularity.ModulePacker
@@ -24,14 +25,12 @@ namespace AI4E.Modularity.ModulePacker
             var inputAssemblyPath = args[0];
             var outputDir = args[1];
 
-            using (var cancellationSource = new CancellationTokenSource())
-            {
-                Task.Run(() => RunWithExit(inputAssemblyPath, outputDir, cancellationSource.Token));
+            using var cancellationSource = new CancellationTokenSource();
+            Task.Run(() => RunWithExit(inputAssemblyPath, outputDir, cancellationSource.Token));
 
-                Console.CancelKeyPress += (s, e) => cancellationSource.Cancel();
+            Console.CancelKeyPress += (s, e) => cancellationSource.Cancel();
 
-                Thread.Sleep(Timeout.Infinite);
-            }
+            Thread.Sleep(Timeout.Infinite);
         }
 
         private static async void RunWithExit(string inputAssemblyPath, string outputDir, CancellationToken cancellation)
@@ -54,11 +53,9 @@ namespace AI4E.Modularity.ModulePacker
             var inputDir = Path.GetDirectoryName(inputAssemblyPath);
             var outputFilePath = Path.Combine(outputDir, metadata.Release.ToString() + ".aep");
 
-            using (var stream = new MemoryStream())
-            {
-                await WritePackageToStreamAsync(metadata, inputDir, stream, cancellation);
-                await WriteToFileAsync(stream, outputFilePath, cancellation);
-            }
+            using var stream = new MemoryStream();
+            await WritePackageToStreamAsync(metadata, inputDir, stream, cancellation);
+            await WriteToFileAsync(stream, outputFilePath, cancellation);
         }
 
         private static async Task<IModuleMetadata> GetMetadataAsync(string inputAssemblyPath, CancellationToken cancellation)
@@ -67,36 +64,30 @@ namespace AI4E.Modularity.ModulePacker
             var coreAssembly = typeof(object).Assembly; // TODO: Support specifying a different core assembly to support additional workloads.
             var assemblyResolver = new PathAssemblyResolver(new string[] { inputAssemblyPath, coreAssembly.Location });
 
-            using (var loadContext = new MetadataLoadContext(assemblyResolver, coreAssembly.FullName))
+            using var loadContext = new MetadataLoadContext(assemblyResolver, coreAssembly.FullName);
+            var assemblyName = Path.GetFileNameWithoutExtension(inputAssemblyPath);
+            var assembly = loadContext.LoadFromAssemblyName(assemblyName);
+
+            var metadata = await _metadataAccessor.GetMetadataAsync(assembly, cancellation);
+
+            if (metadata.ReleaseDate == default)
             {
-                var assemblyName = Path.GetFileNameWithoutExtension(inputAssemblyPath);
-                var assembly = loadContext.LoadFromAssemblyName(assemblyName);
-
-                var metadata = await _metadataAccessor.GetMetadataAsync(assembly, cancellation);
-
-                if (metadata.ReleaseDate == default)
-                {
-                    var editableMetadata = metadata as ModuleMetadata ?? new ModuleMetadata(metadata);
-                    editableMetadata.ReleaseDate = DateTime.Now;
-                    metadata = editableMetadata;
-                }
-
-                return metadata;
+                var editableMetadata = metadata as ModuleMetadata ?? new ModuleMetadata(metadata);
+                editableMetadata.ReleaseDate = DateTime.Now;
+                metadata = editableMetadata;
             }
+
+            return metadata;
         }
 
         private static async Task WritePackageToStreamAsync(IModuleMetadata metadata, string inputDir, MemoryStream stream, CancellationToken cancellation)
         {
-            using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
-            {
-                await PackDirectoryAsync(archive, inputDir, cancellation);
+            using var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true);
+            await PackDirectoryAsync(archive, inputDir, cancellation);
 
-                var manifestEntry = archive.CreateEntry("module.json");
-                using (var manifestEntryStream = manifestEntry.Open())
-                {
-                    await _metadataWriter.WriteMetadataAsync(manifestEntryStream, metadata, cancellation);
-                }
-            }
+            var manifestEntry = archive.CreateEntry("module.json");
+            using var manifestEntryStream = manifestEntry.Open();
+            await _metadataWriter.WriteMetadataAsync(manifestEntryStream, metadata, cancellation);
         }
 
         private static async Task PackDirectoryAsync(ZipArchive archive, string inputDir, CancellationToken cancellation)
@@ -131,10 +122,8 @@ namespace AI4E.Modularity.ModulePacker
                 {
                     stream.Position = 0;
 
-                    using (var fileStream = new FileStream(outputFilePath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096, useAsync: true))
-                    {
-                        await stream.CopyToAsync(fileStream, cancellation);
-                    }
+                    using var fileStream = new FileStream(outputFilePath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096, useAsync: true);
+                    await stream.CopyToAsync(fileStream, cancellation);
 
                     return;
                 }

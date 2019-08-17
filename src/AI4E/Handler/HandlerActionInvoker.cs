@@ -29,6 +29,9 @@ using static System.Diagnostics.Debug;
 
 namespace AI4E.Handler
 {
+    /// <summary>
+    /// Represents an action invoker that can invoke action methods.
+    /// </summary>
     public sealed class HandlerActionInvoker
     {
         private static readonly ConcurrentDictionary<MethodInfo, HandlerActionInvoker> _cache = new ConcurrentDictionary<MethodInfo, HandlerActionInvoker>();
@@ -49,6 +52,11 @@ namespace AI4E.Handler
             FirstParameterType = firstParameterType;
         }
 
+        /// <summary>
+        /// Gets the <see cref="HandlerActionInvoker"/> for the sepcfied method.
+        /// </summary>
+        /// <param name="methodInfo">The method.</param>
+        /// <returns>The <see cref="HandlerActionInvoker"/> for <paramref name="methodInfo"/>.</returns>
         public static HandlerActionInvoker GetInvoker(MethodInfo methodInfo)
         {
             return _cache.GetOrAdd(methodInfo, _ => new HandlerActionInvoker(methodInfo));
@@ -56,17 +64,37 @@ namespace AI4E.Handler
 
         private MethodInfo Method { get; }
 
+        /// <summary>
+        /// Gets the type of the actions first parameter.
+        /// </summary>
         public Type FirstParameterType { get; }
 
+        /// <summary>
+        /// Gets the return type descriptor.
+        /// </summary>
         public AwaitableTypeDescriptor ReturnTypeDescriptor { get; }
 
+        /// <summary>
+        /// Asynchronously invokes the action.
+        /// </summary>
+        /// <param name="instance">The instance.</param>
+        /// <param name="argument">The argument for the first parameter.</param>
+        /// <param name="parameterResolver">A parameter resolver used to resolve values for additional parameters.</param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the result that was returned from the action.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either of <paramref name="instance"/> or <paramref name="parameterResolver"/> is <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="instance"/> is not assignable to the actions declaring type is the type
+        /// or <paramref name="argument"/> is not assignable to the actions first parameter type.
+        /// </exception>
         public async ValueTask<object> InvokeAsync(object instance, object argument, Func<ParameterInfo, object> parameterResolver)
         {
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
-
-            if (FirstParameterType != typeof(void) && argument == null)
-                throw new ArgumentNullException(nameof(argument));
 
             if (parameterResolver == null)
                 throw new ArgumentNullException(nameof(parameterResolver));
@@ -74,7 +102,7 @@ namespace AI4E.Handler
             if (!Method.DeclaringType.IsAssignableFrom(instance.GetType()))
                 throw new ArgumentException($"The argument must be of type '{Method.DeclaringType.ToString()}' or an assignable type in order to be used as instance.", nameof(instance));
 
-            if (FirstParameterType != typeof(void) && !FirstParameterType.IsAssignableFrom(argument.GetType()))
+            if (FirstParameterType != typeof(void) && !(argument is null) && !FirstParameterType.IsAssignableFrom(argument.GetType()))
                 throw new ArgumentException($"The argument must be of type '{FirstParameterType}' or an assignable type in order to be used as first argument.", nameof(argument));
 
             var result = _invoker(instance, argument, parameterResolver);

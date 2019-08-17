@@ -226,22 +226,21 @@ namespace AI4E.Coordination
                     await TryCreateAsync(parentPath, ReadOnlyMemory<byte>.Empty, EntryCreationModes.Default, session, cancellation);
                 }
 
-                using (var lockedParentEntry = await parentCacheEntry.LockAsync(LockType.Exclusive, cancellation))
+                await using var lockedParentEntry = await parentCacheEntry.LockAsync(LockType.Exclusive, cancellation);
+
+                if (!lockedParentEntry.IsExisting || lockedParentEntry.Value.IsEmpty)
                 {
-                    if (!lockedParentEntry.IsExisting || lockedParentEntry.Value.IsEmpty)
-                    {
-                        continue;
-                    }
-
-                    var parent = Entry.FromRawValue(this, parentPath, lockedParentEntry.Value);
-                    var parentBuilder = new EntryBuilder(parent, _dateTimeProvider);
-                    parentBuilder.Children.Add(path.Segments.Last());
-                    parent = parentBuilder.ToEntry();
-                    lockedParentEntry.CreateOrUpdate(parent.ToRawValue());
-                    await lockedParentEntry.FlushAsync(cancellation);
-
-                    return await CreateCoreAsync(path, value, modes, session, cacheEntry, cancellation);
+                    continue;
                 }
+
+                var parent = Entry.FromRawValue(this, parentPath, lockedParentEntry.Value);
+                var parentBuilder = new EntryBuilder(parent, _dateTimeProvider);
+                parentBuilder.Children.Add(path.Segments.Last());
+                parent = parentBuilder.ToEntry();
+                lockedParentEntry.CreateOrUpdate(parent.ToRawValue());
+                await lockedParentEntry.FlushAsync(cancellation);
+
+                return await CreateCoreAsync(path, value, modes, session, cacheEntry, cancellation);
             }
         }
 
@@ -253,35 +252,34 @@ namespace AI4E.Coordination
             ICacheEntry cacheEntry,
             CancellationToken cancellation)
         {
-            using (var lockedEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation))
+            await using var lockedEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation);
+
+            if (lockedEntry.IsExisting && !lockedEntry.Value.IsEmpty)
             {
-                if (lockedEntry.IsExisting && !lockedEntry.Value.IsEmpty)
-                {
-                    return (Entry.FromRawValue(this, path, lockedEntry.Value), created: false);
-                }
-
-                var ephemeralOwner = modes.IncludesFlag(EntryCreationModes.Ephemeral) ? session : default;
-                var resultBuilder = new EntryBuilder(this, path, ephemeralOwner, _dateTimeProvider) { Value = value };
-                var result = resultBuilder.ToEntry();
-
-                lockedEntry.CreateOrUpdate(result.ToRawValue());
-
-                // Register the entry as ephemeral BEFORE releasing the lock (and thus writing the creation to the database)
-                // even if the session entries of a session are not strong consistent cause
-                // there MUST BE an entry for an ephemeral node.
-                // In case of failure, we currently do not remove the session entry. 
-                // We cannot just remove the session entry on failure, as we do not have a lock on the entry
-                // and, hence, the entry may already exist or is created concurrently.
-                // This is ok because the session entry is skipped if the respective entry is not found. 
-                // This could lead to many dead entries, if we have lots of failures. But we assume that this case is rather rare.
-                // If this is ever a big performance problem, we can use a form of "reference counting" of session entries.
-                if ((modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral)
-                {
-                    await _sessionManager.AddSessionEntryAsync(session, path, cancellation);
-                }
-
-                return (result, created: true);
+                return (Entry.FromRawValue(this, path, lockedEntry.Value), created: false);
             }
+
+            var ephemeralOwner = modes.IncludesFlag(EntryCreationModes.Ephemeral) ? session : default;
+            var resultBuilder = new EntryBuilder(this, path, ephemeralOwner, _dateTimeProvider) { Value = value };
+            var result = resultBuilder.ToEntry();
+
+            lockedEntry.CreateOrUpdate(result.ToRawValue());
+
+            // Register the entry as ephemeral BEFORE releasing the lock (and thus writing the creation to the database)
+            // even if the session entries of a session are not strong consistent cause
+            // there MUST BE an entry for an ephemeral node.
+            // In case of failure, we currently do not remove the session entry. 
+            // We cannot just remove the session entry on failure, as we do not have a lock on the entry
+            // and, hence, the entry may already exist or is created concurrently.
+            // This is ok because the session entry is skipped if the respective entry is not found. 
+            // This could lead to many dead entries, if we have lots of failures. But we assume that this case is rather rare.
+            // If this is ever a big performance problem, we can use a form of "reference counting" of session entries.
+            if ((modes & EntryCreationModes.Ephemeral) == EntryCreationModes.Ephemeral)
+            {
+                await _sessionManager.AddSessionEntryAsync(session, path, cancellation);
+            }
+
+            return (result, created: true);
         }
 
         /// <inheritdoc/>
@@ -328,25 +326,23 @@ namespace AI4E.Coordination
                 throw new EntryNotFoundException(path);
             }
 
-            using (var lockedEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation))
+            await using var lockedEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation);
+            if (!lockedEntry.IsExisting || lockedEntry.Value.IsEmpty)
             {
-                if (!lockedEntry.IsExisting || lockedEntry.Value.IsEmpty)
-                {
-                    throw new EntryNotFoundException(path);
-                }
-
-                var entry = Entry.FromRawValue(this, path, lockedEntry.Value);
-                if (version != default && entry.Version != version)
-                {
-                    return entry.Version;
-                }
-
-                var entryBuilder = new EntryBuilder(entry, _dateTimeProvider) { Value = value };
-                entry = entryBuilder.ToEntry();
-                lockedEntry.CreateOrUpdate(entry.ToRawValue());
-
-                return version;
+                throw new EntryNotFoundException(path);
             }
+
+            var entry = Entry.FromRawValue(this, path, lockedEntry.Value);
+            if (version != default && entry.Version != version)
+            {
+                return entry.Version;
+            }
+
+            var entryBuilder = new EntryBuilder(entry, _dateTimeProvider) { Value = value };
+            entry = entryBuilder.ToEntry();
+            lockedEntry.CreateOrUpdate(entry.ToRawValue());
+
+            return version;
         }
 
         /// <inheritdoc/>
@@ -381,7 +377,42 @@ namespace AI4E.Coordination
             // There is no parent entry.
             if (path.IsRoot)
             {
-                using (var lockedCacheEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation))
+                await using var lockedCacheEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation);
+                if (!lockedCacheEntry.IsExisting || lockedCacheEntry.Value.IsEmpty)
+                {
+                    return 0;
+                }
+
+                var entry = Entry.FromRawValue(this, path, lockedCacheEntry.Value);
+                var entryBuilder = new EntryBuilder(entry, _dateTimeProvider);
+
+                if (!await DeleteCoreAsync(entryBuilder, session, version, recursive, cancellation))
+                {
+                    return entry.Version;
+                }
+
+                lockedCacheEntry.Delete();
+            }
+            else
+            {
+                var parentPath = path.GetParentPath();
+                var parentCacheEntry = await _cacheManager.GetCacheEntryAsync(parentPath.ToString(), cancellation);
+
+                // The parent was deleted concurrently. => The parent may only be deleted if all childs were deleted => Our entry does not exist any more.
+                if (parentCacheEntry.TryGetValue(out var parentCacheEntryValue) && (!parentCacheEntryValue.IsExisting || parentCacheEntryValue.Value.IsEmpty))
+                {
+                    return 0;
+                }
+
+                await using var lockedParentEntry = await parentCacheEntry.LockAsync(LockType.Exclusive, cancellation);
+
+                // The parent was deleted concurrently. => The parent may only be deleted if all childs were deleted => Our entry does not exist any more.
+                if (!lockedParentEntry.IsExisting || lockedParentEntry.Value.IsEmpty)
+                {
+                    return 0;
+                }
+
+                await using (var lockedCacheEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation))
                 {
                     if (!lockedCacheEntry.IsExisting || lockedCacheEntry.Value.IsEmpty)
                     {
@@ -398,51 +429,13 @@ namespace AI4E.Coordination
 
                     lockedCacheEntry.Delete();
                 }
-            }
-            else
-            {
-                var parentPath = path.GetParentPath();
-                var parentCacheEntry = await _cacheManager.GetCacheEntryAsync(parentPath.ToString(), cancellation);
 
-                // The parent was deleted concurrently. => The parent may only be deleted if all childs were deleted => Our entry does not exist any more.
-                if (parentCacheEntry.TryGetValue(out var parentCacheEntryValue) && (!parentCacheEntryValue.IsExisting || parentCacheEntryValue.Value.IsEmpty))
-                {
-                    return 0;
-                }
+                var parentEntry = Entry.FromRawValue(this, parentPath, lockedParentEntry.Value);
+                var parentEntryBuilder = new EntryBuilder(parentEntry, _dateTimeProvider);
+                parentEntryBuilder.Children.Remove(path.Segments.Last());
+                parentEntry = parentEntryBuilder.ToEntry();
 
-                using (var lockedParentEntry = await parentCacheEntry.LockAsync(LockType.Exclusive, cancellation))
-                {
-                    // The parent was deleted concurrently. => The parent may only be deleted if all childs were deleted => Our entry does not exist any more.
-                    if (!lockedParentEntry.IsExisting || lockedParentEntry.Value.IsEmpty)
-                    {
-                        return 0;
-                    }
-
-                    using (var lockedCacheEntry = await cacheEntry.LockAsync(LockType.Exclusive, cancellation))
-                    {
-                        if (!lockedCacheEntry.IsExisting || lockedCacheEntry.Value.IsEmpty)
-                        {
-                            return 0;
-                        }
-
-                        var entry = Entry.FromRawValue(this, path, lockedCacheEntry.Value);
-                        var entryBuilder = new EntryBuilder(entry, _dateTimeProvider);
-
-                        if (!await DeleteCoreAsync(entryBuilder, session, version, recursive, cancellation))
-                        {
-                            return entry.Version;
-                        }
-
-                        lockedCacheEntry.Delete();
-                    }
-
-                    var parentEntry = Entry.FromRawValue(this, parentPath, lockedParentEntry.Value);
-                    var parentEntryBuilder = new EntryBuilder(parentEntry, _dateTimeProvider);
-                    parentEntryBuilder.Children.Remove(path.Segments.Last());
-                    parentEntry = parentEntryBuilder.ToEntry();
-
-                    lockedParentEntry.CreateOrUpdate(parentEntry.ToRawValue());
-                }
+                lockedParentEntry.CreateOrUpdate(parentEntry.ToRawValue());
             }
 
             return version;
@@ -487,7 +480,7 @@ namespace AI4E.Coordination
                     continue;
                 }
 
-                using (var lockedChildEntry = await childCacheEntry.LockAsync(LockType.Exclusive, cancellation))
+                await using (var lockedChildEntry = await childCacheEntry.LockAsync(LockType.Exclusive, cancellation))
                 {
                     if (!lockedChildEntry.IsExisting || lockedChildEntry.Value.IsEmpty)
                     {
@@ -560,39 +553,38 @@ namespace AI4E.Coordination
 
             var session = await GetSessionAsync(cancellation);
 
-            using (var lockedParentEntry = await parentCacheEntry.LockAsync(LockType.Exclusive, cancellation))
+            await using var lockedParentEntry = await parentCacheEntry.LockAsync(LockType.Exclusive, cancellation);
+
+            // The parent does not exist.
+            if (!lockedParentEntry.IsExisting || lockedParentEntry.Value.IsEmpty)
             {
-                // The parent does not exist.
-                if (!lockedParentEntry.IsExisting || lockedParentEntry.Value.IsEmpty)
-                {
-                    return;
-                }
-
-                parent = Entry.FromRawValue(this, parentPath, lockedParentEntry.Value);
-
-                // The parent's child collection does not contain the entry.
-                if (!parent.Children.Contains(childName))
-                {
-                    return;
-                }
-
-                // As we own the write-lock now, the child collection cannot be changed concurrently.
-                // Check if the child is alive. We MUST NOT delete the child entry in our collection when the child is still alive or alive again.
-                var cacheEntry = await _cacheManager.GetCacheEntryAsync(path.ToString(), cancellation);
-                var cacheEntryValue = await cacheEntry.GetValueAsync(cancellation);
-
-                // The child is alive.
-                if (cacheEntryValue.IsExisting && !cacheEntryValue.Value.IsEmpty)
-                {
-                    return;
-                }
-
-                var parentBuilder = new EntryBuilder(parent, _dateTimeProvider);
-                parentBuilder.Children.Remove(childName);
-                parent = parentBuilder.ToEntry();
-
-                lockedParentEntry.CreateOrUpdate(parent.ToRawValue());
+                return;
             }
+
+            parent = Entry.FromRawValue(this, parentPath, lockedParentEntry.Value);
+
+            // The parent's child collection does not contain the entry.
+            if (!parent.Children.Contains(childName))
+            {
+                return;
+            }
+
+            // As we own the write-lock now, the child collection cannot be changed concurrently.
+            // Check if the child is alive. We MUST NOT delete the child entry in our collection when the child is still alive or alive again.
+            var cacheEntry = await _cacheManager.GetCacheEntryAsync(path.ToString(), cancellation);
+            var cacheEntryValue = await cacheEntry.GetValueAsync(cancellation);
+
+            // The child is alive.
+            if (cacheEntryValue.IsExisting && !cacheEntryValue.Value.IsEmpty)
+            {
+                return;
+            }
+
+            var parentBuilder = new EntryBuilder(parent, _dateTimeProvider);
+            parentBuilder.Children.Remove(childName);
+            parent = parentBuilder.ToEntry();
+
+            lockedParentEntry.CreateOrUpdate(parent.ToRawValue());
         }
 
         #endregion

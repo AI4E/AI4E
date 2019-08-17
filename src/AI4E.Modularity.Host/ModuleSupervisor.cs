@@ -1,11 +1,33 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Modularity.Metadata;
+using AI4E.Utils;
 using AI4E.Utils.Async;
 using AI4E.Utils.Processing;
-using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 using static System.Diagnostics.Debug;
 
@@ -14,9 +36,10 @@ namespace AI4E.Modularity.Host
     // TODO: https://github.com/AI4E/AI4E/issues/34
     //       When the host crashed and is newly swaning now, there are modules running. 
     //       How can we recognize them und use them instead of starting a new process?
-    public sealed class ModuleSupervisor : IAsyncDisposable, IModuleSupervisor
+    public sealed class ModuleSupervisor : IAsyncDisposable, IModuleSupervisor, IDisposable
     {
         private readonly IMetadataReader _metadataReader;
+        private readonly IRunningModuleManager _runningModuleManager;
         private readonly ILogger<ModuleSupervisor> _logger;
 
         private readonly DisposableAsyncLazy<IModuleMetadata> _metadataLazy;
@@ -32,6 +55,7 @@ namespace AI4E.Modularity.Host
 
         public ModuleSupervisor(DirectoryInfo directory,
                                 IMetadataReader metadataReader,
+                                IRunningModuleManager runningModuleManager,
                                 ILogger<ModuleSupervisor> logger = null)
         {
             if (directory == null)
@@ -40,11 +64,15 @@ namespace AI4E.Modularity.Host
             if (metadataReader == null)
                 throw new ArgumentNullException(nameof(metadataReader));
 
+            if (runningModuleManager == null)
+                throw new ArgumentNullException(nameof(runningModuleManager));
+
             Directory = directory;
             _metadataReader = metadataReader;
+            _runningModuleManager = runningModuleManager;
             _logger = logger;
 
-            // Volatile write op (Is avtually not necessary here, because the CLR enforces thread-safety.)
+            // Volatile write op (Is actually not necessary here, because the CLR enforces thread-safety.)
             _state = ModuleSupervisorState.Initializing;
 
             _metadataLazy = new DisposableAsyncLazy<IModuleMetadata>(
@@ -133,6 +161,7 @@ namespace AI4E.Modularity.Host
                     var process = await StartProcessAsync(metadata, cancellation);
 
                     SetState(ModuleSupervisorState.Running);
+                    _runningModuleManager.Started(metadata.Module);
 
                     try
                     {
@@ -145,11 +174,13 @@ namespace AI4E.Modularity.Host
                         await TerminateProcessAsync(_moduleTerminateTimeout, process);
 
                         SetState(ModuleSupervisorState.Shutdown);
+                        _runningModuleManager.Terminated(metadata.Module);
 
                         throw;
                     }
 
                     SetState(ModuleSupervisorState.Failed);
+                    _runningModuleManager.Terminated(metadata.Module);
 
                     // The process exited unexpectedly.
                     // TODO: Log
@@ -171,30 +202,43 @@ namespace AI4E.Modularity.Host
             _disposeHelper.Dispose();
         }
 
-        public Task DisposeAsync()
+        public ValueTask DisposeAsync()
         {
             return _disposeHelper.DisposeAsync();
         }
 
         private async Task DisposeInternalAsync()
         {
-            await _metadataLazy.DisposeAsync().HandleExceptionsAsync(_logger);
+            await _metadataLazy.DisposeAsync().AsTask().HandleExceptionsAsync(_logger); // TODO: HandleExceptionsAsync should accept a ValueTask
             await _supervisorProcess.TerminateAsync().HandleExceptionsAsync(_logger);
         }
 
         #endregion
 
-        private Task<Process> StartProcessAsync(IModuleMetadata moduleMetadata,
+        private async ValueTask<Process> StartProcessAsync(IModuleMetadata moduleMetadata,
                                                 CancellationToken cancellation)
         {
             Assert(moduleMetadata != null);
 
-            var entryAssemblyCommand = ReplaceMetadataConstants(moduleMetadata.EntryAssemblyCommand);
-            var entryAssemblyArguments = ReplaceMetadataConstants(moduleMetadata.EntryAssemblyArguments);
+            var entryAssemblyCommand = await ReplaceMetadataConstantsAsync(moduleMetadata.EntryAssemblyCommand, cancellation);
+            var entryAssemblyArguments = await ReplaceMetadataConstantsAsync(moduleMetadata.EntryAssemblyArguments, cancellation);
             var processStartInfo = BuildProcessStartInfo(entryAssemblyCommand, entryAssemblyArguments);
             var process = Process.Start(processStartInfo);
 
-            return Task.FromResult(process);
+            void ModuleOutputRedirect(object s, DataReceivedEventArgs e)
+            {
+                var data = e.Data;
+                var moduleName = !string.IsNullOrWhiteSpace(moduleMetadata.Name) ? moduleMetadata.Name : moduleMetadata.Module.ToString();
+                Console.WriteLine("<" + moduleName + "> " + data);
+            }
+
+            process.OutputDataReceived += ModuleOutputRedirect;
+            process.ErrorDataReceived += ModuleOutputRedirect;
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            return process;
         }
 
         private static async Task TerminateProcessAsync(TimeSpan moduleTerminateTimeout, Process process)
@@ -227,18 +271,39 @@ namespace AI4E.Modularity.Host
             {
                 CreateNoWindow = true,
                 UseShellExecute = false,
-                WorkingDirectory = Directory.FullName
+                WorkingDirectory = Directory.FullName,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
             };
         }
 
-        private string ReplaceMetadataConstants(string input)
+        private async ValueTask<string> ReplaceMetadataConstantsAsync(string input, CancellationToken cancellation)
         {
             if (input == null)
                 return null;
 
-            // TODO
-
+            var metadata = await _metadataLazy.Task.WithCancellation(cancellation);
+            input = ReplaceCaseInsensitive(input, "%module%", metadata.Module.ToString());
+            input = ReplaceCaseInsensitive(input, "%version%", metadata.Version.ToString());
+            input = ReplaceCaseInsensitive(input, "%release%", metadata.Release.ToString());
+            input = ReplaceCaseInsensitive(input, "%releasedate%", metadata.ReleaseDate.ToString("s", System.Globalization.CultureInfo.InvariantCulture));
+            input = ReplaceCaseInsensitive(input, "%name%", !string.IsNullOrWhiteSpace(metadata.Name) ? metadata.Name : metadata.Module.ToString());
+            input = ReplaceCaseInsensitive(input, "%description%", metadata.Description ?? string.Empty);
+            input = ReplaceCaseInsensitive(input, "%author%", metadata.Author ?? string.Empty);
+            input = ReplaceCaseInsensitive(input, "%hostprocessid%", Process.GetCurrentProcess().Id.ToString());
             return input;
+        }
+
+        // Based on: https://stackoverflow.com/questions/6275980/string-replace-ignoring-case/6276029
+        private static string ReplaceCaseInsensitive(string input, string search, string replacement)
+        {
+            var result = Regex.Replace(
+                input,
+                Regex.Escape(search),
+                replacement.Replace("$", "$$"),
+                RegexOptions.IgnoreCase
+            );
+            return result;
         }
     }
 }

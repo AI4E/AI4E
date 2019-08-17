@@ -1,4 +1,4 @@
-﻿/* Summary
+/* Summary
  * --------------------------------------------------------------------------------------------------------------------
  * Filename:        IReferenceResolver.cs 
  * Types:           (1) AI4E.Domain.IReferenceResolver
@@ -45,7 +45,7 @@ namespace AI4E.Domain
         /// </summary>
         /// <typeparam name="TEntity">The type of entity the reference refers to.</typeparam>
         /// <param name="id">The id of the referenced entity.</param>
-        /// <param name="revision">The revision of the entity to load or <see cref="default(long)"/> to load the entity in the latest version.</param>
+        /// <param name="revision">The revision of the entity to load or <c>default</c> to load the entity in the latest version.</param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
         /// <returns>
         /// A task representing the asynchronous operation.

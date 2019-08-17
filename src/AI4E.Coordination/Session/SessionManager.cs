@@ -295,27 +295,16 @@ namespace AI4E.Coordination.Session
                 var delay = TimeSpan.FromSeconds(2);
                 var sessions = _storage.GetSessionsAsync(cancellation);
 
-                var enumerator = sessions.GetEnumerator();
-
-                try
+                await foreach (var session in sessions)
                 {
-                    while (await enumerator.MoveNext(cancellation))
-                    {
-                        var session = enumerator.Current;
+                    if (_storedSessionManager.IsEnded(session))
+                        return session.Session;
 
-                        if (_storedSessionManager.IsEnded(session))
-                            return session.Session;
+                    var now = _dateTimeProvider.GetCurrentTime();
+                    var timeToWait = session.LeaseEnd - now;
 
-                        var now = _dateTimeProvider.GetCurrentTime();
-                        var timeToWait = session.LeaseEnd - now;
-
-                        if (timeToWait < delay)
-                            delay = timeToWait;
-                    }
-                }
-                finally
-                {
-                    enumerator.Dispose();
+                    if (timeToWait < delay)
+                        delay = timeToWait;
                 }
 
                 await Task.Delay(delay, cancellation);

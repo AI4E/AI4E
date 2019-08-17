@@ -35,6 +35,14 @@ namespace AI4E
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
         IMessageProcessor CreateMessageProcessor(IServiceProvider serviceProvider);
 
+        /// <summary>
+        /// Gets the message processor type.
+        /// </summary>
         Type MessageProcessorType { get; }
+
+        /// <summary>
+        /// Gets the message processor dependency descriptor.
+        /// </summary>
+        MessageProcessorDependency Dependency { get; }
     }
 }

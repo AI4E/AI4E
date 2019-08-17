@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -6,18 +6,9 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using static System.Diagnostics.Debug;
-
-#if BLAZOR
-using Blazor.Extensions;
-#else
 using Microsoft.AspNetCore.SignalR.Client;
-#endif
 
-#if BLAZOR
-namespace AI4E.Routing.Blazor
-#else
 namespace AI4E.Routing.SignalR.Client
-#endif
 {
     public static partial class HubConnectionExtension
     {
@@ -47,9 +38,6 @@ namespace AI4E.Routing.SignalR.Client
                 if (method.DeclaringType != typeof(T))
                     continue;
 
-#if BLAZOR
-                var handlerRegistration = RegisterMethod(hubConnection, skeleton, method, parameters);
-#else
                 Func<object[], object, Task> handler;
 
                 var args = Expression.Parameter(typeof(object[]), "args");
@@ -86,7 +74,6 @@ namespace AI4E.Routing.SignalR.Client
                 }
 
                 var handlerRegistration = hubConnection.On(method.Name, parameters.Select(p => p.ParameterType).ToArray(), handler, state: skeleton);
-#endif
                 disposables.Add(handlerRegistration);
             }
 
@@ -106,11 +93,7 @@ namespace AI4E.Routing.SignalR.Client
                 var method = methodCallExpression.Method;
                 var arguments = methodCallExpression.Arguments.Select(p => GetExpressionValue(p)).ToArray();
 
-#if BLAZOR
-                return hubConnection.InvokeAsync(method.Name, arguments);
-#else
                 return hubConnection.SendCoreAsync(method.Name, arguments, cancellation);
-#endif
             }
 
             throw new NotSupportedException();
@@ -131,12 +114,9 @@ namespace AI4E.Routing.SignalR.Client
 
                 TResult result;
 
-#if BLAZOR
-                result = await hubConnection.InvokeAsync<TResult>(method.Name, arguments);
-#else
                 var objResult = await hubConnection.InvokeCoreAsync(method.Name, typeof(TResult), arguments, cancellation);
 
-                if(objResult != null)
+                if (objResult != null)
                 {
                     result = (TResult)objResult;
                 }
@@ -144,7 +124,7 @@ namespace AI4E.Routing.SignalR.Client
                 {
                     result = default;
                 }
-#endif
+
                 return result;
             }
 

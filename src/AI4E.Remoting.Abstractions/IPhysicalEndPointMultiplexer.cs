@@ -26,7 +26,7 @@ namespace AI4E.Remoting
     /// Multiplexes a single physical end point to multiple end points, each distinguished by a multiplex name.
     /// </summary>
     /// <typeparam name="TAddress">The type of physical address used.</typeparam>
-    public interface IPhysicalEndPointMultiplexer<TAddress> : IDisposable
+    public interface IPhysicalEndPointMultiplexer<TAddress> : IAddressConverter<TAddress>, IDisposable
     {
         /// <summary>
         /// Returns a physical end point that is identified by the specified multiplex name.

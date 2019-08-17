@@ -18,30 +18,17 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E
 {
-    internal sealed class MessagingBuilder : IMessagingBuilder
-    {
-        public MessagingBuilder(IServiceCollection services)
-        {
-            Debug.Assert(services != null);
-
-            Services = services;
-        }
-
-        public IServiceCollection Services { get; }
-    }
-
     /// <summary>
-    /// Represents a message system builder.
+    /// Represents a messaging service builder.
     /// </summary>
     public interface IMessagingBuilder
     {
         /// <summary>
-        /// Gets the service collection the message system builder uses.
+        /// Gets the service collection the messaging service builder uses.
         /// </summary>
         IServiceCollection Services { get; }
     }

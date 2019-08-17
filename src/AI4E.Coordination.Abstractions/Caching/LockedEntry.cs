@@ -1,11 +1,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
 
 namespace AI4E.Coordination.Caching
 {
-    public readonly struct LockedEntry : IAsyncDisposable
+    public readonly struct LockedEntry : IAsyncDisposable, IDisposable
     {
         private readonly ILockedEntrySource _source;
         private readonly int _token;
@@ -64,14 +63,13 @@ namespace AI4E.Coordination.Caching
             _source?.Unlock(_token);
         }
 
-        public Task DisposeAsync()
+        public ValueTask DisposeAsync()
         {
             Dispose();
-            return Disposal.AsTask();
+            return Disposal;
         }
 
         private ValueTask Disposal => _source?.GetUnlockTask(_token) ?? default;
-        Task IAsyncDisposable.Disposal => Disposal.AsTask();
 
 #if !SUPPORTS_TRANSACTIONS
 

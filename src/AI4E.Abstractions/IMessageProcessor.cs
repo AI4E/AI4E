@@ -76,10 +76,4 @@ namespace AI4E
         /// </summary>
         bool IsLocalDispatch { get; }
     }
-
-    /// <summary>
-    /// An attribute that identifies a message processor's context property.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-    public sealed class MessageProcessorContextAttribute : Attribute { }
 }

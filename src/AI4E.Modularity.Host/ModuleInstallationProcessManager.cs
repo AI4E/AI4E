@@ -1,5 +1,26 @@
-﻿using System.Threading.Tasks;
-using AI4E.Modularity.Host;
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
+using System.Threading;
+using System.Threading.Tasks;
+using AI4E.Domain;
 using AI4E.Storage.Domain;
 
 namespace AI4E.Modularity.Host
@@ -25,9 +46,11 @@ namespace AI4E.Modularity.Host
         }
 
         [EntityLookup]
-        private Task<ModuleInstallationConfiguration> LookupConfigurationAsync()
+        internal ValueTask<ModuleInstallationConfiguration> LoadConfigurationAsync(
+            object message, CancellationToken cancellation)
         {
-            return _storageEngine.GetByIdAsync<ModuleInstallationConfiguration>(default(SingletonId).ToString()).AsTask();
+            return _storageEngine.GetByIdAsync<ModuleInstallationConfiguration>(
+                default(SingletonId).ToString(), cancellation);
         }
 
         #region InstallationConfigurationChanged
@@ -35,19 +58,19 @@ namespace AI4E.Modularity.Host
         [CreatesEntity(AllowExisingEntity = true)]
         public Task HandleAsync(ModuleInstalled installedEvent)
         {
-            return (Entity = Entity ?? new ModuleInstallationConfiguration()).ModuleInstalledAsync(installedEvent.ModuleId, installedEvent.Version, _dependencyResolver);
+            return EnsureEntity().ModuleInstalledAsync(installedEvent.ModuleId, installedEvent.Version, _dependencyResolver);
         }
 
         [CreatesEntity(AllowExisingEntity = true)]
         public Task HandleAsync(ModuleUpdated updatedEvent)
         {
-            return (Entity = Entity ?? new ModuleInstallationConfiguration()).ModuleUpdatedAsync(updatedEvent.ModuleId, updatedEvent.UpdatedVersion, _dependencyResolver);
+            return EnsureEntity().ModuleUpdatedAsync(updatedEvent.ModuleId, updatedEvent.UpdatedVersion, _dependencyResolver);
         }
 
         [CreatesEntity(AllowExisingEntity = true)]
         public Task HandleAsync(ModuleUninstalled uninstalledEvent)
         {
-            return (Entity = Entity ?? new ModuleInstallationConfiguration()).ModuleUninstalledAsync(uninstalledEvent.ModuleId, _dependencyResolver);
+            return EnsureEntity().ModuleUninstalledAsync(uninstalledEvent.ModuleId, _dependencyResolver);
         }
 
         #endregion
@@ -76,6 +99,14 @@ namespace AI4E.Modularity.Host
             }
 
             return Entity.ReleaseAddedAsync(releaseRemovedEvent.ModuleId, releaseRemovedEvent.Version, _dependencyResolver);
+        }
+
+        private ModuleInstallationConfiguration EnsureEntity()
+        {
+            if (Entity == null)
+                Entity = new ModuleInstallationConfiguration();
+
+            return Entity;
         }
     }
 }

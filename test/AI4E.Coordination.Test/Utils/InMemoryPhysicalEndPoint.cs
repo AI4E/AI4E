@@ -22,30 +22,44 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Remoting;
+using AI4E.Utils;
 using Nito.AsyncEx;
 
 namespace AI4E.Coordination.Utils
 {
     public sealed class InMemoryPhysicalEndPoint : IPhysicalEndPoint<InMemoryPhysicalAddress>
     {
-        private readonly AsyncProducerConsumerQueue<IMessage> _rxQueue = new AsyncProducerConsumerQueue<IMessage>();
+        private readonly AsyncProducerConsumerQueue<ValueMessage> _rxQueue = new AsyncProducerConsumerQueue<ValueMessage>();
 
         public InMemoryPhysicalAddress LocalAddress => InMemoryPhysicalAddress.Instance;
 
-        public async Task<(IMessage message, InMemoryPhysicalAddress remoteAddress)> ReceiveAsync(CancellationToken cancellation)
+        public async ValueTask<Transmission<InMemoryPhysicalAddress>> ReceiveAsync(CancellationToken cancellation)
         {
-            return (await _rxQueue.DequeueAsync(cancellation), InMemoryPhysicalAddress.Instance);
+            return new Transmission<InMemoryPhysicalAddress>(await _rxQueue.DequeueAsync(cancellation), InMemoryPhysicalAddress.Instance);
         }
 
-        public Task SendAsync(IMessage message, InMemoryPhysicalAddress remoteAddress, CancellationToken cancellation)
+        public ValueTask SendAsync(Transmission<InMemoryPhysicalAddress> transmission, CancellationToken cancellation)
         {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
+            return _rxQueue.EnqueueAsync(transmission.Message, cancellation).AsValueTask();
+        }
 
-            if (remoteAddress == null)
-                throw new ArgumentNullException(nameof(remoteAddress));
+        public string AddressToString(InMemoryPhysicalAddress address)
+        {
+            if (address == null)
+                return null;
 
-            return _rxQueue.EnqueueAsync(message, cancellation);
+            return "x";
+        }
+
+        public InMemoryPhysicalAddress AddressFromString(string str)
+        {
+            if (str == null)
+                return null;
+
+            if (str != "x")
+                throw new ArgumentException();
+
+            return InMemoryPhysicalAddress.Instance;
         }
 
         public void Dispose() { }
@@ -56,46 +70,5 @@ namespace AI4E.Coordination.Utils
         private InMemoryPhysicalAddress() { }
 
         public static InMemoryPhysicalAddress Instance { get; } = new InMemoryPhysicalAddress();
-    }
-
-    public sealed class InMemoryPhysicalAddressConversion : IAddressConversion<InMemoryPhysicalAddress>
-    {
-        public byte[] SerializeAddress(InMemoryPhysicalAddress route)
-        {
-            if (route == null)
-                return null;
-
-            return new byte[] { 123 };
-        }
-
-        public InMemoryPhysicalAddress DeserializeAddress(byte[] buffer)
-        {
-            if (buffer == null)
-                return null;
-
-            if (buffer.Length != 1 || buffer[0] != 123)
-                throw new ArgumentException();
-
-            return InMemoryPhysicalAddress.Instance;
-        }
-
-        public string ToString(InMemoryPhysicalAddress route)
-        {
-            if (route == null)
-                return null;
-
-            return "x";
-        }
-
-        public InMemoryPhysicalAddress Parse(string str)
-        {
-            if (str == null)
-                return null;
-
-            if (str != "x")
-                throw new ArgumentException();
-
-            return InMemoryPhysicalAddress.Instance;
-        }
     }
 }

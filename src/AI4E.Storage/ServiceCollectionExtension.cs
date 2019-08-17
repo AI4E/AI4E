@@ -20,7 +20,6 @@
 
 using System;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AI4E.Storage
 {
@@ -32,8 +31,8 @@ namespace AI4E.Storage
                 throw new ArgumentNullException(nameof(services));
 
             services.AddOptions();
-            services.AddCoreServices();
-            services.TryAddSingleton(typeof(IContextualProvider<>), typeof(ContextualProvider<>));
+            services.AddDateTimeProvider();
+           
             services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
 
             return new StorageBuilder(services);

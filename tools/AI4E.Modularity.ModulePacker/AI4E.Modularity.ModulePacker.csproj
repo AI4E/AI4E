@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Reflection.MetadataLoadContext" Version="4.6.0-preview.18571.3" />
+    <PackageReference Include="System.Reflection.MetadataLoadContext" Version="4.6.0-preview7.19362.9" />
   </ItemGroup>
 
   <ItemGroup>

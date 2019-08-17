@@ -31,9 +31,9 @@ namespace AI4E.Coordination
     /// </summary>
     public readonly struct CoordinationEntryPathSegment : IEquatable<CoordinationEntryPathSegment>
     {
-        private const char _escapeChar = '-';
-        private const char _pathDelimiterReplacement = 'X';
-        private const char _altPathDelimiterReplacement = 'Y';
+        private const char EscapeChar = '-';
+        private const char PathDelimiterReplacement = 'X';
+        private const char AltPathDelimiterReplacement = 'Y';
 
         /// <summary>
         /// Create a new <see cref="CoordinationEntryPathSegment"/> from the specified string.
@@ -48,7 +48,7 @@ namespace AI4E.Coordination
         /// <param name="segment">A memory of chars that respresents the unescaped segment.</param>
         public CoordinationEntryPathSegment(ReadOnlyMemory<char> segment)
         {
-            segment = segment.Trim();
+            segment = Utils.Memory.MemoryExtensions.Trim(segment); // TODO
 
             if (segment.IsEmpty)
             {
@@ -90,7 +90,7 @@ namespace AI4E.Coordination
                     {
                         case CoordinationEntryPath._pathDelimiter:
                         case CoordinationEntryPath._altPathDelimiter:
-                        case _escapeChar:
+                        case EscapeChar:
                             count++;
                             break;
                     }
@@ -126,26 +126,26 @@ namespace AI4E.Coordination
                     }
 
                     // Append an escape char
-                    resultWriter.Append(_escapeChar);
+                    resultWriter.Append(EscapeChar);
                 }
 
                 switch (span[i])
                 {
                     case CoordinationEntryPath._pathDelimiter:
                         PrepareEscape();
-                        resultWriter.Append(_pathDelimiterReplacement);
+                        resultWriter.Append(PathDelimiterReplacement);
                         // Set copySegmentStart to i
                         copySegmentStart = i + 1;
                         break;
 
                     case CoordinationEntryPath._altPathDelimiter:
                         PrepareEscape();
-                        resultWriter.Append(_altPathDelimiterReplacement);
+                        resultWriter.Append(AltPathDelimiterReplacement);
                         // Set copySegmentStart to i
                         copySegmentStart = i + 1;
                         break;
 
-                    case _escapeChar:
+                    case EscapeChar:
                         PrepareEscape();
                         // Set copySegmentStart to i
                         copySegmentStart = i;
@@ -183,7 +183,7 @@ namespace AI4E.Coordination
             {
                 switch (span[i])
                 {
-                    case _escapeChar:
+                    case EscapeChar:
                         if (escapedCharHit)
                         {
                             // Set copySegmentStart to i, as we do not need to manually translate - to -
@@ -212,7 +212,7 @@ namespace AI4E.Coordination
                         escapedCharHit = true;
                         break;
 
-                    case _pathDelimiterReplacement:
+                    case PathDelimiterReplacement:
                         if (escapedCharHit)
                         {
                             Debug.Assert(result != null);
@@ -224,7 +224,7 @@ namespace AI4E.Coordination
                         }
                         break;
 
-                    case _altPathDelimiterReplacement:
+                    case AltPathDelimiterReplacement:
                         if (escapedCharHit)
                         {
                             Debug.Assert(result != null);
@@ -325,7 +325,7 @@ namespace AI4E.Coordination
         /// <returns>The <see cref="CoordinationEntryPathSegment"/> that was created from <paramref name="escapedSegment"/>.</returns>
         public static CoordinationEntryPathSegment FromEscapedSegment(ReadOnlyMemory<char> escapedSegment)
         {
-            escapedSegment = escapedSegment.Trim();
+            escapedSegment = Utils.Memory.MemoryExtensions.Trim(escapedSegment); // TODO
             var unescapedSegment = Unescape(escapedSegment);
             return new CoordinationEntryPathSegment(unescapedSegment, escapedSegment);
         }

@@ -53,19 +53,18 @@ namespace AI4E.Remoting.Utils
             => _physicalEndPoints.Values.ToList();
 
         private void Deliver(
-            IMessage message,
-            TestMessagingSystemAddress receiverAddress,
-            TestMessagingSystemAddress senderAddress)
+            Transmission<TestMessagingSystemAddress> transmision,
+            TestMessagingSystemAddress address)
         {
-            if (_physicalEndPoints.TryGetValue(receiverAddress, out var physicalEndPoint))
+            if (_physicalEndPoints.TryGetValue(address, out var physicalEndPoint))
             {
-                physicalEndPoint.Deliver(message, senderAddress);
+                physicalEndPoint.Deliver(transmision);
             }
         }
 
         private sealed class PhysicalEndPoint : IPhysicalEndPoint<TestMessagingSystemAddress>
         {
-            private readonly AsyncProducerConsumerQueue<(IMessage message, TestMessagingSystemAddress remoteAddress)> _rxQueue;
+            private readonly AsyncProducerConsumerQueue<Transmission<TestMessagingSystemAddress>> _rxQueue;
             private readonly CancellationTokenSource _disposalSource = new CancellationTokenSource();
             private readonly TestMessagingSystem _messagingSystem;
 
@@ -73,58 +72,20 @@ namespace AI4E.Remoting.Utils
             {
                 LocalAddress = address;
                 _messagingSystem = messagingSystem;
-                _rxQueue = new AsyncProducerConsumerQueue<(IMessage message, TestMessagingSystemAddress remoteAddress)>();
+                _rxQueue = new AsyncProducerConsumerQueue<Transmission<TestMessagingSystemAddress>>();
             }
 
-            public TestMessagingSystemAddress LocalAddress { get; }
-
-            public async Task<(IMessage message, TestMessagingSystemAddress remoteAddress)> ReceiveAsync(CancellationToken cancellation = default)
-            {
-                if (_disposalSource.IsCancellationRequested)
-                {
-                    throw new ObjectDisposedException(GetType().FullName);
-                }
-
-                try
-                {
-                    using (var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposalSource.Token, cancellation))
-                    {
-                        return await _rxQueue.DequeueAsync(cancellation);
-                    }
-                }
-                catch (OperationCanceledException) when (_disposalSource.IsCancellationRequested)
-                {
-                    throw new ObjectDisposedException(GetType().FullName);
-                }
-            }
-
-            public Task SendAsync(IMessage message, TestMessagingSystemAddress remoteAddress, CancellationToken cancellation = default)
-            {
-                if (message == null)
-                    throw new ArgumentNullException(nameof(message));
-
-                if (remoteAddress == default)
-                    throw new ArgumentDefaultException(nameof(remoteAddress));
-
-                if (_disposalSource.IsCancellationRequested)
-                {
-                    throw new ObjectDisposedException(GetType().FullName);
-                }
-
-                _messagingSystem.Deliver(message, remoteAddress, LocalAddress);
-
-                return Task.CompletedTask;
-            }
-
-            public void Deliver(IMessage message, TestMessagingSystemAddress remoteAddress)
+            public void Deliver(Transmission<TestMessagingSystemAddress> transmission)
             {
                 if (_disposalSource.IsCancellationRequested)
                 {
                     return;
                 }
 
-                _rxQueue.Enqueue((message, remoteAddress));
+                _rxQueue.Enqueue(transmission);
             }
+
+            #region Disposal
 
             public void Dispose()
             {
@@ -138,6 +99,61 @@ namespace AI4E.Remoting.Utils
                     catch (ObjectDisposedException) { }
                 }
             }
+
+            #endregion
+
+            #region IPhysicalEndPoint
+
+            public TestMessagingSystemAddress LocalAddress { get; }
+
+            public async ValueTask<Transmission<TestMessagingSystemAddress>> ReceiveAsync(CancellationToken cancellation)
+            {
+                if (_disposalSource.IsCancellationRequested)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
+
+                try
+                {
+                    using var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposalSource.Token, cancellation);
+                    return await _rxQueue.DequeueAsync(cancellation);
+                }
+                catch (OperationCanceledException) when (_disposalSource.IsCancellationRequested)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
+            }
+
+            public ValueTask SendAsync(Transmission<TestMessagingSystemAddress> transmission, CancellationToken cancellation = default)
+            {
+                if (transmission.Equals(default))
+                    throw new ArgumentDefaultException(nameof(transmission));
+
+                if (_disposalSource.IsCancellationRequested)
+                {
+                    throw new ObjectDisposedException(GetType().FullName);
+                }
+
+                _messagingSystem.Deliver(new Transmission<TestMessagingSystemAddress>(transmission.Message, LocalAddress), transmission.RemoteAddress);
+
+                return default;
+            }
+
+            #endregion
+
+            #region IAddressConverter
+
+            public string AddressToString(TestMessagingSystemAddress address)
+            {
+                return address.RawAddress.ToString();
+            }
+
+            public TestMessagingSystemAddress AddressFromString(string str)
+            {
+                return new TestMessagingSystemAddress(int.Parse(str));
+            }
+
+            #endregion
         }
     }
 
@@ -173,30 +189,6 @@ namespace AI4E.Remoting.Utils
         public static bool operator !=(TestMessagingSystemAddress left, TestMessagingSystemAddress right)
         {
             return !left.Equals(right);
-        }
-    }
-
-    public sealed class TestMessagingSystemAddressConversion
-        : IAddressConversion<TestMessagingSystemAddress>
-    {
-        public byte[] SerializeAddress(TestMessagingSystemAddress route)
-        {
-            return BitConverter.GetBytes(route.RawAddress);
-        }
-
-        public TestMessagingSystemAddress DeserializeAddress(byte[] buffer)
-        {
-            return new TestMessagingSystemAddress(BitConverter.ToInt32(buffer, 0));
-        }
-
-        public string ToString(TestMessagingSystemAddress route)
-        {
-            return route.RawAddress.ToString();
-        }
-
-        public TestMessagingSystemAddress Parse(string str)
-        {
-            return new TestMessagingSystemAddress(int.Parse(str));
         }
     }
 }

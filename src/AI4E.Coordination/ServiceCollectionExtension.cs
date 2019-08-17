@@ -31,7 +31,7 @@ namespace AI4E.Coordination
             services.AddOptions();
 
             // Add helpers
-            services.AddCoreServices();
+            services.AddDateTimeProvider();
             services.AddSingleton(p => ConfigureSessionProvider(p, addressType));
 
             // Add default storage

@@ -19,6 +19,7 @@
  */
 
 using System;
+using System.Text;
 using System.Threading;
 using AI4E.Remoting;
 
@@ -30,9 +31,8 @@ namespace AI4E.Coordination.Session
     /// <typeparam name="TAddress">The type of address the system uses.</typeparam>
     public sealed class SessionIdentifierProvider<TAddress> : ISessionIdentifierProvider
     {
-        private readonly TAddress _address;
+        private readonly IPhysicalEndPointMultiplexer<TAddress> _endPointMultiplexer;
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly IAddressConversion<TAddress> _addressConversion;
         private int _counter = 0;
 
         /// <summary>
@@ -40,10 +40,8 @@ namespace AI4E.Coordination.Session
         /// </summary>
         /// <param name="endPointMultiplexer">The <see cref="IPhysicalEndPointMultiplexer{TAddress}"/> used to obain the current address.</param>
         /// <param name="dateTimeProvider">A <see cref="IDateTimeProvider"/> used to get the current date and time.</param>
-        /// <param name="addressConversion">An <see cref="IAddressConversion{TAddress}"/> that is used to convert the address to bytes.</param>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if any of <paramref name="endPointMultiplexer"/>, <paramref name="dateTimeProvider"/>
-        /// or <paramref name="addressConversion"/> is <c> null.</c>
+        /// Thrown if either <paramref name="endPointMultiplexer"/> or <paramref name="dateTimeProvider"/> is <c>null</c>.
         /// </exception>
         /// <exception cref="ArgumentException">
         /// Thrown if the address returned by the <see cref="IPhysicalEndPointMultiplexer{TAddress}.LocalAddress"/> property of
@@ -51,8 +49,7 @@ namespace AI4E.Coordination.Session
         /// </exception>
         public SessionIdentifierProvider(
             IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
-            IDateTimeProvider dateTimeProvider,
-            IAddressConversion<TAddress> addressConversion)
+            IDateTimeProvider dateTimeProvider)
         {
             if (endPointMultiplexer == null)
                 throw new ArgumentNullException(nameof(endPointMultiplexer));
@@ -60,16 +57,12 @@ namespace AI4E.Coordination.Session
             if (dateTimeProvider == null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
 
-            if (addressConversion == null)
-                throw new ArgumentNullException(nameof(addressConversion));
-
-            _address = endPointMultiplexer.LocalAddress;
-
-            if (_address.Equals(default(TAddress)))
+            // TODO: Do we have to check this here or does this have to be done in the implementation of IPhysicalEndPointMultiplexer?
+            if (endPointMultiplexer.LocalAddress.Equals(default(TAddress)))
                 throw new ArgumentException($"The end-points physical address must not be the default value of '{typeof(TAddress)}'.", nameof(endPointMultiplexer));
 
+            _endPointMultiplexer = endPointMultiplexer;
             _dateTimeProvider = dateTimeProvider;
-            _addressConversion = addressConversion;
         }
 
         /// <inheritdoc/>
@@ -78,8 +71,9 @@ namespace AI4E.Coordination.Session
             var count = Interlocked.Increment(ref _counter);
             var ticks = _dateTimeProvider.GetCurrentTime().Ticks + count;
 
-            var prefix = BitConverter.GetBytes(ticks);
-            var serializedAddress = _addressConversion.SerializeAddress(_address);
+            var prefix = BitConverter.GetBytes(ticks); // TODO: This allocates
+            var stringifiedAddress = _endPointMultiplexer.AddressToString(_endPointMultiplexer.LocalAddress);
+            var serializedAddress = Encoding.UTF8.GetBytes(stringifiedAddress); // TODO: This allocates
 
             return new SessionIdentifier(prefix, serializedAddress);
         }
