@@ -46,7 +46,7 @@ namespace AI4E.Coordination.Locking
     {
         #region Fields
 
-        private readonly ICoordinationSessionOwner _sessionOwner;
+        private readonly ISessionOwner _sessionOwner;
         private readonly ISessionManager _sessionManager;
         private readonly ILockWaitDirectory _lockWaitDirectory;
         private readonly IInvalidationCallbackDirectory _invalidationCallbackDirectory;
@@ -67,7 +67,7 @@ namespace AI4E.Coordination.Locking
         /// type.
         /// </summary>
         /// <param name="sessionOwner">
-        /// A <see cref="ICoordinationSessionOwner"/> that is used to retrieve the current session.
+        /// A <see cref="ISessionOwner"/> that is used to retrieve the current session.
         /// </param>
         /// <param name="sessionManager">
         /// A <see cref="ISessionManager"/> that is used to manage coordination service sessions.
@@ -96,7 +96,7 @@ namespace AI4E.Coordination.Locking
         /// <paramref name="optionsAccessor"/> is <c>null</c>.
         /// </exception>
         public CoordinationExchangeManager(
-            ICoordinationSessionOwner sessionOwner,
+            ISessionOwner sessionOwner,
             ISessionManager sessionManager,
             ILockWaitDirectory lockWaitDirectory,
             IInvalidationCallbackDirectory invalidationCallbackDirectory,
@@ -143,7 +143,7 @@ namespace AI4E.Coordination.Locking
 
         private async Task<IPhysicalEndPoint<TAddress>> GetLocalSessionEndPointAsync(CancellationToken cancellation)
         {
-            var session = await _sessionOwner.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionIdentifierAsync(cancellation);
             return GetSessionEndPoint(session);
         }
 
@@ -168,7 +168,7 @@ namespace AI4E.Coordination.Locking
         public async ValueTask NotifyReadLockReleasedAsync(string key, CancellationToken cancellation)
         {
             var sessions = _sessionManager.GetSessionsAsync(cancellation);
-            var localSession = await _sessionOwner.GetSessionAsync(cancellation);
+            var localSession = await _sessionOwner.GetSessionIdentifierAsync(cancellation);
 
             var enumerator = sessions.GetEnumerator();
             try
@@ -199,7 +199,7 @@ namespace AI4E.Coordination.Locking
         public async ValueTask NotifyWriteLockReleasedAsync(string key, CancellationToken cancellation)
         {
             var sessions = _sessionManager.GetSessionsAsync(cancellation);
-            var localSession = await _sessionOwner.GetSessionAsync(cancellation);
+            var localSession = await _sessionOwner.GetSessionIdentifierAsync(cancellation);
 
             var enumerator = sessions.GetEnumerator();
             try
@@ -227,9 +227,9 @@ namespace AI4E.Coordination.Locking
         }
 
         /// <inheritdoc />
-        public async ValueTask InvalidateCacheEntryAsync(string key, CoordinationSession session, CancellationToken cancellation)
+        public async ValueTask InvalidateCacheEntryAsync(string key, SessionIdentifier session, CancellationToken cancellation)
         {
-            if (session == await _sessionOwner.GetSessionAsync(cancellation))
+            if (session == await _sessionOwner.GetSessionIdentifierAsync(cancellation))
             {
                 await _invalidationCallbackDirectory.InvokeAsync(key, cancellation);
             }
@@ -267,20 +267,20 @@ namespace AI4E.Coordination.Locking
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
                 {
-                    _logger?.LogWarning(exc, $"[{await _sessionOwner.GetSessionAsync(cancellation)}] Failure while decoding received message.");
+                    _logger?.LogWarning(exc, $"[{await _sessionOwner.GetSessionIdentifierAsync(cancellation)}] Failure while decoding received message.");
                 }
             }
         }
 
         private async Task HandleMessageAsync(
-            MessageType messageType, string key, CoordinationSession session, CancellationToken cancellation)
+            MessageType messageType, string key, SessionIdentifier session, CancellationToken cancellation)
         {
             switch (messageType)
             {
                 case MessageType.InvalidateCacheEntry:
-                    if (session != await _sessionOwner.GetSessionAsync(cancellation))
+                    if (session != await _sessionOwner.GetSessionIdentifierAsync(cancellation))
                     {
-                        _logger?.LogWarning($"[{await _sessionOwner.GetSessionAsync(cancellation)}] Received invalidate message for session that is not present.");
+                        _logger?.LogWarning($"[{await _sessionOwner.GetSessionIdentifierAsync(cancellation)}] Received invalidate message for session that is not present.");
                     }
                     else
                     {
@@ -298,12 +298,12 @@ namespace AI4E.Coordination.Locking
 
                 case MessageType.Unknown:
                 default:
-                    _logger?.LogWarning($"[{await _sessionOwner.GetSessionAsync(cancellation)}] Received invalid message or message with unknown message type.");
+                    _logger?.LogWarning($"[{await _sessionOwner.GetSessionIdentifierAsync(cancellation)}] Received invalid message or message with unknown message type.");
                     break;
             }
         }
 
-        private async Task SendMessageAsync(CoordinationSession session, Message message, CancellationToken cancellation)
+        private async Task SendMessageAsync(SessionIdentifier session, Message message, CancellationToken cancellation)
         {
             var remoteAddress = _addressConversion.DeserializeAddress(session.PhysicalAddress.ToArray()); // TODO: This will copy everything to a new aray
 
@@ -319,7 +319,7 @@ namespace AI4E.Coordination.Locking
             catch (IOException) { } // The remote session terminated or we just cannot transmit to it.
         }
 
-        private IPhysicalEndPoint<TAddress> GetSessionEndPoint(CoordinationSession session)
+        private IPhysicalEndPoint<TAddress> GetSessionEndPoint(SessionIdentifier session)
         {
             Assert(session != null);
             var multiplexName = GetMultiplexEndPointName(session);
@@ -328,7 +328,7 @@ namespace AI4E.Coordination.Locking
         }
 
         // TODO: Cache this
-        private string GetMultiplexEndPointName(CoordinationSession session)
+        private string GetMultiplexEndPointName(SessionIdentifier session)
         {
             var prefix = _options.MultiplexPrefix;
 
@@ -345,7 +345,7 @@ namespace AI4E.Coordination.Locking
             return prefix + session.ToString();
         }
 
-        private (MessageType messageType, string key, CoordinationSession session) DecodeMessage(IMessage message)
+        private (MessageType messageType, string key, SessionIdentifier session) DecodeMessage(IMessage message)
         {
             Assert(message != null);
 
@@ -357,13 +357,13 @@ namespace AI4E.Coordination.Locking
                 var key = binaryReader.ReadString();
                 var sessionLength = binaryReader.ReadInt32();
                 var sessionBytes = binaryReader.ReadBytes(sessionLength);
-                var session = CoordinationSession.FromChars(Encoding.UTF8.GetString(sessionBytes).AsSpan());
+                var session = SessionIdentifier.FromChars(Encoding.UTF8.GetString(sessionBytes).AsSpan());
 
                 return (messageType, key, session);
             }
         }
 
-        private Message EncodeMessage(MessageType messageType, string key, CoordinationSession session)
+        private Message EncodeMessage(MessageType messageType, string key, SessionIdentifier session)
         {
             var message = new Message();
 
@@ -372,7 +372,7 @@ namespace AI4E.Coordination.Locking
             return message;
         }
 
-        private void EncodeMessage(IMessage message, MessageType messageType, string key, CoordinationSession session)
+        private void EncodeMessage(IMessage message, MessageType messageType, string key, SessionIdentifier session)
         {
             Assert(message != null);
             // Modify if other message types are added

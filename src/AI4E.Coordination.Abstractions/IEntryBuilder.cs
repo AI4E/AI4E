@@ -15,7 +15,7 @@ namespace AI4E.Coordination
         CoordinationEntryPath Path { get; }
         ReadOnlyMemory<byte> Value { get; set; }
         int Version { get; }
-        CoordinationSession EphemeralOwner { get; }
+        SessionIdentifier EphemeralOwner { get; }
 
         IEntry ToEntry();
     }

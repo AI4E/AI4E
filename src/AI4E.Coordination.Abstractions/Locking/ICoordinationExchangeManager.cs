@@ -78,7 +78,7 @@ namespace AI4E.Coordination.Locking
         /// </returns>
         ValueTask InvalidateCacheEntryAsync( // TODO: Rename to RealeaseReadLockAsync?
             string key,
-            CoordinationSession session,
+            SessionIdentifier session,
             CancellationToken cancellation = default);
     }
 

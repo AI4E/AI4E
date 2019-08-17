@@ -50,7 +50,7 @@ namespace AI4E.Coordination
             services.AddScoped(p => ConfigureCoordinationExchangeManager(p, addressType));
             services.AddScoped(typeof(ICoordinationWaitManager), typeof(CoordinationWaitManager));
             services.AddScoped(typeof(ICoordinationLockManager), typeof(CoordinationLockManager));
-            services.AddScoped<ICoordinationSessionOwner, CoordinationSessionOwner>();
+            services.AddScoped<ISessionOwner, SessionOwner>();
             services.AddScoped(typeof(ILockWaitDirectory), typeof(LockWaitDirectory));
             services.AddScoped(typeof(ICoordinationCacheManager), typeof(CoodinationCacheManager));
             services.AddScoped(typeof(IInvalidationCallbackDirectory), typeof(InvalidationCallbackDirectory));
@@ -74,12 +74,12 @@ namespace AI4E.Coordination
             return (ICoordinationManagerFactory)ActivatorUtilities.CreateInstance(serviceProvider, typeof(CoordinationManagerFactory<>).MakeGenericType(addressType));
         }
 
-        private static ISessionProvider ConfigureSessionProvider(IServiceProvider serviceProvider, Type addressType)
+        private static ISessionIdentifierProvider ConfigureSessionProvider(IServiceProvider serviceProvider, Type addressType)
         {
             if (addressType == null)
                 addressType = LookupAddressType(serviceProvider);
 
-            return (ISessionProvider)ActivatorUtilities.CreateInstance(serviceProvider, typeof(SessionProvider<>).MakeGenericType(addressType));
+            return (ISessionIdentifierProvider)ActivatorUtilities.CreateInstance(serviceProvider, typeof(SessionIdentifierProvider<>).MakeGenericType(addressType));
         }
 
         private static Type LookupAddressType(IServiceProvider serviceProvider)

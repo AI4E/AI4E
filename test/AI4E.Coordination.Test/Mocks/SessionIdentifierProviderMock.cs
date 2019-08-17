@@ -26,21 +26,21 @@ using AI4E.Coordination.Session;
 
 namespace AI4E.Coordination.Mocks
 {
-    public sealed class SessionProviderMock : ISessionProvider
+    public sealed class SessionIdentifierProviderMock : ISessionIdentifierProvider
     {
-        private readonly List<CoordinationSession> _coordinationSessions = new List<CoordinationSession>();
+        private readonly List<SessionIdentifier> _coordinationSessions = new List<SessionIdentifier>();
         private int _counter;
 
-        public CoordinationSession GetSession()
+        public SessionIdentifier CreateUniqueSessionIdentifier()
         {
             var prefix = BitConverter.GetBytes(Interlocked.Increment(ref _counter));
             var physicalAddress = Encoding.UTF8.GetBytes("Testaddress");
 
-            var result = new CoordinationSession(prefix, physicalAddress);
+            var result = new SessionIdentifier(prefix, physicalAddress);
             _coordinationSessions.Add(result);
             return result;
         }
 
-        public IReadOnlyList<CoordinationSession> CreatedSessions => _coordinationSessions;
+        public IReadOnlyList<SessionIdentifier> CreatedSessions => _coordinationSessions;
     }
 }

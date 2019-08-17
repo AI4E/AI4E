@@ -260,7 +260,7 @@ namespace AI4E.Modularity
             ModuleIdentifier module,
             ModuleProperties properties,
             bool overrideExisting,
-            CoordinationSession session,
+            SessionIdentifier session,
             CancellationToken cancellation)
         {
             var path = GetRunningModulePath(module, session);
@@ -335,7 +335,7 @@ namespace AI4E.Modularity
             while (!await AddOrUpdateAsync());
         }
 
-        private async Task WriteModulePrefixEntryAsync(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, CoordinationSession session, CancellationToken cancellation)
+        private async Task WriteModulePrefixEntryAsync(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, SessionIdentifier session, CancellationToken cancellation)
         {
             var normalizedPrefix = NormalizePrefix(prefix);
 
@@ -394,7 +394,7 @@ namespace AI4E.Modularity
             return _rootPrefixesPath.GetChildPath(prefix);
         }
 
-        private static CoordinationEntryPath GetPrefixPath(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, CoordinationSession session, bool normalize = true)
+        private static CoordinationEntryPath GetPrefixPath(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, SessionIdentifier session, bool normalize = true)
         {
             if (normalize)
             {
@@ -410,7 +410,7 @@ namespace AI4E.Modularity
             return _rootRunningPath.GetChildPath(module.Name);
         }
 
-        private static CoordinationEntryPath GetRunningModulePath(ModuleIdentifier module, CoordinationSession session)
+        private static CoordinationEntryPath GetRunningModulePath(ModuleIdentifier module, SessionIdentifier session)
         {
             return _rootRunningPath.GetChildPath(module.Name, session.ToString());
         }

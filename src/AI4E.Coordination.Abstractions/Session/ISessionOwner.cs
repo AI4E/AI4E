@@ -27,10 +27,10 @@ namespace AI4E.Coordination.Session
     /// <summary>
     /// Represents the owner of a coordination service session.
     /// </summary>
-    public interface ICoordinationSessionOwner : IDisposable
+    public interface ISessionOwner : IDisposable
     {
         /// <summary>
-        /// Asynchronously retrieves the coordination service session.
+        /// Asynchronously retrieves the identifier of the current coordination service session.
         /// </summary>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
@@ -39,6 +39,6 @@ namespace AI4E.Coordination.Session
         /// A <see cref="ValueTask{TResult}"/> to represents the asynchronous operation.
         /// When evaluated, the tasks result contains the coordination service session.
         /// </returns>
-        ValueTask<CoordinationSession> GetSessionAsync(CancellationToken cancellation);
+        ValueTask<SessionIdentifier> GetSessionIdentifierAsync(CancellationToken cancellation);
     }
 }

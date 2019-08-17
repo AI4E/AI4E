@@ -113,8 +113,8 @@ namespace AI4E.Coordination.Storage
             public bool IsMarkedAsDeleted { get; set; }
 
             string IStoredEntry.Key => Id;
-            CoordinationSession? IStoredEntry.WriteLock => WriteLock == null ? default(CoordinationSession?) : CoordinationSession.FromChars(WriteLock.AsSpan());
-            ImmutableArray<CoordinationSession> IStoredEntry.ReadLocks => ReadLocks.Select(p => CoordinationSession.FromChars(p.AsSpan())).ToImmutableArray();
+            SessionIdentifier? IStoredEntry.WriteLock => WriteLock == null ? default(SessionIdentifier?) : SessionIdentifier.FromChars(WriteLock.AsSpan());
+            ImmutableArray<SessionIdentifier> IStoredEntry.ReadLocks => ReadLocks.Select(p => SessionIdentifier.FromChars(p.AsSpan())).ToImmutableArray();
             ReadOnlyMemory<byte> IStoredEntry.Value => Value;
         }
     }

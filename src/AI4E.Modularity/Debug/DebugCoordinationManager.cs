@@ -17,7 +17,7 @@ namespace AI4E.Modularity.Debug
         private readonly ILogger<DebugCoordinationManager> _logger;
 
         private readonly DisposableAsyncLazy<IProxy<CoordinationManagerSkeleton>> _proxyLazy;
-        private readonly DisposableAsyncLazy<CoordinationSession> _sessionLazy;
+        private readonly DisposableAsyncLazy<SessionIdentifier> _sessionLazy;
 
         public DebugCoordinationManager(DebugConnection debugConnection, ILogger<DebugCoordinationManager> logger = null)
         {
@@ -32,7 +32,7 @@ namespace AI4E.Modularity.Debug
                 disposal: p => p.DisposeAsync(),
                 options: DisposableAsyncLazyOptions.Autostart | DisposableAsyncLazyOptions.ExecuteOnCallingThread);
 
-            _sessionLazy = new DisposableAsyncLazy<CoordinationSession>(
+            _sessionLazy = new DisposableAsyncLazy<SessionIdentifier>(
                 factory: GetSessionInternalAsync,
                 options: DisposableAsyncLazyOptions.ExecuteOnCallingThread | DisposableAsyncLazyOptions.RetryOnFailure);
         }
@@ -120,19 +120,19 @@ namespace AI4E.Modularity.Debug
             return await proxy.ExecuteAsync(p => p.DeleteAsync(path.EscapedPath.ConvertToString(), version, recursive, cancellation));
         }
 
-        private async Task<CoordinationSession> GetSessionInternalAsync(CancellationToken cancellation)
+        private async Task<SessionIdentifier> GetSessionInternalAsync(CancellationToken cancellation)
         {
             var proxy = await GetProxyAsync(cancellation);
             var session = await proxy.ExecuteAsync(p => p.GetSessionAsync(cancellation));
-            return CoordinationSession.FromChars(session.AsSpan());
+            return SessionIdentifier.FromChars(session.AsSpan());
         }
 
-        public ValueTask<CoordinationSession> GetSessionAsync(CancellationToken cancellation = default)
+        public ValueTask<SessionIdentifier> GetSessionAsync(CancellationToken cancellation = default)
         {
             // Once determined, the session is a constant and can be cached.
             // Be aware that this can change in the future, 
             // for example when implementing reconnection on session termination.
-            return new ValueTask<CoordinationSession>(_sessionLazy.Task.WithCancellation(cancellation));
+            return new ValueTask<SessionIdentifier>(_sessionLazy.Task.WithCancellation(cancellation));
         }
     }
 }

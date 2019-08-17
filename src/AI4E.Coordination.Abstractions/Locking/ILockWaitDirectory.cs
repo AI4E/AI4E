@@ -36,7 +36,7 @@ namespace AI4E.Coordination.Locking
         /// <param name="session">The session that formerly owned the read-lock.</param>
         void NotifyReadLockRelease(
             string key,
-            CoordinationSession session);
+            SessionIdentifier session);
 
         /// <summary>
         /// Notifies that a write-lock was released.
@@ -45,7 +45,7 @@ namespace AI4E.Coordination.Locking
         /// <param name="session">The session that formerly owned the write-lock.</param>
         void NotifyWriteLockRelease(
             string key,
-            CoordinationSession session);
+            SessionIdentifier session);
 
         /// <summary>
         /// Asynchronously awaits the release of a read-lock.
@@ -59,7 +59,7 @@ namespace AI4E.Coordination.Locking
         /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
         ValueTask WaitForReadLockNotificationAsync(
             string key,
-            CoordinationSession session,
+            SessionIdentifier session,
             CancellationToken cancellation = default);
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace AI4E.Coordination.Locking
         /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
         ValueTask WaitForWriteLockNotificationAsync(
             string key,
-            CoordinationSession session,
+            SessionIdentifier session,
             CancellationToken cancellation = default);
     }
 }

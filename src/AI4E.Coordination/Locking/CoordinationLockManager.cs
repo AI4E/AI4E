@@ -16,7 +16,7 @@ namespace AI4E.Coordination.Locking
     {
         #region Fields
 
-        private readonly ICoordinationSessionOwner _sessionOwner;
+        private readonly ISessionOwner _sessionOwner;
         private readonly ISessionManager _sessionManager;
         private readonly ICoordinationStorage _storage;
         private readonly ICoordinationWaitManager _waitManager;
@@ -29,7 +29,7 @@ namespace AI4E.Coordination.Locking
 
         #region C'tor
 
-        public CoordinationLockManager(ICoordinationSessionOwner sessionOwner,
+        public CoordinationLockManager(ISessionOwner sessionOwner,
                                        ISessionManager sessionManager,
                                        ICoordinationStorage storage,
                                        ICoordinationWaitManager waitManager,
@@ -66,7 +66,7 @@ namespace AI4E.Coordination.Locking
 
         private async Task<TaskCancellationTokenSource> BuildSessionTerminationSourceAsync(CancellationToken cancellation)
         {
-            var session = await _sessionOwner.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionIdentifierAsync(cancellation);
             var sessionTermination = _sessionManager.WaitForTerminationAsync(session, cancellation);
             return new TaskCancellationTokenSource(sessionTermination);
         }
@@ -85,7 +85,7 @@ namespace AI4E.Coordination.Locking
             string key,
             CancellationToken cancellation)
         {
-            var session = await _sessionOwner.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionIdentifierAsync(cancellation);
             IStoredEntry entry;
 
             do
@@ -125,7 +125,7 @@ namespace AI4E.Coordination.Locking
                 watch.Start();
             }
 
-            var session = await _sessionOwner.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionIdentifierAsync(cancellation);
 
             if (!await _sessionManager.IsAliveAsync(session, cancellation))
             {
@@ -216,7 +216,7 @@ namespace AI4E.Coordination.Locking
             var cancellation = (await _sessionTerminationSource).Token;
             IStoredEntry start, desired;
 
-            var session = await _sessionOwner.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionIdentifierAsync(cancellation);
 
             if (entry != null)
             {
@@ -283,7 +283,7 @@ namespace AI4E.Coordination.Locking
 
             IStoredEntry start, desired;
 
-            var session = await _sessionOwner.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionIdentifierAsync(cancellation);
 
             if (!await _sessionManager.IsAliveAsync(session, cancellation))
             {
@@ -351,7 +351,7 @@ namespace AI4E.Coordination.Locking
             var cancellation = (await _sessionTerminationSource).Token;
             IStoredEntry start, desired;
 
-            var session = await _sessionOwner.GetSessionAsync(cancellation);
+            var session = await _sessionOwner.GetSessionIdentifierAsync(cancellation);
 
             if (entry != null)
             {

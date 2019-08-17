@@ -35,7 +35,7 @@ namespace AI4E.Coordination.Mocks
         private readonly IDateTimeProvider _dateTimeProvider;
 
         private readonly object _mutex = new object();
-        private readonly ConcurrentDictionary<CoordinationSession, SessionEntry> _sessions = new ConcurrentDictionary<CoordinationSession, SessionEntry>();
+        private readonly ConcurrentDictionary<SessionIdentifier, SessionEntry> _sessions = new ConcurrentDictionary<SessionIdentifier, SessionEntry>();
         private readonly AsyncAutoResetEvent _sessionAddedEvent = new AsyncAutoResetEvent();
 
         public SessionManagerMock(IDateTimeProvider dateTimeProvider)
@@ -54,7 +54,7 @@ namespace AI4E.Coordination.Mocks
 
             private DateTime _leaseEnd;
 
-            public SessionEntry(CoordinationSession session, IDateTimeProvider dateTimeProvider, DateTime leaseEnd)
+            public SessionEntry(SessionIdentifier session, IDateTimeProvider dateTimeProvider, DateTime leaseEnd)
             {
                 Session = session;
                 _dateTimeProvider = dateTimeProvider;
@@ -69,7 +69,7 @@ namespace AI4E.Coordination.Mocks
 
             public bool IsTerminated => Termination.IsCompleted;
 
-            public CoordinationSession Session { get; }
+            public SessionIdentifier Session { get; }
 
             public bool TryUpdate(DateTime leaseEnd)
             {
@@ -158,7 +158,7 @@ namespace AI4E.Coordination.Mocks
             }
         }
 
-        public Task<bool> TryBeginSessionAsync(CoordinationSession session, DateTime leaseEnd, CancellationToken cancellation = default)
+        public Task<bool> TryBeginSessionAsync(SessionIdentifier session, DateTime leaseEnd, CancellationToken cancellation = default)
         {
             var entry = new SessionEntry(session, _dateTimeProvider, leaseEnd);
 
@@ -182,7 +182,7 @@ namespace AI4E.Coordination.Mocks
         }
 
         // TODO: Return Task<bool> / ValueTask<bool> ?
-        public Task UpdateSessionAsync(CoordinationSession session, DateTime leaseEnd, CancellationToken cancellation = default)
+        public Task UpdateSessionAsync(SessionIdentifier session, DateTime leaseEnd, CancellationToken cancellation = default)
         {
             if (!_sessions.TryGetValue(session, out var entry))
             {
@@ -200,7 +200,7 @@ namespace AI4E.Coordination.Mocks
         }
 
         // TODO: ENDSession / WaitForTERMINATION -- NAMING
-        public Task EndSessionAsync(CoordinationSession session, CancellationToken cancellation = default)
+        public Task EndSessionAsync(SessionIdentifier session, CancellationToken cancellation = default)
         {
             if (_sessions.TryGetValue(session, out var entry))
             {
@@ -210,7 +210,7 @@ namespace AI4E.Coordination.Mocks
             return Task.CompletedTask;
         }
 
-        public Task WaitForTerminationAsync(CoordinationSession session, CancellationToken cancellation = default)
+        public Task WaitForTerminationAsync(SessionIdentifier session, CancellationToken cancellation = default)
         {
             if (!_sessions.TryGetValue(session, out var entry))
             {
@@ -220,9 +220,9 @@ namespace AI4E.Coordination.Mocks
             return entry.Termination.WithCancellation(cancellation);
         }
 
-        public async Task<CoordinationSession> WaitForTerminationAsync(CancellationToken cancellation = default)
+        public async Task<SessionIdentifier> WaitForTerminationAsync(CancellationToken cancellation = default)
         {
-            async Task<CoordinationSession> GetTermination(SessionEntry entry)
+            async Task<SessionIdentifier> GetTermination(SessionEntry entry)
             {
                 await entry.Termination.WithCancellation(cancellation);
                 return entry.Session;
@@ -246,12 +246,12 @@ namespace AI4E.Coordination.Mocks
             }
             while (completed == entryAddedTask);
 
-            return await (Task<CoordinationSession>)completed;
+            return await (Task<SessionIdentifier>)completed;
         }
 
         // TODO: ENDSession / WaitForTERMINATION / isALIVE -- NAMING
         // TODO: Return ValueTask<bool>
-        public Task<bool> IsAliveAsync(CoordinationSession session, CancellationToken cancellation = default)
+        public Task<bool> IsAliveAsync(SessionIdentifier session, CancellationToken cancellation = default)
         {
             if (!_sessions.TryGetValue(session, out var entry))
             {
@@ -261,24 +261,24 @@ namespace AI4E.Coordination.Mocks
             return Task.FromResult(!entry.IsTerminated);
         }
 
-        public IAsyncEnumerable<CoordinationSession> GetSessionsAsync(CancellationToken cancellation = default)
+        public IAsyncEnumerable<SessionIdentifier> GetSessionsAsync(CancellationToken cancellation = default)
         {
             return _sessions.Keys.ToAsyncEnumerable();
         }
 
         #region Entries
 
-        public Task AddSessionEntryAsync(CoordinationSession session, CoordinationEntryPath entryPath, CancellationToken cancellation = default)
+        public Task AddSessionEntryAsync(SessionIdentifier session, CoordinationEntryPath entryPath, CancellationToken cancellation = default)
         {
             throw new NotImplementedException();
         }
 
-        public Task RemoveSessionEntryAsync(CoordinationSession session, CoordinationEntryPath entryPath, CancellationToken cancellation = default)
+        public Task RemoveSessionEntryAsync(SessionIdentifier session, CoordinationEntryPath entryPath, CancellationToken cancellation = default)
         {
             throw new NotImplementedException();
         }
 
-        public Task<IEnumerable<CoordinationEntryPath>> GetEntriesAsync(CoordinationSession session, CancellationToken cancellation = default)
+        public Task<IEnumerable<CoordinationEntryPath>> GetEntriesAsync(SessionIdentifier session, CancellationToken cancellation = default)
         {
             throw new NotImplementedException();
         }

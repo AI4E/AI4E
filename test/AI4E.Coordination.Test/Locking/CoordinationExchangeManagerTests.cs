@@ -44,9 +44,9 @@ namespace AI4E.Coordination.Locking
         public DateTimeProviderMock DateTimeProvider { get; set; }
         public SessionManagerMock SessionManager { get; set; }
 
-        public CoordinationSessionOwnerMock CoordinationSessionOwner1 { get; set; }
-        public CoordinationSessionOwnerMock CoordinationSessionOwner2 { get; set; }
-        public CoordinationSessionOwnerMock CoordinationSessionOwner3 { get; set; }
+        public SessionOwnerMock CoordinationSessionOwner1 { get; set; }
+        public SessionOwnerMock CoordinationSessionOwner2 { get; set; }
+        public SessionOwnerMock CoordinationSessionOwner3 { get; set; }
 
         public IOptions<CoordinationManagerOptions> OptionsAccessor { get; set; }
 
@@ -77,12 +77,12 @@ namespace AI4E.Coordination.Locking
             DateTimeProvider = new DateTimeProviderMock();
             SessionManager = new SessionManagerMock(DateTimeProvider);
 
-            CoordinationSessionOwner1 = new CoordinationSessionOwnerMock(
-                new CoordinationSession(ReadOnlySpan<byte>.Empty, AddressConversion.SerializeAddress(PhysicalEndPointMultiplexer1.LocalAddress)));
-            CoordinationSessionOwner2 = new CoordinationSessionOwnerMock(
-                new CoordinationSession(ReadOnlySpan<byte>.Empty, AddressConversion.SerializeAddress(PhysicalEndPointMultiplexer2.LocalAddress)));
-            CoordinationSessionOwner3 = new CoordinationSessionOwnerMock(
-                new CoordinationSession(ReadOnlySpan<byte>.Empty, AddressConversion.SerializeAddress(PhysicalEndPointMultiplexer3.LocalAddress)));
+            CoordinationSessionOwner1 = new SessionOwnerMock(
+                new SessionIdentifier(ReadOnlySpan<byte>.Empty, AddressConversion.SerializeAddress(PhysicalEndPointMultiplexer1.LocalAddress)));
+            CoordinationSessionOwner2 = new SessionOwnerMock(
+                new SessionIdentifier(ReadOnlySpan<byte>.Empty, AddressConversion.SerializeAddress(PhysicalEndPointMultiplexer2.LocalAddress)));
+            CoordinationSessionOwner3 = new SessionOwnerMock(
+                new SessionIdentifier(ReadOnlySpan<byte>.Empty, AddressConversion.SerializeAddress(PhysicalEndPointMultiplexer3.LocalAddress)));
 
             SessionManager.TryBeginSessionAsync(CoordinationSessionOwner1.Session, DateTimeProvider.CurrentTime + TimeSpan.FromSeconds(30));
             SessionManager.TryBeginSessionAsync(CoordinationSessionOwner2.Session, DateTimeProvider.CurrentTime + TimeSpan.FromSeconds(30));

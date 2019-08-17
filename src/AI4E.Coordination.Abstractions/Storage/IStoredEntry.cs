@@ -39,12 +39,12 @@ namespace AI4E.Coordination.Storage
         /// <summary>
         /// Gets a collection of session that read locks are held for.
         /// </summary>
-        ImmutableArray<CoordinationSession> ReadLocks { get; }
+        ImmutableArray<SessionIdentifier> ReadLocks { get; }
 
         /// <summary>
         /// Gets the session that a write lock is held for.
         /// </summary>
-        CoordinationSession? WriteLock { get; }
+        SessionIdentifier? WriteLock { get; }
 
         int StorageVersion { get; }
 

@@ -27,7 +27,7 @@ namespace AI4E.Coordination.Storage
             return storedSession as StoredSession ?? new StoredSession(storedSession);
         }
 
-        public IStoredSession Begin(CoordinationSession session, DateTime leaseEnd)
+        public IStoredSession Begin(SessionIdentifier session, DateTime leaseEnd)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -113,7 +113,7 @@ namespace AI4E.Coordination.Storage
                 StorageVersion = storedSession.StorageVersion;
             }
 
-            public StoredSession(CoordinationSession session, bool isEnded, DateTime leaseEnd, ImmutableArray<CoordinationEntryPath> entryPaths, int storageVersion)
+            public StoredSession(SessionIdentifier session, bool isEnded, DateTime leaseEnd, ImmutableArray<CoordinationEntryPath> entryPaths, int storageVersion)
             {
                 Assert(session != default);
 
@@ -124,7 +124,7 @@ namespace AI4E.Coordination.Storage
                 StorageVersion = storageVersion;
             }
 
-            public CoordinationSession Session { get; }
+            public SessionIdentifier Session { get; }
 
             public bool IsEnded { get; }
 

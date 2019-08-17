@@ -12,23 +12,23 @@ namespace AI4E.Coordination.Session
     {
         public DateTimeProviderMock DateTimeProvider { get; set; }
         public SessionManagerMock SessionManager { get; set; }
-        public SessionProviderMock SessionProvider { get; set; }
+        public SessionIdentifierProviderMock SessionProvider { get; set; }
         public IOptions<CoordinationManagerOptions> OptionsAccessor { get; set; }
-        public LoggerMock<CoordinationSessionOwner> Logger { get; set; }
-        public CoordinationSessionOwner CoordinationSessionOwner { get; set; }
+        public LoggerMock<SessionOwner> Logger { get; set; }
+        public SessionOwner CoordinationSessionOwner { get; set; }
 
         [TestInitialize]
         public void Setup()
         {
             DateTimeProvider = new DateTimeProviderMock();
             SessionManager = new SessionManagerMock(DateTimeProvider);
-            SessionProvider = new SessionProviderMock();
+            SessionProvider = new SessionIdentifierProviderMock();
             OptionsAccessor = Options.Create(new CoordinationManagerOptions
             {
                 LeaseLength = TimeSpan.FromMilliseconds(6)
             });
-            Logger = new LoggerMock<CoordinationSessionOwner>();
-            CoordinationSessionOwner = new CoordinationSessionOwner(
+            Logger = new LoggerMock<SessionOwner>();
+            CoordinationSessionOwner = new SessionOwner(
                 SessionManager, SessionProvider, DateTimeProvider, OptionsAccessor, Logger);
         }
 
@@ -41,7 +41,7 @@ namespace AI4E.Coordination.Session
         [TestMethod]
         public async Task StartSessionTest()
         {
-            var session = await CoordinationSessionOwner.GetSessionAsync(default);
+            var session = await CoordinationSessionOwner.GetSessionIdentifierAsync(default);
 
             Assert.AreEqual(SessionProvider.CreatedSessions.Single(), session);
             Assert.IsTrue(await SessionManager.IsAliveAsync(session));
@@ -50,7 +50,7 @@ namespace AI4E.Coordination.Session
         [TestMethod]
         public async Task UpdateSessionTest()
         {
-            await CoordinationSessionOwner.GetSessionAsync(default);
+            await CoordinationSessionOwner.GetSessionIdentifierAsync(default);
 
             for (var i = 0; i < 100; i++)
             {
@@ -59,7 +59,7 @@ namespace AI4E.Coordination.Session
                 await Task.Delay(1);
             }
 
-            var session = await CoordinationSessionOwner.GetSessionAsync(default);
+            var session = await CoordinationSessionOwner.GetSessionIdentifierAsync(default);
 
             Assert.IsTrue(await SessionManager.IsAliveAsync(session));
         }
@@ -67,7 +67,7 @@ namespace AI4E.Coordination.Session
         [TestMethod]
         public async Task TerminateSessionTest()
         {
-            var session = await CoordinationSessionOwner.GetSessionAsync(default);
+            var session = await CoordinationSessionOwner.GetSessionIdentifierAsync(default);
 
             CoordinationSessionOwner.Dispose();
 

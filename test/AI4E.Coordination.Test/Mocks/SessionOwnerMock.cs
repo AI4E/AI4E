@@ -24,18 +24,18 @@ using AI4E.Coordination.Session;
 
 namespace AI4E.Coordination.Mocks
 {
-    public sealed class CoordinationSessionOwnerMock : ICoordinationSessionOwner
+    public sealed class SessionOwnerMock : ISessionOwner
     {
-        public CoordinationSessionOwnerMock(CoordinationSession session)
+        public SessionOwnerMock(SessionIdentifier session)
         {
             Session = session;
         }
 
-        public CoordinationSession Session { get; set; }
+        public SessionIdentifier Session { get; set; }
 
-        public ValueTask<CoordinationSession> GetSessionAsync(CancellationToken cancellation)
+        public ValueTask<SessionIdentifier> GetSessionIdentifierAsync(CancellationToken cancellation)
         {
-            return new ValueTask<CoordinationSession>(Session);
+            return new ValueTask<SessionIdentifier>(Session);
         }
 
         public void Dispose() { IsDisposed = true; }

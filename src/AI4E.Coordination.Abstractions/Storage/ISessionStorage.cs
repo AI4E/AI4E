@@ -43,7 +43,7 @@ namespace AI4E.Coordination.Storage
         /// When evaluated, the tasks result contains the loaded entry, or <c>null</c>
         /// if an entry with <paramref name="session"/> does not exist.
         /// </returns>
-        Task<IStoredSession> GetSessionAsync(CoordinationSession session, CancellationToken cancellation = default);
+        Task<IStoredSession> GetSessionAsync(SessionIdentifier session, CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously retrieves a list of entries representing all known sessions.

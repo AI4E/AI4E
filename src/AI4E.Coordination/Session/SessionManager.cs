@@ -37,7 +37,7 @@ namespace AI4E.Coordination.Session
         private readonly IStoredSessionManager _storedSessionManager;
         private readonly IDateTimeProvider _dateTimeProvider;
 
-        private readonly Dictionary<CoordinationSession, Task> _sessionTerminationCache = new Dictionary<CoordinationSession, Task>();
+        private readonly Dictionary<SessionIdentifier, Task> _sessionTerminationCache = new Dictionary<SessionIdentifier, Task>();
 
         /// <summary>
         /// Creates a new instance of the <see cref="SessionManager"/> type.
@@ -68,7 +68,7 @@ namespace AI4E.Coordination.Session
         }
 
         /// <inheritdoc/>
-        public async Task AddSessionEntryAsync(CoordinationSession session, CoordinationEntryPath entryPath, CancellationToken cancellation)
+        public async Task AddSessionEntryAsync(SessionIdentifier session, CoordinationEntryPath entryPath, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -94,7 +94,7 @@ namespace AI4E.Coordination.Session
         }
 
         /// <inheritdoc/>
-        public async Task RemoveSessionEntryAsync(CoordinationSession session, CoordinationEntryPath entryPath, CancellationToken cancellation)
+        public async Task RemoveSessionEntryAsync(SessionIdentifier session, CoordinationEntryPath entryPath, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -125,7 +125,7 @@ namespace AI4E.Coordination.Session
         }
 
         /// <inheritdoc/>
-        public async Task<IEnumerable<CoordinationEntryPath>> GetEntriesAsync(CoordinationSession session, CancellationToken cancellation)
+        public async Task<IEnumerable<CoordinationEntryPath>> GetEntriesAsync(SessionIdentifier session, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -139,7 +139,7 @@ namespace AI4E.Coordination.Session
         }
 
         /// <inheritdoc/>
-        public async Task<bool> TryBeginSessionAsync(CoordinationSession session, DateTime leaseEnd, CancellationToken cancellation)
+        public async Task<bool> TryBeginSessionAsync(SessionIdentifier session, DateTime leaseEnd, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -152,7 +152,7 @@ namespace AI4E.Coordination.Session
         }
 
         /// <inheritdoc/>
-        public async Task UpdateSessionAsync(CoordinationSession session, DateTime leaseEnd, CancellationToken cancellation)
+        public async Task UpdateSessionAsync(SessionIdentifier session, DateTime leaseEnd, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -178,7 +178,7 @@ namespace AI4E.Coordination.Session
         }
 
         /// <inheritdoc/>
-        public async Task EndSessionAsync(CoordinationSession session, CancellationToken cancellation)
+        public async Task EndSessionAsync(SessionIdentifier session, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -203,7 +203,7 @@ namespace AI4E.Coordination.Session
         }
 
         /// <inheritdoc/>
-        public Task WaitForTerminationAsync(CoordinationSession session, CancellationToken cancellation)
+        public Task WaitForTerminationAsync(SessionIdentifier session, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -252,7 +252,7 @@ namespace AI4E.Coordination.Session
             return result;
         }
 
-        private async Task InternalWaitForTerminationAsync(CoordinationSession session, CancellationToken cancellation)
+        private async Task InternalWaitForTerminationAsync(SessionIdentifier session, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -286,7 +286,7 @@ namespace AI4E.Coordination.Session
         }
 
         /// <inheritdoc/>
-        public async Task<CoordinationSession> WaitForTerminationAsync(CancellationToken cancellation)
+        public async Task<SessionIdentifier> WaitForTerminationAsync(CancellationToken cancellation)
         {
             while (true)
             {
@@ -323,7 +323,7 @@ namespace AI4E.Coordination.Session
         }
 
         /// <inheritdoc/>
-        public async Task<bool> IsAliveAsync(CoordinationSession session, CancellationToken cancellation)
+        public async Task<bool> IsAliveAsync(SessionIdentifier session, CancellationToken cancellation)
         {
             if (session == default)
                 throw new ArgumentDefaultException(nameof(session));
@@ -334,7 +334,7 @@ namespace AI4E.Coordination.Session
         }
 
         /// <inheritdoc/>
-        public IAsyncEnumerable<CoordinationSession> GetSessionsAsync(CancellationToken cancellation)
+        public IAsyncEnumerable<SessionIdentifier> GetSessionsAsync(CancellationToken cancellation)
         {
             return _storage.GetSessionsAsync(cancellation)
                            .Where(p => !_storedSessionManager.IsEnded(p))

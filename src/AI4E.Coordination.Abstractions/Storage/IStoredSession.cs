@@ -26,7 +26,7 @@ namespace AI4E.Coordination.Storage
 {
     public interface IStoredSession
     {
-        CoordinationSession Session { get; }
+        SessionIdentifier Session { get; }
         bool IsEnded { get; }
         DateTime LeaseEnd { get; }
         int StorageVersion { get; }

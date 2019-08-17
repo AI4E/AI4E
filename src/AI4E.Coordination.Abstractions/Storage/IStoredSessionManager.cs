@@ -6,7 +6,7 @@ namespace AI4E.Coordination.Storage
     public interface IStoredSessionManager
     {
         IStoredSession AddEntry(IStoredSession storedSession, CoordinationEntryPath entryPath);
-        IStoredSession Begin(CoordinationSession session, DateTime leaseEnd);
+        IStoredSession Begin(SessionIdentifier session, DateTime leaseEnd);
         IStoredSession Copy(IStoredSession storedSession);
         IStoredSession End(IStoredSession storedSession);
         bool IsEnded(IStoredSession storedSession);

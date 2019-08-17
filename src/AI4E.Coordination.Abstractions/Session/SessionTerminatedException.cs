@@ -14,19 +14,19 @@ namespace AI4E.Coordination.Session
 
         protected SessionTerminatedException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 
-        public SessionTerminatedException(CoordinationSession session) : base(FormatMessage(session))
+        public SessionTerminatedException(SessionIdentifier session) : base(FormatMessage(session))
         {
             Session = session;
         }
 
-        public SessionTerminatedException(CoordinationSession session, Exception innerException) : base(FormatMessage(session), innerException)
+        public SessionTerminatedException(SessionIdentifier session, Exception innerException) : base(FormatMessage(session), innerException)
         {
             Session = session;
         }
 
-        public CoordinationSession Session { get; }
+        public SessionIdentifier Session { get; }
 
-        private static string FormatMessage(CoordinationSession session)
+        private static string FormatMessage(SessionIdentifier session)
         {
             return $"The session '{session.ToString()}' is terminated.";
         }

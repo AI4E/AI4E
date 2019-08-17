@@ -27,10 +27,10 @@ namespace AI4E.Coordination.Storage
 {
     public sealed class StoredEntryBuilder : IStoredEntryBuilder
     {
-        private static readonly ImmutableArray<CoordinationSession> _noReadLocks = ImmutableArray<CoordinationSession>.Empty;
-        private readonly CoordinationSession _session;
+        private static readonly ImmutableArray<SessionIdentifier> _noReadLocks = ImmutableArray<SessionIdentifier>.Empty;
+        private readonly SessionIdentifier _session;
 
-        public StoredEntryBuilder(IStoredEntry entry, CoordinationSession session)
+        public StoredEntryBuilder(IStoredEntry entry, SessionIdentifier session)
         {
             _session = session;
 
@@ -42,7 +42,7 @@ namespace AI4E.Coordination.Storage
             IsMarkedAsDeleted = entry.IsMarkedAsDeleted;
         }
 
-        public StoredEntryBuilder(string key, CoordinationSession session)
+        public StoredEntryBuilder(string key, SessionIdentifier session)
         {
             _session = session;
 
@@ -55,9 +55,9 @@ namespace AI4E.Coordination.Storage
 
         public ReadOnlyMemory<byte> Value { get; private set; }
 
-        public ImmutableArray<CoordinationSession> ReadLocks { get; private set; }
+        public ImmutableArray<SessionIdentifier> ReadLocks { get; private set; }
 
-        public CoordinationSession? WriteLock { get; private set; }
+        public SessionIdentifier? WriteLock { get; private set; }
 
         public int StorageVersion { get; private set; }
 
@@ -191,8 +191,8 @@ namespace AI4E.Coordination.Storage
             public StoredEntry(
                 string key,
                 ReadOnlyMemory<byte> value,
-                ImmutableArray<CoordinationSession> readLocks,
-                CoordinationSession? writeLock,
+                ImmutableArray<SessionIdentifier> readLocks,
+                SessionIdentifier? writeLock,
                 int storageVersion,
                 bool isMarkedAsDeleted)
             {
@@ -208,9 +208,9 @@ namespace AI4E.Coordination.Storage
 
             public ReadOnlyMemory<byte> Value { get; }
 
-            public ImmutableArray<CoordinationSession> ReadLocks { get; }
+            public ImmutableArray<SessionIdentifier> ReadLocks { get; }
 
-            public CoordinationSession? WriteLock { get; }
+            public SessionIdentifier? WriteLock { get; }
 
             public int StorageVersion { get; }
 
@@ -220,7 +220,7 @@ namespace AI4E.Coordination.Storage
 
     public static class StoredEntryExtension
     {
-        public static IStoredEntryBuilder ToBuilder(this IStoredEntry storedEntry, CoordinationSession session)
+        public static IStoredEntryBuilder ToBuilder(this IStoredEntry storedEntry, SessionIdentifier session)
         {
             if (storedEntry == null)
                 throw new ArgumentNullException(nameof(storedEntry));

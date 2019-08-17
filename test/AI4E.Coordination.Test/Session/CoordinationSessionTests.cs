@@ -31,7 +31,7 @@ namespace AI4E.Coordination.Session
         [TestMethod]
         public void DefaultTest()
         {
-            var session = default(CoordinationSession);
+            var session = default(SessionIdentifier);
 
             Assert.IsTrue(session.Prefix.Span.IsEmpty);
             Assert.IsTrue(session.PhysicalAddress.Span.IsEmpty);
@@ -43,7 +43,7 @@ namespace AI4E.Coordination.Session
             var prefix = Encoding.UTF8.GetBytes("abcdefgh").AsMemory();
             var physicalAddress = Encoding.UTF8.GetBytes("skovmovknmoiM").AsMemory();
 
-            var session = new CoordinationSession(prefix.Span, physicalAddress.Span);
+            var session = new SessionIdentifier(prefix.Span, physicalAddress.Span);
 
             Assert.IsTrue(prefix.Span.SequenceEqual(session.Prefix.Span));
             Assert.IsTrue(physicalAddress.Span.SequenceEqual(session.PhysicalAddress.Span));
@@ -54,7 +54,7 @@ namespace AI4E.Coordination.Session
         {
             var physicalAddress = Encoding.UTF8.GetBytes("skovmovknmoiM").AsMemory();
 
-            var session = new CoordinationSession(ReadOnlySpan<byte>.Empty, physicalAddress.Span);
+            var session = new SessionIdentifier(ReadOnlySpan<byte>.Empty, physicalAddress.Span);
 
             Assert.IsTrue(session.Prefix.Span.IsEmpty);
             Assert.IsTrue(physicalAddress.Span.SequenceEqual(session.PhysicalAddress.Span));
@@ -65,7 +65,7 @@ namespace AI4E.Coordination.Session
         {
             var prefix = Encoding.UTF8.GetBytes("abcdefgh").AsMemory();
 
-            var session = new CoordinationSession(prefix.Span, ReadOnlySpan<byte>.Empty);
+            var session = new SessionIdentifier(prefix.Span, ReadOnlySpan<byte>.Empty);
 
             Assert.IsTrue(session.Prefix.Span.IsEmpty);
             Assert.IsTrue(session.PhysicalAddress.Span.IsEmpty);
@@ -77,7 +77,7 @@ namespace AI4E.Coordination.Session
             var prefix = Encoding.UTF8.GetBytes("abcdefgh").AsMemory();
             var physicalAddress = Encoding.UTF8.GetBytes("skovmovknmoiM").AsMemory();
 
-            var session = new CoordinationSession(prefix.Span, physicalAddress.Span);
+            var session = new SessionIdentifier(prefix.Span, physicalAddress.Span);
 
             Assert.IsTrue(session.Equals(session));
             Assert.IsTrue(session.Equals((object)session));
@@ -93,7 +93,7 @@ namespace AI4E.Coordination.Session
             var prefix = Encoding.UTF8.GetBytes("abcdefgh").AsMemory();
             var physicalAddress = Encoding.UTF8.GetBytes("skovmovknmoiM").AsMemory();
 
-            var session = new CoordinationSession(prefix.Span, physicalAddress.Span);
+            var session = new SessionIdentifier(prefix.Span, physicalAddress.Span);
             Assert.IsFalse(session.Equals(null));
         }
 
@@ -102,11 +102,11 @@ namespace AI4E.Coordination.Session
         {
             var prefix = Encoding.UTF8.GetBytes("abcdefgh").AsMemory();
             var physicalAddress = Encoding.UTF8.GetBytes("skovmovknmoiM").AsMemory();
-            var session = new CoordinationSession(prefix.Span, physicalAddress.Span);
+            var session = new SessionIdentifier(prefix.Span, physicalAddress.Span);
 
             var prefix2 = Encoding.UTF8.GetBytes("abcdefgh").AsMemory();
             var physicalAddress2 = Encoding.UTF8.GetBytes("skovmovknmoiM").AsMemory();
-            var session2 = new CoordinationSession(prefix2.Span, physicalAddress2.Span);
+            var session2 = new SessionIdentifier(prefix2.Span, physicalAddress2.Span);
 
             Assert.IsTrue(session.Equals(session2));
             Assert.IsTrue(session.Equals((object)session2));
@@ -119,11 +119,11 @@ namespace AI4E.Coordination.Session
         {
             var prefix = Encoding.UTF8.GetBytes("abcdefgh").AsMemory();
             var physicalAddress = Encoding.UTF8.GetBytes("skovmovknmoiM").AsMemory();
-            var session = new CoordinationSession(prefix.Span, physicalAddress.Span);
+            var session = new SessionIdentifier(prefix.Span, physicalAddress.Span);
 
             var prefix2 = Encoding.UTF8.GetBytes("abcdefgh").AsMemory();
             var physicalAddress2 = Encoding.UTF8.GetBytes("skovmovknmoiM").AsMemory();
-            var session2 = new CoordinationSession(prefix2.Span, physicalAddress2.Span);
+            var session2 = new SessionIdentifier(prefix2.Span, physicalAddress2.Span);
 
             Assert.IsTrue(session.GetHashCode() == session2.GetHashCode());
         }
@@ -133,8 +133,8 @@ namespace AI4E.Coordination.Session
         {
             var prefix = Encoding.UTF8.GetBytes("abcdefgh").AsMemory();
             var physicalAddress = Encoding.UTF8.GetBytes("skovmovknmoiM").AsMemory();
-            var session = new CoordinationSession(prefix.Span, physicalAddress.Span);
-            var parsedSession = CoordinationSession.FromString(session.ToString());
+            var session = new SessionIdentifier(prefix.Span, physicalAddress.Span);
+            var parsedSession = SessionIdentifier.FromString(session.ToString());
 
             Assert.IsTrue(prefix.Span.SequenceEqual(parsedSession.Prefix.Span));
             Assert.IsTrue(physicalAddress.Span.SequenceEqual(parsedSession.PhysicalAddress.Span));
@@ -145,8 +145,8 @@ namespace AI4E.Coordination.Session
         {
             var prefix = Encoding.UTF8.GetBytes("abcdefgh").AsMemory();
             var physicalAddress = Encoding.UTF8.GetBytes("skovmovknmoiM").AsMemory();
-            var session = new CoordinationSession(prefix.Span, physicalAddress.Span);
-            var parsedSession = CoordinationSession.FromChars(session.ToString().AsSpan());
+            var session = new SessionIdentifier(prefix.Span, physicalAddress.Span);
+            var parsedSession = SessionIdentifier.FromChars(session.ToString().AsSpan());
 
             Assert.IsTrue(prefix.Span.SequenceEqual(parsedSession.Prefix.Span));
             Assert.IsTrue(physicalAddress.Span.SequenceEqual(parsedSession.PhysicalAddress.Span));
@@ -155,7 +155,7 @@ namespace AI4E.Coordination.Session
         [TestMethod]
         public void DefaultToStringTest()
         {
-            var session = default(CoordinationSession);
+            var session = default(SessionIdentifier);
 
             Assert.AreEqual("", session.ToString());
         }
@@ -163,8 +163,8 @@ namespace AI4E.Coordination.Session
         [TestMethod]
         public void DefaultStringRoundtripTest()
         {
-            var session = default(CoordinationSession);
-            var parsedSession = CoordinationSession.FromString(session.ToString());
+            var session = default(SessionIdentifier);
+            var parsedSession = SessionIdentifier.FromString(session.ToString());
 
             Assert.IsTrue(parsedSession.Prefix.Span.IsEmpty);
             Assert.IsTrue(parsedSession.PhysicalAddress.Span.IsEmpty);
@@ -173,8 +173,8 @@ namespace AI4E.Coordination.Session
         [TestMethod]
         public void DefaultCharsRoundtripTest()
         {
-            var session = default(CoordinationSession);
-            var parsedSession = CoordinationSession.FromString(session.ToString());
+            var session = default(SessionIdentifier);
+            var parsedSession = SessionIdentifier.FromString(session.ToString());
 
             Assert.IsTrue(parsedSession.Prefix.Span.IsEmpty);
             Assert.IsTrue(parsedSession.PhysicalAddress.Span.IsEmpty);

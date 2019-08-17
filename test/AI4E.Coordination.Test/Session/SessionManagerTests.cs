@@ -31,9 +31,9 @@ namespace AI4E.Coordination.Session
     [TestClass]
     public class SessionManagerTests
     {
-        private static readonly CoordinationSession _session1 = new CoordinationSession(new byte[] { 1, 2, 3 }.AsSpan(), new byte[] { 2, 3, 4 }.AsSpan());
-        private static readonly CoordinationSession _session2 = new CoordinationSession(new byte[] { 1, 2, 3 }.AsSpan(), new byte[] { 1, 2, 3, 4, 5, 6, 7 }.AsSpan());
-        private static readonly CoordinationSession _session3 = new CoordinationSession(new byte[] { 8, 9 }.AsSpan(), new byte[] { 2, 3, 4 }.AsSpan());
+        private static readonly SessionIdentifier _session1 = new SessionIdentifier(new byte[] { 1, 2, 3 }.AsSpan(), new byte[] { 2, 3, 4 }.AsSpan());
+        private static readonly SessionIdentifier _session2 = new SessionIdentifier(new byte[] { 1, 2, 3 }.AsSpan(), new byte[] { 1, 2, 3, 4, 5, 6, 7 }.AsSpan());
+        private static readonly SessionIdentifier _session3 = new SessionIdentifier(new byte[] { 8, 9 }.AsSpan(), new byte[] { 2, 3, 4 }.AsSpan());
 
         private static readonly CoordinationEntryPath _entryPath1 = new CoordinationEntryPath("/x/y/z/");
         private static readonly CoordinationEntryPath _entryPath2 = new CoordinationEntryPath("/x/y/");

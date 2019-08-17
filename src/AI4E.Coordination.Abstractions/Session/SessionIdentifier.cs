@@ -29,16 +29,16 @@ namespace AI4E.Coordination.Session
     /// <summary>
     /// Represents a coordination session.
     /// </summary>
-    public readonly struct CoordinationSession : IEquatable<CoordinationSession>
+    public readonly struct SessionIdentifier : IEquatable<SessionIdentifier>
     {
         private readonly ReadOnlyMemory<byte> _bytes;
 
         /// <summary>
-        /// Creates a new <see cref="CoordinationSession"/> with the specified prefix and physical address.
+        /// Creates a new <see cref="SessionIdentifier"/> with the specified prefix and physical address.
         /// </summary>
         /// <param name="prefix">A span of bytes that represent the prefix.</param>
         /// <param name="physicalAddress">A span of bytes that represent the physical address.</param>
-        public CoordinationSession(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> physicalAddress)
+        public SessionIdentifier(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> physicalAddress)
         {
             if (physicalAddress.IsEmpty)
             {
@@ -55,7 +55,7 @@ namespace AI4E.Coordination.Session
             _bytes = bytes;
         }
 
-        private CoordinationSession(ReadOnlyMemory<byte> bytes)
+        private SessionIdentifier(ReadOnlyMemory<byte> bytes)
         {
             Assert(!bytes.IsEmpty);
 
@@ -73,7 +73,7 @@ namespace AI4E.Coordination.Session
         public ReadOnlyMemory<byte> PhysicalAddress => _bytes.IsEmpty ? _bytes : _bytes.Slice(start: 4 + BinaryPrimitives.ReadInt32LittleEndian(_bytes.Span));
 
         /// <inheritdoc/>
-        public bool Equals(CoordinationSession other)
+        public bool Equals(SessionIdentifier other)
         {
             return _bytes.Span.SequenceEqual(other._bytes.Span);
         }
@@ -81,7 +81,7 @@ namespace AI4E.Coordination.Session
         /// <inheritdoc/>
         public override bool Equals(object obj)
         {
-            return obj is CoordinationSession session && Equals(session);
+            return obj is SessionIdentifier session && Equals(session);
         }
 
         /// <inheritdoc/>
@@ -107,33 +107,33 @@ namespace AI4E.Coordination.Session
         }
 
         /// <summary>
-        /// Compares two <see cref="CoordinationSession"/>s.
+        /// Compares two <see cref="SessionIdentifier"/>s.
         /// </summary>
         /// <param name="left">The first segment.</param>
         /// <param name="right">The second segment.</param>
         /// <returns>True, if <paramref name="left"/> equals <paramref name="right"/>, false otherwise.</returns>
-        public static bool operator ==(CoordinationSession left, CoordinationSession right)
+        public static bool operator ==(SessionIdentifier left, SessionIdentifier right)
         {
             return left.Equals(right);
         }
 
         /// <summary>
-        /// Compares two <see cref="CoordinationSession"/>s.
+        /// Compares two <see cref="SessionIdentifier"/>s.
         /// </summary>
         /// <param name="left">The first segment.</param>
         /// <param name="right">The second segment.</param>
         /// <returns>True, if <paramref name="left"/> does not equal <paramref name="right"/>, false otherwise.</returns>
-        public static bool operator !=(CoordinationSession left, CoordinationSession right)
+        public static bool operator !=(SessionIdentifier left, SessionIdentifier right)
         {
             return !left.Equals(right);
         }
 
         /// <summary>
-        /// Creates a <see cref="CoordinationSession"/> from the specified span of chars.
+        /// Creates a <see cref="SessionIdentifier"/> from the specified span of chars.
         /// </summary>
         /// <param name="chars">The span of chars to create the session from.</param>
-        /// <returns>The <see cref="CoordinationSession"/> that is created from <paramref name="chars"/>.</returns>
-        public static CoordinationSession FromChars(ReadOnlySpan<char> chars)
+        /// <returns>The <see cref="SessionIdentifier"/> that is created from <paramref name="chars"/>.</returns>
+        public static SessionIdentifier FromChars(ReadOnlySpan<char> chars)
         {
             if (chars.IsEmpty)
                 return default;
@@ -141,16 +141,16 @@ namespace AI4E.Coordination.Session
             var bytes = new byte[Base64Coder.ComputeBase64DecodedLength(chars)];
             var bytesLength = Base64Coder.FromBase64Chars(chars, bytes).Length;
 
-            return new CoordinationSession(bytes.AsMemory().Slice(start: 0, length: bytesLength));
+            return new SessionIdentifier(bytes.AsMemory().Slice(start: 0, length: bytesLength));
         }
 
         /// <summary>
-        /// Creates a <see cref="CoordinationSession"/> from the specified string.
+        /// Creates a <see cref="SessionIdentifier"/> from the specified string.
         /// </summary>
         /// <param name="str">The string to create the session from.</param>
-        /// <returns>The <see cref="CoordinationSession"/> that is created from <paramref name="str"/>.</returns>
+        /// <returns>The <see cref="SessionIdentifier"/> that is created from <paramref name="str"/>.</returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="str"/> is <c>null</c>.</exception>
-        public static CoordinationSession FromString(string str)
+        public static SessionIdentifier FromString(string str)
         {
             if (str == null)
                 throw new ArgumentNullException(nameof(str));

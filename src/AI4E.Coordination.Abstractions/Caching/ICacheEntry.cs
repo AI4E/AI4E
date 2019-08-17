@@ -8,7 +8,7 @@ namespace AI4E.Coordination.Caching
     {
         string Key { get; }
 
-bool TryGetValue(out CacheEntryValue value);
+        bool TryGetValue(out CacheEntryValue value);
 
         ValueTask<CacheEntryValue> GetValueAsync(CancellationToken cancellation);
         ValueTask InvalidateAsync(CancellationToken cancellation);

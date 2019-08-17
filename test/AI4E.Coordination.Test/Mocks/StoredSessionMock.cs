@@ -27,7 +27,7 @@ namespace AI4E.Coordination.Mocks
 {
     public sealed class StoredSessionMock : IStoredSession
     {
-        public CoordinationSession Session { get; set; }
+        public SessionIdentifier Session { get; set; }
 
         public bool IsEnded { get; set; }
 

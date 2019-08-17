@@ -15,7 +15,7 @@ namespace AI4E.Coordination.Caching
 {
     public sealed class CoodinationCacheManager : ICoordinationCacheManager
     {
-        private readonly ICoordinationSessionOwner _sessionOwner;
+        private readonly ISessionOwner _sessionOwner;
         private readonly ICoordinationStorage _storage;
         private readonly ICoordinationLockManager _lockManager;
         private readonly IInvalidationCallbackDirectory _invalidationCallbackDirectory;
@@ -23,7 +23,7 @@ namespace AI4E.Coordination.Caching
         private readonly ConcurrentDictionary<string, ICacheEntry> _cache = new ConcurrentDictionary<string, ICacheEntry>();
 
         public CoodinationCacheManager(
-            ICoordinationSessionOwner sessionOwner,
+            ISessionOwner sessionOwner,
             ICoordinationStorage storage,
             ICoordinationLockManager lockManager,
             IInvalidationCallbackDirectory invalidationCallbackDirectory)
@@ -58,7 +58,7 @@ namespace AI4E.Coordination.Caching
 
         private async ValueTask<ICacheEntry> SlowGetChaceEntryAsync(string key)
         {
-            var session = await _sessionOwner.GetSessionAsync(cancellation: default);
+            var session = await _sessionOwner.GetSessionIdentifierAsync(cancellation: default);
             var cacheEntry = new CacheEntry(key, this, session);
 #pragma warning disable IDE0039
             Func<CancellationToken, ValueTask> invalidationCallback = cacheEntry.InvalidateAsync;
@@ -96,17 +96,17 @@ namespace AI4E.Coordination.Caching
             private readonly AsyncLock _lockMutex = new AsyncLock();
 
             private readonly CoodinationCacheManager _cacheManager;
-            private readonly CoordinationSession _session;
+            private readonly SessionIdentifier _session;
             private volatile IStoredEntry _entry;
 
-            public CacheEntry(string key, CoodinationCacheManager cacheManager, CoordinationSession session)
+            public CacheEntry(string key, CoodinationCacheManager cacheManager, SessionIdentifier session)
             {
                 Key = key;
                 _cacheManager = cacheManager;
                 _session = session;
             }
 
-            public CacheEntry(IStoredEntry entry, CoodinationCacheManager cacheManager, CoordinationSession session)
+            public CacheEntry(IStoredEntry entry, CoodinationCacheManager cacheManager, SessionIdentifier session)
             {
                 Key = entry.Key;
                 _entry = entry;

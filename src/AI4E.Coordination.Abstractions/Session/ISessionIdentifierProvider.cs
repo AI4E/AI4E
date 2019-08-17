@@ -23,12 +23,12 @@ namespace AI4E.Coordination.Session
     /// <summary>
     /// Represents a session identifier provider.
     /// </summary>
-    public interface ISessionProvider
+    public interface ISessionIdentifierProvider
     {
         /// <summary>
         /// Gets a new unique session identifier based on the current context.
         /// </summary>
         /// <returns>The creates session identifier.</returns>
-        CoordinationSession GetSession();
+        SessionIdentifier CreateUniqueSessionIdentifier();
     }
 }

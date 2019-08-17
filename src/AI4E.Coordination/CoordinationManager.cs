@@ -21,7 +21,7 @@ namespace AI4E.Coordination
     public sealed class CoordinationManager<TAddress> : ICoordinationManager
     {
         private readonly IServiceScope _serviceScope;
-        private readonly ICoordinationSessionOwner _sessionOwner;
+        private readonly ISessionOwner _sessionOwner;
         private readonly ISessionManager _sessionManager;
         private readonly ICoordinationCacheManager _cacheManager;
         private readonly IDateTimeProvider _dateTimeProvider;
@@ -32,7 +32,7 @@ namespace AI4E.Coordination
 
         public CoordinationManager(
             IServiceScope serviceScope,
-            ICoordinationSessionOwner sessionOwner,
+            ISessionOwner sessionOwner,
             ISessionManager sessionManager,
             ICoordinationCacheManager cacheManager,
 
@@ -72,9 +72,9 @@ namespace AI4E.Coordination
         #region Session management
 
         /// <inheritdoc/>
-        public ValueTask<CoordinationSession> GetSessionAsync(CancellationToken cancellation)
+        public ValueTask<SessionIdentifier> GetSessionAsync(CancellationToken cancellation)
         {
-            return _sessionOwner.GetSessionAsync(cancellation);
+            return _sessionOwner.GetSessionIdentifierAsync(cancellation);
         }
 
         private async Task SessionCleanupProcess(CancellationToken cancellation)
@@ -110,7 +110,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task CleanupSessionAsync(CoordinationSession session, CancellationToken cancellation)
+        private async Task CleanupSessionAsync(SessionIdentifier session, CancellationToken cancellation)
         {
             _logger?.LogInformation($"[{await GetSessionAsync(cancellation)}] Cleaning up session '{session}'.");
 
@@ -199,7 +199,7 @@ namespace AI4E.Coordination
             CoordinationEntryPath path,
             ReadOnlyMemory<byte> value,
             EntryCreationModes modes,
-            CoordinationSession session,
+            SessionIdentifier session,
             CancellationToken cancellation)
         {
             var cacheEntry = await _cacheManager.GetCacheEntryAsync(path.ToString(), cancellation);
@@ -249,7 +249,7 @@ namespace AI4E.Coordination
             CoordinationEntryPath path,
             ReadOnlyMemory<byte> value,
             EntryCreationModes modes,
-            CoordinationSession session,
+            SessionIdentifier session,
             ICacheEntry cacheEntry,
             CancellationToken cancellation)
         {
@@ -456,7 +456,7 @@ namespace AI4E.Coordination
         // deleted: true, if the operation succeeded, false otherwise. Check the entry result in this case.
         private async Task<bool> DeleteCoreAsync(
             IEntryBuilder entryBuilder,
-            CoordinationSession session,
+            SessionIdentifier session,
             int version,
             bool recursive,
             CancellationToken cancellation)
@@ -605,7 +605,7 @@ namespace AI4E.Coordination
                 ICoordinationManager coordinationManager,
                 CoordinationEntryPath path,
                 int version,
-                CoordinationSession ephemeralOwner,
+                SessionIdentifier ephemeralOwner,
                 DateTime creationTime,
                 DateTime lastWriteTime,
                 ReadOnlyMemory<byte> value,
@@ -639,7 +639,7 @@ namespace AI4E.Coordination
 
             public CoordinationEntryPath Path { get; }
 
-            public CoordinationSession EphemeralOwner { get; }
+            public SessionIdentifier EphemeralOwner { get; }
 
             public int Version { get; }
 
@@ -680,7 +680,7 @@ namespace AI4E.Coordination
                 return new Entry(coordinationManager, path, version, ephemeralOwner, creationTime, lastWriteTime, value, childrenBuilder.ToImmutable());
             }
 
-            private static CoordinationSession ReadSession(in BinarySpanReader spanReader)
+            private static SessionIdentifier ReadSession(in BinarySpanReader spanReader)
             {
                 var prefix = spanReader.Read();
                 var physicalAddress = spanReader.Read();
@@ -688,10 +688,10 @@ namespace AI4E.Coordination
                 if (physicalAddress.Length == 0)
                     return default;
 
-                return new CoordinationSession(prefix, physicalAddress);
+                return new SessionIdentifier(prefix, physicalAddress);
             }
 
-            private static void WriteSession(in BinarySpanWriter spanWriter, CoordinationSession ephemeralOwner)
+            private static void WriteSession(in BinarySpanWriter spanWriter, SessionIdentifier ephemeralOwner)
             {
                 spanWriter.Write(ephemeralOwner.Prefix.Span, lengthPrefix: true);
                 spanWriter.Write(ephemeralOwner.PhysicalAddress.Span, lengthPrefix: true);
@@ -745,7 +745,7 @@ namespace AI4E.Coordination
             public EntryBuilder(
                 ICoordinationManager coordinationManager,
                 CoordinationEntryPath path,
-                CoordinationSession ephemeralOwner,
+                SessionIdentifier ephemeralOwner,
                 IDateTimeProvider dateTimeProvider)
             {
                 if (dateTimeProvider == null)
@@ -788,7 +788,7 @@ namespace AI4E.Coordination
 
             public ICoordinationManager CoordinationManager { get; }
 
-            public CoordinationSession EphemeralOwner { get; }
+            public SessionIdentifier EphemeralOwner { get; }
 
             public CoordinationEntryPathSegment Name => Path.Segments.LastOrDefault();
 

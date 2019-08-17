@@ -28,7 +28,7 @@ namespace AI4E.Coordination.Session
     /// Provides session identifiers based on the address of the current physical end point.
     /// </summary>
     /// <typeparam name="TAddress">The type of address the system uses.</typeparam>
-    public sealed class SessionProvider<TAddress> : ISessionProvider
+    public sealed class SessionIdentifierProvider<TAddress> : ISessionIdentifierProvider
     {
         private readonly TAddress _address;
         private readonly IDateTimeProvider _dateTimeProvider;
@@ -36,7 +36,7 @@ namespace AI4E.Coordination.Session
         private int _counter = 0;
 
         /// <summary>
-        /// Creates a new instance of the <see cref="SessionProvider{TAddress}"/> type.
+        /// Creates a new instance of the <see cref="SessionIdentifierProvider{TAddress}"/> type.
         /// </summary>
         /// <param name="endPointMultiplexer">The <see cref="IPhysicalEndPointMultiplexer{TAddress}"/> used to obain the current address.</param>
         /// <param name="dateTimeProvider">A <see cref="IDateTimeProvider"/> used to get the current date and time.</param>
@@ -49,9 +49,10 @@ namespace AI4E.Coordination.Session
         /// Thrown if the address returned by the <see cref="IPhysicalEndPointMultiplexer{TAddress}.LocalAddress"/> property of
         /// <paramref name="endPointMultiplexer"/> returns the default value of type <typeparamref name="TAddress"/>.
         /// </exception>
-        public SessionProvider(IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
-                               IDateTimeProvider dateTimeProvider,
-                               IAddressConversion<TAddress> addressConversion)
+        public SessionIdentifierProvider(
+            IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
+            IDateTimeProvider dateTimeProvider,
+            IAddressConversion<TAddress> addressConversion)
         {
             if (endPointMultiplexer == null)
                 throw new ArgumentNullException(nameof(endPointMultiplexer));
@@ -72,7 +73,7 @@ namespace AI4E.Coordination.Session
         }
 
         /// <inheritdoc/>
-        public CoordinationSession GetSession()
+        public SessionIdentifier CreateUniqueSessionIdentifier()
         {
             var count = Interlocked.Increment(ref _counter);
             var ticks = _dateTimeProvider.GetCurrentTime().Ticks + count;
@@ -80,7 +81,7 @@ namespace AI4E.Coordination.Session
             var prefix = BitConverter.GetBytes(ticks);
             var serializedAddress = _addressConversion.SerializeAddress(_address);
 
-            return new CoordinationSession(prefix, serializedAddress);
+            return new SessionIdentifier(prefix, serializedAddress);
         }
     }
 }

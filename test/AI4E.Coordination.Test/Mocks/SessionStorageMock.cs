@@ -31,8 +31,8 @@ namespace AI4E.Coordination.Mocks
     public sealed class SessionStorageMock : ISessionStorage
     {
         private readonly object _mutex = new object();
-        private readonly Dictionary<CoordinationSession, IStoredSession> _entries
-            = new Dictionary<CoordinationSession, IStoredSession>();
+        private readonly Dictionary<SessionIdentifier, IStoredSession> _entries
+            = new Dictionary<SessionIdentifier, IStoredSession>();
 
         public SessionStorageMock()
         {
@@ -40,7 +40,7 @@ namespace AI4E.Coordination.Mocks
         }
 
         public Task<IStoredSession> GetSessionAsync(
-            CoordinationSession session, CancellationToken cancellation = default)
+            SessionIdentifier session, CancellationToken cancellation = default)
         {
             bool found;
             IStoredSession result;
@@ -75,7 +75,7 @@ namespace AI4E.Coordination.Mocks
             IStoredSession value, IStoredSession comparand, CancellationToken cancellation = default)
         {
             bool success;
-            CoordinationSession session;
+            SessionIdentifier session;
 
             if (value == null && comparand == null)
             {

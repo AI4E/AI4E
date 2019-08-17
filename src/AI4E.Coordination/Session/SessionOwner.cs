@@ -35,22 +35,22 @@ namespace AI4E.Coordination.Session
     /// <summary>
     /// Represents the owner of a coordination service session.
     /// </summary>
-    public sealed class CoordinationSessionOwner : ICoordinationSessionOwner
+    public sealed class SessionOwner : ISessionOwner
     {
         private readonly ISessionManager _sessionManager;
-        private readonly ISessionProvider _sessionProvider;
+        private readonly ISessionIdentifierProvider _sessionProvider;
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly ILogger<CoordinationSessionOwner> _logger;
+        private readonly ILogger<SessionOwner> _logger;
 
         private readonly CoordinationManagerOptions _options;
         private readonly AsyncProcess _updateSessionProcess;
-        private readonly DisposableAsyncLazy<CoordinationSession> _session;
+        private readonly DisposableAsyncLazy<SessionIdentifier> _session;
 
         /// <summary>
-        /// Creates a new instance of the <see cref="CoordinationSessionOwner"/> type.
+        /// Creates a new instance of the <see cref="SessionOwner"/> type.
         /// </summary>
         /// <param name="sessionManager">A <see cref="ISessionManager"/> used to manage coordination service sessions.</param>
-        /// <param name="sessionProvider">A <see cref="ISessionProvider"/> used to create coordination service session identifiers.</param>
+        /// <param name="sessionProvider">A <see cref="ISessionIdentifierProvider"/> used to create coordination service session identifiers.</param>
         /// <param name="dateTimeProvider">A <see cref="IDateTimeProvider"/> used to access the current date and time.</param>
         /// <param name="optionsAccessor">An <see cref="IOptions{TOptions}"/> accessor that is used to access the <see cref="CoordinationManagerOptions"/>.</param>
         /// <param name="logger">A <see cref="ILogger{TCategoryName}"/> used to for log operations or <c>null</c>.</param>
@@ -58,11 +58,11 @@ namespace AI4E.Coordination.Session
         /// Thrown if any of <paramref name="sessionProvider"/>, <paramref name="sessionProvider"/>,
         /// <paramref name="dateTimeProvider"/> or <paramref name="optionsAccessor"/> is <c>null</c>.
         /// </exception>
-        public CoordinationSessionOwner(ISessionManager sessionManager,
-                                        ISessionProvider sessionProvider,
+        public SessionOwner(ISessionManager sessionManager,
+                                        ISessionIdentifierProvider sessionProvider,
                                         IDateTimeProvider dateTimeProvider,
                                         IOptions<CoordinationManagerOptions> optionsAccessor,
-                                        ILogger<CoordinationSessionOwner> logger = null)
+                                        ILogger<SessionOwner> logger = null)
         {
             if (sessionManager == null)
                 throw new ArgumentNullException(nameof(sessionManager));
@@ -94,20 +94,20 @@ namespace AI4E.Coordination.Session
         }
 
         /// <inheritdoc/>
-        public ValueTask<CoordinationSession> GetSessionAsync(CancellationToken cancellation)
+        public ValueTask<SessionIdentifier> GetSessionIdentifierAsync(CancellationToken cancellation)
         {
-            return new ValueTask<CoordinationSession>(_session.Task.WithCancellation(cancellation));
+            return new ValueTask<SessionIdentifier>(_session.Task.WithCancellation(cancellation));
         }
 
-        private DisposableAsyncLazy<CoordinationSession> BuildSession()
+        private DisposableAsyncLazy<SessionIdentifier> BuildSession()
         {
-            return new DisposableAsyncLazy<CoordinationSession>(
+            return new DisposableAsyncLazy<SessionIdentifier>(
                 factory: StartSessionAsync,
                 disposal: TerminateSessionAsync,
                 /*DisposableAsyncLazyOptions.Autostart |*/ DisposableAsyncLazyOptions.ExecuteOnCallingThread);
         }
 
-        private async Task<CoordinationSession> StartSessionAsync(CancellationToken cancellation)
+        private async Task<SessionIdentifier> StartSessionAsync(CancellationToken cancellation)
         {
             var leaseLength = _options.LeaseLength;
 
@@ -117,11 +117,11 @@ namespace AI4E.Coordination.Session
                 Assert(leaseLength > TimeSpan.Zero);
             }
 
-            CoordinationSession session;
+            SessionIdentifier session;
 
             do
             {
-                session = _sessionProvider.GetSession();
+                session = _sessionProvider.CreateUniqueSessionIdentifier();
 
                 Assert(session != null);
             }
@@ -143,7 +143,7 @@ namespace AI4E.Coordination.Session
             return session;
         }
 
-        private async Task TerminateSessionAsync(CoordinationSession session)
+        private async Task TerminateSessionAsync(SessionIdentifier session)
         {
             try
             {
@@ -159,7 +159,7 @@ namespace AI4E.Coordination.Session
 
         private async Task UpdateSessionProcess(CancellationToken cancellation)
         {
-            var session = await GetSessionAsync(cancellation);
+            var session = await GetSessionIdentifierAsync(cancellation);
 
             while (cancellation.ThrowOrContinue())
             {
@@ -175,7 +175,7 @@ namespace AI4E.Coordination.Session
             }
         }
 
-        private async Task UpdateSessionAsync(CoordinationSession session, CancellationToken cancellation)
+        private async Task UpdateSessionAsync(SessionIdentifier session, CancellationToken cancellation)
         {
             var leaseLength = _options.LeaseLength;
 

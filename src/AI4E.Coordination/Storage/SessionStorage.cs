@@ -54,7 +54,7 @@ namespace AI4E.Coordination.Storage
         #region Session
 
         /// <inheritdoc />
-        public async Task<IStoredSession> GetSessionAsync(CoordinationSession session, CancellationToken cancellation)
+        public async Task<IStoredSession> GetSessionAsync(SessionIdentifier session, CancellationToken cancellation)
         {
             if (session == null)
                 throw new ArgumentNullException(nameof(session));
@@ -132,7 +132,7 @@ namespace AI4E.Coordination.Storage
             }
 
             public string Id { get; set; }
-            CoordinationSession IStoredSession.Session => CoordinationSession.FromChars(Id.AsSpan());
+            SessionIdentifier IStoredSession.Session => SessionIdentifier.FromChars(Id.AsSpan());
             public bool IsEnded { get; set; }
             public DateTime LeaseEnd { get; set; }
             public string[] EntryPaths { get; set; }

@@ -37,9 +37,9 @@ namespace AI4E.Coordination.Session
             var endPointMultiplexer = new PhysicalEndPointMultiplexerMock<StringAddress>(localAddress);
             var dateTimeProvider = new DateTimeProviderMock();
             var addressConversion = new StringAddressConversion();
-            var sessionProvider = new SessionProvider<StringAddress>(endPointMultiplexer, dateTimeProvider, addressConversion);
+            var sessionProvider = new SessionIdentifierProvider<StringAddress>(endPointMultiplexer, dateTimeProvider, addressConversion);
 
-            var session = sessionProvider.GetSession();
+            var session = sessionProvider.CreateUniqueSessionIdentifier();
 
             Assert.IsTrue(Encoding.UTF8.GetBytes(localAddress.Address).AsSpan().SequenceEqual(session.PhysicalAddress.Span));
             Assert.IsFalse(session.Prefix.IsEmpty);
@@ -52,10 +52,10 @@ namespace AI4E.Coordination.Session
             var endPointMultiplexer = new PhysicalEndPointMultiplexerMock<StringAddress>(localAddress);
             var dateTimeProvider = new DateTimeProviderMock();
             var addressConversion = new StringAddressConversion();
-            var sessionProvider = new SessionProvider<StringAddress>(endPointMultiplexer, dateTimeProvider, addressConversion);
+            var sessionProvider = new SessionIdentifierProvider<StringAddress>(endPointMultiplexer, dateTimeProvider, addressConversion);
 
-            var session1 = sessionProvider.GetSession();
-            var session2 = sessionProvider.GetSession();
+            var session1 = sessionProvider.CreateUniqueSessionIdentifier();
+            var session2 = sessionProvider.CreateUniqueSessionIdentifier();
 
             Assert.AreNotEqual(session1, session2);
         }

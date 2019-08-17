@@ -32,22 +32,22 @@ namespace AI4E.Coordination.Locking
     /// </summary>
     public sealed class LockWaitDirectory : ILockWaitDirectory
     {
-        private readonly AsyncWaitDirectory<(string key, CoordinationSession session)> _readLockWaitDirectory;
-        private readonly AsyncWaitDirectory<(string key, CoordinationSession session)> _writeLockWaitDirectory;
+        private readonly AsyncWaitDirectory<(string key, SessionIdentifier session)> _readLockWaitDirectory;
+        private readonly AsyncWaitDirectory<(string key, SessionIdentifier session)> _writeLockWaitDirectory;
 
         /// <summary>
         /// Creates a new instance of the <see cref="LockWaitDirectory"/> type.
         /// </summary>
         public LockWaitDirectory()
         {
-            _readLockWaitDirectory = new AsyncWaitDirectory<(string key, CoordinationSession session)>();
-            _writeLockWaitDirectory = new AsyncWaitDirectory<(string key, CoordinationSession session)>();
+            _readLockWaitDirectory = new AsyncWaitDirectory<(string key, SessionIdentifier session)>();
+            _writeLockWaitDirectory = new AsyncWaitDirectory<(string key, SessionIdentifier session)>();
         }
 
         /// <inheritdoc/>
         public void NotifyReadLockRelease(
             string key,
-            CoordinationSession session)
+            SessionIdentifier session)
         {
             _readLockWaitDirectory.Notify((key, session));
         }
@@ -55,7 +55,7 @@ namespace AI4E.Coordination.Locking
         /// <inheritdoc/>
         public void NotifyWriteLockRelease(
             string key,
-            CoordinationSession session)
+            SessionIdentifier session)
         {
             _writeLockWaitDirectory.Notify((key, session));
         }
@@ -63,7 +63,7 @@ namespace AI4E.Coordination.Locking
         /// <inheritdoc/>
         public ValueTask WaitForReadLockNotificationAsync(
             string key,
-            CoordinationSession session,
+            SessionIdentifier session,
             CancellationToken cancellation)
         {
             return _readLockWaitDirectory.WaitForNotificationAsync((key, session), cancellation).AsValueTask();
@@ -72,7 +72,7 @@ namespace AI4E.Coordination.Locking
         /// <inheritdoc/>
         public ValueTask WaitForWriteLockNotificationAsync(
             string key,
-            CoordinationSession session,
+            SessionIdentifier session,
             CancellationToken cancellation)
         {
             return _writeLockWaitDirectory.WaitForNotificationAsync((key, session), cancellation).AsValueTask();
