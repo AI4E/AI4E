@@ -1,13 +1,12 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using static System.Diagnostics.Debug;
-using static AI4E.Utils.DebugEx;
 
 namespace AI4E.Coordination
 {
@@ -74,7 +73,7 @@ namespace AI4E.Coordination
             if (leaseLength <= TimeSpan.Zero)
             {
                 leaseLength = CoordinationManagerOptions.LeaseLengthDefault;
-                Assert(leaseLength > TimeSpan.Zero);
+                Debug.Assert(leaseLength > TimeSpan.Zero);
             }
 
             Session session;
@@ -83,7 +82,7 @@ namespace AI4E.Coordination
             {
                 session = _sessionProvider.GetSession();
 
-                Assert(session != null);
+                Debug.Assert(session != null);
             }
             while (!await _sessionManager.TryBeginSessionAsync(session, leaseEnd: _dateTimeProvider.GetCurrentTime() + leaseLength, cancellation));
 
@@ -94,7 +93,7 @@ namespace AI4E.Coordination
 
         private Task TerminateSessionAsync(Session session)
         {
-            Assert(session != null);
+            Debug.Assert(session != null);
 
             return _sessionManager.EndSessionAsync(session)
                                   .HandleExceptionsAsync(_logger);

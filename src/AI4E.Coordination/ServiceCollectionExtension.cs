@@ -32,7 +32,6 @@ namespace AI4E.Coordination
             services.AddOptions();
 
             // Add helpers
-            services.AddDateTimeProvider();
             services.TryAddTransient(typeof(IProvider<>), typeof(Provider<>));
             services.AddSingleton(p => ConfigureSessionProvider(p, addressType));
 

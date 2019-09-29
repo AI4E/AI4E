@@ -278,8 +278,9 @@ namespace AI4E.Remoting
                 var port = LocalEndPoint.LocalAddress.Port;
                 var stream = tcpClient.GetStream();
 
-                using (ArrayPool<byte>.Shared.RentExact(4, out var buffer))
+                using (var memoryOwner = MemoryPool<byte>.Shared.RentExact(4))
                 {
+                    var buffer = memoryOwner.Memory;
                     BinaryPrimitives.WriteInt32LittleEndian(buffer.Span, port);
                     await stream.WriteAsync(buffer, cancellation);
                 }
@@ -310,7 +311,6 @@ namespace AI4E.Remoting
                 }
 
                 return message.PushFrame(frameBuilder.BuildMessageFrame());
-
             }
 
             private static (ValueMessage message, MessageType messageType, int seqNum) DecodeMessage(ValueMessage message)

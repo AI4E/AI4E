@@ -147,7 +147,7 @@ namespace AI4E.Storage.Domain
 
         private async Task<bool> DispatchCoreAsync(ImmutableList<object> events, CancellationToken cancellation)
         {
-            var dispatchResults = await ValueTaskHelper.WhenAll(events.Select(p => DispatchEventAsync(p, cancellation)), preserveOrder: false);
+            var dispatchResults = await events.Select(p => DispatchEventAsync(p, cancellation)).WhenAll(preserveOrder: false);
             var dispatchResult = new AggregateDispatchResult(dispatchResults);
             return dispatchResult.IsSuccess;
         }

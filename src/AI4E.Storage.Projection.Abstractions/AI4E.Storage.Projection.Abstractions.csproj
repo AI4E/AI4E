@@ -7,11 +7,11 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <!-- We need this for the IAsyncDisposable and IAsyncEnumerable definition -->
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.0.0-preview6.19303.8" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AI4E.Utils" Version="0.2.0-pre19052318" />
+    <PackageReference Include="AI4E.Utils" Version="0.2.0-pre19092412" />
   </ItemGroup>
 
   <ItemGroup>

@@ -53,34 +53,29 @@ namespace AI4E.Modularity.Debug
             bufferSize += 4 + Encoding.UTF8.GetByteCount(Module.Name); // module
             bufferSize += 4 + 4 + 4 + 1; // version
 
-            using (ArrayPool<byte>.Shared.RentExact(4, out var memory))
-            {
-                BinaryPrimitives.WriteInt32LittleEndian(memory.Span, bufferSize + 4);
-                await stream.WriteAsync(memory, cancellation);
-            }
-
-            using (ArrayPool<byte>.Shared.RentExact(bufferSize, out var memory))
-            {
-                Encode(memory.Span);
-                await stream.WriteAsync(memory, cancellation);
-            }
+            using var memoryOwner = MemoryPool<byte>.Shared.RentExact(4 + bufferSize);
+            var memory = memoryOwner.Memory;
+            BinaryPrimitives.WriteInt32LittleEndian(memory.Span, bufferSize + 4);
+            Encode(memory.Span.Slice(4));
+            await stream.WriteAsync(memory, cancellation);
         }
 
         public static async Task<DebugModuleProperties> ReadAsync(Stream stream, CancellationToken cancellation)
         {
             int length;
 
-            using (ArrayPool<byte>.Shared.RentExact(4, out var memory))
+            using (var memoryOwner = MemoryPool<byte>.Shared.RentExact(4))
             {
+                var memory = memoryOwner.Memory;
                 await stream.ReadExactAsync(memory, cancellation);
-
                 length = BinaryPrimitives.ReadInt32LittleEndian(memory.Span) - 4;
             }
 
-            using (ArrayPool<byte>.Shared.RentExact(length, out var memory))
-            {
-                await stream.ReadExactAsync(memory, cancellation);
 
+            using (var memoryOwner = MemoryPool<byte>.Shared.RentExact(length))
+            {
+                var memory = memoryOwner.Memory;
+                await stream.ReadExactAsync(memory, cancellation);
                 return Decode(memory.Span);
             }
         }

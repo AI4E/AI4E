@@ -225,7 +225,7 @@ namespace AI4E.Routing
                 }
             }
 
-            var result = await ValueTaskHelper.WhenAll(tasks, preserveOrder: false);
+            var result = await tasks.WhenAll(preserveOrder: false);
 
             _logger?.LogTrace($"Successfully routed a message ({(publish ? "publish" : "p2p")}) with routes: {routes}");
 

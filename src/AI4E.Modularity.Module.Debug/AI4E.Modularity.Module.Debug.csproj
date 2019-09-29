@@ -5,16 +5,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\IPEndPointConverter.cs" Link="Internal\IPEndPointConverter.cs" />
+    <Compile Remove="Internal\**" />
+    <EmbeddedResource Remove="Internal\**" />
+    <None Remove="Internal\**" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Modularity.Debug\AI4E.Modularity.Debug.csproj" />
     <ProjectReference Include="..\AI4E.Modularity.Module.Abstractions\AI4E.Modularity.Module.Abstractions.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal\" />
   </ItemGroup>
 
 </Project>

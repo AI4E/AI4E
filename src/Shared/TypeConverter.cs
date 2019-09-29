@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -19,11 +19,26 @@
  */
 
 using System;
+using AI4E.Utils;
+using Newtonsoft.Json;
 
-namespace AI4E.AspNetCore.Components.Modularity
+namespace AI4E.Internal
 {
-    internal interface IInstallationSetManager
+    internal sealed class TypeConverter : JsonConverter<Type>
     {
-        event EventHandler InstallationSetChanged;
+        public override void WriteJson(JsonWriter writer, Type value, JsonSerializer serializer)
+        {
+            writer.WriteValue(value.GetUnqualifiedTypeName());
+        }
+
+        public override Type ReadJson(JsonReader reader, Type objectType, Type existingValue, bool hasExistingValue, JsonSerializer serializer)
+        {
+            if (reader.Value is string unqualifiedTypeName)
+            {
+                return TypeLoadHelper.LoadTypeFromUnqualifiedName(unqualifiedTypeName);
+            }
+
+            return null;
+        }
     }
 }

@@ -97,7 +97,7 @@ namespace AI4E.DispatchResults
         }
 
         /// <summary>
-        /// Gets the unqualified type-name of resource that an id-conflict occured at.
+        /// Gets the unqualified type-name of the resource that an id-conflict occured at.
         /// </summary>
         public string EntityTypeName { get; }
 
@@ -119,8 +119,7 @@ namespace AI4E.DispatchResults
                 return false;
             }
 
-            entityType = TypeLoadHelper.LoadTypeFromUnqualifiedName(EntityTypeName, throwIfNotFound: false);
-            return entityType != null;
+            return TypeLoadHelper.TryLoadTypeFromUnqualifiedName(EntityTypeName, out entityType);
         }
 
         private static string FormatDefaultMessage(Type entityType, string id)

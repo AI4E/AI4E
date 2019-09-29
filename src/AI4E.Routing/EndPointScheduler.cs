@@ -1,6 +1,5 @@
 using System.Collections.Generic;
-using AI4E.Internal;
-using AI4E.Utils;
+using System.Linq;
 
 namespace AI4E.Routing
 {

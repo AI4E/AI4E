@@ -169,7 +169,10 @@ namespace AI4E
                 return (new DispatchFailureDispatchResult(dispatchData.MessageType), handlersFound: false);
             }
 
-            var filteredResult = (await ValueTaskHelper.WhenAll(tasks, preserveOrder: false)).Where(p => p.handlersFound).ToList();
+            var filteredResult = (await tasks.WhenAll(preserveOrder: false))
+                .Where(p => p.handlersFound)
+                .Select(p => p.result)
+                .ToList();
 
             // When publishing a message and no handlers are available, this is a success.
             if (filteredResult.Count == 0)
@@ -182,7 +185,7 @@ namespace AI4E
                 return ((await tasks[0]).result, handlersFound: true);
             }
 
-            return (new AggregateDispatchResult(filteredResult.Select(p => p.result)), handlersFound: true);
+            return (new AggregateDispatchResult(filteredResult), handlersFound: true);
         }
 
 
@@ -208,7 +211,8 @@ namespace AI4E
                         continue;
                     }
 
-                    var dispatchOperation = DispatchSingleHandlerAsync(handlerRegistration, dispatchData, publish, localDispatch, cancellation);
+                    var dispatchOperation = DispatchSingleHandlerAsync(
+                        handlerRegistration, dispatchData, publish, localDispatch, cancellation);
 
                     dispatchOperations.Add(dispatchOperation);
                 }
@@ -218,7 +222,7 @@ namespace AI4E
                     return (result: new SuccessDispatchResult(), handlersFound: false);
                 }
 
-                var dispatchResults = await ValueTaskHelper.WhenAll(dispatchOperations, preserveOrder: false);
+                var dispatchResults = await dispatchOperations.WhenAll(preserveOrder: false);
 
                 if (dispatchResults.Count() == 1)
                 {
@@ -241,7 +245,8 @@ namespace AI4E
                         continue;
                     }
 
-                    var result = await DispatchSingleHandlerAsync(handlerRegistration, dispatchData, publish, localDispatch, cancellation);
+                    var result = await DispatchSingleHandlerAsync(
+                        handlerRegistration, dispatchData, publish, localDispatch, cancellation);
 
                     if (result.IsDispatchFailure())
                     {
@@ -265,28 +270,26 @@ namespace AI4E
             Assert(handlerRegistration != null);
             Assert(dispatchData != null);
 
-            using (var scope = _serviceProvider.CreateScope())
+            using var scope = _serviceProvider.CreateScope();
+            var handler = handlerRegistration.CreateMessageHandler(scope.ServiceProvider);
+
+            if (handler == null)
             {
-                var handler = handlerRegistration.CreateMessageHandler(scope.ServiceProvider);
+                throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that is null.");
+            }
 
-                if (handler == null)
-                {
-                    throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that is null.");
-                }
+            if (!handler.MessageType.IsAssignableFrom(dispatchData.MessageType))
+            {
+                throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{handler.MessageType}'.");
+            }
 
-                if (!handler.MessageType.IsAssignableFrom(dispatchData.MessageType))
-                {
-                    throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{handler.MessageType}'.");
-                }
-
-                try
-                {
-                    return await handler.HandleAsync(dispatchData, publish, localDispatch, cancellation);
-                }
-                catch (Exception exc)
-                {
-                    return new FailureDispatchResult(exc);
-                }
+            try
+            {
+                return await handler.HandleAsync(dispatchData, publish, localDispatch, cancellation);
+            }
+            catch (Exception exc)
+            {
+                return new FailureDispatchResult(exc);
             }
         }
     }

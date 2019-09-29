@@ -94,13 +94,9 @@ namespace AI4E.Storage.Domain
         public IAsyncEnumerable<ISnapshot> GetSnapshotsAsync(string bucketId, CancellationToken cancellation = default)
         {
             // TODO: Check whether the database has query support. 
-
-
             return _database.GetAsync<Snapshot>(snapshot => snapshot.BucketId.Equals(bucketId), cancellation)
                             .GroupBy(snapshot => snapshot.StreamId)
-                            .Select(group => group.OrderByDescending(snapshot => snapshot.StreamRevision)
-                            .FirstOrDefaultAsync(cancellation))
-                            .Evaluate();
+                            .SelectAwait(group => group.OrderByDescending(snapshot => snapshot.StreamRevision).FirstOrDefaultAsync(cancellation));
 
         }
 
@@ -110,9 +106,7 @@ namespace AI4E.Storage.Domain
 
             return _database.GetAsync<Snapshot>(cancellation)
                             .GroupBy(snapshot => snapshot.StreamId)
-                            .Select(group => group.OrderByDescending(snapshot => snapshot.StreamRevision)
-                            .FirstOrDefaultAsync(cancellation))
-                            .Evaluate();
+                            .SelectAwait(group => group.OrderByDescending(snapshot => snapshot.StreamRevision).FirstOrDefaultAsync(cancellation));
         }
 
         public IAsyncEnumerable<IStreamHead> GetStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation = default)

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +9,7 @@ using AI4E.Utils;
 using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
-using static System.Diagnostics.Debug;
+using System.Diagnostics;
 
 namespace AI4E.Routing
 {
@@ -252,7 +253,7 @@ namespace AI4E.Routing
                     message.PopFrame();
                 }
 
-                Assert(frameIdx == message.FrameIndex);
+                Debug.Assert(frameIdx == message.FrameIndex);
 
                 throw;
             }

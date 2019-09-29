@@ -228,8 +228,9 @@ namespace AI4E.Remoting
             var stream = client.GetStream();
             int remotePort;
 
-            using (ArrayPool<byte>.Shared.RentExact(4, out var buffer))
+            using (var memoryOwener = MemoryPool<byte>.Shared.RentExact(4))
             {
+                var buffer = memoryOwener.Memory;
                 await stream.ReadExactAsync(buffer, cancellation);
                 remotePort = BinaryPrimitives.ReadInt32LittleEndian(buffer.Span);
             }

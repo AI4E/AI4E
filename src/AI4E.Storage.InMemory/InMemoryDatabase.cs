@@ -286,7 +286,10 @@ namespace AI4E.Storage.InMemory
                 return result;
             }
 
-            return GetRawData().ToAsyncEnumerable().Select(p => p.DeepClone());
+            return GetRawData()
+                .ToAsyncEnumerable()
+                .SelectMany(p => p.ToAsyncEnumerable())
+                .Select(p => p.DeepClone());
         }
 
         public async ValueTask<TEntry> GetOneAsync(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation)

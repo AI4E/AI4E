@@ -70,7 +70,6 @@ namespace AI4E.Routing.SignalR.Client
             this IServiceCollection serviceCollection,
             Action<IHubConnectionBuilder, IServiceProvider> configureHubConnection)
         {
-            serviceCollection.AddDateTimeProvider();
             serviceCollection.AddSingleton(p => p.GetRequiredService<IMessageDispatcher>() as IRemoteMessageDispatcher);
             serviceCollection.AddMessaging().UseDispatcher<RemoteMessageDispatcher>();
 

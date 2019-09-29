@@ -8,10 +8,6 @@
     <DefineConstants>TRACE;DEBUG;AI4E_DOMAIN;NETSTANDARD;NETSTANDARD2_0</DefineConstants>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
-  </ItemGroup>
-
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.0-preview.18571.3" />
   </ItemGroup>

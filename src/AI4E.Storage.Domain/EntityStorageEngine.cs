@@ -32,8 +32,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using static System.Diagnostics.Debug;
-using static AI4E.Utils.DebugEx;
+using System.Diagnostics;
 
 namespace AI4E.Storage.Domain
 {
@@ -135,7 +134,7 @@ namespace AI4E.Storage.Domain
                 return null;
             }
 
-            Assert(revision != default, stream.StreamRevision == revision);
+            Debug.Assert(revision == default || stream.StreamRevision == revision);
             var entity = Deserialize(entityType, stream);
 
             _lookup[(bucketId, stream.StreamId, revision)] = (entity, revision: stream.StreamRevision);
@@ -249,7 +248,7 @@ namespace AI4E.Storage.Domain
                 throw new ArgumentException("Unable to determine the id of the specified entity.", nameof(entity));
             }
 
-            Assert(id != null);
+            Debug.Assert(id != null);
 
             return InternalTryStoreAsync(entityType, entity, id, cancellation);
         }
@@ -331,7 +330,7 @@ namespace AI4E.Storage.Domain
                 throw new ArgumentException("Unable to determine the id of the specified entity.", nameof(entity));
             }
 
-            Assert(id != null);
+            Debug.Assert(id != null);
 
             return InternalTryDeleteAsync(entityType, entity, id, cancellation);
         }
@@ -400,7 +399,7 @@ namespace AI4E.Storage.Domain
 
         private async Task<bool> CheckConcurrencyAsync(IStream stream, string concurrencyToken, CancellationToken cancellation)
         {
-            Assert(!stream.IsReadOnly);
+            Debug.Assert(!stream.IsReadOnly);
 
             if (stream.StreamRevision == 0)
                 return true;
@@ -473,7 +472,7 @@ namespace AI4E.Storage.Domain
 
         private JToken GetBaseToken(IStream stream)
         {
-            Assert(stream != null);
+            Debug.Assert(stream != null);
 
             JToken token = null;
             if (stream.Snapshot == null)
@@ -522,20 +521,20 @@ namespace AI4E.Storage.Domain
             if (_lookup.TryGetValue((bucketId, stream.StreamId, revision), out var cachedResult))
             {
                 var result = cachedResult.entity;
-                Assert(result == null || entityType.IsAssignableFrom(result.GetType()));
+                Debug.Assert(result == null || entityType.IsAssignableFrom(result.GetType()));
                 return result;
             }
 
-            Assert(revision != default, stream.StreamRevision == revision);
+            Debug.Assert(revision == default || stream.StreamRevision == revision);
             var entity = Deserialize(entityType, stream);
-            Assert(entity == null || entityType.IsAssignableFrom(entity.GetType()));
+            Debug.Assert(entity == null || entityType.IsAssignableFrom(entity.GetType()));
 
             _lookup[(bucketId, stream.StreamId, revision)] = (entity, revision: stream.StreamRevision);
 
             return entity;
         }
 
-        private const string _separatorString = "->";
+        private const string SeparatorString = "->";
 
         private string GetBucket(Type entityType)
         {
@@ -560,14 +559,14 @@ namespace AI4E.Storage.Domain
             resultsBuilder.Append(_options.Scope);
             EscapeHelper.Escape(resultsBuilder, sepIndex + 2);
             // We need to ensure that the created entry is unique.
-            resultsBuilder[sepIndex] = _separatorString[0];
-            resultsBuilder[sepIndex + 1] = _separatorString[1];
+            resultsBuilder[sepIndex] = SeparatorString[0];
+            resultsBuilder[sepIndex + 1] = SeparatorString[1];
             return resultsBuilder.ToString();
         }
 
         internal static bool IsInScope(string bucket, string scope, out string typeName)
         {
-            var index = bucket.IndexOf(_separatorString);
+            var index = bucket.IndexOf(SeparatorString);
 
             if (string.IsNullOrWhiteSpace(scope))
             {

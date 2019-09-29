@@ -32,7 +32,6 @@ using AI4E.Coordination;
 using AI4E.Internal;
 using AI4E.Modularity.Metadata;
 using AI4E.Routing;
-using AI4E.Utils;
 using AI4E.Utils.Memory;
 using static System.Diagnostics.Debug;
 
@@ -40,9 +39,8 @@ namespace AI4E.Modularity
 {
     public sealed class ModuleManager : IModuleManager
     {
-        private static readonly byte[] _emptyPayload = new byte[0];
-        private const string _whitespaceRegexPattern = @"\s+";
-        private static readonly Regex _whitespaceRegex = new Regex(_whitespaceRegexPattern, RegexOptions.CultureInvariant |
+        private const string WhitespaceRegexPattern = @"\s+";
+        private static readonly Regex _whitespaceRegex = new Regex(WhitespaceRegexPattern, RegexOptions.CultureInvariant |
                                                                                             RegexOptions.Singleline |
                                                                                             RegexOptions.IgnoreCase |
                                                                                             RegexOptions.Compiled);
@@ -131,7 +129,7 @@ namespace AI4E.Modularity
 
         public async ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(ReadOnlyMemory<char> prefix, CancellationToken cancellation)
         {
-            if (prefix.Span.IsEmptyOrWhiteSpace())
+            if (MemoryExtensions.IsWhiteSpace(prefix.Span))
                 throw new ArgumentException("The argument must not be empty, not consist of whitespace only.", nameof(prefix));
 
             var normalizedPrefix = NormalizePrefix(prefix);
@@ -143,7 +141,7 @@ namespace AI4E.Modularity
             }
 
             var path = GetPrefixPath(normalizedPrefix, normalize: false);
-            var entry = await _coordinationManager.GetOrCreateAsync(path, _emptyPayload, EntryCreationModes.Default, cancellation);
+            var entry = await _coordinationManager.GetOrCreateAsync(path, ReadOnlyMemory<byte>.Empty, EntryCreationModes.Default, cancellation);
 
             Assert(entry != null);
 
@@ -356,15 +354,13 @@ namespace AI4E.Modularity
         private void WritePrefix(BinaryWriter writer, ReadOnlyMemory<char> prefix)
         {
             var normalizedPrefix = NormalizePrefix(prefix);
+            using var memoryOwner = MemoryPool<byte>.Shared.RentExact(Encoding.UTF8.GetByteCount(normalizedPrefix.Span));
+            var memory = memoryOwner.Memory;
+            var byteCount = Encoding.UTF8.GetBytes(normalizedPrefix.Span, memory.Span);
+            Assert(byteCount == memory.Length);
 
-            using (ArrayPool<byte>.Shared.RentExact(Encoding.UTF8.GetByteCount(normalizedPrefix.Span), out var memory))
-            {
-                var byteCount = Encoding.UTF8.GetBytes(normalizedPrefix.Span, memory.Span);
-                Assert(byteCount == memory.Length);
-
-                writer.Write(byteCount);
-                writer.Write(memory.Span);
-            }
+            writer.Write(byteCount);
+            writer.Write(memory.Span);
         }
 
         private static ReadOnlyMemory<char> NormalizePrefix(ReadOnlyMemory<char> prefix)

@@ -68,7 +68,7 @@ namespace AI4E.Remoting
 
             _rxQueues = new WeakDictionary<string, AsyncProducerConsumerQueue<Transmission<TAddress>>>();
             _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
-            _disposeHelper = new AsyncDisposeHelper(_receiveProcess.TerminateAsync);
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
         #endregion
@@ -133,6 +133,11 @@ namespace AI4E.Remoting
         public void Dispose()
         {
             _disposeHelper.Dispose();
+        }
+
+        private ValueTask DisposeInternalAsync()
+        {
+            return _receiveProcess.TerminateAsync().AsValueTask();
         }
 
         #endregion
@@ -244,10 +249,8 @@ namespace AI4E.Remoting
             {
                 try
                 {
-                    using (var guard = _multiplexer._disposeHelper.GuardDisposal(cancellation))
-                    {
-                        return await _rxQueue.DequeueAsync(guard.Cancellation);
-                    }
+                    using var guard = _multiplexer._disposeHelper.GuardDisposal(cancellation);
+                    return await _rxQueue.DequeueAsync(guard.Cancellation);
                 }
                 catch (OperationCanceledException) when (_multiplexer._disposeHelper.IsDisposed)
                 {
@@ -262,10 +265,8 @@ namespace AI4E.Remoting
 
                 try
                 {
-                    using (var guard = _multiplexer._disposeHelper.GuardDisposal(cancellation))
-                    {
-                        await SendInternalAsync(transmission, guard.Cancellation);
-                    }
+                    using var guard = _multiplexer._disposeHelper.GuardDisposal(cancellation);
+                    await SendInternalAsync(transmission, guard.Cancellation);
                 }
                 catch (OperationCanceledException) when (_multiplexer._disposeHelper.IsDisposed)
                 {

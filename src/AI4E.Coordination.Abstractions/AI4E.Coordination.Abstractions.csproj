@@ -10,13 +10,13 @@
     <PackageReference Include="System.Memory" Version="4.5.3" />
     <PackageReference Include="System.Numerics.Vectors" Version="4.6.0-preview5.19224.8" />
     <!-- We need this for the IAsyncDisposable and IAsyncEnumerable definition -->
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.0.0-preview7.19362.9" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AI4E.Utils.Memory" Version="0.2.0-pre19052318" />
-    <PackageReference Include="System.Collections.Immutable" Version="1.6.0-preview7.19362.9" />
-    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.6.0-preview7.19362.9" />
+    <PackageReference Include="AI4E.Utils.Memory" Version="0.2.0-pre19092412" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.6.0" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.6.0" />
   </ItemGroup>
 
   <ItemGroup>

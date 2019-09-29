@@ -191,34 +191,33 @@ namespace AI4E.Routing.SignalR.Server
             var leaseEnd = now + Timeout;
             var securityTokenBytesCount = Encoding.UTF8.GetByteCount(securityToken);
 
-            using (ArrayPool<byte>.Shared.Rent(8 + 4 + securityTokenBytesCount, out var bytes))
+            using var memoryOwner = MemoryPool<byte>.Shared.Rent(8 + 4 + securityTokenBytesCount);
+            var bytes = memoryOwner.Memory;
+            var payloadLength = EncodePayload(bytes.Span, securityToken.AsSpan(), leaseEnd);
+            var payload = bytes.Slice(start: 0, payloadLength);
+
+            EndPointAddress endPoint;
+            do
             {
-                var payloadLength = EncodePayload(bytes, securityToken.AsSpan(), leaseEnd);
-                var payload = bytes.AsMemory().Slice(start: 0, payloadLength);
+                endPoint = AllocateEndPointAddress();
+                var path = GetPath(endPoint);
 
-                EndPointAddress endPoint;
-                do
+                try
                 {
-                    endPoint = AllocateEndPointAddress();
-                    var path = GetPath(endPoint);
+                    await _coordinationManager.CreateAsync(path, payload, cancellation: cancellation);
 
-                    try
-                    {
-                        await _coordinationManager.CreateAsync(path, payload, cancellation: cancellation);
+                    _logger?.LogDebug($"Assigning end-point '{endPoint.ToString()}' to recently connected client.");
 
-                        _logger?.LogDebug($"Assigning end-point '{endPoint.ToString()}' to recently connected client.");
-
-                        break;
-                    }
-                    catch (DuplicateEntryException) // TODO: Add a TryCreateAsync method to the coordination service.
-                    {
-                        continue;
-                    }
+                    break;
                 }
-                while (cancellation.ThrowOrContinue());
-
-                return (endPoint, securityToken);
+                catch (DuplicateEntryException) // TODO: Add a TryCreateAsync method to the coordination service.
+                {
+                    continue;
+                }
             }
+            while (cancellation.ThrowOrContinue());
+
+            return (endPoint, securityToken);
         }
 
         private async Task<bool> ValidateClientCoreAsync(EndPointAddress endPoint,
@@ -266,18 +265,17 @@ namespace AI4E.Routing.SignalR.Server
 
                 var securityTokenBytesCount = Encoding.UTF8.GetByteCount(securityToken);
 
-                using (ArrayPool<byte>.Shared.Rent(8 + 4 + securityTokenBytesCount, out var bytes))
+                using var memoryOwner = MemoryPool<byte>.Shared.Rent(8 + 4 + securityTokenBytesCount);
+                var bytes = memoryOwner.Memory;
+                var payloadLength = EncodePayload(bytes.Span, securityToken.AsSpan(), leaseEnd);
+                var payload = bytes.Slice(start: 0, payloadLength);
+                var version = await _coordinationManager.SetValueAsync(path, payload, version: entry.Version, cancellation: cancellation);
+
+                if (version == entry.Version)
                 {
-                    var payloadLength = EncodePayload(bytes, securityToken.AsSpan(), leaseEnd);
-                    var payload = bytes.AsMemory().Slice(start: 0, payloadLength);
-                    var version = await _coordinationManager.SetValueAsync(path, payload, version: entry.Version, cancellation: cancellation);
+                    _logger?.LogDebug($"Updated session for client with end-point '{endPoint.ToString()}'.");
 
-                    if (version == entry.Version)
-                    {
-                        _logger?.LogDebug($"Updated session for client with end-point '{endPoint.ToString()}'.");
-
-                        return true;
-                    }
+                    return true;
                 }
             }
             while (true);
@@ -337,25 +335,25 @@ namespace AI4E.Routing.SignalR.Server
                     {
                         var clients = rootNode.GetChildrenEntries();
 
-                        await foreach(var client in clients)
+                        await foreach (var client in clients)
                         {
-                                var (securityToken, leaseEnd) = DecodePayload(client.Value.Span);
+                            var (securityToken, leaseEnd) = DecodePayload(client.Value.Span);
 
-                                var now = _dateTimeProvider.GetCurrentTime();
-                                if (now >= leaseEnd)
+                            var now = _dateTimeProvider.GetCurrentTime();
+                            if (now >= leaseEnd)
+                            {
+                                if (_logger.IsEnabled(LogLevel.Debug))
                                 {
-                                    if (_logger.IsEnabled(LogLevel.Debug))
-                                    {
-                                        _logger?.LogDebug($"Session for client with end-point '{client.Name.ToString()}' is terminated. Removing entry.");
-                                    }
-
-                                    disconnectedClients.Add(client);
-                                    continue;
+                                    _logger?.LogDebug($"Session for client with end-point '{client.Name.ToString()}' is terminated. Removing entry.");
                                 }
 
-                                var timeToWait = leaseEnd - now;
-                                if (timeToWait < delay)
-                                    delay = timeToWait;
+                                disconnectedClients.Add(client);
+                                continue;
+                            }
+
+                            var timeToWait = leaseEnd - now;
+                            if (timeToWait < delay)
+                                delay = timeToWait;
                         }
 
                         await Task.WhenAll(disconnectedClients.Select(p => _coordinationManager.DeleteAsync(p.Path, cancellation: cancellation).AsTask()));

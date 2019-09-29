@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -211,10 +212,9 @@ namespace AI4E.Routing.SignalR.Server
                     return;
                 }
 
-                using (payload.Base64Decode(out var bytes))
-                {
-                    await _endPoint.ReceiveAsync(seqNum, Context.ConnectionId, new EndPointAddress(endPoint), securityToken, bytes);
-                }
+                using var bytesOwner = payload.Base64Decode(MemoryPool<byte>.Shared);
+                var bytes = bytesOwner.Memory;
+                await _endPoint.ReceiveAsync(seqNum, Context.ConnectionId, new EndPointAddress(endPoint), securityToken, bytes);
             }
 
             public Task AckAsync(int seqNum)

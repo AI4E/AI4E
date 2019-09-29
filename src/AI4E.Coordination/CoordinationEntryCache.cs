@@ -21,8 +21,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
-using static System.Diagnostics.Debug;
-using static AI4E.Utils.DebugEx;
+using System.Diagnostics;
 
 namespace AI4E.Coordination
 {
@@ -211,7 +210,7 @@ namespace AI4E.Coordination
 
         internal CacheEntry(CoordinationEntryPath path)
         {
-            Assert(path != null);
+            Debug.Assert(path != null);
 
             Path = path;
             _entry = null;
@@ -222,8 +221,8 @@ namespace AI4E.Coordination
 
         internal CacheEntry(CoordinationEntryPath path, IStoredEntry entry)
         {
-            Assert(path != null);
-            Assert(entry != null);
+            Debug.Assert(path != null);
+            Debug.Assert(entry != null);
 
             Path = path;
             _entry = entry;
@@ -238,9 +237,9 @@ namespace AI4E.Coordination
                            SemaphoreSlim localReadLock,
                            SemaphoreSlim localWriteLock)
         {
-            Assert(path != null);
-            Assert(localReadLock != null);
-            Assert(localWriteLock != null);
+            Debug.Assert(path != null);
+            Debug.Assert(localReadLock != null);
+            Debug.Assert(localWriteLock != null);
 
             Path = path;
             _entry = entry;

@@ -7,10 +7,22 @@
 
   <PropertyGroup>
     <IsPackable>true</IsPackable>
+      <!--<Nullable>enable</Nullable>-->
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
   
+  <!--<ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="2.9.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>-->
+
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)src\Shared\*.*" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

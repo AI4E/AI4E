@@ -34,8 +34,6 @@ using System.IO;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Text;
-using AI4E.Utils;
-using AI4E.Utils.Memory;
 using Newtonsoft.Json;
 using static System.Diagnostics.Debug;
 
@@ -65,7 +63,7 @@ namespace AI4E.Routing
 
         public EndPointAddress(ReadOnlySpan<char> logicalAddress)
         {
-            if (logicalAddress.IsEmptyOrWhiteSpace())
+            if (logicalAddress.IsEmpty || logicalAddress.IsWhiteSpace())
             {
                 this = UnknownAddress;
             }

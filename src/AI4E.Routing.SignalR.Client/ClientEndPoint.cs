@@ -100,12 +100,10 @@ namespace AI4E.Routing.SignalR.Client
             {
                 try
                 {
-                    using (ArrayPool<byte>.Shared.RentExact((int)message.Length, out var memory))
-                    {
-                        message.Write(memory.Span);
-
-                        await SendAsync(memory, cancellation);
-                    }
+                    using var memoryOwner = MemoryPool<byte>.Shared.RentExact((int)message.Length);
+                    var memory = memoryOwner.Memory;
+                    message.Write(memory.Span);
+                    await SendAsync(memory, cancellation);
                 }
                 catch (OperationCanceledException) when (disposal.IsCancellationRequested)
                 {
@@ -348,7 +346,7 @@ namespace AI4E.Routing.SignalR.Client
                     _hubConnection.Closed -= UnderlyingConnectionLostAsync;
 
                     // TODO: We must call StopAsync only AFTER the reconnection manager ensured that there is no reconnection in progress.
-                    _hubConnection.StopAsync().HandleExceptions(); 
+                    _hubConnection.StopAsync().HandleExceptions();
                     _stubRegistration.Dispose();
                     _keepAliveProcess.Terminate();
                 }
@@ -401,10 +399,9 @@ namespace AI4E.Routing.SignalR.Client
 
             public async Task PushAsync(int seqNum, string payload)
             {
-                using (payload.Base64Decode(out var bytes))
-                {
-                    await _endPoint.ReceiveAsync(seqNum, bytes);
-                }
+                using var bytesOwner = payload.Base64Decode(MemoryPool<byte>.Shared);
+                var bytes = bytesOwner.Memory;
+                await _endPoint.ReceiveAsync(seqNum, bytes);
             }
 
             public Task AckAsync(int seqNum)

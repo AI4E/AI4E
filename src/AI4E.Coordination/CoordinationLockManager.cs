@@ -3,11 +3,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 using Microsoft.Extensions.Logging;
-using static System.Diagnostics.Debug;
-using static AI4E.Utils.DebugEx;
 
 namespace AI4E.Coordination
 {
@@ -111,8 +109,8 @@ namespace AI4E.Coordination
         public Task ReleaseLocalReadLockAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
             var cacheEntry = _cache.GetEntry(path);
-            Assert(cacheEntry != null);
-            Assert(cacheEntry.LocalReadLock.CurrentCount == 0);
+            Debug.Assert(cacheEntry != null);
+            Debug.Assert(cacheEntry.LocalReadLock.CurrentCount == 0);
 
             cacheEntry.LocalReadLock.Release();
             return Task.CompletedTask;
@@ -218,7 +216,7 @@ namespace AI4E.Coordination
 
             if (writeLock.Wait(0))
             {
-                Assert(writeLock.CurrentCount == 0);
+                Debug.Assert(writeLock.CurrentCount == 0);
                 return Task.FromResult(true);
             }
 
@@ -228,7 +226,7 @@ namespace AI4E.Coordination
         private async Task<bool> AcquireLocalWriteLockCoreAsync(SemaphoreSlim writeLock, CancellationToken cancellation)
         {
             await writeLock.WaitAsync(cancellation);
-            Assert(writeLock.CurrentCount == 0);
+            Debug.Assert(writeLock.CurrentCount == 0);
 
             return false;
         }
@@ -240,14 +238,14 @@ namespace AI4E.Coordination
             Task ReleaseLocalWriteLockInternalAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
             var writeLock = GetWriteLock(path);
-            Assert(writeLock.CurrentCount == 0);
+            Debug.Assert(writeLock.CurrentCount == 0);
 
 #if DEBUG
             var entry = await _storage.GetEntryAsync(path, cancellation);
             var session = await _sessionOwner.GetSessionAsync(cancellation);
 
             // We must only release the local write-lock if we released the (global) write-lock first.
-            Assert(entry == null || !await _sessionManager.IsAliveAsync(session, cancellation) || entry.WriteLock != session);
+            Debug.Assert(entry == null || !await _sessionManager.IsAliveAsync(session, cancellation) || entry.WriteLock != session);
 #endif
 
             writeLock.Release();
@@ -258,12 +256,12 @@ namespace AI4E.Coordination
 
         private async Task<IStoredEntry> ReleaseWriteLockAsync(IStoredEntry entry)
         {
-            Assert(entry != null);
+            Debug.Assert(entry != null);
             try
             {
                 var result = await InternalReleaseWriteLockAsync(entry);
 
-                Assert(result == null || result.WriteLock != await _sessionOwner.GetSessionAsync(cancellation: default));
+                Debug.Assert(result == null || result.WriteLock != await _sessionOwner.GetSessionAsync(cancellation: default));
 
                 await ReleaseLocalWriteLockInternalAsync(entry.Path, cancellation: default);
                 return result;
@@ -310,7 +308,7 @@ namespace AI4E.Coordination
                     return null;
                 }
 
-                Assert(start.WriteLock == null);
+                Debug.Assert(start.WriteLock == null);
 
                 // Actually try to lock the entry.
                 // Do not use UpdateEntryAsync as this method assumes that we already own the write-lock.
@@ -321,7 +319,7 @@ namespace AI4E.Coordination
 
             // If we reached this point, we own the write lock.
             entry = desired;
-            Assert(entry != null);
+            Debug.Assert(entry != null);
 
             try
             {
@@ -331,16 +329,16 @@ namespace AI4E.Coordination
                 entry = await _waitManager.WaitForReadLocksReleaseAsync(entry, cancellation);
 
                 // We hold the write lock. No-one can alter the entry except our session is terminated. But this will cause WaitForReadLocksReleaseAsync to throw.
-                Assert(entry != null);
+                Debug.Assert(entry != null);
 
                 // We own the write-lock.
                 // All read-locks must be free except for ourself.
-                Assert(entry.WriteLock == session);
-                Assert(entry.ReadLocks.IsEmpty || entry.ReadLocks.Length == 1 && entry.ReadLocks[0] == session);
+                Debug.Assert(entry.WriteLock == session);
+                Debug.Assert(entry.ReadLocks.IsEmpty || entry.ReadLocks.Length == 1 && entry.ReadLocks[0] == session);
 
                 if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
                 {
-                    Assert(watch != null);
+                    Debug.Assert(watch != null);
                     watch.Stop();
 
                     _logger?.LogTrace($"[{session}] Acquired write-lock for entry '{entry.Path}' in {watch.Elapsed.TotalSeconds}sec.");
@@ -367,7 +365,7 @@ namespace AI4E.Coordination
 
         private async Task<IStoredEntry> InternalReleaseWriteLockAsync(IStoredEntry entry)
         {
-            Assert(entry != null);
+            Debug.Assert(entry != null);
 
             var path = entry.Path;
             var cancellation = (await _sessionTerminationSource).CancellationToken;
@@ -413,12 +411,12 @@ namespace AI4E.Coordination
             while (entry != start);
 
             entry = desired;
-            Assert(entry != null);
-            Assert(entry.WriteLock == null);
+            Debug.Assert(entry != null);
+            Debug.Assert(entry.WriteLock == null);
 
             if (entry.ReadLocks.Contains(session))
             {
-                Assert(entry.ReadLocks.Contains(session));
+                Debug.Assert(entry.ReadLocks.Contains(session));
                 _cache.UpdateEntry(cacheEntry, entry);
             }
             else
@@ -470,7 +468,7 @@ namespace AI4E.Coordination
                     return null;
                 }
 
-                Assert(start.WriteLock == null || start.WriteLock == session);
+                Debug.Assert(start.WriteLock == null || start.WriteLock == session);
 
                 desired = _storedEntryManager.AcquireReadLock(start, session);
                 entry = await _storage.UpdateEntryAsync(desired, start, cancellation);
@@ -478,14 +476,14 @@ namespace AI4E.Coordination
             while (start != entry);
 
             entry = desired;
-            Assert(entry != null);
-            Assert(entry.ReadLocks.Contains(session));
+            Debug.Assert(entry != null);
+            Debug.Assert(entry.ReadLocks.Contains(session));
 
             try
             {
                 if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
                 {
-                    Assert(watch != null);
+                    Debug.Assert(watch != null);
                     watch.Stop();
 
                     _logger?.LogTrace($"[{session}] Acquired read-lock for entry '{entry.Path.EscapedPath}' in {watch.ElapsedMilliseconds}ms.");
@@ -495,7 +493,7 @@ namespace AI4E.Coordination
             }
             catch
             {
-                Assert(entry != null);
+                Debug.Assert(entry != null);
 
                 // Release global read lock on failure.
                 await ReleaseReadLockAsync(entry);
@@ -536,7 +534,7 @@ namespace AI4E.Coordination
 
         private async Task<IStoredEntry> InternalReleaseReadLockAsync(IStoredEntry entry)
         {
-            Assert(entry != null);
+            Debug.Assert(entry != null);
 
             var cancellation = (await _sessionTerminationSource).CancellationToken;
             IStoredEntry start, desired;
@@ -564,7 +562,7 @@ namespace AI4E.Coordination
             }
             while (start != entry);
 
-            Assert(entry != null);
+            Debug.Assert(entry != null);
 
             _exchangeManager.NotifyReadLockReleasedAsync(entry.Path, cancellation).HandleExceptions(_logger);
             _logger?.LogTrace($"[{session}] Released read-lock for entry '{entry.Path}'.");

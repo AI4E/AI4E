@@ -20,15 +20,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Routing;
-using AI4E.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Primitives;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Modularity.Host
 {
@@ -56,7 +56,7 @@ namespace AI4E.Modularity.Host
 
         public async Task Invoke(HttpContext context)
         {
-            Assert(context != null);
+            Debug.Assert(context != null);
 
             if (context != null)
             {

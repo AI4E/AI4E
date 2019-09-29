@@ -1,18 +1,15 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
-using AI4E.Utils;
-using AI4E.Utils.Processing;
 using AI4E.Remoting;
+using AI4E.Utils.Async;
+using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using static System.Diagnostics.Debug;
-using static AI4E.Utils.DebugEx;
-using AI4E.Utils.Memory;
 
 namespace AI4E.Coordination
 {
@@ -95,9 +92,12 @@ namespace AI4E.Coordination
 
         private Task DisposePhysicalEndPointAsync(IPhysicalEndPoint<TAddress> physicalEndPoint)
         {
-            return physicalEndPoint.Assert(p => p != null)
-                                   .DisposeIfDisposableAsync()
-                                   .HandleExceptionsAsync(_logger);
+            Debug.Assert(physicalEndPoint != null);
+
+            return physicalEndPoint
+                .DisposeIfDisposableAsync()
+                .HandleExceptionsAsync(_logger)
+                .AsTask();
         }
 
         #endregion
@@ -172,7 +172,7 @@ namespace AI4E.Coordination
             _physicalEndPoint.Dispose();
         }
 
-#endregion
+        #endregion
 
         private async Task InvalidateCacheEntryAsync(CoordinationEntryPath path, CancellationToken cancellation)
         {
@@ -242,7 +242,7 @@ namespace AI4E.Coordination
         {
             var remoteAddress = _endPointMultiplexer.AddressFromString(Encoding.UTF8.GetString(session.PhysicalAddress.Span));
 
-            Assert(remoteAddress != null);
+            Debug.Assert(remoteAddress != null);
 
             var physicalEndPoint = GetSessionEndPoint(session);
 
@@ -257,10 +257,11 @@ namespace AI4E.Coordination
 
         private IPhysicalEndPoint<TAddress> GetSessionEndPoint(Session session)
         {
-            Assert(session != null);
+            Debug.Assert(session != null);
             var multiplexName = GetMultiplexEndPointName(session);
-            return _endPointMultiplexer.GetPhysicalEndPoint(multiplexName)
-                                       .Assert(p => p != null);
+            var result = _endPointMultiplexer.GetPhysicalEndPoint(multiplexName);
+            Debug.Assert(result != null);
+            return result;
         }
 
         private string GetMultiplexEndPointName(Session session)
@@ -282,22 +283,20 @@ namespace AI4E.Coordination
 
         private (MessageType messageType, CoordinationEntryPath path, Session session) DecodeMessage(IMessage message)
         {
-            Assert(message != null);
+            Debug.Assert(message != null);
 
-            using (var frameStream = message.PopFrame().OpenStream())
-            using (var binaryReader = new BinaryReader(frameStream))
-            {
-                var messageType = (MessageType)binaryReader.ReadByte();
+            using var frameStream = message.PopFrame().OpenStream();
+            using var binaryReader = new BinaryReader(frameStream);
+            var messageType = (MessageType)binaryReader.ReadByte();
 
-                var escapedPath = binaryReader.ReadUtf8();
-                var path = CoordinationEntryPath.FromEscapedPath(escapedPath);
+            var escapedPath = binaryReader.ReadUtf8();
+            var path = CoordinationEntryPath.FromEscapedPath(escapedPath.AsMemory());
 
-                var sessionLength = binaryReader.ReadInt32();
-                var sessionBytes = binaryReader.ReadBytes(sessionLength);
-                var session = Session.FromChars(Encoding.UTF8.GetString(sessionBytes).AsSpan());
+            var sessionLength = binaryReader.ReadInt32();
+            var sessionBytes = binaryReader.ReadBytes(sessionLength);
+            var session = Session.FromChars(Encoding.UTF8.GetString(sessionBytes).AsSpan());
 
-                return (messageType, path, session);
-            }
+            return (messageType, path, session);
         }
 
         private Message EncodeMessage(MessageType messageType, CoordinationEntryPath path, Session session)
@@ -311,21 +310,19 @@ namespace AI4E.Coordination
 
         private void EncodeMessage(IMessage message, MessageType messageType, CoordinationEntryPath path, Session session)
         {
-            Assert(message != null);
+            Debug.Assert(message != null);
             // Modify if other message types are added
-            Assert(messageType >= MessageType.InvalidateCacheEntry && messageType <= MessageType.ReleasedWriteLock);
+            Debug.Assert(messageType >= MessageType.InvalidateCacheEntry && messageType <= MessageType.ReleasedWriteLock);
 
-            using (var frameStream = message.PushFrame().OpenStream())
-            using (var binaryWriter = new BinaryWriter(frameStream))
-            {
-                binaryWriter.Write((byte)messageType);
+            using var frameStream = message.PushFrame().OpenStream();
+            using var binaryWriter = new BinaryWriter(frameStream);
+            binaryWriter.Write((byte)messageType);
 
-                binaryWriter.WriteUtf8(path.EscapedPath.Span);
+            binaryWriter.WriteUtf8(path.EscapedPath.Span);
 
-                var sessionBytes = Encoding.UTF8.GetBytes(session.ToString());
-                binaryWriter.Write(sessionBytes.Length);
-                binaryWriter.Write(sessionBytes);
-            }
+            var sessionBytes = Encoding.UTF8.GetBytes(session.ToString());
+            binaryWriter.Write(sessionBytes.Length);
+            binaryWriter.Write(sessionBytes);
         }
 
         private enum MessageType : byte

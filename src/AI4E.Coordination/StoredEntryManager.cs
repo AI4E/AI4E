@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Immutable;
 using System.Linq;
+using AI4E.Utils;
 
 namespace AI4E.Coordination
 {

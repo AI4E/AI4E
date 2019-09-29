@@ -2,6 +2,7 @@ using System;
 using System.Text;
 using System.Threading;
 using AI4E.Remoting;
+using AI4E.Utils;
 
 namespace AI4E.Coordination
 {

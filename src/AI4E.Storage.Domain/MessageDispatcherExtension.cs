@@ -22,9 +22,7 @@ namespace AI4E.Storage.Domain
 
         static MessageDispatcherExtension()
         {
-            var remoteMessageDispatcherType = TypeLoadHelper.LoadTypeFromUnqualifiedName("AI4E.Routing.IRemoteMessageDispatcher", throwIfNotFound: false);
-
-            if (remoteMessageDispatcherType == null)
+            if (!TypeLoadHelper.TryLoadTypeFromUnqualifiedName("AI4E.Routing.IRemoteMessageDispatcher", out var remoteMessageDispatcherType))
             {
                 _isRemoteMessageDispatcher = _ => false;
                 _dispatchLocalAsync = null;

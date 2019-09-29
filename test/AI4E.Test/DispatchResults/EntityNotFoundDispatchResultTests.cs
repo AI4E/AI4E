@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Collections.Generic;
 using AI4E.Utils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;

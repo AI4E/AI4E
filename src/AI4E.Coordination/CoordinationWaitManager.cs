@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils;
 using Microsoft.Extensions.Logging;
-using static System.Diagnostics.Debug;
-using static AI4E.Utils.DebugEx;
 
 namespace AI4E.Coordination
 {
@@ -90,7 +88,7 @@ namespace AI4E.Coordination
                 // In this case, we could also allow this but had to synchronize the write operations locally.
                 if (writeLock == session)
                 {
-                    Assert(allowWriteLock); // If this fails, we have overlapping writes, that should be prevented by the local write lock.
+                    Debug.Assert(allowWriteLock); // If this fails, we have overlapping writes, that should be prevented by the local write lock.
 
                     return entry;
                 }
@@ -110,7 +108,7 @@ namespace AI4E.Coordination
 
                     if (e.WriteLock == session)
                     {
-                        Assert(allowWriteLock);
+                        Debug.Assert(allowWriteLock);
                         return true;
                     }
 
@@ -130,14 +128,14 @@ namespace AI4E.Coordination
 
         public async Task<IStoredEntry> WaitForReadLocksReleaseAsync(IStoredEntry entry, CancellationToken cancellation)
         {
-            Assert(entry != null);
+            Debug.Assert(entry != null);
 
             IEnumerable<Session> readLocks = entry.ReadLocks;
 
             // Exclude our own read-lock (if present)
             var session = await _sessionOwner.GetSessionAsync(cancellation);
 
-            Assert(entry.WriteLock == session);
+            Debug.Assert(entry.WriteLock == session);
 
             readLocks = readLocks.Where(readLock => readLock != session);
 
@@ -145,9 +143,9 @@ namespace AI4E.Coordination
             {
                 // Send a message to each of 'readLocks' to ask for lock release and await the end of the session or the lock release, whichever occurs first.
                 var lockReleaseResults = await Task.WhenAll(readLocks.Select(readLock => WaitForReadLockRelease(entry, readLock, cancellation)));
-                Assert(lockReleaseResults != null);
-                Assert(lockReleaseResults.Count() == readLocks.Count());
-                Assert(lockReleaseResults.Any());
+                Debug.Assert(lockReleaseResults != null);
+                Debug.Assert(lockReleaseResults.Count() == readLocks.Count());
+                Debug.Assert(lockReleaseResults.Any());
 
                 // We own the write-lock. Anyone deleted the entry concurrently => Our session must be terminated.
                 if (lockReleaseResults.Any(p => p == null))
@@ -157,7 +155,7 @@ namespace AI4E.Coordination
 
                 entry = lockReleaseResults.OrderByDescending(p => p.StorageVersion).FirstOrDefault();
 
-                Assert(entry != null);
+                Debug.Assert(entry != null);
 
                 // We are holding the write-lock => The entry must not be deleted concurrently.
                 if (entry.ReadLocks.Length != 0 && (entry.ReadLocks.Length > 1 || entry.ReadLocks.First() != session))
@@ -167,13 +165,13 @@ namespace AI4E.Coordination
 
                     var x = entry.ReadLocks.Length != 0 && (entry.ReadLocks.Length > 1 || entry.ReadLocks.First() != session);
 
-                    System.Diagnostics.Debugger.Break();
+                    Debugger.Break();
 #endif
                     throw new SessionTerminatedException();
                 }
             }
 
-            Assert(entry != null);
+            Debug.Assert(entry != null);
             return entry;
         }
 
@@ -184,7 +182,7 @@ namespace AI4E.Coordination
 #if DEBUG
             var isTerminated = !await _sessionManager.IsAliveAsync(session, cancellation);
 
-            Assert(isTerminated);
+            Debug.Assert(isTerminated);
 #endif
 
             var localSession = await _sessionOwner.GetSessionAsync(cancellation);
@@ -231,21 +229,21 @@ namespace AI4E.Coordination
             while (start != entry);
 
             entry = desired;
-            Assert(!entry.ReadLocks.Contains(session));
-            Assert(entry.WriteLock != session);
+            Debug.Assert(!entry.ReadLocks.Contains(session));
+            Debug.Assert(entry.WriteLock != session);
 
             return entry;
         }
 
         private async Task<IStoredEntry> WaitForReadLockRelease(IStoredEntry entry, Session readLock, CancellationToken cancellation)
         {
-            Assert(entry != null);
-            Assert(entry.ReadLocks.Contains(readLock));
+            Debug.Assert(entry != null);
+            Debug.Assert(entry.ReadLocks.Contains(readLock));
 
             if (!await _sessionManager.IsAliveAsync(readLock, cancellation))
             {
                 entry = await CleanupLocksOnSessionTermination(entry, readLock, cancellation);
-                Assert(!entry.ReadLocks.Contains(readLock));
+                Debug.Assert(!entry.ReadLocks.Contains(readLock));
                 return entry;
             }
 
@@ -263,7 +261,7 @@ namespace AI4E.Coordination
             // because we may assume the release caused by a message from the session that owns the read-lock. 
             // This message can be delayed and not be a response to our invalidation request.
 
-            Assert(!entry.ReadLocks.Contains(readLock));
+            Debug.Assert(!entry.ReadLocks.Contains(readLock));
 
             return entry;
         }
@@ -304,9 +302,9 @@ namespace AI4E.Coordination
                     return await CleanupLocksOnSessionTermination(entry, session, cancellation);
                 }
 
-                Assert(completed == delay);
+                Debug.Assert(completed == delay);
 
-                timeToWait = timeToWait + timeToWait;
+                timeToWait += timeToWait;
 
                 if (timeToWait > _timeToWaitMax)
                 {

@@ -32,7 +32,6 @@ namespace AI4E.Storage
                 throw new ArgumentNullException(nameof(services));
 
             services.AddOptions();
-            services.AddDateTimeProvider();
            
             services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
 

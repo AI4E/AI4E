@@ -5,11 +5,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\DataPropertyHelper.cs" Link="Internal\DataPropertyHelper.cs" />
+    <Compile Remove="Internal\**" />
+    <EmbeddedResource Remove="Internal\**" />
+    <None Remove="Internal\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AI4E.Utils.ObjectClone" Version="0.2.0-pre19052318" />
+    <PackageReference Include="AI4E.Utils.ObjectClone" Version="0.2.0-pre19092412" />
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
   </ItemGroup>
 
@@ -17,10 +19,6 @@
     <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\AI4E\AI4E.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal\" />
   </ItemGroup>
 
 </Project>

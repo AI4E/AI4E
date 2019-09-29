@@ -141,7 +141,7 @@ namespace AI4E.Storage.Projection
             var cancellationToken = cancellationTokenSource.Token;
             var targets = await projection.ProjectAsync(source, cancellationToken);
 
-            Assert.AreEqual(1, targets.Length);
+            Assert.AreEqual(1, targets.Count());
             Assert.AreSame(source, targets.First().Source);
         }
 
@@ -164,7 +164,7 @@ namespace AI4E.Storage.Projection
             var cancellationToken = cancellationTokenSource.Token;
             var targets = await projection.ProjectAsync(source, cancellationToken);
 
-            Assert.AreEqual(1, targets.Length);
+            Assert.AreEqual(1, targets.Count());
             Assert.AreSame(source, targets.First().Source);
         }
 
@@ -187,7 +187,7 @@ namespace AI4E.Storage.Projection
             var cancellationToken = cancellationTokenSource.Token;
             var targets = await projection.ProjectAsync(source, cancellationToken);
 
-            Assert.AreEqual(1, targets.Length);
+            Assert.AreEqual(1, targets.Count());
             Assert.AreSame(source, targets.First().Source);
         }
 
@@ -210,7 +210,7 @@ namespace AI4E.Storage.Projection
             var cancellationToken = cancellationTokenSource.Token;
             var targets = await projection.ProjectAsync(source, cancellationToken);
 
-            Assert.AreEqual(1, targets.Length);
+            Assert.AreEqual(1, targets.Count());
             Assert.AreSame(source, targets.First().Source);
         }
 
@@ -233,7 +233,7 @@ namespace AI4E.Storage.Projection
             var cancellationToken = cancellationTokenSource.Token;
             var targets = await projection.ProjectAsync(source, cancellationToken);
 
-            Assert.AreEqual(1, targets.Length);
+            Assert.AreEqual(1, targets.Count());
             Assert.AreSame(source, targets.First().Source);
         }
 
@@ -256,7 +256,7 @@ namespace AI4E.Storage.Projection
             var cancellationToken = cancellationTokenSource.Token;
             var targets = await projection.ProjectAsync(source, cancellationToken);
 
-            Assert.AreEqual(1, targets.Length);
+            Assert.AreEqual(1, targets.Count());
             Assert.AreSame(source, targets.First().Source);
         }
 
@@ -279,7 +279,7 @@ namespace AI4E.Storage.Projection
             var cancellationToken = cancellationTokenSource.Token;
             var targets = await projection.ProjectAsync(source, cancellationToken);
 
-            Assert.AreEqual(1, targets.Length);
+            Assert.AreEqual(1, targets.Count());
             Assert.AreSame(source, targets.First().Source);
         }
 
@@ -327,7 +327,7 @@ namespace AI4E.Storage.Projection
             var targets = await projection.ProjectAsync(source, cancellationToken);
 
             Assert.IsTrue(handler.Invoked);
-            Assert.AreEqual(1, targets.Length);
+            Assert.AreEqual(1, targets.Count());
             Assert.IsNull(targets.First().Source);
             Assert.IsNull(handler.ProjectionSource);
         }
@@ -352,7 +352,7 @@ namespace AI4E.Storage.Projection
             var targets = await projection.ProjectAsync(source, cancellationToken);
 
             Assert.IsFalse(handler.Invoked);
-            Assert.AreEqual(0, targets.Length);
+            Assert.AreEqual(0, targets.Count());
             Assert.IsNull(handler.ProjectionSource);
         }
     }
@@ -424,7 +424,7 @@ namespace AI4E.Storage.Projection
         {
             Invoked = true;
             ProjectionSource = projectionSource;
-            return new AsyncEnumerableWrapper(new List <ProjectionTarget> { new ProjectionTarget(projectionSource) }.ToAsyncEnumerable());
+            return new AsyncEnumerableWrapper(new List<ProjectionTarget> { new ProjectionTarget(projectionSource) }.ToAsyncEnumerable());
         }
 
         public ValueTask<IAsyncEnumerable<ProjectionTarget>> ProjectMultipleResultAsyncAsAsyncEnumerable(ProjectionSource projectionSource)

@@ -165,7 +165,7 @@ namespace AI4E.Coordination
 
             void ProcessSegment(int exclusiveEnd)
             {
-                var slice = path.Slice(segmentStart, exclusiveEnd: exclusiveEnd);
+                var slice = path.Slice(segmentStart, exclusiveEnd - segmentStart);
 
                 if (!slice.Span.IsEmptyOrWhiteSpace())
                 {

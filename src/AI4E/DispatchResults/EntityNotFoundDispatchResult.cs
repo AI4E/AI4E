@@ -138,8 +138,7 @@ namespace AI4E.DispatchResults
                 return false;
             }
 
-            entityType = TypeLoadHelper.LoadTypeFromUnqualifiedName(EntityTypeName, throwIfNotFound: false);
-            return entityType != null;
+            return TypeLoadHelper.TryLoadTypeFromUnqualifiedName(EntityTypeName, out entityType);
         }
     }
 }
