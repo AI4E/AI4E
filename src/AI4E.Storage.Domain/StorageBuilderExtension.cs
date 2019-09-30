@@ -1,4 +1,5 @@
 using System;
+using AI4E.Messaging;
 using AI4E.Storage.Projection;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;

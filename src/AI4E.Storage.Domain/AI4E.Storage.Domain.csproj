@@ -5,12 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Internal\**" />
-    <EmbeddedResource Remove="Internal\**" />
-    <None Remove="Internal\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\AI4E.Storage.Domain.Abstractions\AI4E.Storage.Domain.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Projection\AI4E.Storage.Projection.csproj" />

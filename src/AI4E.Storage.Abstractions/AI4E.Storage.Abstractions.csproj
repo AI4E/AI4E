@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+    <ProjectReference Include="..\Messaging\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
   </ItemGroup>
-
+  
 </Project>

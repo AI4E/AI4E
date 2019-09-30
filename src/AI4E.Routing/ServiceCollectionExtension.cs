@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using AI4E.Messaging;
+using AI4E.Messaging.Validation;
 using AI4E.Remoting;
-using AI4E.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 

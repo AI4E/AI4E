@@ -22,7 +22,6 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -35,9 +34,10 @@ namespace AI4E.Remoting
     {
         private readonly ImmutableList<ValueMessageFrame> _frames;
 
-        internal ValueMessage(IEnumerable<ValueMessageFrame> frames)
+        public ValueMessage(IEnumerable<ValueMessageFrame> frames)
         {
-            Debug.Assert(frames != null);
+            if (frames is null)
+                throw new ArgumentNullException(nameof(frames));
 
             _frames = frames as ImmutableList<ValueMessageFrame> ?? frames.ToImmutableList();
         }

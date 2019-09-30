@@ -61,6 +61,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Utils;
@@ -180,7 +181,9 @@ namespace AI4E.Storage.Domain
         }
 
         /// <inheritdoc />
-        public async IAsyncEnumerable<IStream> OpenAllAsync(string bucketId, CancellationToken cancellation)
+        public async IAsyncEnumerable<IStream> OpenAllAsync(
+            string bucketId,
+            [EnumeratorCancellation] CancellationToken cancellation)
         {
             var streamHeads = _persistence.GetStreamHeadsAsync(bucketId, cancellation);
 
@@ -202,7 +205,8 @@ namespace AI4E.Storage.Domain
         }
 
         /// <inheritdoc />
-        public async IAsyncEnumerable<IStream> OpenAllAsync(CancellationToken cancellation)
+        public async IAsyncEnumerable<IStream> OpenAllAsync(
+            [EnumeratorCancellation]CancellationToken cancellation)
         {
             var streamHeads = _persistence.GetStreamHeadsAsync(cancellation);
 
@@ -224,7 +228,9 @@ namespace AI4E.Storage.Domain
         }
 
         /// <inheritdoc />
-        public async IAsyncEnumerable<IStream> OpenStreamsToSnapshotAsync(long maxThreshold, CancellationToken cancellation)
+        public async IAsyncEnumerable<IStream> OpenStreamsToSnapshotAsync(
+            long maxThreshold,
+            [EnumeratorCancellation] CancellationToken cancellation)
         {
             var streamHeads = _persistence.GetStreamsToSnapshotAsync(maxThreshold, cancellation);
 

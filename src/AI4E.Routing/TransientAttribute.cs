@@ -1,4 +1,5 @@
 using System;
+using AI4E.Messaging;
 
 namespace AI4E.Routing
 {

@@ -5,12 +5,12 @@
     <RootNamespace>AI4E.Remoting</RootNamespace>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup>   
     <PackageReference Include="AI4E.Utils.Memory" Version="0.2.0-pre19092412" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
+    <ProjectReference Include="..\Messaging\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
   </ItemGroup>
-
+  
 </Project>

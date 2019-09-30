@@ -21,6 +21,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Messaging;
 
 namespace AI4E.Modularity.Host
 {

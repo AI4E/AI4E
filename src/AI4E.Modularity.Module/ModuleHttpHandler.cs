@@ -20,6 +20,7 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Messaging;
 using Microsoft.AspNetCore.Hosting.Server;
 
 namespace AI4E.Modularity.Module

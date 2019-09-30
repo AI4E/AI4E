@@ -23,6 +23,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using AI4E.Messaging;
 
 namespace AI4E.Storage
 {

@@ -7,7 +7,7 @@ using Nito.AsyncEx;
 
 namespace AI4E.Internal
 {
-    public abstract class ReconnectionManagerBase : IDisposable
+    internal abstract class ReconnectionManagerBase : IDisposable
     {
         private readonly ILogger _logger;
 
@@ -189,27 +189,27 @@ namespace AI4E.Internal
                 }
             }
         }
-    }
 
-    public readonly struct ConnectionLostToken
-    {
-        private readonly Func<Task> _connectionLose;
-
-        internal ConnectionLostToken(Func<Task> connectionLose)
+        internal readonly struct ConnectionLostToken
         {
-            _connectionLose = connectionLose;
-        }
+            private readonly Func<Task> _connectionLose;
 
-        public bool IsConnectionLost => _connectionLose?.Invoke()?.IsCompleted ?? true;
+            internal ConnectionLostToken(Func<Task> connectionLose)
+            {
+                _connectionLose = connectionLose;
+            }
 
-        public Task AsTask()
-        {
-            return _connectionLose?.Invoke() ?? Task.CompletedTask;
-        }
+            public bool IsConnectionLost => _connectionLose?.Invoke()?.IsCompleted ?? true;
 
-        public static implicit operator Task(ConnectionLostToken token)
-        {
-            return token.AsTask();
+            public Task AsTask()
+            {
+                return _connectionLose?.Invoke() ?? Task.CompletedTask;
+            }
+
+            public static implicit operator Task(ConnectionLostToken token)
+            {
+                return token.AsTask();
+            }
         }
-    }
+    }   
 }

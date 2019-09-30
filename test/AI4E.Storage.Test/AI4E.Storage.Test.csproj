@@ -7,23 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Internal\**" />
-    <EmbeddedResource Remove="Internal\**" />
-    <None Remove="Internal\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.3.0" />
     <PackageReference Include="MSTest.TestAdapter" Version="2.0.0" />
     <PackageReference Include="MSTest.TestFramework" Version="2.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\AI4E.Abstractions\AI4E.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
-    <ProjectReference Include="..\..\src\AI4E\AI4E.csproj" />
   </ItemGroup>
 
 </Project>

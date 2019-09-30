@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.DispatchResults;
+using AI4E.Messaging;
 using AI4E.Storage.Projection;
 
 namespace AI4E.Storage.Domain

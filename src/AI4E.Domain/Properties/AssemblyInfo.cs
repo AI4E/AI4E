@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("AI4E.Domain.Services")]
+//[assembly: InternalsVisibleTo("AI4E.Domain.Services")]
 

@@ -26,7 +26,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using AI4E.Handler;
+using AI4E.Messaging.Handler;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Projection

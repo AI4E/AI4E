@@ -1,4 +1,5 @@
 using System;
+using AI4E.Messaging;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -5,12 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Internal\**" />
-    <EmbeddedResource Remove="Internal\**" />
-    <None Remove="Internal\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\AI4E.Modularity\AI4E.Modularity.csproj" />
   </ItemGroup>
 

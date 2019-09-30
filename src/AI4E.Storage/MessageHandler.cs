@@ -20,7 +20,7 @@
 
 using System;
 
-namespace AI4E
+namespace AI4E.Messaging
 {
     // This defined a base type that can be used to consume entities in a message handler.
     // For the actual implementation (loading/storing the entity etc.) see EntityMessageHandlerProcessor

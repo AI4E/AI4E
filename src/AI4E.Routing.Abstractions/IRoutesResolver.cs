@@ -1,3 +1,5 @@
+using AI4E.Messaging;
+
 namespace AI4E.Routing
 {
     public interface IRoutesResolver

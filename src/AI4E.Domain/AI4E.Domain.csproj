@@ -18,7 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E\AI4E.csproj" />
+    <ProjectReference Include="..\Messaging\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\Messaging\AI4E.Messaging\AI4E.Messaging.csproj" />
   </ItemGroup>
-
+  
 </Project>

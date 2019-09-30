@@ -143,7 +143,7 @@ namespace AI4E.Internal
 
             var idType = GetIdType<TData>();
 
-            if(idType == null || !typeof(TId).IsAssignableFrom(idType))
+            if (idType == null || !typeof(TId).IsAssignableFrom(idType))
             {
                 throw new InvalidOperationException($"The type {typeof(TData)} does not have an id member that is assignable to type {typeof(TId)}.");
             }

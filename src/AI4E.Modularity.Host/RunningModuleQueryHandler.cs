@@ -20,6 +20,7 @@
 
 using System;
 using System.Linq;
+using AI4E.Messaging;
 
 namespace AI4E.Modularity.Host
 {

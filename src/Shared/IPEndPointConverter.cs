@@ -40,9 +40,9 @@ namespace AI4E.Internal
             }
             var values = str.Split(new char[] { ':' });
             IPAddress ipaddy;
-            var port = 0;
             const int defaultport = 0;
 
+            int port;
             //check if we have an IPv6 or ports
             if (values.Length <= 2) // ipv4 or hostname
             {

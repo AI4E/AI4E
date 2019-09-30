@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Immutable;
+using AI4E.Messaging;
 using AI4E.Utils;
 
 namespace AI4E.Routing

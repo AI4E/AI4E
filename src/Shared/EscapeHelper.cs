@@ -38,7 +38,7 @@ namespace AI4E.Internal
 
             // Replace all occurances of -Y with \
             str.Replace(_escapedBackslashString, _backSlashString, startIndex, str.Length - startIndex);
-  
+
             // Replace all occurances of -- with -
             // This has to be the last operation as otherwise the unescape operation may unescape none escaped sequences. 
             // F.e. ABC--X => ABC-X => ABC/ (which is incorrect)

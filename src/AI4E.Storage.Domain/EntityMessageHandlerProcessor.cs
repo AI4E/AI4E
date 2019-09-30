@@ -23,9 +23,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.DispatchResults;
-using AI4E.Utils;
-using AI4E.Validation;
+using AI4E.Messaging;
+using AI4E.Messaging.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using static System.Diagnostics.Debug;
 

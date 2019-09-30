@@ -21,6 +21,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Domain;
+using AI4E.Messaging;
 using AI4E.Storage.Domain;
 
 namespace AI4E.Modularity.Host

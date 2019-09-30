@@ -21,6 +21,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Linq;
+using AI4E.Messaging;
 using AI4E.Modularity.Metadata;
 using AI4E.Routing;
 

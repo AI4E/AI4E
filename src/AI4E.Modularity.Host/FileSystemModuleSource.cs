@@ -415,17 +415,18 @@ namespace AI4E.Modularity.Host
         }
 
         // TODO: Add a type to manage module packages.
-        private async Task<DirectoryInfo> ExtractCoreAsync(DirectoryInfo directory, IModuleMetadata metadata, string file, CancellationToken cancellation)
+        private Task<DirectoryInfo> ExtractCoreAsync(
+            DirectoryInfo directory, IModuleMetadata metadata, string file, CancellationToken cancellation)
         {
             if (file == null)
             {
-                return null;
+                return Task.FromResult<DirectoryInfo>(null);
             }
 
             var path = file;
 
             if (!File.Exists(path))
-                return null;
+                return Task.FromResult<DirectoryInfo>(null);
 
             var moduleDirectory = Path.Combine(directory.FullName, metadata.Release.ToString());
 
@@ -436,7 +437,7 @@ namespace AI4E.Modularity.Host
 
             ZipFile.ExtractToDirectory(file, moduleDirectory);
 
-            return new DirectoryInfo(moduleDirectory);
+            return Task.FromResult(new DirectoryInfo(moduleDirectory));
         }
 
         protected override void DoDispose()

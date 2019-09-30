@@ -6,19 +6,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Internal\**" />
-    <EmbeddedResource Remove="Internal\**" />
-    <None Remove="Internal\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Html.Abstractions" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.ViewFeatures" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
-    <ProjectReference Include="..\AI4E\AI4E.csproj" />
+    <ProjectReference Include="..\Messaging\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\Messaging\AI4E.Messaging\AI4E.Messaging.csproj" />
   </ItemGroup>
 
 </Project>

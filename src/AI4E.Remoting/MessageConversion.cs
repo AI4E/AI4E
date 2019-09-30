@@ -18,12 +18,14 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.IO;
 
 namespace AI4E.Remoting
 {
     public static class MessageConversion
     {
+        [Obsolete]
         public static ValueMessage ToValueMessage(this IMessage message)
         {
             var frameIndex = message.FrameIndex;
@@ -52,6 +54,7 @@ namespace AI4E.Remoting
             }
         }
 
+        [Obsolete]
         public static IMessage ToMessage(in this ValueMessage valueMessage)
         {
             var result = new Message();

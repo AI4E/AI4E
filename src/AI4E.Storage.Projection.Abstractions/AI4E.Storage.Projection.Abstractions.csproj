@@ -11,11 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Messaging\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
     <PackageReference Include="AI4E.Utils" Version="0.2.0-pre19092412" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\AI4E.Abstractions\AI4E.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

@@ -294,7 +294,10 @@ namespace AI4E.Remoting
                 return Task.WhenAll(tasks).AsValueTask();
             }
 
-            public async ValueTask OnConnectionEstablishing(CancellationToken cancellation) { }
+            public ValueTask OnConnectionEstablishing(CancellationToken cancellation)
+            {
+                return default;
+            }
 
             #endregion
 
