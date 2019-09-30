@@ -63,7 +63,7 @@ namespace AI4E.Messaging.Validation
             using var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
             var testMessage = new ValidationTestMessage("myString", 243);
-            var dispatchData = new DispatchDataDictionary<Validate<ValidationTestMessage>>(new Validate<ValidationTestMessage>(testMessage));
+            var dispatchData = new DispatchDataDictionary<Validate>(new Validate<ValidationTestMessage>(testMessage)).As<Validate>();
 
             var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, cancellationToken);
 
@@ -99,7 +99,7 @@ namespace AI4E.Messaging.Validation
             using var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
             var testMessage = new ValidationTestMessage("   ", -1);
-            var dispatchData = new DispatchDataDictionary<Validate<ValidationTestMessage>>(new Validate<ValidationTestMessage>(testMessage));
+            var dispatchData = new DispatchDataDictionary<Validate>(new Validate<ValidationTestMessage>(testMessage));
 
             var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, cancellationToken);
 
@@ -143,7 +143,7 @@ namespace AI4E.Messaging.Validation
             using var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
             var testMessage = new ValidationTestMessage("   ", -1);
-            var dispatchData = new DispatchDataDictionary<Validate<ValidationTestMessage>>(new Validate<ValidationTestMessage>(testMessage));
+            var dispatchData = new DispatchDataDictionary<Validate>(new Validate<ValidationTestMessage>(testMessage));
 
             var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, cancellationToken);
 
@@ -188,7 +188,7 @@ namespace AI4E.Messaging.Validation
             using var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
             var testMessage = new ValidationTestMessage("   ", -1);
-            var dispatchData = new DispatchDataDictionary<Validate<ValidationTestMessage>>(new Validate<ValidationTestMessage>(testMessage));
+            var dispatchData = new DispatchDataDictionary<Validate>(new Validate<ValidationTestMessage>(testMessage));
 
             var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, cancellationToken);
 

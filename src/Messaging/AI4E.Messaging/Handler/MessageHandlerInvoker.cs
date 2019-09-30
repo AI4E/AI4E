@@ -201,25 +201,15 @@ namespace AI4E.Messaging.Handler
         }
 
 #if !SUPPORTS_DEFAULT_INTERFACE_METHODS
-        /// <inheritdoc/>
         ValueTask<IDispatchResult> IMessageHandler.HandleAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
             bool localDispatch,
             CancellationToken cancellation)
         {
-            if (!(dispatchData.Message is TMessage))
-                throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{typeof(TMessage)}'.");
-
-            if (!(dispatchData is DispatchDataDictionary<TMessage> typedDispatchData))
-            {
-                typedDispatchData = new DispatchDataDictionary<TMessage>(dispatchData.Message as TMessage, dispatchData);
-            }
-
-            return HandleAsync(typedDispatchData, publish, localDispatch, cancellation);
+            return HandleAsync(dispatchData.As<TMessage>(), publish, localDispatch, cancellation);
         }
 
-        /// <inheritdoc/>
         Type IMessageHandler.MessageType => typeof(TMessage);
 #endif
 

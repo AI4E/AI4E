@@ -44,8 +44,6 @@ namespace AI4E.Messaging.Validation
             _options = optionsAccessor.Value ?? new MessagingOptions();
         }
 
-        public Type MessageType => typeof(Validate);
-
         public ValueTask<IDispatchResult> HandleAsync(
             DispatchDataDictionary<Validate> dispatchData,
             bool publish,
@@ -101,25 +99,18 @@ namespace AI4E.Messaging.Validation
                 new DispatchFailureDispatchResult(dispatchData.MessageType));
         }
 
-        public ValueTask<IDispatchResult> HandleAsync(
+#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
+        ValueTask<IDispatchResult> IMessageHandler.HandleAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
             bool localDispatch,
             CancellationToken cancellation)
         {
-            if (!(dispatchData.Message is Validate))
-                throw new InvalidOperationException(
-                    $"Cannot dispatch a message of type '{dispatchData.MessageType}' to " +
-                    $"a handler that handles messages of type '{MessageType}'.");
-
-            if (!(dispatchData is DispatchDataDictionary<Validate> typedDispatchData))
-            {
-                typedDispatchData = new DispatchDataDictionary<Validate>(
-                    dispatchData.Message as Validate, dispatchData);
-            }
-
-            return HandleAsync(typedDispatchData, publish, localDispatch, cancellation);
+            return HandleAsync(dispatchData.As<Validate>(), publish, localDispatch, cancellation);
         }
+
+        Type IMessageHandler.MessageType => typeof(Validate);
+#endif
 
         private static void Configure(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
         {

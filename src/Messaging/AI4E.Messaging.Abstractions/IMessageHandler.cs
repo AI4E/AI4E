@@ -78,15 +78,7 @@ namespace AI4E.Messaging
             bool localDispatch,
             CancellationToken cancellation)
         {
-            if (!(dispatchData.Message is TMessage))
-                throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{typeof(TMessage)}'.");
-
-            if (!(dispatchData is DispatchDataDictionary<TMessage> typedDispatchData))
-            {
-                typedDispatchData = new DispatchDataDictionary<TMessage>(dispatchData.Message as TMessage, dispatchData);
-            }
-
-            return HandleAsync(typedDispatchData, publish, localDispatch, cancellation);
+            return HandleAsync(dispatchData.As<TMessage>(), publish, localDispatch, cancellation);
         }
 
         Type IMessageHandler.MessageType => typeof(TMessage);

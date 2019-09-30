@@ -32,24 +32,16 @@ namespace AI4E.Storage.Domain
         }
 
 #if !SUPPORTS_DEFAULT_INTERFACE_METHODS
-        public ValueTask<IDispatchResult> HandleAsync(
+        ValueTask<IDispatchResult> IMessageHandler.HandleAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
             bool localDispatch,
             CancellationToken cancellation)
         {
-            if (!(dispatchData.Message is ProjectEntityMessage))
-                throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{typeof(ProjectEntityMessage)}'.");
-
-            if (!(dispatchData is DispatchDataDictionary<ProjectEntityMessage> typedDispatchData))
-            {
-                typedDispatchData = new DispatchDataDictionary<ProjectEntityMessage>(dispatchData.Message as ProjectEntityMessage, dispatchData);
-            }
-
-            return HandleAsync(typedDispatchData, publish, localDispatch, cancellation);
+            return HandleAsync(dispatchData.As<ProjectEntityMessage>(), publish, localDispatch, cancellation);
         }
 
-        public Type MessageType => typeof(ProjectEntityMessage);
+        Type IMessageHandler.MessageType => typeof(ProjectEntityMessage);
 #endif
     }
 
