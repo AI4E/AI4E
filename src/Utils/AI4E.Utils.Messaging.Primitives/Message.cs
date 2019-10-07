@@ -182,7 +182,7 @@ namespace AI4E.Utils.Messaging.Primitives
             if (Frames.Count == 0)
                 return 0;
 
-            return Frames.GetSequenceHashCode();
+            return Frames.SequenceHashCode();
         }
 
         public static bool operator ==(in Message left, in Message right)

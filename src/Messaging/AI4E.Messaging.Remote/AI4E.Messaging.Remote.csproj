@@ -13,4 +13,8 @@
     <ProjectReference Include="..\AI4E.Messaging\AI4E.Messaging.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)src\Shared\IdGenerator.cs" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

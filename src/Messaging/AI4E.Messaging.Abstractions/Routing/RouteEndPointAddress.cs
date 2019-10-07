@@ -125,7 +125,7 @@ namespace AI4E.Messaging.Routing
         /// <returns>The generated hash code.</returns>
         public override int GetHashCode()
         {
-            return Utf8EncodedValue.ToArray().GetSequenceHashCode(); // TODO
+            return Utf8EncodedValue.ToArray().SequenceHashCode(); // TODO
         }
 
         /// <summary>

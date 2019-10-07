@@ -16,7 +16,7 @@
     <RepositoryRoot Condition="'$(RepositoryRoot)' == ''">$(MSBuildThisFileDirectory)</RepositoryRoot>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <LangVersion>8.0</LangVersion>
-    <WarningsAsErrors>CS8597;CS8600;CS8601;CS8602;CS8603;CS8604;CS8610;CS8618;CS8622;CS8625;CS8632;CS8653;CS8714;</WarningsAsErrors>
+    <WarningsAsErrors>CS8597;CS8600;CS8601;CS8602;CS8603;CS8604;CS8610;CS8618;CS8622;CS8625;CS8653;CS8714;</WarningsAsErrors>
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
     <NoWarn>NU5105</NoWarn>
   </PropertyGroup>

@@ -7,7 +7,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="3.0.0" />
-    <PackageReference Include="MongoDB.Driver" Version="2.9.1" />
+    <PackageReference Include="MongoDB.Driver" Version="2.9.2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -15,6 +15,10 @@
     <ProjectReference Include="..\Messaging\AI4E.Messaging\AI4E.Messaging.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)src\Shared\DataPropertyHelper.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

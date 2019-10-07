@@ -20,4 +20,8 @@
     <ProjectReference Include="..\..\AI4E.Remoting\AI4E.Remoting.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)src\Shared\ReconnectionManagerBase.cs" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

@@ -5,7 +5,7 @@
 
   <Import Project="$(_ParentDirectoryBuildPropsPath)" Condition="Exists('$(_ParentDirectoryBuildPropsPath)')"/>
 
-  <PropertyGroup Condition="!($(ProjectName.EndsWith('Test')))">
+  <PropertyGroup Condition="!($(MSBuildProjectName.EndsWith('Test')))">
     <IsPackable>true</IsPackable>
       <!--<Nullable>enable</Nullable>-->
   </PropertyGroup>
@@ -14,19 +14,20 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
   
-<PropertyGroup Condition="$(ProjectName.EndsWith('Test'))">
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  <PropertyGroup Condition="!($(MSBuildProjectName.EndsWith('Test'))) AND '$(Configuration)' == 'Release'">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <!--<ItemGroup>
+  <ItemGroup Condition="!($(MSBuildProjectName.EndsWith('Test')))">
     <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="2.9.4">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-  </ItemGroup>-->
-
-  <ItemGroup Condition="!($(ProjectName.EndsWith('Test')))">
-    <Compile Include="$(SolutionDir)src\Shared\*.*" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+ 
+ <ItemGroup Condition="!($(MSBuildProjectName.EndsWith('Test')))">
+    <!--<Compile Include="$(SolutionDir)src\Shared\*.*" Link="Shared\%(Filename)%(Extension)" />-->
+    <Compile Include="$(SolutionDir)src\Shared\NullabilityAttributes.cs" Link="Shared\NullabilityAttributes.cs" /> 
   </ItemGroup>
 
 </Project>

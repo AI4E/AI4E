@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AI4E.Utils.ObjectClone" Version="0.2.0-pre19092412" />
+
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
   </ItemGroup>
 
@@ -14,6 +14,11 @@
     <ProjectReference Include="..\Messaging\AI4E.Messaging\AI4E.Messaging.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
+    <ProjectReference Include="..\Utils\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)src\Shared\DataPropertyHelper.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

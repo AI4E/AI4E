@@ -20,7 +20,6 @@
 
 using System;
 using System.Linq;
-using AI4E.Internal;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Utils.Messaging.Primitives

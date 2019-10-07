@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AI4E.Utils.ApplicationParts" Version="0.2.0-pre19092412" />
+   
     <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.2" />  
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
     <PackageReference Include="System.Collections.Immutable" Version="1.6.0" /> 
@@ -19,10 +19,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Utils\AI4E.Utils.ApplicationParts\AI4E.Utils.ApplicationParts.csproj" />
+    <ProjectReference Include="..\..\Utils\AI4E.Utils\AI4E.Utils.csproj" />
     <ProjectReference Include="..\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)src\Shared\TypeConverter.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

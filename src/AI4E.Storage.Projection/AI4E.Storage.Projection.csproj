@@ -7,10 +7,11 @@
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Storage.Projection.Abstractions\AI4E.Storage.Projection.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
+    <ProjectReference Include="..\Utils\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AI4E.Utils.ObjectClone" Version="0.2.0-pre19092412" />
+    <Compile Include="$(SolutionDir)src\Shared\DataPropertyHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(SolutionDir)src\Shared\IdGenerator.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
-
 </Project>

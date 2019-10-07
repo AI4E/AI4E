@@ -8,4 +8,8 @@
     <ProjectReference Include="..\AI4E.Modularity\AI4E.Modularity.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)src\Shared\IPEndPointConverter.cs" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

@@ -10,4 +10,11 @@
     <ProjectReference Include="..\AI4E.Storage.Projection\AI4E.Storage.Projection.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)src\Shared\CompressionHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(SolutionDir)src\Shared\EscapeHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(SolutionDir)src\Shared\IdGenerator.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(SolutionDir)src\Shared\DataPropertyHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

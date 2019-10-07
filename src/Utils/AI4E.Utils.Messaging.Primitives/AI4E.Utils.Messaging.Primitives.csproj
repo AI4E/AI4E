@@ -6,12 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="C:\Users\at\Source\Repos\AI4E_migrate_3.0\src\Shared\Serializer.cs" />
-    <Compile Remove="C:\Users\at\Source\Repos\AI4E_migrate_3.0\src\Shared\TypeConverter.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="AI4E.Utils.Memory" Version="0.2.0-pre19092412" />
+    <ProjectReference Include="..\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
+    <ProjectReference Include="..\AI4E.Utils\AI4E.Utils.csproj" />
   </ItemGroup>
 
 </Project>
