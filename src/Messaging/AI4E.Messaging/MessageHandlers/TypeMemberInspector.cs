@@ -106,13 +106,15 @@ namespace AI4E.Messaging.MessageHandlers
 
             var p = GetParameters(type, member, parameters, returnTypeDescriptor);
 
-            if (IsSychronousMember(member, returnTypeDescriptor) && !returnTypeDescriptor.IsAwaitable)
+            if (IsSychronousMember(member, returnTypeDescriptor)
+                && (!returnTypeDescriptor.IsAwaitable || member.ReturnType.IsAsyncEnumerable()))
             {
                 descriptor = CreateDescriptor(type, member, p);
                 return true;
             }
 
-            if (IsAsynchronousMember(member, returnTypeDescriptor) && returnTypeDescriptor.IsAwaitable)
+            if (IsAsynchronousMember(member, returnTypeDescriptor)
+                && (returnTypeDescriptor.IsAwaitable || member.ReturnType.IsAsyncEnumerable()))
             {
                 descriptor = CreateDescriptor(type, member, p);
                 return true;

@@ -22,8 +22,10 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -280,6 +282,7 @@ namespace AI4E.Messaging.MessageHandlers
             }
 
             object result;
+            var resultType = invoker.ReturnTypeDescriptor.ResultType;
 
             try
             {
@@ -292,7 +295,7 @@ namespace AI4E.Messaging.MessageHandlers
 
             if (result == null)
             {
-                if (invoker.ReturnTypeDescriptor.ResultType == typeof(void))
+                if (resultType == typeof(void))
                 {
                     return new SuccessDispatchResult();
                 }
@@ -305,7 +308,67 @@ namespace AI4E.Messaging.MessageHandlers
                 return dispatchResult;
             }
 
-            return SuccessDispatchResult.FromResult(invoker.ReturnTypeDescriptor.ResultType, result);
+            if (resultType.IsAsyncEnumerable(out var elementType))
+            {
+                resultType = typeof(IEnumerable<>).MakeGenericType(elementType);
+                result = await AsyncEnumerableEvaluator.EvaluateAsyncEnumerableAsync(elementType, result, cancellation);
+            }
+
+            return SuccessDispatchResult.FromResult(resultType, result);
+        }
+    }
+
+    internal static class AsyncEnumerableEvaluator
+    {
+        private static readonly ConditionalWeakTable<Type, Func<object, CancellationToken, Task<object>>> _asyncEvaluationFunctions
+          = new ConditionalWeakTable<Type, Func<object, CancellationToken, Task<object>>>();
+
+        // Cache delegate for performance reasons.
+        private static readonly ConditionalWeakTable<Type, Func<object, CancellationToken, Task<object>>>.CreateValueCallback _buildAsyncEvaluationFunction = BuildAsyncEvaluationFunction;
+
+        private static readonly MethodInfo _evaluateAsyncEnumerableMethodDefinition = GetEvaluateAsyncEnumerableMethodDefinition();
+
+        private static MethodInfo GetEvaluateAsyncEnumerableMethodDefinition()
+        {
+            var result = typeof(AsyncEnumerableEvaluator)
+                .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
+                .FirstOrDefault(p => p.Name == nameof(EvaluateAsyncEnumerable) && p.IsGenericMethodDefinition)
+                ?? throw new InvalidOperationException($"Unable to reflect method 'EvaluateAsyncEnumerable`1'.");
+
+            Debug.Assert(result.GetGenericArguments().Count() == 1);
+            Debug.Assert(result.ReturnType == typeof(Task<object>));
+
+            return result;
+        }
+
+        public static Task<object> EvaluateAsyncEnumerableAsync(
+            Type elementType,
+            object asyncEnumerable,
+            CancellationToken cancellation)
+        {
+            var asyncEvaluationFunction = _asyncEvaluationFunctions
+                .GetValue(elementType, _buildAsyncEvaluationFunction);
+
+            return asyncEvaluationFunction(asyncEnumerable, cancellation);
+        }
+
+        private static Func<object, CancellationToken, Task<object>> BuildAsyncEvaluationFunction(Type elementType)
+        {
+            var evaluateAsyncEnumerableMethod = _evaluateAsyncEnumerableMethodDefinition.MakeGenericMethod(elementType);
+
+            var asyncEnumerableParameter = Expression.Parameter(typeof(object), "asyncEnumerable");
+            var cancellationParameter = Expression.Parameter(typeof(CancellationToken), "cancellation");
+            var convertedAsyncEnumerable = Expression.Convert(asyncEnumerableParameter, typeof(IAsyncEnumerable<>).MakeGenericType(elementType));
+            var call = Expression.Call(evaluateAsyncEnumerableMethod, convertedAsyncEnumerable, cancellationParameter);
+            var lambda = Expression.Lambda<Func<object, CancellationToken, Task<object>>>(call, asyncEnumerableParameter, cancellationParameter);
+            return lambda.Compile();
+        }
+
+        private static async Task<object> EvaluateAsyncEnumerable<T>(
+            IAsyncEnumerable<T> asyncEnumerable,
+            CancellationToken cancellation)
+        {
+            return await asyncEnumerable.ToListAsync(cancellation);
         }
     }
 }

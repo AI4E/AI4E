@@ -21,6 +21,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
@@ -556,57 +557,75 @@ namespace AI4E.Messaging
             return IsSuccess(dispatchResult, out result) && !ReferenceEquals(result, null);
         }
 
-
-        // TODO: Review this 
-        internal static IEnumerable<TResult> GetResults<TResult>(
-            this IDispatchResult dispatchResult, bool throwOnFailure)
+        public static bool IsSuccessWithResults<TResult>(
+            this IDispatchResult dispatchResult, out IEnumerable<TResult> results)
         {
-            if (dispatchResult.IsAggregateResult(out var aggregateDispatchResult))
+            if (dispatchResult.IsSuccess)
             {
-                var flattenedDispatchResult = aggregateDispatchResult.Flatten();
-                return GetResultsFromFlattened<TResult>(flattenedDispatchResult, throwOnFailure);
+                if (dispatchResult.IsAggregateResult(out var aggregateDispatchResult))
+                {
+                    var flattenedDispatchResult = aggregateDispatchResult.Flatten();
+                    if (GetResultsFromFlattened(flattenedDispatchResult, out results))
+                    {
+                        return true;
+                    }
+                }
+
+                if (TryGetResult<TResult>(dispatchResult, out var result))
+                {
+                    results = Enumerable.Repeat(result, count: 1);
+                    return true;
+                }
+
+                // TODO: Does this process IAsyncEnumerable, too?
+                if (TryGetResult<IEnumerable<TResult>>(dispatchResult, out var enumerableResult))
+                {
+                    results = enumerableResult;
+                    return true;
+                }
             }
 
-            if (dispatchResult.IsSuccessWithResult<TResult>(out var result))
-            {
-                return Enumerable.Repeat(result, count: 1);
-            }
-
-            if (throwOnFailure)
-            {
-                throw new Exception(); // TODO
-            }
-
-            return Enumerable.Empty<TResult>();
+            results = Enumerable.Empty<TResult>();
+            return false;
         }
 
-        private static IEnumerable<TResult> GetResultsFromFlattened<TResult>(
+        private static bool GetResultsFromFlattened<TResult>(
             IAggregateDispatchResult dispatchResult,
-            bool throwOnFailure)
+            out IEnumerable<TResult> results)
         {
-            var results = new List<TResult>();
+            var resultsBuilder = ImmutableList.CreateBuilder<TResult>();
 
             foreach (var singleDispatchResult in dispatchResult.DispatchResults)
             {
-                GetResultFromNonAggregate(singleDispatchResult, throwOnFailure, results);
+                if (!GetResultFromNonAggregate(singleDispatchResult, resultsBuilder))
+                {
+                    results = Enumerable.Empty<TResult>();
+                    return false;
+                }
             }
 
-            return results;
+            results = resultsBuilder.ToImmutable();
+            return true;
         }
 
-        private static void GetResultFromNonAggregate<TResult>(
+        private static bool GetResultFromNonAggregate<TResult>(
             IDispatchResult dispatchResult,
-            bool throwOnFailure,
-            ICollection<TResult> results)
+            ImmutableList<TResult>.Builder results)
         {
-            if (dispatchResult.IsSuccessWithResult<TResult>(out var singleResult))
+            if (TryGetResult<TResult>(dispatchResult, out var result))
             {
-                results.Add(singleResult);
+                results.Add(result);
+                return true;
             }
-            else if (throwOnFailure)
+
+            // TODO: Does this process IAsyncEnumerable, too?
+            if (TryGetResult<IEnumerable<TResult>>(dispatchResult, out var enumerableResult))
             {
-                throw new Exception(); // TODO
-            }
+                results.AddRange(enumerableResult);
+                return true;
+            }         
+
+            return false;
         }
 
         /// <summary>
