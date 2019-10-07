@@ -197,9 +197,9 @@ namespace AI4E.Coordination
                 try
                 {
                     var transmission = await physicalEndPoint.ReceiveAsync(cancellation);
-                    var (messageType, path, session) = DecodeMessage(transmission.Message.ToMessage());
+                    var (messageType, path, session) = DecodeMessage(transmission.Message);
 
-                    Task.Run(() => HandleMessageAsync(transmission.Message.ToMessage(), messageType, path, session, cancellation)).HandleExceptions();
+                    Task.Run(() => HandleMessageAsync(messageType, path, session, cancellation)).HandleExceptions();
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
                 catch (Exception exc)
@@ -209,7 +209,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task HandleMessageAsync(IMessage message, MessageType messageType, CoordinationEntryPath path, Session session, CancellationToken cancellation)
+        private async Task HandleMessageAsync(MessageType messageType, CoordinationEntryPath path, Session session, CancellationToken cancellation)
         {
             switch (messageType)
             {
@@ -239,7 +239,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task SendMessageAsync(Session session, Message message, CancellationToken cancellation)
+        private async Task SendMessageAsync(Session session, ValueMessage message, CancellationToken cancellation)
         {
             var remoteAddress = _endPointMultiplexer.AddressFromString(Encoding.UTF8.GetString(session.PhysicalAddress.Span));
 
@@ -249,7 +249,7 @@ namespace AI4E.Coordination
 
             try
             {
-                await physicalEndPoint.SendAsync(new Transmission<TAddress>(message.ToValueMessage(), remoteAddress), cancellation);
+                await physicalEndPoint.SendAsync(new Transmission<TAddress>(message, remoteAddress), cancellation);
             }
             catch (SocketException) { }
             catch (IOException) { } // The remote session terminated or we just cannot transmit to it.
@@ -282,11 +282,11 @@ namespace AI4E.Coordination
             return prefix + session.ToString();
         }
 
-        private (MessageType messageType, CoordinationEntryPath path, Session session) DecodeMessage(IMessage message)
+        private (MessageType messageType, CoordinationEntryPath path, Session session) DecodeMessage(ValueMessage message)
         {
-            Debug.Assert(message != null);
+            message.PopFrame(out var frame);
 
-            using var frameStream = message.PopFrame().OpenStream();
+            using var frameStream = frame.OpenStream();
             using var binaryReader = new BinaryReader(frameStream);
             var messageType = (MessageType)binaryReader.ReadByte();
 
@@ -300,30 +300,34 @@ namespace AI4E.Coordination
             return (messageType, path, session);
         }
 
-        private Message EncodeMessage(MessageType messageType, CoordinationEntryPath path, Session session)
+        private ValueMessage EncodeMessage(MessageType messageType, CoordinationEntryPath path, Session session)
         {
-            var message = new Message();
+            var message = new ValueMessage();
 
-            EncodeMessage(message, messageType, path, session);
+            EncodeMessage(ref message, messageType, path, session);
 
             return message;
         }
 
-        private void EncodeMessage(IMessage message, MessageType messageType, CoordinationEntryPath path, Session session)
+        private void EncodeMessage(ref ValueMessage message, MessageType messageType, CoordinationEntryPath path, Session session)
         {
-            Debug.Assert(message != null);
+            var frameBuilder = new ValueMessageFrameBuilder();
+
             // Modify if other message types are added
             Debug.Assert(messageType >= MessageType.InvalidateCacheEntry && messageType <= MessageType.ReleasedWriteLock);
 
-            using var frameStream = message.PushFrame().OpenStream();
-            using var binaryWriter = new BinaryWriter(frameStream);
-            binaryWriter.Write((byte)messageType);
+            using (var frameStream = frameBuilder.OpenStream())
+            using (var binaryWriter = new BinaryWriter(frameStream))
+            {
+                binaryWriter.Write((byte)messageType);
+                binaryWriter.WriteUtf8(path.EscapedPath.Span);
 
-            binaryWriter.WriteUtf8(path.EscapedPath.Span);
+                var sessionBytes = Encoding.UTF8.GetBytes(session.ToString());
+                binaryWriter.Write(sessionBytes.Length);
+                binaryWriter.Write(sessionBytes);
+            }
 
-            var sessionBytes = Encoding.UTF8.GetBytes(session.ToString());
-            binaryWriter.Write(sessionBytes.Length);
-            binaryWriter.Write(sessionBytes);
+            message = message.PushFrame(frameBuilder.BuildMessageFrame());
         }
 
         private enum MessageType : byte
