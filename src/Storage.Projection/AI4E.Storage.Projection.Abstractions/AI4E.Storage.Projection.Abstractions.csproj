@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+    <RootNamespace>AI4E.Storage.Projection</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <!-- We need this for the IAsyncDisposable and IAsyncEnumerable definition -->
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Messaging\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Utils\AI4E.Utils\AI4E.Utils.csproj" />
+  </ItemGroup>
+
+</Project>

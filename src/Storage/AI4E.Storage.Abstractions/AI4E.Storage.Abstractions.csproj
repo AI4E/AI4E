@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+    <RootNamespace>AI4E.Storage</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Linq.Async" Version="4.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Messaging\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)src\Shared\DataPropertyHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>
