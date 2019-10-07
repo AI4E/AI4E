@@ -89,6 +89,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{414094
 		src\Shared\IPEndPointConverter.cs = src\Shared\IPEndPointConverter.cs
 		src\Shared\ReconnectionManagerBase.cs = src\Shared\ReconnectionManagerBase.cs
 		src\Shared\TypeConverter.cs = src\Shared\TypeConverter.cs
+		src\Shared\TypeExtensions.cs = src\Shared\TypeExtensions.cs
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Messaging", "Messaging", "{9BF0347B-6FC1-4F27-A9C2-1F8924116BBA}"
@@ -114,6 +115,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Messaging.SignalR.Client", "src\SignalR\AI4E.Messaging.SignalR.Client\AI4E.Messaging.SignalR.Client.csproj", "{5001A969-19B8-492A-AE4B-CFEDF08EE8E8}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Messaging.SignalR.Server", "src\SignalR\AI4E.Messaging.SignalR.Server\AI4E.Messaging.SignalR.Server.csproj", "{3332D66D-7A5B-401D-B9B8-402F36190231}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Messaging.EndToEndTest", "src\Messaging\AI4E.Messaging.EndToEndTest\AI4E.Messaging.EndToEndTest.csproj", "{9519C612-700E-4A38-9726-12DFE173EAA5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -273,6 +276,10 @@ Global
 		{3332D66D-7A5B-401D-B9B8-402F36190231}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3332D66D-7A5B-401D-B9B8-402F36190231}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3332D66D-7A5B-401D-B9B8-402F36190231}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9519C612-700E-4A38-9726-12DFE173EAA5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9519C612-700E-4A38-9726-12DFE173EAA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9519C612-700E-4A38-9726-12DFE173EAA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9519C612-700E-4A38-9726-12DFE173EAA5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -320,6 +327,7 @@ Global
 		{F7AA1B42-D066-459D-9C7D-F1753CE3D8F0} = {0F6E77C0-90F0-4593-89EA-4830EE7A3084}
 		{5001A969-19B8-492A-AE4B-CFEDF08EE8E8} = {F7AA1B42-D066-459D-9C7D-F1753CE3D8F0}
 		{3332D66D-7A5B-401D-B9B8-402F36190231} = {F7AA1B42-D066-459D-9C7D-F1753CE3D8F0}
+		{9519C612-700E-4A38-9726-12DFE173EAA5} = {9BF0347B-6FC1-4F27-A9C2-1F8924116BBA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5D718ACF-C9D8-4E4A-BBA7-AD3A525FE8B8}
