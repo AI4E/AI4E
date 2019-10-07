@@ -26,7 +26,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace AI4E.Messaging.Handler
+namespace AI4E.Messaging.MessageHandlers
 {
     internal static class MessageHandlers
     {

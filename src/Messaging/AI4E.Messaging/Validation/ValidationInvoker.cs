@@ -26,7 +26,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Messaging.Handler;
+using AI4E.Messaging.MessageHandlers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Messaging.Validation

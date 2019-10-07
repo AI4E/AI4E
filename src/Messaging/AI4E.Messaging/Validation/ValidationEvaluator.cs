@@ -24,7 +24,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Messaging.Handler;
+using AI4E.Messaging.MessageHandlers;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.DependencyInjection;
 

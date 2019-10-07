@@ -28,7 +28,7 @@ using AI4E.Messaging.Mocks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace AI4E.Messaging.Handler
+namespace AI4E.Messaging.MessageHandlers
 {
     [TestClass]
     public class MessageHandlerInvokerTests

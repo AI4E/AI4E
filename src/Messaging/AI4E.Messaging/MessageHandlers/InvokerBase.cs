@@ -25,7 +25,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AI4E.Messaging.Handler
+namespace AI4E.Messaging.MessageHandlers
 {
     /// <summary>
     /// A base class for invokers that need message processor chaining support.

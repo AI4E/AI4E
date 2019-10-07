@@ -22,7 +22,7 @@ using System.Linq;
 using System.Reflection;
 using AI4E.Messaging.Validation;
 
-namespace AI4E.Messaging.Handler
+namespace AI4E.Messaging.MessageHandlers
 {
     /// <summary>
     /// Contains extensions for the <see cref="MessageHandlerActionDescriptor"/> type.

@@ -21,14 +21,14 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
-using static System.Diagnostics.Debug;
 
-namespace AI4E.Messaging.Handler
+namespace AI4E.Messaging.MessageHandlers
 {
     /// <summary>
     /// Contains factory methods to create generic message handler invoker.
@@ -65,7 +65,7 @@ namespace AI4E.Messaging.Handler
 
             var handlerType = memberDescriptor.MessageHandlerType;
             var handler = ActivatorUtilities.CreateInstance(serviceProvider, handlerType);
-            Assert(handler != null);
+            Debug.Assert(handler != null);
 
             return CreateInvokerInternal(handler, memberDescriptor, messageProcessors, serviceProvider);
         }
@@ -122,7 +122,7 @@ namespace AI4E.Messaging.Handler
                 types: new[] { typeof(object), typeof(MessageHandlerActionDescriptor), typeof(IEnumerable<IMessageProcessorRegistration>), typeof(IServiceProvider) },
                 modifiers: null);
 
-            Assert(ctor != null);
+            Debug.Assert(ctor != null);
 
             var handlerParameter = Expression.Parameter(typeof(object), "handler");
             var memberDescriptorParameter = Expression.Parameter(typeof(MessageHandlerActionDescriptor), "memberDescriptor");
@@ -213,7 +213,7 @@ namespace AI4E.Messaging.Handler
         Type IMessageHandler.MessageType => typeof(TMessage);
 #endif
 
-#endregion
+        #endregion
 
         private async ValueTask<IDispatchResult> InvokeAsync(
             DispatchDataDictionary<TMessage> dispatchData,
@@ -242,7 +242,7 @@ namespace AI4E.Messaging.Handler
             }
 
             var member = _memberDescriptor.Member;
-            Assert(member != null);
+            Debug.Assert(member != null);
             var invoker = HandlerActionInvoker.GetInvoker(member);
 
             object ResolveParameter(ParameterInfo parameter)

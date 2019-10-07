@@ -23,7 +23,7 @@ using System.Collections.Generic;
 using System.Linq;
 using AI4E.Utils.ApplicationParts;
 
-namespace AI4E.Messaging.Handler
+namespace AI4E.Messaging.MessageHandlers
 {
     /// <summary>
     /// Represents a message handler application feature.

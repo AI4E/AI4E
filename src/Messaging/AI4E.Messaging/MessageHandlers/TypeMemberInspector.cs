@@ -24,7 +24,7 @@ using System.Linq;
 using System.Reflection;
 using AI4E.Utils.Async;
 
-namespace AI4E.Messaging.Handler
+namespace AI4E.Messaging.MessageHandlers
 {
     /// <summary>
     /// A base type for type member inspectors.

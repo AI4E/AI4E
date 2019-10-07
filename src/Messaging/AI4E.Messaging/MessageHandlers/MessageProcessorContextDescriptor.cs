@@ -20,13 +20,12 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using AI4E.Utils;
-using static System.Diagnostics.Debug;
 
-namespace AI4E.Messaging.Handler
+namespace AI4E.Messaging.MessageHandlers
 {
     /// <summary>
     /// Represents a type descriptor used to set a message processors's context.
@@ -53,7 +52,7 @@ namespace AI4E.Messaging.Handler
 
         private static MessageProcessorContextDescriptor BuildDescriptor(Type type)
         {
-            Assert(type != null);
+            Debug.Assert(type != null);
 
             if (type.IsAbstract)
                 return default;

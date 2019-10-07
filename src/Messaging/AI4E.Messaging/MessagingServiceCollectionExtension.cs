@@ -21,7 +21,7 @@
 using System;
 using AI4E;
 using AI4E.Messaging;
-using AI4E.Messaging.Handler;
+using AI4E.Messaging.MessageHandlers;
 using AI4E.Messaging.Routing;
 using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection.Extensions;

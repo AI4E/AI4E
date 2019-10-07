@@ -21,10 +21,9 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using AI4E.Utils;
 using AI4E.Utils.Async;
 
-namespace AI4E.Messaging.Handler
+namespace AI4E.Messaging.MessageHandlers
 {
     /// <summary>
     /// Inspects the members of message handlers.

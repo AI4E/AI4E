@@ -24,7 +24,7 @@ using System.Runtime.CompilerServices;
 using AI4E.Messaging.Mocks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace AI4E.Messaging.Handler
+namespace AI4E.Messaging.MessageHandlers
 {
     [TestClass]
     public class MessageProcessorContextDescriptorTests

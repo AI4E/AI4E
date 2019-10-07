@@ -25,9 +25,9 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
 using AI4E.Utils.Async;
-using static System.Diagnostics.Debug;
+using System.Diagnostics;
 
-namespace AI4E.Messaging.Handler
+namespace AI4E.Messaging.MessageHandlers
 {
     /// <summary>
     /// Represents an action invoker that can invoke action methods.
@@ -109,7 +109,7 @@ namespace AI4E.Messaging.Handler
 
             if (ReturnTypeDescriptor.IsAwaitable)
             {
-                Assert(result != null);
+                Debug.Assert(result != null);
 
                 result = await ReturnTypeDescriptor.GetAwaitable(result);
             }
@@ -121,8 +121,8 @@ namespace AI4E.Messaging.Handler
         private void AssertLegalResult(object result)
         {
             var returnType = ReturnTypeDescriptor.ResultType;
-            Assert(result == null && (IsNullable(returnType) || returnType == typeof(void)) ||
-                   result != null && returnType.IsAssignableFrom(result.GetType()));
+            Debug.Assert(result == null && (IsNullable(returnType) || returnType == typeof(void)) ||
+                         result != null && returnType.IsAssignableFrom(result.GetType()));
         }
 
         private static bool IsNullable(Type type)

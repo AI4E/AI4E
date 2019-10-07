@@ -22,7 +22,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Messaging.Handler;
+using AI4E.Messaging.MessageHandlers;
 
 namespace AI4E.Messaging.Validation
 {

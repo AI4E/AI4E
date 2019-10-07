@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using AI4E.Utils.ApplicationParts;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace AI4E.Messaging.Handler
+namespace AI4E.Messaging.MessageHandlers
 {
     [TestClass]
     public class Issue146

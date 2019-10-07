@@ -21,7 +21,7 @@
 using System;
 using System.Threading;
 
-namespace AI4E.Messaging.Handler
+namespace AI4E.Messaging.MessageHandlers
 {
     /// <summary>
     /// Represents the context of a message processor.

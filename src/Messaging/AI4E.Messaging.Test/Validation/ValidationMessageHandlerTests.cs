@@ -23,7 +23,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Messaging.Handler;
+using AI4E.Messaging.MessageHandlers;
 using AI4E.Messaging.Mocks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
