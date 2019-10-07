@@ -30,8 +30,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Coordination;
 using AI4E.Internal;
+using AI4E.Messaging.Routing;
 using AI4E.Modularity.Metadata;
-using AI4E.Routing;
 using AI4E.Utils.Memory;
 using static System.Diagnostics.Debug;
 
@@ -127,7 +127,7 @@ namespace AI4E.Modularity
             }
         }
 
-        public async ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(ReadOnlyMemory<char> prefix, CancellationToken cancellation)
+        public async ValueTask<IEnumerable<RouteEndPointAddress>> GetEndPointsAsync(ReadOnlyMemory<char> prefix, CancellationToken cancellation)
         {
             if (MemoryExtensions.IsWhiteSpace(prefix.Span))
                 throw new ArgumentException("The argument must not be empty, not consist of whitespace only.", nameof(prefix));
@@ -137,7 +137,7 @@ namespace AI4E.Modularity
             // It is not possible to register an end-point address for the root path.
             if (normalizedPrefix.IsEmpty || normalizedPrefix.Span[0] == '_')
             {
-                return Enumerable.Empty<EndPointAddress>();
+                return Enumerable.Empty<RouteEndPointAddress>();
             }
 
             var path = GetPrefixPath(normalizedPrefix, normalize: false);
@@ -145,7 +145,7 @@ namespace AI4E.Modularity
 
             Assert(entry != null);
 
-            var result = new List<EndPointAddress>(capacity: entry.Children.Count);
+            var result = new List<RouteEndPointAddress>(capacity: entry.Children.Count);
             var childEntries = (await entry.GetChildrenEntriesAsync(cancellation)).OrderBy(p => p.CreationTime).ToList();
 
             foreach (var childEntry in childEntries)
@@ -168,7 +168,7 @@ namespace AI4E.Modularity
             if (rootEntry == null)
                 return null;
 
-            var endPointsBuilder = ImmutableList.CreateBuilder<EndPointAddress>();
+            var endPointsBuilder = ImmutableList.CreateBuilder<RouteEndPointAddress>();
             var prefixesBuilder = ImmutableList.CreateBuilder<string>();
             var entries = await rootEntry.GetChildrenEntriesAsync(cancellation);
 
@@ -208,18 +208,18 @@ namespace AI4E.Modularity
 
         #endregion
 
-        private EndPointAddress ReadModulePrefixEntry(IEntry entry)
+        private RouteEndPointAddress ReadModulePrefixEntry(IEntry entry)
         {
             var reader = new BinarySpanReader(entry.Value.Span, ByteOrder.LittleEndian);
             return ReadEndPointAddress(ref reader);
         }
 
-        private (IEnumerable<EndPointAddress> endPoints, IReadOnlyCollection<ReadOnlyMemory<char>> prefixes) ReadRunningModuleEntry(IEntry entry)
+        private (IEnumerable<RouteEndPointAddress> endPoints, IReadOnlyCollection<ReadOnlyMemory<char>> prefixes) ReadRunningModuleEntry(IEntry entry)
         {
             var reader = new BinarySpanReader(entry.Value.Span, ByteOrder.LittleEndian);
 
             var endPointsCount = reader.ReadInt32();
-            var endPoints = new List<EndPointAddress>(capacity: endPointsCount);
+            var endPoints = new List<RouteEndPointAddress>(capacity: endPointsCount);
             for (var i = 0; i < endPointsCount; i++)
             {
                 var endPoint = ReadEndPointAddress(ref reader);
@@ -239,18 +239,18 @@ namespace AI4E.Modularity
             return (endPoints, prefixes);
         }
 
-        private static EndPointAddress ReadEndPointAddress(ref BinarySpanReader reader)
+        private static RouteEndPointAddress ReadEndPointAddress(ref BinarySpanReader reader)
         {
             var localEndPointBytesLenght = reader.ReadInt32();
 
             if (localEndPointBytesLenght == 0)
             {
-                return EndPointAddress.UnknownAddress;
+                return RouteEndPointAddress.UnknownAddress;
             }
 
             var utf8EncodedValue = reader.Read(localEndPointBytesLenght);
 
-            return new EndPointAddress(utf8EncodedValue.ToArray());
+            return new RouteEndPointAddress(utf8EncodedValue.ToArray());
         }
 
         private async Task WriteRunningModuleEntryAsync(
@@ -330,7 +330,7 @@ namespace AI4E.Modularity
             while (!await AddOrUpdateAsync());
         }
 
-        private async Task WriteModulePrefixEntryAsync(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, Session session, CancellationToken cancellation)
+        private async Task WriteModulePrefixEntryAsync(ReadOnlyMemory<char> prefix, RouteEndPointAddress endPoint, Session session, CancellationToken cancellation)
         {
             var normalizedPrefix = NormalizePrefix(prefix);
 
@@ -385,7 +385,7 @@ namespace AI4E.Modularity
             return _rootPrefixesPath.GetChildPath(prefix);
         }
 
-        private static CoordinationEntryPath GetPrefixPath(ReadOnlyMemory<char> prefix, EndPointAddress endPoint, Session session, bool normalize = true)
+        private static CoordinationEntryPath GetPrefixPath(ReadOnlyMemory<char> prefix, RouteEndPointAddress endPoint, Session session, bool normalize = true)
         {
             if (normalize)
             {

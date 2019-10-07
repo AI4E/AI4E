@@ -23,7 +23,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,7 +31,7 @@ namespace AI4E
     /// <summary>
     /// Manages the intialization of application services.
     /// </summary>
-    [Obsolete]
+    [Obsolete("Move to Utils")]
     public sealed class ApplicationServiceManager
     {
         /// <summary>

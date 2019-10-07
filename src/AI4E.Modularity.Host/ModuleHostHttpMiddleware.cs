@@ -26,7 +26,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Messaging;
-using AI4E.Routing;
+using AI4E.Messaging.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Primitives;
@@ -36,10 +36,10 @@ namespace AI4E.Modularity.Host
     internal sealed class ModuleHostHttpMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly IRemoteMessageDispatcher _dispatcher;
+        private readonly IMessageDispatcher _dispatcher;
         private readonly IPathMapper _pathMapper;
 
-        public ModuleHostHttpMiddleware(RequestDelegate next, IRemoteMessageDispatcher dispatcher, IPathMapper pathMapper)
+        public ModuleHostHttpMiddleware(RequestDelegate next, IMessageDispatcher dispatcher, IPathMapper pathMapper)
         {
             if (next == null)
                 throw new ArgumentNullException(nameof(next));
@@ -62,7 +62,7 @@ namespace AI4E.Modularity.Host
             if (context != null)
             {
                 var cancellation = context.RequestAborted;
-                EndPointAddress endPoint;
+                RouteEndPointAddress endPoint;
 
                 try
                 {
@@ -73,7 +73,7 @@ namespace AI4E.Modularity.Host
                     return;
                 }
 
-                if (endPoint != EndPointAddress.UnknownAddress)
+                if (endPoint != RouteEndPointAddress.UnknownAddress)
                 {
                     var requestMessage = await PackRequestMessage(context);
 
@@ -102,12 +102,12 @@ namespace AI4E.Modularity.Host
             await _next?.Invoke(context);
         }
 
-        private async Task<EndPointAddress> MapPathAsync(HttpContext context, CancellationToken cancellation)
+        private async Task<RouteEndPointAddress> MapPathAsync(HttpContext context, CancellationToken cancellation)
         {
             return await _pathMapper.MapHttpPathAsync(context.Features.Get<IHttpRequestFeature>().Path.AsMemory(), cancellation);
         }
 
-        private async Task<IDispatchResult> DispatchToEndPointAsync(EndPointAddress endPoint, ModuleHttpRequest moduleHttpRequest, CancellationToken cancellation)
+        private async Task<IDispatchResult> DispatchToEndPointAsync(RouteEndPointAddress endPoint, ModuleHttpRequest moduleHttpRequest, CancellationToken cancellation)
         {
             return await _dispatcher.DispatchAsync(new DispatchDataDictionary<ModuleHttpRequest>(moduleHttpRequest), publish: false, endPoint, cancellation);
         }

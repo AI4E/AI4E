@@ -12,7 +12,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Messaging\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
-    <ProjectReference Include="..\AI4E.Routing.Abstractions\AI4E.Routing.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

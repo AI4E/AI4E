@@ -19,7 +19,7 @@
  */
 
 using System;
-using AI4E.Utils;
+using AI4E.Messaging.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Messaging
@@ -71,6 +71,8 @@ namespace AI4E.Messaging
 
             return messagingBuilder;
         }
+
+        #region Dispatcher
 
         private static void UseDispatcher<TMessageDispatcher>(this IServiceCollection services)
              where TMessageDispatcher : class, IMessageDispatcher
@@ -186,5 +188,93 @@ namespace AI4E.Messaging
             messagingBuilder.Services.Decorate(decorator);
             return messagingBuilder;
         }
+
+        #endregion
+
+        #region RoutingSystem
+
+        private static void UseRoutingSystem<TRoutingSystem>(this IServiceCollection services)
+            where TRoutingSystem : class, IRoutingSystem
+        {
+            services.AddSingleton<IRoutingSystem>(provider => provider.GetRequiredService<TRoutingSystem>());
+        }
+
+        public static IMessagingBuilder UseRoutingSystem<TRoutingSystem>(this IMessagingBuilder messagingBuilder)
+            where TRoutingSystem : class, IRoutingSystem
+        {
+            var services = messagingBuilder.Services;
+
+            services.UseRoutingSystem<TRoutingSystem>();
+            services.AddSingleton<TRoutingSystem>();
+
+            return messagingBuilder;
+        }
+
+        public static IMessagingBuilder UseRoutingSystem(
+            this IMessagingBuilder messagingBuilder, IRoutingSystem instance)
+        {
+            if (instance is null)
+                throw new ArgumentNullException(nameof(instance));
+
+            var services = messagingBuilder.Services;
+            services.AddSingleton(instance);
+            return messagingBuilder;
+        }
+
+        public static IMessagingBuilder UseRoutingSystem(
+            this IMessagingBuilder messagingBuilder, Func<IServiceProvider, IRoutingSystem> factory)
+        {
+            if (factory is null)
+                throw new ArgumentNullException(nameof(factory));
+
+            var services = messagingBuilder.Services;
+            services.AddSingleton(factory);
+            return messagingBuilder;
+        }
+
+        #endregion
+
+        #region RouteManager
+
+        private static void UseRouteManager<TRouteManager>(this IServiceCollection services)
+            where TRouteManager : class, IRouteManager
+        {
+            services.AddSingleton<IRouteManager>(provider => provider.GetRequiredService<TRouteManager>());
+        }
+
+        public static IMessagingBuilder UseRouteManager<TRouteManager>(this IMessagingBuilder messagingBuilder)
+            where TRouteManager : class, IRouteManager
+        {
+            var services = messagingBuilder.Services;
+
+            services.UseRouteManager<TRouteManager>();
+            services.AddSingleton<TRouteManager>();
+
+            return messagingBuilder;
+        }
+
+        public static IMessagingBuilder UseRouteManager(
+            this IMessagingBuilder messagingBuilder, IRouteManager instance)
+        {
+            if (instance is null)
+                throw new ArgumentNullException(nameof(instance));
+
+            var services = messagingBuilder.Services;
+            services.AddSingleton(instance);
+            return messagingBuilder;
+        }
+
+        public static IMessagingBuilder UseRouteManager(
+            this IMessagingBuilder messagingBuilder, Func<IServiceProvider, IRouteManager> factory)
+        {
+            if (factory is null)
+                throw new ArgumentNullException(nameof(factory));
+
+            var services = messagingBuilder.Services;
+            services.AddSingleton(factory);
+            return messagingBuilder;
+        }
+
+        #endregion
     }
 }

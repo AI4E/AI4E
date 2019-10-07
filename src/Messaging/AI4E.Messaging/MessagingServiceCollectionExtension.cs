@@ -19,8 +19,11 @@
  */
 
 using System;
+using AI4E;
 using AI4E.Messaging;
 using AI4E.Messaging.Handler;
+using AI4E.Messaging.Routing;
+using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -37,8 +40,18 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
         public static IMessagingBuilder AddMessaging(this IServiceCollection services)
         {
+            services.AddOptions();
+            services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
             services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
             services.TryAddSingleton<IMessageDispatcher, MessageDispatcher>();
+
+            services.TryAddSingleton<IMessageRouterFactory, MessageRouterFactory>();
+            services.TryAddSingleton<IRoutingSystem, RoutingSystem>();
+            services.TryAddSingleton<IRouteManager, RouteManager>();
+
+            // Force the message-dispatcher to initialize on application startup.
+            // This is needed to ensure handlers are available and registered in multi-process or networking setups.
+            services.ConfigureApplicationServices(manager => manager.AddService<IMessageDispatcher>(isRequiredService: true));
             services.ConfigureApplicationParts(MessageHandlerFeatureProvider.Configure);
 
             var builder = new MessagingBuilder(services);

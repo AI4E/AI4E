@@ -97,7 +97,5 @@ namespace AI4E.Messaging.Handler
                 serviceProvider => MessageHandlerInvoker.CreateInvoker(memberDescriptor, processors, serviceProvider),
                 memberDescriptor);
         }
-
-
     }
 }

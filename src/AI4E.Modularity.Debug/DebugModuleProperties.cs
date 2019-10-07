@@ -26,8 +26,8 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Messaging.Routing;
 using AI4E.Modularity.Metadata;
-using AI4E.Routing;
 using AI4E.Utils.Memory;
 using static System.Diagnostics.Debug;
 
@@ -35,14 +35,14 @@ namespace AI4E.Modularity.Debug
 {
     public readonly struct DebugModuleProperties : IEquatable<DebugModuleProperties>
     {
-        public DebugModuleProperties(EndPointAddress endPoint, ModuleIdentifier module, ModuleVersion version)
+        public DebugModuleProperties(RouteEndPointAddress endPoint, ModuleIdentifier module, ModuleVersion version)
         {
             EndPoint = endPoint;
             Module = module;
             Version = version;
         }
 
-        public EndPointAddress EndPoint { get; }
+        public RouteEndPointAddress EndPoint { get; }
         public ModuleIdentifier Module { get; }
         public ModuleVersion Version { get; }
 
@@ -96,7 +96,7 @@ namespace AI4E.Modularity.Debug
         private static DebugModuleProperties Decode(ReadOnlySpan<byte> memory)
         {
             var reader = new BinarySpanReader(memory, ByteOrder.LittleEndian);
-            var endPoint = new EndPointAddress(reader.Read().ToArray()); // TODO: This copies
+            var endPoint = new RouteEndPointAddress(reader.Read().ToArray()); // TODO: This copies
             var module = new ModuleIdentifier(reader.ReadString());
             var major = reader.ReadInt32();
             var minor = reader.ReadInt32();
@@ -127,7 +127,7 @@ namespace AI4E.Modularity.Debug
         public override int GetHashCode()
         {
             var hashCode = 248443512;
-            hashCode = hashCode * -1521134295 + EqualityComparer<EndPointAddress>.Default.GetHashCode(EndPoint);
+            hashCode = hashCode * -1521134295 + EqualityComparer<RouteEndPointAddress>.Default.GetHashCode(EndPoint);
             hashCode = hashCode * -1521134295 + EqualityComparer<ModuleIdentifier>.Default.GetHashCode(Module);
             hashCode = hashCode * -1521134295 + EqualityComparer<ModuleVersion>.Default.GetHashCode(Version);
             return hashCode;

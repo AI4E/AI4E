@@ -22,8 +22,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Routing;
-using AI4E.Utils.Memory;
+using AI4E.Messaging.Routing;
 
 namespace AI4E.Modularity.Host
 {
@@ -39,7 +38,7 @@ namespace AI4E.Modularity.Host
             _moduleManager = moduleManager;
         }
 
-        public async ValueTask<EndPointAddress> MapHttpPathAsync(ReadOnlyMemory<char> path, CancellationToken cancellation = default)
+        public async ValueTask<RouteEndPointAddress> MapHttpPathAsync(ReadOnlyMemory<char> path, CancellationToken cancellation = default)
         {
             if (path.Span.IsEmptyOrWhiteSpace())
                 throw new ArgumentException("The argument must not be an empty nor consist of whitespace only.", nameof(path));
@@ -58,7 +57,7 @@ namespace AI4E.Modularity.Host
                 }
             }
 
-            return EndPointAddress.UnknownAddress;
+            return RouteEndPointAddress.UnknownAddress;
         }
 
         private static ReadOnlyMemory<char> SliceToNextSegment(ReadOnlyMemory<char> path)

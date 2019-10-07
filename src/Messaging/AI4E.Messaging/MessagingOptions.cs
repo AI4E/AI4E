@@ -19,6 +19,9 @@
  */
 
 using System.Collections.Generic;
+using System.Reflection;
+using AI4E.Messaging.Routing;
+using AI4E.Messaging.Validation;
 
 namespace AI4E.Messaging
 {
@@ -30,14 +33,28 @@ namespace AI4E.Messaging
         /// <summary>
         /// Creates a new instance of the <see cref="MessagingOptions"/> type.
         /// </summary>
-        public MessagingOptions()
+        public MessagingOptions() { }
+
+        private static RouteEndPointAddress BuildDefaultLocalEndPoint()
         {
-            MessageProcessors = new List<IMessageProcessorRegistration>();
+            var assemblyName = Assembly.GetEntryAssembly()?.GetName()?.Name;
+
+            if (assemblyName != null)
+            {
+                return new RouteEndPointAddress(assemblyName);
+            }
+
+            return default;
         }
+        public static RouteEndPointAddress DefaultLocalEndPoint { get; } = BuildDefaultLocalEndPoint();
+
+        public RouteEndPointAddress LocalEndPoint { get; set; } = DefaultLocalEndPoint;
 
         /// <summary>
-        /// Gets a list of <see cref="IMessageProcessorRegistration"/> that describe the registered message processors.
+        /// Gets a list of <see cref="IMessageProcessorRegistration"/> that contains the registered message processors.
         /// </summary>
-        public IList<IMessageProcessorRegistration> MessageProcessors { get; }
+        public IList<IMessageProcessorRegistration> MessageProcessors { get; } = new List<IMessageProcessorRegistration>();
+
+        public IList<IRouteResolver> RoutesResolvers { get; } = new List<IRouteResolver>();
     }
 }

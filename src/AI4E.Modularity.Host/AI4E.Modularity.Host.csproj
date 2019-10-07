@@ -13,6 +13,7 @@
     <ProjectReference Include="..\AI4E.Domain\AI4E.Domain.csproj" />
     <ProjectReference Include="..\AI4E.Modularity.Host.Abstractions\AI4E.Modularity.Host.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Modularity\AI4E.Modularity.csproj" />
+    <ProjectReference Include="..\Messaging\AI4E.Messaging.Remote\AI4E.Messaging.Remote.csproj" />
   </ItemGroup>
 
 </Project>

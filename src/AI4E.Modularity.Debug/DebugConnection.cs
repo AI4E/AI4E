@@ -24,8 +24,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using AI4E.Messaging;
 using AI4E.Modularity.Metadata;
-using AI4E.Routing;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 using AI4E.Utils.Proxying;
@@ -38,7 +38,7 @@ namespace AI4E.Modularity.Debug
     {
         private readonly IMetadataAccessor _metadataAccessor;
         private readonly ModularityDebugOptions _options;
-        private readonly RemoteMessagingOptions _remoteOptions;
+        private readonly MessagingOptions _remoteOptions;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<DebugConnection> _logger;
@@ -50,7 +50,7 @@ namespace AI4E.Modularity.Debug
 
         public DebugConnection(IMetadataAccessor metadataAccessor,
                                IOptions<ModularityDebugOptions> optionsAccessor,
-                               IOptions<RemoteMessagingOptions> remoteOptionsAccessor,
+                               IOptions<MessagingOptions> remoteOptionsAccessor,
                                IServiceProvider serviceProvider,
                                ILoggerFactory loggerFactory = null)
         {
@@ -69,7 +69,7 @@ namespace AI4E.Modularity.Debug
 
             _metadataAccessor = metadataAccessor;
             _options = optionsAccessor.Value ?? new ModularityDebugOptions();
-            _remoteOptions = remoteOptionsAccessor.Value ?? new RemoteMessagingOptions();
+            _remoteOptions = remoteOptionsAccessor.Value ?? new MessagingOptions();
             _serviceProvider = serviceProvider;
             _loggerFactory = loggerFactory;
 

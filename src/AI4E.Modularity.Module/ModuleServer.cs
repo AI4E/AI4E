@@ -21,9 +21,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Messaging;
 using AI4E.Modularity.Metadata;
-using AI4E.Routing;
-using AI4E.Utils;
 using AI4E.Utils.Async;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http.Features;
@@ -35,7 +34,7 @@ namespace AI4E.Modularity.Module
 {
     public sealed class ModuleServer : IModuleServer
     {
-        private readonly IRemoteMessageDispatcher _messageDispatcher;
+        private readonly IMessageDispatcher _messageDispatcher;
         private readonly IMetadataAccessor _metadataAccessor;
         private readonly IModuleManager _moduleManager;
         private readonly ILoggerFactory _loggerFactory;
@@ -48,7 +47,7 @@ namespace AI4E.Modularity.Module
         private bool _isStarted = false;
         private readonly AsyncLock _lock = new AsyncLock();
 
-        public ModuleServer(IRemoteMessageDispatcher messageDispatcher,
+        public ModuleServer(IMessageDispatcher messageDispatcher,
                             IMetadataAccessor metadataAccessor,
                             IModuleManager runningModules,
                             IOptions<ModuleServerOptions> optionsAccessor,

@@ -20,6 +20,7 @@
 
 using System.IO;
 using System.Linq;
+using AI4E.Utils.Messaging.Primitives;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Remoting

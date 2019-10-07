@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Remoting;
-using AI4E.Utils;
+using AI4E.Utils.Messaging.Primitives;
 using Nito.AsyncEx;
 
 namespace AI4E.Coordination.Utils

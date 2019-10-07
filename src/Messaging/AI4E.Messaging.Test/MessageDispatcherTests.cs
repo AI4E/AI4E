@@ -3,6 +3,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Messaging.Mocks;
+using AI4E.Messaging.Routing;
+using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Messaging
@@ -10,6 +12,20 @@ namespace AI4E.Messaging
     [TestClass]
     public class MessageDispatcherTests
     {
+        private static IOptions<MessagingOptions> BuildMessagingOptions()
+        {
+            return Options.Create(new MessagingOptions());
+        }
+
+        private static IMessageRouterFactory BuildMessageRouterFactory(
+            IOptions<MessagingOptions> optionsProvider)
+        {
+            var routeManager = new RouteManager();
+            var routingSystem = new RoutingSystem();
+
+            return new MessageRouterFactory(routeManager, routingSystem, optionsProvider);
+        }
+
         [TestMethod]
         public async Task DispatchTest()
         {
@@ -19,7 +35,10 @@ namespace AI4E.Messaging
             var handlerRegistration = new MessageHandlerRegistration<string>(p => { handler.ServiceProvider = p; return handler; });
             registry.Register(handlerRegistration);
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<string>("testmessage");
             var cancellationTokenSource = new CancellationTokenSource();
@@ -50,7 +69,9 @@ namespace AI4E.Messaging
             registry.Register(handler1Registration);
             registry.Register(handler2Registration);
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<string>("testmessage");
             var cancellationTokenSource = new CancellationTokenSource();
@@ -78,7 +99,9 @@ namespace AI4E.Messaging
             registry.Register(handler1Registration);
             registry.Register(handler2Registration);
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<string>("testmessage");
             var cancellationTokenSource = new CancellationTokenSource();
@@ -109,7 +132,9 @@ namespace AI4E.Messaging
             registry.Register(handler1Registration);
             registry.Register(handler2Registration);
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -133,7 +158,9 @@ namespace AI4E.Messaging
             registry.Register(handler1Registration);
 
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -159,7 +186,9 @@ namespace AI4E.Messaging
             registry.Register(handler1Registration);
             registry.Register(handler2Registration);
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -183,7 +212,9 @@ namespace AI4E.Messaging
             registry.Register(handler1Registration);
 
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -199,7 +230,9 @@ namespace AI4E.Messaging
         {
             var registry = new MessageHandlerRegistry();
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -215,7 +248,9 @@ namespace AI4E.Messaging
         {
             var registry = new MessageHandlerRegistry();
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -242,7 +277,9 @@ namespace AI4E.Messaging
             registry.Register(handler1Registration);
             registry.Register(handler2Registration);
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<string>("testmessage");
             var cancellationTokenSource = new CancellationTokenSource();
@@ -274,7 +311,9 @@ namespace AI4E.Messaging
             registry.Register(handler1Registration);
             registry.Register(handler2Registration);
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -290,11 +329,13 @@ namespace AI4E.Messaging
         public async Task WrapExceptionTest()
         {
             var registry = new MessageHandlerRegistry();
-            var handler = new ThrowExcentionTestMessageHandler();
+            var handler = new ThrowExceptionTestMessageHandler();
             var handlerRegistration = new MessageHandlerRegistration<string>(p => handler);
             registry.Register(handlerRegistration);
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<string>("testmessage");
             var cancellationTokenSource = new CancellationTokenSource();
@@ -313,7 +354,9 @@ namespace AI4E.Messaging
             var handlerRegistration = new MessageHandlerRegistration<string>(p => handler);
             registry.Register(handlerRegistration);
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<string>("testmessage");
             var cancellationTokenSource = new CancellationTokenSource();
@@ -333,7 +376,9 @@ namespace AI4E.Messaging
             var handlerRegistration = new MessageHandlerRegistration<string>(p => null);
             registry.Register(handlerRegistration);
             var serviceProvider = new ServiceProviderMock();
-            var dispatcher = new MessageDispatcher(registry, serviceProvider);
+            var optionsProvider = BuildMessagingOptions();
+            var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
+            var dispatcher = new MessageDispatcher(registry, messageRouterFactory, serviceProvider, optionsProvider);
 
             var dispatchData = new DispatchDataDictionary<string>("testmessage");
             var cancellationTokenSource = new CancellationTokenSource();
@@ -455,7 +500,7 @@ namespace AI4E.Messaging
         public bool Called { get; private set; }
     }
 
-    public class ThrowExcentionTestMessageHandler : IMessageHandler<string>
+    public class ThrowExceptionTestMessageHandler : IMessageHandler<string>
     {
         public ValueTask<IDispatchResult> HandleAsync(
             DispatchDataDictionary<string> dispatchData,

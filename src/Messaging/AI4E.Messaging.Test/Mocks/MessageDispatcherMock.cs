@@ -18,9 +18,11 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Messaging.Routing;
 
 namespace AI4E.Messaging.Mocks
 {
@@ -28,17 +30,22 @@ namespace AI4E.Messaging.Mocks
     {
         private readonly List<RecordedMessage> _recordedMessages = new List<RecordedMessage>();
         private readonly object _mutex = new object();
+        public bool IsDisposed { get; set; } = false;
+        public RouteEndPointAddress LocalEndPoint { get; set; }
 
         public async ValueTask<IDispatchResult> DispatchAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
             CancellationToken cancellation = default)
         {
-            var recordedMessage = new RecordedMessage(dispatchData, publish, cancellation);
+            var recordedMessage = new RecordedMessage(dispatchData, publish, explicitLocal: false, endPoint: null, cancellation);
             var dispatchTask = recordedMessage.DispatchTask;
 
             lock (_mutex)
             {
+                if (IsDisposed)
+                    throw new ObjectDisposedException(GetType().FullName);
+
                 _recordedMessages.Add(recordedMessage);
             }
 
@@ -53,22 +60,92 @@ namespace AI4E.Messaging.Mocks
         }
 
         public IMessageHandlerProvider MessageHandlerProvider { get; set; }
+
+        public async ValueTask<IDispatchResult> DispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            RouteEndPointAddress endPoint,
+            CancellationToken cancellation = default)
+        {
+            var recordedMessage = new RecordedMessage(dispatchData, publish, explicitLocal: false, endPoint, cancellation);
+            var dispatchTask = recordedMessage.DispatchTask;
+
+            lock (_mutex)
+            {
+                if (IsDisposed)
+                    throw new ObjectDisposedException(GetType().FullName);
+
+                _recordedMessages.Add(recordedMessage);
+            }
+
+            var result = await dispatchTask;
+
+            lock (_mutex)
+            {
+                _recordedMessages.Remove(recordedMessage);
+            }
+
+            return result;
+        }
+
+        public async ValueTask<IDispatchResult> DispatchLocalAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            CancellationToken cancellation = default)
+        {
+            var recordedMessage = new RecordedMessage(dispatchData, publish, explicitLocal: true, endPoint: null, cancellation);
+            var dispatchTask = recordedMessage.DispatchTask;
+
+            lock (_mutex)
+            {
+                if (IsDisposed)
+                    throw new ObjectDisposedException(GetType().FullName);
+
+                _recordedMessages.Add(recordedMessage);
+            }
+
+            var result = await dispatchTask;
+
+            lock (_mutex)
+            {
+                _recordedMessages.Remove(recordedMessage);
+            }
+
+            return result;
+        }
+
+        public ValueTask<RouteEndPointAddress> GetLocalEndPointAsync(
+            CancellationToken cancellation = default)
+        {
+            return new ValueTask<RouteEndPointAddress>(LocalEndPoint);
+        }
+
+        public void Dispose() { IsDisposed = true; }
     }
 
     public readonly struct RecordedMessage
     {
         private readonly TaskCompletionSource<IDispatchResult> _dispatchCompletionSource;
 
-        public RecordedMessage(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation)
+        public RecordedMessage(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            bool explicitLocal,
+            RouteEndPointAddress? endPoint,
+            CancellationToken cancellation)
         {
             DispatchData = dispatchData;
             Publish = publish;
+            ExplicitLocal = explicitLocal;
+            EndPoint = endPoint;
             Cancellation = cancellation;
             _dispatchCompletionSource = new TaskCompletionSource<IDispatchResult>();
         }
 
         public DispatchDataDictionary DispatchData { get; }
         public bool Publish { get; }
+        public bool ExplicitLocal { get; }
+        public RouteEndPointAddress? EndPoint { get; }
         public CancellationToken Cancellation { get; }
 
         public bool Handle(IDispatchResult result)

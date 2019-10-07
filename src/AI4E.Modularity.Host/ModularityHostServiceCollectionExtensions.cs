@@ -21,13 +21,11 @@
 using System;
 using System.Reflection;
 using AI4E;
-using AI4E.Coordination;
 using AI4E.Domain.Services;
+using AI4E.Messaging;
 using AI4E.Modularity;
 using AI4E.Modularity.Host;
 using AI4E.Modularity.Metadata;
-using AI4E.Remoting;
-using AI4E.Routing;
 using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -41,24 +39,18 @@ namespace Microsoft.Extensions.DependencyInjection
                 throw new ArgumentNullException(nameof(services));
 
             services.AddOptions();
-            services.AddModuleManagement();
-            services.AddSingleton<ModularityMarkerService>();
-            services.AddEndPointManager();
-            services.AddMessageRouter();
-            services.AddRemoteMessageDispatcher();
-            services.AddTcpEndPoint();
-            
+            services.AddMessaging()
+                .UseTcpEndPoint();
+
             services.AddSingleton<IRunningModuleManager, RunningModuleManager>();
             services.AddSingleton<IModuleManager, ModuleManager>();
             services.AddSingleton<IModulePropertiesLookup, ModulePropertiesLookup>();
             services.AddSingleton<IPathMapper, PathMapper>();
 
-            services.AddSingleton<IRouteManagerFactory, RouteManagerFactory>();
-            services.AddSingleton(typeof(IEndPointMap<>), typeof(EndPointMap<>));
-            services.AddCoordinationService();
-
             services.ConfigureApplicationServices(ConfigureApplicationServices);
             services.ConfigureApplicationParts(ConfigureApplicationParts);
+
+            services.AddSingleton<ModularityMarkerService>();
 
             return new ModularityBuilder(services);
         }

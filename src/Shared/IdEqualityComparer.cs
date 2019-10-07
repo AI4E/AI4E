@@ -1,5 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+
+#nullable disable
 
 namespace AI4E.Internal
 {

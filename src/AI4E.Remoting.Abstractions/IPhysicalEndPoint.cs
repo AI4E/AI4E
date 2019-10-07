@@ -21,6 +21,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Utils.Messaging.Primitives;
 
 namespace AI4E.Remoting
 {

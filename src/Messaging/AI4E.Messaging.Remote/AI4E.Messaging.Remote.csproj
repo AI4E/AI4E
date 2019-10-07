@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+    <RootNamespace>AI4E.Messaging</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\AI4E.Coordination\AI4E.Coordination.csproj" />
+    <ProjectReference Include="..\..\AI4E.Remoting\AI4E.Remoting.csproj" />
+    <ProjectReference Include="..\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\AI4E.Messaging.Remote.Abstractions\AI4E.Messaging.Remote.Abstractions.csproj" />
+    <ProjectReference Include="..\AI4E.Messaging\AI4E.Messaging.csproj" />
+  </ItemGroup>
+
+</Project>

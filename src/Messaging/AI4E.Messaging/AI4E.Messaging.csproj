@@ -14,7 +14,8 @@
     <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.2" />  
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
     <PackageReference Include="System.Collections.Immutable" Version="1.6.0" /> 
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.0.0" /> 
+    <PackageReference Include="System.Linq.Async" Version="4.0.0" />
   </ItemGroup>
 
   <ItemGroup>

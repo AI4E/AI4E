@@ -27,8 +27,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
+using AI4E.Messaging;
 using AI4E.Modularity.Debug;
-using AI4E.Routing;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 using AI4E.Utils.Processing;
@@ -49,7 +49,7 @@ namespace AI4E.Modularity.Host.Debug
         private readonly IRunningModuleManager _runningModuleManager;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<DebugPort> _logger;
-        private readonly IRemoteMessageDispatcher _messageDispatcher;
+        private readonly IMessageDispatcher _messageDispatcher;
         private readonly AsyncDisposeHelper _disposeHelper;
         private readonly AsyncInitializationHelper<IPEndPoint> _initializationHelper;
         private readonly ConcurrentDictionary<IPEndPoint, DebugSession> _debugSessions = new ConcurrentDictionary<IPEndPoint, DebugSession>(new IPEndPointEqualityComparer());
@@ -61,7 +61,7 @@ namespace AI4E.Modularity.Host.Debug
         public DebugPort(IServiceProvider serviceProvider,
                          IRunningModuleManager runningModuleManager,
                          IOptions<ModularityDebugOptions> optionsAccessor,
-                         IRemoteMessageDispatcher messageDispatcher,
+                         IMessageDispatcher messageDispatcher,
                          ILoggerFactory loggerFactory = null)
         {
             if (serviceProvider == null)
@@ -72,7 +72,7 @@ namespace AI4E.Modularity.Host.Debug
 
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
-
+            
             if (messageDispatcher == null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 

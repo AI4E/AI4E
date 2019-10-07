@@ -24,9 +24,8 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Messaging.Routing;
 using AI4E.Modularity.Metadata;
-using AI4E.Routing;
-using AI4E.Utils.Memory;
 
 namespace AI4E.Modularity
 {
@@ -35,7 +34,7 @@ namespace AI4E.Modularity
         Task AddModuleAsync(ModuleIdentifier module, ModuleProperties properties, bool overrideExisting, CancellationToken cancellation = default);
         Task RemoveModuleAsync(ModuleIdentifier module, CancellationToken cancellation);
 
-        ValueTask<IEnumerable<EndPointAddress>> GetEndPointsAsync(ReadOnlyMemory<char> prefix, CancellationToken cancellation = default);
+        ValueTask<IEnumerable<RouteEndPointAddress>> GetEndPointsAsync(ReadOnlyMemory<char> prefix, CancellationToken cancellation = default);
         ValueTask<ModuleProperties> GetPropertiesAsync(ModuleIdentifier module, CancellationToken cancellation = default);
     }
 
@@ -44,7 +43,7 @@ namespace AI4E.Modularity
         public static Task AddModuleAsync(
             this IModuleManager moduleManager,
             ModuleIdentifier module,
-            EndPointAddress endPoint,
+            RouteEndPointAddress endPoint,
             IEnumerable<ReadOnlyMemory<char>> prefixes,
             CancellationToken cancellation = default)
         {

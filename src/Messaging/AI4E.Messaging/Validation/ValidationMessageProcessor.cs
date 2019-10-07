@@ -72,14 +72,14 @@ namespace AI4E.Messaging.Validation
 
         private static void Configuration(MessagingOptions options)
         {
-            if (options.MessageProcessors.Any(p => p.MessageProcessorType == typeof(ValidationMessageProcessor)))
-                return;
+            if (!options.MessageProcessors.Any(p => p.MessageProcessorType == typeof(ValidationMessageProcessor)))
+            {
+                // We are dependent on all other processors that shall be called on validation.
+                var dependency = new MessageProcessorDependency(p => p.CallOnValidation());
+                var registration = MessageProcessorRegistration.Create<ValidationMessageProcessor>(dependency);
 
-            // We are dependent on all other processors that shall be called on validation.
-            var dependency = new MessageProcessorDependency(p => p.CallOnValidation());
-            var registration = MessageProcessorRegistration.Create<ValidationMessageProcessor>(dependency);
-
-            options.MessageProcessors.Add(registration);
+                options.MessageProcessors.Add(registration);
+            }
         }
 
         public static void Register(IMessagingBuilder builder)

@@ -35,8 +35,7 @@ namespace AI4E.Messaging.Validation
     {
         [TestMethod]
         public async Task ValidateValidTest()
-        {
-
+        { 
             var memberDescriptor = new MessageHandlerActionDescriptor(
                typeof(ValidationTestMessage),
                typeof(ValidationTestMessageHandler),

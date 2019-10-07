@@ -21,12 +21,10 @@
 using System;
 using System.Reflection;
 using AI4E;
-using AI4E.Coordination;
+using AI4E.Messaging;
 using AI4E.Modularity;
 using AI4E.Modularity.Metadata;
 using AI4E.Modularity.Module;
-using AI4E.Remoting;
-using AI4E.Routing;
 using AI4E.Utils.ApplicationParts;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -39,20 +37,14 @@ namespace Microsoft.Extensions.DependencyInjection
                 throw new ArgumentNullException(nameof(services));
 
             services.AddOptions();
-            services.AddTcpEndPoint();
-            services.AddEndPointManager();
-            services.AddMessageRouter();
-            services.AddRemoteMessageDispatcher();
+            services.AddMessaging()
+                .UseTcpEndPoint();
 
             services.AddSingleton<IMetadataAccessor, MetadataAccessor>();
             services.AddSingleton<IModuleManager, ModuleManager>();
             services.AddSingleton<IMetadataReader, MetadataReader>();
 
             services.AddSingleton<HostProcessMonitor>();
-
-            services.AddSingleton<IRouteManagerFactory, RouteManagerFactory>();
-            services.AddSingleton(typeof(IEndPointMap<>), typeof(EndPointMap<>));
-            services.AddCoordinationService();
 
             services.ConfigureApplicationServices(ConfigureApplicationServices);
             services.ConfigureApplicationParts(ConfigureApplicationParts);

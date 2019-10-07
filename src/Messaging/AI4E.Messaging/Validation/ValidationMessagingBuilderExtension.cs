@@ -36,6 +36,7 @@ namespace AI4E.Messaging
         {
             ValidationMessageProcessor.Register(builder);
             ValidationMessageHandler.Register(builder);
+            ValidationRouteResolver.Register(builder);
             return builder;
         }
     }

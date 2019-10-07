@@ -22,14 +22,14 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 using AI4E.Messaging;
+using AI4E.Messaging.Routing;
 using AI4E.Modularity.Metadata;
-using AI4E.Routing;
 
 namespace AI4E.Modularity
 {
     public sealed class ModuleProperties
     {
-        public ModuleProperties(ImmutableList<string> prefixes, ImmutableList<EndPointAddress> endPoints)
+        public ModuleProperties(ImmutableList<string> prefixes, ImmutableList<RouteEndPointAddress> endPoints)
         {
             if (!prefixes.Any())
                 throw new ArgumentException("The collection must contain at least one entry", nameof(prefixes));
@@ -45,7 +45,7 @@ namespace AI4E.Modularity
         }
 
         public ImmutableList<string> Prefixes { get; }
-        public ImmutableList<EndPointAddress> EndPoints { get; }
+        public ImmutableList<RouteEndPointAddress> EndPoints { get; }
     }
 
     public sealed class ModulePropertiesQuery : Query<ModuleProperties>

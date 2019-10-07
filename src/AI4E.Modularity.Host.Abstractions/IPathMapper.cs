@@ -21,7 +21,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Routing;
+using AI4E.Messaging.Routing;
 
 namespace AI4E.Modularity.Host
 {
@@ -39,6 +39,6 @@ namespace AI4E.Modularity.Host
         /// A task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the mapped end-point or <see cref="EndPointAddress.UnknownAddress"/> if no end-point matches.
         /// </returns>
-        ValueTask<EndPointAddress> MapHttpPathAsync(ReadOnlyMemory<char> path, CancellationToken cancellation = default);
+        ValueTask<RouteEndPointAddress> MapHttpPathAsync(ReadOnlyMemory<char> path, CancellationToken cancellation = default);
     }
 }

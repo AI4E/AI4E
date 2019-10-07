@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 
+#nullable disable
+
 namespace AI4E.Internal
 {
     internal abstract class ReconnectionManagerBase : IDisposable
@@ -211,5 +213,5 @@ namespace AI4E.Internal
                 return token.AsTask();
             }
         }
-    }   
+    }
 }

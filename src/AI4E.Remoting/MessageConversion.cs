@@ -20,6 +20,7 @@
 
 using System;
 using System.IO;
+using AI4E.Utils.Messaging.Primitives;
 
 namespace AI4E.Remoting
 {

@@ -19,11 +19,12 @@
  */
 
 using System;
+using System.Linq;
 using AI4E.Coordination;
+using AI4E.Messaging;
+using AI4E.Messaging.Routing;
 using AI4E.Modularity.Debug;
-using AI4E.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace AI4E.Modularity.Module
@@ -46,9 +47,12 @@ namespace AI4E.Modularity.Module
             builder.ConfigureServices(services =>
             {
                 services.Configure<ModularityDebugOptions>(options => options.EnableDebugging = true);
-                services.AddSingleton(ConfigureLogicalEndPoint);
-                services.AddSingleton(ConfigureCoordinationManager);
                 services.AddSingleton(ConfigureDebugConnection);
+
+                //services.Decorate<IRoutingSystem>(ConfigureRoutingSystem);
+                ConfigureRoutingSystem(services); // TODO: Replace with Decorate
+
+                services.AddSingleton(ConfigureCoordinationManager);
                 services.ConfigureApplicationServices(ConfigureApplicationServices);
             });
 
@@ -70,28 +74,54 @@ namespace AI4E.Modularity.Module
             }
         }
 
-        private static ILogicalEndPoint ConfigureLogicalEndPoint(IServiceProvider serviceProvider)
+        private static IRoutingSystem ConfigureRoutingSystem(Func<IRoutingSystem> routingSystemProvider, IServiceProvider serviceProvider)
         {
             var optionsAccessor = serviceProvider.GetRequiredService<IOptions<ModularityDebugOptions>>();
             var options = optionsAccessor.Value ?? new ModularityDebugOptions();
-            var remoteOptionsAccessor = serviceProvider.GetRequiredService<IOptions<RemoteMessagingOptions>>();
-            var remoteOptions = remoteOptionsAccessor.Value ?? new RemoteMessagingOptions();
-
-            if (remoteOptions.LocalEndPoint == default)
-            {
-                throw new InvalidOperationException("A local end point must be specified.");
-            }
 
             if (options.EnableDebugging)
             {
-                var debugConnection = serviceProvider.GetRequiredService<DebugConnection>();
-                var logger = serviceProvider.GetService<ILogger<DebugLogicalEndPoint>>();
-                return new DebugLogicalEndPoint(debugConnection, remoteOptions.LocalEndPoint, logger);
+                return ActivatorUtilities.CreateInstance<DebugRoutingSystem>(serviceProvider, optionsAccessor);
             }
-            else
+
+            return routingSystemProvider();
+        }
+
+        private static void ConfigureRoutingSystem(IServiceCollection services)
+        {
+            var descriptors = services.Where(service => service.ServiceType == typeof(IRoutingSystem)).ToArray();
+
+            foreach (var descriptor in descriptors)
             {
-                var endPointManager = serviceProvider.GetRequiredService<IEndPointManager>();
-                return endPointManager.CreateLogicalEndPoint(remoteOptions.LocalEndPoint);
+                var index = services.IndexOf(descriptor);
+                services.Insert(index, Decorate(descriptor));
+                services.Remove(descriptor);
+            }
+
+            ServiceDescriptor Decorate(ServiceDescriptor descriptor)
+            {
+                object ImplementationFactory(IServiceProvider serviceProvider)
+                {
+                    IRoutingSystem RoutingSystemProvider()
+                    {
+                        if (descriptor.ImplementationInstance != null)
+                        {
+                            return (IRoutingSystem)descriptor.ImplementationInstance;
+                        }
+
+                        if (descriptor.ImplementationType != null)
+                        {
+                            return (IRoutingSystem)ActivatorUtilities.GetServiceOrCreateInstance(
+                                serviceProvider, descriptor.ImplementationType);
+                        }
+
+                        return (IRoutingSystem)descriptor.ImplementationFactory(serviceProvider);
+                    }
+
+                    return ConfigureRoutingSystem(RoutingSystemProvider, serviceProvider);
+                }
+
+                return ServiceDescriptor.Describe(typeof(IRoutingSystem), ImplementationFactory, descriptor.Lifetime);
             }
         }
 
