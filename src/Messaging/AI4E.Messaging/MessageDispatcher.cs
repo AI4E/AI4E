@@ -44,8 +44,8 @@ namespace AI4E.Messaging
     // We need to implement IAsyncInitialization in order to enable this type beeing registered as app-service.
     {
         // Caching the delegates for performance reasons.
-        private static readonly Func<IDispatchResult, ValueMessage> _serializeDispatchResult = SerializeDispatchResult;
-        private static readonly Func<DispatchDataDictionary, ValueMessage> _serializeDispatchData = SerializeDispatchData;
+        private static readonly Func<IDispatchResult, Message> _serializeDispatchResult = SerializeDispatchResult;
+        private static readonly Func<DispatchDataDictionary, Message> _serializeDispatchData = SerializeDispatchData;
 
         #region Fields
 
@@ -317,9 +317,9 @@ namespace AI4E.Messaging
             }
         }
 
-        private static ValueMessage SerializeDispatchResult(IDispatchResult dispatchResult)
+        private static Message SerializeDispatchResult(IDispatchResult dispatchResult)
         {
-            var messageBuilder = new ValueMessageBuilder();
+            var messageBuilder = new MessageBuilder();
 
             Assert(dispatchResult != null);
 
@@ -331,7 +331,7 @@ namespace AI4E.Messaging
             return messageBuilder.BuildMessage();
         }
 
-        private static IDispatchResult DeserializeDispatchResult(ValueMessage message)
+        private static IDispatchResult DeserializeDispatchResult(Message message)
         {
             message.PopFrame(out var frame);
 
@@ -341,9 +341,9 @@ namespace AI4E.Messaging
             return Serializer.Deserialize<IDispatchResult>(jsonReader);
         }
 
-        private static ValueMessage SerializeDispatchData(DispatchDataDictionary dispatchData)
+        private static Message SerializeDispatchData(DispatchDataDictionary dispatchData)
         {
-            var messageBuilder = new ValueMessageBuilder();
+            var messageBuilder = new MessageBuilder();
 
             Assert(dispatchData != null);
 
@@ -355,7 +355,7 @@ namespace AI4E.Messaging
             return messageBuilder.BuildMessage();
         }
 
-        private static DispatchDataDictionary DeserializeDispatchData(ValueMessage message)
+        private static DispatchDataDictionary DeserializeDispatchData(Message message)
         {
             message.PopFrame(out var frame);
 

@@ -59,9 +59,9 @@ namespace AI4E.Messaging.SignalR.Server
 
         #region Encoding/Decoding
 
-        private static void EncodeRouteResponse(ref ValueMessage message, IReadOnlyCollection<RouteMessage<IDispatchResult>> routeResponse)
+        private static void EncodeRouteResponse(ref Message message, IReadOnlyCollection<RouteMessage<IDispatchResult>> routeResponse)
         {
-            var frameBuilder = new ValueMessageFrameBuilder();
+            var frameBuilder = new MessageFrameBuilder();
 
             using (var frameStream = frameBuilder.OpenStream())
             {
@@ -72,16 +72,16 @@ namespace AI4E.Messaging.SignalR.Server
 
                 foreach (var response in routeResponse)
                 {
-                    ValueMessage.WriteToStream(response.Message, frameStream);
+                    Message.WriteToStream(response.Message, frameStream);
                 }
             }
 
             message = message.PushFrame(frameBuilder.BuildMessageFrame());
         }
 
-        private static void EncodeHandleRequest(ref ValueMessage message, Route route, bool publish, bool isLocalDispatch)
+        private static void EncodeHandleRequest(ref Message message, Route route, bool publish, bool isLocalDispatch)
         {
-            var frameBuilder = new ValueMessageFrameBuilder();
+            var frameBuilder = new MessageFrameBuilder();
 
             using (var frameStream = frameBuilder.OpenStream())
             using (var writer = new BinaryWriter(frameStream))
@@ -226,7 +226,7 @@ namespace AI4E.Messaging.SignalR.Server
             }
         }
 
-        private async Task<(ValueMessage message, bool handled)> HandleAsync(ValueMessage message, RouteEndPointAddress remoteEndPoint, CancellationToken cancellation)
+        private async Task<(Message message, bool handled)> HandleAsync(Message message, RouteEndPointAddress remoteEndPoint, CancellationToken cancellation)
         {
             message = message.PopFrame(out var frame);
 
@@ -252,7 +252,7 @@ namespace AI4E.Messaging.SignalR.Server
 
                         var publish = reader.ReadBoolean();
                         var routeResponse = await router.RouteAsync(new RouteHierarchy(routes), new RouteMessage<DispatchDataDictionary>(message), publish, cancellation);
-                        var response = new ValueMessage();
+                        var response = new Message();
                         EncodeRouteResponse(ref response, routeResponse);
                         return (response, true);
                     }

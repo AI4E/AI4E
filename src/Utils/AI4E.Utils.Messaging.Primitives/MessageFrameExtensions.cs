@@ -18,16 +18,13 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-using System.IO;
-
-namespace AI4E.Remoting
+namespace AI4E.Utils.Messaging.Primitives
 {
-    [Obsolete("Use ValueMessageFrame")]
-    public interface IMessageFrame
+    public static class MessageFrameExtensions
     {
-        long Length { get; }
-
-        Stream OpenStream(bool overrideContent = false);
+        public static MessageFrameBuilder ToBuilder(in this MessageFrame frame)
+        {
+            return new MessageFrameBuilder(frame);
+        }
     }
 }

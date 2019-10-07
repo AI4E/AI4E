@@ -20,11 +20,11 @@
 
 namespace AI4E.Utils.Messaging.Primitives
 {
-    public static class ValueMessageExtensions
+    public static class MessageExtensions
     {
-        public static ValueMessageBuilder ToBuilder(in this ValueMessage message)
+        public static MessageBuilder ToBuilder(in this Message message)
         {
-            return new ValueMessageBuilder(message);
+            return new MessageBuilder(message);
         }
     }
 }

@@ -177,8 +177,8 @@ namespace AI4E.Messaging.Routing
 
             private volatile CancellationTokenSource _disposalSource;
 
-            private readonly AsyncProducerConsumerQueue<(ValueMessage message, DecodedMessage decodedMessage, TAddress remoteAddress)> _rxQueue;
-            private readonly ConcurrentDictionary<int, TaskCompletionSource<(ValueMessage message, DecodedMessage DecodedMessage, TAddress remoteAddress)>> _responseTable;
+            private readonly AsyncProducerConsumerQueue<(Message message, DecodedMessage decodedMessage, TAddress remoteAddress)> _rxQueue;
+            private readonly ConcurrentDictionary<int, TaskCompletionSource<(Message message, DecodedMessage DecodedMessage, TAddress remoteAddress)>> _responseTable;
             private readonly ConcurrentDictionary<(RouteEndPointAddress remoteEndPoint, TAddress remoteAddress, int seqNum), CancellationTokenSource> _cancellationTable;
             private readonly IAsyncProcess _receiveProcess;
 
@@ -196,8 +196,8 @@ namespace AI4E.Messaging.Routing
 
                 _disposalSource = new CancellationTokenSource();
 
-                _rxQueue = new AsyncProducerConsumerQueue<(ValueMessage message, DecodedMessage decodedMessage, TAddress remoteAddress)>();
-                _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<(ValueMessage message, DecodedMessage DecodedMessage, TAddress remoteAddress)>>();
+                _rxQueue = new AsyncProducerConsumerQueue<(Message message, DecodedMessage decodedMessage, TAddress remoteAddress)>();
+                _responseTable = new ConcurrentDictionary<int, TaskCompletionSource<(Message message, DecodedMessage DecodedMessage, TAddress remoteAddress)>>();
                 _cancellationTable = new ConcurrentDictionary<(RouteEndPointAddress remoteEndPoint, TAddress remoteAddress, int seqNum), CancellationTokenSource>();
                 _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
 
@@ -234,7 +234,7 @@ namespace AI4E.Messaging.Routing
 #endif
 
             public async ValueTask<RouteMessageHandleResult> SendAsync(
-                ValueMessage message,
+                Message message,
                 RouteEndPointAddress remoteEndPoint,
                 TAddress remoteAddress,
                 CancellationToken cancellation)
@@ -253,7 +253,7 @@ namespace AI4E.Messaging.Routing
             }
 
             public async ValueTask<RouteMessageHandleResult> SendAsync(
-                ValueMessage message,
+                Message message,
                 RouteEndPointAddress remoteEndPoint,
                 CancellationToken cancellation)
             {
@@ -325,7 +325,7 @@ namespace AI4E.Messaging.Routing
             }
 
             private async Task<RouteMessageHandleResult> SendInternalAsync(
-                ValueMessage message,
+                Message message,
                 RouteEndPointAddress remoteEndPoint,
                 TAddress remoteAddress,
                 CancellationToken cancellation)
@@ -372,7 +372,7 @@ namespace AI4E.Messaging.Routing
             #endregion
 
             private ValueTask SendEncodedMessageInternalAsync(
-                ValueMessage encodedMessage,
+                Message encodedMessage,
                 RouteEndPointAddress remoteEndPoint,
                 TAddress remoteAddress,
                 CancellationToken cancellation)
@@ -387,7 +387,7 @@ namespace AI4E.Messaging.Routing
                 RouteEndPointAddress remoteEndPoint,
                 TAddress remoteAddress)
             {
-                var message = new ValueMessage();
+                var message = new Message();
                 EncodeMessage(ref message, new DecodedMessage(
                     MessageType.CancellationRequest,
                     handled: false,
@@ -420,7 +420,7 @@ namespace AI4E.Messaging.Routing
                 }
             }
 
-            private async Task HandleMessageAsync(ValueMessage message, TAddress remoteAddress, CancellationToken cancellation)
+            private async Task HandleMessageAsync(Message message, TAddress remoteAddress, CancellationToken cancellation)
             {
                 DecodeMessage(ref message, out var decodedMessage);
 
@@ -459,7 +459,7 @@ namespace AI4E.Messaging.Routing
 
             private ValueTask SendMisroutedAsync(TAddress remoteAddress, RouteEndPointAddress rxEndPoint, int seqNum, CancellationToken cancellation)
             {
-                var message = new ValueMessage();
+                var message = new Message();
                 EncodeMessage(ref message, new DecodedMessage(
                     MessageType.Misrouted, handled: false, GetNextSeqNum(), seqNum, EndPoint, rxEndPoint));
 
@@ -467,7 +467,7 @@ namespace AI4E.Messaging.Routing
             }
 
             private Task HandleRequestAsync(
-                ValueMessage message,
+                Message message,
                 DecodedMessage decodedMessage,
                 TAddress remoteAddress,
                 CancellationToken cancellation)
@@ -478,7 +478,7 @@ namespace AI4E.Messaging.Routing
             }
 
             private Task HandleResponseAsync(
-                ValueMessage message,
+                Message message,
                 DecodedMessage decodedMessage,
                 TAddress remoteAddress,
                 CancellationToken cancellation)
@@ -493,7 +493,7 @@ namespace AI4E.Messaging.Routing
             }
 
             private Task HandleCancellationRequestAsync(
-                ValueMessage message,
+                Message message,
                 DecodedMessage decodedMessage,
                 TAddress remoteAddress,
                 CancellationToken cancellation)
@@ -508,7 +508,7 @@ namespace AI4E.Messaging.Routing
             }
 
             private Task HandleCancellationResponseAsync(
-                ValueMessage message,
+                Message message,
                 DecodedMessage decodedMessage,
                 CancellationToken cancellation)
             {
@@ -575,7 +575,7 @@ namespace AI4E.Messaging.Routing
                 Misrouted = -3
             }
 
-            private void DecodeMessage(ref ValueMessage message, out DecodedMessage decodedMessage)
+            private void DecodeMessage(ref Message message, out DecodedMessage decodedMessage)
             {
                 var builder = message.ToBuilder();
 
@@ -603,7 +603,7 @@ namespace AI4E.Messaging.Routing
                 message = builder.BuildMessage();
             }
 
-            private void EncodeMessage(ref ValueMessage message, in DecodedMessage decodedMessage)
+            private void EncodeMessage(ref Message message, in DecodedMessage decodedMessage)
             {
                 var builder = message.ToBuilder();
 
@@ -623,12 +623,12 @@ namespace AI4E.Messaging.Routing
                 message = builder.BuildMessage();
             }
 
-            private TaskCompletionSource<(ValueMessage message, DecodedMessage decodedMessage, TAddress remoteAddress)> EncodeRequestMessage(
-                ref ValueMessage message,
+            private TaskCompletionSource<(Message message, DecodedMessage decodedMessage, TAddress remoteAddress)> EncodeRequestMessage(
+                ref Message message,
                 RouteEndPointAddress remoteEndPoint,
                 out int seqNum)
             {
-                var responseSource = new TaskCompletionSource<(ValueMessage message, DecodedMessage decodedMessage, TAddress remoteAddress)>();
+                var responseSource = new TaskCompletionSource<(Message message, DecodedMessage decodedMessage, TAddress remoteAddress)>();
                 seqNum = AllocateResponseTableSlot(responseSource);
 
                 EncodeMessage(ref message, new DecodedMessage(MessageType.Request, handled: false, seqNum, corr: 0, EndPoint, remoteEndPoint));
@@ -701,7 +701,7 @@ namespace AI4E.Messaging.Routing
             }
 
             private int AllocateResponseTableSlot(
-                TaskCompletionSource<(ValueMessage message, DecodedMessage decodedMessage, TAddress remoteAddress)> responseSource)
+                TaskCompletionSource<(Message message, DecodedMessage decodedMessage, TAddress remoteAddress)> responseSource)
             {
                 var seqNum = GetNextSeqNum();
 
@@ -721,7 +721,7 @@ namespace AI4E.Messaging.Routing
 
                 public MessageReceiveResult(
                     RouteEndPoint logicalEndPoint,
-                    in ValueMessage message,
+                    in Message message,
                     in DecodedMessage decodedMessage,
                     TAddress remoteAddress)
                 {
@@ -737,7 +737,7 @@ namespace AI4E.Messaging.Routing
 
                 public CancellationToken Cancellation => _cancellationRequestSource.Token;
 
-                public ValueMessage Message { get; }
+                public Message Message { get; }
 
                 public RouteEndPointAddress RemoteEndPoint { get; }
 
@@ -756,7 +756,7 @@ namespace AI4E.Messaging.Routing
 
                 public ValueTask SendCancellationAsync()
                 {
-                    var message = new ValueMessage();
+                    var message = new Message();
                     var decodedMessage = new DecodedMessage(
                         MessageType.CancellationResponse,
                         handled: false,
@@ -776,7 +776,7 @@ namespace AI4E.Messaging.Routing
                     return SendResponseInternalAsync(default, handled: false);
                 }
 
-                private ValueTask SendResponseInternalAsync(ValueMessage response, bool handled)
+                private ValueTask SendResponseInternalAsync(Message response, bool handled)
                 {
                     var decodedMessage = new DecodedMessage(
                         MessageType.Response,

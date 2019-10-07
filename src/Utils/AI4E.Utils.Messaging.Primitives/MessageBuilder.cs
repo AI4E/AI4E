@@ -24,23 +24,23 @@ using System.Collections.Immutable;
 
 namespace AI4E.Utils.Messaging.Primitives
 {
-    public sealed class ValueMessageBuilder
+    public sealed class MessageBuilder
     {
-        private readonly ImmutableList<ValueMessageFrame>.Builder _frames;
-        private readonly List<ValueMessageFrameBuilder?> _frameBuilders;
+        private readonly ImmutableList<MessageFrame>.Builder _frames;
+        private readonly List<MessageFrameBuilder?> _frameBuilders;
 
         private int _frameIndex;
 
-        public ValueMessageBuilder()
+        public MessageBuilder()
         {
-            _frames = ImmutableList.CreateBuilder<ValueMessageFrame>();
-            _frameBuilders = new List<ValueMessageFrameBuilder?>();
+            _frames = ImmutableList.CreateBuilder<MessageFrame>();
+            _frameBuilders = new List<MessageFrameBuilder?>();
             _frameIndex = -1;
         }
 
-        public ValueMessageBuilder(ValueMessage message)
+        public MessageBuilder(Message message)
         {
-            if (message.Frames is ImmutableList<ValueMessageFrame> immutableList)
+            if (message.Frames is ImmutableList<MessageFrame> immutableList)
             {
                 _frames = immutableList.ToBuilder();
             }
@@ -53,7 +53,7 @@ namespace AI4E.Utils.Messaging.Primitives
             _frameIndex = _frames.Count - 1;
         }
 
-        public ValueMessageBuilder(IEnumerable<ValueMessageFrame> frames)
+        public MessageBuilder(IEnumerable<MessageFrame> frames)
         {
             if (frames == null)
                 throw new ArgumentNullException(nameof(frames));
@@ -63,16 +63,16 @@ namespace AI4E.Utils.Messaging.Primitives
             _frameIndex = _frames.Count - 1;
         }
 
-        private static ImmutableList<ValueMessageFrame>.Builder CreateFrameCollection(IEnumerable<ValueMessageFrame> frames)
+        private static ImmutableList<MessageFrame>.Builder CreateFrameCollection(IEnumerable<MessageFrame> frames)
         {
-            var result = ImmutableList.CreateBuilder<ValueMessageFrame>();
+            var result = ImmutableList.CreateBuilder<MessageFrame>();
             result.AddRange(frames);
             return result;
         }
 
-        private static List<ValueMessageFrameBuilder?> CreateFrameBuilderCollection(IReadOnlyCollection<ValueMessageFrame> frames)
+        private static List<MessageFrameBuilder?> CreateFrameBuilderCollection(IReadOnlyCollection<MessageFrame> frames)
         {
-            var result = new List<ValueMessageFrameBuilder?>(capacity: frames.Count);
+            var result = new List<MessageFrameBuilder?>(capacity: frames.Count);
 
             for (var i = 0; i < frames.Count; i++)
                 result.Add(null);
@@ -106,7 +106,7 @@ namespace AI4E.Utils.Messaging.Primitives
             }
         }
 
-        public ValueMessageFrameBuilder? CurrentFrame
+        public MessageFrameBuilder? CurrentFrame
         {
             get
             {
@@ -117,7 +117,7 @@ namespace AI4E.Utils.Messaging.Primitives
 
                 if (result is null)
                 {
-                    result = new ValueMessageFrameBuilder(_frames[_frameIndex]);
+                    result = new MessageFrameBuilder(_frames[_frameIndex]);
                     _frameBuilders[_frameIndex] = result;
                 }
 
@@ -125,11 +125,11 @@ namespace AI4E.Utils.Messaging.Primitives
             }
         }
 
-        public ValueMessageFrameBuilder? PushFrame()
+        public MessageFrameBuilder? PushFrame()
         {
             if (_frameIndex == _frames.Count - 1)
             {
-                var result = new ValueMessageFrameBuilder();
+                var result = new MessageFrameBuilder();
                 _frames.Add(default);
                 _frameBuilders.Add(result);
                 _frameIndex++;
@@ -140,7 +140,7 @@ namespace AI4E.Utils.Messaging.Primitives
             return CurrentFrame;
         }
 
-        public ValueMessageFrameBuilder? PopFrame()
+        public MessageFrameBuilder? PopFrame()
         {
             if (_frameIndex == -1)
             {
@@ -168,7 +168,7 @@ namespace AI4E.Utils.Messaging.Primitives
             _frameBuilders.Clear();
         }
 
-        public ValueMessage BuildMessage(bool trim = true)
+        public Message BuildMessage(bool trim = true)
         {
             for (var i = 0; i < (trim ? _frameIndex + 1 : _frameBuilders.Count); i++)
             {
@@ -187,7 +187,7 @@ namespace AI4E.Utils.Messaging.Primitives
                 frames = frames.RemoveRange(_frameIndex + 1, _frames.Count - _frameIndex - 1);
             }
 
-            return new ValueMessage(frames);
+            return new Message(frames);
         }
     }
 }

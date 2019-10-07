@@ -147,7 +147,7 @@ namespace AI4E.Messaging.Routing
             }
 
             public async ValueTask<RouteMessageHandleResult> SendAsync(
-                ValueMessage message,
+                Message message,
                 RouteEndPointAddress remoteEndPoint,
                 CancellationToken cancellation = default)
             {
@@ -175,7 +175,7 @@ namespace AI4E.Messaging.Routing
             }
 
             private static async ValueTask<RouteMessageHandleResult> SendInternalAsync(
-                ValueMessage message,
+                Message message,
                 RouteEndPoint routeEndPoint,
                 CancellationToken cancellation)
             {
@@ -192,7 +192,7 @@ namespace AI4E.Messaging.Routing
             }
 
             private static async ValueTask<RouteMessageHandleResult> SendCoreAsync(
-                ValueMessage message,
+                Message message,
                 RouteEndPoint routeEndPoint,
                 CancellationToken cancellation)
             {
@@ -221,7 +221,7 @@ namespace AI4E.Messaging.Routing
                 private readonly ValueTaskCompletionSource<RouteMessageHandleResult> _resultSource;
 
                 public RouteEndPointReceiveResult(
-                    ValueMessage message,
+                    Message message,
                     RouteEndPointAddress remoteEndPoint,
                     CancellationToken cancellation)
                 {
@@ -233,7 +233,7 @@ namespace AI4E.Messaging.Routing
 
                 public CancellationToken Cancellation { get; }
 
-                public ValueMessage Message { get; }
+                public Message Message { get; }
 
                 public RouteEndPointAddress RemoteEndPoint { get; }
 

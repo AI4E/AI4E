@@ -23,14 +23,14 @@ using System.Diagnostics;
 
 namespace AI4E.Utils.Messaging.Primitives
 {
-    public readonly struct ValueMessageFrame : IEquatable<ValueMessageFrame>
+    public readonly struct MessageFrame : IEquatable<MessageFrame>
     {
-        public ValueMessageFrame(ReadOnlySpan<byte> memory)
+        public MessageFrame(ReadOnlySpan<byte> memory)
         {
             Payload = memory.CopyToArray();
         }
 
-        internal ValueMessageFrame(ReadOnlyMemory<byte> memory, bool createCopy)
+        internal MessageFrame(ReadOnlyMemory<byte> memory, bool createCopy)
         {
             if (createCopy)
             {
@@ -42,42 +42,42 @@ namespace AI4E.Utils.Messaging.Primitives
             }
         }
 
-        public static ValueMessageFrame UnsafeCreateWithoutCopy(ReadOnlyMemory<byte> memory)
+        public static MessageFrame UnsafeCreateWithoutCopy(ReadOnlyMemory<byte> memory)
         {
-            return new ValueMessageFrame(memory, createCopy: false);
+            return new MessageFrame(memory, createCopy: false);
         }
 
         public int Length => Payload.Length + LengthCodeHelper.Get7BitEndodedIntBytesCount(Payload.Length);
 
         public ReadOnlyMemory<byte> Payload { get; }
 
-        internal static ValueMessageFrame Read(ReadOnlyMemory<byte> memory, bool createCopy)
+        internal static MessageFrame Read(ReadOnlyMemory<byte> memory, bool createCopy)
         {
             var payloadLength = LengthCodeHelper.Read7BitEncodedInt(memory.Span, out var headerLength);
 
             memory = memory.Slice(headerLength, payloadLength);
             Debug.Assert(memory.Length == payloadLength);
 
-            return new ValueMessageFrame(memory, createCopy);
+            return new MessageFrame(memory, createCopy);
         }
 
-        public static ValueMessageFrame Read(ReadOnlySpan<byte> memory)
+        public static MessageFrame Read(ReadOnlySpan<byte> memory)
         {
             return Read(memory.CopyToArray(), createCopy: false);
         }
 
-        public static void Write(in ValueMessageFrame frame, Span<byte> memory)
+        public static void Write(in MessageFrame frame, Span<byte> memory)
         {
             LengthCodeHelper.Write7BitEncodedInt(memory, frame.Payload.Length, out var headerLength);
             frame.Payload.Span.CopyTo(memory.Slice(headerLength));
         }
 
-        public ValueMessageFrameStream OpenStream()
+        public MessageFrameStream OpenStream()
         {
-            return new ValueMessageFrameStream(this);
+            return new MessageFrameStream(this);
         }
 
-        public bool Equals(ValueMessageFrame other)
+        public bool Equals(MessageFrame other)
         {
             if (other.Payload.Length != Payload.Length)
                 return false;
@@ -90,7 +90,7 @@ namespace AI4E.Utils.Messaging.Primitives
 
         public override bool Equals(object? obj)
         {
-            return obj is ValueMessageFrame frame && Equals(frame);
+            return obj is MessageFrame frame && Equals(frame);
         }
 
         public override int GetHashCode()
@@ -101,12 +101,12 @@ namespace AI4E.Utils.Messaging.Primitives
             return Payload.Span.SequenceHashCode();
         }
 
-        public static bool operator ==(in ValueMessageFrame left, in ValueMessageFrame right)
+        public static bool operator ==(in MessageFrame left, in MessageFrame right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(in ValueMessageFrame left, in ValueMessageFrame right)
+        public static bool operator !=(in MessageFrame left, in MessageFrame right)
         {
             return !left.Equals(right);
         }

@@ -23,12 +23,12 @@ using System.IO;
 
 namespace AI4E.Utils.Messaging.Primitives
 {
-    public sealed class ValueMessageFrameStream : Stream
+    public sealed class MessageFrameStream : Stream
     {
-        private readonly ValueMessageFrame _frame;
+        private readonly MessageFrame _frame;
         private int _position;
 
-        public ValueMessageFrameStream(in ValueMessageFrame frame)
+        public MessageFrameStream(in MessageFrame frame)
         {
             _frame = frame;
         }

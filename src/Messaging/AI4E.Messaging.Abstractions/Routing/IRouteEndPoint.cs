@@ -33,7 +33,7 @@ namespace AI4E.Messaging.Routing
             CancellationToken cancellation = default);
 
         ValueTask<RouteMessageHandleResult> SendAsync(
-            ValueMessage message,
+            Message message,
             RouteEndPointAddress remoteEndPoint,
             CancellationToken cancellation = default);
     }
@@ -41,7 +41,7 @@ namespace AI4E.Messaging.Routing
     public interface IRouteEndPointReceiveResult
     {
         CancellationToken Cancellation { get; }
-        ValueMessage Message { get; }
+        Message Message { get; }
         RouteEndPointAddress RemoteEndPoint { get; }
 
         // Send the specified response and end the request.

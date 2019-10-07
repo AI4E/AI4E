@@ -9,7 +9,7 @@ namespace AI4E.Coordination.Utils
 {
     public sealed class InMemoryPhysicalEndPoint : IPhysicalEndPoint<InMemoryPhysicalAddress>
     {
-        private readonly AsyncProducerConsumerQueue<ValueMessage> _rxQueue = new AsyncProducerConsumerQueue<ValueMessage>();
+        private readonly AsyncProducerConsumerQueue<Message> _rxQueue = new AsyncProducerConsumerQueue<Message>();
 
         public InMemoryPhysicalAddress LocalAddress => InMemoryPhysicalAddress.Instance;
 

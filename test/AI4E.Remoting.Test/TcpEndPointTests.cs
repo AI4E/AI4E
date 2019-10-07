@@ -263,9 +263,9 @@ namespace AI4E.Remoting
             return serviceProvider.GetRequiredService<ILogger<TcpEndPoint>>();
         }
 
-        private ValueMessage BuildTestMessage()
+        private Message BuildTestMessage()
         {
-            var messageBuilder = new ValueMessageBuilder();
+            var messageBuilder = new MessageBuilder();
 
             using (var frameStream = messageBuilder.PushFrame().OpenStream())
             using (var writer = new BinaryWriter(frameStream))
@@ -282,7 +282,7 @@ namespace AI4E.Remoting
             return messageBuilder.BuildMessage();
         }
 
-        private void TestTestMessage(ValueMessage message)
+        private void TestTestMessage(Message message)
         {
             message = message.PopFrame(out var frame);
 

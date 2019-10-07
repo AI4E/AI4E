@@ -44,7 +44,7 @@ namespace AI4E.Remoting
         {
             private readonly ILogger _logger;
 
-            private readonly ConcurrentDictionary<int, (ValueMessage message, ValueTaskCompletionSource ackSource)> _txQueue;
+            private readonly ConcurrentDictionary<int, (Message message, ValueTaskCompletionSource ackSource)> _txQueue;
             private readonly ReconnectionManager _reconnectionManager;
             private int _nextSeqNum;
 
@@ -57,7 +57,7 @@ namespace AI4E.Remoting
                 RemoteAddress = remoteAddress;
 
                 _logger = logger;
-                _txQueue = new ConcurrentDictionary<int, (ValueMessage message, ValueTaskCompletionSource ackSource)>();
+                _txQueue = new ConcurrentDictionary<int, (Message message, ValueTaskCompletionSource ackSource)>();
                 _reconnectionManager = new ReconnectionManager(this, logger);
 
                 // Initially connect
@@ -70,7 +70,7 @@ namespace AI4E.Remoting
                 RemoteAddress = remoteAddress;
 
                 _logger = logger;
-                _txQueue = new ConcurrentDictionary<int, (ValueMessage message, ValueTaskCompletionSource ackSource)>();
+                _txQueue = new ConcurrentDictionary<int, (Message message, ValueTaskCompletionSource ackSource)>();
                 _reconnectionManager = new ReconnectionManager(this, logger);
 
                 // Initially connect
@@ -92,7 +92,7 @@ namespace AI4E.Remoting
             public TcpEndPoint LocalEndPoint { get; }
             public IPEndPoint RemoteAddress { get; }
 
-            public async ValueTask SendAsync(ValueMessage message, CancellationToken cancellation)
+            public async ValueTask SendAsync(Message message, CancellationToken cancellation)
             {
                 var ackSource = ValueTaskCompletionSource.Create();
                 var seqNum = GetNextSeqNum();
@@ -150,7 +150,7 @@ namespace AI4E.Remoting
                 }
             }
 
-            private async Task SendInternalAsync(int seqNum, ValueMessage message, CancellationToken cancellation)
+            private async Task SendInternalAsync(int seqNum, Message message, CancellationToken cancellation)
             {
                 message = EncodeMessage(message, MessageType.Deliver, seqNum);
 
@@ -172,7 +172,7 @@ namespace AI4E.Remoting
                 }
             }
 
-            internal async ValueTask ReceiveAsync(ValueMessage message, CancellationToken cancellation)
+            internal async ValueTask ReceiveAsync(Message message, CancellationToken cancellation)
             {
                 MessageType messageType;
                 int seqNum;
@@ -196,12 +196,12 @@ namespace AI4E.Remoting
                 }
             }
 
-            private async ValueTask ReceiveMessageAsync(ValueMessage message, int seqNum, CancellationToken cancellation)
+            private async ValueTask ReceiveMessageAsync(Message message, int seqNum, CancellationToken cancellation)
             {
                 await LocalEndPoint._rxQueue.EnqueueAsync(new Transmission<IPEndPoint>(message, RemoteAddress), cancellation);
 
                 // Send Ack
-                message = new ValueMessage();
+                message = new Message();
                 message = EncodeMessage(message, MessageType.Ack, seqNum);
 
                 RemoteConnection connection;
@@ -304,9 +304,9 @@ namespace AI4E.Remoting
 
             #region Coding
 
-            private static ValueMessage EncodeMessage(ValueMessage message, MessageType messageType, int seqNum)
+            private static Message EncodeMessage(Message message, MessageType messageType, int seqNum)
             {
-                var frameBuilder = new ValueMessageFrameBuilder();
+                var frameBuilder = new MessageFrameBuilder();
                 using (var frameStream = frameBuilder.OpenStream())
                 using (var writer = new BinaryWriter(frameStream))
                 {
@@ -317,7 +317,7 @@ namespace AI4E.Remoting
                 return message.PushFrame(frameBuilder.BuildMessageFrame());
             }
 
-            private static (ValueMessage message, MessageType messageType, int seqNum) DecodeMessage(ValueMessage message)
+            private static (Message message, MessageType messageType, int seqNum) DecodeMessage(Message message)
             {
                 message = message.PopFrame(out var frame);
 

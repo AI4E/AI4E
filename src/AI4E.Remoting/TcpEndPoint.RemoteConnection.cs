@@ -92,7 +92,7 @@ namespace AI4E.Remoting
                 }
             }
 
-            private async Task<ValueMessage> ReceiveAsync(CancellationToken cancellation)
+            private async Task<Message> ReceiveAsync(CancellationToken cancellation)
             {
                 try
                 {
@@ -100,7 +100,7 @@ namespace AI4E.Remoting
                     // but we can just leave alone the operation, as we get cancelled only, if we dispose
                     // so the next operation, we do is closing the underlying socket which will cancel the
                     // operation anyway.
-                    return await ValueMessage.ReadFromStreamAsync(Stream, cancellation).WithCancellation(cancellation);
+                    return await Message.ReadFromStreamAsync(Stream, cancellation).WithCancellation(cancellation);
                 }
                 catch (ObjectDisposedException)
                 {
@@ -120,7 +120,7 @@ namespace AI4E.Remoting
 
             #endregion
 
-            public async ValueTask SendAsync(ValueMessage message, CancellationToken cancellation)
+            public async ValueTask SendAsync(Message message, CancellationToken cancellation)
             {
                 if (_asyncDisposeHelper.IsDisposed)
                     throw new OperationCanceledException();
@@ -129,7 +129,7 @@ namespace AI4E.Remoting
                 {
                     using (await _sendLock.LockAsync(cancellation))
                     {
-                        await ValueMessage.WriteToStreamAsync(message, Stream, cancellation);
+                        await Message.WriteToStreamAsync(message, Stream, cancellation);
                     }               
                 }
                 catch (ObjectDisposedException)
@@ -144,7 +144,7 @@ namespace AI4E.Remoting
                 }
             }
 
-            private ValueTask ReceiveAsync(ValueMessage message, CancellationToken cancellation)
+            private ValueTask ReceiveAsync(Message message, CancellationToken cancellation)
             {
                 return RemoteEndPoint.ReceiveAsync(message, cancellation);
             }

@@ -125,7 +125,7 @@ namespace AI4E.Messaging.Routing
             }
         }
 
-        private async Task<RouteMessageHandleResult> HandleAsync(ValueMessage message, CancellationToken cancellation)
+        private async Task<RouteMessageHandleResult> HandleAsync(Message message, CancellationToken cancellation)
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
             var (publish, localDispatch, route) = DecodeMessage(ref message);
@@ -314,9 +314,9 @@ namespace AI4E.Messaging.Routing
             return result;
         }
 
-        private static void EncodeMessage(ref ValueMessage message, bool publish, bool localDispatch, Route route)
+        private static void EncodeMessage(ref Message message, bool publish, bool localDispatch, Route route)
         {
-            var frameBuilder = new ValueMessageFrameBuilder();
+            var frameBuilder = new MessageFrameBuilder();
 
             using (var frameStream = frameBuilder.OpenStream())
             using (var writer = new BinaryWriter(frameStream))
@@ -330,7 +330,7 @@ namespace AI4E.Messaging.Routing
             message = message.PushFrame(frameBuilder.BuildMessageFrame());
         }
 
-        private static (bool publish, bool localDispatch, Route route) DecodeMessage(ref ValueMessage message)
+        private static (bool publish, bool localDispatch, Route route) DecodeMessage(ref Message message)
         {
             message = message.PopFrame(out var frame);
 

@@ -13,8 +13,8 @@ namespace AI4E.Utils.Messaging.Primitives
 
     public interface IEndPoint : IEndPoint<Packet>
     {
-        new ValueTask<ValueMessage> ReceiveAsync(CancellationToken cancellation = default);
-        ValueTask SendAsync(ValueMessage message, CancellationToken cancellation = default);
+        new ValueTask<Message> ReceiveAsync(CancellationToken cancellation = default);
+        ValueTask SendAsync(Message message, CancellationToken cancellation = default);
 
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
         async ValueTask<Packet> IEndPoint<Packet>.ReceiveAsync(CancellationToken cancellation)

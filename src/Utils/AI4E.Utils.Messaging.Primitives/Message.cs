@@ -29,16 +29,16 @@ using System.Threading.Tasks;
 
 namespace AI4E.Utils.Messaging.Primitives
 {
-    public readonly struct ValueMessage : IEquatable<ValueMessage>
+    public readonly struct Message : IEquatable<Message>
     {
-        private readonly ImmutableList<ValueMessageFrame> _frames;
+        private readonly ImmutableList<MessageFrame> _frames;
 
-        public ValueMessage(IEnumerable<ValueMessageFrame> frames)
+        public Message(IEnumerable<MessageFrame> frames)
         {
             if (frames is null)
                 throw new ArgumentNullException(nameof(frames));
 
-            _frames = frames as ImmutableList<ValueMessageFrame> ?? frames.ToImmutableList();
+            _frames = frames as ImmutableList<MessageFrame> ?? frames.ToImmutableList();
         }
 
         public int Length
@@ -55,14 +55,14 @@ namespace AI4E.Utils.Messaging.Primitives
             return Frames.Sum(p => p.Length);
         }
 
-        public IReadOnlyList<ValueMessageFrame> Frames => _frames ?? ImmutableList<ValueMessageFrame>.Empty;
+        public IReadOnlyList<MessageFrame> Frames => _frames ?? ImmutableList<MessageFrame>.Empty;
 
-        public ValueMessage PushFrame(in ValueMessageFrame frame)
+        public Message PushFrame(in MessageFrame frame)
         {
-            return new ValueMessage((_frames ?? ImmutableList<ValueMessageFrame>.Empty).Add(frame));
+            return new Message((_frames ?? ImmutableList<MessageFrame>.Empty).Add(frame));
         }
 
-        public ValueMessage PopFrame(out ValueMessageFrame frame)
+        public Message PopFrame(out MessageFrame frame)
         {
             if (_frames == null || _frames.Count == 0)
             {
@@ -71,27 +71,27 @@ namespace AI4E.Utils.Messaging.Primitives
             }
 
             frame = _frames[_frames.Count - 1];
-            return new ValueMessage(_frames.RemoveAt(_frames.Count - 1));
+            return new Message(_frames.RemoveAt(_frames.Count - 1));
         }
 
-        public static ValueMessage ReadFromMemory(in ReadOnlySpan<byte> memory)
+        public static Message ReadFromMemory(in ReadOnlySpan<byte> memory)
         {
             var framesLength = LengthCodeHelper.Read7BitEncodedInt(memory, out var headerLength);
             var buffer = memory.Slice(headerLength, framesLength);
-            var framesBuilder = ImmutableList.CreateBuilder<ValueMessageFrame>();
+            var framesBuilder = ImmutableList.CreateBuilder<MessageFrame>();
 
             while (buffer.Length > 0)
             {
-                var frame = ValueMessageFrame.Read(buffer);
+                var frame = MessageFrame.Read(buffer);
                 buffer = buffer.Slice(frame.Length);
                 framesBuilder.Add(frame);
             }
 
             var frames = framesBuilder.ToImmutable();
-            return new ValueMessage(frames);
+            return new Message(frames);
         }
 
-        public static void WriteToMemory(in ValueMessage message, Span<byte> memory)
+        public static void WriteToMemory(in Message message, Span<byte> memory)
         {
             if (memory.Length < message.Length)
                 throw new ArgumentException("The messages size is larger than the length of the span.");
@@ -106,31 +106,31 @@ namespace AI4E.Utils.Messaging.Primitives
             {
                 using var bufferOwner = MemoryPool<byte>.Shared.Rent(frame.Length);
 
-                ValueMessageFrame.Write(frame, memory);
+                MessageFrame.Write(frame, memory);
                 memory = memory.Slice(frame.Length);
             }
         }
 
-        public static async ValueTask<ValueMessage> ReadFromStreamAsync(Stream stream, CancellationToken cancellation)
+        public static async ValueTask<Message> ReadFromStreamAsync(Stream stream, CancellationToken cancellation)
         {
             var framesLength = await LengthCodeHelper.Read7BitEncodedIntAsync(stream, cancellation);
             var buffer = new byte[framesLength].AsMemory();
             await stream.ReadExactAsync(buffer, cancellation);
 
-            var framesBuilder = ImmutableList.CreateBuilder<ValueMessageFrame>();
+            var framesBuilder = ImmutableList.CreateBuilder<MessageFrame>();
 
             while (buffer.Length > 0)
             {
-                var frame = ValueMessageFrame.Read(buffer, createCopy: false);
+                var frame = MessageFrame.Read(buffer, createCopy: false);
                 buffer = buffer.Slice(frame.Length);
                 framesBuilder.Add(frame);
             }
 
             var frames = framesBuilder.ToImmutable();
-            return new ValueMessage(frames);
+            return new Message(frames);
         }
 
-        public static async ValueTask WriteToStreamAsync(ValueMessage message, Stream stream, CancellationToken cancellation)
+        public static async ValueTask WriteToStreamAsync(Message message, Stream stream, CancellationToken cancellation)
         {
             await LengthCodeHelper.Write7BitEncodedIntAsync(stream, message.GetFramesLength(), cancellation);
 
@@ -139,13 +139,13 @@ namespace AI4E.Utils.Messaging.Primitives
                 using var bufferOwner = MemoryPool<byte>.Shared.RentExact(frame.Length);
                 var buffer = bufferOwner.Memory;
 
-                ValueMessageFrame.Write(frame, buffer.Span);
+                MessageFrame.Write(frame, buffer.Span);
 
                 await stream.WriteAsync(buffer, cancellation);
             }
         }
 
-        public static void WriteToStream(ValueMessage message, Stream stream)
+        public static void WriteToStream(Message message, Stream stream)
         {
             Span<byte> memory = stackalloc byte[5];
 
@@ -156,12 +156,12 @@ namespace AI4E.Utils.Messaging.Primitives
             {
                 using var bufferOwner = MemoryPool<byte>.Shared.RentExact(frame.Length);
                 var buffer = bufferOwner.Memory;
-                ValueMessageFrame.Write(frame, buffer.Span);
+                MessageFrame.Write(frame, buffer.Span);
                 stream.Write(buffer.Span);
             }
         }
 
-        public bool Equals(ValueMessage other)
+        public bool Equals(Message other)
         {
             if (other.Frames.Count != Frames.Count)
                 return false;
@@ -174,7 +174,7 @@ namespace AI4E.Utils.Messaging.Primitives
 
         public override bool Equals(object? obj)
         {
-            return obj is ValueMessage message && Equals(message);
+            return obj is Message message && Equals(message);
         }
 
         public override int GetHashCode()
@@ -185,12 +185,12 @@ namespace AI4E.Utils.Messaging.Primitives
             return Frames.GetSequenceHashCode();
         }
 
-        public static bool operator ==(in ValueMessage left, in ValueMessage right)
+        public static bool operator ==(in Message left, in Message right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(in ValueMessage left, in ValueMessage right)
+        public static bool operator !=(in Message left, in Message right)
         {
             return !left.Equals(right);
         }

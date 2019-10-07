@@ -35,7 +35,7 @@ namespace AI4E.Utils.Messaging.Primitives
         /// <param name="message">The transmit message.</param>
         /// <param name="remoteAddress">The address of the remote physical end-point.</param>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="remoteAddress"/> is <c>default</c>.</exception>
-        public Transmission(ValueMessage message, TAddress remoteAddress)
+        public Transmission(Message message, TAddress remoteAddress)
         {
             if (remoteAddress == default)
             {
@@ -50,7 +50,7 @@ namespace AI4E.Utils.Messaging.Primitives
         /// <summary>
         /// Gets the transmit message.
         /// </summary>
-        public ValueMessage Message { get; }
+        public Message Message { get; }
 
         /// <summary>
         /// Gets the address of the remote physical end-point.

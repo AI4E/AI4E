@@ -57,13 +57,13 @@ namespace AI4E.Modularity.Debug
             return new DebugMessageReceiveResult(resultProxy, resultValues);
         }
 
-        public async ValueTask<RouteMessageHandleResult> SendAsync(ValueMessage message, RouteEndPointAddress remoteEndPoint, CancellationToken cancellation = default)
+        public async ValueTask<RouteMessageHandleResult> SendAsync(Message message, RouteEndPointAddress remoteEndPoint, CancellationToken cancellation = default)
         {
             var proxy = _proxy;
             var buffer = new byte[message.Length];
-            ValueMessage.WriteToMemory(message, buffer.AsSpan());
+            Message.WriteToMemory(message, buffer.AsSpan());
             var responseBuffer = await proxy.ExecuteAsync(p => p.SendAsync(buffer, remoteEndPoint, cancellation));
-            var response = ValueMessage.ReadFromMemory(responseBuffer);
+            var response = Message.ReadFromMemory(responseBuffer);
 
             response = response.PopFrame(out var frame);
 
@@ -102,13 +102,13 @@ namespace AI4E.Modularity.Debug
 
             public CancellationToken Cancellation => _values.Cancellation;
 
-            public ValueMessage Message => ValueMessage.ReadFromMemory(_values.Message.AsSpan());
+            public Message Message => Message.ReadFromMemory(_values.Message.AsSpan());
 
             public async ValueTask SendResultAsync(RouteMessageHandleResult result)
             {
                 var message = result.RouteMessage.Message;
                 var responseBuffer = new byte[message.Length];
-                ValueMessage.WriteToMemory(message, responseBuffer.AsSpan());
+                Message.WriteToMemory(message, responseBuffer.AsSpan());
                 await _proxy.ExecuteAsync(p => p.SendResponseAsync(responseBuffer, result.Handled));
             }
 
@@ -153,11 +153,11 @@ namespace AI4E.Modularity.Debug
             public async Task<byte[]> SendAsync(byte[] messageBuffer, RouteEndPointAddress remoteEndPoint, CancellationToken cancellation = default)
             {
                 var endPoint = _routeEndPoint;
-                var message = ValueMessage.ReadFromMemory(messageBuffer);
+                var message = Message.ReadFromMemory(messageBuffer);
                 var sendResult = await endPoint.SendAsync(message, remoteEndPoint, cancellation);
 
                 var response = sendResult.RouteMessage.Message;
-                var frameBuilder = new ValueMessageFrameBuilder();
+                var frameBuilder = new MessageFrameBuilder();
 
                 using (var frameStream = frameBuilder.OpenStream())
                 using (var writer = new BinaryWriter(frameStream))
@@ -168,7 +168,7 @@ namespace AI4E.Modularity.Debug
                 response = response.PushFrame(frameBuilder.BuildMessageFrame());
 
                 var result = new byte[response.Length];
-                ValueMessage.WriteToMemory(response, result);
+                Message.WriteToMemory(response, result);
                 return result;
             }
 
@@ -203,7 +203,7 @@ namespace AI4E.Modularity.Debug
             public MessageReceiveResultValues GetResultValues()
             {
                 var messageBytes = new byte[_receiveResult.Message.Length];
-                ValueMessage.WriteToMemory(_receiveResult.Message, messageBytes.AsSpan());
+                Message.WriteToMemory(_receiveResult.Message, messageBytes.AsSpan());
 
                 return new MessageReceiveResultValues
                 {
@@ -217,7 +217,7 @@ namespace AI4E.Modularity.Debug
             {
                 System.Diagnostics.Debug.Assert(responseBuffer != null);
 
-                var response = ValueMessage.ReadFromMemory(responseBuffer.AsSpan());
+                var response = Message.ReadFromMemory(responseBuffer.AsSpan());
 
                 await _receiveResult.SendResultAsync(
                     new RouteMessageHandleResult(

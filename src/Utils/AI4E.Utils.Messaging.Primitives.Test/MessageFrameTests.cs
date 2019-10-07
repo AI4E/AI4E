@@ -26,12 +26,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace AI4E.Utils.Messaging.Primitives
 {
     [TestClass]
-    public sealed class ValueMessageFrameTests
+    public sealed class MessageFrameTests
     {
         [TestMethod]
         public void DefaultValueMessageFrameTest()
         {
-            var subject = default(ValueMessageFrame);
+            var subject = default(MessageFrame);
 
             Assert.AreEqual(1, subject.Length);
             Assert.AreEqual(0, subject.Payload.Length);
@@ -40,10 +40,10 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void DefaultValueMessageFrameWriteTest()
         {
-            var subject = default(ValueMessageFrame);
+            var subject = default(MessageFrame);
             var buffer = new byte[subject.Length];
 
-            ValueMessageFrame.Write(subject, buffer);
+            MessageFrame.Write(subject, buffer);
 
             Assert.AreEqual(1, buffer.Length);
             Assert.AreEqual(0, buffer[0]); // The frame length is header-exclusive.
@@ -53,7 +53,7 @@ namespace AI4E.Utils.Messaging.Primitives
         public void CreateValueMessageFrameTest()
         {
             var payload = Enumerable.Range(0, 0x84).Select(p => unchecked((byte)p)).ToArray();
-            var subject = new ValueMessageFrame(payload.AsSpan());
+            var subject = new MessageFrame(payload.AsSpan());
 
             Assert.AreEqual(payload.Length + 2, subject.Length);
             Assert.IsTrue(payload.SequenceEqual(subject.Payload.ToArray()));
@@ -63,7 +63,7 @@ namespace AI4E.Utils.Messaging.Primitives
         public void CreateValueMessageFrameCopyTest()
         {
             var payload = Enumerable.Range(0, 0x84).Select(p => unchecked((byte)p)).ToArray();
-            var subject = new ValueMessageFrame(payload.AsMemory(), createCopy: true);
+            var subject = new MessageFrame(payload.AsMemory(), createCopy: true);
 
             // We modify the original payload to assert that the frame performs a copy internally
             Array.Clear(payload, 0, payload.Length);
@@ -76,7 +76,7 @@ namespace AI4E.Utils.Messaging.Primitives
         public void CreateValueMessageFrameNoCopyTest()
         {
             var payload = Enumerable.Range(0, 0x84).Select(p => unchecked((byte)p)).ToArray();
-            var subject = ValueMessageFrame.UnsafeCreateWithoutCopy(payload.AsMemory());
+            var subject = MessageFrame.UnsafeCreateWithoutCopy(payload.AsMemory());
 
             // We modify the original payload to assert that the frame does NOT perform a copy internally
             Array.Clear(payload, 0, payload.Length);
@@ -92,7 +92,7 @@ namespace AI4E.Utils.Messaging.Primitives
 
             LengthCodeHelper.Write7BitEncodedInt(data.AsSpan(), data.Length - 2); // The frame length is header-exclusive.
 
-            var subject = ValueMessageFrame.Read(data.AsSpan());
+            var subject = MessageFrame.Read(data.AsSpan());
 
             Assert.AreEqual(data.Length, subject.Length);
             Assert.IsTrue(data[2..].SequenceEqual(subject.Payload.ToArray()));
@@ -105,7 +105,7 @@ namespace AI4E.Utils.Messaging.Primitives
 
             LengthCodeHelper.Write7BitEncodedInt(data.AsSpan(), data.Length - 2); // The frame length is header-exclusive.
 
-            var subject = ValueMessageFrame.Read(data.AsMemory(), createCopy: true);
+            var subject = MessageFrame.Read(data.AsMemory(), createCopy: true);
 
             // We modify the original payload to assert that the frame performs a copy internally
             Array.Clear(data, 0, data.Length);
@@ -121,7 +121,7 @@ namespace AI4E.Utils.Messaging.Primitives
 
             LengthCodeHelper.Write7BitEncodedInt(data.AsSpan(), data.Length - 2); // The frame length is header-exclusive.
 
-            var subject = ValueMessageFrame.Read(data.AsMemory(), createCopy: false);
+            var subject = MessageFrame.Read(data.AsMemory(), createCopy: false);
 
             // We modify the original payload to assert that the frame does NOT perform a copy internally
             Array.Clear(data, 0, data.Length);
@@ -134,10 +134,10 @@ namespace AI4E.Utils.Messaging.Primitives
         public void ReadWriteRountripTest()
         {
             var payload = Enumerable.Range(0, 0x84).Select(p => unchecked((byte)p)).ToArray();
-            var subject = new ValueMessageFrame(payload);
+            var subject = new MessageFrame(payload);
             var buffer = new byte[subject.Length];
-            ValueMessageFrame.Write(subject, buffer);
-            var subject2 = ValueMessageFrame.Read(buffer.AsSpan());
+            MessageFrame.Write(subject, buffer);
+            var subject2 = MessageFrame.Read(buffer.AsSpan());
 
             Assert.AreEqual(payload.Length + LengthCodeHelper.Get7BitEndodedIntBytesCount(payload.Length), subject2.Length);
             Assert.IsTrue(payload.SequenceEqual(subject2.Payload.ToArray()));

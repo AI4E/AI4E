@@ -154,12 +154,12 @@ namespace AI4E.Remoting
 
         #region Coding
 
-        private static ValueMessage EncodeMultiplexName(ValueMessage message, string multiplexName)
+        private static Message EncodeMultiplexName(Message message, string multiplexName)
         {
             Assert(multiplexName != null);
 
             var multiplexNameBytes = Encoding.UTF8.GetBytes(multiplexName);
-            var frameBuilder = new ValueMessageFrameBuilder();
+            var frameBuilder = new MessageFrameBuilder();
 
             using (var frameStream = frameBuilder.OpenStream())
             using (var binaryWriter = new BinaryWriter(frameStream))
@@ -172,7 +172,7 @@ namespace AI4E.Remoting
 
         }
 
-        private static (ValueMessage message, string multiplexName) DecodeMultiplexName(ValueMessage message)
+        private static (Message message, string multiplexName) DecodeMultiplexName(Message message)
         {
             var multiplexName = default(string);
 

@@ -2,18 +2,18 @@ namespace AI4E.Utils.Messaging.Primitives
 {
     public interface IPacket
     {
-        ValueMessage Message { get; }
+        Message Message { get; }
 
-        IPacket WithMessage(in ValueMessage message);
+        IPacket WithMessage(in Message message);
     }
 
     public interface IPacket<TPacket> : IPacket
         where TPacket : IPacket
     {
-        new TPacket WithMessage(in ValueMessage message);
+        new TPacket WithMessage(in Message message);
 
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
-        IPacket IPacket.WithMessage(in ValueMessage message)
+        IPacket IPacket.WithMessage(in Message message)
         {
             return WithMessage(message);
         }
@@ -22,20 +22,20 @@ namespace AI4E.Utils.Messaging.Primitives
 
     public readonly struct Packet : IPacket<Packet>
     {
-        public Packet(ValueMessage message)
+        public Packet(Message message)
         {
             Message = message;
         }
 
-        public Packet WithMessage(in ValueMessage message)
+        public Packet WithMessage(in Message message)
         {
             return new Packet(message);
         }
 
-        public ValueMessage Message { get; }
+        public Message Message { get; }
 
 #if !SUPPORTS_DEFAULT_INTERFACE_METHODS
-        IPacket IPacket.WithMessage(in ValueMessage message)
+        IPacket IPacket.WithMessage(in Message message)
         {
             return new Packet(message);
         }

@@ -19,32 +19,44 @@
  */
 
 using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace AI4E.Remoting
+namespace AI4E.Utils.Messaging.Primitives
 {
-    [Obsolete("Use ValueMessage")]
-    public interface IMessage
+    public sealed class MessageFrameBuilder
     {
-        IMessageFrame CurrentFrame { get; }
-        long Length { get; }
+        private ReadOnlyMemory<byte> _payload;
 
-        IMessageFrame PopFrame();
-        IMessageFrame PushFrame();
+        public MessageFrameBuilder()
+        {
+            _payload = Array.Empty<byte>();
+        }
 
-        void Trim(); // TODO: Rename?
+        public MessageFrameBuilder(in MessageFrame frame)
+        {
+            _payload = frame.Payload;
+        }
 
-        Span<byte> Write(Span<byte> memory);
-        void Read(ReadOnlySpan<byte> memory);
+        public int Length => BuildMessageFrame().Length;
 
-        Task WriteAsync(Stream stream, CancellationToken cancellation);
-        Task ReadAsync(Stream stream, CancellationToken cancellation);
+        public ReadOnlyMemory<byte> Payload
+        {
+            get => _payload;
+            set => _payload = value.CopyToArray();
+        }
 
-        int FrameCount { get; }
-        int FrameIndex { get; }
+        public void UnsafeReplacePayloadWithoutCopy(ReadOnlyMemory<byte> payload)
+        {
+            _payload = payload;
+        }
 
-        byte[] ToArray();
+        public MessageFrame BuildMessageFrame()
+        {
+            return MessageFrame.UnsafeCreateWithoutCopy(Payload);
+        }
+
+        public MessageFrameBuilderStream OpenStream(bool overrideContent = false)
+        {
+            return new MessageFrameBuilderStream(this, overrideContent);
+        }
     }
 }

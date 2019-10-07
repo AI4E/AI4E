@@ -239,7 +239,7 @@ namespace AI4E.Coordination
             }
         }
 
-        private async Task SendMessageAsync(Session session, ValueMessage message, CancellationToken cancellation)
+        private async Task SendMessageAsync(Session session, Message message, CancellationToken cancellation)
         {
             var remoteAddress = _endPointMultiplexer.AddressFromString(Encoding.UTF8.GetString(session.PhysicalAddress.Span));
 
@@ -282,7 +282,7 @@ namespace AI4E.Coordination
             return prefix + session.ToString();
         }
 
-        private (MessageType messageType, CoordinationEntryPath path, Session session) DecodeMessage(ValueMessage message)
+        private (MessageType messageType, CoordinationEntryPath path, Session session) DecodeMessage(Message message)
         {
             message.PopFrame(out var frame);
 
@@ -300,18 +300,18 @@ namespace AI4E.Coordination
             return (messageType, path, session);
         }
 
-        private ValueMessage EncodeMessage(MessageType messageType, CoordinationEntryPath path, Session session)
+        private Message EncodeMessage(MessageType messageType, CoordinationEntryPath path, Session session)
         {
-            var message = new ValueMessage();
+            var message = new Message();
 
             EncodeMessage(ref message, messageType, path, session);
 
             return message;
         }
 
-        private void EncodeMessage(ref ValueMessage message, MessageType messageType, CoordinationEntryPath path, Session session)
+        private void EncodeMessage(ref Message message, MessageType messageType, CoordinationEntryPath path, Session session)
         {
-            var frameBuilder = new ValueMessageFrameBuilder();
+            var frameBuilder = new MessageFrameBuilder();
 
             // Modify if other message types are added
             Debug.Assert(messageType >= MessageType.InvalidateCacheEntry && messageType <= MessageType.ReleasedWriteLock);

@@ -24,12 +24,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace AI4E.Utils.Messaging.Primitives
 {
     [TestClass]
-    public sealed class ValueMessageBuilderTests
+    public sealed class MessageBuilderTests
     {
         [TestMethod]
         public void CreateTest()
         {
-            var subject = new ValueMessageBuilder();
+            var subject = new MessageBuilder();
 
             Assert.AreEqual(1, subject.Length);
             Assert.IsNull(subject.CurrentFrame);
@@ -38,15 +38,15 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void CreatFromMessageTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }),
-                new ValueMessageFrame(new byte[] { 2,3,4 }),
-                new ValueMessageFrame(new byte[] { 3,4,5 })
+                new MessageFrame(new byte[] { 1,2,3 }),
+                new MessageFrame(new byte[] { 2,3,4 }),
+                new MessageFrame(new byte[] { 3,4,5 })
             };
 
-            var message = new ValueMessage(frames);
-            var subject = new ValueMessageBuilder(message);
+            var message = new Message(frames);
+            var subject = new MessageBuilder(message);
 
             Assert.AreEqual(message.Length, subject.Length);
 
@@ -65,14 +65,14 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void CreatFromFramesTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }),
-                new ValueMessageFrame(new byte[] { 2,3,4 }),
-                new ValueMessageFrame(new byte[] { 3,4,5 })
+                new MessageFrame(new byte[] { 1,2,3 }),
+                new MessageFrame(new byte[] { 2,3,4 }),
+                new MessageFrame(new byte[] { 3,4,5 })
             };
 
-            var subject = new ValueMessageBuilder(frames);
+            var subject = new MessageBuilder(frames);
 
             Assert.AreEqual(frames.Sum(p => p.Length) + 1, subject.Length);
 
@@ -91,14 +91,14 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void GetLengthTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }), // Length: 4
-                new ValueMessageFrame(new byte[] { 2,3,4 }), // Length: 4
-                new ValueMessageFrame(new byte[] { 3,4,5 }) // This get overridden
+                new MessageFrame(new byte[] { 1,2,3 }), // Length: 4
+                new MessageFrame(new byte[] { 2,3,4 }), // Length: 4
+                new MessageFrame(new byte[] { 3,4,5 }) // This get overridden
             };
 
-            var subject = new ValueMessageBuilder(frames);
+            var subject = new MessageBuilder(frames);
             subject.PopFrame();
             subject.PushFrame().UnsafeReplacePayloadWithoutCopy(new byte[] { 9, 9, 9, 9, 9 }); // Length: 6
             subject.PushFrame().UnsafeReplacePayloadWithoutCopy(new byte[] { 8 }); // Length: 2
@@ -109,14 +109,14 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void TrimTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }),
-                new ValueMessageFrame(new byte[] { 2,3,4 }),
-                new ValueMessageFrame(new byte[] { 3,4,5 })
+                new MessageFrame(new byte[] { 1,2,3 }),
+                new MessageFrame(new byte[] { 2,3,4 }),
+                new MessageFrame(new byte[] { 3,4,5 })
             };
 
-            var subject = new ValueMessageBuilder(frames);
+            var subject = new MessageBuilder(frames);
             subject.PopFrame();
             subject.Trim();
 
@@ -130,14 +130,14 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ClearTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }),
-                new ValueMessageFrame(new byte[] { 2,3,4 }),
-                new ValueMessageFrame(new byte[] { 3,4,5 })
+                new MessageFrame(new byte[] { 1,2,3 }),
+                new MessageFrame(new byte[] { 2,3,4 }),
+                new MessageFrame(new byte[] { 3,4,5 })
             };
 
-            var subject = new ValueMessageBuilder(frames);
+            var subject = new MessageBuilder(frames);
             subject.Clear();
 
             Assert.AreEqual(1, subject.Length);
@@ -147,14 +147,14 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void BuildMessageTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }),
-                new ValueMessageFrame(new byte[] { 2,3,4 }),
-                new ValueMessageFrame(new byte[] { 3,4,5 })
+                new MessageFrame(new byte[] { 1,2,3 }),
+                new MessageFrame(new byte[] { 2,3,4 }),
+                new MessageFrame(new byte[] { 3,4,5 })
             };
 
-            var subject = new ValueMessageBuilder(frames);
+            var subject = new MessageBuilder(frames);
             subject.PopFrame();
 
             var message = subject.BuildMessage();
@@ -169,14 +169,14 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void BuildMessageNoTrimTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }),
-                new ValueMessageFrame(new byte[] { 2,3,4 }),
-                new ValueMessageFrame(new byte[] { 3,4,5 })
+                new MessageFrame(new byte[] { 1,2,3 }),
+                new MessageFrame(new byte[] { 2,3,4 }),
+                new MessageFrame(new byte[] { 3,4,5 })
             };
 
-            var subject = new ValueMessageBuilder(frames);
+            var subject = new MessageBuilder(frames);
             subject.PopFrame();
 
             var message = subject.BuildMessage(trim: false);
@@ -192,14 +192,14 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void PopEquivalenceTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }),
-                new ValueMessageFrame(new byte[] { 2,3,4 }),
-                new ValueMessageFrame(new byte[] { 3,4,5 })
+                new MessageFrame(new byte[] { 1,2,3 }),
+                new MessageFrame(new byte[] { 2,3,4 }),
+                new MessageFrame(new byte[] { 3,4,5 })
             };
 
-            var message = new ValueMessage(frames);
+            var message = new Message(frames);
             var desired = message.PopFrame(out var desiredFrame);
             var subject = message.ToBuilder();
             var frameBuilder = subject.PopFrame();
@@ -216,15 +216,15 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void PushEquivalenceTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }),
-                new ValueMessageFrame(new byte[] { 2,3,4 }),
+                new MessageFrame(new byte[] { 1,2,3 }),
+                new MessageFrame(new byte[] { 2,3,4 }),
             };
 
-            var frameToPush = new ValueMessageFrame(new byte[] { 3, 4, 5 });
+            var frameToPush = new MessageFrame(new byte[] { 3, 4, 5 });
 
-            var message = new ValueMessage(frames);
+            var message = new Message(frames);
             var subject = message.ToBuilder();
             var desired = message.PushFrame(frameToPush);
             var frameBuilder = subject.PushFrame();

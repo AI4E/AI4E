@@ -25,14 +25,14 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace AI4E.Utils.Messaging.Primitives
 {
     [TestClass]
-    public sealed class ValueMessageFrameBuilderStreamTests
+    public sealed class MessageFrameBuilderStreamTests
     {
         [TestMethod]
         public void CreateThrowsOnNullBuilder()
         {
             Assert.ThrowsException<ArgumentNullException>(() =>
             {
-                new ValueMessageFrameBuilderStream(null, default);
+                new MessageFrameBuilderStream(null, default);
             });
         }
 
@@ -67,7 +67,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ReadEndedStreamTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
 
             var buffer = new byte[1];
@@ -108,7 +108,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ReadTouchedEndedStreamTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
             subject.Touch(0);
             var buffer = new byte[1];
@@ -121,7 +121,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ReadThrowsOnNullBufferTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
 
             Assert.ThrowsException<ArgumentNullException>(() =>
@@ -133,7 +133,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ReadThrowsOnNegativeOffsetTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
 
             Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
@@ -145,7 +145,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ReadThrowsOnInsufficientSpaceTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
 
             Assert.ThrowsException<ArgumentException>(() =>
@@ -185,7 +185,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ReadSpanEndedStreamTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
 
             var buffer = new byte[1];
@@ -226,7 +226,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ReadTouchedSpanEndedStreamTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
             subject.Touch(0);
             var buffer = new byte[1];
@@ -239,7 +239,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void CanReadTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
             Assert.IsTrue(subject.CanRead);
         }
@@ -247,7 +247,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void CanWriteTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
             Assert.IsTrue(subject.CanWrite);
         }
@@ -255,7 +255,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void CanSeekTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
             Assert.IsTrue(subject.CanSeek);
         }
@@ -271,7 +271,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void EmptyStreamPositionTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
             Assert.AreEqual(0, subject.Position);
         }
@@ -574,7 +574,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void WriteTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
             var payload = Enumerable.Range(0, 45).Select(p => unchecked((byte)p)).ToArray();
 
@@ -594,7 +594,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void WriteTouchedTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
             var payload = Enumerable.Range(0, 45).Select(p => unchecked((byte)p)).ToArray();
             subject.Touch(0);
@@ -616,7 +616,7 @@ namespace AI4E.Utils.Messaging.Primitives
         {
             var existingPayload = new byte[] { 1, 2, 3, 4, 5, 6 };
 
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             frame.UnsafeReplacePayloadWithoutCopy(existingPayload);
             var subject = frame.OpenStream();
             subject.Position = 3;
@@ -647,7 +647,7 @@ namespace AI4E.Utils.Messaging.Primitives
         {
             var existingPayload = new byte[] { 1, 2, 3, 4, 5, 6 };
 
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             frame.UnsafeReplacePayloadWithoutCopy(existingPayload);
             var subject = frame.OpenStream();
             subject.Position = 3;
@@ -678,7 +678,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void WriteSpanTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
             var payload = Enumerable.Range(0, 45).Select(p => unchecked((byte)p)).ToArray();
 
@@ -698,7 +698,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void WriteTouchedSpanTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
             var payload = Enumerable.Range(0, 45).Select(p => unchecked((byte)p)).ToArray();
             subject.Touch(0);
@@ -720,7 +720,7 @@ namespace AI4E.Utils.Messaging.Primitives
         {
             var existingPayload = new byte[] { 1, 2, 3, 4, 5, 6 };
 
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             frame.UnsafeReplacePayloadWithoutCopy(existingPayload);
             var subject = frame.OpenStream();
             subject.Position = 3;
@@ -751,7 +751,7 @@ namespace AI4E.Utils.Messaging.Primitives
         {
             var existingPayload = new byte[] { 1, 2, 3, 4, 5, 6 };
 
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             frame.UnsafeReplacePayloadWithoutCopy(existingPayload);
             var subject = frame.OpenStream();
             subject.Position = 3;
@@ -782,7 +782,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void WriteThrowsOnNullBufferTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
 
             Assert.ThrowsException<ArgumentNullException>(() =>
@@ -794,7 +794,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void WriteThrowsOnNegativeOffsetTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
 
             Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
@@ -806,7 +806,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void WriteThrowsOnInsufficientSpaceTest()
         {
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
 
             Assert.ThrowsException<ArgumentException>(() =>
@@ -819,7 +819,7 @@ namespace AI4E.Utils.Messaging.Primitives
         public void FlushTest()
         {
             var payload = new byte[] { 1, 2, 3, 4, 5, 6 };
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
 
             subject.Write(payload, 0, payload.Length);
@@ -834,7 +834,7 @@ namespace AI4E.Utils.Messaging.Primitives
         {
             var payload = new byte[] { 1, 2, 3, 4, 5, 6 };
             var payload2 = new byte[] { 0, 0, 0, 0, 0, 0 };
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
 
             subject.Write(payload, 0, payload.Length);
@@ -851,7 +851,7 @@ namespace AI4E.Utils.Messaging.Primitives
         public void DisposeTest()
         {
             var payload = new byte[] { 1, 2, 3, 4, 5, 6 };
-            var frame = new ValueMessageFrameBuilder();
+            var frame = new MessageFrameBuilder();
             var subject = frame.OpenStream();
 
             subject.Write(payload, 0, payload.Length);
@@ -861,10 +861,10 @@ namespace AI4E.Utils.Messaging.Primitives
             Assert.IsTrue(payload.SequenceEqual(frame.Payload.ToArray()));
         }
 
-        private static ValueMessageFrameBuilder BuildFrameBuilder()
+        private static MessageFrameBuilder BuildFrameBuilder()
         {
             var payload = Enumerable.Range(0, 45).Select(p => unchecked((byte)p)).ToArray();
-            var result = new ValueMessageFrameBuilder();
+            var result = new MessageFrameBuilder();
             result.UnsafeReplacePayloadWithoutCopy(payload);
             return result;
         }

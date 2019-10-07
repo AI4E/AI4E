@@ -25,7 +25,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace AI4E.Utils.Messaging.Primitives
 {
     [TestClass]
-    public sealed class ValueMessageFrameStreamTests
+    public sealed class MessageFrameStreamTests
     {
         [TestMethod]
         public void ReadTest()
@@ -58,7 +58,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ReadEndedStreamTest()
         {
-            var frame = default(ValueMessageFrame);
+            var frame = default(MessageFrame);
             var subject = frame.OpenStream();
 
             var buffer = new byte[1];
@@ -71,7 +71,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ReadThrowsOnNullBufferTest()
         {
-            var frame = default(ValueMessageFrame);
+            var frame = default(MessageFrame);
             var subject = frame.OpenStream();
 
             Assert.ThrowsException<ArgumentNullException>(() =>
@@ -83,7 +83,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ReadThrowsOnNegativeOffsetTest()
         {
-            var frame = default(ValueMessageFrame);
+            var frame = default(MessageFrame);
             var subject = frame.OpenStream();
 
             Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
@@ -95,7 +95,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ReadThrowsOnInsufficientSpaceTest()
         {
-            var frame = default(ValueMessageFrame);
+            var frame = default(MessageFrame);
             var subject = frame.OpenStream();
 
             Assert.ThrowsException<ArgumentException>(() =>
@@ -135,7 +135,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ReadSpanEndedStreamTest()
         {
-            var frame = default(ValueMessageFrame);
+            var frame = default(MessageFrame);
             var subject = frame.OpenStream();
 
             var buffer = new byte[1];
@@ -148,7 +148,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void SetLengthThrowsTest()
         {
-            var frame = default(ValueMessageFrame);
+            var frame = default(MessageFrame);
             var subject = frame.OpenStream();
 
             Assert.ThrowsException<NotSupportedException>(() =>
@@ -160,7 +160,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void WriteThrowsTest()
         {
-            var frame = default(ValueMessageFrame);
+            var frame = default(MessageFrame);
             var subject = frame.OpenStream();
 
             Assert.ThrowsException<NotSupportedException>(() =>
@@ -172,7 +172,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void CanReadTest()
         {
-            var frame = default(ValueMessageFrame);
+            var frame = default(MessageFrame);
             var subject = frame.OpenStream();
             Assert.IsTrue(subject.CanRead);
         }
@@ -180,7 +180,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void CanWriteTest()
         {
-            var frame = default(ValueMessageFrame);
+            var frame = default(MessageFrame);
             var subject = frame.OpenStream();
             Assert.IsFalse(subject.CanWrite);
         }
@@ -188,7 +188,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void CanSeekTest()
         {
-            var frame = default(ValueMessageFrame);
+            var frame = default(MessageFrame);
             var subject = frame.OpenStream();
             Assert.IsTrue(subject.CanSeek);
         }
@@ -204,7 +204,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void EmptyStreamPositionTest()
         {
-            var frame = default(ValueMessageFrame);
+            var frame = default(MessageFrame);
             var subject = frame.OpenStream();
             Assert.AreEqual(0, subject.Position);
         }
@@ -430,10 +430,10 @@ namespace AI4E.Utils.Messaging.Primitives
             });
         }
 
-        private static ValueMessageFrame BuildFrame()
+        private static MessageFrame BuildFrame()
         {
             var payload = Enumerable.Range(0, 45).Select(p => unchecked((byte)p)).ToArray();
-            return new ValueMessageFrame(payload);
+            return new MessageFrame(payload);
         }
     }
 }

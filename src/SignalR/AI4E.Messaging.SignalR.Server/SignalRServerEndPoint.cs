@@ -96,7 +96,7 @@ namespace AI4E.Messaging.SignalR.Server
 
         #region Send
 
-        private async Task PushToClientAsync(string address, int seqNum, ValueMessage message)
+        private async Task PushToClientAsync(string address, int seqNum, Message message)
         {
             var client = GetClientCallStub(address);
 
@@ -145,7 +145,7 @@ namespace AI4E.Messaging.SignalR.Server
 
             if (!payload.IsEmpty)
             {
-                var message = ValueMessage.ReadFromMemory(payload.Span);
+                var message = Message.ReadFromMemory(payload.Span);
                 await _rxQueue.EnqueueAsync(new SignalRServerPacket(message, endPoint));
                 await SendAckAsync(address, seqNum);
             }
@@ -293,7 +293,7 @@ namespace AI4E.Messaging.SignalR.Server
             private readonly RouteEndPointAddress _endPoint;
             private string _address;
             private readonly object _addressLock = new object();
-            private readonly ConcurrentDictionary<int, (ValueMessage message, TaskCompletionSource<object> ackSource)> _txLookup;
+            private readonly ConcurrentDictionary<int, (Message message, TaskCompletionSource<object> ackSource)> _txLookup;
 
             private readonly Task _completion;
             private volatile CancellationTokenSource _completionSource = new CancellationTokenSource();
@@ -306,7 +306,7 @@ namespace AI4E.Messaging.SignalR.Server
                 _endPoint = endPoint;
                 _address = address;
 
-                _txLookup = new ConcurrentDictionary<int, (ValueMessage message, TaskCompletionSource<object> ackSource)>();
+                _txLookup = new ConcurrentDictionary<int, (Message message, TaskCompletionSource<object> ackSource)>();
                 _completion = ClientDisconnectionWithEntryRemoval();
             }
 
@@ -401,7 +401,7 @@ namespace AI4E.Messaging.SignalR.Server
                 }
             }
 
-            public async ValueTask SendAsync(ValueMessage message, CancellationToken cancellation)
+            public async ValueTask SendAsync(Message message, CancellationToken cancellation)
             {
                 using (CheckDisposal(ref cancellation, out _, out var disposal))
                 {
@@ -455,7 +455,7 @@ namespace AI4E.Messaging.SignalR.Server
 
         private readonly struct AckLookupEntry
         {
-            public AckLookupEntry(int seqNum, RouteEndPointAddress endPoint, ValueMessage message, TaskCompletionSource<object> ackSource)
+            public AckLookupEntry(int seqNum, RouteEndPointAddress endPoint, Message message, TaskCompletionSource<object> ackSource)
             {
                 SeqNum = seqNum;
                 EndPoint = endPoint;
@@ -465,7 +465,7 @@ namespace AI4E.Messaging.SignalR.Server
 
             public int SeqNum { get; }
             public RouteEndPointAddress EndPoint { get; }
-            public ValueMessage Message { get; }
+            public Message Message { get; }
             public TaskCompletionSource<object> AckSource { get; }
         }
 

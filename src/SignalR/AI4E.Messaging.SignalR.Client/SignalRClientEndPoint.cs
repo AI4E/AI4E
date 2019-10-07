@@ -26,7 +26,7 @@ namespace AI4E.Messaging.SignalR.Client
         private readonly HubConnection _hubConnection;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ILogger<SignalRClientEndPoint> _logger;
-        private readonly AsyncProducerConsumerQueue<ValueMessage> _rxQueue;
+        private readonly AsyncProducerConsumerQueue<Message> _rxQueue;
         private readonly ConcurrentDictionary<int, (ReadOnlyMemory<byte> bytes, TaskCompletionSource<object> ackSource)> _txQueue;
 
         private readonly ClientCallStub _client;
@@ -66,7 +66,7 @@ namespace AI4E.Messaging.SignalR.Client
             _dateTimeProvider = dateTimeProvider;
 
             _logger = loggerFactory?.CreateLogger<SignalRClientEndPoint>();
-            _rxQueue = new AsyncProducerConsumerQueue<ValueMessage>();
+            _rxQueue = new AsyncProducerConsumerQueue<Message>();
             _txQueue = new ConcurrentDictionary<int, (ReadOnlyMemory<byte> bytes, TaskCompletionSource<object> ackSource)>();
             _hubConnection.Closed += UnderlyingConnectionLostAsync;
 
@@ -99,7 +99,7 @@ namespace AI4E.Messaging.SignalR.Client
         }
 
         public async ValueTask<MessageSendResult> SendAsync(
-            ValueMessage message, CancellationToken cancellation = default)
+            Message message, CancellationToken cancellation = default)
         {
             try
             {
@@ -132,16 +132,16 @@ namespace AI4E.Messaging.SignalR.Client
 
         #endregion
 
-        private async ValueTask<ValueMessage> ReceiveInternalAsync(CancellationToken cancellation)
+        private async ValueTask<Message> ReceiveInternalAsync(CancellationToken cancellation)
         {
             return await _rxQueue.DequeueAsync(cancellation);
         }
 
-        private async ValueTask SendInternalAsync(ValueMessage message, CancellationToken cancellation)
+        private async ValueTask SendInternalAsync(Message message, CancellationToken cancellation)
         {
             using var memoryOwner = MemoryPool<byte>.Shared.RentExact(message.Length);
             var memory = memoryOwner.Memory;
-            ValueMessage.WriteToMemory(message, memory.Span);
+            Message.WriteToMemory(message, memory.Span);
             await SendInternalAsync(memory, cancellation);
         }
 
@@ -286,7 +286,7 @@ namespace AI4E.Messaging.SignalR.Client
         {
             _logger?.LogDebug($"Received message ({payload.Length} total bytes) with seq-num {seqNum}.");
 
-            var message = ValueMessage.ReadFromMemory(payload.Span);
+            var message = Message.ReadFromMemory(payload.Span);
             await _rxQueue.EnqueueAsync(message);
             await SendAckAsync(seqNum, cancellation: default);
         }

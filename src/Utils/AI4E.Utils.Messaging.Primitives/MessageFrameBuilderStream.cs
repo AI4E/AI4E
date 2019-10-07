@@ -26,16 +26,16 @@ using System.Runtime.InteropServices;
 
 namespace AI4E.Utils.Messaging.Primitives
 {
-    public sealed class ValueMessageFrameBuilderStream : Stream
+    public sealed class MessageFrameBuilderStream : Stream
     {
-        private readonly ValueMessageFrameBuilder _frame;
+        private readonly MessageFrameBuilder _frame;
         private ReadOnlyMemory<byte> _readMemory;
         private Memory<byte> _writeMemory;
         private int _position;
         private bool _touched;
         private int _length;
 
-        public ValueMessageFrameBuilderStream(ValueMessageFrameBuilder frame, bool overrideContent)
+        public MessageFrameBuilderStream(MessageFrameBuilder frame, bool overrideContent)
         {
             if (frame == null)
                 throw new ArgumentNullException(nameof(frame));

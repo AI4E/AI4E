@@ -27,12 +27,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace AI4E.Utils.Messaging.Primitives
 {
     [TestClass]
-    public sealed class ValueMessageTests
+    public sealed class MessageTests
     {
         [TestMethod]
         public void DefaultValueMessageTest()
         {
-            var subject = default(ValueMessage);
+            var subject = default(Message);
 
             Assert.AreEqual(1, subject.Length);
             Assert.AreEqual(0, subject.Frames.Count);
@@ -41,7 +41,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void DefaultValueMessagePopFrameTest()
         {
-            var subject = default(ValueMessage);
+            var subject = default(Message);
 
             subject = subject.PopFrame(out var frame);
 
@@ -55,10 +55,10 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void DefaultValueMessagePushFrameTest()
         {
-            var subject = default(ValueMessage);
+            var subject = default(Message);
 
             var payload = Enumerable.Range(0, 0x84).Select(p => unchecked((byte)p)).ToArray();
-            var frame = new ValueMessageFrame(payload.AsSpan());
+            var frame = new MessageFrame(payload.AsSpan());
 
             subject = subject.PushFrame(frame);
 
@@ -71,16 +71,16 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void PushFrameTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }),
-                new ValueMessageFrame(new byte[] { 2,3,4 })
+                new MessageFrame(new byte[] { 1,2,3 }),
+                new MessageFrame(new byte[] { 2,3,4 })
             };
 
-            var subject = new ValueMessage(frames);
+            var subject = new Message(frames);
 
             var payload = Enumerable.Range(0, 0x84).Select(p => unchecked((byte)p)).ToArray();
-            var frame = new ValueMessageFrame(payload.AsSpan());
+            var frame = new MessageFrame(payload.AsSpan());
 
             subject = subject.PushFrame(frame);
 
@@ -93,14 +93,14 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void PopFrameTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }),
-                new ValueMessageFrame(new byte[] { 2,3,4 }),
-                new ValueMessageFrame(new byte[] { 3,4,5 })
+                new MessageFrame(new byte[] { 1,2,3 }),
+                new MessageFrame(new byte[] { 2,3,4 }),
+                new MessageFrame(new byte[] { 3,4,5 })
             };
 
-            var subject = new ValueMessage(frames);
+            var subject = new Message(frames);
             subject = subject.PopFrame(out var frame);
 
             Assert.AreEqual(2, subject.Frames.Count);
@@ -134,7 +134,7 @@ namespace AI4E.Utils.Messaging.Primitives
 
             stream.Position = 0;
 
-            var subject = await ValueMessage.ReadFromStreamAsync(stream, default);
+            var subject = await Message.ReadFromStreamAsync(stream, default);
 
             Assert.AreEqual(payloads.Sum(p => p.Length + 1) + 1, subject.Length);
             Assert.AreEqual(3, subject.Frames.Count);
@@ -168,7 +168,7 @@ namespace AI4E.Utils.Messaging.Primitives
 
             var memory = stream.ToArray();
 
-            var subject = ValueMessage.ReadFromMemory(memory.AsSpan());
+            var subject = Message.ReadFromMemory(memory.AsSpan());
 
             Assert.AreEqual(payloads.Sum(p => p.Length + 1) + 1, subject.Length);
             Assert.AreEqual(3, subject.Frames.Count);
@@ -183,17 +183,17 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public async Task WriteToStreamTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }),
-                new ValueMessageFrame(new byte[] { 2,3,4 }),
-                new ValueMessageFrame(new byte[] { 3,4,5 })
+                new MessageFrame(new byte[] { 1,2,3 }),
+                new MessageFrame(new byte[] { 2,3,4 }),
+                new MessageFrame(new byte[] { 3,4,5 })
             };
 
-            var subject = new ValueMessage(frames);
+            var subject = new Message(frames);
 
             var stream = new MemoryStream();
-            await ValueMessage.WriteToStreamAsync(subject, stream, default);
+            await Message.WriteToStreamAsync(subject, stream, default);
 
             stream.Position = 0;
 
@@ -213,17 +213,17 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public async Task WriteToMemoryTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }),
-                new ValueMessageFrame(new byte[] { 2,3,4 }),
-                new ValueMessageFrame(new byte[] { 3,4,5 })
+                new MessageFrame(new byte[] { 1,2,3 }),
+                new MessageFrame(new byte[] { 2,3,4 }),
+                new MessageFrame(new byte[] { 3,4,5 })
             };
 
-            var subject = new ValueMessage(frames);
+            var subject = new Message(frames);
             var memory = new byte[subject.Length];
 
-            ValueMessage.WriteToMemory(subject, memory.AsSpan());
+            Message.WriteToMemory(subject, memory.AsSpan());
 
             var stream = new MemoryStream(memory);
 
@@ -243,19 +243,19 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public async Task ValueMessageRoundtripTest()
         {
-            var frames = new ValueMessageFrame[]
+            var frames = new MessageFrame[]
             {
-                new ValueMessageFrame(new byte[] { 1,2,3 }),
-                new ValueMessageFrame(new byte[] { 2,3,4 }),
-                new ValueMessageFrame(new byte[] { 3,4,5 })
+                new MessageFrame(new byte[] { 1,2,3 }),
+                new MessageFrame(new byte[] { 2,3,4 }),
+                new MessageFrame(new byte[] { 3,4,5 })
             };
 
-            var subject = new ValueMessage(frames);
+            var subject = new Message(frames);
             var stream = new MemoryStream();
-            await ValueMessage.WriteToStreamAsync(subject, stream, default);
+            await Message.WriteToStreamAsync(subject, stream, default);
 
             stream.Position = 0;
-            var subject2 = await ValueMessage.ReadFromStreamAsync(stream, default);
+            var subject2 = await Message.ReadFromStreamAsync(stream, default);
 
             Assert.AreEqual(subject.Length, subject2.Length);
             Assert.AreEqual(subject.Frames.Count, subject2.Frames.Count);

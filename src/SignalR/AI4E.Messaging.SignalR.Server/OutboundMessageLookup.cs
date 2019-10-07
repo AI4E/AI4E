@@ -20,18 +20,18 @@ namespace AI4E.Messaging.SignalR.Server
         private readonly object _lock = new object();
 
         // Stores messages indexed by the message seq-num. (One per seq-num)
-        private readonly Dictionary<int, (RouteEndPointAddress endPoint, ValueMessage message, TaskCompletionSource<object> ackSource)> _bySeqNum;
+        private readonly Dictionary<int, (RouteEndPointAddress endPoint, Message message, TaskCompletionSource<object> ackSource)> _bySeqNum;
 
         // Stored messages indexed by the receiver end-point. (Multiple per address)
-        private readonly Dictionary<RouteEndPointAddress, Dictionary<int, ValueMessage>> _byAddress;
+        private readonly Dictionary<RouteEndPointAddress, Dictionary<int, Message>> _byAddress;
 
         /// <summary>
         /// Creates a new instance of the <see cref="OutboundMessageLookup"/> type.
         /// </summary>
         public OutboundMessageLookup()
         {
-            _bySeqNum = new Dictionary<int, (RouteEndPointAddress endPoint, ValueMessage bytes, TaskCompletionSource<object> ackSource)>();
-            _byAddress = new Dictionary<RouteEndPointAddress, Dictionary<int, ValueMessage>>();
+            _bySeqNum = new Dictionary<int, (RouteEndPointAddress endPoint, Message bytes, TaskCompletionSource<object> ackSource)>();
+            _byAddress = new Dictionary<RouteEndPointAddress, Dictionary<int, Message>>();
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace AI4E.Messaging.SignalR.Server
         /// <exception cref="ArgumentNullException">
         /// Thrown if any of <paramref name="endPoint"/> or <paramref name="ackSource"/> is null.
         /// </exception>
-        public bool TryAdd(int seqNum, RouteEndPointAddress endPoint, ValueMessage message, TaskCompletionSource<object> ackSource)
+        public bool TryAdd(int seqNum, RouteEndPointAddress endPoint, Message message, TaskCompletionSource<object> ackSource)
         {
             if (endPoint == default)
             {
@@ -66,7 +66,7 @@ namespace AI4E.Messaging.SignalR.Server
 
                 if (!_byAddress.TryGetValue(endPoint, out var messages))
                 {
-                    messages = new Dictionary<int, ValueMessage>();
+                    messages = new Dictionary<int, Message>();
                     _byAddress.Add(endPoint, messages);
                 }
 
@@ -86,7 +86,7 @@ namespace AI4E.Messaging.SignalR.Server
         /// <param name="bytes">Contains the messages payload, if the removal was successfull.</param>
         /// <param name="ackSource">Contains the transmission operations task source, if the removal was successfull.</param>
         /// <returns>True if the message was removed successfully, false otherwise.</returns>
-        public bool TryRemove(int seqNum, out RouteEndPointAddress endPoint, out ValueMessage message, out TaskCompletionSource<object> ackSource)
+        public bool TryRemove(int seqNum, out RouteEndPointAddress endPoint, out Message message, out TaskCompletionSource<object> ackSource)
         {
             lock (_lock)
             {
@@ -117,7 +117,7 @@ namespace AI4E.Messaging.SignalR.Server
             return TryRemove(seqNum, out _, out _, out _); // TODO
         }
 
-        public IReadOnlyList<(int seqNum, ValueMessage message)> GetAll(RouteEndPointAddress endPoint)
+        public IReadOnlyList<(int seqNum, Message message)> GetAll(RouteEndPointAddress endPoint)
         {
             if (endPoint == default)
             {
@@ -128,7 +128,7 @@ namespace AI4E.Messaging.SignalR.Server
             {
                 if (!_byAddress.TryGetValue(endPoint, out var intermediate))
                 {
-                    return ImmutableList<(int seqNum, ValueMessage message)>.Empty;
+                    return ImmutableList<(int seqNum, Message message)>.Empty;
                 }
 
                 return intermediate.Select(p => (seqNum: p.Key, bytes: p.Value)).ToImmutableList();

@@ -8,10 +8,10 @@ namespace AI4E.Messaging.Routing
         where TOriginal : class
     {
         private readonly TOriginal _original;
-        private readonly Func<TOriginal, ValueMessage> _serialization;
-        private readonly ValueMessage _message;
+        private readonly Func<TOriginal, Message> _serialization;
+        private readonly Message _message;
 
-        public RouteMessage(TOriginal original, Func<TOriginal, ValueMessage> serialization)
+        public RouteMessage(TOriginal original, Func<TOriginal, Message> serialization)
         {
             if (original is null)
                 throw new ArgumentNullException(nameof(original));
@@ -24,7 +24,7 @@ namespace AI4E.Messaging.Routing
             _message = default;
         }
 
-        public RouteMessage(ValueMessage message, TOriginal original)
+        public RouteMessage(Message message, TOriginal original)
         {
             if (message == default)
                 throw new ArgumentDefaultException(nameof(message));
@@ -37,7 +37,7 @@ namespace AI4E.Messaging.Routing
             _message = message;
         }
 
-        public RouteMessage(ValueMessage message)
+        public RouteMessage(Message message)
         {
             if (message == default)
                 throw new ArgumentDefaultException(nameof(message));
@@ -47,7 +47,7 @@ namespace AI4E.Messaging.Routing
             _message = message;
         }
 
-        public ValueMessage Message => _serialization?.Invoke(_original) ?? _message;
+        public Message Message => _serialization?.Invoke(_original) ?? _message;
 
         public bool TryGetOriginalMessage(out TOriginal original)
         {

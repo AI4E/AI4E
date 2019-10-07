@@ -67,7 +67,7 @@ namespace AI4E.Utils.Messaging.Primitives
 
                 void RequestCancellation()
                 {
-                    SendInternalAsync(packet.WithMessage(new ValueMessage()), messageType: RequestReplyMessageType.CancellationRequest, handled: false, corrId: seqNum, cancellation: default)
+                    SendInternalAsync(packet.WithMessage(new Message()), messageType: RequestReplyMessageType.CancellationRequest, handled: false, corrId: seqNum, cancellation: default)
                         .HandleExceptions(_logger);
                 }
 
@@ -223,7 +223,7 @@ namespace AI4E.Utils.Messaging.Primitives
         {
             // The handled parameter can be of any value here, as it is ignored by the receiver currently.
             return SendInternalAsync(
-                packet.WithMessage(new ValueMessage()),
+                packet.WithMessage(new Message()),
                 messageType: RequestReplyMessageType.CancellationResponse,
                 handled: false,
                 corrId: seqNum,
@@ -238,7 +238,7 @@ namespace AI4E.Utils.Messaging.Primitives
         }
 
         // TODO: Use SpanReader/Writer API
-        private static (int seqNum, RequestReplyMessageType messageType, bool handled, int corrId) DecodeMessage(ref ValueMessage message)
+        private static (int seqNum, RequestReplyMessageType messageType, bool handled, int corrId) DecodeMessage(ref Message message)
         {
             message = message.PopFrame(out var frame);
 
@@ -255,9 +255,9 @@ namespace AI4E.Utils.Messaging.Primitives
             return (seqNum, messageType, handled, corrId);
         }
 
-        private static void EncodeMessage(ref ValueMessage message, int seqNum, RequestReplyMessageType messageType, bool handled, int corrId)
+        private static void EncodeMessage(ref Message message, int seqNum, RequestReplyMessageType messageType, bool handled, int corrId)
         {
-            var frameBuilder = new ValueMessageFrameBuilder();
+            var frameBuilder = new MessageFrameBuilder();
 
             using (var frameStream = frameBuilder.OpenStream())
             using (var writer = new BinaryWriter(frameStream))

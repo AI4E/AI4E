@@ -112,7 +112,7 @@ namespace AI4E.Messaging.SignalR.Client
             {
                 try
                 {
-                    var message = new ValueMessage();
+                    var message = new Message();
                     EncodeRegisterRouteRequest(ref message, routeRegistration.Route, routeRegistration.RegistrationOptions);
                     await _clientEndPoint.SendAsync(message, cancellation);
                 }
@@ -131,7 +131,7 @@ namespace AI4E.Messaging.SignalR.Client
             {
                 try
                 {
-                    var message = new ValueMessage();
+                    var message = new Message();
                     EncodeUnregisterRouteRequest(ref message, route);
                     await _clientEndPoint.SendAsync(message, cancellation);
                 }
@@ -148,7 +148,7 @@ namespace AI4E.Messaging.SignalR.Client
             {
                 try
                 {
-                    var message = new ValueMessage();
+                    var message = new Message();
                     EncodeUnregisterRouteRequest(ref message, removePersistentRoutes);
                     await _clientEndPoint.SendAsync(message, cancellation);
                 }
@@ -163,31 +163,31 @@ namespace AI4E.Messaging.SignalR.Client
 
         #region Encoding/Decoding
 
-        private static async ValueTask<IReadOnlyCollection<ValueMessage>> DecodeRouteResponseAsync(MessageSendResult sendResult, CancellationToken cancellation)
+        private static async ValueTask<IReadOnlyCollection<Message>> DecodeRouteResponseAsync(MessageSendResult sendResult, CancellationToken cancellation)
         {
             var message = sendResult.Message;
             message.PopFrame(out var frame);
-            ValueMessage[] result;
+            Message[] result;
 
             using (var frameStream = frame.OpenStream())
             using (var reader = new BinaryReader(frameStream))
             {
                 var resultCount = reader.ReadInt32();
 
-                result = new ValueMessage[resultCount];
+                result = new Message[resultCount];
 
                 for (var i = 0; i < resultCount; i++)
                 {
-                    result[i] = await ValueMessage.ReadFromStreamAsync(frameStream, cancellation);
+                    result[i] = await Message.ReadFromStreamAsync(frameStream, cancellation);
                 }
             }
 
             return result;
         }
 
-        private static void EncodeRouteRequest(ref ValueMessage message, RouteHierarchy routes, bool publish)
+        private static void EncodeRouteRequest(ref Message message, RouteHierarchy routes, bool publish)
         {
-            var frameBuilder = new ValueMessageFrameBuilder();
+            var frameBuilder = new MessageFrameBuilder();
 
             using (var frameStream = frameBuilder.OpenStream())
             using (var writer = new BinaryWriter(frameStream))
@@ -206,9 +206,9 @@ namespace AI4E.Messaging.SignalR.Client
             message = message.PushFrame(frameBuilder.BuildMessageFrame());
         }
 
-        private static void EncodeRouteRequest(ref ValueMessage message, Route route, bool publish, RouteEndPointAddress endPoint)
+        private static void EncodeRouteRequest(ref Message message, Route route, bool publish, RouteEndPointAddress endPoint)
         {
-            var frameBuilder = new ValueMessageFrameBuilder();
+            var frameBuilder = new MessageFrameBuilder();
 
             using (var frameStream = frameBuilder.OpenStream())
             using (var writer = new BinaryWriter(frameStream))
@@ -222,9 +222,9 @@ namespace AI4E.Messaging.SignalR.Client
             message = message.PushFrame(frameBuilder.BuildMessageFrame());
         }
 
-        private static void EncodeRegisterRouteRequest(ref ValueMessage message, Route route, RouteRegistrationOptions options)
+        private static void EncodeRegisterRouteRequest(ref Message message, Route route, RouteRegistrationOptions options)
         {
-            var frameBuilder = new ValueMessageFrameBuilder();
+            var frameBuilder = new MessageFrameBuilder();
 
             using (var frameStream = frameBuilder.OpenStream())
             using (var writer = new BinaryWriter(frameStream))
@@ -237,9 +237,9 @@ namespace AI4E.Messaging.SignalR.Client
             message = message.PushFrame(frameBuilder.BuildMessageFrame());
         }
 
-        private static void EncodeUnregisterRouteRequest(ref ValueMessage message, Route route)
+        private static void EncodeUnregisterRouteRequest(ref Message message, Route route)
         {
-            var frameBuilder = new ValueMessageFrameBuilder();
+            var frameBuilder = new MessageFrameBuilder();
 
             using (var frameStream = frameBuilder.OpenStream())
             using (var writer = new BinaryWriter(frameStream))
@@ -251,9 +251,9 @@ namespace AI4E.Messaging.SignalR.Client
             message = message.PushFrame(frameBuilder.BuildMessageFrame());
         }
 
-        private static void EncodeUnregisterRouteRequest(ref ValueMessage message, bool removePersistentRoutes)
+        private static void EncodeUnregisterRouteRequest(ref Message message, bool removePersistentRoutes)
         {
-            var frameBuilder = new ValueMessageFrameBuilder();
+            var frameBuilder = new MessageFrameBuilder();
 
             using (var frameStream = frameBuilder.OpenStream())
             using (var writer = new BinaryWriter(frameStream))
@@ -313,8 +313,8 @@ namespace AI4E.Messaging.SignalR.Client
             }
         }
 
-        private async Task<(ValueMessage message, bool handled)> HandleAsync(
-            ValueMessage message, CancellationToken cancellation)
+        private async Task<(Message message, bool handled)> HandleAsync(
+            Message message, CancellationToken cancellation)
         {
             message = message.PopFrame(out var frame);
             using var stream = frame.OpenStream();
@@ -345,8 +345,8 @@ namespace AI4E.Messaging.SignalR.Client
             }
         }
 
-        private async ValueTask<(ValueMessage message, bool handled)> ReceiveHandleRequestAsync(
-            ValueMessage message, Route route, bool publish, bool isLocalDispatch, CancellationToken cancellation)
+        private async ValueTask<(Message message, bool handled)> ReceiveHandleRequestAsync(
+            Message message, Route route, bool publish, bool isLocalDispatch, CancellationToken cancellation)
         {
             var routeMessage = new RouteMessage<DispatchDataDictionary>(message);
             var routeMessageResult = await _routeMessageHandler.HandleAsync(

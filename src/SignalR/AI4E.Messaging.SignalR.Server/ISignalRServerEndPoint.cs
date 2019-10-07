@@ -17,22 +17,22 @@ namespace AI4E.Messaging.SignalR.Server
 
     public readonly struct SignalRServerPacket : IPacket<SignalRServerPacket>
     {
-        public SignalRServerPacket(in ValueMessage message, in RouteEndPointAddress remoteEndPoint)
+        public SignalRServerPacket(in Message message, in RouteEndPointAddress remoteEndPoint)
         {
             Message = message;
             RemoteEndPoint = remoteEndPoint;
         }
 
-        public ValueMessage Message { get; }
+        public Message Message { get; }
         public RouteEndPointAddress RemoteEndPoint { get; }
 
-        public SignalRServerPacket WithMessage(in ValueMessage message)
+        public SignalRServerPacket WithMessage(in Message message)
         {
             return new SignalRServerPacket(message, RemoteEndPoint);
         }
 
 #if !SUPPORTS_DEFAULT_INTERFACE_METHODS
-        IPacket IPacket.WithMessage(in ValueMessage message)
+        IPacket IPacket.WithMessage(in Message message)
         {
             return WithMessage(message);
         }

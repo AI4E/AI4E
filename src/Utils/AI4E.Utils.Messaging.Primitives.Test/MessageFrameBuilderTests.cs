@@ -25,12 +25,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace AI4E.Utils.Messaging.Primitives
 {
     [TestClass]
-    public sealed class ValueMessageFrameBuilderTests
+    public sealed class MessageFrameBuilderTests
     {
         [TestMethod]
         public void CreateTest()
         {
-            var subject = new ValueMessageFrameBuilder();
+            var subject = new MessageFrameBuilder();
 
             Assert.IsTrue(subject.Payload.IsEmpty);
             Assert.AreEqual(1, subject.Length);
@@ -40,7 +40,7 @@ namespace AI4E.Utils.Messaging.Primitives
         public void CreateFromFrameTest()
         {
             var frame = BuildFrame();
-            var subject = new ValueMessageFrameBuilder(frame);
+            var subject = new MessageFrameBuilder(frame);
 
             Assert.AreEqual(frame.Length, subject.Length);
             Assert.IsTrue(frame.Payload.ToArray().SequenceEqual(subject.Payload.ToArray()));
@@ -50,7 +50,7 @@ namespace AI4E.Utils.Messaging.Primitives
         public void BuildMessageFrameTest()
         {
             var frame = BuildFrame();
-            var subject = new ValueMessageFrameBuilder(frame);
+            var subject = new MessageFrameBuilder(frame);
 
             var builtFrame = subject.BuildMessageFrame();
 
@@ -62,7 +62,7 @@ namespace AI4E.Utils.Messaging.Primitives
         public void ReplacePayloadAfterBuildMessageFrameTest()
         {
             var frame = BuildFrame();
-            var subject = new ValueMessageFrameBuilder(frame);
+            var subject = new MessageFrameBuilder(frame);
 
             var builtFrame = subject.BuildMessageFrame();
 
@@ -75,7 +75,7 @@ namespace AI4E.Utils.Messaging.Primitives
         [TestMethod]
         public void ModifyPayloadAfterBuildMessageFrameTest()
         {
-            var subject = new ValueMessageFrameBuilder();
+            var subject = new MessageFrameBuilder();
             var payload = new byte[] { 1, 2, 3 };
 
             subject.Payload = payload;
@@ -88,10 +88,10 @@ namespace AI4E.Utils.Messaging.Primitives
             Assert.IsTrue(new byte[] { 1, 2, 3 }.SequenceEqual(builtFrame.Payload.ToArray()));
         }
 
-        private static ValueMessageFrame BuildFrame()
+        private static MessageFrame BuildFrame()
         {
             var payload = Enumerable.Range(0, 45).Select(p => unchecked((byte)p)).ToArray();
-            return new ValueMessageFrame(payload);
+            return new MessageFrame(payload);
         }
     }
 }

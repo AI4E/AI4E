@@ -34,7 +34,7 @@ namespace AI4E.Utils.Messaging.Primitives
 
         public CancellationToken Cancellation => _cancellationRequestSource?.Token ?? _canceledCancellationToken;
 
-        public ValueMessage Message => Packet.Message;
+        public Message Message => Packet.Message;
 
         public TPacket Packet { get; }
 
@@ -49,7 +49,7 @@ namespace AI4E.Utils.Messaging.Primitives
             return SendResultAsync(MessageSendResult.Ack);
         }
 
-        public ValueTask SendResultAsync(ValueMessage message)
+        public ValueTask SendResultAsync(Message message)
         {
             return SendResultAsync(new MessageSendResult(message, handled: true));
         }
