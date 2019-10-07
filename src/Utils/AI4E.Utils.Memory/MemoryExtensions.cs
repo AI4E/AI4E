@@ -382,8 +382,9 @@ namespace System
 
         private static MethodInfo GetFastSequenceHashCodeMethodDefinition()
         {
-            return typeof(MemoryExtensions).GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Static | BindingFlags.NonPublic)
-                                    .SingleOrDefault(p => p.Name == nameof(FastSequenceHashCode) && p.IsGenericMethodDefinition);
+            return typeof(AI4EUtilsMemoryMemoryExtensions)
+                .GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Static | BindingFlags.NonPublic)
+                .SingleOrDefault(p => p.Name == nameof(FastSequenceHashCode) && p.IsGenericMethodDefinition);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
