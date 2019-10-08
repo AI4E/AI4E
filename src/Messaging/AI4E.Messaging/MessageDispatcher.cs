@@ -155,61 +155,37 @@ namespace AI4E.Messaging
 
         private static IEnumerable<RouteRegistration> BuildRouteRegistrations(IMessageHandlerProvider messageHandlerProvider)
         {
-            if (messageHandlerProvider == null)
-                throw new ArgumentNullException(nameof(messageHandlerProvider));
-
-            static Route GetRoute(IMessageHandlerRegistration handlerRegistration)
-            {
-                return new Route(handlerRegistration.MessageType.GetUnqualifiedTypeName());
-            }
-
-            static RouteRegistrationOptions GetRouteOptions(IMessageHandlerRegistration handlerRegistration)
-            {
-                var result = RouteRegistrationOptions.Default;
-
-                if (handlerRegistration.IsPublishOnly())
-                {
-                    result |= RouteRegistrationOptions.PublishOnly;
-                }
-
-                if (handlerRegistration.IsTransient())
-                {
-                    result |= RouteRegistrationOptions.Transient;
-                }
-
-                if (handlerRegistration.IsLocalDispatchOnly())
-                {
-                    result |= RouteRegistrationOptions.LocalDispatchOnly;
-                }
-
-                return result;
-            }
-
-            static RouteRegistrationOptions CombineRouteOptions(IEnumerable<RouteRegistrationOptions> options)
-            {
-                var result = RouteRegistrationOptions.Default;
-
-                var firstOption = true;
-                foreach (var option in options)
-                {
-                    if (firstOption)
-                    {
-                        result = option;
-                    }
-                    else
-                    {
-                        result &= option;
-                    }
-
-                    firstOption = false;
-                }
-
-                return result;
-            }
-
             return messageHandlerProvider
                 .GetHandlerRegistrations()
-                .GroupBy(GetRoute, (route, handlerRegistrations) => new RouteRegistration(route, CombineRouteOptions(handlerRegistrations.Select(GetRouteOptions))));
+                .GroupBy(MessageHandlerRegistrationExtensions.GetRoute, BuildRouteRegistration);
+        }
+
+        private static RouteRegistration BuildRouteRegistration(Route route, IEnumerable<IMessageHandlerRegistration> handlerRegistrations)
+        {
+            return new RouteRegistration(route, GetRouteOptions(handlerRegistrations));
+        }
+
+        private static RouteRegistrationOptions GetRouteOptions(IEnumerable<IMessageHandlerRegistration> handlerRegistrations)
+        {
+            var result = RouteRegistrationOptions.Default;
+
+            var firstOption = true;
+            foreach (var handlerRegistration in handlerRegistrations)
+            {
+                var option = handlerRegistration.GetRouteOptions();
+                if (firstOption)
+                {
+                    result = option;
+                }
+                else
+                {
+                    result &= option;
+                }
+
+                firstOption = false;
+            }
+
+            return result;
         }
 
         #endregion
@@ -292,17 +268,21 @@ namespace AI4E.Messaging
                 bool localDispatch,
                 CancellationToken cancellation)
             {
-                // TODO: This will be the underlying type for validate dispatches
-                //       and will cause InternalDispatchLocalAsync to throw.
-                //       We allow route-resolvers to customly resolve types to routes but
-                //       tranlate back routes to types the default way always.
-                //       A possible solution would be including the message type in the route itself.
-                var messageType = TypeLoadHelper.LoadTypeFromUnqualifiedName(route.ToString());
-
-                Assert(messageType != null);
                 var dispatchData = GetDispatchData(routeMessage);
 
+                if (!route.TryGetMessageType(out var messageType))
+                {
+                    // This returns false, if it is the default value of the route-type,
+                    // or the message-type encoded in the route could not be load.
+
+                    // TODO: IS this an error, or can we safely fallback to the type encoded in the dispatch-data?
+                    messageType = dispatchData.MessageType;
+                }
+
+                Assert(messageType != null);
+
                 // We allow target route descend on publishing only (See https://github.com/AI4E/AI4E/issues/82#issuecomment-448269275)
+                // TODO: Is this correct for dispatching to known end-point, too?
                 var (dispatchResult, handlersFound) = await _remoteMessageDispatcher.InternalDispatchLocalAsync(
                     messageType,
                     dispatchData,
@@ -446,7 +426,8 @@ namespace AI4E.Messaging
                 return result;
             }
 
-            var route = new Route(dispatchData.MessageType.GetUnqualifiedTypeName());
+            // TODO: Does the route-descend work correctly, if we route the message like this?
+            var route = new Route(dispatchData.MessageType);
             var routeMessage = BuildRouteMessage(dispatchData);
             var resultRouteMessage = await messageRouter.RouteAsync(route, routeMessage, publish, endPoint, cancellation);
             return GetDispatchResult(resultRouteMessage);
@@ -696,7 +677,9 @@ namespace AI4E.Messaging
             {
                 return await handler.HandleAsync(dispatchData, publish, localDispatch, cancellation);
             }
+#pragma warning disable CA1031
             catch (Exception exc)
+#pragma warning restore CA1031
             {
                 return new FailureDispatchResult(exc);
             }

@@ -58,7 +58,7 @@ namespace AI4E.Messaging.Validation
                     options.MessageProcessors.Clear();
                 });
             });
-            var validationMessageHandler = ActivatorUtilities.CreateInstance<ValidationMessageHandler>(serviceProvider);
+            var validationMessageHandler = ActivatorUtilities.CreateInstance<ValidationMessageHandler<Validate>>(serviceProvider);
             using var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
             var testMessage = new ValidationTestMessage("myString", 243);
@@ -94,7 +94,7 @@ namespace AI4E.Messaging.Validation
                     options.MessageProcessors.Clear();
                 });
             });
-            var validationMessageHandler = ActivatorUtilities.CreateInstance<ValidationMessageHandler>(serviceProvider);
+            var validationMessageHandler = ActivatorUtilities.CreateInstance<ValidationMessageHandler<Validate>>(serviceProvider);
             using var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
             var testMessage = new ValidationTestMessage("   ", -1);
@@ -138,7 +138,7 @@ namespace AI4E.Messaging.Validation
                     options.MessageProcessors.Add(new MessageProcessorRegistration(validationEnabledMessageProcessor));
                 });
             });
-            var validationMessageHandler = ActivatorUtilities.CreateInstance<ValidationMessageHandler>(serviceProvider);
+            var validationMessageHandler = ActivatorUtilities.CreateInstance<ValidationMessageHandler<Validate>>(serviceProvider);
             using var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
             var testMessage = new ValidationTestMessage("   ", -1);
@@ -183,7 +183,7 @@ namespace AI4E.Messaging.Validation
                     options.MessageProcessors.Add(new MessageProcessorRegistration(validationEnabledMessageProcessor));
                 });
             });
-            var validationMessageHandler = ActivatorUtilities.CreateInstance<ValidationMessageHandler>(serviceProvider);
+            var validationMessageHandler = ActivatorUtilities.CreateInstance<ValidationMessageHandler<Validate>>(serviceProvider);
             using var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
             var testMessage = new ValidationTestMessage("   ", -1);

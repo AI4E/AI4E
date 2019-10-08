@@ -124,7 +124,7 @@ namespace AI4E.Messaging.Routing
 
             foreach (var reverseRouteEntry in await reverseEntry.GetChildrenEntriesAsync(cancellation))
             {
-                var route = new Route(reverseRouteEntry.Name.Segment.ConvertToString());
+                var route =  Route.UnsafeCreateFromString(reverseRouteEntry.Name.Segment.ConvertToString());
                 var routePath = GetPath(route, endPoint, session);
 
                 if (!removePersistentRoutes)

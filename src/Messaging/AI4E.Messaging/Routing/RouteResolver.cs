@@ -9,9 +9,12 @@ namespace AI4E.Messaging.Routing
 
         public static RouteHierarchy ResolveDefaults(Type messageType)
         {
+            if (messageType is null)
+                throw new ArgumentNullException(nameof(messageType));
+
             if (messageType.IsInterface)
             {
-                var route = new Route(messageType.GetUnqualifiedTypeName());
+                var route = new Route(messageType);
 
                 return new RouteHierarchy(ImmutableArray.Create(route));
             }
@@ -20,15 +23,18 @@ namespace AI4E.Messaging.Routing
 
             for (; messageType != null; messageType = messageType.BaseType)
             {
-                result.Add(new Route(messageType.GetUnqualifiedTypeName()));
+                result.Add(new Route(messageType));
             }
 
-            return new RouteHierarchy(result.ToImmutable());
+            return new RouteHierarchy(result.MoveToImmutable());
         }
 
         public static RouteHierarchy ResolveDefaults(DispatchDataDictionary dispatchData)
         {
+            if (dispatchData is null)
+                throw new ArgumentNullException(nameof(dispatchData));
+
             return ResolveDefaults(dispatchData.MessageType);
-        }    
+        }
     }
 }

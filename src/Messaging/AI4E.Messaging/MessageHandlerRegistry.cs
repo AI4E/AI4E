@@ -22,6 +22,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using AI4E.Utils;
 
 namespace AI4E.Messaging
@@ -33,12 +34,15 @@ namespace AI4E.Messaging
     {
         private readonly Dictionary<Type, OrderedSet<IMessageHandlerRegistration>> _handlerRegistrations;
 
+        private readonly HashSet<IMessageHandlerRegistrationFactory> _handlerRegistrationFactories;
+
         /// <summary>
         /// Creates a new instance of the <see cref="IMessageHandlerRegistry"/> type.
         /// </summary>
         public MessageHandlerRegistry()
         {
             _handlerRegistrations = new Dictionary<Type, OrderedSet<IMessageHandlerRegistration>>();
+            _handlerRegistrationFactories = new HashSet<IMessageHandlerRegistrationFactory>();
         }
 
         /// <inheritdoc />
@@ -84,45 +88,108 @@ namespace AI4E.Messaging
             return true;
         }
 
+        public bool Register(IMessageHandlerRegistrationFactory handlerRegistrationFactory)
+        {
+            if (handlerRegistrationFactory is null)
+                throw new ArgumentNullException(nameof(handlerRegistrationFactory));
+
+            return _handlerRegistrationFactories.Add(handlerRegistrationFactory);
+        }
+
+        public bool Unregister(IMessageHandlerRegistrationFactory handlerRegistrationFactory)
+        {
+            if (handlerRegistrationFactory is null)
+                throw new ArgumentNullException(nameof(handlerRegistrationFactory));
+
+            return _handlerRegistrationFactories.Remove(handlerRegistrationFactory);
+        }
+
         /// <inheritdoc />
         public IMessageHandlerProvider ToProvider()
         {
-            return new MessageHandlerProvider(_handlerRegistrations);
+            return new MessageHandlerProvider(_handlerRegistrations, _handlerRegistrationFactories);
         }
 
         private sealed class MessageHandlerProvider : IMessageHandlerProvider
         {
             private readonly ImmutableDictionary<Type, ImmutableList<IMessageHandlerRegistration>> _handlerRegistrations;
             private readonly ImmutableList<IMessageHandlerRegistration> _combinedRegistrations;
+            private readonly ImmutableHashSet<IMessageHandlerRegistrationFactory> _handlerRegistrationFactories;
 
-            public MessageHandlerProvider(Dictionary<Type, OrderedSet<IMessageHandlerRegistration>> handlerRegistrations)
+            // Cache delegate for perf reasons.
+            private readonly ConditionalWeakTable<Type, ImmutableList<IMessageHandlerRegistration>>.CreateValueCallback _buildHandlerRegistrations;
+            private readonly ConditionalWeakTable<Type, ImmutableList<IMessageHandlerRegistration>> _handlerRegistrationsLookup
+                = new ConditionalWeakTable<Type, ImmutableList<IMessageHandlerRegistration>>();
+
+            public MessageHandlerProvider(
+                Dictionary<Type, OrderedSet<IMessageHandlerRegistration>> handlerRegistrations,
+                HashSet<IMessageHandlerRegistrationFactory> handlerRegistrationFactories)
             {
                 _handlerRegistrations = handlerRegistrations.ToImmutableDictionary(
                     keySelector: kvp => kvp.Key,
                     elementSelector: kvp => kvp.Value.Reverse().ToImmutableList()); // TODO: Reverse is not very performant
 
                 _combinedRegistrations = BuildCombinedCollection().ToImmutableList();
+                _handlerRegistrationFactories = handlerRegistrationFactories.ToImmutableHashSet();
+
+                _buildHandlerRegistrations = BuildHandlerRegistrations;
             }
 
             private IEnumerable<IMessageHandlerRegistration> BuildCombinedCollection()
             {
                 foreach (var type in _handlerRegistrations.Keys)
                 {
-                    foreach (var handler in GetHandlerRegistrations(type))
+                    foreach (var handler in GetHandlerRegistrationsCore(type))
                     {
                         yield return handler;
                     }
                 }
             }
 
-            public IReadOnlyList<IMessageHandlerRegistration> GetHandlerRegistrations(Type messageType)
+            private ImmutableList<IMessageHandlerRegistration> GetHandlerRegistrationsCore(Type messageType)
             {
                 if (!_handlerRegistrations.TryGetValue(messageType, out var result))
                 {
-                    result = ImmutableList<IMessageHandlerRegistration>.Empty;
+                    return ImmutableList<IMessageHandlerRegistration>.Empty;
                 }
 
                 return result;
+            }
+
+            public IReadOnlyList<IMessageHandlerRegistration> GetHandlerRegistrations(Type messageType)
+            {
+                if (messageType is null)
+                    throw new ArgumentNullException(nameof(messageType));
+
+                return _handlerRegistrationsLookup.GetValue(messageType, _buildHandlerRegistrations);
+            }
+
+            private ImmutableList<IMessageHandlerRegistration> BuildHandlerRegistrations(Type messageType)
+            {
+                var handlerRegistrations = GetHandlerRegistrationsCore(messageType);
+
+                ImmutableList<IMessageHandlerRegistration>.Builder results = null;
+
+                foreach (var handlerRegistrationFactory in _handlerRegistrationFactories)
+                {
+                    if (handlerRegistrationFactory.TryCreateMessageHandlerRegistration(
+                        messageType, out var handlerRegistration))
+                    {
+                        if (results is null)
+                        {
+                            results = handlerRegistrations.ToBuilder();
+                        }
+
+                        results.Add(handlerRegistration);
+                    }
+                }
+
+                if (results is null)
+                {
+                    return handlerRegistrations;
+                }
+
+                return results.ToImmutable();
             }
 
             public IReadOnlyList<IMessageHandlerRegistration> GetHandlerRegistrations()

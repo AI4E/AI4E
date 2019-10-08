@@ -130,6 +130,25 @@ namespace AI4E.Utils.Messaging.Primitives
             return new Message(frames);
         }
 
+        public static Message ReadFromStream(Stream stream)
+        {
+            var framesLength = LengthCodeHelper.Read7BitEncodedInt(stream);
+            var buffer = new byte[framesLength].AsMemory();
+            stream.ReadExact(buffer.Span);
+
+            var framesBuilder = ImmutableList.CreateBuilder<MessageFrame>();
+
+            while (buffer.Length > 0)
+            {
+                var frame = MessageFrame.Read(buffer, createCopy: false);
+                buffer = buffer.Slice(frame.Length);
+                framesBuilder.Add(frame);
+            }
+
+            var frames = framesBuilder.ToImmutable();
+            return new Message(frames);
+        }
+
         public static async ValueTask WriteToStreamAsync(Message message, Stream stream, CancellationToken cancellation)
         {
             await LengthCodeHelper.Write7BitEncodedIntAsync(stream, message.GetFramesLength(), cancellation);

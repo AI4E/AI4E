@@ -95,6 +95,36 @@ namespace AI4E.Messaging.EndToEndTest
             Assert.AreEqual(nameof(OtherMessage.Amount), validationResults.First().Member);
             Assert.AreEqual("Value must be greater or equal zero.", validationResults.First().Message);
         }
+
+        [TestMethod]
+        public async Task ValidationDispatchFailureTest()
+        {
+            var serviceProvider = ConfigureServices();
+            var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
+
+            var message = Validate.Create(new OtherMessage(-1));
+            var result = await messageDispatcher.DispatchAsync(message);
+            var isValidationFailed = result.IsValidationFailed(out var validationResults);
+
+            Assert.IsFalse(result.IsSuccess);
+            Assert.IsTrue(isValidationFailed);
+            Assert.AreEqual(1, validationResults.Count());
+            Assert.AreEqual(nameof(OtherMessage.Amount), validationResults.First().Member);
+            Assert.AreEqual("Value must be greater or equal zero.", validationResults.First().Message);
+        }
+
+        [TestMethod]
+        public async Task ValidationDispatchSuccessTest()
+        {
+            var serviceProvider = ConfigureServices();
+            var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
+
+            var message = Validate.Create(new OtherMessage(5));
+            var result = await messageDispatcher.DispatchAsync(message);
+
+            Assert.IsTrue(result.IsSuccess);
+            Assert.IsTrue(result.GetType() == typeof(SuccessDispatchResult));
+        }
     }
 
     public sealed class TestEvent

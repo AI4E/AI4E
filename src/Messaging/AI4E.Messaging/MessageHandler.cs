@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using AI4E.Messaging.Validation;
 
 namespace AI4E.Messaging
 {

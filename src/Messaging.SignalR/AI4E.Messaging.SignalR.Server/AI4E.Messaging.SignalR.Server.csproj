@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <Compile Include="..\AI4E.Messaging.SignalR.Client\IClientCallStub.cs" Link="IClientCallStub.cs" />
+    <Compile Include="$(SolutionDir)src\Shared\PrefixCodingHelper.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

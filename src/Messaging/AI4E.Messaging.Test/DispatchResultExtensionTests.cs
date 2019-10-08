@@ -20,6 +20,7 @@
 
 using System;
 using System.Linq;
+using AI4E.Messaging.Validation;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Messaging

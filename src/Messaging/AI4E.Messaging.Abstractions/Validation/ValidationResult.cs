@@ -22,7 +22,7 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace AI4E.Messaging
+namespace AI4E.Messaging.Validation
 {
     /// <summary>
     /// Represents a validation result.

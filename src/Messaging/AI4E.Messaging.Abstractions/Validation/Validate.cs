@@ -45,6 +45,12 @@ namespace AI4E.Messaging.Validation
         /// </summary>
         [JsonIgnore]
         public object Message { get; }
+
+        public static Validate<TMessage> Create<TMessage>(TMessage message)
+            where TMessage : class
+        {
+            return new Validate<TMessage>(message);
+        }
     }
 
     /// <summary>

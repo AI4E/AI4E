@@ -28,7 +28,8 @@ using Microsoft.Extensions.Options;
 namespace AI4E.Messaging.Validation
 {
     [NoMessageHandler] // Prevent the messaging system to register this as ordinary handler, as we register this ourselves.
-    public sealed class ValidationMessageHandler : IMessageHandler<Validate>
+    public sealed class ValidationMessageHandler<TValidate> : IMessageHandler<TValidate>
+        where TValidate : Validate
     {
         private readonly IMessageDispatcher _messageDispatcher;
         private readonly IServiceProvider _serviceProvider;
@@ -45,7 +46,7 @@ namespace AI4E.Messaging.Validation
         }
 
         public ValueTask<IDispatchResult> HandleAsync(
-            DispatchDataDictionary<Validate> dispatchData,
+            DispatchDataDictionary<TValidate> dispatchData,
             bool publish,
             bool localDispatch,
             CancellationToken cancellation)
@@ -106,20 +107,25 @@ namespace AI4E.Messaging.Validation
             bool localDispatch,
             CancellationToken cancellation)
         {
-            return HandleAsync(dispatchData.As<Validate>(), publish, localDispatch, cancellation);
+            return HandleAsync(dispatchData.As<TValidate>(), publish, localDispatch, cancellation);
         }
 
         Type IMessageHandler.MessageType => typeof(Validate);
-#endif
+#endif       
+    }
 
+    public static class ValidationMessageHandler
+    {
         private static void Configure(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
         {
-            messageHandlerRegistry.Register(new MessageHandlerRegistration<Validate>(
-                    dispatchServices => ActivatorUtilities.CreateInstance<ValidationMessageHandler>(dispatchServices)));
+            messageHandlerRegistry.Register(new ValidationMessageHandlerRegistration());
         }
 
         public static void Register(IMessagingBuilder builder)
         {
+            if (builder is null)
+                throw new ArgumentNullException(nameof(builder));
+
             // Protect us from registering the validation-handler multiple times.
             if (builder.Services.Any(p => p.ServiceType == typeof(ValidationMessageHandlerMarker)))
                 return;
@@ -129,5 +135,34 @@ namespace AI4E.Messaging.Validation
         }
 
         private sealed class ValidationMessageHandlerMarker { }
+
+        private sealed class ValidationMessageHandlerRegistration : IMessageHandlerRegistrationFactory
+        {
+            public bool TryCreateMessageHandlerRegistration(Type messageType, out IMessageHandlerRegistration handlerRegistration)
+            {
+                if (!IsValidateMessageType(messageType))
+                {
+                    handlerRegistration = null;
+                    return false;
+                }
+
+                // Build the result handler-registration.
+                // We do not need to cache this, as the MessageHandlerProvider also caches all handler-registrations.
+                var underlyingType = messageType.GetGenericArguments()[0];
+                var validationMessageHandlerType = typeof(ValidationMessageHandler<>).MakeGenericType(messageType);
+                IMessageHandler messageHandlerFactory(IServiceProvider serviceProvider)
+                {
+                    return (IMessageHandler)ActivatorUtilities.CreateInstance(serviceProvider, validationMessageHandlerType);
+                }
+
+                handlerRegistration = new MessageHandlerRegistration(messageType, messageHandlerFactory);
+                return true;
+            }
+
+            private bool IsValidateMessageType(Type messageType)
+            {
+                return messageType.IsGenericType && messageType.GetGenericTypeDefinition() == typeof(Validate<>);
+            }
+        }
     }
 }

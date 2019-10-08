@@ -2,7 +2,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
+using AI4E.Utils;
 
 namespace AI4E.Messaging.Routing
 {
@@ -130,6 +133,36 @@ namespace AI4E.Messaging.Routing
         IEnumerator IEnumerable.GetEnumerator()
         {
             return ((IEnumerable<Route>)_routes).GetEnumerator();
+        }
+
+        public static void Write(BinaryWriter writer, in RouteHierarchy routeHierarchy)
+        {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
+            PrefixCodingHelper.Write7BitEncodedInt(writer, routeHierarchy.Count);
+
+            for (var i = 0; i < routeHierarchy.Count; i++)
+            {
+                Route.Write(writer, routeHierarchy[i]);
+            }
+        }
+
+        public static void Read(BinaryReader reader, out RouteHierarchy routeHierarchy)
+        {
+            if (reader is null)
+                throw new ArgumentNullException(nameof(reader));
+
+            var count = PrefixCodingHelper.Read7BitEncodedInt(reader);
+            var routesBuilder = ImmutableArray.CreateBuilder<Route>(initialCapacity: count);
+            routesBuilder.Count = count;
+
+            for (var i = 0; i < count; i++)
+            {
+                Route.Read(reader, out Unsafe.AsRef(routesBuilder.ItemRef(i)));
+            }
+
+            routeHierarchy = new RouteHierarchy(routesBuilder.MoveToImmutable());
         }
     }
 }

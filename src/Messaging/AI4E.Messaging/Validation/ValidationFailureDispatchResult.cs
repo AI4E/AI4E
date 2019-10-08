@@ -23,7 +23,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using Newtonsoft.Json;
 
-namespace AI4E.Messaging
+namespace AI4E.Messaging.Validation
 {
     /// <summary>
     /// Describes the result of a message dispatch operation thats validation failed.

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Messaging.Routing;
+using AI4E.Utils;
 using AI4E.Utils.Messaging.Primitives;
 using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
@@ -67,7 +68,7 @@ namespace AI4E.Messaging.SignalR.Server
             {
                 using (var writer = new BinaryWriter(frameStream, Encoding.UTF8, leaveOpen: true))
                 {
-                    writer.Write(routeResponse.Count); // TODO: Write 7 bit encoded int.
+                    PrefixCodingHelper.Write7BitEncodedInt(writer, routeResponse.Count);
                 }
 
                 foreach (var response in routeResponse)
@@ -79,7 +80,7 @@ namespace AI4E.Messaging.SignalR.Server
             message = message.PushFrame(frameBuilder.BuildMessageFrame());
         }
 
-        private static void EncodeHandleRequest(ref Message message, Route route, bool publish, bool isLocalDispatch)
+        private static void EncodeHandleRequest(ref Message message, in Route route, bool publish, bool isLocalDispatch)
         {
             var frameBuilder = new MessageFrameBuilder();
 
@@ -87,10 +88,9 @@ namespace AI4E.Messaging.SignalR.Server
             using (var writer = new BinaryWriter(frameStream))
             {
                 writer.Write((short)MessageType.Handle);
-                writer.Write((short)0); // Padding
-                writer.Write(route.ToString());
                 writer.Write(publish);
                 writer.Write(isLocalDispatch);
+                Route.Write(writer, route);
             }
 
             message = message.PushFrame(frameBuilder.BuildMessageFrame());
@@ -233,7 +233,6 @@ namespace AI4E.Messaging.SignalR.Server
             using var frameStream = frame.OpenStream();
             using var reader = new BinaryReader(frameStream);
             var messageType = (MessageType)reader.ReadInt16();
-            reader.ReadInt16();
 
             var router = await GetRouterAsync(remoteEndPoint, cancellation);
 
@@ -241,49 +240,37 @@ namespace AI4E.Messaging.SignalR.Server
             {
                 case MessageType.Route:
                     {
-                        var routesCount = reader.ReadInt32();
-                        var routes = new Route[routesCount];
-                        for (var i = 0; i < routesCount; i++)
-                        {
-                            var routeBytesLength = reader.ReadInt32();
-                            var routeBytes = reader.ReadBytes(routeBytesLength);
-                            routes[i] = new Route(Encoding.UTF8.GetString(routeBytes));
-                        }
-
                         var publish = reader.ReadBoolean();
-                        var routeResponse = await router.RouteAsync(new RouteHierarchy(routes), new RouteMessage<DispatchDataDictionary>(message), publish, cancellation);
+                        RouteHierarchy.Read(reader, out var routes);
+                        
+                        var routeResponse = await router.RouteAsync(routes, new RouteMessage<DispatchDataDictionary>(message), publish, cancellation);
                         var response = new Message();
                         EncodeRouteResponse(ref response, routeResponse);
                         return (response, true);
                     }
 
                 case MessageType.RouteToEndPoint:
-                    {
-                        var routeBytesLength = reader.ReadInt32();
-                        var routeBytes = reader.ReadBytes(routeBytesLength);
-                        var route = Encoding.UTF8.GetString(routeBytes);
-                        var endPoint = reader.ReadEndPointAddress();
+                    {  
                         var publish = reader.ReadBoolean();
-                        var response = await router.RouteAsync(new Route(route), new RouteMessage<DispatchDataDictionary>(message), publish, endPoint, cancellation);
+                        Route.Read(reader, out var route);
+                        var endPoint = reader.ReadEndPointAddress();
+                      
+                        var response = await router.RouteAsync(route, new RouteMessage<DispatchDataDictionary>(message), publish, endPoint, cancellation);
                         return (response.Message, true);
                     }
 
                 case MessageType.RegisterRoute:
                     {
                         var options = (RouteRegistrationOptions)reader.ReadInt32();
-                        var routeBytesLength = reader.ReadInt32();
-                        var routeBytes = reader.ReadBytes(routeBytesLength);
-                        var route = Encoding.UTF8.GetString(routeBytes);
-                        await router.RegisterRouteAsync(new RouteRegistration(new Route(route), options | RouteRegistrationOptions.PublishOnly), cancellation); // We allow publishing only.
+                        Route.Read(reader, out var route);
+                        await router.RegisterRouteAsync(new RouteRegistration(route, options | RouteRegistrationOptions.PublishOnly), cancellation); // We allow publishing only.
                         return (default, true);
                     }
 
                 case MessageType.UnregisterRoute:
                     {
-                        var routeBytesLength = reader.ReadInt32();
-                        var routeBytes = reader.ReadBytes(routeBytesLength);
-                        var route = Encoding.UTF8.GetString(routeBytes);
-                        await router.UnregisterRouteAsync(new Route(route), cancellation);
+                        Route.Read(reader, out var route);
+                        await router.UnregisterRouteAsync(route, cancellation);
                         return (default, true);
                     }
 

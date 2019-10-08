@@ -314,17 +314,16 @@ namespace AI4E.Messaging.Routing
             return result;
         }
 
-        private static void EncodeMessage(ref Message message, bool publish, bool localDispatch, Route route)
+        private static void EncodeMessage(ref Message message, bool publish, bool localDispatch, in Route route)
         {
             var frameBuilder = new MessageFrameBuilder();
 
             using (var frameStream = frameBuilder.OpenStream())
             using (var writer = new BinaryWriter(frameStream))
             {
-                writer.Write(publish);              // 1 Byte
-                writer.Write(localDispatch);        // 1 Byte
-                writer.Write((short)0);             // 2 Byte (padding)
-                writer.Write(route.ToString());     // Variable length
+                writer.Write(publish);
+                writer.Write(localDispatch);
+                Route.Write(writer, route);
             }
 
             message = message.PushFrame(frameBuilder.BuildMessageFrame());
@@ -336,12 +335,9 @@ namespace AI4E.Messaging.Routing
 
             using var frameStream = frame.OpenStream();
             using var reader = new BinaryReader(frameStream);
-            var route = default(Route);
-
-            var publish = reader.ReadBoolean();                         // 1 Byte
-            var localDispatch = reader.ReadBoolean();                   // 1 Byte
-            reader.ReadInt16();                                         // 2 Byte (padding)
-            route = new Route(reader.ReadString());                     // Variable length
+            var publish = reader.ReadBoolean();
+            var localDispatch = reader.ReadBoolean();
+            Route.Read(reader, out var route);
 
             return (publish, localDispatch, route);
         }

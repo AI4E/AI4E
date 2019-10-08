@@ -44,6 +44,9 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="handlerRegistration"/> is null.</exception>
         bool Unregister(IMessageHandlerRegistration handlerRegistration);
 
+        bool Register(IMessageHandlerRegistrationFactory handlerRegistrationFactory);
+        bool Unregister(IMessageHandlerRegistrationFactory handlerRegistrationFactory);
+
         /// <summary>
         /// Creates a <see cref="IMessageHandlerProvider"/> of the current snapshot of handler registrations.
         /// </summary>

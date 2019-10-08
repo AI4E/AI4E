@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Immutable;
 using System.Linq;
 using AI4E.Messaging.Routing;
 
@@ -14,7 +16,26 @@ namespace AI4E.Messaging.Validation
         {
             var underlyingType = (dispatchData.Message as Validate).MessageType;
 
-            return ResolveDefaults(underlyingType);
+            if (underlyingType.IsInterface)
+            {
+                var route = GetRoute(underlyingType);
+
+                return new RouteHierarchy(ImmutableArray.Create(route));
+            }
+
+            var result = ImmutableArray.CreateBuilder<Route>();
+
+            for (; underlyingType != null; underlyingType = underlyingType.BaseType)
+            {
+                result.Add(GetRoute(underlyingType));
+            }
+
+            return new RouteHierarchy(result.MoveToImmutable());
+        }
+
+        private static Route GetRoute(Type underlyingType)
+        {
+            return new Route(typeof(Validate<>).MakeGenericType(underlyingType), underlyingType);
         }
 
         public override bool TryResolve(DispatchDataDictionary dispatchData, out RouteHierarchy routes)

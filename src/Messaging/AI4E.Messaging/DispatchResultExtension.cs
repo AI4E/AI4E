@@ -25,6 +25,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
+using AI4E.Messaging.Validation;
 
 namespace AI4E.Messaging
 {

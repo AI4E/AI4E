@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <Compile Include="..\AI4E.Messaging.SignalR.Server\IServerCallStub.cs" Link="IServerCallStub.cs" />
+    <Compile Include="$(SolutionDir)src\Shared\PrefixCodingHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(SolutionDir)src\Shared\ReconnectionManagerBase.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
@@ -18,10 +20,6 @@
     <ProjectReference Include="..\..\Messaging\AI4E.Messaging\AI4E.Messaging.csproj" />
     <ProjectReference Include="..\..\Remoting\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
     <ProjectReference Include="..\..\Remoting\AI4E.Remoting\AI4E.Remoting.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="$(SolutionDir)src\Shared\ReconnectionManagerBase.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
