@@ -20,7 +20,6 @@
 
 using System;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AI4E.Storage
 {
@@ -33,8 +32,6 @@ namespace AI4E.Storage
 
             services.AddOptions();
            
-            services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
-
             return new StorageBuilder(services);
         }
 

@@ -15,6 +15,8 @@ namespace AI4E.Storage.Domain
 
             var services = builder.Services;
 
+            services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
+
             // TODO: Replace
             services.AddSingleton(new JsonSerializerSettings
             {

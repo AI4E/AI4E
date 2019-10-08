@@ -18,7 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
     public interface IMessageAccessor
     {

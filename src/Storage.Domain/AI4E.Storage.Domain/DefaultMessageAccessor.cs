@@ -25,7 +25,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using AI4E.Messaging;
 
-namespace AI4E.Storage
+namespace AI4E.Storage.Domain
 {
     public sealed class DefaultMessageAccessor : IMessageAccessor
     {

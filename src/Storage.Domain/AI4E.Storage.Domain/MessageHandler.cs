@@ -22,7 +22,7 @@ using System;
 
 namespace AI4E.Messaging
 {
-    // This defined a base type that can be used to consume entities in a message handler.
+    // This defines a base type that can be used to consume entities in a message handler.
     // For the actual implementation (loading/storing the entity etc.) see EntityMessageHandlerProcessor
     public abstract class MessageHandler<TEntity> : MessageHandler
         where TEntity : class
