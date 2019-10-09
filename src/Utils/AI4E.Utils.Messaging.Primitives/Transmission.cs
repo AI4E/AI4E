@@ -37,7 +37,7 @@ namespace AI4E.Utils.Messaging.Primitives
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="remoteAddress"/> is <c>default</c>.</exception>
         public Transmission(Message message, TAddress remoteAddress)
         {
-            if (remoteAddress == default)
+            if (EqualityComparer<TAddress>.Default.Equals(remoteAddress, default!))
             {
                 this = default;
                 return;

@@ -532,12 +532,12 @@ namespace AI4E.Utils.Async
             var result = _pool.Get();
             Debug.Assert(!result.Exhausted);
             Debug.Assert(EqualityComparer<T>.Default.Equals(result._result, default));
-            Debug.Assert(result._exception == default);
+            Debug.Assert(result._exception == null);
             Debug.Assert(result._completed == default);
             Debug.Assert(result._continuation == default);
-            Debug.Assert(result._continuationState == default);
-            Debug.Assert(result._executionContext == default);
-            Debug.Assert(result._scheduler == default);
+            Debug.Assert(result._continuationState == null);
+            Debug.Assert(result._executionContext == null);
+            Debug.Assert(result._scheduler == null);
             return result;
         }
 

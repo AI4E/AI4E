@@ -35,6 +35,7 @@
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
     <NoWarn>
       NU5105;
+      CS8632; <!-- LiveUnitTest does not respect project-wide enable nullable contexts. Ignore the nullability warning for now. -->
       CA1303 <!-- Currently, we are not using resource-dictionaries. Remove this, if we deside to go with them. -->
     </NoWarn>
     <GenerateDocumentationFile Condition="'$(Configuration)' == 'Release'">true</GenerateDocumentationFile>
@@ -107,5 +108,5 @@
   <ItemGroup>
     <TypeScriptCompile Include="content/**/*.ts" />
   </ItemGroup>
-  
+
 </Project>

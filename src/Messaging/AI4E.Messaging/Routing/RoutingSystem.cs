@@ -209,7 +209,7 @@ namespace AI4E.Messaging.Routing
 
             private void DisposeInternal()
             {
-                // Remote us from the manager.
+                // Remove us from the manager.
                 lock (_routingSystem._endPointsLock)
                 {
                     _routingSystem._endPoints.Remove(EndPoint, this);
