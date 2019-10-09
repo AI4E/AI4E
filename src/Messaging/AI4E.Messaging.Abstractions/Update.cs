@@ -25,6 +25,12 @@ namespace AI4E.Messaging
         /// </summary>
         [JsonIgnore]
         public object Data { get; }
+
+        public static Update<TData> Create<TData>(TData data)
+            where TData : class
+        {
+            return new Update<TData>(data);
+        }
     }
 
     /// <summary>
