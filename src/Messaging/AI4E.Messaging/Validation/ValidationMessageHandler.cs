@@ -118,7 +118,7 @@ namespace AI4E.Messaging.Validation
     {
         private static void Configure(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
         {
-            messageHandlerRegistry.Register(new ValidationMessageHandlerRegistration());
+            messageHandlerRegistry.Register(new ValidationMessageHandlerRegistrationFactory());
         }
 
         public static void Register(IMessagingBuilder builder)
@@ -136,7 +136,7 @@ namespace AI4E.Messaging.Validation
 
         private sealed class ValidationMessageHandlerMarker { }
 
-        private sealed class ValidationMessageHandlerRegistration : IMessageHandlerRegistrationFactory
+        private sealed class ValidationMessageHandlerRegistrationFactory : IMessageHandlerRegistrationFactory
         {
             public bool TryCreateMessageHandlerRegistration(Type messageType, out IMessageHandlerRegistration handlerRegistration)
             {
