@@ -66,25 +66,12 @@ namespace AI4E.Messaging.Routing
             return obj is RouteHierarchy routeHierarchy && Equals(in routeHierarchy);
         }
 
-        private static readonly int _scalarMultiplicationValue = 314159;
-
         public override int GetHashCode()
         {
             if (_routes.IsDefaultOrEmpty)
                 return 0;
 
-            var accumulator = 0;
-
-            for (var i = 0; i < _routes.Length; i++)
-            {
-                accumulator *= _scalarMultiplicationValue;
-                accumulator += _routes[i].GetHashCode();
-            }
-
-            accumulator *= _scalarMultiplicationValue;
-            accumulator += _routes.Length;
-
-            return accumulator;
+            return _routes.AsSpan().SequenceHashCode();
         }
 
         public override string ToString()
@@ -121,9 +108,9 @@ namespace AI4E.Messaging.Routing
             return !left.Equals(in right);
         }
 
-        public ImmutableArray<Route>.Enumerator GetEnumerator()
+        public Enumerator GetEnumerator()
         {
-            return _routes.GetEnumerator();
+            return new Enumerator(_routes.GetEnumerator());
         }
 
         IEnumerator<Route> IEnumerable<Route>.GetEnumerator()
@@ -134,6 +121,33 @@ namespace AI4E.Messaging.Routing
         IEnumerator IEnumerable.GetEnumerator()
         {
             return ((IEnumerable<Route>)_routes).GetEnumerator();
+        }
+
+        public struct Enumerator : IEnumerator<Route>, IEnumerator
+        {
+            // This MUST NOT be marked readonly, to allow the compiler to access this field by reference.
+            private ImmutableArray<Route>.Enumerator _underlying;
+
+            internal Enumerator(ImmutableArray<Route>.Enumerator underlying)
+            {
+                _underlying = underlying;
+            }
+
+            public Route Current => _underlying.Current;
+
+            object IEnumerator.Current => Current;
+
+            public bool MoveNext()
+            {
+                return _underlying.MoveNext();
+            }
+
+            public void Dispose() { }
+
+            void IEnumerator.Reset()
+            {
+                throw new NotSupportedException();
+            }
         }
 
         public static void Write(BinaryWriter writer, in RouteHierarchy routeHierarchy)
