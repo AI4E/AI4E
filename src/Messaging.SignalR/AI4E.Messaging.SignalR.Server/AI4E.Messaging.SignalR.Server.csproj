@@ -17,7 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Messaging\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
     <ProjectReference Include="..\..\Messaging\AI4E.Messaging\AI4E.Messaging.csproj" />
-    <ProjectReference Include="..\..\AI4E.Coordination.Abstractions\AI4E.Coordination.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Storage.Coordination\AI4E.Coordination.Abstractions\AI4E.Coordination.Abstractions.csproj" />
     <ProjectReference Include="..\..\Remoting\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
     <ProjectReference Include="..\..\Remoting\AI4E.Remoting\AI4E.Remoting.csproj" />
   </ItemGroup>

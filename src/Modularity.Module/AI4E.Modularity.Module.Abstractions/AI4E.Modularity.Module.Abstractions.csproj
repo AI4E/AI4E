@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Modularity\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

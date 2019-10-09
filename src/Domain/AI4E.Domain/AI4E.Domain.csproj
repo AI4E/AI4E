@@ -1,11 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants>TRACE;DEBUG;AI4E_DOMAIN;NETSTANDARD;NETSTANDARD2_0</DefineConstants>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>  
+    <DefineConstants>$(DefineConstants);AI4E_DOMAIN;</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
@@ -18,8 +15,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Messaging\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
-    <ProjectReference Include="..\Messaging\AI4E.Messaging\AI4E.Messaging.csproj" />
+    <ProjectReference Include="..\..\Messaging\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Messaging\AI4E.Messaging\AI4E.Messaging.csproj" />
   </ItemGroup>
 
   <ItemGroup>

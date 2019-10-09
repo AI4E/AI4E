@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
-    <DefineConstants>ASPNETCORE</DefineConstants>
+    <DefineConstants>$(DefineConstants);ASPNETCORE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

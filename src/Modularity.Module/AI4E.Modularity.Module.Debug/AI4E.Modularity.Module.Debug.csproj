@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E.Modularity.Debug\AI4E.Modularity.Debug.csproj" />
+    <ProjectReference Include="..\..\Modularity\AI4E.Modularity.Debug\AI4E.Modularity.Debug.csproj" />
     <ProjectReference Include="..\AI4E.Modularity.Module.Abstractions\AI4E.Modularity.Module.Abstractions.csproj" />
   </ItemGroup>
 
