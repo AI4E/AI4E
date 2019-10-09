@@ -1,0 +1,29 @@
+﻿@page "/"
+@inject PluginManager PluginManager
+@functions{
+    private IndexPageViewExtensionContext ViewExtensionContext { get; } = new IndexPageViewExtensionContext();
+}
+<div>
+    @if (PluginManager.IsPluginInstalled)
+    {
+        <input type="button" @onclick="@PluginManager.UninstallPluginAsync" value="Uninstall Plugin" />
+
+        <a href="/plugin">Goto Plugin page</a>
+    }
+    else
+    {
+        <input type="button" @onclick="@PluginManager.InstallPluginAsync" value="Install Plugin" />
+    }
+</div>
+
+<div>
+    <EditForm Model="@ViewExtensionContext">
+        <div>
+            <label>Message: <InputText @bind-Value="@ViewExtensionContext.Message" /></label>
+        </div>
+        <div>
+            <label>Number: <InputNumber @bind-Value="@ViewExtensionContext.Number" /></label>
+        </div>
+    </EditForm>
+    <ViewExtensionPlaceholder TViewExtension="IIndexPageViewExtensionDefinition" Context="ViewExtensionContext" />
+</div>

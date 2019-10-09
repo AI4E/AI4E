@@ -1,0 +1,25 @@
+﻿@implements IIndexPageViewExtensionDefinition
+@functions {
+    [Parameter] public IndexPageViewExtensionContext Context { get; set; }
+}
+
+<div>
+    <h2>View extension rendered by the plugin!</h2>
+
+    @if (Context != null)
+    {
+        <div>
+            Passed view extension context:
+        </div>
+        <div>
+            Message is: @Context.Message
+        </div>
+        <div>
+            Number is: @Context.Number
+        </div>
+    }
+    else
+    {
+        <div>View extension context is not present.</div>
+    }
+</div>

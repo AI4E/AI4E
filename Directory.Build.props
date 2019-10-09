@@ -11,28 +11,40 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Version>0.5.0-pre$([System.DateTime]::UtcNow.ToString(yyMMddHH))</Version>
   </PropertyGroup>
-    
+
   <PropertyGroup>
     <RepositoryRoot Condition="'$(RepositoryRoot)' == ''">$(MSBuildThisFileDirectory)</RepositoryRoot>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <LangVersion>8.0</LangVersion>
-    <WarningsAsErrors>CS8597;CS8600;CS8601;CS8602;CS8603;CS8604;CS8610;CS8618;CS8622;CS8625;CS8653;CS8714;</WarningsAsErrors>
+    <RazorLangVersion>3.0</RazorLangVersion>
+    <TypeScriptToolsVersion>3.5</TypeScriptToolsVersion>
+    <WarningsAsErrors>
+      CS8597;
+      CS8600;
+      CS8601;
+      CS8602;
+      CS8603;
+      CS8604;
+      CS8610;
+      CS8618;
+      CS8622;
+      CS8625;
+      CS8653;
+      CS8714;
+    </WarningsAsErrors>
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
-    <NoWarn>NU5105</NoWarn>
-  </PropertyGroup>
-
-
-  <PropertyGroup>
-    <RestoreAdditionalProjectSources>
-      https://dotnet.myget.org/F/rx/api/v3/index.json;
-    </RestoreAdditionalProjectSources>
+    <NoWarn>
+      NU5105;
+      CA1303 <!-- Currently, we are not using resource-dictionaries. Remove this, if we deside to go with them. -->
+    </NoWarn>
+    <GenerateDocumentationFile Condition="'$(Configuration)' == 'Release'">true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <!-- Workaround for: https://github.com/dotnet/sdk/issues/3146 -->
   <PropertyGroup>
     <DepsFileGenerationMode>old</DepsFileGenerationMode>
   </PropertyGroup>
-  
+
   <PropertyGroup>
     <RepositoryRootPath>$(RepositoryRoot)\</RepositoryRootPath>
     <RepositoryBuiltPath>$(RepositoryRootPath)artifacts\</RepositoryBuiltPath>
@@ -52,26 +64,48 @@
     <MSBuildProjectExtensionsPath>$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
     <RestoreOutputPath>$(BaseIntermediateOutputPath)</RestoreOutputPath>
   </PropertyGroup>
-  
- <PropertyGroup>
+
+  <PropertyGroup>
     <NetStandardVersion>netstandard2.0</NetStandardVersion>
     <NetStandardVersions>$(NetStandardVersion);netstandard2.1</NetStandardVersions>
     <NetCoreAppVersion>netcoreapp3.0</NetCoreAppVersion>
     <NetCoreAppVersions>$(NetCoreAppVersion)</NetCoreAppVersions>
     <FrameworkVersions>$(NetStandardVersions);$(NetCoreAppVersions)</FrameworkVersions>
-    <GenerateDocumentationFile Condition=" '$(Configuration)' == 'Release'">true</GenerateDocumentationFile>
-  </PropertyGroup>
-  
-  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
-    <DefineConstants>$(DefineConstants);NETSTD21;SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS;SUPPORTS_NULLABILITY_ATTRIBUTES</DefineConstants>
-  </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.0'">
-    <DefineConstants>$(DefineConstants);NETCORE30;SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS;SUPPORTS_NULLABILITY_ATTRIBUTES</DefineConstants>
+    <NETSTD20Features></NETSTD20Features>
+    <NETSTD21Features>
+      $(NETSTD20Features);
+      SUPPORTS_ASYNC_ENUMERABLE;
+      SUPPORTS_ASYNC_DISPOSABLE;
+      SUPPORTS_SPAN_APIS;
+      SUPPORTS_DEFAULT_INTERFACE_METHODS;
+      SUPPORTS_NULLABILITY_ATTRIBUTES;
+    </NETSTD21Features>
+    <NETCORE30Features>
+      $(NETSTD21Features);
+      SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT;
+    </NETCORE30Features>
+
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <DefineConstants>$(DefineConstants);NETSTD20;</DefineConstants>
+    <DefineConstants>$(DefineConstants);$(NETSTD20Features);NETSTD20;</DefineConstants>
   </PropertyGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <Compile Include="$(SolutionDir)src\Shared\NullabilityAttributes.cs" Link="Shared\NullabilityAttributes.cs" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <DefineConstants>$(DefineConstants);$(NETSTD21Features);NETSTD21;</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.0'">
+    <DefineConstants>$(DefineConstants);$(NETCORE30Features);NETCORE30;</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <TypeScriptCompile Include="content/**/*.ts" />
+  </ItemGroup>
+  
 </Project>

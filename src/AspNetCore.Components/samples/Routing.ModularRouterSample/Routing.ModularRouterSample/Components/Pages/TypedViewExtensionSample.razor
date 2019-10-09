@@ -1,0 +1,40 @@
+﻿@page "/TypedViewExtensionSample"
+@inject PluginManager PluginManager
+@functions{
+    private EditModel _model = new EditModel();
+
+    private sealed class EditModel
+    {
+        public string Message { get; set; }
+        public int Number { get; set; }
+    }
+}
+<div>
+    @if (PluginManager.IsPluginInstalled)
+    {
+        <input type="button" @onclick="@PluginManager.UninstallPluginAsync" value="Uninstall Plugin" />
+
+        <a href="/plugin">Goto Plugin page</a>
+    }
+    else
+    {
+        <input type="button" @onclick="@PluginManager.InstallPluginAsync" value="Install Plugin" />
+    }
+</div>
+
+<div>
+    <EditForm Model="_model">
+        <div>
+            <label>Message: <InputText @bind-Value="_model.Message" /></label>
+        </div>
+        <div>
+            <label>Number: <InputNumber @bind-Value="_model.Number" /></label>
+        </div>
+        <div>
+            <input type="submit" value="submit" />
+        </div>
+    </EditForm>
+    <TypedViewExtensionDefinition Message="@_model.Message" Number="_model.Number">
+        Child content from the page
+    </TypedViewExtensionDefinition>
+</div>

@@ -24,10 +24,5 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
- 
- <ItemGroup Condition="!($(MSBuildProjectName.EndsWith('Test')))">
-    <!--<Compile Include="$(SolutionDir)src\Shared\*.*" Link="Shared\%(Filename)%(Extension)" />-->
-    <Compile Include="$(SolutionDir)src\Shared\NullabilityAttributes.cs" Link="Shared\NullabilityAttributes.cs" /> 
-  </ItemGroup>
-
+  
 </Project>
