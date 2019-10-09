@@ -287,6 +287,28 @@ namespace AI4E.Messaging
         }
 
         [TestMethod]
+        public void EnumerateTest()
+        {
+            var data = new Dictionary<string, object>
+            {
+                ["a"] = "xyz",
+                ["b"] = 123L,
+                ["c"] = ConsoleColor.Black
+            };
+
+            var dispatchData = new DispatchDataDictionary<string>("abcdef", data);
+            var data2 = new Dictionary<string, object>();
+
+            foreach (var kvp in dispatchData)
+            {
+                data2.Add(kvp.Key, kvp.Value);
+            }
+
+            Assert.AreEqual(data.Count, data2.Count);
+            Assert.IsTrue(data.ToHashSet().SetEquals(data2));
+        }
+
+        [TestMethod]
         public void SerializeRoundtripTest()
         {
             var message = "abcdef";
