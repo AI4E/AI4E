@@ -181,6 +181,11 @@ namespace System
             return ref MemoryMarshal.Cast<T, Vector<T>>(span).GetPinnableReference();
         }
 
+        public static int SequenceHashCode<T>(this Span<T> span)
+        {
+            return SequenceHashCode((ReadOnlySpan<T>)span);
+        }
+
         public static int SequenceHashCode<T>(this ReadOnlySpan<T> span)
         {
             if (span.IsEmpty)
@@ -281,12 +286,14 @@ namespace System
                     {
                         vectorBuffer[j] = span[j]?.GetHashCode() ?? 0;
                     }
+
+                    var originalLength = span.Length;
                     span = span.Slice(Vector<int>.Count);
 
                     var vectorAccumulator = vector * _scalarMultiplicator;
 
 
-                    for (var i = 1; i < span.Length / Vector<int>.Count; i++)
+                    for (var i = 1; i < originalLength / Vector<int>.Count; i++)
                     {
                         // Fill vectorBuffer
                         for (var j = 0; j < Vector<int>.Count; j++)
@@ -334,7 +341,7 @@ namespace System
 
             for (var i = 1; i <= Vector<int>.Count; i++)
             {
-                result[i] = result[i - 1] * _scalarMultiplicationValue;
+                result[i] = unchecked(result[i - 1] * _scalarMultiplicationValue);
             }
 
             return result;
@@ -351,12 +358,12 @@ namespace System
             var values = new int[Vector<int>.Count];
             values[Vector<int>.Count - 1] = 1;
 
-            for (var i = Vector<int>.Count - 2; i <= 0; i--)
+            for (var i = Vector<int>.Count - 2; i >= 0; i--)
             {
-                values[i] = values[i + 1] * _scalarMultiplicationValue;
+                values[i] = unchecked(values[i + 1] * _scalarMultiplicationValue);
             }
 
-            return new Vector<int>(values);
+           return new Vector<int>(values);
         }
 
         private static Vector<int> BuildVectorMultiplicator()

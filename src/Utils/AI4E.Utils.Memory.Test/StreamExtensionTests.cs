@@ -24,10 +24,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace AI4E.Utils.Memory.Test
+namespace AI4E.Utils.Memory
 {
     [TestClass]
-    public sealed class ReadExactStreamExtensionTests
+    public sealed class StreamExtensionTests
     {
         [TestMethod]
         public void DataAvailableAsyncTest()
