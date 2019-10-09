@@ -26,7 +26,7 @@ namespace AI4E.Messaging.Routing
                 result.Add(new Route(messageType));
             }
 
-            return new RouteHierarchy(result.MoveToImmutable());
+            return new RouteHierarchy(result.ToImmutable());
         }
 
         public static RouteHierarchy ResolveDefaults(DispatchDataDictionary dispatchData)

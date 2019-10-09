@@ -30,7 +30,7 @@ namespace AI4E.Messaging.Validation
                 result.Add(GetRoute(underlyingType));
             }
 
-            return new RouteHierarchy(result.MoveToImmutable());
+            return new RouteHierarchy(result.ToImmutable());
         }
 
         private static Route GetRoute(Type underlyingType)

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -162,6 +163,8 @@ namespace AI4E.Messaging.Routing
                 Route.Read(reader, out Unsafe.AsRef(routesBuilder.ItemRef(i)));
             }
 
+            Debug.Assert(routesBuilder.Capacity == routesBuilder.Count);
+            routesBuilder.Capacity = routesBuilder.Count;
             routeHierarchy = new RouteHierarchy(routesBuilder.MoveToImmutable());
         }
     }
