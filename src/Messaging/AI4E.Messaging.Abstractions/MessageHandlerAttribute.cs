@@ -45,6 +45,6 @@ namespace AI4E.Messaging
         /// <summary>
         /// Gets the type of message handled.
         /// </summary>
-        public Type MessageType { get; }
+        public Type? MessageType { get; }
     }
 }

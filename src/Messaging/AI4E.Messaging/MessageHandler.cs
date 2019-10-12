@@ -30,6 +30,9 @@ namespace AI4E.Messaging
     [MessageHandler]
     public abstract class MessageHandler
     {
+        // Make these properties oblivious
+#nullable disable
+
         /// <summary>
         /// Gets the message handler context.
         /// </summary>
@@ -41,6 +44,8 @@ namespace AI4E.Messaging
         /// </summary>
         [MessageDispatcher]
         public virtual IMessageDispatcher MessageDispatcher { get; set; }
+
+#nullable enable
 
         /// <summary>
         /// Returns a failure dispatch result.
@@ -181,6 +186,9 @@ namespace AI4E.Messaging
         [NoMessageHandler]
         public virtual EntityNotFoundDispatchResult EntityNotFound<TEntity>(object id)
         {
+            if (id is null)
+                throw new ArgumentNullException(nameof(id));
+
             return new EntityNotFoundDispatchResult(typeof(TEntity), id.ToString());
         }
 
@@ -233,6 +241,9 @@ namespace AI4E.Messaging
         [NoMessageHandler]
         public virtual EntityAlreadyPresentDispatchResult EntityAlreadyPresent<TEntity>(object id)
         {
+            if (id is null)
+                throw new ArgumentNullException(nameof(id));
+
             return new EntityAlreadyPresentDispatchResult(typeof(TEntity), id.ToString());
         }
 

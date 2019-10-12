@@ -31,7 +31,7 @@ namespace AI4E.Messaging
     {
 #pragma warning disable IDE0051
         [JsonConstructor]
-        private protected FailureDispatchResult(string message, Exception exception, IReadOnlyDictionary<string, object> resultData)
+        private protected FailureDispatchResult(string message, Exception exception, IReadOnlyDictionary<string, object?> resultData)
                     : base(false, exception != null ? FormatMessage(exception) : message, resultData)
         {
             Exception = exception;
@@ -46,7 +46,7 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
-        public FailureDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+        public FailureDispatchResult(string message, IReadOnlyDictionary<string, object?> resultData)
             : base(false, message, resultData)
         { }
 
@@ -85,7 +85,7 @@ namespace AI4E.Messaging
         /// <summary>
         /// Gets the exception that caused the message dispatch operation to fail.
         /// </summary>
-        public Exception Exception { get; }
+        public Exception? Exception { get; }
 
         /// <inheritdoc/>
         [JsonIgnore]

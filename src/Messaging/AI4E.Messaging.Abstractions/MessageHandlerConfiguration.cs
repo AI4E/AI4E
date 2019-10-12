@@ -21,6 +21,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace AI4E.Messaging
@@ -28,7 +29,9 @@ namespace AI4E.Messaging
     /// <summary>
     /// Represents the configuration of a message handler.
     /// </summary>
+#pragma warning disable CA1815
     public readonly struct MessageHandlerConfiguration
+#pragma warning restore CA1815
     {
         private readonly ImmutableDictionary<Type, object> _data;
 
@@ -40,11 +43,11 @@ namespace AI4E.Messaging
             _data = data;
         }
 
-        private bool TryGetConfiguration(Type configurationType, out object configuration)
+        private bool TryGetConfiguration(Type configurationType, [NotNullWhen(false)] out object? configuration)
         {
             Debug.Assert(configurationType != null);
 
-            if (!configurationType.IsOrdinaryClass())
+            if (!configurationType!.IsOrdinaryClass())
                 throw new ArgumentException("The specified type must be an ordinary reference type.", nameof(configurationType));
 
             if (_data == null)
@@ -53,7 +56,7 @@ namespace AI4E.Messaging
                 return false;
             }
 
-            if (!_data.TryGetValue(configurationType, out configuration))
+            if (!_data.TryGetValue(configurationType!, out configuration))
             {
                 configuration = null;
                 return false;
@@ -64,7 +67,7 @@ namespace AI4E.Messaging
                 return false;
             }
 
-            if (!configurationType.IsAssignableFrom(configuration.GetType()))
+            if (!configurationType!.IsAssignableFrom(configuration.GetType()))
             {
                 configuration = null;
                 return false;
@@ -81,11 +84,11 @@ namespace AI4E.Messaging
         /// <returns>True, if the operation is successful, false otherwise.</returns>
         /// <exception cref="ArgumentException">Thrown if <typeparamref name="TConfig"/> is not an ordinary reference type.</exception>
         public bool TryGetConfiguration<TConfig>(
-            out TConfig configuration)
+            [NotNullWhen(true)]out TConfig? configuration)
             where TConfig : class
         {
             configuration = default;
-            return TryGetConfiguration(typeof(TConfig), out Unsafe.As<TConfig, object>(ref configuration));
+            return TryGetConfiguration(typeof(TConfig), out Unsafe.As<TConfig, object>(ref configuration!)!);
         }
 
         /// <summary>

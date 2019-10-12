@@ -181,8 +181,6 @@ namespace AI4E.Storage.Projection
             return _descriptor.HasValue;
         }
 
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
-
         IProjection IProjectionRegistration.CreateProjection(IServiceProvider serviceProvider)
         {
             return CreateProjection(serviceProvider);
@@ -191,7 +189,5 @@ namespace AI4E.Storage.Projection
         Type IProjectionRegistration.SourceType => typeof(TSource);
 
         Type IProjectionRegistration.TargetType => typeof(TTarget);
-
-#endif
     }
 }

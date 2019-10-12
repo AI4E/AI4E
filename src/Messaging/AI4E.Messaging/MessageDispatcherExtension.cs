@@ -130,7 +130,7 @@ namespace AI4E.Messaging
             DispatchDataDictionary dispatchData,
             bool publish,
             bool retryOnFailure,
-            ILogger logger)
+            ILogger? logger)
         {
             // Assuming the argument are already checked.
 
@@ -144,7 +144,9 @@ namespace AI4E.Messaging
                 }
                 while (!dispatchResult.IsSuccess && retryOnFailure);
             }
+#pragma warning disable CA1031
             catch (Exception exc)
+#pragma warning restore CA1031
             {
                 ExceptionHelper.LogException(exc, logger);
             }
@@ -164,12 +166,14 @@ namespace AI4E.Messaging
             DispatchDataDictionary dispatchData,
             bool publish,
             bool retryOnFailure = true,
-            ILogger logger = null)
+            ILogger? logger = null)
         {
             if (dispatchData == null)
                 throw new ArgumentNullException(nameof(dispatchData));
 
+#pragma warning disable CA1062
             DispatchInternal(messageDispatcher, dispatchData, publish, retryOnFailure, logger);
+#pragma warning restore CA1062
         }
 
         /// <summary>
@@ -188,10 +192,10 @@ namespace AI4E.Messaging
         public static void Dispatch<TMessage>(
             this IMessageDispatcher messageDispatcher,
             TMessage message,
-            IEnumerable<KeyValuePair<string, object>> data,
+            IEnumerable<KeyValuePair<string, object?>> data,
             bool publish = false,
             bool retryOnFailure = true,
-            ILogger logger = null)
+            ILogger? logger = null)
             where TMessage : class
         {
             if (message == null)
@@ -200,7 +204,9 @@ namespace AI4E.Messaging
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
+#pragma warning disable CA1062
             DispatchInternal(messageDispatcher, new DispatchDataDictionary<TMessage>(message, data), publish, retryOnFailure, logger);
+#pragma warning restore CA1062
         }
 
         /// <summary>
@@ -220,13 +226,15 @@ namespace AI4E.Messaging
             TMessage message,
             bool publish = false,
             bool retryOnFailure = true,
-            ILogger logger = null)
+            ILogger? logger = null)
              where TMessage : class
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
+#pragma warning disable CA1062
             DispatchInternal(messageDispatcher, new DispatchDataDictionary<TMessage>(message), publish, retryOnFailure, logger);
+#pragma warning restore CA1062
         }
     }
 }

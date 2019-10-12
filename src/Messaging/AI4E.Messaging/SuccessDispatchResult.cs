@@ -104,7 +104,7 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="result"/> is null.</exception>
         public static SuccessDispatchResult FromResult(object result)
         {
-            return FromResult(result.GetType(), result, DefaultMessage, ImmutableDictionary<string, object>.Empty);
+            return FromResult(result?.GetType()!, result!, DefaultMessage, ImmutableDictionary<string, object>.Empty);
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace AI4E.Messaging
         /// </exception>
         public static SuccessDispatchResult FromResult(object result, string message, IReadOnlyDictionary<string, object> resultData)
         {
-            return FromResult(result.GetType(), result, message, resultData);
+            return FromResult(result?.GetType()!, result!, message, resultData);
         }
 
         /// <summary>
@@ -150,7 +150,7 @@ namespace AI4E.Messaging
         /// Thrown if any of <paramref name="result"/>,
         /// <paramref name="message"/> or <paramref name="resultData"/> is null.
         /// </exception>
-        public static SuccessDispatchResult<TResult> FromResult<TResult>(TResult result, string message, IReadOnlyDictionary<string, object> resultData)
+        public static SuccessDispatchResult<TResult> FromResult<TResult>(TResult result, string message, IReadOnlyDictionary<string, object?> resultData)
         {
             if (result == null)
                 throw new ArgumentNullException(nameof(result));
@@ -200,7 +200,7 @@ namespace AI4E.Messaging
         /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
         [JsonConstructor]
-        public SuccessDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+        public SuccessDispatchResult(string message, IReadOnlyDictionary<string, object?> resultData)
             : base(true, message, resultData) { }
 
         /// <summary>
@@ -209,7 +209,7 @@ namespace AI4E.Messaging
         /// <param name="message">A message describing the message dispatch result.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="message"/> is <c>null</c>.</exception>
         public SuccessDispatchResult(string message)
-            : this(message, ImmutableDictionary<string, object>.Empty) { }
+            : this(message, ImmutableDictionary<string, object?>.Empty) { }
 
         /// <summary>
         /// Creates a new instance of the <see cref="SuccessDispatchResult"/> type.
@@ -240,7 +240,7 @@ namespace AI4E.Messaging
         /// Thrown if any of <paramref name="result"/>, <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
         [JsonConstructor]
-        public SuccessDispatchResult(TResult result, string message, IReadOnlyDictionary<string, object> resultData) : base(message, resultData)
+        public SuccessDispatchResult(TResult result, string message, IReadOnlyDictionary<string, object?> resultData) : base(message, resultData)
         {
             if (result == null)
                 throw new ArgumentNullException(nameof(result));
@@ -280,7 +280,7 @@ namespace AI4E.Messaging
             base.FormatString(stringBuilder);
 
             stringBuilder.Append("[Result: ");
-            stringBuilder.Append(Result.ToString());
+            stringBuilder.Append(Result!.ToString());
             stringBuilder.Append("]");
         }
     }

@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using AI4E.Utils;
 using Newtonsoft.Json;
 
@@ -38,7 +39,7 @@ namespace AI4E.Messaging
             string entityTypeName,
             string id,
             string message,
-            IReadOnlyDictionary<string, object> resultData)
+            IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
         {
             EntityTypeName = entityTypeName;
@@ -66,7 +67,7 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
-        public EntityNotFoundDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+        public EntityNotFoundDispatchResult(string message, IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
         { }
 
@@ -76,9 +77,9 @@ namespace AI4E.Messaging
         /// <param name="entityType">The type of resource that was not found.</param>
         /// <param name="id">The stringified id of resource that was not found.</param>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if either <paramref name="entityType"/> or <paramref name="id"/> is null.
+        /// Thrown if <paramref name="entityType"/> is null.
         /// </exception>
-        public EntityNotFoundDispatchResult(Type entityType, string id)
+        public EntityNotFoundDispatchResult(Type entityType, string? id)
             : base(FormatDefaultMessage(entityType, id))
         {
             EntityTypeName = entityType.GetUnqualifiedTypeName();
@@ -96,13 +97,13 @@ namespace AI4E.Messaging
             EntityTypeName = entityType.GetUnqualifiedTypeName();
         }
 
-        private static string FormatDefaultMessage(Type entityType, string id)
+        private static string FormatDefaultMessage(Type entityType, string? id)
         {
+            if (id == null)
+                return FormatDefaultMessage(entityType);
+
             if (entityType == null)
                 throw new ArgumentNullException(nameof(entityType));
-
-            if (id == null)
-                throw new ArgumentNullException(nameof(id));
 
             return $"An entity of type'{entityType}' with the id '{id}' cannot be not found.";
         }
@@ -118,19 +119,19 @@ namespace AI4E.Messaging
         /// <summary>
         /// Gets the unqualified type-name of resource that was not found.
         /// </summary>
-        public string EntityTypeName { get; }
+        public string? EntityTypeName { get; }
 
         /// <summary>
         /// Gets the stringified id of resource that was not found.
         /// </summary>
-        public string Id { get; }
+        public string? Id { get; }
 
         /// <summary>
         /// Tries to load the type of resource that was not found.
         /// </summary>
         /// <param name="entityType">Contains the resource type if the call is succeeds.</param>
         /// <returns>True if the call suceeded, false otherwise.</returns>
-        public bool TryGetEntityType(out Type entityType)
+        public bool TryGetEntityType([NotNullWhen(true)] out Type? entityType)
         {
             if (EntityTypeName == null)
             {

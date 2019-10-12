@@ -65,7 +65,7 @@ namespace AI4E.Messaging.Validation
         /// <summary>
         /// Gets the member whose validation failed or null if no member is specified.
         /// </summary>
-        public string Member { get; }
+        public string? Member { get; }
 
         /// <summary>
         /// Gets a message describing the validation failure.
@@ -77,7 +77,7 @@ namespace AI4E.Messaging.Validation
         /// </summary>
         /// <param name="obj">The object that shall be compared the the current validation result.</param>
         /// <returns>True if <paramref name="obj"/> is a <see cref="ValidationResult"/> and equals the current one, false otherwise.</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is ValidationResult validationResult && validationResult.Equals(this);
         }
@@ -99,10 +99,7 @@ namespace AI4E.Messaging.Validation
         /// <returns>A hash code for the current validation result.</returns>
         public override int GetHashCode()
         {
-            if (Member == null)
-                return Message.GetHashCode();
-
-            return Member.GetHashCode() ^ Message.GetHashCode();
+            return (Member, Message).GetHashCode();
         }
 
         /// <summary>

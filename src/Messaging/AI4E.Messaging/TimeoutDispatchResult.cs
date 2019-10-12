@@ -37,7 +37,7 @@ namespace AI4E.Messaging
         private TimeoutDispatchResult(
             DateTime? dueTime,
             string message,
-            IReadOnlyDictionary<string, object> resultData)
+            IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
         {
             DueTime = dueTime;
@@ -65,7 +65,7 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
-        public TimeoutDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+        public TimeoutDispatchResult(string message, IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
         { }
 

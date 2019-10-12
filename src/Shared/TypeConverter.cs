@@ -38,7 +38,7 @@ namespace AI4E.Internal
                 return TypeLoadHelper.LoadTypeFromUnqualifiedName(unqualifiedTypeName);
             }
 
-            return null;
+            throw new JsonSerializationException();
         }
     }
 }

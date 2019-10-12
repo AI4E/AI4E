@@ -48,7 +48,7 @@ namespace AI4E.Messaging
         public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(
             this IMessageDispatcher messageDispatcher,
             TMessage message,
-            IEnumerable<KeyValuePair<string, object>> data,
+            IEnumerable<KeyValuePair<string, object?>> data,
             CancellationToken cancellation = default)
             where TMessage : class
         {
@@ -134,7 +134,7 @@ namespace AI4E.Messaging
         public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(
             this IMessageDispatcher messageDispatcher,
             TMessage message,
-            IEnumerable<KeyValuePair<string, object>> data,
+            IEnumerable<KeyValuePair<string, object?>> data,
             bool publish,
             CancellationToken cancellation = default)
             where TMessage : class

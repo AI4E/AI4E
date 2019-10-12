@@ -153,19 +153,8 @@ namespace AI4E.Messaging.Validation
             IMessageHandlerRegistration handlerRegistration,
             CancellationToken cancellation)
         {
-            if (!(dispatchData.Message is TMessage))
-                throw new InvalidOperationException(
-                    $"Cannot dispatch a message of type '{dispatchData.MessageType}' to " +
-                    $"a handler that handles messages of type '{typeof(TMessage)}'.");
-
-            if (!(dispatchData is DispatchDataDictionary<TMessage> typedDispatchData))
-            {
-                typedDispatchData = new DispatchDataDictionary<TMessage>(
-                    dispatchData.Message as TMessage, dispatchData);
-            }
-
             return InvokeValidationAsync(
-                typedDispatchData, publish, localDispatch, handlerRegistration, cancellation);
+                 dispatchData.As<TMessage>(), publish, localDispatch, handlerRegistration, cancellation);
         }
 
         /// <summary>

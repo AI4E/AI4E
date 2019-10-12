@@ -21,7 +21,7 @@ namespace AI4E.Messaging.Routing
 
             var result = ImmutableArray.CreateBuilder<Route>();
 
-            for (; messageType != null; messageType = messageType.BaseType)
+            for (; messageType != null; messageType = messageType.BaseType!)
             {
                 result.Add(new Route(messageType));
             }

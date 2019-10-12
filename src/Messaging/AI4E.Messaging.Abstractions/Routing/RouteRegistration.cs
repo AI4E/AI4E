@@ -17,7 +17,7 @@ namespace AI4E.Messaging.Routing
         public Route Route { get; }
         public RouteRegistrationOptions RegistrationOptions { get; }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is RouteRegistration routeRegistration && Equals(routeRegistration);
         }

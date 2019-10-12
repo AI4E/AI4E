@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Collections.Generic;
 using AI4E.Internal;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -31,22 +32,28 @@ namespace AI4E.Messaging
         public void CreateMessageTypeTest()
         {
             var dispatchResult = new DispatchFailureDispatchResult(typeof(string));
+            var canLoadMessageType = dispatchResult.TryGetMessageType(out var messageType);
 
             Assert.IsFalse(dispatchResult.IsSuccess);
             Assert.AreEqual($"The message of type '{typeof(string)}' cannot be dispatched.", dispatchResult.Message);
             Assert.AreEqual(0, dispatchResult.ResultData.Count);
-            Assert.AreSame(typeof(string), dispatchResult.MessageType);
+            Assert.IsTrue(canLoadMessageType);
+            Assert.AreSame(typeof(string), messageType);
+            Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), dispatchResult.MessageTypeName);
         }
 
         [TestMethod]
         public void CreateMessageTypeAndMessageTest()
         {
             var dispatchResult = new DispatchFailureDispatchResult(typeof(string), "DispatchResultMessage");
+            var canLoadMessageType = dispatchResult.TryGetMessageType(out var messageType);
 
             Assert.IsFalse(dispatchResult.IsSuccess);
             Assert.AreEqual("DispatchResultMessage", dispatchResult.Message);
             Assert.AreEqual(0, dispatchResult.ResultData.Count);
-            Assert.AreSame(typeof(string), dispatchResult.MessageType);
+            Assert.IsTrue(canLoadMessageType);
+            Assert.AreSame(typeof(string), messageType);
+            Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), dispatchResult.MessageTypeName);
         }
 
         [TestMethod]
@@ -58,13 +65,16 @@ namespace AI4E.Messaging
                 ["xyz"] = 1234L
             };
             var dispatchResult = new DispatchFailureDispatchResult(typeof(string), "DispatchResultMessage", resultData);
+            var canLoadMessageType = dispatchResult.TryGetMessageType(out var messageType);
 
             Assert.IsFalse(dispatchResult.IsSuccess);
             Assert.AreEqual("DispatchResultMessage", dispatchResult.Message);
             Assert.AreEqual(2, dispatchResult.ResultData.Count);
             Assert.AreEqual("def", dispatchResult.ResultData["abc"]);
             Assert.AreEqual(1234L, dispatchResult.ResultData["xyz"]);
-            Assert.AreSame(typeof(string), dispatchResult.MessageType);
+            Assert.IsTrue(canLoadMessageType);
+            Assert.AreSame(typeof(string), messageType);
+            Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), dispatchResult.MessageTypeName);
         }
 
         [TestMethod]
@@ -78,13 +88,16 @@ namespace AI4E.Messaging
 
             var dispatchResult = new DispatchFailureDispatchResult(typeof(string), "DispatchResultMessage", resultData);
             var deserializedResult = Serializer.Roundtrip(dispatchResult);
+            var canLoadMessageType = deserializedResult.TryGetMessageType(out var messageType);
 
             Assert.IsFalse(deserializedResult.IsSuccess);
             Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);
             Assert.AreEqual(2, deserializedResult.ResultData.Count);
             Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
             Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
-            Assert.AreSame(typeof(string), deserializedResult.MessageType);
+            Assert.IsTrue(canLoadMessageType);
+            Assert.AreSame(typeof(string), messageType);
+            Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.MessageTypeName);
         }
 
         [TestMethod]
@@ -98,13 +111,16 @@ namespace AI4E.Messaging
 
             var dispatchResult = new DispatchFailureDispatchResult(typeof(string), "DispatchResultMessage", resultData);
             var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult);
+            var canLoadMessageType = deserializedResult.TryGetMessageType(out var messageType);
 
             Assert.IsFalse(deserializedResult.IsSuccess);
             Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);
             Assert.AreEqual(2, deserializedResult.ResultData.Count);
             Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
             Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
-            Assert.AreSame(typeof(string), deserializedResult.MessageType);
+            Assert.IsTrue(canLoadMessageType);
+            Assert.AreSame(typeof(string), messageType);
+            Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.MessageTypeName);
         }
     }
 }

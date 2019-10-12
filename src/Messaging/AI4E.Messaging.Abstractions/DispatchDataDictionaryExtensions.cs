@@ -27,15 +27,16 @@ namespace AI4E.Messaging
         public static DispatchDataDictionary<TMessage> As<TMessage>(this DispatchDataDictionary dispatchData)
             where TMessage : class
         {
-            if (!(dispatchData.Message is TMessage))
+#pragma warning disable CA1062
+            if (!(dispatchData.Message is TMessage message))
+#pragma warning restore CA1062
                 throw new InvalidOperationException(
                     $"Cannot dispatch a message of type '{dispatchData.MessageType}' to " +
                     $"a handler that handles messages of type '{typeof(TMessage)}'.");
 
             if (!(dispatchData is DispatchDataDictionary<TMessage> typedDispatchData))
             {
-                typedDispatchData = new DispatchDataDictionary<TMessage>(
-                    dispatchData.Message as TMessage, dispatchData);
+                typedDispatchData = new DispatchDataDictionary<TMessage>(message, dispatchData);
             }
 
             return typedDispatchData;

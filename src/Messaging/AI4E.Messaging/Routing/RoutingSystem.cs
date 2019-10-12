@@ -12,15 +12,15 @@ namespace AI4E.Messaging.Routing
 {
     public sealed class RoutingSystem : IRoutingSystem
     {
-        private readonly ILoggerFactory _loggerFactory;
-        private readonly ILogger<RoutingSystem> _logger;
+        private readonly ILoggerFactory? _loggerFactory;
+        private readonly ILogger<RoutingSystem>? _logger;
 
         private readonly Dictionary<RouteEndPointAddress, RouteEndPoint> _endPoints;
         private readonly object _endPointsLock = new object();
 
         private readonly AsyncDisposeHelper _disposeHelper;
 
-        public RoutingSystem(ILoggerFactory loggerFactory = null)
+        public RoutingSystem(ILoggerFactory? loggerFactory = null)
         {
             _loggerFactory = loggerFactory;
             _logger = loggerFactory?.CreateLogger<RoutingSystem>();
@@ -29,7 +29,7 @@ namespace AI4E.Messaging.Routing
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Synchronize);
         }
 
-        public async ValueTask<IRouteEndPoint> GetEndPointAsync(RouteEndPointAddress endPoint,
+        public async ValueTask<IRouteEndPoint?> GetEndPointAsync(RouteEndPointAddress endPoint,
             CancellationToken cancellation)
         {
             if (endPoint == default)
@@ -84,7 +84,7 @@ namespace AI4E.Messaging.Routing
 
         #endregion
 
-        private async ValueTask<RouteEndPoint> GetEndPointInternalAsync(
+        private async ValueTask<RouteEndPoint?> GetEndPointInternalAsync(
             RouteEndPointAddress endPoint, CancellationToken cancellation)
         {
             try
@@ -95,7 +95,7 @@ namespace AI4E.Messaging.Routing
                 {
                     if (!_endPoints.TryGetValue(endPoint, out var result))
                     {
-                        result = null;
+                        result = null!;
                     }
 
                     return result;
@@ -110,7 +110,7 @@ namespace AI4E.Messaging.Routing
         private sealed class RouteEndPoint : IRouteEndPoint
         {
             private readonly RoutingSystem _routingSystem;
-            private readonly ILogger<RouteEndPoint> _logger;
+            private readonly ILogger<RouteEndPoint>? _logger;
 
             private readonly AsyncProducerConsumerQueue<RouteEndPointReceiveResult> _messages
                 = new AsyncProducerConsumerQueue<RouteEndPointReceiveResult>();
@@ -120,7 +120,7 @@ namespace AI4E.Messaging.Routing
             public RouteEndPoint(
                 RoutingSystem routingSystem,
                 RouteEndPointAddress endPoint,
-                ILogger<RouteEndPoint> logger)
+                ILogger<RouteEndPoint>? logger)
             {
                 _routingSystem = routingSystem;
                 EndPoint = endPoint;

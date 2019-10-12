@@ -22,6 +22,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
@@ -36,10 +37,14 @@ namespace AI4E.Messaging
     {
         [JsonProperty("ResultData")]
 #pragma warning disable IDE0052 // This is needed to support serialization.
-        private readonly ImmutableDictionary<string, object> _resultData;
+        private readonly ImmutableDictionary<string, object?>? _resultData;
 #pragma warning restore IDE0052 
 
-        private protected DispatchResult() { }
+        private protected DispatchResult()
+        {
+            Message = null!;
+            ResultData = null!;
+        }
 
         /// <summary>
         /// Creates a new instance of the <see cref="DispatchResult"/> type.
@@ -51,7 +56,7 @@ namespace AI4E.Messaging
         /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
         [JsonConstructor]
-        public DispatchResult(bool isSuccess, string message, IReadOnlyDictionary<string, object> resultData)
+        public DispatchResult(bool isSuccess, string message, IReadOnlyDictionary<string, object?> resultData)
         {
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
@@ -62,16 +67,15 @@ namespace AI4E.Messaging
             IsSuccess = isSuccess;
             Message = message;
 
-            if (!(resultData is ImmutableDictionary<string, object> immutableData))
+            if (!(resultData is ImmutableDictionary<string, object?> immutableData))
             {
                 immutableData = resultData.ToImmutableDictionary();
             }
 
             Assert(immutableData != null);
-            _resultData = immutableData;
+            _resultData = immutableData!;
 
-
-            ResultData = new DispatchResultDictionary(immutableData);
+            ResultData = new DispatchResultDictionary(immutableData!);
         }
 
         /// <summary>
@@ -81,7 +85,7 @@ namespace AI4E.Messaging
         /// <param name="message">A message describing the message dispatch result.</param>
         /// <exception cref="ArgumentNullException"> Thrown if <paramref name="message"/> is <c>null</c>. </exception>
         public DispatchResult(bool isSuccess, string message)
-            : this(isSuccess, message, ImmutableDictionary<string, object>.Empty)
+            : this(isSuccess, message, ImmutableDictionary<string, object?>.Empty)
         { }
 
         /// <inheritdoc />
@@ -92,7 +96,7 @@ namespace AI4E.Messaging
 
         /// <inheritdoc />
         [JsonIgnore]
-        public virtual IReadOnlyDictionary<string, object> ResultData { get; }
+        public virtual IReadOnlyDictionary<string, object?> ResultData { get; }
 
         /// <inheritdoc />
         public sealed override string ToString()
@@ -108,6 +112,9 @@ namespace AI4E.Messaging
         /// <param name="stringBuilder">A <see cref="StringBuilder"/> that contains the formatted dispatch result.</param>
         protected virtual void FormatString(StringBuilder stringBuilder)
         {
+            if (stringBuilder is null)
+                throw new ArgumentNullException(nameof(stringBuilder));
+
             stringBuilder.Append("Success: ");
             stringBuilder.Append(IsSuccess ? "true" : "false");
 
@@ -119,16 +126,16 @@ namespace AI4E.Messaging
             }
         }
 
-        private sealed class DispatchResultDictionary : IReadOnlyDictionary<string, object>
+        private sealed class DispatchResultDictionary : IReadOnlyDictionary<string, object?>
         {
-            private readonly ImmutableDictionary<string, object> _data;
+            private readonly ImmutableDictionary<string, object?> _data;
 
-            public DispatchResultDictionary(ImmutableDictionary<string, object> data)
+            public DispatchResultDictionary(ImmutableDictionary<string, object?> data)
             {
                 _data = data;
             }
 
-            public object this[string key]
+            public object? this[string key]
             {
                 get
                 {
@@ -149,7 +156,7 @@ namespace AI4E.Messaging
 
             public IEnumerable<string> Keys => _data?.Keys ?? Enumerable.Empty<string>();
 
-            public IEnumerable<object> Values => _data?.Values ?? Enumerable.Empty<object>();
+            public IEnumerable<object?> Values => _data?.Values ?? Enumerable.Empty<object>();
 
             public int Count => _data?.Count ?? 0;
 
@@ -158,7 +165,7 @@ namespace AI4E.Messaging
                 return key != null && _data != null && _data.ContainsKey(key);
             }
 
-            public bool TryGetValue(string key, out object value)
+            public bool TryGetValue(string key, [NotNullWhen(true)] out object? value)
             {
                 if (key == null || _data == null)
                 {
@@ -169,9 +176,17 @@ namespace AI4E.Messaging
                 return _data.TryGetValue(key, out value);
             }
 
-            public IEnumerator<KeyValuePair<string, object>> GetEnumerator()
+            public Enumerator GetEnumerator()
             {
-                var enumerable = _data as IEnumerable<KeyValuePair<string, object>> ?? Enumerable.Empty<KeyValuePair<string, object>>();
+                if (_data is null)
+                    return default;
+
+                return new Enumerator(_data.GetEnumerator());
+            }
+
+            IEnumerator<KeyValuePair<string, object?>> IEnumerable<KeyValuePair<string, object?>>.GetEnumerator()
+            {
+                var enumerable = _data as IEnumerable<KeyValuePair<string, object?>> ?? Enumerable.Empty<KeyValuePair<string, object?>>();
 
                 return enumerable.GetEnumerator();
             }
@@ -179,6 +194,36 @@ namespace AI4E.Messaging
             IEnumerator IEnumerable.GetEnumerator()
             {
                 return GetEnumerator();
+            }
+
+            public struct Enumerator : IEnumerator<KeyValuePair<string, object?>>, IEnumerator
+            {
+                // This MUST NOT be marked readonly, to allow the compiler to access this field by reference.
+                private ImmutableDictionary<string, object?>.Enumerator _underlying;
+
+                public Enumerator(ImmutableDictionary<string, object?>.Enumerator underlying)
+                {
+                    _underlying = underlying;
+                }
+
+                public KeyValuePair<string, object?> Current => _underlying.Current;
+
+                object IEnumerator.Current => Current;
+
+                public void Dispose()
+                {
+                    _underlying.Dispose();
+                }
+
+                public bool MoveNext()
+                {
+                    return _underlying.MoveNext();
+                }
+
+                public void Reset()
+                {
+                    _underlying.Reset();
+                }
             }
         }
     }

@@ -201,7 +201,6 @@ namespace AI4E.Storage.Projection
             //       At least, we have to log a warning.
         }
 
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
         Type IProjection.SourceType => typeof(TSource);
         Type IProjection.TargetType => typeof(TTarget);
 
@@ -209,6 +208,5 @@ namespace AI4E.Storage.Projection
         {
             return ProjectAsync(source as TSource, cancellation);
         }
-#endif
     }
 }

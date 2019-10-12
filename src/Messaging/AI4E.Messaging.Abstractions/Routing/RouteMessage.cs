@@ -1,14 +1,16 @@
 
 using System;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using AI4E.Utils.Messaging.Primitives;
 
 namespace AI4E.Messaging.Routing
 {
-    public readonly struct RouteMessage<TOriginal>
+    public readonly struct RouteMessage<TOriginal> : IEquatable<RouteMessage<TOriginal>>
         where TOriginal : class
     {
-        private readonly TOriginal _original;
-        private readonly Func<TOriginal, Message> _serialization;
+        private readonly TOriginal? _original;
+        private readonly Func<TOriginal, Message>? _serialization;
         private readonly Message _message;
 
         public RouteMessage(TOriginal original, Func<TOriginal, Message> serialization)
@@ -47,17 +49,58 @@ namespace AI4E.Messaging.Routing
             _message = message;
         }
 
-        public Message Message => _serialization?.Invoke(_original) ?? _message;
+        public Message Message
+        {
+            get
+            {
+                // If _serialization is available, _original must be available too.
+                Debug.Assert(_original != null || _serialization == null);
 
-        public bool TryGetOriginalMessage(out TOriginal original)
+                return _serialization?.Invoke(_original!) ?? _message;
+            }
+        }
+
+        public bool TryGetOriginal([NotNullWhen(true)] out TOriginal? original)
         {
             original = _original;
             return original != null;
         }
 
-        public bool IsDefault()
+        public bool Equals(RouteMessage<TOriginal> other)
         {
-            return _serialization is null && _message == default;
+            return Equals(in other);
+        }
+
+        public bool Equals(in RouteMessage<TOriginal> other)
+        {
+            // Optimize the common case
+            if (_message == default && _original is null) // this is the default value.
+            {
+                return other._message == default && other._original is null;
+            }
+
+            return Message == other.Message;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is RouteMessage<TOriginal> routeMessage &&
+                Equals(in routeMessage);
+        }
+
+        public override int GetHashCode()
+        {
+            return Message.GetHashCode();
+        }
+
+        public static bool operator ==(in RouteMessage<TOriginal> left, in RouteMessage<TOriginal> right)
+        {
+            return left.Equals(in right);
+        }
+
+        public static bool operator !=(in RouteMessage<TOriginal> left, in RouteMessage<TOriginal> right)
+        {
+            return !left.Equals(in right);
         }
     }
 }

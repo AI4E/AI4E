@@ -42,9 +42,9 @@ namespace AI4E.Messaging.Validation
             var invoker = HandlerActionInvoker.GetInvoker(descriptor.Member);
             var returnTypeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(descriptor.Member.ReturnType);
 
-            ValidationResultsBuilder validationResultsBuilder = null;
+            ValidationResultsBuilder? validationResultsBuilder = null;
 
-            object ResolveParameter(ParameterInfo parameter)
+            object? ResolveParameter(ParameterInfo parameter)
             {
                 if (parameter.ParameterType == typeof(IServiceProvider))
                 {
@@ -97,10 +97,8 @@ namespace AI4E.Messaging.Validation
                     (IEnumerable<ValidationResult>)result);
             }
 
-            if (typeof(ValidationResult) == returnTypeDescriptor.ResultType)
+            if (typeof(ValidationResult) == returnTypeDescriptor.ResultType && result is ValidationResult validationResult)
             {
-                var validationResult = (ValidationResult)result;
-
                 if (validationResult == default)
                     return validationResultsBuilder?.GetValidationResults() ?? Enumerable.Empty<ValidationResult>();
 

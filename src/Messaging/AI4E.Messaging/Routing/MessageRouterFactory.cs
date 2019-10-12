@@ -10,14 +10,14 @@ namespace AI4E.Messaging.Routing
     {
         private readonly IRouteManager _routeManager;
         private readonly IRoutingSystem _routingSystem;
-        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILoggerFactory? _loggerFactory;
 
         private readonly MessagingOptions _options;
 
         public MessageRouterFactory(IRouteManager routeManager,
                                     IRoutingSystem routingSystem,
                                     IOptions<MessagingOptions> optionsProvider,
-                                    ILoggerFactory loggerFactory = null)
+                                    ILoggerFactory? loggerFactory = null)
         {
             if (routeManager is null)
                 throw new ArgumentNullException(nameof(routeManager));

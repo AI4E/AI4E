@@ -35,7 +35,7 @@ namespace AI4E.Messaging.MessageHandlers
     public sealed class HandlerActionInvoker
     {
         private static readonly ConcurrentDictionary<MethodInfo, HandlerActionInvoker> _cache = new ConcurrentDictionary<MethodInfo, HandlerActionInvoker>();
-        private readonly Func<object, object, Func<ParameterInfo, object>, object> _invoker;
+        private readonly Func<object, object?, Func<ParameterInfo, object?>, object?> _invoker;
 
         private HandlerActionInvoker(MethodInfo method)
         {
@@ -91,7 +91,7 @@ namespace AI4E.Messaging.MessageHandlers
         /// Thrown if <paramref name="instance"/> is not assignable to the actions declaring type is the type
         /// or <paramref name="argument"/> is not assignable to the actions first parameter type.
         /// </exception>
-        public async ValueTask<object> InvokeAsync(object instance, object argument, Func<ParameterInfo, object> parameterResolver)
+        public async ValueTask<object?> InvokeAsync(object instance, object? argument, Func<ParameterInfo, object?> parameterResolver)
         {
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
@@ -99,7 +99,7 @@ namespace AI4E.Messaging.MessageHandlers
             if (parameterResolver == null)
                 throw new ArgumentNullException(nameof(parameterResolver));
 
-            if (!Method.DeclaringType.IsAssignableFrom(instance.GetType()))
+            if (!Method.DeclaringType!.IsAssignableFrom(instance.GetType()))
                 throw new ArgumentException($"The argument must be of type '{Method.DeclaringType.ToString()}' or an assignable type in order to be used as instance.", nameof(instance));
 
             if (FirstParameterType != typeof(void) && !(argument is null) && !FirstParameterType.IsAssignableFrom(argument.GetType()))
@@ -107,18 +107,18 @@ namespace AI4E.Messaging.MessageHandlers
 
             var result = _invoker(instance, argument, parameterResolver);
 
-            if (ReturnTypeDescriptor.IsAwaitable)
+            if (ReturnTypeDescriptor.IsAwaitable && result != null)
             {
                 Debug.Assert(result != null);
 
-                result = await ReturnTypeDescriptor.GetAwaitable(result);
+                result = await ReturnTypeDescriptor.GetAwaitable(result!);
             }
 
             AssertLegalResult(result);
             return result;
         }
 
-        private void AssertLegalResult(object result)
+        private void AssertLegalResult(object? result)
         {
             var returnType = ReturnTypeDescriptor.ResultType;
             Debug.Assert(result == null && (IsNullable(returnType) || returnType == typeof(void)) ||
@@ -139,7 +139,7 @@ namespace AI4E.Messaging.MessageHandlers
         //     object,                      -> First argument
         //     Func<ParameterInfo, object>, -> Parameter resolver
         //     object>                      -> Return value (null in case of void result)
-        private static Func<object, object, Func<ParameterInfo, object>, object> BuildInvoker(MethodInfo method, Type firstParameterType)
+        private static Func<object, object?, Func<ParameterInfo, object?>, object?> BuildInvoker(MethodInfo method, Type firstParameterType)
         {
             var instance = Expression.Parameter(typeof(object), "instance");
             var convertedInstance = Expression.Convert(instance, method.DeclaringType);
@@ -169,7 +169,7 @@ namespace AI4E.Messaging.MessageHandlers
                 var resolveParameterMethod = typeof(HandlerActionInvoker).GetMethod(nameof(ResolveParameter), BindingFlags.Static | BindingFlags.NonPublic);
 
                 var firstArgument = Expression.Parameter(typeof(object), "firstArgument");
-                var convertedFirstArgument = Expression.Convert(firstArgument, firstParameterType);
+                var convertedFirstArgument = Expression.Convert(firstArgument, firstParameterType); // TODO: Null-check the first argument
                 var parameterResolver = Expression.Parameter(typeof(Func<ParameterInfo, object>), "parameterResolver");
 
                 var arguments = new Expression[parameters.Length];
@@ -187,14 +187,14 @@ namespace AI4E.Messaging.MessageHandlers
 
                 if (method.ReturnType == typeof(void))
                 {
-                    var expression = Expression.Lambda<Action<object, object, Func<ParameterInfo, object>>>(methodCall, instance, firstArgument, parameterResolver);
+                    var expression = Expression.Lambda<Action<object, object?, Func<ParameterInfo, object?>>>(methodCall, instance, firstArgument, parameterResolver);
                     var compiledExpression = expression.Compile();
 
                     return (obj, firstArg, paramResolver) => { compiledExpression(obj, firstArg, paramResolver); return null; };
                 }
                 else
                 {
-                    var expression = Expression.Lambda<Func<object, object, Func<ParameterInfo, object>, object>>(Expression.Convert(methodCall, typeof(object)), instance, firstArgument, parameterResolver);
+                    var expression = Expression.Lambda<Func<object, object?, Func<ParameterInfo, object?>, object?>>(Expression.Convert(methodCall, typeof(object)), instance, firstArgument, parameterResolver);
                     return expression.Compile();
                 }
             }

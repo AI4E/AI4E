@@ -16,7 +16,7 @@ namespace AI4E.Messaging.Routing
             RouteRegistration routeRegistration,
             CancellationToken cancellation = default)
         {
-            RouteManagerEntry entry;
+            RouteManagerEntry? entry;
 
             lock (_lock)
             {
@@ -38,7 +38,7 @@ namespace AI4E.Messaging.Routing
             Route route,
             CancellationToken cancellation = default)
         {
-            RouteManagerEntry entry;
+            RouteManagerEntry? entry;
 
             lock (_lock)
             {
@@ -76,7 +76,7 @@ namespace AI4E.Messaging.Routing
             Route route,
             CancellationToken cancellation = default)
         {
-            RouteManagerEntry entry;
+            RouteManagerEntry? entry;
 
             lock (_lock)
             {

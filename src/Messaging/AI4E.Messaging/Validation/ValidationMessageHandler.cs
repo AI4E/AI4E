@@ -19,6 +19,7 @@
  */
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -94,7 +95,7 @@ namespace AI4E.Messaging.Validation
                     }
                 }
             }
-            while (!currType.IsInterface && (currType = currType.BaseType) != null);
+            while (!currType.IsInterface && (currType = currType.BaseType!) != null);
 
             return new ValueTask<IDispatchResult>(
                 new DispatchFailureDispatchResult(dispatchData.MessageType));
@@ -130,7 +131,7 @@ namespace AI4E.Messaging.Validation
             if (builder.Services.Any(p => p.ServiceType == typeof(ValidationMessageHandlerMarker)))
                 return;
 
-            builder.Services.AddSingleton<ValidationMessageHandlerMarker>(_ => null);
+            builder.Services.AddSingleton<ValidationMessageHandlerMarker>(_ => null!);
             builder.ConfigureMessageHandlers(Configure);
         }
 
@@ -138,7 +139,7 @@ namespace AI4E.Messaging.Validation
 
         private sealed class ValidationMessageHandlerRegistrationFactory : IMessageHandlerRegistrationFactory
         {
-            public bool TryCreateMessageHandlerRegistration(Type messageType, out IMessageHandlerRegistration handlerRegistration)
+            public bool TryCreateMessageHandlerRegistration(Type messageType, [NotNullWhen(true)] out IMessageHandlerRegistration? handlerRegistration)
             {
                 if (!IsValidateMessageType(messageType))
                 {

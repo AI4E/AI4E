@@ -250,7 +250,7 @@ namespace AI4E.Remoting
             {
                 try
                 {
-                    using var guard = _multiplexer._disposeHelper.GuardDisposal(cancellation);
+                    using var guard = await _multiplexer._disposeHelper.GuardDisposalAsync(cancellation);
                     return await _rxQueue.DequeueAsync(guard.Cancellation);
                 }
                 catch (OperationCanceledException) when (_multiplexer._disposeHelper.IsDisposed)
@@ -266,7 +266,7 @@ namespace AI4E.Remoting
 
                 try
                 {
-                    using var guard = _multiplexer._disposeHelper.GuardDisposal(cancellation);
+                    using var guard = await _multiplexer._disposeHelper.GuardDisposalAsync(cancellation);
                     await SendInternalAsync(transmission, guard.Cancellation);
                 }
                 catch (OperationCanceledException) when (_multiplexer._disposeHelper.IsDisposed)

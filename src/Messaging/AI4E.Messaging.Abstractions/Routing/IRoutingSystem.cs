@@ -26,7 +26,7 @@ namespace AI4E.Messaging.Routing
 {
     public interface IRoutingSystem : IDisposable
     {
-        ValueTask<IRouteEndPoint> GetEndPointAsync(
+        ValueTask<IRouteEndPoint?> GetEndPointAsync(
             RouteEndPointAddress endPoint,
             CancellationToken cancellation = default);
 

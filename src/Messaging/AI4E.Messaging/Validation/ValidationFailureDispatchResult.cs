@@ -33,7 +33,10 @@ namespace AI4E.Messaging.Validation
         /// <summary>
         /// Creates a new instance of the <see cref="ValidationFailureDispatchResult"/> type.
         /// </summary>
-        public ValidationFailureDispatchResult() : base("Validation failure") { }
+        public ValidationFailureDispatchResult() : base("Validation failure")
+        {
+            ValidationResults = ImmutableList<ValidationResult>.Empty;
+        }
 
         /// <summary>
         /// Creates a new instance of the <see cref="ValidationFailureDispatchResult"/> type.

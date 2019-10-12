@@ -33,7 +33,7 @@ namespace AI4E.Messaging
 
 #pragma warning disable IDE0051
         [JsonConstructor]
-        private StorageIssueDispatchResult(string message, Exception exception, IReadOnlyDictionary<string, object> resultData)
+        private StorageIssueDispatchResult(string message, Exception exception, IReadOnlyDictionary<string, object?> resultData)
             : base(message, exception, resultData)
         { }
 #pragma warning restore IDE0051
@@ -65,7 +65,7 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
-        public StorageIssueDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+        public StorageIssueDispatchResult(string message, IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
         { }
     }

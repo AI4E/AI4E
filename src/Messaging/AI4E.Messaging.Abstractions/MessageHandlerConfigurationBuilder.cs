@@ -51,7 +51,7 @@ namespace AI4E.Messaging
 
         private IMessageHandlerConfigurationBuilder Configure(
             Type configurationType,
-            Func<object, object> configuration)
+            Func<object?, object> configuration)
         {
             if (configurationType == null)
                 throw new ArgumentNullException(nameof(configurationType));
@@ -85,7 +85,7 @@ namespace AI4E.Messaging
 
         /// <inheritdoc />
         public IMessageHandlerConfigurationBuilder Configure<TConfig>(
-            Func<TConfig, TConfig> configuration)
+            Func<TConfig?, TConfig> configuration)
             where TConfig : class
         {
             return Configure(typeof(TConfig), o => configuration(o as TConfig));
@@ -104,7 +104,7 @@ namespace AI4E.Messaging
             Action<TConfig> configuration)
             where TConfig : class, new()
         {
-            object Configuration(object obj)
+            object Configuration(object? obj)
             {
                 var config = obj as TConfig ?? new TConfig();
                 configuration(config);

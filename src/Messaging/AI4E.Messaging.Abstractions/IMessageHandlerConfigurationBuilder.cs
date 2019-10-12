@@ -34,7 +34,7 @@ namespace AI4E.Messaging
         /// <param name="configuration">The message handler configuration.</param>
         /// <returns>The configuration builder with the configuration applied.</returns>
         IMessageHandlerConfigurationBuilder Configure<TConfig>(
-            Func<TConfig, TConfig> configuration)
+            Func<TConfig?, TConfig> configuration)
             where TConfig : class;
 
         /// <summary>

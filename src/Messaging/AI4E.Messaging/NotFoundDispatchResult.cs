@@ -52,7 +52,7 @@ namespace AI4E.Messaging
         /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
         [JsonConstructor]
-        public NotFoundDispatchResult(string message, IReadOnlyDictionary<string, object> resultData)
+        public NotFoundDispatchResult(string message, IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
         { }
     }

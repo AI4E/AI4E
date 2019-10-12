@@ -31,11 +31,9 @@ namespace AI4E.Messaging.SignalR.Server
             return new SignalRServerPacket(message, RemoteEndPoint);
         }
 
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
         IPacket IPacket.WithMessage(in Message message)
         {
             return WithMessage(message);
         }
-#endif
     }
 }

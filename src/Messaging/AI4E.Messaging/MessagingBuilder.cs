@@ -29,7 +29,7 @@ namespace AI4E.Messaging
         {
             Debug.Assert(services != null);
 
-            Services = services;
+            Services = services!;
         }
 
         public IServiceCollection Services { get; }

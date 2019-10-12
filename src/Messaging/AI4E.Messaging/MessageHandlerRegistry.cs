@@ -168,7 +168,7 @@ namespace AI4E.Messaging
             {
                 var handlerRegistrations = GetHandlerRegistrationsCore(messageType);
 
-                ImmutableList<IMessageHandlerRegistration>.Builder results = null;
+                ImmutableList<IMessageHandlerRegistration>.Builder? results = null;
 
                 foreach (var handlerRegistrationFactory in _handlerRegistrationFactories)
                 {

@@ -19,12 +19,13 @@
  */
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace AI4E.Messaging
 {
     public interface IMessageHandlerRegistrationFactory
     {
         bool TryCreateMessageHandlerRegistration(
-            Type messageType, out IMessageHandlerRegistration handlerRegistration);
+            Type messageType, [NotNullWhen(true)] out IMessageHandlerRegistration? handlerRegistration);
     }
 }

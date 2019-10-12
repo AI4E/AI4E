@@ -34,7 +34,7 @@ namespace AI4E.Messaging.Validation
     /// </summary>
     public sealed class ValidationInspector : TypeMemberInspector<ValidationDescriptor>
     {
-        [ThreadStatic] private static ValidationInspector _instance;
+        [ThreadStatic] private static ValidationInspector? _instance;
 
         /// <summary>
         /// Gets the singleton <see cref="ValidationInspector"/> instance for the current thread.

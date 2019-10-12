@@ -21,6 +21,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 
 namespace AI4E.Utils.Messaging.Primitives
 {
@@ -125,7 +126,7 @@ namespace AI4E.Utils.Messaging.Primitives
             }
         }
 
-        public MessageFrameBuilder? PushFrame()
+        public MessageFrameBuilder PushFrame()
         {
             if (_frameIndex == _frames.Count - 1)
             {
@@ -137,7 +138,9 @@ namespace AI4E.Utils.Messaging.Primitives
             }
 
             _frameIndex++;
-            return CurrentFrame;
+
+            Debug.Assert(CurrentFrame != null);
+            return CurrentFrame!;
         }
 
         public MessageFrameBuilder? PopFrame()

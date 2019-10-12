@@ -19,7 +19,7 @@ namespace AI4E.Messaging.Routing
         private readonly IRouteMessageHandler _routeMessageHandler;
         private readonly IRouteEndPoint _routeEndPoint;
         private readonly IRouteManager _routeManager;
-        private readonly ILogger<MessageRouter> _logger;
+        private readonly ILogger<MessageRouter>? _logger;
 
         private readonly AsyncProcess _receiveProcess;
         private readonly AsyncDisposeHelper _disposeHelper;
@@ -27,7 +27,7 @@ namespace AI4E.Messaging.Routing
         public MessageRouter(IRouteMessageHandler routeMessageHandler,
                              IRouteEndPoint routeEndPoint,
                              IRouteManager routeManager,
-                             ILogger<MessageRouter> logger = null)
+                             ILogger<MessageRouter>? logger = null)
         {
             if (routeMessageHandler == null)
                 throw new ArgumentNullException(nameof(routeMessageHandler));
@@ -110,7 +110,7 @@ namespace AI4E.Messaging.Routing
             {
                 var routeResult = await HandleAsync(receiveResult.Message, combinedCancellationSource.Token);
 
-                if (routeResult.RouteMessage.IsDefault())
+                if (routeResult.RouteMessage == default)
                 {
                     await receiveResult.SendAckAsync();
                 }

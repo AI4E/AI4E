@@ -31,7 +31,6 @@ namespace AI4E.Storage.Domain
             return new SuccessDispatchResult();
         }
 
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
         ValueTask<IDispatchResult> IMessageHandler.HandleAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
@@ -42,7 +41,6 @@ namespace AI4E.Storage.Domain
         }
 
         Type IMessageHandler.MessageType => typeof(ProjectEntityMessage);
-#endif
     }
 
     internal sealed class ProjectEntityMessage

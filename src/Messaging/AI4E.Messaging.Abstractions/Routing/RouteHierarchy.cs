@@ -61,7 +61,7 @@ namespace AI4E.Messaging.Routing
             return true;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is RouteHierarchy routeHierarchy && Equals(in routeHierarchy);
         }

@@ -114,7 +114,7 @@ namespace AI4E.Messaging.Routing
         /// True if <paramref name="obj"/> is of type <see cref="RouteEndPointAddress"/>
         /// and equals the current end point address, false otherwise.
         /// </returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is RouteEndPointAddress endPointAddress && Equals(endPointAddress);
         }
@@ -132,7 +132,7 @@ namespace AI4E.Messaging.Routing
         /// Returns a stringified version of the end point address.
         /// </summary>
         /// <returns>A string representing the current end point address.</returns>
-        public override string ToString()
+        public override string? ToString()
         {
             if (Utf8EncodedValue.IsEmpty)
                 return null;
@@ -187,6 +187,9 @@ namespace AI4E.Messaging.Routing
     {
         public override void WriteJson(JsonWriter writer, RouteEndPointAddress value, JsonSerializer serializer)
         {
+            if (writer is null)
+                throw new ArgumentNullException(nameof(writer));
+
             writer.WriteValue(value.ToString());
         }
 
@@ -197,6 +200,9 @@ namespace AI4E.Messaging.Routing
             bool hasExistingValue,
             JsonSerializer serializer)
         {
+            if (reader is null)
+                throw new ArgumentNullException(nameof(reader));
+
             var addressString = reader.Value as string;
 
             if (string.IsNullOrWhiteSpace(addressString))
@@ -204,7 +210,7 @@ namespace AI4E.Messaging.Routing
                 return RouteEndPointAddress.UnknownAddress;
             }
 
-            return new RouteEndPointAddress(addressString);
+            return new RouteEndPointAddress(addressString!);
         }
     }
 }

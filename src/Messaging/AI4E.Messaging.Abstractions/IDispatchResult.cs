@@ -40,7 +40,7 @@ namespace AI4E.Messaging
         /// <summary>
         /// Gets a collection of key value pairs that represent additional result data.
         /// </summary>
-        IReadOnlyDictionary<string, object> ResultData { get; }
+        IReadOnlyDictionary<string, object?> ResultData { get; }
     }
 
     /// <summary>

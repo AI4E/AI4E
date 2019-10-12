@@ -29,6 +29,7 @@ using System.Reflection;
 using AI4E.Utils;
 using Newtonsoft.Json;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace AI4E.Messaging
 {
@@ -41,10 +42,10 @@ namespace AI4E.Messaging
     /// </summary>
     [JsonConverter(typeof(DispatchDataDictionaryConverter))]
 #pragma warning disable CA1710
-    public abstract class DispatchDataDictionary : IReadOnlyDictionary<string, object>
+    public abstract class DispatchDataDictionary : IReadOnlyDictionary<string, object?>
 #pragma warning restore CA1710
     {
-        private protected readonly ImmutableDictionary<string, object> _data;
+        private protected readonly ImmutableDictionary<string, object?>? _data;
 
         #region C'tor
 
@@ -52,16 +53,16 @@ namespace AI4E.Messaging
         // anyone could inherit from the type. We cannot ensure immutability in this case.
         // Normally this type is not created directly anyway but an instance of the derived (generic type is used) and this type is used 
         // only as cast target, if we do not know the message type.
-        private protected DispatchDataDictionary(Type messageType, object message, IEnumerable<KeyValuePair<string, object>> data)
+        private protected DispatchDataDictionary(Type messageType, object message, IEnumerable<KeyValuePair<string, object?>> data)
         {
             ValidateArguments(messageType, message, data);
 
             MessageType = messageType;
             Message = message;
-            _data = data as ImmutableDictionary<string, object> ?? data.ToImmutableDictionary();
+            _data = data as ImmutableDictionary<string, object?> ?? data.ToImmutableDictionary();
         }
 
-        private static void ValidateArguments(Type messageType, object message, IEnumerable<KeyValuePair<string, object>> data)
+        private static void ValidateArguments(Type messageType, object message, IEnumerable<KeyValuePair<string, object?>> data)
         {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
@@ -125,7 +126,7 @@ namespace AI4E.Messaging
         #region DataDictionary
 
         /// <inheritdoc />
-        public object this[string key]
+        public object? this[string key]
         {
             get
             {
@@ -137,7 +138,7 @@ namespace AI4E.Messaging
 
                 if (!_data.TryGetValue(key, out var result))
                 {
-                    result = null;
+                    result = null!;
                 }
 
                 return result;
@@ -148,7 +149,7 @@ namespace AI4E.Messaging
         public IEnumerable<string> Keys => _data?.Keys ?? Enumerable.Empty<string>();
 
         /// <inheritdoc />
-        public IEnumerable<object> Values => _data?.Values ?? Enumerable.Empty<object>();
+        public IEnumerable<object?> Values => _data?.Values ?? Enumerable.Empty<object?>();
 
         /// <inheritdoc />
         public int Count => _data?.Count ?? 0;
@@ -160,7 +161,7 @@ namespace AI4E.Messaging
         }
 
         /// <inheritdoc />
-        public bool TryGetValue(string key, out object value)
+        public bool TryGetValue(string key, [NotNullWhen(true)] out object? value)
         {
             if (key == null || _data == null)
             {
@@ -181,16 +182,16 @@ namespace AI4E.Messaging
             return new Enumerator(_data.GetEnumerator());
         }
 
-        IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator()
+        IEnumerator<KeyValuePair<string, object?>> IEnumerable<KeyValuePair<string, object?>>.GetEnumerator()
         {
-            var enumerable = _data as IEnumerable<KeyValuePair<string, object>> ?? Enumerable.Empty<KeyValuePair<string, object>>();
+            var enumerable = _data as IEnumerable<KeyValuePair<string, object?>> ?? Enumerable.Empty<KeyValuePair<string, object?>>();
 
             return enumerable.GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            var enumerable = _data as IEnumerable ?? Enumerable.Empty<KeyValuePair<string, object>>();
+            var enumerable = _data as IEnumerable ?? Enumerable.Empty<KeyValuePair<string, object?>>();
             return enumerable.GetEnumerator();
         }
 
@@ -206,7 +207,7 @@ namespace AI4E.Messaging
 
         public static Builder CreateBuilder(object message)
         {
-            return CreateBuilder(message?.GetType(), message);
+            return CreateBuilder(message?.GetType()!, message!);
         }
 
         public static DispatchDataDictionary<TMessage>.Builder CreateBuilder<TMessage>(TMessage message)
@@ -220,23 +221,23 @@ namespace AI4E.Messaging
             return new Builder(
                 MessageType,
                 Message,
-                _data?.ToBuilder() ?? ImmutableDictionary.CreateBuilder<string, object>());
+                _data?.ToBuilder() ?? ImmutableDictionary.CreateBuilder<string, object?>());
         }
 
 #pragma warning disable CA1710, CA1034
-        public class Builder : IDictionary<string, object>
+        public class Builder : IDictionary<string, object?>
 #pragma warning restore CA1034, CA1710
         {
-            private readonly ImmutableDictionary<string, object>.Builder _data;
+            private readonly ImmutableDictionary<string, object?>.Builder _data;
 
             internal Builder(Type messageType, object message)
             {
                 MessageType = messageType;
                 Message = message;
-                _data = ImmutableDictionary.CreateBuilder<string, object>();
+                _data = ImmutableDictionary.CreateBuilder<string, object?>();
             }
 
-            internal Builder(Type messageType, object message, ImmutableDictionary<string, object>.Builder data)
+            internal Builder(Type messageType, object message, ImmutableDictionary<string, object?>.Builder data)
             {
                 MessageType = messageType;
                 Message = message;
@@ -247,7 +248,7 @@ namespace AI4E.Messaging
 
             public object Message { get; }
 
-            protected ImmutableDictionary<string, object> BuildDataDictionary()
+            protected ImmutableDictionary<string, object?> BuildDataDictionary()
             {
                 return _data.ToImmutable();
             }
@@ -259,7 +260,7 @@ namespace AI4E.Messaging
 
             #region DataDictionary
 
-            public void Add(string key, object value)
+            public void Add(string key, object? value)
             {
                 _data.Add(key, value);
             }
@@ -274,12 +275,18 @@ namespace AI4E.Messaging
                 return _data.Remove(key);
             }
 
-            public bool TryGetValue(string key, out object value)
+            public bool TryGetValue(string key, [NotNullWhen(true)] out object? value)
             {
+                if (key == null || _data == null)
+                {
+                    value = default;
+                    return false;
+                }
+
                 return _data.TryGetValue(key, out value);
             }
 
-            public object this[string key]
+            public object? this[string key]
             {
                 get
                 {
@@ -299,15 +306,15 @@ namespace AI4E.Messaging
                 set => _data[key] = value;
             }
 
-            ICollection<string> IDictionary<string, object>.Keys => ((IDictionary<string, object>)_data).Keys;
+            ICollection<string> IDictionary<string, object?>.Keys => ((IDictionary<string, object?>)_data).Keys;
 
-            ICollection<object> IDictionary<string, object>.Values => ((IDictionary<string, object>)_data).Values;
+            ICollection<object?> IDictionary<string, object?>.Values => ((IDictionary<string, object?>)_data).Values;
 
             public IEnumerable<string> Keys => _data.Keys;
 
-            public IEnumerable<object> Values => _data.Values;
+            public IEnumerable<object?> Values => _data.Values;
 
-            public void Add(KeyValuePair<string, object> item)
+            public void Add(KeyValuePair<string, object?> item)
             {
                 _data.Add(item);
             }
@@ -317,17 +324,17 @@ namespace AI4E.Messaging
                 _data.Clear();
             }
 
-            public bool Contains(KeyValuePair<string, object> item)
+            public bool Contains(KeyValuePair<string, object?> item)
             {
                 return _data.Contains(item);
             }
 
-            public void CopyTo(KeyValuePair<string, object>[] array, int arrayIndex)
+            public void CopyTo(KeyValuePair<string, object?>[] array, int arrayIndex)
             {
-                ((IDictionary<string, object>)_data).CopyTo(array, arrayIndex);
+                ((IDictionary<string, object?>)_data).CopyTo(array, arrayIndex);
             }
 
-            public bool Remove(KeyValuePair<string, object> item)
+            public bool Remove(KeyValuePair<string, object?> item)
             {
                 return _data.Remove(item);
             }
@@ -335,7 +342,7 @@ namespace AI4E.Messaging
             public int Count => _data.Count;
 
 #pragma warning disable CA1033
-            bool ICollection<KeyValuePair<string, object>>.IsReadOnly => ((IDictionary<string, object>)_data).IsReadOnly;
+            bool ICollection<KeyValuePair<string, object?>>.IsReadOnly => ((IDictionary<string, object?>)_data).IsReadOnly;
 #pragma warning restore CA1033
 
             public Enumerator GetEnumerator()
@@ -343,9 +350,9 @@ namespace AI4E.Messaging
                 return new Enumerator(_data.GetEnumerator());
             }
 
-            IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator()
+            IEnumerator<KeyValuePair<string, object?>> IEnumerable<KeyValuePair<string, object?>>.GetEnumerator()
             {
-                return ((IEnumerable<KeyValuePair<string, object>>)_data).GetEnumerator();
+                return ((IEnumerable<KeyValuePair<string, object?>>)_data).GetEnumerator();
             }
 
             IEnumerator IEnumerable.GetEnumerator()
@@ -360,17 +367,17 @@ namespace AI4E.Messaging
 
         #region Enumerator
 
-        public struct Enumerator : IEnumerator<KeyValuePair<string, object>>, IEnumerator, IDisposable
+        public struct Enumerator : IEnumerator<KeyValuePair<string, object?>>, IEnumerator, IDisposable
         {
             // This MUST NOT be marked readonly, to allow the compiler to access this field by reference.
-            private ImmutableDictionary<string, object>.Enumerator _underlying;
+            private ImmutableDictionary<string, object?>.Enumerator _underlying;
 
-            internal Enumerator(ImmutableDictionary<string, object>.Enumerator underlying)
+            internal Enumerator(ImmutableDictionary<string, object?>.Enumerator underlying)
             {
                 _underlying = underlying;
             }
 
-            public KeyValuePair<string, object> Current => _underlying.Current;
+            public KeyValuePair<string, object?> Current => _underlying.Current;
 
             object IEnumerator.Current => Current;
 
@@ -396,8 +403,8 @@ namespace AI4E.Messaging
         #region Factory methods
 
         private static readonly Type _dispatchDataDictionaryTypeDefinition = typeof(DispatchDataDictionary<>);
-        private static readonly ConcurrentDictionary<Type, Func<object, IEnumerable<KeyValuePair<string, object>>, DispatchDataDictionary>> _factories
-            = new ConcurrentDictionary<Type, Func<object, IEnumerable<KeyValuePair<string, object>>, DispatchDataDictionary>>();
+        private static readonly ConcurrentDictionary<Type, Func<object, IEnumerable<KeyValuePair<string, object?>>, DispatchDataDictionary>> _factories
+            = new ConcurrentDictionary<Type, Func<object, IEnumerable<KeyValuePair<string, object?>>, DispatchDataDictionary>>();
 
         /// <summary>
         /// Creates an instance of the <see cref="DispatchDataDictionary"/> type.
@@ -414,7 +421,7 @@ namespace AI4E.Messaging
         /// </exception>
         public static DispatchDataDictionary Create(Type messageType, object message)
         {
-            return Create(messageType, message, ImmutableDictionary<string, object>.Empty);
+            return Create(messageType, message, ImmutableDictionary<string, object?>.Empty);
         }
 
         /// <summary>
@@ -431,7 +438,7 @@ namespace AI4E.Messaging
         /// Thrown if either the type of <paramref name="message"/> is not assignable to <paramref name="messageType"/> or
         /// <paramref name="messageType"/> is not a valid message type.
         /// </exception>
-        public static DispatchDataDictionary Create(Type messageType, object message, IEnumerable<KeyValuePair<string, object>> data)
+        public static DispatchDataDictionary Create(Type messageType, object message, IEnumerable<KeyValuePair<string, object?>> data)
         {
             ValidateArguments(messageType, message, data);
 
@@ -450,7 +457,7 @@ namespace AI4E.Messaging
         /// </exception>
         public static DispatchDataDictionary Create(object message)
         {
-            return Create(message?.GetType(), message, ImmutableDictionary<string, object>.Empty);
+            return Create(message?.GetType()!, message!, ImmutableDictionary<string, object?>.Empty);
         }
 
         /// <summary>
@@ -465,31 +472,31 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentException">
         /// Thrown if the type of <paramref name="message"/> is not a valid message type.
         /// </exception>
-        public static DispatchDataDictionary Create(object message, IEnumerable<KeyValuePair<string, object>> data)
+        public static DispatchDataDictionary Create(object message, IEnumerable<KeyValuePair<string, object?>> data)
         {
-            return Create(message?.GetType(), message, data);
+            return Create(message?.GetType()!, message!, data);
         }
 
-        private static Func<object, IEnumerable<KeyValuePair<string, object>>, DispatchDataDictionary> BuildFactory(Type messageType)
+        private static Func<object, IEnumerable<KeyValuePair<string, object?>>, DispatchDataDictionary> BuildFactory(Type messageType)
         {
             var dispatchDataDictionaryType = _dispatchDataDictionaryTypeDefinition.MakeGenericType(messageType);
 
             Debug.Assert(dispatchDataDictionaryType != null);
 
-            var ctor = dispatchDataDictionaryType.GetConstructor(
+            var ctor = dispatchDataDictionaryType!.GetConstructor(
                 BindingFlags.Instance | BindingFlags.Public,
                 Type.DefaultBinder,
-                new Type[] { messageType, typeof(IEnumerable<KeyValuePair<string, object>>) },
+                new Type[] { messageType, typeof(IEnumerable<KeyValuePair<string, object?>>) },
                 modifiers: null);
 
             Debug.Assert(ctor != null);
 
             var messageParameter = Expression.Parameter(typeof(object), "message");
-            var dataParameter = Expression.Parameter(typeof(IEnumerable<KeyValuePair<string, object>>), "data");
+            var dataParameter = Expression.Parameter(typeof(IEnumerable<KeyValuePair<string, object?>>), "data");
             var convertedMessage = Expression.Convert(messageParameter, messageType);
             var ctorCall = Expression.New(ctor, convertedMessage, dataParameter);
             var convertedResult = Expression.Convert(ctorCall, typeof(DispatchDataDictionary));
-            var lambda = Expression.Lambda<Func<object, IEnumerable<KeyValuePair<string, object>>, DispatchDataDictionary>>(
+            var lambda = Expression.Lambda<Func<object, IEnumerable<KeyValuePair<string, object?>>, DispatchDataDictionary>>(
                 convertedResult,
                 messageParameter,
                 dataParameter);
@@ -523,7 +530,7 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentException">
         /// Thrown if <typeparamref name="TMessage"/> is not a valid message type.
         /// </exception>
-        public DispatchDataDictionary(TMessage message, IEnumerable<KeyValuePair<string, object>> data)
+        public DispatchDataDictionary(TMessage message, IEnumerable<KeyValuePair<string, object?>> data)
             : base(typeof(TMessage), message, data)
         { }
 
@@ -537,7 +544,7 @@ namespace AI4E.Messaging
         /// Thrown if <typeparamref name="TMessage"/> is not a valid message type.
         /// </exception>
         public DispatchDataDictionary(TMessage message)
-            : base(typeof(TMessage), message, ImmutableDictionary<string, object>.Empty)
+            : base(typeof(TMessage), message, ImmutableDictionary<string, object?>.Empty)
         { }
 
         /// <summary>
@@ -551,7 +558,7 @@ namespace AI4E.Messaging
         {
             return new Builder(
                 Message,
-                _data?.ToBuilder() ?? ImmutableDictionary.CreateBuilder<string, object>());
+                _data?.ToBuilder() ?? ImmutableDictionary.CreateBuilder<string, object?>());
         }
 
 #pragma warning disable CA1710, CA1034
@@ -564,7 +571,7 @@ namespace AI4E.Messaging
                 Message = message;
             }
 
-            internal Builder(TMessage message, ImmutableDictionary<string, object>.Builder data)
+            internal Builder(TMessage message, ImmutableDictionary<string, object?>.Builder data)
                 : base(typeof(TMessage), message, data)
             {
                 Message = message;
@@ -619,6 +626,9 @@ namespace AI4E.Messaging
 
                 foreach (var kvp in dispatchData)
                 {
+                    if (kvp.Value is null)
+                        continue;
+
                     writer.WritePropertyName(kvp.Key);
                     writer.WriteStartObject();
                     writer.WritePropertyName("type");
@@ -636,7 +646,7 @@ namespace AI4E.Messaging
         }
 
         /// <inheritdoc />
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        public override object? ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
             if (reader is null)
                 throw new ArgumentNullException(nameof(reader));
@@ -657,8 +667,8 @@ namespace AI4E.Messaging
                 throw new InvalidOperationException();
 
             var messageType = objectType.IsGenericTypeDefinition ? objectType.GetGenericArguments().First() : null;
-            object message = null;
-            ImmutableDictionary<string, object>.Builder data = null;
+            object? message = null;
+            ImmutableDictionary<string, object?>.Builder? data = null;
 
             while (reader.Read())
             {
@@ -672,7 +682,13 @@ namespace AI4E.Messaging
                     if ((string)reader.Value == "message-type")
                     {
                         reader.Read();
-                        var deserializedMessageType = TypeLoadHelper.LoadTypeFromUnqualifiedName(reader.Value as string);
+
+                        if(!(reader.Value is string deserializedMessageTypeName))
+                        {
+                            throw new InvalidOperationException();
+                        }
+
+                        var deserializedMessageType = TypeLoadHelper.LoadTypeFromUnqualifiedName(deserializedMessageTypeName);
 
                         if (messageType != null && messageType != deserializedMessageType)
                         {
@@ -704,12 +720,12 @@ namespace AI4E.Messaging
             if (messageType == null || message == null)
                 throw new InvalidOperationException();
 
-            return DispatchDataDictionary.Create(messageType, message, data?.ToImmutable() ?? ImmutableDictionary<string, object>.Empty);
+            return DispatchDataDictionary.Create(messageType, message, data?.ToImmutable() ?? ImmutableDictionary<string, object?>.Empty);
         }
 
-        private ImmutableDictionary<string, object>.Builder ReadDataItems(JsonReader reader, JsonSerializer serializer)
+        private ImmutableDictionary<string, object?>.Builder? ReadDataItems(JsonReader reader, JsonSerializer serializer)
         {
-            var result = ImmutableDictionary.CreateBuilder<string, object>();
+            var result = ImmutableDictionary.CreateBuilder<string, object?>();
 
             if (!reader.Read() || reader.TokenType != JsonToken.StartObject)
                 return null;
@@ -733,7 +749,7 @@ namespace AI4E.Messaging
             return result;
         }
 
-        private static void ReadSingleDataItem(JsonReader reader, JsonSerializer serializer, ImmutableDictionary<string, object>.Builder result)
+        private static void ReadSingleDataItem(JsonReader reader, JsonSerializer serializer, ImmutableDictionary<string, object?>.Builder result)
         {
             var key = (string)reader.Value;
             reader.Read(); // Read start object

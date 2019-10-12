@@ -36,7 +36,7 @@ namespace AI4E.Messaging.MessageHandlers
             if (builder.Services.Any(p => p.ServiceType == typeof(MessageHandlersRegisteredMarker)))
                 return;
 
-            builder.Services.AddSingleton<MessageHandlersRegisteredMarker>(_ => null);
+            builder.Services.AddSingleton<MessageHandlersRegisteredMarker>(_ => null!);
             builder.ConfigureMessageHandlers(Configure);
         }
 
@@ -60,7 +60,7 @@ namespace AI4E.Messaging.MessageHandlers
             IEnumerable<Type> types,
             IMessageHandlerRegistry messageHandlerRegistry,
             IList<IMessageProcessorRegistration> processors,
-            ILogger logger)
+            ILogger? logger)
         {
             foreach (var type in types)
             {
@@ -72,7 +72,7 @@ namespace AI4E.Messaging.MessageHandlers
             Type handlerType,
             IMessageHandlerRegistry messageHandlerRegistry,
             IList<IMessageProcessorRegistration> processors,
-            ILogger logger)
+            ILogger? logger)
         {
             var memberDescriptors = MessageHandlerInspector.Instance.InspectType(handlerType);
 

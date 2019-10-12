@@ -111,7 +111,6 @@ namespace AI4E.Messaging.Routing
             }
         }
 
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
         async ValueTask<IRouteEndPoint> IRoutingSystem.GetEndPointAsync(
             RouteEndPointAddress endPoint,
             CancellationToken cancellation)
@@ -125,7 +124,6 @@ namespace AI4E.Messaging.Routing
         {
             return await CreateEndPointAsync(endPoint, cancellation);
         }
-#endif
 
         #endregion
 
@@ -226,12 +224,10 @@ namespace AI4E.Messaging.Routing
                 }
             }
 
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
             async ValueTask<IRouteEndPointReceiveResult> IRouteEndPoint.ReceiveAsync(CancellationToken cancellation)
             {
                 return await ReceiveAsync(cancellation);
             }
-#endif
 
             public async ValueTask<RouteMessageHandleResult> SendAsync(
                 Message message,

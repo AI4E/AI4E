@@ -54,11 +54,9 @@ namespace AI4E.Utils.Messaging.Primitives
 
         public Message Message { get; }
 
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
         IPacket IPacket.WithMessage(in Message message)
         {
             return new Packet(message);
         }
-#endif
     }
 }

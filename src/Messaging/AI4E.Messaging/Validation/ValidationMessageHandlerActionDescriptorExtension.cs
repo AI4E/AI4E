@@ -88,7 +88,7 @@ namespace AI4E.Messaging.MessageHandlers
                     return true;
                 }
 
-                handledType = handledType.BaseType;
+                handledType = handledType.BaseType!;
             }
             while (handledType != null);
 

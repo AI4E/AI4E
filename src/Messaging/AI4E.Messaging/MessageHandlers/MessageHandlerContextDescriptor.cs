@@ -54,7 +54,7 @@ namespace AI4E.Messaging.MessageHandlers
         {
             Debug.Assert(type != null);
 
-            if (type.IsAbstract)
+            if (type!.IsAbstract)
                 return default;
 
             if (type.IsGenericTypeDefinition)
@@ -118,12 +118,12 @@ namespace AI4E.Messaging.MessageHandlers
         }
 
         private readonly Type _type;
-        private readonly Action<object, IMessageDispatchContext> _contextSetter;
-        private readonly Action<object, IMessageDispatcher> _dispatcherSetter;
+        private readonly Action<object, IMessageDispatchContext>? _contextSetter;
+        private readonly Action<object, IMessageDispatcher>? _dispatcherSetter;
 
         private MessageHandlerContextDescriptor(Type type,
-                                                Action<object, IMessageDispatchContext> contextSetter,
-                                                Action<object, IMessageDispatcher> dispatcherSetter)
+                                                Action<object, IMessageDispatchContext>? contextSetter,
+                                                Action<object, IMessageDispatcher>? dispatcherSetter)
         {
             _type = type;
             _contextSetter = contextSetter;

@@ -71,7 +71,7 @@ namespace AI4E.Messaging
         }
 
         /// <inheritdoc/>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is MessageProcessorDependency messageProcessorDependency &&
                 Equals(messageProcessorDependency);

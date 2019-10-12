@@ -29,11 +29,16 @@ namespace AI4E.Messaging
     /// </summary>
     public abstract class MessageProcessor : IMessageProcessor
     {
+
+#nullable disable
+
         /// <summary>
         /// Gets the message processor context.
         /// </summary>
         [MessageProcessorContext]
         public virtual IMessageProcessorContext Context { get; set; }
+
+#nullable restore
 
         /// <summary>
         /// When overridden in a derviced class, asynchronously processes the specified message.

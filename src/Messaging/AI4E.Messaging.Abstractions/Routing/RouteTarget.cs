@@ -23,7 +23,7 @@ namespace AI4E.Messaging.Routing
         public RouteEndPointAddress EndPoint { get; }
         public RouteRegistrationOptions RegistrationOptions { get; }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is RouteTarget routeTarget && Equals(routeTarget);
         }

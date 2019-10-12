@@ -21,14 +21,16 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using AI4E.Utils;
 
 namespace AI4E.Messaging
 {
+
     /// <summary>
     /// Describes a single message handler action (method).
     /// </summary>
+#pragma warning disable CA1815
     public readonly struct MessageHandlerActionDescriptor
+#pragma warning restore CA1815 
     {
         /// <summary>
         /// Creates a new instance of the <see cref="MessageHandlerActionDescriptor"/> type.
@@ -47,6 +49,9 @@ namespace AI4E.Messaging
 
             if (member == null)
                 throw new ArgumentNullException(nameof(member));
+
+            if (member.DeclaringType is null)
+                throw new ArgumentException("The member must have a declaring type.", nameof(member));
 
             if (!messageType.IsOrdinaryClass())
                 throw new ArgumentException("The argument must specify an ordinary class.", nameof(messageType));

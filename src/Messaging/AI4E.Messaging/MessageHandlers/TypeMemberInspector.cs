@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using AI4E.Utils.Async;
@@ -77,9 +78,9 @@ namespace AI4E.Messaging.MessageHandlers
             return descriptors;
         }
 
-        private bool TryGetDescriptor(Type type, MethodInfo member, out TMemberDescriptor descriptor)
+        private bool TryGetDescriptor(Type type, MethodInfo member, [MaybeNullWhen(false)] out TMemberDescriptor descriptor)
         {
-            descriptor = default;
+            descriptor = default!;
             var parameters = member.GetParameters();
 
             if (parameters.Length == 0)

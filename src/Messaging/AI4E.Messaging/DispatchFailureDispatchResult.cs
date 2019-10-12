@@ -20,6 +20,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using AI4E.Utils;
 using Newtonsoft.Json;
 
 namespace AI4E.Messaging
@@ -29,14 +31,29 @@ namespace AI4E.Messaging
     /// </summary>
     public sealed class DispatchFailureDispatchResult : FailureDispatchResult
     {
+#pragma warning disable IDE0051
+        [JsonConstructor]
+        private DispatchFailureDispatchResult(
+            string messageTypeName,
+            string message,
+            IReadOnlyDictionary<string, object?> resultData)
+            : base(message, resultData)
+        {
+            MessageTypeName = messageTypeName;
+        }
+#pragma warning restore IDE0051
+
         /// <summary>
         /// Creates a new instance of the <see cref="DispatchFailureDispatchResult"/> type.
         /// </summary>
         /// <param name="messageType">The type of message that cannot be dispatched.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="messageType"/> is <c>null</c>.</exception>
-        public DispatchFailureDispatchResult(Type messageType) : base(FormatDefaultMessage(messageType))
+        public DispatchFailureDispatchResult(Type messageType) : base(FormatDefaultMessage(messageType?.GetUnqualifiedTypeName()))
         {
-            MessageType = messageType;
+            if (messageType is null)
+                throw new ArgumentNullException(nameof(messageType));
+
+            MessageTypeName = messageType.GetUnqualifiedTypeName();
         }
 
         /// <summary>
@@ -49,7 +66,7 @@ namespace AI4E.Messaging
         /// </exception>
         public DispatchFailureDispatchResult(Type messageType, string message) : base(message)
         {
-            MessageType = messageType;
+            MessageTypeName = messageType.GetUnqualifiedTypeName();
         }
 
         /// <summary>
@@ -61,24 +78,30 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">
         /// Thrown if any of <paramref name="messageType"/>, <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
-        [JsonConstructor]
-        public DispatchFailureDispatchResult(Type messageType, string message, IReadOnlyDictionary<string, object> resultData)
+        public DispatchFailureDispatchResult(Type messageType, string message, IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
         {
-            MessageType = messageType;
+            MessageTypeName = messageType.GetUnqualifiedTypeName();
         }
 
         /// <summary>
-        /// Gets the type of message that cannot be dispatched.
+        /// Gets the unqualified type-name of message that cannot be dispatched.
         /// </summary>
-        public Type MessageType { get; }
+        public string MessageTypeName { get; }
 
-        private static string FormatDefaultMessage(Type messageType)
+        /// <summary>
+        /// Tries to load the type of message that cannot be dispatched.
+        /// </summary>
+        /// <param name="entityType">Contains the message type if the call succeeds.</param>
+        /// <returns>True if the call suceeded, false otherwise.</returns>
+        public bool TryGetMessageType([NotNullWhen(true)] out Type? entityType)
         {
-            if (messageType == null)
-                throw new ArgumentNullException(nameof(messageType));
+            return TypeLoadHelper.TryLoadTypeFromUnqualifiedName(MessageTypeName, out entityType);
+        }
 
-            return $"The message of type '{messageType}' cannot be dispatched.";
+        private static string FormatDefaultMessage(string? messageTypeName)
+        {
+            return $"The message of type '{messageTypeName}' cannot be dispatched.";
         }
     }
 }

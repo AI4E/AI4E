@@ -14,7 +14,7 @@ namespace AI4E.Messaging.Validation
 
         private RouteHierarchy Resolve(DispatchDataDictionary dispatchData)
         {
-            var underlyingType = (dispatchData.Message as Validate).MessageType;
+            var underlyingType = (dispatchData.Message as Validate)!.MessageType;
 
             if (underlyingType.IsInterface)
             {
@@ -25,7 +25,7 @@ namespace AI4E.Messaging.Validation
 
             var result = ImmutableArray.CreateBuilder<Route>();
 
-            for (; underlyingType != null; underlyingType = underlyingType.BaseType)
+            for (; underlyingType != null; underlyingType = underlyingType.BaseType!)
             {
                 result.Add(GetRoute(underlyingType));
             }

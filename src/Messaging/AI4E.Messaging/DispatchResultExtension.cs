@@ -23,6 +23,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using AI4E.Messaging.Validation;
@@ -167,7 +168,8 @@ namespace AI4E.Messaging
         /// </summary>
         /// <param name="dispatchResult">The dispatch result.</param>
         /// <param name="entityType">
-        /// Contains type of the entity that could not be found if the operation returns true.
+        /// Contains type of the entity that could not be found if the operation returns true,
+        /// or <c>null</c> if the dispatch result does not include the entity-type.
         /// </param>
         /// <param name="id">
         /// Contains the id of the entity that could not be found if the operation returns true.
@@ -176,7 +178,7 @@ namespace AI4E.Messaging
         /// True if <paramref name="dispatchResult"/> is an entity-not-found result, false otherwise.
         /// </returns>
         public static bool IsEntityNotFound(
-            this IDispatchResult dispatchResult, out Type entityType, out string id)
+            this IDispatchResult dispatchResult, out Type? entityType, [NotNullWhen(true)] out string? id)
         {
             if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
@@ -197,7 +199,7 @@ namespace AI4E.Messaging
                 return true;
             }
 
-            entityType = default;
+            entityType = null;
             id = default;
 
             return false;
@@ -228,7 +230,8 @@ namespace AI4E.Messaging
         /// </summary>
         /// <param name="dispatchResult">The dispatch result.</param>
         /// <param name="entityType">
-        /// Contains the unqualified type name of the entity thats id conflicted if the operation returns true.
+        /// Contains the unqualified type name of the entity thats id conflicted if the operation returns true,
+        /// or <c>null</c> if the dispatch result does not include the entity-type.
         /// </param>
         /// <param name="id">
         /// Contains the conflicting entity id if the operation returns true.
@@ -237,7 +240,7 @@ namespace AI4E.Messaging
         /// True if <paramref name="dispatchResult"/> is an entity-already-present result, false otherwise.
         /// </returns>
         public static bool IsEntityAlreadyPresent(
-            this IDispatchResult dispatchResult, out Type entityType, out string id)
+            this IDispatchResult dispatchResult, out Type? entityType, [NotNullWhen(true)] out string? id)
         {
             if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
@@ -258,7 +261,7 @@ namespace AI4E.Messaging
                 return true;
             }
 
-            entityType = default;
+            entityType = null;
             id = default;
 
             return false;
@@ -335,7 +338,7 @@ namespace AI4E.Messaging
         /// True if <paramref name="dispatchResult"/> is an aggregate result, false otherwise.
         /// </returns>
         public static bool IsAggregateResult(
-            this IDispatchResult dispatchResult, out IAggregateDispatchResult aggregateDispatchResult)
+            this IDispatchResult dispatchResult, [NotNullWhen(true)] out IAggregateDispatchResult? aggregateDispatchResult)
         {
             if (dispatchResult is IAggregateDispatchResult aggregateDispatchResult2)
             {
@@ -413,9 +416,9 @@ namespace AI4E.Messaging
         /// is a success result.
         /// </summary>
         /// <param name="dispatchResult">The dispatch result.</param>
-        /// <param name="result">Contains the result value or <c>default</c>.</param>
+        /// <param name="result">Contains the result value or <c>null</c>.</param>
         /// <returns>True if <paramref name="dispatchResult"/> is a success result, false otherwise.</returns>
-        public static bool IsSuccess(this IDispatchResult dispatchResult, out object result)
+        public static bool IsSuccess(this IDispatchResult dispatchResult, out object? result)
         {
             return dispatchResult.IsSuccess<object>(out result);
         }
@@ -428,7 +431,7 @@ namespace AI4E.Messaging
         /// <param name="dispatchResult">The dispatch result.</param>
         /// <param name="result">Contains the result value or <c>default</c>.</param>
         /// <returns>True if <paramref name="dispatchResult"/> is a success result, false otherwise.</returns>
-        public static bool IsSuccess<TResult>(this IDispatchResult dispatchResult, out TResult result)
+        public static bool IsSuccess<TResult>(this IDispatchResult dispatchResult, [MaybeNull] out TResult result)
         {
             if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
@@ -436,7 +439,7 @@ namespace AI4E.Messaging
                                                              .DispatchResults
                                                              .Where(p => p.IsSuccess);
 
-                result = default;
+                result = default!;
                 if (dispatchResults.Any())
                 {
                     foreach (var dR in dispatchResults)
@@ -447,34 +450,36 @@ namespace AI4E.Messaging
                         }
                     }
 
-                    result = default;
+                    result = default!;
                     return true;
                 }
 
                 return false;
             }
 
+#pragma warning disable CA1062
             if (dispatchResult.IsSuccess)
+#pragma warning restore CA1062
             {
                 if (!TryGetResult(dispatchResult, out result))
                 {
-                    result = default;
+                    result = default!;
                 }
 
                 return true;
             }
 
-            result = default;
+            result = default!;
             return false;
         }
 
-        private static readonly ConcurrentDictionary<(Type dispatchResultType, Type resultType), Func<IDispatchResult, object>> _getResultInvokers
-            = new ConcurrentDictionary<(Type dispatchResultType, Type resultType), Func<IDispatchResult, object>>();
+        private static readonly ConcurrentDictionary<(Type dispatchResultType, Type resultType), Func<IDispatchResult, object>?> _getResultInvokers
+            = new ConcurrentDictionary<(Type dispatchResultType, Type resultType), Func<IDispatchResult, object>?>();
 
         // Caches the delegate
-        private static readonly Func<(Type dispatchResultType, Type resultType), Func<IDispatchResult, object>> _buildResultInvoker = BuildResultInvoker;
+        private static readonly Func<(Type dispatchResultType, Type resultType), Func<IDispatchResult, object>?> _buildResultInvoker = BuildResultInvoker;
 
-        private static bool TryGetResult<TResult>(IDispatchResult dispatchResult, out TResult result)
+        private static bool TryGetResult<TResult>(IDispatchResult dispatchResult, [MaybeNullWhen(false)] out TResult result)
         {
             // This is the hot path when the desired result is the actual result or a base-type of it.
             if (dispatchResult is IDispatchResult<TResult> typedDispatchResult)
@@ -491,16 +496,16 @@ namespace AI4E.Messaging
                 return true;
             }
 
-            result = default;
+            result = default!;
             return false;
         }
 
-        private static Func<IDispatchResult, object> GetResultInvoker(Type dispatchResultType, Type resultType)
+        private static Func<IDispatchResult, object>? GetResultInvoker(Type dispatchResultType, Type resultType)
         {
             return _getResultInvokers.GetOrAdd((dispatchResultType, resultType), _buildResultInvoker);
         }
 
-        private static Func<IDispatchResult, object> BuildResultInvoker((Type dispatchResultType, Type resultType) args)
+        private static Func<IDispatchResult, object>? BuildResultInvoker((Type dispatchResultType, Type resultType) args)
         {
             var interfaces = args.dispatchResultType.GetInterfaces();
 
@@ -555,13 +560,15 @@ namespace AI4E.Messaging
         public static bool IsSuccessWithResult<TResult>(
             this IDispatchResult dispatchResult, out TResult result)
         {
-            return IsSuccess(dispatchResult, out result) && !ReferenceEquals(result, null);
+            return IsSuccess(dispatchResult, out result) && !(result is null);
         }
 
         public static bool IsSuccessWithResults<TResult>(
             this IDispatchResult dispatchResult, out IEnumerable<TResult> results)
         {
+#pragma warning disable CA1062
             if (dispatchResult.IsSuccess)
+#pragma warning restore CA1062
             {
                 if (dispatchResult.IsAggregateResult(out var aggregateDispatchResult))
                 {
@@ -624,7 +631,7 @@ namespace AI4E.Messaging
             {
                 results.AddRange(enumerableResult);
                 return true;
-            }         
+            }
 
             return false;
         }
@@ -659,7 +666,7 @@ namespace AI4E.Messaging
         /// </param>
         /// <returns>True if <paramref name="dispatchResult"/> is a dispatch failure result, false otherwise.</returns>
         public static bool IsDispatchFailure(
-            this IDispatchResult dispatchResult, out Type messageType)
+            this IDispatchResult dispatchResult, out Type? messageType)
         {
             if (dispatchResult is IAggregateDispatchResult aggregateDispatchResult)
             {
@@ -671,21 +678,21 @@ namespace AI4E.Messaging
 
                 if (dispatchFailure1 != null)
                 {
-                    messageType = dispatchFailure1.MessageType;
+                    dispatchFailure1.TryGetMessageType(out messageType);
                     return true;
                 }
 
-                messageType = default;
+                messageType = null;
                 return false;
             }
 
             if (dispatchResult is DispatchFailureDispatchResult dispatchFailure)
             {
-                messageType = dispatchFailure.MessageType;
+                dispatchFailure.TryGetMessageType(out messageType);
                 return true;
             }
 
-            messageType = default;
+            messageType = null;
             return false;
         }
     }

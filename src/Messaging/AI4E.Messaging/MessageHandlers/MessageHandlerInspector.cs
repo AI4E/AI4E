@@ -30,7 +30,7 @@ namespace AI4E.Messaging.MessageHandlers
     /// </summary>
     public sealed class MessageHandlerInspector : TypeMemberInspector<MessageHandlerActionDescriptor>
     {
-        [ThreadStatic] private static MessageHandlerInspector _instance;
+        [ThreadStatic] private static MessageHandlerInspector? _instance;
 
         /// <summary>
         /// Gets the singleton <see cref="MessageHandlerInspector"/> instance for the current thread.

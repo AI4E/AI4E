@@ -54,7 +54,7 @@ namespace AI4E.Messaging
         private volatile IMessageHandlerProvider _messageHandlerProvider;
 
         private readonly IMessageRouterFactory _messageRouterFactory;
-        private readonly ILogger<MessageDispatcher> _logger;
+        private readonly ILogger<MessageDispatcher>? _logger;
         private readonly IList<IRouteResolver> _routesResolver;
         private readonly AsyncInitializationHelper<IMessageRouter> _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
@@ -68,7 +68,7 @@ namespace AI4E.Messaging
             IMessageRouterFactory messageRouterFactory,
             IServiceProvider serviceProvider,
             IOptions<MessagingOptions> optionsAccessor,
-            ILogger<MessageDispatcher> logger = null)
+            ILogger<MessageDispatcher>? logger = null)
         {
             if (messageHandlerRegistry == null)
                 throw new ArgumentNullException(nameof(messageHandlerRegistry));
@@ -89,6 +89,7 @@ namespace AI4E.Messaging
             _messageHandlerRegistry = messageHandlerRegistry;
             _serviceProvider = serviceProvider;
 
+            _messageHandlerProvider = null!;
             ReloadMessageHandlers();
 
             _initializationHelper = new AsyncInitializationHelper<IMessageRouter>(InitializeAsync);
@@ -207,11 +208,11 @@ namespace AI4E.Messaging
             return result;
         }
 
-        private static JsonSerializer Serializer => _serializer.Value;
+        private static JsonSerializer Serializer => _serializer.Value!;
 
         private sealed class SerializationBinder : ISerializationBinder
         {
-            public void BindToName(Type serializedType, out string assemblyName, out string typeName)
+            public void BindToName(Type serializedType, out string? assemblyName, out string typeName)
             {
                 typeName = serializedType.GetUnqualifiedTypeName();
                 assemblyName = null;
@@ -232,7 +233,7 @@ namespace AI4E.Messaging
             if (messageHandlerProvider == null)
             {
                 messageHandlerProvider = _messageHandlerRegistry.ToProvider();
-                var previous = Interlocked.CompareExchange(ref _messageHandlerProvider, messageHandlerProvider, null);
+                var previous = Interlocked.CompareExchange(ref _messageHandlerProvider, messageHandlerProvider, null!);
 
                 if (previous != null)
                 {
@@ -258,7 +259,7 @@ namespace AI4E.Messaging
             {
                 Assert(remoteMessageDispatcher != null);
 
-                _remoteMessageDispatcher = remoteMessageDispatcher;
+                _remoteMessageDispatcher = remoteMessageDispatcher!;
             }
 
             public async ValueTask<RouteMessageHandleResult> HandleAsync(
@@ -284,7 +285,7 @@ namespace AI4E.Messaging
                 // We allow target route descend on publishing only (See https://github.com/AI4E/AI4E/issues/82#issuecomment-448269275)
                 // TODO: Is this correct for dispatching to known end-point, too?
                 var (dispatchResult, handlersFound) = await _remoteMessageDispatcher.InternalDispatchLocalAsync(
-                    messageType,
+                    messageType!,
                     dispatchData,
                     publish,
                     allowRouteDescend: publish,
@@ -357,7 +358,7 @@ namespace AI4E.Messaging
 
         private static DispatchDataDictionary GetDispatchData(RouteMessage<DispatchDataDictionary> routeMessage)
         {
-            if (!routeMessage.TryGetOriginalMessage(out var dispatchData))
+            if (!routeMessage.TryGetOriginal(out var dispatchData))
             {
                 dispatchData = DeserializeDispatchData(routeMessage.Message);
             }
@@ -367,7 +368,7 @@ namespace AI4E.Messaging
 
         private static IDispatchResult GetDispatchResult(RouteMessage<IDispatchResult> routeMessage)
         {
-            if (!routeMessage.TryGetOriginalMessage(out var dispatchResult))
+            if (!routeMessage.TryGetOriginal(out var dispatchResult))
             {
                 var message = routeMessage.Message;
                 dispatchResult = DeserializeDispatchResult(message);
@@ -516,13 +517,13 @@ namespace AI4E.Messaging
                 var messageHandlerProvider = MessageHandlerProvider;
 
                 var currType = messageType;
-                var tasks = new List<ValueTask<(IDispatchResult result, bool handlersFound)>>();
+                var tasks = new List<ValueTask<(IDispatchResult? result, bool handlersFound)>>();
 
                 do
                 {
-                    Assert(currType != null);
+                    Debug.Assert(currType != null);
 
-                    var handlerRegistrations = messageHandlerProvider.GetHandlerRegistrations(currType);
+                    var handlerRegistrations = messageHandlerProvider.GetHandlerRegistrations(currType!);
 
                     if (handlerRegistrations.Any())
                     {
@@ -538,7 +539,7 @@ namespace AI4E.Messaging
 
                             if (handlersFound)
                             {
-                                return (result, handlersFound: true);
+                                return (result!, handlersFound: true);
                             }
                             else
                             {
@@ -547,7 +548,7 @@ namespace AI4E.Messaging
                         }
                     }
                 }
-                while (allowRouteDescend && !currType.IsInterface && (currType = currType.BaseType) != null);
+                while (allowRouteDescend && !currType!.IsInterface && (currType = currType.BaseType!) != null);
 
                 // When dispatching a message and no handlers are available, this is a failure.
                 if (!publish)
@@ -568,7 +569,7 @@ namespace AI4E.Messaging
 
                 if (filteredResult.Count == 1)
                 {
-                    return ((await tasks[0]).result, handlersFound: true);
+                    return ((await tasks[0]).result!, handlersFound: true);
                 }
 
                 return (new AggregateDispatchResult(filteredResult), handlersFound: true);
@@ -579,7 +580,7 @@ namespace AI4E.Messaging
             }
         }
 
-        private async ValueTask<(IDispatchResult result, bool handlersFound)> InternalDispatchLocalAsync(
+        private async ValueTask<(IDispatchResult? result, bool handlersFound)> InternalDispatchLocalAsync(
             IReadOnlyCollection<IMessageHandlerRegistration> handlerRegistrations,
             DispatchDataDictionary dispatchData,
             bool publish,
@@ -592,7 +593,7 @@ namespace AI4E.Messaging
 
             if (publish)
             {
-                var dispatchOperations = new List<ValueTask<IDispatchResult>>(capacity: handlerRegistrations.Count);
+                var dispatchOperations = new List<ValueTask<IDispatchResult>>(capacity: handlerRegistrations!.Count);
 
                 foreach (var handlerRegistration in handlerRegistrations)
                 {
@@ -602,7 +603,7 @@ namespace AI4E.Messaging
                     }
 
                     var dispatchOperation = InternalDispatchLocalSingleHandlerAsync(
-                        handlerRegistration, dispatchData, publish, localDispatch, cancellation);
+                        handlerRegistration, dispatchData!, publish, localDispatch, cancellation);
 
                     dispatchOperations.Add(dispatchOperation);
                 }
@@ -623,7 +624,7 @@ namespace AI4E.Messaging
             }
             else
             {
-                foreach (var handlerRegistration in handlerRegistrations)
+                foreach (var handlerRegistration in handlerRegistrations!)
                 {
                     if (handlerRegistration.IsPublishOnly())
                     {
@@ -636,7 +637,7 @@ namespace AI4E.Messaging
                     }
 
                     var result = await InternalDispatchLocalSingleHandlerAsync(
-                        handlerRegistration, dispatchData, publish, localDispatch, cancellation);
+                        handlerRegistration, dispatchData!, publish, localDispatch, cancellation);
 
                     if (result.IsDispatchFailure())
                     {
@@ -661,14 +662,14 @@ namespace AI4E.Messaging
             Assert(dispatchData != null);
 
             using var scope = _serviceProvider.CreateScope();
-            var handler = handlerRegistration.CreateMessageHandler(scope.ServiceProvider);
+            var handler = handlerRegistration!.CreateMessageHandler(scope.ServiceProvider);
 
             if (handler == null)
             {
-                throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that is null.");
+                throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData!.MessageType}' to a handler that is null.");
             }
 
-            if (!handler.MessageType.IsAssignableFrom(dispatchData.MessageType))
+            if (!handler.MessageType.IsAssignableFrom(dispatchData!.MessageType))
             {
                 throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{handler.MessageType}'.");
             }

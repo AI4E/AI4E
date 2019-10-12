@@ -69,7 +69,7 @@ namespace AI4E.Messaging.MessageHandlers
             var handler = ActivatorUtilities.CreateInstance(serviceProvider, handlerType);
             Debug.Assert(handler != null);
 
-            return CreateInvokerInternal(handler, memberDescriptor, messageProcessors, serviceProvider);
+            return CreateInvokerInternal(handler!, memberDescriptor, messageProcessors, serviceProvider);
         }
 
         /// <summary>
@@ -202,7 +202,6 @@ namespace AI4E.Messaging.MessageHandlers
                 _handler, _memberDescriptor, dispatchData, publish, localDispatch, InvokeCoreAsync, cancellation);
         }
 
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
         ValueTask<IDispatchResult> IMessageHandler.HandleAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
@@ -213,7 +212,6 @@ namespace AI4E.Messaging.MessageHandlers
         }
 
         Type IMessageHandler.MessageType => typeof(TMessage);
-#endif
 
         #endregion
 
@@ -223,7 +221,7 @@ namespace AI4E.Messaging.MessageHandlers
             bool isLocalDispatch,
             CancellationToken cancellation)
         {
-            IMessageDispatchContext context = null;
+            IMessageDispatchContext? context = null;
             var contextDescriptor = MessageHandlerContextDescriptor.GetDescriptor(_handler.GetType());
 
             IMessageDispatchContext BuildContext()
@@ -245,9 +243,9 @@ namespace AI4E.Messaging.MessageHandlers
 
             var member = _memberDescriptor.Member;
             Debug.Assert(member != null);
-            var invoker = HandlerActionInvoker.GetInvoker(member);
+            var invoker = HandlerActionInvoker.GetInvoker(member!);
 
-            object ResolveParameter(ParameterInfo parameter)
+            object? ResolveParameter(ParameterInfo parameter)
             {
                 if (parameter.ParameterType == typeof(IServiceProvider))
                 {
@@ -281,14 +279,16 @@ namespace AI4E.Messaging.MessageHandlers
                 }
             }
 
-            object result;
+            object? result;
             var resultType = invoker.ReturnTypeDescriptor.ResultType;
 
             try
             {
                 result = await invoker.InvokeAsync(_handler, dispatchData.Message, ResolveParameter);
             }
+#pragma warning disable CA1031
             catch (Exception exc)
+#pragma warning restore CA1031
             {
                 return new FailureDispatchResult(exc);
             }
