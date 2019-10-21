@@ -19,7 +19,6 @@
  */
 
 using System;
-using AI4E.Utils;
 using Newtonsoft.Json;
 
 namespace AI4E.Internal
@@ -35,7 +34,7 @@ namespace AI4E.Internal
         {
             if (reader.Value is string unqualifiedTypeName)
             {
-                return TypeLoadHelper.LoadTypeFromUnqualifiedName(unqualifiedTypeName);
+                return serializer.SerializationBinder.BindToType(assemblyName: null, unqualifiedTypeName);
             }
 
             throw new JsonSerializationException();

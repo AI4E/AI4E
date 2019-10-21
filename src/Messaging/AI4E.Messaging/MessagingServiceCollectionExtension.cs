@@ -42,6 +42,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             services.AddOptions();
             services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
+            services.TryAddSingleton<ITypeResolver>(TypeResolver.Default);
             services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
             services.TryAddSingleton<IMessageDispatcher, MessageDispatcher>();
 

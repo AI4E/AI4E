@@ -139,7 +139,7 @@ namespace AI4E.Messaging
                 return false;
             }
 
-            return TypeLoadHelper.TryLoadTypeFromUnqualifiedName(EntityTypeName, out entityType);
+            return TypeResolver.Default.TryLoadType(EntityTypeName.AsSpan(), out entityType);
         }
     }
 }

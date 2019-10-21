@@ -96,7 +96,7 @@ namespace AI4E.Messaging
         /// <returns>True if the call suceeded, false otherwise.</returns>
         public bool TryGetMessageType([NotNullWhen(true)] out Type? entityType)
         {
-            return TypeLoadHelper.TryLoadTypeFromUnqualifiedName(MessageTypeName, out entityType);
+            return TypeResolver.Default.TryLoadType(MessageTypeName.AsSpan(), out entityType);
         }
 
         private static string FormatDefaultMessage(string? messageTypeName)

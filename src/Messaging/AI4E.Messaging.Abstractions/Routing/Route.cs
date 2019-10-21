@@ -44,15 +44,18 @@ namespace AI4E.Messaging.Routing
             _routeTypeName = routeTypeName;
         }
 
-        public bool TryGetMessageType([NotNullWhen(true)]out Type? messageType)
+        public bool TryGetMessageType(ITypeResolver typeLoader, [NotNullWhen(true)]out Type? messageType)
         {
+            if (typeLoader is null)
+                throw new ArgumentNullException(nameof(typeLoader));
+
             if (_messageTypeName is null)
             {
                 messageType = null;
                 return false;
             }
 
-            return TypeLoadHelper.TryLoadTypeFromUnqualifiedName(_messageTypeName, out messageType);
+            return typeLoader.TryLoadType(_messageTypeName.AsSpan(), out messageType);
         }
 
         public static Route UnsafeCreateFromString(string str)

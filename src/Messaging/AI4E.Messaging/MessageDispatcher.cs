@@ -35,7 +35,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Messaging
 {
@@ -44,16 +43,19 @@ namespace AI4E.Messaging
     // We need to implement IAsyncInitialization in order to enable this type beeing registered as app-service.
     {
         // Caching the delegates for performance reasons.
-        private static readonly Func<IDispatchResult, Message> _serializeDispatchResult = SerializeDispatchResult;
-        private static readonly Func<DispatchDataDictionary, Message> _serializeDispatchData = SerializeDispatchData;
+        private readonly Func<IDispatchResult, Message> _serializeDispatchResult;
+        private readonly Func<DispatchDataDictionary, Message> _serializeDispatchData;
 
         #region Fields
 
         private readonly IMessageHandlerRegistry _messageHandlerRegistry;
         private readonly IServiceProvider _serviceProvider;
+        private readonly ThreadLocal<JsonSerializer> _serializer;
+
         private volatile IMessageHandlerProvider _messageHandlerProvider;
 
         private readonly IMessageRouterFactory _messageRouterFactory;
+        private readonly ITypeResolver _typeResolver;
         private readonly ILogger<MessageDispatcher>? _logger;
         private readonly IList<IRouteResolver> _routesResolver;
         private readonly AsyncInitializationHelper<IMessageRouter> _initializationHelper;
@@ -66,6 +68,7 @@ namespace AI4E.Messaging
         public MessageDispatcher(
             IMessageHandlerRegistry messageHandlerRegistry,
             IMessageRouterFactory messageRouterFactory,
+            ITypeResolver typeResolver,
             IServiceProvider serviceProvider,
             IOptions<MessagingOptions> optionsAccessor,
             ILogger<MessageDispatcher>? logger = null)
@@ -76,6 +79,9 @@ namespace AI4E.Messaging
             if (messageRouterFactory == null)
                 throw new ArgumentNullException(nameof(messageRouterFactory));
 
+            if (typeResolver is null)
+                throw new ArgumentNullException(nameof(typeResolver));
+
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
@@ -83,11 +89,16 @@ namespace AI4E.Messaging
                 throw new ArgumentNullException(nameof(optionsAccessor));
 
             _messageRouterFactory = messageRouterFactory;
+            _typeResolver = typeResolver;
             _logger = logger;
             _routesResolver = optionsAccessor.Value?.RoutesResolvers ?? Array.Empty<IRouteResolver>();
 
             _messageHandlerRegistry = messageHandlerRegistry;
             _serviceProvider = serviceProvider;
+
+            _serializer = new ThreadLocal<JsonSerializer>(BuildSerializer, trackAllValues: false);
+            _serializeDispatchResult = SerializeDispatchResult;
+            _serializeDispatchData = SerializeDispatchData;
 
             _messageHandlerProvider = null!;
             ReloadMessageHandlers();
@@ -107,13 +118,17 @@ namespace AI4E.Messaging
 
         private async Task DisposeInternalAsync()
         {
-            var (success, messageRouter) = await _initializationHelper.CancelAsync();
+            var (success, messageRouter) = await _initializationHelper
+                .CancelAsync()
+                .ConfigureAwait(false);
 
             if (success)
             {
                 try
                 {
-                    await messageRouter.UnregisterRoutesAsync(removePersistentRoutes: false);
+                    await messageRouter
+                        .UnregisterRoutesAsync(removePersistentRoutes: false)
+                        .ConfigureAwait(false);
                 }
                 finally
                 {
@@ -137,7 +152,10 @@ namespace AI4E.Messaging
             try
             {
                 var routeRegistrations = BuildRouteRegistrations(MessageHandlerProvider);
-                await messageRouter.RegisterRoutesAsync(routeRegistrations, cancellation);
+                await messageRouter
+                    .RegisterRoutesAsync(routeRegistrations, cancellation)
+                    .ConfigureAwait(false);
+
                 _logger?.LogDebug("Remote message dispatcher initialized.");
             }
             catch
@@ -193,14 +211,12 @@ namespace AI4E.Messaging
 
         #region Serializer
 
-        private static readonly ThreadLocal<JsonSerializer> _serializer = new ThreadLocal<JsonSerializer>(BuildSerializer, trackAllValues: false);
-
-        private static JsonSerializer BuildSerializer()
+        private JsonSerializer BuildSerializer()
         {
             var result = new JsonSerializer
             {
                 TypeNameHandling = TypeNameHandling.Auto,
-                SerializationBinder = new SerializationBinder()
+                SerializationBinder = new SerializationBinder(_typeResolver)
             };
 
             result.Converters.Add(new TypeConverter());
@@ -208,10 +224,17 @@ namespace AI4E.Messaging
             return result;
         }
 
-        private static JsonSerializer Serializer => _serializer.Value!;
+        private JsonSerializer Serializer => _serializer.Value!;
 
         private sealed class SerializationBinder : ISerializationBinder
         {
+            private readonly ITypeResolver _typeResolver;
+
+            public SerializationBinder(ITypeResolver typeResolver)
+            {
+                _typeResolver = typeResolver;
+            }
+
             public void BindToName(Type serializedType, out string? assemblyName, out string typeName)
             {
                 typeName = serializedType.GetUnqualifiedTypeName();
@@ -220,7 +243,7 @@ namespace AI4E.Messaging
 
             public Type BindToType(string assemblyName, string typeName)
             {
-                return TypeLoadHelper.LoadTypeFromUnqualifiedName(typeName);
+                return _typeResolver.LoadType(typeName.AsSpan());
             }
         }
 
@@ -241,7 +264,7 @@ namespace AI4E.Messaging
                 }
             }
 
-            Assert(messageHandlerProvider != null);
+            Debug.Assert(messageHandlerProvider != null);
         }
 
         public IMessageHandlerProvider MessageHandlerProvider => _messageHandlerProvider; // Volatile read op;
@@ -253,13 +276,13 @@ namespace AI4E.Messaging
 
         private sealed class RouteMessageHandler : IRouteMessageHandler
         {
-            private readonly MessageDispatcher _remoteMessageDispatcher;
+            private readonly MessageDispatcher _messageDispatcher;
 
-            public RouteMessageHandler(MessageDispatcher remoteMessageDispatcher)
+            public RouteMessageHandler(MessageDispatcher messageDispatcher)
             {
-                Assert(remoteMessageDispatcher != null);
+                Debug.Assert(messageDispatcher != null);
 
-                _remoteMessageDispatcher = remoteMessageDispatcher!;
+                _messageDispatcher = messageDispatcher!;
             }
 
             public async ValueTask<RouteMessageHandleResult> HandleAsync(
@@ -269,22 +292,27 @@ namespace AI4E.Messaging
                 bool localDispatch,
                 CancellationToken cancellation)
             {
-                var dispatchData = GetDispatchData(routeMessage);
+                var dispatchData = _messageDispatcher.GetDispatchData(routeMessage);
 
-                if (!route.TryGetMessageType(out var messageType))
+                // The type of message in the dispatch-data is not necessarily the type that we use for dispatch,
+                // because of route descend. The route contains the actual message-type that we use for dispatch.
+                // The message-type that the dispatch-data provices MUST ALWAYS be assignable to the message-type
+                // in the route.
+
+                // This returns false, if it is the default value of the route-type,
+                // or the message-type encoded in the route could not be load.
+                if (!route.TryGetMessageType(_messageDispatcher._typeResolver, out var messageType))
                 {
-                    // This returns false, if it is the default value of the route-type,
-                    // or the message-type encoded in the route could not be load.
-
-                    // TODO: IS this an error, or can we safely fallback to the type encoded in the dispatch-data?
+                    // TODO: Is this an error, or can we safely fallback to the type encoded in the dispatch-data?
                     messageType = dispatchData.MessageType;
                 }
 
-                Assert(messageType != null);
+                Debug.Assert(messageType != null);
+                Debug.Assert(messageType!.IsAssignableFrom(dispatchData.MessageType));
 
                 // We allow target route descend on publishing only (See https://github.com/AI4E/AI4E/issues/82#issuecomment-448269275)
                 // TODO: Is this correct for dispatching to known end-point, too?
-                var (dispatchResult, handlersFound) = await _remoteMessageDispatcher.InternalDispatchLocalAsync(
+                var (dispatchResult, handlersFound) = await _messageDispatcher.InternalDispatchLocalAsync(
                     messageType!,
                     dispatchData,
                     publish,
@@ -292,27 +320,29 @@ namespace AI4E.Messaging
                     localDispatch,
                     cancellation);
 
-                var resultRouteMessage = BuildRouteMessage(dispatchResult);
+                var resultRouteMessage = _messageDispatcher.BuildRouteMessage(dispatchResult);
 
                 return new RouteMessageHandleResult(resultRouteMessage, handled: handlersFound);
             }
         }
 
-        private static Message SerializeDispatchResult(IDispatchResult dispatchResult)
+        private Message SerializeDispatchResult(IDispatchResult dispatchResult)
         {
             var messageBuilder = new MessageBuilder();
 
-            Assert(dispatchResult != null);
+            Debug.Assert(dispatchResult != null);
 
-            using var frameStream = messageBuilder.PushFrame().OpenStream();
-            using var writer = new StreamWriter(frameStream);
-            using var jsonWriter = new JsonTextWriter(writer);
-            Serializer.Serialize(jsonWriter, dispatchResult, typeof(IDispatchResult));
+            using (var frameStream = messageBuilder.PushFrame().OpenStream())
+            using (var writer = new StreamWriter(frameStream))
+            using (var jsonWriter = new JsonTextWriter(writer))
+            {
+                Serializer.Serialize(jsonWriter, dispatchResult, typeof(IDispatchResult));
+            }
 
             return messageBuilder.BuildMessage();
         }
 
-        private static IDispatchResult DeserializeDispatchResult(Message message)
+        private IDispatchResult DeserializeDispatchResult(Message message)
         {
             message.PopFrame(out var frame);
 
@@ -322,21 +352,23 @@ namespace AI4E.Messaging
             return Serializer.Deserialize<IDispatchResult>(jsonReader);
         }
 
-        private static Message SerializeDispatchData(DispatchDataDictionary dispatchData)
+        private Message SerializeDispatchData(DispatchDataDictionary dispatchData)
         {
             var messageBuilder = new MessageBuilder();
 
-            Assert(dispatchData != null);
+            Debug.Assert(dispatchData != null);
 
-            using var frameStream = messageBuilder.PushFrame().OpenStream();
-            using var writer = new StreamWriter(frameStream);
-            using var jsonWriter = new JsonTextWriter(writer);
-            Serializer.Serialize(jsonWriter, dispatchData, typeof(DispatchDataDictionary));
+            using (var frameStream = messageBuilder.PushFrame().OpenStream())
+            using (var writer = new StreamWriter(frameStream))
+            using (var jsonWriter = new JsonTextWriter(writer))
+            {
+                Serializer.Serialize(jsonWriter, dispatchData, typeof(DispatchDataDictionary));
+            }
 
             return messageBuilder.BuildMessage();
         }
 
-        private static DispatchDataDictionary DeserializeDispatchData(Message message)
+        private DispatchDataDictionary DeserializeDispatchData(Message message)
         {
             message.PopFrame(out var frame);
 
@@ -346,35 +378,43 @@ namespace AI4E.Messaging
             return Serializer.Deserialize<DispatchDataDictionary>(jsonReader);
         }
 
-        private static RouteMessage<DispatchDataDictionary> BuildRouteMessage(DispatchDataDictionary dispatchData)
+        private RouteMessage<DispatchDataDictionary> BuildRouteMessage(DispatchDataDictionary dispatchData)
         {
             return new RouteMessage<DispatchDataDictionary>(dispatchData, _serializeDispatchData);
         }
 
-        private static RouteMessage<IDispatchResult> BuildRouteMessage(IDispatchResult dispatchResult)
+        private RouteMessage<IDispatchResult> BuildRouteMessage(IDispatchResult dispatchResult)
         {
             return new RouteMessage<IDispatchResult>(dispatchResult, _serializeDispatchResult);
         }
 
-        private static DispatchDataDictionary GetDispatchData(RouteMessage<DispatchDataDictionary> routeMessage)
+        private bool IsFromSameContext(object obj)
         {
-            if (!routeMessage.TryGetOriginal(out var dispatchData))
-            {
-                dispatchData = DeserializeDispatchData(routeMessage.Message);
-            }
+            var objType = obj.GetType();
+            var objTypeName = objType.GetUnqualifiedTypeName();
 
-            return dispatchData;
+            return _typeResolver.TryLoadType(objTypeName.AsSpan(), out var type) &&
+                   type == objType;
         }
 
-        private static IDispatchResult GetDispatchResult(RouteMessage<IDispatchResult> routeMessage)
+        private DispatchDataDictionary GetDispatchData(RouteMessage<DispatchDataDictionary> routeMessage)
         {
-            if (!routeMessage.TryGetOriginal(out var dispatchResult))
+            if (routeMessage.TryGetOriginal(out var dispatchData) && IsFromSameContext(dispatchData))
             {
-                var message = routeMessage.Message;
-                dispatchResult = DeserializeDispatchResult(message);
+                return dispatchData;
             }
 
-            return dispatchResult;
+            return DeserializeDispatchData(routeMessage.Message);
+        }
+
+        private IDispatchResult GetDispatchResult(RouteMessage<IDispatchResult> routeMessage)
+        {
+            if (routeMessage.TryGetOriginal(out var dispatchResult) && IsFromSameContext(dispatchResult))
+            {
+                return dispatchResult;
+            }
+
+            return DeserializeDispatchResult(routeMessage.Message);
         }
 
         #region Dispatch
@@ -413,7 +453,8 @@ namespace AI4E.Messaging
             RouteEndPointAddress endPoint,
             CancellationToken cancellation)
         {
-            var messageRouter = await GetMessageRouterAsync(cancellation);
+            var messageRouter = await GetMessageRouterAsync(cancellation)
+                .ConfigureAwait(false);
 
             if (endPoint == await GetLocalEndPointAsync(cancellation))
             {
@@ -439,7 +480,9 @@ namespace AI4E.Messaging
             bool publish,
             CancellationToken cancellation)
         {
-            var messageRouter = await GetMessageRouterAsync(cancellation);
+            var messageRouter = await GetMessageRouterAsync(cancellation)
+                .ConfigureAwait(false);
+
             var routes = ResolveRoutes(dispatchData);
             var routeMessage = BuildRouteMessage(dispatchData);
             var resultRouteMessages = await messageRouter.RouteAsync(routes, routeMessage, publish, cancellation);
@@ -485,7 +528,9 @@ namespace AI4E.Messaging
             if (dispatchData == null)
                 throw new ArgumentNullException(nameof(dispatchData));
 
-            await _initializationHelper.Initialization.WithCancellation(cancellation);
+            await _initializationHelper.Initialization
+                .WithCancellation(cancellation)
+                .ConfigureAwait(false);
 
             var (dispatchResult, _) = await InternalDispatchLocalAsync(
                 dispatchData.MessageType,
@@ -587,9 +632,9 @@ namespace AI4E.Messaging
             bool localDispatch,
             CancellationToken cancellation)
         {
-            Assert(dispatchData != null);
-            Assert(handlerRegistrations != null);
-            Assert(handlerRegistrations.Any());
+            Debug.Assert(dispatchData != null);
+            Debug.Assert(handlerRegistrations != null);
+            Debug.Assert(handlerRegistrations.Any());
 
             if (publish)
             {
@@ -658,8 +703,8 @@ namespace AI4E.Messaging
             bool localDispatch,
             CancellationToken cancellation)
         {
-            Assert(handlerRegistration != null);
-            Assert(dispatchData != null);
+            Debug.Assert(handlerRegistration != null);
+            Debug.Assert(dispatchData != null);
 
             using var scope = _serviceProvider.CreateScope();
             var handler = handlerRegistration!.CreateMessageHandler(scope.ServiceProvider);

@@ -161,7 +161,7 @@ namespace AI4E.Storage.Domain
                 return ImmutableList<object>.Empty; ;
             }
 
-            var entityType = TypeLoadHelper.LoadTypeFromUnqualifiedName(typeName);
+            var entityType = TypeResolver.Default.LoadType(typeName.AsSpan());
             var entityId = commit.StreamId;
 
             var events = ImmutableList.CreateBuilder<object>();

@@ -56,7 +56,7 @@ namespace AI4E.Internal
 
             public Type BindToType(string assemblyName, string typeName)
             {
-                return TypeLoadHelper.LoadTypeFromUnqualifiedName(typeName);
+                return TypeResolver.Default.LoadType(typeName);
             }
         }
 
