@@ -18,20 +18,38 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Diagnostics;
+using System;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Messaging
 {
-    internal sealed class MessagingBuilder : IMessagingBuilder
+    public class MessagingBuilder : IMessagingBuilder
     {
         public MessagingBuilder(IServiceCollection services)
         {
-            Debug.Assert(services != null);
+            if (services is null)
+                throw new ArgumentNullException(nameof(services));
 
-            Services = services!;
+            Services = services;
         }
 
         public IServiceCollection Services { get; }
+
+        public static MessagingBuilder CreateDefault()
+        {
+            var serviceCollection = new ServiceCollection();
+            return (MessagingBuilder)serviceCollection.AddMessaging();
+        }
+
+        public IMessageDispatcher BuildMessageDispatcher()
+        {
+            var serviceProvider = Services.BuildServiceProvider();
+            return serviceProvider.GetRequiredService<IMessageDispatcher>();
+        }
+    }
+
+    internal sealed class MessagingBuilderImpl : MessagingBuilder
+    {
+        public MessagingBuilderImpl(IServiceCollection services) : base(services) { }
     }
 }

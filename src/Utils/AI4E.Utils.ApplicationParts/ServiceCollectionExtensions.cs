@@ -37,11 +37,8 @@
  */
 
 using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Reflection;
 using AI4E.Utils.ApplicationParts;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -51,61 +48,41 @@ namespace Microsoft.Extensions.DependencyInjection
     public static class AI4EUtilsApplicationPartsServiceCollectionExtensions
     {
         /// <summary>
-        /// Returns the application part manager that that is registered in the specified service collection.
-        /// </summary>
-        /// <param name="services">The service collection.</param>
-        /// <returns>The <see cref="ApplicationPartManager"/> that is registered in <paramref name="services"/>.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="services"/> is null.</exception>
-        public static ApplicationPartManager GetApplicationPartManager(
-            this IServiceCollection services)
-        {
-            var manager = services.GetService<ApplicationPartManager>();
-            if (manager == null)
-            {
-                manager = new ApplicationPartManager();
-
-                var entryAssembly = Assembly.GetEntryAssembly();
-
-                // Blazor cannot access the entry assembly apparently.
-                if (entryAssembly != null)
-                {
-                    manager.ApplicationParts.Add(new AssemblyPart(entryAssembly));
-                }
-            }
-
-            return manager;
-        }
-
-        /// <summary>
         /// Configured the application part manager with the specified configuration.
         /// </summary>
         /// <param name="services">The service collection.</param>
         /// <param name="configuration">The application part manager configuration.</param>
         /// <exception cref="ArgumentNullException">
         /// Thrown if any of <paramref name="services"/> or <paramref name="configuration"/> is <c>null</c>.</exception>
-        public static void ConfigureApplicationParts(
+        public static IServiceCollection ConfigureApplicationParts(
             this IServiceCollection services,
             Action<ApplicationPartManager> configuration)
         {
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
-            var partManager = services.GetApplicationPartManager();
-            configuration(partManager);
-            services.TryAddSingleton(partManager);
-        }
+            ApplicationPartManager DecoratePartManager(ApplicationPartManager partManager)
+            {
+                configuration(partManager);
+                return partManager;
+            }
 
-        [return: MaybeNull]
-        private static T GetService<T>(this IServiceCollection services)
-        {
-            var serviceDescriptor = services.LastOrDefault(d => d.ServiceType == typeof(T));
+            if (!services.TryDecorate<ApplicationPartManager>(DecoratePartManager))
+            {
+                var partManager = new ApplicationPartManager();
+                var entryAssembly = Assembly.GetEntryAssembly();
 
-            var result = serviceDescriptor?.ImplementationInstance;
+                // Blazor cannot access the entry assembly apparently.
+                if (entryAssembly != null)
+                {
+                    partManager.ApplicationParts.Add(new AssemblyPart(entryAssembly));
+                }
 
-            if (result is null)
-                return default!;
+                configuration(partManager);
+                services.AddSingleton(partManager);
+            }
 
-            return (T)result;
+            return services;
         }
     }
 }

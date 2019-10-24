@@ -42,22 +42,22 @@ namespace AI4E.Messaging
         : IMessageDispatcher, IAsyncInitialization
     // We need to implement IAsyncInitialization in order to enable this type beeing registered as app-service.
     {
-        // Caching the delegates for performance reasons.
-        private readonly Func<IDispatchResult, Message> _serializeDispatchResult;
-        private readonly Func<DispatchDataDictionary, Message> _serializeDispatchData;
-
         #region Fields
 
         private readonly IMessageHandlerRegistry _messageHandlerRegistry;
+        private readonly IMessageRouterFactory _messageRouterFactory;
+        private readonly ITypeResolver _typeResolver;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IOptions<MessagingOptions> _optionsAccessor;
+        private readonly ILogger<MessageDispatcher>? _logger;
+
+        // Caching the delegates for performance reasons.
+        private readonly Func<IDispatchResult, Message> _serializeDispatchResult;
+        private readonly Func<DispatchDataDictionary, Message> _serializeDispatchData;
         private readonly ThreadLocal<JsonSerializer> _serializer;
 
         private volatile IMessageHandlerProvider _messageHandlerProvider;
 
-        private readonly IMessageRouterFactory _messageRouterFactory;
-        private readonly ITypeResolver _typeResolver;
-        private readonly ILogger<MessageDispatcher>? _logger;
-        private readonly IList<IRouteResolver> _routesResolver;
         private readonly AsyncInitializationHelper<IMessageRouter> _initializationHelper;
         private readonly AsyncDisposeHelper _disposeHelper;
 
@@ -88,13 +88,12 @@ namespace AI4E.Messaging
             if (optionsAccessor == null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
 
+            _messageHandlerRegistry = messageHandlerRegistry;
             _messageRouterFactory = messageRouterFactory;
             _typeResolver = typeResolver;
-            _logger = logger;
-            _routesResolver = optionsAccessor.Value?.RoutesResolvers ?? Array.Empty<IRouteResolver>();
-
-            _messageHandlerRegistry = messageHandlerRegistry;
             _serviceProvider = serviceProvider;
+            _optionsAccessor = optionsAccessor;
+            _logger = logger;
 
             _serializer = new ThreadLocal<JsonSerializer>(BuildSerializer, trackAllValues: false);
             _serializeDispatchResult = SerializeDispatchResult;
@@ -147,7 +146,9 @@ namespace AI4E.Messaging
         {
             // Create the underlying message router.
             var messageRouter = await _messageRouterFactory.CreateMessageRouterAsync(
-                new RouteMessageHandler(this), cancellation);
+                _optionsAccessor.Value?.LocalEndPoint ?? MessagingOptions.DefaultLocalEndPoint,
+                new RouteMessageHandler(this),
+                cancellation);
 
             try
             {
@@ -248,6 +249,9 @@ namespace AI4E.Messaging
         }
 
         #endregion
+
+        private IList<IRouteResolver> RoutesResolver
+            => _optionsAccessor.Value?.RoutesResolvers ?? Array.Empty<IRouteResolver>();
 
         public void ReloadMessageHandlers()
         {
@@ -507,7 +511,7 @@ namespace AI4E.Messaging
 
         private RouteHierarchy ResolveRoutes(DispatchDataDictionary dispatchData)
         {
-            foreach (var routesResolver in _routesResolver)
+            foreach (var routesResolver in RoutesResolver)
             {
                 if (routesResolver.TryResolve(dispatchData, out var routes))
                     return routes;

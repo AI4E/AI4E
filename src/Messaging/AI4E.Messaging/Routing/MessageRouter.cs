@@ -177,10 +177,9 @@ namespace AI4E.Messaging.Routing
             CancellationToken cancellation)
         {
             if (!routes.Any())
-                throw new ArgumentException("The collection must not be empty.", nameof(routes));
-
-            if (routes.Any(p => p == null))
-                throw new ArgumentException("The collection must not contain null values.", nameof(routes));
+            {
+                return Array.Empty<RouteMessage<IDispatchResult>>();
+            }
 
             try
             {
