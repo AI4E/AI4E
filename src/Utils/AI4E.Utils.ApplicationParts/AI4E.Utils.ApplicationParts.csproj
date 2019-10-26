@@ -16,4 +16,8 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="3.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\AI4E.Utils\AI4E.Utils.csproj" />
+  </ItemGroup>
+
 </Project>

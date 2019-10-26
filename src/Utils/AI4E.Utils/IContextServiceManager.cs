@@ -1,8 +1,8 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -19,26 +19,24 @@
  */
 
 using System;
-using Newtonsoft.Json;
+using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.Internal
+namespace AI4E.Utils
 {
-    internal sealed class TypeConverter : JsonConverter<Type>
+    public interface IContextServiceManager
     {
-        public override void WriteJson(JsonWriter writer, Type value, JsonSerializer serializer)
-        {
-            serializer.SerializationBinder.BindToName(value, out _, out var typeName);
-            writer.WriteValue(typeName);
-        }
+        bool TryConfigureContextServices(
+            string context,
+            Action<IServiceCollection> serviceConfiguration,
+            [NotNullWhen(true)] out ContextServicesDescriptor? servicesDescriptor);
 
-        public override Type ReadJson(JsonReader reader, Type objectType, Type existingValue, bool hasExistingValue, JsonSerializer serializer)
-        {
-            if (reader.Value is string typeName)
-            {
-                return serializer.SerializationBinder.BindToType(assemblyName: null, typeName);
-            }
+        ContextServicesDescriptor GetContextServices(
+            string context,
+            bool coreServicesIfNotFound = true);
 
-            throw new JsonSerializationException();
-        }
+        bool TryGetContextServices(
+            string context,
+            [NotNullWhen(true)] out ContextServicesDescriptor? serviceProvider);
     }
 }

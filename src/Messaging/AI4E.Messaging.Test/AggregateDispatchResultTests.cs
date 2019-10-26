@@ -18,9 +18,12 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using AI4E.Internal;
+using AI4E.Messaging.Test;
+using AI4E.Utils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Messaging
@@ -405,6 +408,102 @@ namespace AI4E.Messaging
             Assert.AreEqual(2, deserializedResult.DispatchResults.Count());
             Assert.AreEqual(4, deserializedResult.ResultData.Count);
             Assert.AreEqual("j", deserializedResult.ResultData["abc"]);
+            Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
+            Assert.AreEqual("u", deserializedResult.ResultData["z"]);
+            Assert.AreEqual(5L, deserializedResult.ResultData["c"]);
+            Assert.IsFalse(deserializedResult.ResultData.ContainsKey("b"));
+        }
+
+        [TestMethod]
+        public void CustomTypeResolverSerializeRoundtripTest()
+        {
+            var resultData1 = new Dictionary<string, object>
+            {
+                ["abc"] = new CustomType { Str = "def" },
+                ["xyz"] = 1234L
+            };
+
+            var resultData2 = new Dictionary<string, object>
+            {
+                ["z"] = "u",
+                ["b"] = 167L
+            };
+
+            var d1 = new DispatchResult(true, "DispatchResultMessage", resultData1);
+            var d2 = new DispatchResult(true, "yb", resultData2);
+
+            var resultData = new Dictionary<string, object>
+            {
+                ["abc"] = new CustomType { Str = "j" },
+                ["b"] = null,
+                ["c"] = 5L
+            };
+
+            var dispatchResult = new AggregateDispatchResult(new IDispatchResult[]
+            {
+                d1, d2, null
+            }, resultData);
+
+            var alc = new TestAssemblyLoadContext();
+            var asm = alc.TestAssembly;
+            var typeResolver = new TypeResolver(asm.Yield());
+
+            var deserializedResult = Serializer.Roundtrip(dispatchResult, typeResolver);
+
+            Assert.IsTrue(deserializedResult.IsSuccess);
+            Assert.AreEqual("{ Multiple results }", deserializedResult.Message);
+            Assert.AreEqual(2, deserializedResult.DispatchResults.Count());
+            Assert.AreEqual(4, deserializedResult.ResultData.Count);
+            Assert.IsInstanceOfType(deserializedResult.ResultData["abc"], asm.GetType(typeof(CustomType).FullName));
+            Assert.AreEqual("j", (string)((dynamic)deserializedResult.ResultData["abc"]).Str);
+            Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
+            Assert.AreEqual("u", deserializedResult.ResultData["z"]);
+            Assert.AreEqual(5L, deserializedResult.ResultData["c"]);
+            Assert.IsFalse(deserializedResult.ResultData.ContainsKey("b"));
+        }
+
+        [TestMethod]
+        public void CustomTypeResolverSerializeUnknownTypeRoundtripTest()
+        {
+            var resultData1 = new Dictionary<string, object>
+            {
+                ["abc"] = new CustomType { Str = "def" },
+                ["xyz"] = 1234L
+            };
+
+            var resultData2 = new Dictionary<string, object>
+            {
+                ["z"] = "u",
+                ["b"] = 167L
+            };
+
+            var d1 = new DispatchResult(true, "DispatchResultMessage", resultData1);
+            var d2 = new DispatchResult(true, "yb", resultData2);
+
+            var resultData = new Dictionary<string, object>
+            {
+                ["abc"] = new CustomType { Str = "j" },
+                ["b"] = null,
+                ["c"] = 5L
+            };
+
+            var dispatchResult = new AggregateDispatchResult(new IDispatchResult[]
+            {
+                d1, d2, null
+            }, resultData);
+
+            var alc = new TestAssemblyLoadContext();
+            var asm = alc.TestAssembly;
+            var typeResolver = new TypeResolver(asm.Yield());
+
+            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult, typeResolver);
+
+            Assert.IsTrue(deserializedResult.IsSuccess);
+            Assert.AreEqual("{ Multiple results }", deserializedResult.Message);
+            Assert.AreEqual(2, deserializedResult.DispatchResults.Count());
+            Assert.AreEqual(4, deserializedResult.ResultData.Count);
+            Assert.IsInstanceOfType(deserializedResult.ResultData["abc"], asm.GetType(typeof(CustomType).FullName));
+            Assert.AreEqual("j", (string)((dynamic)deserializedResult.ResultData["abc"]).Str);
             Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
             Assert.AreEqual("u", deserializedResult.ResultData["z"]);
             Assert.AreEqual(5L, deserializedResult.ResultData["c"]);

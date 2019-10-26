@@ -20,7 +20,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -32,15 +31,8 @@ namespace AI4E.Messaging.MessageHandlers
     {
         public static void Register(MessagingBuilder builder)
         {
-            // Protect us from registering the message-handlers multiple times.
-            if (builder.Services.Any(p => p.ServiceType == typeof(MessageHandlersRegisteredMarker)))
-                return;
-
-            builder.Services.AddSingleton<MessageHandlersRegisteredMarker>(_ => null!);
             builder.ConfigureMessageHandlers(Configure);
         }
-
-        private sealed class MessageHandlersRegisteredMarker { }
 
         private static void Configure(IMessageHandlerRegistry messageHandlerRegistry, IServiceProvider serviceProvider)
         {

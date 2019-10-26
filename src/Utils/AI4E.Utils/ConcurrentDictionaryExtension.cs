@@ -1,8 +1,8 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -18,27 +18,19 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-using Newtonsoft.Json;
+using System.Collections.Generic;
 
-namespace AI4E.Internal
+namespace System.Collections.Concurrent
 {
-    internal sealed class TypeConverter : JsonConverter<Type>
+    public static class ConcurrentDictionaryExtension
     {
-        public override void WriteJson(JsonWriter writer, Type value, JsonSerializer serializer)
+        public static bool TryRemove<TKey, TValue>(
+            this ConcurrentDictionary<TKey, TValue> dictionary, TKey key, TValue comparison)
+            where TKey : notnull
         {
-            serializer.SerializationBinder.BindToName(value, out _, out var typeName);
-            writer.WriteValue(typeName);
-        }
-
-        public override Type ReadJson(JsonReader reader, Type objectType, Type existingValue, bool hasExistingValue, JsonSerializer serializer)
-        {
-            if (reader.Value is string typeName)
-            {
-                return serializer.SerializationBinder.BindToType(assemblyName: null, typeName);
-            }
-
-            throw new JsonSerializationException();
+#pragma warning disable CA1062
+            return (dictionary as IDictionary<TKey, TValue>).Remove(new KeyValuePair<TKey, TValue>(key, comparison));
+#pragma warning restore CA1062
         }
     }
 }

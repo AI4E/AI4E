@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="$(SolutionDir)src\Shared\Serializer.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="$(SolutionDir)src\Shared\TypeConverter.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="..\AI4E.Messaging.EndToEndTest\TestAssemblyLoadContext.cs" Link="Shared\TestAssemblyLoadContext.cs" />
   </ItemGroup>
 
   <ItemGroup>

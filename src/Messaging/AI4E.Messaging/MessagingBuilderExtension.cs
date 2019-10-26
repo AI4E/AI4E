@@ -20,6 +20,7 @@
 
 using System;
 using AI4E.Messaging.Routing;
+using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Messaging
@@ -43,7 +44,9 @@ namespace AI4E.Messaging
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
+#pragma warning disable CA1062
             messagingBuilder.Services.Configure(configuration);
+#pragma warning restore CA1062
 
             return messagingBuilder;
         }
@@ -63,11 +66,15 @@ namespace AI4E.Messaging
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
-            messagingBuilder.Services.Decorate<IMessageHandlerRegistry>((registry, provider) =>
+            IMessageHandlerRegistry Decorator(IMessageHandlerRegistry registry, IServiceProvider provider)
             {
                 configuration(registry, provider);
                 return registry;
-            });
+            }
+
+#pragma warning disable CA1062
+            messagingBuilder.Services.Decorate<IMessageHandlerRegistry>(Decorator);
+#pragma warning restore CA1062
 
             return messagingBuilder;
         }
@@ -90,7 +97,9 @@ namespace AI4E.Messaging
         public static IMessagingBuilder UseDispatcher<TMessageDispatcher>(this IMessagingBuilder messagingBuilder)
             where TMessageDispatcher : class, IMessageDispatcher
         {
+#pragma warning disable CA1062
             var services = messagingBuilder.Services;
+#pragma warning restore CA1062
 
             services.UseDispatcher<TMessageDispatcher>();
             services.AddSingleton<TMessageDispatcher>();
@@ -112,7 +121,9 @@ namespace AI4E.Messaging
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
 
+#pragma warning disable CA1062
             var services = messagingBuilder.Services;
+#pragma warning restore CA1062
             services.AddSingleton(instance);
             return messagingBuilder;
         }
@@ -131,7 +142,9 @@ namespace AI4E.Messaging
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
 
+#pragma warning disable CA1062
             var services = messagingBuilder.Services;
+#pragma warning restore CA1062
             services.AddSingleton(factory);
             return messagingBuilder;
         }
@@ -147,7 +160,9 @@ namespace AI4E.Messaging
             this IMessagingBuilder messagingBuilder)
              where TMessageDispatcher : class, IMessageDispatcher
         {
+#pragma warning disable CA1062
             messagingBuilder.Services.Decorate<IMessageDispatcher, TMessageDispatcher>();
+#pragma warning restore CA1062
             return messagingBuilder;
         }
 
@@ -166,7 +181,9 @@ namespace AI4E.Messaging
             if (decorator == null)
                 throw new ArgumentNullException(nameof(decorator));
 
+#pragma warning disable CA1062
             messagingBuilder.Services.Decorate(decorator);
+#pragma warning restore CA1062
             return messagingBuilder;
         }
 
@@ -185,7 +202,9 @@ namespace AI4E.Messaging
             if (decorator == null)
                 throw new ArgumentNullException(nameof(decorator));
 
+#pragma warning disable CA1062
             messagingBuilder.Services.Decorate(decorator);
+#pragma warning restore CA1062
             return messagingBuilder;
         }
 
@@ -202,7 +221,9 @@ namespace AI4E.Messaging
         public static IMessagingBuilder UseRoutingSystem<TRoutingSystem>(this IMessagingBuilder messagingBuilder)
             where TRoutingSystem : class, IRoutingSystem
         {
+#pragma warning disable CA1062
             var services = messagingBuilder.Services;
+#pragma warning restore CA1062
 
             services.UseRoutingSystem<TRoutingSystem>();
             services.AddSingleton<TRoutingSystem>();
@@ -216,7 +237,9 @@ namespace AI4E.Messaging
             if (instance is null)
                 throw new ArgumentNullException(nameof(instance));
 
+#pragma warning disable CA1062
             var services = messagingBuilder.Services;
+#pragma warning restore CA1062
             services.AddSingleton(instance);
             return messagingBuilder;
         }
@@ -227,7 +250,9 @@ namespace AI4E.Messaging
             if (factory is null)
                 throw new ArgumentNullException(nameof(factory));
 
+#pragma warning disable CA1062
             var services = messagingBuilder.Services;
+#pragma warning restore CA1062
             services.AddSingleton(factory);
             return messagingBuilder;
         }
@@ -245,7 +270,9 @@ namespace AI4E.Messaging
         public static IMessagingBuilder UseRouteManager<TRouteManager>(this IMessagingBuilder messagingBuilder)
             where TRouteManager : class, IRouteManager
         {
+#pragma warning disable CA1062
             var services = messagingBuilder.Services;
+#pragma warning restore CA1062
 
             services.UseRouteManager<TRouteManager>();
             services.AddSingleton<TRouteManager>();
@@ -259,7 +286,9 @@ namespace AI4E.Messaging
             if (instance is null)
                 throw new ArgumentNullException(nameof(instance));
 
+#pragma warning disable CA1062
             var services = messagingBuilder.Services;
+#pragma warning restore CA1062
             services.AddSingleton(instance);
             return messagingBuilder;
         }
@@ -270,8 +299,28 @@ namespace AI4E.Messaging
             if (factory is null)
                 throw new ArgumentNullException(nameof(factory));
 
+#pragma warning disable CA1062
             var services = messagingBuilder.Services;
+#pragma warning restore CA1062
             services.AddSingleton(factory);
+            return messagingBuilder;
+        }
+
+        #endregion
+
+        #region TypeResolver
+
+        public static IMessagingBuilder UseTypeResolver(
+            this IMessagingBuilder messagingBuilder,
+            ITypeResolver typeResolver)
+        {
+            if (typeResolver is null)
+                throw new ArgumentNullException(nameof(typeResolver));
+
+#pragma warning disable CA1062
+            messagingBuilder.Services.AddSingleton(typeResolver);
+#pragma warning restore CA1062
+
             return messagingBuilder;
         }
 

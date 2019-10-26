@@ -18,16 +18,23 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+/* Based on
+ * --------------------------------------------------------------------------------------------------------------------
+ * https://gist.github.com/gmamaladze/3d60c127025c991a087e
+ * This code is distributed under MIT license. Copyright (c) 2013 George Mamaladze
+ *  See license.txt or http://opensource.org/licenses/mit-license.php
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace AI4E.Utils
 {
-    // TODO: Implement ISet<T>
-    // Adapted from: https://stackoverflow.com/questions/1552225/hashset-that-preserves-ordering#answer-17853085
 #pragma warning disable CA1710
-    public class OrderedSet<T> : ICollection<T>, IReadOnlyCollection<T>
+    public class OrderedSet<T> : ICollection<T>, IReadOnlyCollection<T>, ISet<T>
         where T : notnull
 #pragma warning restore CA1710
     {
@@ -40,10 +47,29 @@ namespace AI4E.Utils
 
         public OrderedSet(IEqualityComparer<T> comparer)
         {
+            if (comparer is null)
+                throw new ArgumentNullException(nameof(comparer));
+
             var keyComparer = new KeyWrapperEqualityComparer(comparer);
 
             _dictionary = new Dictionary<KeyWrapper, LinkedListNode<T>>(keyComparer);
             _linkedList = new LinkedList<T>();
+        }
+
+        public OrderedSet(IEnumerable<T> collection, IEqualityComparer<T> comparer) : this(comparer)
+        {
+            if (collection is null)
+                throw new ArgumentNullException(nameof(collection));
+
+            UnionWith(collection);
+        }
+
+        public OrderedSet(IEnumerable<T> collection) : this(EqualityComparer<T>.Default)
+        {
+            if (collection is null)
+                throw new ArgumentNullException(nameof(collection));
+
+            UnionWith(collection);
         }
 
         public int Count => _dictionary.Count;
@@ -109,9 +135,193 @@ namespace AI4E.Utils
             _linkedList.CopyTo(array, arrayIndex);
         }
 
-        public readonly struct Enumerator : IEnumerator<T>, IDisposable, IEnumerator
+        /// <summary>
+        /// Modifies the current set so that it contains all elements that are present in both the current set and in the
+        /// specified collection.
+        /// </summary>
+        /// <param name="other">The collection to compare to the current set.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="other" /> is <c>null</c>.</exception>
+        public void UnionWith(IEnumerable<T> other)
         {
-            private readonly LinkedList<T>.Enumerator _linkedListEnumerator;
+            if (other is null)
+                throw new ArgumentNullException(nameof(other));
+
+            foreach (var element in other)
+            {
+                Add(element);
+            }
+        }
+
+        /// <summary>
+        /// Modifies the current set so that it contains only elements that are also in a specified collection.
+        /// </summary>
+        /// <param name="other">The collection to compare to the current set.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="other" /> is <c>null</c>.</exception>
+        public void IntersectWith(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw new ArgumentNullException(nameof(other));
+
+            var otherSet = other as ISet<T> ?? new HashSet<T>(other);
+            var current = _linkedList.First;
+
+            while (current != null)
+            {
+                var previous = current;
+                var removePrevious = !otherSet.Contains(current.Value);
+                current = current.Next;
+
+                if (removePrevious)
+                {
+                    _linkedList.Remove(previous);
+                    _dictionary.Remove(new KeyWrapper(previous.Value));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Removes all elements in the specified collection from the current set.
+        /// </summary>
+        /// <param name="other">The collection of items to remove from the set.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="other" /> is <c>null</c>.</exception>
+        public void ExceptWith(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw new ArgumentNullException(nameof(other));
+
+            foreach (var element in other)
+            {
+                Remove(element);
+            }
+        }
+
+        /// <summary>
+        /// Modifies the current set so that it contains only elements that are present either in the current set or in the
+        /// specified collection, but not both.
+        /// </summary>
+        /// <param name="other">The collection to compare to the current set.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="other" /> is <c>null</c>.</exception>
+        public void SymmetricExceptWith(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw new ArgumentNullException(nameof(other));
+
+            foreach (var element in other)
+            {
+                if (!Remove(element))
+                {
+                    Add(element);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Determines whether a set is a subset of a specified collection.
+        /// </summary>
+        /// <returns>
+        /// true if the current set is a subset of <paramref name="other" />; otherwise, false.
+        /// </returns>
+        /// <param name="other">The collection to compare to the current set.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="other" /> is <c>null</c>.</exception>
+        public bool IsSubsetOf(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw new ArgumentNullException(nameof(other));
+
+            var otherHashset = other as ISet<T> ?? new HashSet<T>(other);
+            return otherHashset.IsSupersetOf(this);
+        }
+
+        /// <summary>
+        /// Determines whether the current set is a superset of a specified collection.
+        /// </summary>
+        /// <returns>
+        /// true if the current set is a superset of <paramref name="other" />; otherwise, false.
+        /// </returns>
+        /// <param name="other">The collection to compare to the current set.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="other" /> is <c>null</c>.</exception>
+        public bool IsSupersetOf(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw new ArgumentNullException(nameof(other));
+
+            return other.All(Contains);
+        }
+
+        /// <summary>
+        /// Determines whether the current set is a correct superset of a specified collection.
+        /// </summary>
+        /// <returns>
+        /// true if the <see cref="ISet{T}" /> object is a correct superset of
+        /// <paramref name="other" />; otherwise, false.
+        /// </returns>
+        /// <param name="other">The collection to compare to the current set. </param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="other" /> is <c>null</c>.</exception>
+        public bool IsProperSupersetOf(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw new ArgumentNullException(nameof(other));
+
+            var otherHashset = other as ISet<T> ?? new HashSet<T>(other);
+            return otherHashset.IsProperSubsetOf(this);
+        }
+
+        /// <summary>
+        /// Determines whether the current set is a property (strict) subset of a specified collection.
+        /// </summary>
+        /// <returns>
+        /// true if the current set is a correct subset of <paramref name="other" />; otherwise, false.
+        /// </returns>
+        /// <param name="other">The collection to compare to the current set.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="other" /> is <c>null</c>.</exception>
+        public bool IsProperSubsetOf(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw new ArgumentNullException(nameof(other));
+
+            var otherHashset = other as ISet<T> ?? new HashSet<T>(other);
+            return otherHashset.IsProperSupersetOf(this);
+        }
+
+        /// <summary>
+        /// Determines whether the current set overlaps with the specified collection.
+        /// </summary>
+        /// <returns>
+        /// true if the current set and <paramref name="other" /> share at least one common element; otherwise, false.
+        /// </returns>
+        /// <param name="other">The collection to compare to the current set.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="other" /> is <c>null</c>.</exception>
+        public bool Overlaps(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw new ArgumentNullException(nameof(other));
+
+            if (Count == 0)
+                return false;
+
+            return other.Any(Contains);
+        }
+
+        /// <summary>
+        /// Determines whether the current set and the specified collection contain the same elements.
+        /// </summary>
+        /// <returns>
+        /// true if the current set is equal to <paramref name="other" />; otherwise, false.
+        /// </returns>
+        /// <param name="other">The collection to compare to the current set.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="other" /> is <c>null</c>.</exception>
+        public bool SetEquals(IEnumerable<T> other)
+        {
+            if (other is null)
+                throw new ArgumentNullException(nameof(other));
+
+            var otherHashset = other as ISet<T> ?? new HashSet<T>(other);
+            return otherHashset.SetEquals(this);
+        }
+
+        public struct Enumerator : IEnumerator<T>, IDisposable, IEnumerator
+        {
+            private LinkedList<T>.Enumerator _linkedListEnumerator;
 
             internal Enumerator(LinkedList<T>.Enumerator linkedListEnumerator)
             {
@@ -160,7 +370,7 @@ namespace AI4E.Utils
             public bool Equals(KeyWrapper x, KeyWrapper y)
             {
                 if (x.Value is null)
-                    return y.Value is null;         
+                    return y.Value is null;
 
                 if (y.Value is null)
                     return false;

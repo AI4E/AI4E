@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -19,37 +19,37 @@
  */
 
 using System;
+using System.Collections.Immutable;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.Messaging
+namespace AI4E.Utils
 {
-    public class MessagingBuilder : IMessagingBuilder
+    public sealed class ContextServiceProvider : IServiceProvider, IAsyncDisposable, IDisposable
     {
-        public MessagingBuilder(IServiceCollection services)
-        {
-            if (services is null)
-                throw new ArgumentNullException(nameof(services));
+        private readonly ImmutableArray<ServiceDescriptor> _coreServices;
+        private readonly IServiceProvider _coreServiceProvider;
 
-            Services = services;
+        public ContextServiceProvider(IServiceCollection services, bool validateScopes = true)
+        {
+            _coreServices = services.ToImmutableArray();
+            services.AddSingleton<IContextServiceManager>(_ => new ContextServiceManager(_coreServices, _coreServiceProvider, validateScopes));
+            _coreServiceProvider = services.BuildServiceProvider(validateScopes);
         }
 
-        public IServiceCollection Services { get; }
-
-        public static MessagingBuilder CreateDefault()
+        public object? GetService(Type serviceType)
         {
-            var serviceCollection = new ServiceCollection();
-            return (MessagingBuilder)serviceCollection.AddMessaging();
+            return _coreServiceProvider.GetService(serviceType);
         }
 
-        public IMessageDispatcher BuildMessageDispatcher()
+        public async ValueTask DisposeAsync()
         {
-            var serviceProvider = Services.BuildServiceProvider();
-            return serviceProvider.GetRequiredService<IMessageDispatcher>();
+            await _coreServiceProvider.DisposeIfDisposableAsync();
         }
-    }
 
-    internal sealed class MessagingBuilderImpl : MessagingBuilder
-    {
-        public MessagingBuilderImpl(IServiceCollection services) : base(services) { }
+        public void Dispose()
+        {
+            _coreServiceProvider.DisposeIfDisposable();
+        }
     }
 }

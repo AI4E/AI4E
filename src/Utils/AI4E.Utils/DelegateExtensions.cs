@@ -30,6 +30,48 @@ namespace System
     /// </summary>
     public static class AI4EUtilsDelegateExtensions
     {
+        public static TDelegate? Combine<TDelegate>(this IEnumerable<TDelegate?> delegates)
+            where TDelegate : notnull, Delegate
+        {
+            if (delegates is Delegate?[] delegateArray)
+            {
+                return (TDelegate?)Delegate.Combine(delegateArray);
+            }
+
+            var count = delegates.Count(p => !(p is null));
+
+            if (count == 0)
+            {
+                return null;
+            }
+
+            if (count == 1)
+            {
+                return delegates.First();
+            }
+
+            if (count == 2)
+            {
+                return (TDelegate?)Delegate.Combine(delegates.First(), delegates.Last());
+            }
+
+            delegateArray = new Delegate?[count];
+
+            var i = 0;
+#pragma warning disable CA1062
+            foreach (var d in delegates)
+#pragma warning restore CA1062
+            {
+                if (d is null)
+                    continue;
+
+                delegateArray[i++] = d;
+            }
+
+            return (TDelegate?)Delegate.Combine(delegateArray);
+        }
+
+
         /// <summary>
         /// Invokes all members of a delegate's invokation list.
         /// </summary>

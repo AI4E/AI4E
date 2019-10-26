@@ -40,22 +40,46 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
         public static IMessagingBuilder AddMessaging(this IServiceCollection services)
         {
-            services.AddOptions();
-            services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
-            services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-            services.TryAddSingleton<IMessageDispatcher, MessageDispatcher>();
+            var builder = services.GetService<MessagingBuilderImpl>();
 
-            services.TryAddSingleton<IMessageRouterFactory, MessageRouterFactory>();
-            services.TryAddSingleton<IRoutingSystem, RoutingSystem>();
-            services.TryAddSingleton<IRouteManager, RouteManager>();
+            if (builder is null)
+            {
+                services.AddOptions();
+                services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
+                services.TryAddSingleton<ITypeResolver>(TypeResolver.Default);
+                services.AddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
+                services.AddSingleton<IMessageDispatcher, MessageDispatcher>();
 
-            // Force the message-dispatcher to initialize on application startup.
-            // This is needed to ensure handlers are available and registered in multi-process or networking setups.
-            services.ConfigureApplicationServices(manager => manager.AddService<IMessageDispatcher>(isRequiredService: true));
-            services.ConfigureApplicationParts(MessageHandlerFeatureProvider.Configure);
+                services.AddSingleton<IMessageRouterFactory, MessageRouterFactory>();
+                services.AddSingleton<IRoutingSystem, RoutingSystem>();
+                services.AddSingleton<IRouteManager, RouteManager>();
 
-            var builder = new MessagingBuilder(services);
-            MessageHandlers.Register(builder);
+                // Force the message-dispatcher to initialize on application startup.
+                // This is needed to ensure handlers are available and registered in multi-process or networking setups.
+                services.ConfigureApplicationServices(manager => manager.AddService<IMessageDispatcher>(isRequiredService: true));
+                services.ConfigureApplicationParts(MessageHandlerFeatureProvider.Configure);
+
+                builder = new MessagingBuilderImpl(services);
+                MessageHandlers.Register(builder);
+                services.AddSingleton(builder);
+            }
+            else if(!ReferenceEquals(builder.Services, services))
+            {
+                // We have to override some of the default services to resolve the services correctly for the respective context.
+                services.AddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
+
+                // TODO: Does this conflict, with a custom dispatcher registered?
+                services.AddSingleton<IMessageDispatcher, MessageDispatcher>(); 
+
+                // We generally we inherit the messaging configuration from the core but we have to override the end-point.
+                services.Configure<MessagingOptions>(
+                    options => options.LocalEndPoint = new RouteEndPointAddress(Guid.NewGuid().ToString())); // TODO: Is this a good default implementation?
+
+                builder = new MessagingBuilderImpl(services);
+                MessageHandlers.Register(builder);
+                services.AddSingleton(builder);
+            }
+
             return builder;
         }
 

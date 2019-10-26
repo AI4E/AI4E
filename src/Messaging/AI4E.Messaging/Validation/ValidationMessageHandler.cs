@@ -128,14 +128,27 @@ namespace AI4E.Messaging.Validation
                 throw new ArgumentNullException(nameof(builder));
 
             // Protect us from registering the validation-handler multiple times.
-            if (builder.Services.Any(p => p.ServiceType == typeof(ValidationMessageHandlerMarker)))
-                return;
+            var validationMessageHandlerMarker = builder.Services.GetService<ValidationMessageHandlerMarker>();
 
-            builder.Services.AddSingleton<ValidationMessageHandlerMarker>(_ => null!);
+            if (validationMessageHandlerMarker != null
+                && ReferenceEquals(validationMessageHandlerMarker.Services, builder.Services))
+            {
+                return;
+            }
+
+            builder.Services.AddSingleton(new ValidationMessageHandlerMarker(builder.Services));
             builder.ConfigureMessageHandlers(Configure);
         }
 
-        private sealed class ValidationMessageHandlerMarker { }
+        private sealed class ValidationMessageHandlerMarker
+        {
+            public ValidationMessageHandlerMarker(IServiceCollection services)
+            {
+                Services = services;
+            }
+
+            public IServiceCollection Services { get; }
+        }
 
         private sealed class ValidationMessageHandlerRegistrationFactory : IMessageHandlerRegistrationFactory
         {

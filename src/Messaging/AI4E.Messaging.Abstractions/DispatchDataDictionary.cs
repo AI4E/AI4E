@@ -23,13 +23,12 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using AI4E.Utils;
 using Newtonsoft.Json;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 
 namespace AI4E.Messaging
 {
@@ -688,7 +687,7 @@ namespace AI4E.Messaging
                             throw new InvalidOperationException();
                         }
 
-                        var deserializedMessageType = TypeLoadHelper.LoadTypeFromUnqualifiedName(deserializedMessageTypeName);
+                        var deserializedMessageType = serializer.SerializationBinder.BindToType(assemblyName: null, deserializedMessageTypeName);
 
                         if (messageType != null && messageType != deserializedMessageType)
                         {
@@ -759,7 +758,7 @@ namespace AI4E.Messaging
                 throw new InvalidOperationException();
 
             reader.Read(); // Read type property value
-            var type = TypeLoadHelper.LoadTypeFromUnqualifiedName((string)reader.Value);
+            var type = serializer.SerializationBinder.BindToType(assemblyName: null, (string)reader.Value);
 
             reader.Read(); // Read value property-name
 

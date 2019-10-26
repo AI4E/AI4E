@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -13,7 +12,7 @@ namespace AI4E.Messaging.EndToEndTest
     [TestClass]
     public class Tests
     {
-        private static IServiceProvider ConfigureServices()
+        private static ServiceProvider ConfigureServices()
         {
             var services = new ServiceCollection();
             ConfigureServices(services);
@@ -33,14 +32,27 @@ namespace AI4E.Messaging.EndToEndTest
             services.AddSingleton<TestService>();
         }
 
+        private ServiceProvider ServiceProvider { get; set; }
+        private IMessageDispatcher MessageDispatcher { get; set; }
+
+        [TestInitialize]
+        public void Setup()
+        {
+            ServiceProvider = ConfigureServices();
+            MessageDispatcher = ServiceProvider.GetRequiredService<IMessageDispatcher>();
+        }
+
+        [TestCleanup]
+        public void TearDown()
+        {
+            ServiceProvider.Dispose();
+        }
+
         [TestMethod]
         public async Task DispatchTest()
         {
-            var serviceProvider = ConfigureServices();
-            var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
-
             var message = new TestMessage(5, "abc");
-            var result = await messageDispatcher.DispatchAsync(message);
+            var result = await MessageDispatcher.DispatchAsync(message);
 
             Assert.IsTrue(result.IsSuccess);
             Assert.AreEqual(("abc", 1), (result as SuccessDispatchResult<(string str, int one)>)?.Result);
@@ -49,11 +61,8 @@ namespace AI4E.Messaging.EndToEndTest
         [TestMethod]
         public async Task PublishTest()
         {
-            var serviceProvider = ConfigureServices();
-            var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
-
             var message = new TestEvent(5);
-            var result = await messageDispatcher.DispatchAsync(message, publish: true);
+            var result = await MessageDispatcher.DispatchAsync(message, publish: true);
             var success = result.IsSuccessWithResults<int>(out var results);
 
             Assert.IsTrue(result.IsSuccess);
@@ -65,11 +74,8 @@ namespace AI4E.Messaging.EndToEndTest
         [TestMethod]
         public async Task MultipleResultsTest()
         {
-            var serviceProvider = ConfigureServices();
-            var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
-
             var message = new OtherMessage(5);
-            var result = await messageDispatcher.DispatchAsync(message);
+            var result = await MessageDispatcher.DispatchAsync(message);
             var success = result.IsSuccessWithResults<double>(out var results);
 
             Assert.IsTrue(result.IsSuccess);
@@ -82,11 +88,8 @@ namespace AI4E.Messaging.EndToEndTest
         [TestMethod]
         public async Task ValidateTest()
         {
-            var serviceProvider = ConfigureServices();
-            var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
-
             var message = new OtherMessage(-1);
-            var result = await messageDispatcher.DispatchAsync(message);
+            var result = await MessageDispatcher.DispatchAsync(message);
             var isValidationFailed = result.IsValidationFailed(out var validationResults);
 
             Assert.IsFalse(result.IsSuccess);
@@ -99,11 +102,8 @@ namespace AI4E.Messaging.EndToEndTest
         [TestMethod]
         public async Task ValidationDispatchFailureTest()
         {
-            var serviceProvider = ConfigureServices();
-            var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
-
             var message = Validate.Create(new OtherMessage(-1));
-            var result = await messageDispatcher.DispatchAsync(message);
+            var result = await MessageDispatcher.DispatchAsync(message);
             var isValidationFailed = result.IsValidationFailed(out var validationResults);
 
             Assert.IsFalse(result.IsSuccess);
@@ -116,11 +116,8 @@ namespace AI4E.Messaging.EndToEndTest
         [TestMethod]
         public async Task ValidationDispatchSuccessTest()
         {
-            var serviceProvider = ConfigureServices();
-            var messageDispatcher = serviceProvider.GetRequiredService<IMessageDispatcher>();
-
             var message = Validate.Create(new OtherMessage(5));
-            var result = await messageDispatcher.DispatchAsync(message);
+            var result = await MessageDispatcher.DispatchAsync(message);
 
             Assert.IsTrue(result.IsSuccess);
             Assert.IsTrue(result.GetType() == typeof(SuccessDispatchResult));

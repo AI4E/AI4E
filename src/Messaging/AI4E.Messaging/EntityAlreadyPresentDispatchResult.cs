@@ -21,7 +21,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using AI4E.Utils;
 using Newtonsoft.Json;
 
 namespace AI4E.Messaging
@@ -31,18 +30,20 @@ namespace AI4E.Messaging
     /// </summary>
     public class EntityAlreadyPresentDispatchResult : FailureDispatchResult
     {
+        [JsonProperty("EntityType")]
+        private readonly SerializableType? _entityType;
         public static string DefaultMessage { get; } = "An entity with the specified id is already present.";
 
 #pragma warning disable IDE0051
         [JsonConstructor]
         private EntityAlreadyPresentDispatchResult(
-            string entityTypeName,
+            SerializableType? entityType,
             string id,
             string message,
             IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
         {
-            EntityTypeName = entityTypeName;
+            _entityType = entityType;
             Id = id;
         }
 #pragma warning restore IDE0051
@@ -82,7 +83,7 @@ namespace AI4E.Messaging
         public EntityAlreadyPresentDispatchResult(Type entityType, string? id)
             : base(FormatDefaultMessage(entityType, id))
         {
-            EntityTypeName = entityType.GetUnqualifiedTypeName();
+            _entityType = new SerializableType(entityType.GetUnqualifiedTypeName(), entityType);
             Id = id;
         }
 
@@ -94,13 +95,13 @@ namespace AI4E.Messaging
         public EntityAlreadyPresentDispatchResult(Type entityType)
             : base(FormatDefaultMessage(entityType))
         {
-            EntityTypeName = entityType.GetUnqualifiedTypeName();
+            _entityType = new SerializableType(entityType.GetUnqualifiedTypeName(), entityType);
         }
 
         /// <summary>
         /// Gets the unqualified type-name of the resource that an id-conflict occured at.
         /// </summary>
-        public string? EntityTypeName { get; }
+        public string? EntityTypeName => _entityType?.TypeName;
 
         /// <summary>
         /// Gets the stringified id that conflicted.
@@ -114,13 +115,13 @@ namespace AI4E.Messaging
         /// <returns>True if the call suceeded, false otherwise.</returns>
         public bool TryGetEntityType([NotNullWhen(true)] out Type? entityType)
         {
-            if (EntityTypeName == null)
+            if (_entityType is null)
             {
                 entityType = null;
                 return false;
             }
 
-            return TypeLoadHelper.TryLoadTypeFromUnqualifiedName(EntityTypeName, out entityType);
+            return _entityType.Value.TryGetType(out entityType);
         }
 
         private static string FormatDefaultMessage(Type entityType, string? id)

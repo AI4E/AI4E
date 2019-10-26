@@ -606,7 +606,7 @@ namespace AI4E.Storage.Domain
 
         private Type GetTypeFromBucket(string bucketId)
         {
-            return IsInScope(bucketId, _options.Scope, out var typeName) ? TypeLoadHelper.LoadTypeFromUnqualifiedName(typeName) : null;
+            return IsInScope(bucketId, _options.Scope, out var typeName) ? TypeResolver.Default.ResolveType(typeName.AsSpan()) : null;
         }
 
         public void Dispose()

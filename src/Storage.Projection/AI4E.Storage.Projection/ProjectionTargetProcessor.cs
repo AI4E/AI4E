@@ -469,7 +469,7 @@ namespace AI4E.Storage.Projection
 
         public static ProjectionTargetDescriptor GetDescriptor(ProjectionTargetMetadataEntry entry)
         {
-            return new ProjectionTargetDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(entry.TargetType), entry.StringifiedTargetId);
+            return new ProjectionTargetDescriptor(TypeResolver.Default.ResolveType(entry.TargetType.AsSpan()), entry.StringifiedTargetId);
         }
     }
 
@@ -488,7 +488,7 @@ namespace AI4E.Storage.Projection
 
         public ProjectionSourceDescriptor ToDescriptor()
         {
-            return new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(Type), Id);
+            return new ProjectionSourceDescriptor(TypeResolver.Default.ResolveType(Type.AsSpan()), Id);
         }
     }
 
@@ -544,7 +544,7 @@ namespace AI4E.Storage.Projection
 
         public static ProjectionSourceDescriptor GetDescriptor(ProjectionSourceMetadataEntry entry)
         {
-            return new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(entry.SourceType), entry.SourceId);
+            return new ProjectionSourceDescriptor(TypeResolver.Default.ResolveType(entry.SourceType.AsSpan()), entry.SourceId);
         }
 
         public static bool MatchesByRevision(ProjectionSourceMetadataEntry original, ProjectionSourceMetadataEntry comparand)
@@ -577,7 +577,7 @@ namespace AI4E.Storage.Projection
 
         public ProjectionTargetDescriptor ToDescriptor()
         {
-            return new ProjectionTargetDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(Type), Id);
+            return new ProjectionTargetDescriptor(TypeResolver.Default.ResolveType(Type.AsSpan()), Id);
         }
     }
 
@@ -614,7 +614,7 @@ namespace AI4E.Storage.Projection
         public ProjectionSourceDependency ToDescriptor()
         {
             return new ProjectionSourceDependency(
-                new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(Type), Id),
+                new ProjectionSourceDescriptor(TypeResolver.Default.ResolveType(Type.AsSpan()), Id),
                 ProjectionRevision);
         }
     }
@@ -637,7 +637,7 @@ namespace AI4E.Storage.Projection
 
         internal ProjectionSourceDescriptor ToDescriptor()
         {
-            return new ProjectionSourceDescriptor(TypeLoadHelper.LoadTypeFromUnqualifiedName(Type), Id);
+            return new ProjectionSourceDescriptor(TypeResolver.Default.ResolveType(Type.AsSpan()), Id);
         }
     }
 }

@@ -21,6 +21,8 @@
 using System;
 using System.Collections.Generic;
 using AI4E.Internal;
+using AI4E.Messaging.Test;
+using AI4E.Utils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Messaging
@@ -121,6 +123,58 @@ namespace AI4E.Messaging
             Assert.IsTrue(canLoadMessageType);
             Assert.AreSame(typeof(string), messageType);
             Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.MessageTypeName);
+        }
+
+        [TestMethod]
+        public void CustomTypeResolverSerializeRoundtripTest()
+        {
+            var resultData = new Dictionary<string, object>
+            {
+                ["abc"] = "def",
+                ["xyz"] = 1234L
+            };
+
+            var dispatchResult = new DispatchFailureDispatchResult(typeof(CustomType), "DispatchResultMessage", resultData);
+            var alc = new TestAssemblyLoadContext();
+            var asm = alc.TestAssembly;
+            var typeResolver = new TypeResolver(asm.Yield());
+            var deserializedResult = Serializer.Roundtrip(dispatchResult, typeResolver);
+            var canLoadMessageType = deserializedResult.TryGetMessageType(out var messageType);
+
+            Assert.IsFalse(deserializedResult.IsSuccess);
+            Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);
+            Assert.AreEqual(2, deserializedResult.ResultData.Count);
+            Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
+            Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
+            Assert.IsTrue(canLoadMessageType);
+            Assert.AreSame(asm.GetType(typeof(CustomType).FullName), messageType);
+            Assert.AreEqual(typeof(CustomType).GetUnqualifiedTypeName(), deserializedResult.MessageTypeName);
+        }
+
+        [TestMethod]
+        public void CustomTypeResolverSerializeUnknownTypeRoundtripTest()
+        {
+            var resultData = new Dictionary<string, object>
+            {
+                ["abc"] = "def",
+                ["xyz"] = 1234L
+            };
+
+            var dispatchResult = new DispatchFailureDispatchResult(typeof(CustomType), "DispatchResultMessage", resultData);
+            var alc = new TestAssemblyLoadContext();
+            var asm = alc.TestAssembly;
+            var typeResolver = new TypeResolver(asm.Yield());
+            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult, typeResolver);
+            var canLoadMessageType = deserializedResult.TryGetMessageType(out var messageType);
+
+            Assert.IsFalse(deserializedResult.IsSuccess);
+            Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);
+            Assert.AreEqual(2, deserializedResult.ResultData.Count);
+            Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
+            Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
+            Assert.IsTrue(canLoadMessageType);
+            Assert.AreSame(asm.GetType(typeof(CustomType).FullName), messageType);
+            Assert.AreEqual(typeof(CustomType).GetUnqualifiedTypeName(), deserializedResult.MessageTypeName);
         }
     }
 }
