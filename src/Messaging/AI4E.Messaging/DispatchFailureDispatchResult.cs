@@ -21,7 +21,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using AI4E.Utils;
 using Newtonsoft.Json;
 
 namespace AI4E.Messaging
@@ -31,15 +30,18 @@ namespace AI4E.Messaging
     /// </summary>
     public sealed class DispatchFailureDispatchResult : FailureDispatchResult
     {
+        [JsonProperty("MessageType")]
+        private readonly SerializableType _messageType;
+
 #pragma warning disable IDE0051
         [JsonConstructor]
         private DispatchFailureDispatchResult(
-            string messageTypeName,
+            SerializableType messageType,
             string message,
             IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
         {
-            MessageTypeName = messageTypeName;
+            _messageType = messageType;
         }
 #pragma warning restore IDE0051
 
@@ -53,7 +55,7 @@ namespace AI4E.Messaging
             if (messageType is null)
                 throw new ArgumentNullException(nameof(messageType));
 
-            MessageTypeName = messageType.GetUnqualifiedTypeName();
+            _messageType = new SerializableType(messageType.GetUnqualifiedTypeName(), messageType);
         }
 
         /// <summary>
@@ -66,7 +68,7 @@ namespace AI4E.Messaging
         /// </exception>
         public DispatchFailureDispatchResult(Type messageType, string message) : base(message)
         {
-            MessageTypeName = messageType.GetUnqualifiedTypeName();
+            _messageType = new SerializableType(messageType.GetUnqualifiedTypeName(), messageType);
         }
 
         /// <summary>
@@ -81,13 +83,13 @@ namespace AI4E.Messaging
         public DispatchFailureDispatchResult(Type messageType, string message, IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
         {
-            MessageTypeName = messageType.GetUnqualifiedTypeName();
+            _messageType = new SerializableType(messageType.GetUnqualifiedTypeName(), messageType);
         }
 
         /// <summary>
         /// Gets the unqualified type-name of message that cannot be dispatched.
         /// </summary>
-        public string MessageTypeName { get; }
+        public string MessageTypeName => _messageType.TypeName;
 
         /// <summary>
         /// Tries to load the type of message that cannot be dispatched.
@@ -96,7 +98,7 @@ namespace AI4E.Messaging
         /// <returns>True if the call suceeded, false otherwise.</returns>
         public bool TryGetMessageType([NotNullWhen(true)] out Type? entityType)
         {
-            return TypeResolver.Default.TryLoadType(MessageTypeName.AsSpan(), out entityType);
+            return _messageType.TryGetType(out entityType);
         }
 
         private static string FormatDefaultMessage(string? messageTypeName)

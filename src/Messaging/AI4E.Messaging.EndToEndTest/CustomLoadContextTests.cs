@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Threading.Tasks;
+using AI4E.Messaging.Test;
 using AI4E.Messaging.Validation;
 using AI4E.Utils;
 using AI4E.Utils.ApplicationParts;
@@ -54,12 +55,12 @@ namespace AI4E.Messaging.EndToEndTest
         private ContextServiceProvider ServiceProvider { get; set; }
 
         // Context 1
-        private AssemblyLoadContext AssemblyLoadContext1 { get; set; }
+        private TestAssemblyLoadContext AssemblyLoadContext1 { get; set; }
         private Assembly Assembly1 { get; set; }
         private IMessageDispatcher MessageDispatcher1 { get; set; }
 
         // Context 2
-        private AssemblyLoadContext AssemblyLoadContext2 { get; set; }
+        private TestAssemblyLoadContext AssemblyLoadContext2 { get; set; }
         private Assembly Assembly2 { get; set; }
         private IMessageDispatcher MessageDispatcher2 { get; set; }
 
@@ -69,10 +70,10 @@ namespace AI4E.Messaging.EndToEndTest
             ServiceProvider = ConfigureServices();
             var contextServiceManager = ServiceProvider.GetRequiredService<IContextServiceManager>();
 
-            AssemblyLoadContext1 = new TestAssemblyLoadContext(Assembly.GetExecutingAssembly().Location);
-            Assembly1 = AssemblyLoadContext1.LoadFromAssemblyName(Assembly.GetExecutingAssembly().GetName());
-            AssemblyLoadContext2 = new TestAssemblyLoadContext(Assembly.GetExecutingAssembly().Location);
-            Assembly2 = AssemblyLoadContext2.LoadFromAssemblyName(Assembly.GetExecutingAssembly().GetName());
+            AssemblyLoadContext1 = new TestAssemblyLoadContext();
+            Assembly1 = AssemblyLoadContext1.TestAssembly;
+            AssemblyLoadContext2 = new TestAssemblyLoadContext();
+            Assembly2 = AssemblyLoadContext2.TestAssembly;
 
             contextServiceManager.TryConfigureContextServices(
                 "context1",
@@ -195,28 +196,7 @@ namespace AI4E.Messaging.EndToEndTest
             Assert.IsTrue(success);
             Assert.IsNotNull(queryResult);
             Assert.IsInstanceOfType(queryResult, resultType);
-            Assert.AreEqual("abc", ((dynamic)queryResult).Str);
-        }
-    }
-
-    internal sealed class TestAssemblyLoadContext : AssemblyLoadContext
-    {
-        private readonly AssemblyDependencyResolver _resolver;
-
-        public TestAssemblyLoadContext(string mainAssemblyToLoadPath) : base(isCollectible: true)
-        {
-            _resolver = new AssemblyDependencyResolver(mainAssemblyToLoadPath);
-        }
-
-        protected override Assembly Load(AssemblyName name)
-        {
-            var assemblyPath = _resolver.ResolveAssemblyToPath(name);
-            if (assemblyPath != null && name.Name.Equals(Assembly.GetExecutingAssembly().GetName().Name, StringComparison.Ordinal))
-            {
-                return LoadFromAssemblyPath(assemblyPath);
-            }
-
-            return null;
+            Assert.AreEqual("abc", (string)((dynamic)queryResult).Str);
         }
     }
 

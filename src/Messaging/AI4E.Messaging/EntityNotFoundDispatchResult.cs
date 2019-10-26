@@ -21,7 +21,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using AI4E.Utils;
 using Newtonsoft.Json;
 
 namespace AI4E.Messaging
@@ -31,18 +30,21 @@ namespace AI4E.Messaging
     /// </summary>
     public class EntityNotFoundDispatchResult : NotFoundDispatchResult
     {
+        [JsonProperty("EntityType")]
+        private readonly SerializableType? _entityType;
+
         public static new string DefaultMessage { get; } = "An entity with the specified id cannot be not found.";
 
 #pragma warning disable IDE0051
         [JsonConstructor]
         private EntityNotFoundDispatchResult(
-            string entityTypeName,
+            SerializableType? entityType,
             string id,
             string message,
             IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
         {
-            EntityTypeName = entityTypeName;
+            _entityType = entityType;
             Id = id;
         }
 #pragma warning restore IDE0051
@@ -82,7 +84,7 @@ namespace AI4E.Messaging
         public EntityNotFoundDispatchResult(Type entityType, string? id)
             : base(FormatDefaultMessage(entityType, id))
         {
-            EntityTypeName = entityType.GetUnqualifiedTypeName();
+            _entityType = new SerializableType(entityType.GetUnqualifiedTypeName(), entityType);
             Id = id;
         }
 
@@ -94,7 +96,7 @@ namespace AI4E.Messaging
         public EntityNotFoundDispatchResult(Type entityType)
             : base(FormatDefaultMessage(entityType))
         {
-            EntityTypeName = entityType.GetUnqualifiedTypeName();
+            _entityType = new SerializableType(entityType.GetUnqualifiedTypeName(), entityType);
         }
 
         private static string FormatDefaultMessage(Type entityType, string? id)
@@ -119,7 +121,7 @@ namespace AI4E.Messaging
         /// <summary>
         /// Gets the unqualified type-name of resource that was not found.
         /// </summary>
-        public string? EntityTypeName { get; }
+        public string? EntityTypeName => _entityType?.TypeName;
 
         /// <summary>
         /// Gets the stringified id of resource that was not found.
@@ -133,13 +135,13 @@ namespace AI4E.Messaging
         /// <returns>True if the call suceeded, false otherwise.</returns>
         public bool TryGetEntityType([NotNullWhen(true)] out Type? entityType)
         {
-            if (EntityTypeName == null)
+            if (_entityType is null)
             {
                 entityType = null;
                 return false;
             }
 
-            return TypeResolver.Default.TryLoadType(EntityTypeName.AsSpan(), out entityType);
+            return _entityType.Value.TryGetType(out entityType);
         }
     }
 }

@@ -21,7 +21,6 @@
 using System;
 using System.IO;
 using System.Threading;
-using AI4E.Internal;
 using AI4E.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -35,10 +34,15 @@ namespace AI4E.Internal
 
         private static JsonSerializer BuildSerializer()
         {
+            return BuildSerializer(TypeResolver.Default);
+        }
+
+        private static JsonSerializer BuildSerializer(ITypeResolver typeResolver)
+        {
             var result = new JsonSerializer
             {
                 TypeNameHandling = TypeNameHandling.Auto,
-                SerializationBinder = new SerializationBinder()
+                SerializationBinder = new SerializationBinder(typeResolver)
             };
 
             result.Converters.Add(new TypeConverter());
@@ -48,6 +52,13 @@ namespace AI4E.Internal
 
         private sealed class SerializationBinder : ISerializationBinder
         {
+            private readonly ITypeResolver _typeResolver;
+
+            public SerializationBinder(ITypeResolver typeResolver)
+            {
+                _typeResolver = typeResolver;
+            }
+
             public void BindToName(Type serializedType, out string assemblyName, out string typeName)
             {
                 typeName = serializedType.GetUnqualifiedTypeName();
@@ -56,7 +67,7 @@ namespace AI4E.Internal
 
             public Type BindToType(string assemblyName, string typeName)
             {
-                return TypeResolver.Default.LoadType(typeName);
+                return _typeResolver.LoadType(typeName);
             }
         }
 
@@ -82,6 +93,28 @@ namespace AI4E.Internal
             return (T)result;
         }
 
+        public static T Roundtrip<T>(T t, ITypeResolver typeResolver)
+        {
+            var value = Serialize(t, typeof(T));
+            var result = Deserialize(value, typeof(T), typeResolver);
+
+            if (result == null)
+                return default;
+
+            return (T)result;
+        }
+
+        public static T RoundtripUnknownType<T>(T t, ITypeResolver typeResolver)
+        {
+            var value = Serialize(t, typeof(object));
+            var result = Deserialize(value, typeof(object), typeResolver);
+
+            if (result == null)
+                return default;
+
+            return (T)result;
+        }
+
         private static string Serialize(object value, Type expectedType)
         {
             var serializer = _serializer.Value;
@@ -95,7 +128,17 @@ namespace AI4E.Internal
         private static object Deserialize(string value, Type expectedType)
         {
             var serializer = _serializer.Value;
+            return Deserialize(value, expectedType, serializer);
+        }
 
+        private static object Deserialize(string value, Type expectedType, ITypeResolver typeResolver)
+        {
+            var serializer = BuildSerializer(typeResolver);
+            return Deserialize(value, expectedType, serializer);
+        }
+
+        private static object Deserialize(string value, Type expectedType, JsonSerializer serializer)
+        {
             using var stringReader = new StringReader(value);
             return serializer.Deserialize(stringReader, expectedType);
         }

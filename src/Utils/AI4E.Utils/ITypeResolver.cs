@@ -84,7 +84,7 @@ namespace AI4E.Utils
     {
         public static DefaultTypeResolver Instance { get; } = new DefaultTypeResolver();
 
-        private DefaultTypeResolver() : base(Enumerable.Empty<Assembly>(), fallbackToDefaultContext: true) { }
+        private DefaultTypeResolver() : base(Enumerable.Empty<Assembly>()) { }
     }
 
     /// <summary>
@@ -113,7 +113,7 @@ namespace AI4E.Utils
         /// <exception cref="ArgumentException">
         /// Thrown if <paramref name="assemblies"/> contains <c>null</c> entries.
         /// </exception>
-        public TypeResolver(IEnumerable<Assembly> assemblies, bool fallbackToDefaultContext)
+        public TypeResolver(IEnumerable<Assembly> assemblies, bool fallbackToDefaultContext = true)
         {
             if (assemblies is null)
                 throw new ArgumentNullException(nameof(assemblies));

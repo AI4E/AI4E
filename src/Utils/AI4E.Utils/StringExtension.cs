@@ -87,6 +87,32 @@ namespace System
             return str;
         }
 
+        public static int GetHashCode(this string str, StringComparison comparisonType)
+        {
+            var comparer = comparisonType switch
+            {
+                StringComparison.Ordinal => StringComparer.Ordinal,
+                StringComparison.OrdinalIgnoreCase => StringComparer.OrdinalIgnoreCase,
+                StringComparison.InvariantCulture => StringComparer.InvariantCulture,
+                StringComparison.InvariantCultureIgnoreCase => StringComparer.InvariantCultureIgnoreCase,
+                StringComparison.CurrentCulture => StringComparer.CurrentCulture,
+                StringComparison.CurrentCultureIgnoreCase => StringComparer.CurrentCultureIgnoreCase,
+                _ => null
+            };
+
+            if (comparer is null)
+            {
+#pragma warning disable CA1062
+                return str.GetHashCode();
+#pragma warning restore CA1062
+            }
+
+            if (str is null)
+                throw new NullReferenceException();
+
+            return comparer.GetHashCode(str);
+        }
+
 #endif
     }
 }
