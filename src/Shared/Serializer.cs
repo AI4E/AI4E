@@ -67,7 +67,7 @@ namespace AI4E.Internal
 
             public Type BindToType(string assemblyName, string typeName)
             {
-                return _typeResolver.LoadType(typeName);
+                return _typeResolver.ResolveType(typeName);
             }
         }
 

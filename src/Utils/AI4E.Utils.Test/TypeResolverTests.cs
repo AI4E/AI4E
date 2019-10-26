@@ -27,7 +27,7 @@ namespace AI4E.Utils
             var expectedType = typeof(TypeResolverTests);
             var unqualifiedTypeName = expectedType.GetUnqualifiedTypeName();
 
-            var success = TypeResolver.TryLoadType(unqualifiedTypeName, out var type);
+            var success = TypeResolver.TryResolveType(unqualifiedTypeName, out var type);
 
             Assert.IsTrue(success);
             Assert.IsNotNull(type);
@@ -40,7 +40,7 @@ namespace AI4E.Utils
             var expectedType = typeof(TypeResolverTests[]);
             var unqualifiedTypeName = expectedType.GetUnqualifiedTypeName();
 
-            var success = TypeResolver.TryLoadType(unqualifiedTypeName, out var type);
+            var success = TypeResolver.TryResolveType(unqualifiedTypeName, out var type);
 
             Assert.IsTrue(success);
             Assert.IsNotNull(type);
@@ -53,7 +53,7 @@ namespace AI4E.Utils
             var expectedType = typeof(TypeResolverTests[,]);
             var unqualifiedTypeName = expectedType.GetUnqualifiedTypeName();
 
-            var success = TypeResolver.TryLoadType(unqualifiedTypeName, out var type);
+            var success = TypeResolver.TryResolveType(unqualifiedTypeName, out var type);
 
             Assert.IsTrue(success);
             Assert.IsNotNull(type);
@@ -66,7 +66,7 @@ namespace AI4E.Utils
             var expectedType = typeof(OrderedSet<TypeResolverTests>);
             var unqualifiedTypeName = expectedType.GetUnqualifiedTypeName();
 
-            var success = TypeResolver.TryLoadType(unqualifiedTypeName, out var type);
+            var success = TypeResolver.TryResolveType(unqualifiedTypeName, out var type);
 
             Assert.IsTrue(success);
             Assert.IsNotNull(type);
@@ -79,7 +79,7 @@ namespace AI4E.Utils
             var expectedType = typeof(OrderedSet<TypeResolverTests>[]);
             var unqualifiedTypeName = expectedType.GetUnqualifiedTypeName();
 
-            var success = TypeResolver.TryLoadType(unqualifiedTypeName, out var type);
+            var success = TypeResolver.TryResolveType(unqualifiedTypeName, out var type);
 
             Assert.IsTrue(success);
             Assert.IsNotNull(type);
@@ -92,7 +92,7 @@ namespace AI4E.Utils
             var expectedType = typeof(OrderedSet<TypeResolverTests>[,]);
             var unqualifiedTypeName = expectedType.GetUnqualifiedTypeName();
 
-            var success = TypeResolver.TryLoadType(unqualifiedTypeName, out var type);
+            var success = TypeResolver.TryResolveType(unqualifiedTypeName, out var type);
 
             Assert.IsTrue(success);
             Assert.IsNotNull(type);
@@ -105,7 +105,7 @@ namespace AI4E.Utils
             var expectedType = typeof(OrderedSet<TypeResolverTests[]>);
             var unqualifiedTypeName = expectedType.GetUnqualifiedTypeName();
 
-            var success = TypeResolver.TryLoadType(unqualifiedTypeName, out var type);
+            var success = TypeResolver.TryResolveType(unqualifiedTypeName, out var type);
 
             Assert.IsTrue(success);
             Assert.IsNotNull(type);
@@ -118,7 +118,7 @@ namespace AI4E.Utils
             var expectedType = typeof(OrderedSet<TypeResolverTests[,]>);
             var unqualifiedTypeName = expectedType.GetUnqualifiedTypeName();
 
-            var success = TypeResolver.TryLoadType(unqualifiedTypeName, out var type);
+            var success = TypeResolver.TryResolveType(unqualifiedTypeName, out var type);
 
             Assert.IsTrue(success);
             Assert.IsNotNull(type);
@@ -131,7 +131,7 @@ namespace AI4E.Utils
             var expectedType = typeof(OrderedSet<string>);
             var unqualifiedTypeName = expectedType.GetUnqualifiedTypeName();
 
-            var success = TypeResolver.TryLoadType(unqualifiedTypeName, out var type);
+            var success = TypeResolver.TryResolveType(unqualifiedTypeName, out var type);
 
             Assert.IsFalse(success);
             Assert.IsNull(type);
@@ -144,7 +144,7 @@ namespace AI4E.Utils
             var expectedType = typeof(OrderedSet<string>);
             var unqualifiedTypeName = expectedType.GetUnqualifiedTypeName();
 
-            var success = typeLoader.TryLoadType(unqualifiedTypeName, out var type);
+            var success = typeLoader.TryResolveType(unqualifiedTypeName, out var type);
 
             Assert.IsTrue(success);
             Assert.IsNotNull(type);

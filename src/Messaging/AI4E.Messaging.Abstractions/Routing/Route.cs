@@ -55,7 +55,7 @@ namespace AI4E.Messaging.Routing
                 return false;
             }
 
-            return typeLoader.TryLoadType(_messageTypeName.AsSpan(), out messageType);
+            return typeLoader.TryResolveType(_messageTypeName.AsSpan(), out messageType);
         }
 
         public static Route UnsafeCreateFromString(string str)

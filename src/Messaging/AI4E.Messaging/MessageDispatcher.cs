@@ -244,7 +244,7 @@ namespace AI4E.Messaging
 
             public Type BindToType(string assemblyName, string typeName)
             {
-                return _typeResolver.LoadType(typeName.AsSpan());
+                return _typeResolver.ResolveType(typeName.AsSpan());
             }
         }
 
@@ -397,7 +397,7 @@ namespace AI4E.Messaging
             var objType = obj.GetType();
             var objTypeName = objType.GetUnqualifiedTypeName();
 
-            return _typeResolver.TryLoadType(objTypeName.AsSpan(), out var type) &&
+            return _typeResolver.TryResolveType(objTypeName.AsSpan(), out var type) &&
                    type == objType;
         }
 

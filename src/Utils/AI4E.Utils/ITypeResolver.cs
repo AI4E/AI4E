@@ -23,12 +23,11 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 
 namespace AI4E.Utils
 {
     /// <summary>
-    /// A abstraction for type loaders that can load types by there unqualified type-name.
+    /// A abstraction for type resolvers that can resolve types by there unqualified type-name.
     /// </summary>
     /// <remarks>
     /// Implementation of this interface should guarantee thread-safety for all members.
@@ -36,18 +35,18 @@ namespace AI4E.Utils
     public interface ITypeResolver
     {
         /// <summary>
-        /// Tries to load a type by its unqualified type name.
+        /// Tries to resolve a type by its unqualified type name.
         /// </summary>
         /// <param name="unqualifiedTypeName">The unqualified type name of the type.</param>
         /// <param name="type">
-        /// Contains the loaded <see cref="Type"/> if the operation was successful, <c>null</c> otherwise.
+        /// Contains the resolved <see cref="Type"/> if the operation was successful, <c>null</c> otherwise.
         /// </param>
-        /// <returns>True if the type was loaded successfully, false otherwise.</returns>
-        bool TryLoadType(ReadOnlySpan<char> unqualifiedTypeName, [NotNullWhen(true)] out Type? type);
+        /// <returns>True if the type was resolved successfully, false otherwise.</returns>
+        bool TryResolveType(ReadOnlySpan<char> unqualifiedTypeName, [NotNullWhen(true)] out Type? type);
 
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
         /// <summary>
-        /// Gets an instance of a type-loader that load types from the default context.
+        /// Gets an instance of a type-resolver that resolves types from the default context.
         /// </summary>
         public static ITypeResolver Default => DefaultTypeResolver.Instance;
 #endif
@@ -59,21 +58,22 @@ namespace AI4E.Utils
     public static class TypeResolverExtension
     {
         /// <summary>
-        /// Loads a type by its unqualified type name.
+        /// Resolved a type by its unqualified type name.
         /// </summary>
         /// <param name="resolver">The <see cref="ITypeResolver"/>.</param>
         /// <param name="unqualifiedTypeName">The unqualified type name of the type.</param>
-        /// <returns>The loaded <see cref="Type"/>.</returns>
+        /// <returns>The resolved <see cref="Type"/>.</returns>
         /// <exception cref="ArgumentException">
-        /// Thrown if the type specified by <paramref name="unqualifiedTypeName"/> cannot be loaded.
+        /// Thrown if the type specified by <paramref name="unqualifiedTypeName"/> cannot be resolved.
         /// </exception>
-        public static Type LoadType(this ITypeResolver resolver, ReadOnlySpan<char> unqualifiedTypeName)
+        public static Type ResolveType(this ITypeResolver resolver, ReadOnlySpan<char> unqualifiedTypeName)
         {
 #pragma warning disable CA1062
-            if (!resolver.TryLoadType(unqualifiedTypeName, out var type))
+            if (!resolver.TryResolveType(unqualifiedTypeName, out var type))
 #pragma warning restore CA1062
             {
-                throw new ArgumentException($"Type '{unqualifiedTypeName.ToString()}' could not be loaded.");
+                // TODO: Add a dedicated exception type for this?
+                throw new ArgumentException($"Type '{unqualifiedTypeName.ToString()}' could not be resolved.");
             }
 
             return type!;
@@ -88,7 +88,7 @@ namespace AI4E.Utils
     }
 
     /// <summary>
-    /// A type loader that loads types from a specified set of assemblies.
+    /// A type resolver that resolved types from a specified set of assemblies.
     /// </summary>
     /// <remarks>
     /// All member of this type are thread-safe.
@@ -96,7 +96,7 @@ namespace AI4E.Utils
     public class TypeResolver : ITypeResolver
     {
         /// <summary>
-        /// Gets an instance of a type-loader that load types from the default context.
+        /// Gets an instance of a type-resolver that resolved types from the default context.
         /// </summary>
         public static TypeResolver Default => DefaultTypeResolver.Instance;
 
@@ -130,31 +130,31 @@ namespace AI4E.Utils
         }
 
         /// <inheritdoc/>
-        public bool TryLoadType(ReadOnlySpan<char> unqualifiedTypeName, [NotNullWhen(true)] out Type? type)
+        public bool TryResolveType(ReadOnlySpan<char> unqualifiedTypeName, [NotNullWhen(true)] out Type? type)
         {
-            type = LoadTypeInternal(unqualifiedTypeName);
+            type = ResolveTypeInternal(unqualifiedTypeName);
 
             return !(type is null);
         }
 
-        private Type? LoadTypeInternal(ReadOnlySpan<char> chars)
+        private Type? ResolveTypeInternal(ReadOnlySpan<char> chars)
         {
-            if (chars.IndexOf('`', StringComparison.Ordinal) >= 0)
+            if (chars.IndexOf('`') >= 0)
             {
-                return LoadGenericType(chars);
+                return ResolveGenericType(chars);
             }
 
-            return LoadNonGenericOrTypeDefinition(chars);
+            return ResolveNonGenericOrTypeDefinition(chars);
         }
 
-        private Type? LoadTypeInternal(ReadOnlySpan<char> chars, Assembly assembly)
+        private Type? ResolveTypeInternal(ReadOnlySpan<char> chars, Assembly assembly)
         {
             return assembly.GetType(chars.ToString(), false);
         }
 
-        private Type? LoadNonGenericOrTypeDefinition(ReadOnlySpan<char> chars)
+        private Type? ResolveNonGenericOrTypeDefinition(ReadOnlySpan<char> chars)
         {
-            var openBracketIndex = chars.IndexOf('[', StringComparison.Ordinal);
+            var openBracketIndex = chars.IndexOf('[');
             var baseTypeName = openBracketIndex < 0
                 ? chars
                 : chars.Slice(0, openBracketIndex);
@@ -163,7 +163,7 @@ namespace AI4E.Utils
 
             foreach (var assembly in _assemblies)
             {
-                result = LoadTypeInternal(baseTypeName, assembly);
+                result = ResolveTypeInternal(baseTypeName, assembly);
 
                 if (!(result is null))
                 {
@@ -173,21 +173,21 @@ namespace AI4E.Utils
 
             if (!(result is null) && openBracketIndex >= 0)
             {
-                result = LoadArrayType(chars.Slice(openBracketIndex), result);
+                result = ResolveArrayType(chars.Slice(openBracketIndex), result);
             }
 
             return result;
         }
 
-        private Type? LoadGenericType(ReadOnlySpan<char> chars)
+        private Type? ResolveGenericType(ReadOnlySpan<char> chars)
         {
-            var openBracketIndex = chars.IndexOf('[', StringComparison.Ordinal);
+            var openBracketIndex = chars.IndexOf('[');
 
             if (openBracketIndex < 0)
                 return null;
 
             var genericTypeDefName = chars.Slice(0, openBracketIndex);
-            var genericTypeDef = LoadNonGenericOrTypeDefinition(genericTypeDefName);
+            var genericTypeDef = ResolveNonGenericOrTypeDefinition(genericTypeDefName);
 
             if (genericTypeDef is null)
                 return null;
@@ -212,7 +212,7 @@ namespace AI4E.Utils
                             break;
 
                         var typeArgName = chars.Slice(typeArgStartIndex, i - typeArgStartIndex);
-                        var genericTypeArgument = LoadTypeInternal(typeArgName);
+                        var genericTypeArgument = ResolveTypeInternal(typeArgName);
 
                         if (genericTypeArgument is null)
                         {
@@ -232,7 +232,7 @@ namespace AI4E.Utils
                             break;
 
                         var typeArgName = chars.Slice(typeArgStartIndex, i - typeArgStartIndex);
-                        var genericTypeArgument = LoadTypeInternal(typeArgName);
+                        var genericTypeArgument = ResolveTypeInternal(typeArgName);
 
                         if (genericTypeArgument is null)
                         {
@@ -247,7 +247,7 @@ namespace AI4E.Utils
 
                         if (!(type is null) && i + 1 < chars.Length)
                         {
-                            type = LoadArrayType(chars.Slice(i + 1, chars.Length - i - 1), type);
+                            type = ResolveArrayType(chars.Slice(i + 1, chars.Length - i - 1), type);
                         }
 
                         return type;
@@ -258,7 +258,7 @@ namespace AI4E.Utils
             return null;
         }
 
-        private static Type? LoadArrayType(ReadOnlySpan<char> chars, Type type)
+        private static Type? ResolveArrayType(ReadOnlySpan<char> chars, Type type)
         {
             if (chars.IsEmpty)
                 return type;
@@ -317,28 +317,6 @@ namespace AI4E.Utils
             }
 
             return type;
-        }
-    }
-
-    internal static class MemoryExtensions
-    {
-        [ThreadStatic]
-        private static string? _singleCharString = null;
-        public static int IndexOf(in this ReadOnlySpan<char> chars, char c, StringComparison comparison)
-        {
-            if (chars.IsEmpty)
-                return -1;
-
-            _singleCharString ??= new string('\0', count: 1);
-
-            var memory = MemoryMarshal.AsMemory(_singleCharString.AsMemory());
-            memory.Span[0] = c;
-
-#if SUPPORTS_SPAN_APIS
-            return chars.IndexOf(memory.Span, comparison);
-#else
-            return chars.ToString().IndexOf(_singleCharString, comparison);
-#endif
         }
     }
 }
