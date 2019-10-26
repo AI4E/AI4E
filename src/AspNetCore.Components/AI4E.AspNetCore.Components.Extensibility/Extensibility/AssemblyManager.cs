@@ -18,6 +18,9 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+// TODO: This type should be thread-safe.
+
+
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -77,17 +80,47 @@ namespace AI4E.AspNetCore.Components.Extensibility
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="assembly"/> is <c>null</c>.</exception>
         public ValueTask AddAssemblyAsync(Assembly assembly, AssemblyLoadContext? assemblyLoadContext = null)
         {
-            if (assembly == null)
+            if (assembly is null)
                 throw new ArgumentNullException(nameof(assembly));
 
-            if (_assemblies.TryGetValue(assembly, out var comparisonALC)
-                && comparisonALC == assemblyLoadContext)
+            if (!AddCore(assembly, assemblyLoadContext))
             {
                 return default;
             }
 
-            _assemblies.Add(assembly, assemblyLoadContext);
             return NotifyAssembliesChangedAsync();
+        }
+
+        public ValueTask AddAssembliesAsync(IEnumerable<Assembly> assemblies, AssemblyLoadContext? assemblyLoadContext = null)
+        {
+            if (assemblies is null)
+                throw new ArgumentNullException(nameof(assemblies));
+
+            var changed = false;
+
+            foreach (var assembly in assemblies)
+            {
+                if (assembly is null)
+                {
+                    throw new ArgumentException("The collection must not contain null entries.", nameof(assemblies));
+                }
+
+                changed |= AddCore(assembly, assemblyLoadContext);
+            }
+
+            return changed ? NotifyAssembliesChangedAsync() : default;
+        }
+
+        private bool AddCore(Assembly assembly, AssemblyLoadContext? assemblyLoadContext)
+        {
+            if (_assemblies.TryGetValue(assembly, out var comparisonALC)
+               && comparisonALC == assemblyLoadContext)
+            {
+                return false;
+            }
+
+            _assemblies[assembly] = assemblyLoadContext;
+            return true;
         }
 
         /// <summary>
@@ -100,12 +133,32 @@ namespace AI4E.AspNetCore.Components.Extensibility
             if (assembly == null)
                 throw new ArgumentNullException(nameof(assembly));
 
-            if (_assemblies.Remove(assembly))
+            if (!_assemblies.Remove(assembly))
             {
-                return NotifyAssembliesChangedAsync();
+                return default;
             }
 
-            return default;
+            return NotifyAssembliesChangedAsync();
+        }
+
+        public ValueTask RemoveAssembliesAsync(IEnumerable<Assembly> assemblies)
+        {
+            if (assemblies == null)
+                throw new ArgumentNullException(nameof(assemblies));
+
+            var changed = false;
+
+            foreach (var assembly in assemblies)
+            {
+                if (assembly is null)
+                {
+                    throw new ArgumentException("The collection must not contain null entries.", nameof(assemblies));
+                }
+
+                changed |= _assemblies.Remove(assembly);
+            }
+
+            return changed ? NotifyAssembliesChangedAsync() : default;
         }
 
         private ValueTask NotifyAssembliesChangedAsync()
@@ -122,11 +175,16 @@ namespace AI4E.AspNetCore.Components.Extensibility
 
             var assemblyLoadContext = GetAssemblyLoadContext(assembly);
 
-            return assemblyLoadContext != null
-#if NETCOREAPP30 // TODO: Create a shim for that
-                && assemblyLoadContext.IsCollectible
+            if (assemblyLoadContext is null)
+            {
+                return false;
+            }
+
+#if SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT
+            return assemblyLoadContext.IsCollectible;
+#else
+            return true;
 #endif
-                ;
         }
 
         /// <inheritdoc />
@@ -153,3 +211,4 @@ namespace AI4E.AspNetCore.Components.Extensibility
         }
     }
 }
+
