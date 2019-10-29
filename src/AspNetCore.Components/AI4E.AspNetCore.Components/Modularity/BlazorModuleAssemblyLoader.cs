@@ -58,7 +58,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         }
 
         public async ValueTask<BlazorModuleAssemblySource> LoadAssemblySourceAsync(
-            BlazorModuleDescriptor moduleDescriptor,
+            IBlazorModuleDescriptor moduleDescriptor,
             AssemblyName assemblyName,
             CancellationToken cancellation = default)
         {
@@ -126,7 +126,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         }
 
         private ValueTask<(SlicedMemoryOwner<byte> bytesOwner, bool success)> LoadAssemblySymbolsBytesAsync(
-            BlazorModuleDescriptor moduleDescriptor,
+            IBlazorModuleDescriptor moduleDescriptor,
             AssemblyName assemblyName,
             CancellationToken cancellation)
         {
@@ -135,7 +135,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         }
 
         private async ValueTask<SlicedMemoryOwner<byte>> LoadAssemblyBytesAsync(
-            BlazorModuleDescriptor moduleDescriptor,
+            IBlazorModuleDescriptor moduleDescriptor,
             AssemblyName assemblyName,
             CancellationToken cancellation)
         {

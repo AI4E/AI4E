@@ -41,7 +41,7 @@ namespace AI4E.AspNetCore.Components.Modularity
 
         // Contains all BlazorModule instances that are currently installed.
         // It has to be ensured that all installed modules are registered and no uninstalled modules are registered.
-        private readonly Dictionary<BlazorModuleDescriptor, BlazorModule> _modules;
+        private readonly Dictionary<IBlazorModuleDescriptor, BlazorModule> _modules;
 
         private readonly AsyncDisposeHelper _disposeHelper;
 
@@ -64,12 +64,12 @@ namespace AI4E.AspNetCore.Components.Modularity
                 .GetAssemblies()
                 .ToImmutableDictionary(p => p.GetName(), AssemblyNameComparer.Instance);
 
-            _modules = new Dictionary<BlazorModuleDescriptor, BlazorModule>();
+            _modules = new Dictionary<IBlazorModuleDescriptor, BlazorModule>();
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Default);
         }
 
         public ValueTask<bool> InstallAsync(
-            BlazorModuleDescriptor moduleDescriptor,
+            IBlazorModuleDescriptor moduleDescriptor,
             CancellationToken cancellation)
         {
             if (moduleDescriptor is null)
@@ -97,7 +97,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         }
 
         public ValueTask<bool> UninstallAsync(
-            BlazorModuleDescriptor moduleDescriptor,
+            IBlazorModuleDescriptor moduleDescriptor,
             CancellationToken cancellation = default)
         {
             if (moduleDescriptor is null)
@@ -124,7 +124,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             return true;
         }
 
-        public bool IsInstalled(BlazorModuleDescriptor moduleDescriptor)
+        public bool IsInstalled(IBlazorModuleDescriptor moduleDescriptor)
         {
             if (moduleDescriptor is null)
                 throw new ArgumentNullException(nameof(moduleDescriptor));
@@ -132,7 +132,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             return _modules.ContainsKey(moduleDescriptor);
         }
 
-        public IEnumerable<BlazorModuleDescriptor> InstalledModules => _modules.Keys.ToImmutableList();
+        public IEnumerable<IBlazorModuleDescriptor> InstalledModules => _modules.Keys.ToImmutableList();
 
         #region Disposal
 

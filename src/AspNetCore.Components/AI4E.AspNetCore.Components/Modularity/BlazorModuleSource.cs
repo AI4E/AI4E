@@ -91,7 +91,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         #region IBlazorModuleSource
 
         /// <inheritdoc/>
-        public async IAsyncEnumerable<BlazorModuleDescriptor> GetModulesAsync(
+        public async IAsyncEnumerable<IBlazorModuleDescriptor> GetModulesAsync(
             [EnumeratorCancellation] CancellationToken cancellation)
         {
             try
@@ -124,7 +124,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             ModulesChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        private ValueTask<BlazorModuleDescriptor> LookupModuleAsync(ModuleIdentifier module)
+        private ValueTask<IBlazorModuleDescriptor> LookupModuleAsync(ModuleIdentifier module)
         {
             throw new NotImplementedException();
         }

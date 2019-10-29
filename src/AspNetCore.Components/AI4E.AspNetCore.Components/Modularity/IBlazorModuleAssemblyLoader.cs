@@ -34,7 +34,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         /// Asynchronously loads the specified assembly of the specified blazor-module.
         /// </summary>
         /// <param name="moduleDescriptor">
-        /// A <see cref="BlazorModuleDescriptor"/> that describes the blazor-module the assembly belongs to.
+        /// A <see cref="IBlazorModuleDescriptor"/> that describes the blazor-module the assembly belongs to.
         /// </param>
         /// <param name="assembly">
         /// The <see cref="AssemblyName"/> that describes the assembly to load.
@@ -48,7 +48,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         /// When evaluated, the tasks result contains the <see cref="BlazorModuleAssemblySource"/>.
         /// </returns>
         ValueTask<BlazorModuleAssemblySource> LoadAssemblySourceAsync(
-            BlazorModuleDescriptor moduleDescriptor,
+            IBlazorModuleDescriptor moduleDescriptor,
             AssemblyName assemblyName,
             CancellationToken cancellation = default);
     }

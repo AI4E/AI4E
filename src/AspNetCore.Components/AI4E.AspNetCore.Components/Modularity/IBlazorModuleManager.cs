@@ -37,7 +37,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         /// Asynchronously installs the specified blazor-module.
         /// </summary>
         /// <param name="moduleDescriptor">
-        /// The <see cref="BlazorModuleDescriptor"/> that specifies the blazor-module to install.
+        /// The <see cref="IBlazorModuleDescriptor"/> that specifies the blazor-module to install.
         /// </param>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operator,
@@ -51,13 +51,13 @@ namespace AI4E.AspNetCore.Components.Modularity
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="moduleDescriptor"/> is <c>null</c>.
         /// </exception>
-        ValueTask<bool> InstallAsync(BlazorModuleDescriptor moduleDescriptor, CancellationToken cancellation = default);
+        ValueTask<bool> InstallAsync(IBlazorModuleDescriptor moduleDescriptor, CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously uninstalls the specified blazor-module.
         /// </summary>
         /// <param name="moduleDescriptor">
-        /// The <see cref="BlazorModuleDescriptor"/> that specifies the blazor-module to uninstall.
+        /// The <see cref="IBlazorModuleDescriptor"/> that specifies the blazor-module to uninstall.
         /// </param>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operator,
@@ -71,24 +71,24 @@ namespace AI4E.AspNetCore.Components.Modularity
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="moduleDescriptor"/> is <c>null</c>.
         /// </exception>
-        ValueTask<bool> UninstallAsync(BlazorModuleDescriptor moduleDescriptor, CancellationToken cancellation = default);
+        ValueTask<bool> UninstallAsync(IBlazorModuleDescriptor moduleDescriptor, CancellationToken cancellation = default);
 
         /// <summary>
         /// Returns a boolean value indicating whether the specified blazor-module is installed.
         /// </summary>
         /// <param name="moduleDescriptor">
-        /// The <see cref="BlazorModuleDescriptor"/> that specifies the blazor-module 
+        /// The <see cref="IBlazorModuleDescriptor"/> that specifies the blazor-module 
         /// thats installation status shall be returned.
         /// </param>
         /// <returns>True if <paramref name="moduleDescriptor"/> is installed, false otherwise.</returns>
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="moduleDescriptor"/> is <c>null</c>.
         /// </exception>
-        bool IsInstalled(BlazorModuleDescriptor moduleDescriptor);
+        bool IsInstalled(IBlazorModuleDescriptor moduleDescriptor);
 
         /// <summary>
         /// Returns a collection of descriptors of all installed blazor-modules.
         /// </summary>
-        IEnumerable<BlazorModuleDescriptor> InstalledModules { get; }
+        IEnumerable<IBlazorModuleDescriptor> InstalledModules { get; }
     }
 }

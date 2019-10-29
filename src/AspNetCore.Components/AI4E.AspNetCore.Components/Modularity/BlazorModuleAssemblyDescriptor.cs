@@ -22,7 +22,7 @@ using System;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
-    public sealed class BlazorModuleAssemblyDescriptor
+    public sealed class BlazorModuleAssemblyDescriptor : IBlazorModuleAssemblyDescriptor
     {
         public BlazorModuleAssemblyDescriptor(
             string assemblyName,

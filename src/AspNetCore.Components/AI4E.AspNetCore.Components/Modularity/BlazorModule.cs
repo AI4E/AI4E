@@ -41,7 +41,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         private ImmutableList<Assembly>? _installedAssemblies;
 
         public BlazorModule(
-            BlazorModuleDescriptor moduleDescriptor,
+            IBlazorModuleDescriptor moduleDescriptor,
             ImmutableDictionary<AssemblyName, Assembly> coreAssemblies,
             AssemblyManager assemblyManager,
             IBlazorModuleAssemblyLoader assemblyLoader)
@@ -64,7 +64,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             _assemblyLoader = assemblyLoader;
         }
 
-        public BlazorModuleDescriptor ModuleDescriptor { get; }
+        public IBlazorModuleDescriptor ModuleDescriptor { get; }
 
         public async ValueTask InstallAsync(CancellationToken cancellation)
         {
@@ -112,7 +112,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             return ModuleDescriptor.Assemblies.Where(p => p.IsComponentAssembly).Select(GetComponentAssembly);
         }
 
-        private Assembly GetComponentAssembly(BlazorModuleAssemblyDescriptor moduleAssemblyDescriptor)
+        private Assembly GetComponentAssembly(IBlazorModuleAssemblyDescriptor moduleAssemblyDescriptor)
         {
             var assemblyName = new AssemblyName(moduleAssemblyDescriptor.AssemblyName)
             {
@@ -123,7 +123,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         }
 
         private async ValueTask<ImmutableDictionary<AssemblyName, BlazorModuleAssemblySource>> PrefetchAssemblySourcesAsync(
-            ImmutableList<BlazorModuleAssemblyDescriptor> moduleAssemblyDescriptors,
+            ImmutableList<IBlazorModuleAssemblyDescriptor> moduleAssemblyDescriptors,
             CancellationToken cancellation)
         {
             var result = ImmutableDictionary.CreateBuilder<AssemblyName, BlazorModuleAssemblySource>(AssemblyNameComparer.Instance);

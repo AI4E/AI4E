@@ -23,11 +23,11 @@ using System.Collections.Immutable;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
-    public sealed class BlazorModuleDescriptor
+    public sealed class BlazorModuleDescriptor : IBlazorModuleDescriptor
     {
         public BlazorModuleDescriptor(
             string name,
-            ImmutableList<BlazorModuleAssemblyDescriptor> assemblies,
+            ImmutableList<IBlazorModuleAssemblyDescriptor> assemblies,
             ImmutableList<string> dependencies,
             string urlPrefix) // TODO: Rename
         {
@@ -50,7 +50,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         }
 
         public string Name { get; }
-        public ImmutableList<BlazorModuleAssemblyDescriptor> Assemblies { get; }
+        public ImmutableList<IBlazorModuleAssemblyDescriptor> Assemblies { get; }
         public ImmutableList<string> Dependencies { get; }
         public string UrlPrefix { get; }
     }

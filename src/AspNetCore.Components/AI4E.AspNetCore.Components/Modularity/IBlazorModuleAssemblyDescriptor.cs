@@ -19,31 +19,13 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Threading;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
-    /// <summary>
-    /// Represents a source of all known blazor-modules.
-    /// </summary>
-    /// <remarks>
-    /// Implementors must guarantee thread-safety for all members.
-    /// </remarks>
-    public interface IBlazorModuleSource
+    public interface IBlazorModuleAssemblyDescriptor
     {
-        /// <summary>
-        /// Returns an <see cref="IAsyncEnumerable{T}"/> of descriptors of all known blazor-modules.
-        /// </summary>
-        /// <param name="cancellation">
-        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operator,
-        /// or <see cref="CancellationToken.None"/>.
-        /// </param>
-        IAsyncEnumerable<IBlazorModuleDescriptor> GetModulesAsync(CancellationToken cancellation);
-
-        /// <summary>
-        /// Notifies when the collection of known blazor-modules changes.
-        /// </summary>
-        event EventHandler? ModulesChanged;
+        string AssemblyName { get; }
+        Version AssemblyVersion { get; }
+        bool IsComponentAssembly { get; }
     }
 }
