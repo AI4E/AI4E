@@ -58,20 +58,13 @@ namespace AI4E.AspNetCore.Components.Modularity
         }
 
         public async ValueTask<BlazorModuleAssemblySource> LoadAssemblySourceAsync(
-            IBlazorModuleDescriptor moduleDescriptor,
-            AssemblyName assemblyName,
+            IBlazorModuleAssemblyDescriptor assemblyDescriptor,
             CancellationToken cancellation = default)
         {
-            if (moduleDescriptor is null)
-                throw new ArgumentNullException(nameof(moduleDescriptor));
+            if (assemblyDescriptor is null)
+                throw new ArgumentNullException(nameof(assemblyDescriptor));
 
-            if (assemblyName is null)
-                throw new ArgumentNullException(nameof(assemblyName));
-
-            if (assemblyName.Name is null)
-                throw new ArgumentException("An assembly name must be specified.", nameof(assemblyName));
-
-            var assemblyBytesOwner = await LoadAssemblyBytesAsync(moduleDescriptor, assemblyName, cancellation)
+            var assemblyBytesOwner = await LoadAssemblyBytesAsync(assemblyDescriptor, cancellation)
                 .ConfigureAwait(false);
 
             try
@@ -82,7 +75,7 @@ namespace AI4E.AspNetCore.Components.Modularity
                 }
 
                 var (assemblySymbolsBytesOwner, symbolsLoaded) =
-                    await LoadAssemblySymbolsBytesAsync(moduleDescriptor, assemblyName, cancellation)
+                    await LoadAssemblySymbolsBytesAsync(assemblyDescriptor, cancellation)
                     .ConfigureAwait(false);
 
                 if (symbolsLoaded)
@@ -126,30 +119,28 @@ namespace AI4E.AspNetCore.Components.Modularity
         }
 
         private ValueTask<(SlicedMemoryOwner<byte> bytesOwner, bool success)> LoadAssemblySymbolsBytesAsync(
-            IBlazorModuleDescriptor moduleDescriptor,
-            AssemblyName assemblyName,
+            IBlazorModuleAssemblyDescriptor assemblyDescriptor,
             CancellationToken cancellation)
         {
-            var uri = GetAssemblyUri(moduleDescriptor.UrlPrefix, assemblyName.Name!, extension: ".pdb");
+            var uri = GetAssemblyUri(assemblyDescriptor.ModuleDescriptor.UrlPrefix, assemblyDescriptor.AssemblyName, extension: ".pdb");
             return LoadResourceAsync(uri, cancellation);
         }
 
         private async ValueTask<SlicedMemoryOwner<byte>> LoadAssemblyBytesAsync(
-            IBlazorModuleDescriptor moduleDescriptor,
-            AssemblyName assemblyName,
+            IBlazorModuleAssemblyDescriptor assemblyDescriptor,
             CancellationToken cancellation)
         {
-            var assemblyUri = GetAssemblyUri(moduleDescriptor.UrlPrefix, assemblyName.Name!);
+            var assemblyUri = GetAssemblyUri(assemblyDescriptor.ModuleDescriptor.UrlPrefix, assemblyDescriptor.AssemblyName);
             var (result, success) = await LoadResourceAsync(assemblyUri, cancellation)
                 .ConfigureAwait(false);
 
             if (!success)
             {
-                _logger?.LogError($"Unable to load assembly {assemblyName.Name} from source {assemblyUri}.");
+                _logger?.LogError($"Unable to load assembly {assemblyDescriptor.AssemblyName} from source {assemblyUri}.");
                 throw new BlazorModuleAssemblyLoadException(); // TODO: can we tell anything about the reason?
             }
 
-            _logger?.LogDebug($"Successfully loaded assembly {assemblyName.Name}.");
+            _logger?.LogDebug($"Successfully loaded assembly {assemblyDescriptor.AssemblyName}.");
 
             return result;
         }

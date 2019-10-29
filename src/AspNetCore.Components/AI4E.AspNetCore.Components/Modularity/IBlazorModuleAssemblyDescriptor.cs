@@ -19,13 +19,47 @@
  */
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
+    /// <summary>
+    /// Describes a single assembly of a blazor module.
+    /// </summary>
     public interface IBlazorModuleAssemblyDescriptor
     {
+        /// <summary>
+        /// Gets the <see cref="IBlazorModuleDescriptor"/> describing the module the assembly belongs to.
+        /// </summary>
+        IBlazorModuleDescriptor ModuleDescriptor { get; }
+
+        /// <summary>
+        /// Gets the assembly name.
+        /// </summary>
         string AssemblyName { get; }
+
+        /// <summary>
+        /// Gets the assembly version.
+        /// </summary>
         Version AssemblyVersion { get; }
+
+        /// <summary>
+        /// Gets a boolean value indicating whether the assembly contains blazor-components.
+        /// </summary>
         bool IsComponentAssembly { get; }
+
+        /// <summary>
+        /// Asynchronously loads the assembly source.
+        /// </summary>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation,
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operator.
+        /// When evaluated, the tasks result contains the <see cref="BlazorModuleAssemblySource"/>.
+        /// </returns>
+        ValueTask<BlazorModuleAssemblySource> LoadAssemblySourceAsync(CancellationToken cancellation = default);
     }
 }

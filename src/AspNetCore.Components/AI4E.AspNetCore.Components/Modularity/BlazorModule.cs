@@ -35,7 +35,6 @@ namespace AI4E.AspNetCore.Components.Modularity
     {
         private readonly ImmutableDictionary<AssemblyName, Assembly> _coreAssemblies;
         private readonly AssemblyManager _assemblyManager;
-        private readonly IBlazorModuleAssemblyLoader _assemblyLoader;
 
         private BlazorModuleAssemblyLoadContext? _assemblyLoadContext;
         private ImmutableList<Assembly>? _installedAssemblies;
@@ -43,8 +42,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         public BlazorModule(
             IBlazorModuleDescriptor moduleDescriptor,
             ImmutableDictionary<AssemblyName, Assembly> coreAssemblies,
-            AssemblyManager assemblyManager,
-            IBlazorModuleAssemblyLoader assemblyLoader)
+            AssemblyManager assemblyManager)
         {
             if (moduleDescriptor is null)
                 throw new ArgumentNullException(nameof(moduleDescriptor));
@@ -55,13 +53,9 @@ namespace AI4E.AspNetCore.Components.Modularity
             if (assemblyManager is null)
                 throw new ArgumentNullException(nameof(assemblyManager));
 
-            if (assemblyLoader is null)
-                throw new ArgumentNullException(nameof(assemblyLoader));
-
             ModuleDescriptor = moduleDescriptor;
             _coreAssemblies = coreAssemblies;
             _assemblyManager = assemblyManager;
-            _assemblyLoader = assemblyLoader;
         }
 
         public IBlazorModuleDescriptor ModuleDescriptor { get; }
@@ -142,7 +136,7 @@ namespace AI4E.AspNetCore.Components.Modularity
                         continue;
                     }
 
-                    var source = await LoadAssemblyAsync(assemblyName, cancellation);
+                    var source = await moduleAssemblyDescriptor.LoadAssemblySourceAsync(cancellation);
 
                     try
                     {
@@ -166,13 +160,6 @@ namespace AI4E.AspNetCore.Components.Modularity
             }
 
             return result.ToImmutable();
-        }
-
-        private ValueTask<BlazorModuleAssemblySource> LoadAssemblyAsync(
-            AssemblyName assemblyName,
-            CancellationToken cancellation)
-        {
-            return _assemblyLoader.LoadAssemblySourceAsync(ModuleDescriptor, assemblyName, cancellation);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]

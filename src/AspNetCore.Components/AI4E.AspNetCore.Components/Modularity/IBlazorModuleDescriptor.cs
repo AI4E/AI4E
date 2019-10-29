@@ -22,11 +22,25 @@ using System.Collections.Immutable;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
+    /// <summary>
+    /// Describes a single blazor-module.
+    /// </summary>
     public interface IBlazorModuleDescriptor
     {
+        /// <summary>
+        /// Gets a collection of <see cref="IBlazorModuleAssemblyDescriptor"/> 
+        /// describing the assemblies the module contains of.
+        /// </summary>
         ImmutableList<IBlazorModuleAssemblyDescriptor> Assemblies { get; }
-        ImmutableList<string> Dependencies { get; }
+
+        /// <summary>
+        /// Gets the module name.
+        /// </summary>
         string Name { get; }
+
+        /// <summary>
+        /// Gets the url that the module's assemblies can be requested from.
+        /// </summary>
         string UrlPrefix { get; }
     }
 }

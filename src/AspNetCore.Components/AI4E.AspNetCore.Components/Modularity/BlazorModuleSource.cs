@@ -36,18 +36,26 @@ namespace AI4E.AspNetCore.Components.Modularity
     public sealed class BlazorModuleSource : IBlazorModuleSource
     {
         private readonly IMessageDispatcher _messageDispatcher;
+        private readonly IBlazorModuleAssemblyLoader _assemblyLoader;
         private readonly ILogger<BlazorModuleSource>? _logger;
         private readonly AsyncInitializationHelper _initializationHelper;
         private ImmutableHashSet<ModuleIdentifier> _modules = ImmutableHashSet<ModuleIdentifier>.Empty;
 
         #region C'tor
 
-        public BlazorModuleSource(IMessageDispatcher messageDispatcher, ILogger<BlazorModuleSource>? logger = null)
+        public BlazorModuleSource(
+            IMessageDispatcher messageDispatcher,
+            IBlazorModuleAssemblyLoader assemblyLoader,
+            ILogger<BlazorModuleSource>? logger = null)
         {
             if (messageDispatcher is null)
                 throw new ArgumentNullException(nameof(messageDispatcher));
 
+            if (assemblyLoader is null)
+                throw new ArgumentNullException(nameof(assemblyLoader));
+
             _messageDispatcher = messageDispatcher;
+            _assemblyLoader = assemblyLoader;
             _logger = logger;
             _initializationHelper = new AsyncInitializationHelper(InitializeInternalAsync);
         }
@@ -125,7 +133,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         }
 
         private ValueTask<IBlazorModuleDescriptor> LookupModuleAsync(ModuleIdentifier module)
-        {
+        {        
             throw new NotImplementedException();
         }
 

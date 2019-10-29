@@ -19,7 +19,6 @@
  */
 
 using System;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,11 +32,8 @@ namespace AI4E.AspNetCore.Components.Modularity
         /// <summary>
         /// Asynchronously loads the specified assembly of the specified blazor-module.
         /// </summary>
-        /// <param name="moduleDescriptor">
-        /// A <see cref="IBlazorModuleDescriptor"/> that describes the blazor-module the assembly belongs to.
-        /// </param>
-        /// <param name="assembly">
-        /// The <see cref="AssemblyName"/> that describes the assembly to load.
+        /// <param name="assemblyDescriptor">
+        /// A <see cref="IBlazorModuleAssemblyDescriptor"/> that describes the assembly to load.
         /// </param>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation,
@@ -48,8 +44,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         /// When evaluated, the tasks result contains the <see cref="BlazorModuleAssemblySource"/>.
         /// </returns>
         ValueTask<BlazorModuleAssemblySource> LoadAssemblySourceAsync(
-            IBlazorModuleDescriptor moduleDescriptor,
-            AssemblyName assemblyName,
+            IBlazorModuleAssemblyDescriptor assemblyDescriptor,
             CancellationToken cancellation = default);
     }
 }

@@ -35,7 +35,6 @@ namespace AI4E.AspNetCore.Components.Modularity
     public sealed class BlazorModuleManager : IBlazorModuleManager, IAsyncDisposable
     {
         private readonly AssemblyManager _assemblyManager;
-        private readonly IBlazorModuleAssemblyLoader _assemblyLoader;
         private readonly ILogger<BlazorModuleManager>? _logger;
         private readonly ImmutableDictionary<AssemblyName, Assembly> _coreAssemblies;
 
@@ -47,17 +46,12 @@ namespace AI4E.AspNetCore.Components.Modularity
 
         public BlazorModuleManager(
             AssemblyManager assemblyManager,
-            IBlazorModuleAssemblyLoader assemblyLoader,
             ILogger<BlazorModuleManager>? logger = null)
         {
             if (assemblyManager is null)
                 throw new ArgumentNullException(nameof(assemblyManager));
 
-            if (assemblyLoader is null)
-                throw new ArgumentNullException(nameof(assemblyLoader));
-
             _assemblyManager = assemblyManager;
-            _assemblyLoader = assemblyLoader;
             _logger = logger;
 
             _coreAssemblies = AppDomain.CurrentDomain
@@ -83,7 +77,7 @@ namespace AI4E.AspNetCore.Components.Modularity
                 return new ValueTask<bool>(false);
             }
 
-            var blazorModule = new BlazorModule(moduleDescriptor, _coreAssemblies, _assemblyManager, _assemblyLoader);
+            var blazorModule = new BlazorModule(moduleDescriptor, _coreAssemblies, _assemblyManager);
             return InstallAsync(blazorModule, cancellation);
         }
 
