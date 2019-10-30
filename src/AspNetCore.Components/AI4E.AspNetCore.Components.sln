@@ -71,6 +71,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Routing.Modularity.Sample.P
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Routing.Modularity.Sample", "samples\Modularity.Sample\Routing.Modularity.Sample\Routing.Modularity.Sample.csproj", "{5C797788-BAA0-476D-858F-9C601F67FE19}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Routing.Modularity.Sample.PluginB", "samples\Modularity.Sample\Routing.Modularity.Sample.PluginB\Routing.Modularity.Sample.PluginB.csproj", "{110875D9-1233-422F-BB2C-AEAAE320989D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -185,6 +187,10 @@ Global
 		{5C797788-BAA0-476D-858F-9C601F67FE19}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5C797788-BAA0-476D-858F-9C601F67FE19}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5C797788-BAA0-476D-858F-9C601F67FE19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{110875D9-1233-422F-BB2C-AEAAE320989D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{110875D9-1233-422F-BB2C-AEAAE320989D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{110875D9-1233-422F-BB2C-AEAAE320989D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{110875D9-1233-422F-BB2C-AEAAE320989D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -220,6 +226,7 @@ Global
 		{B55B9BCC-5812-49B7-9E3D-612B8BF5078F} = {CBC890B3-2425-4424-A272-CE3C4FAFA6BC}
 		{2444BDEB-6AA4-4B2F-960A-8015FAFE910C} = {CBC890B3-2425-4424-A272-CE3C4FAFA6BC}
 		{5C797788-BAA0-476D-858F-9C601F67FE19} = {CBC890B3-2425-4424-A272-CE3C4FAFA6BC}
+		{110875D9-1233-422F-BB2C-AEAAE320989D} = {CBC890B3-2425-4424-A272-CE3C4FAFA6BC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CE658A01-D5E2-43E3-91BA-DB3AF5BB9471}

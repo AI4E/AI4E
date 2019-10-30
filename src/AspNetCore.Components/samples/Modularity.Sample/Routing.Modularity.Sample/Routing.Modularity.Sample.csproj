@@ -17,6 +17,7 @@
   
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Command="dotnet build $(ProjectDir)\..\Routing.Modularity.Sample.PluginA -c $(Configuration)" />
+    <Exec Command="dotnet build $(ProjectDir)\..\Routing.Modularity.Sample.PluginB -c $(Configuration)" />
   </Target>
 
 </Project>
