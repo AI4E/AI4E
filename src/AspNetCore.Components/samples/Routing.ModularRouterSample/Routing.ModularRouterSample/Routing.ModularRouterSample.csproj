@@ -10,8 +10,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\AI4E.AspNetCore.Components.Extensibility\AI4E.AspNetCore.Components.Extensibility.csproj" />
-    <ProjectReference Include="..\..\..\AI4E.AspNetCore.Components.Routing\AI4E.AspNetCore.Components.Routing.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.AspNetCore.Components.Extensibility\AI4E.AspNetCore.Components.Extensibility.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.AspNetCore.Components.Routing\AI4E.AspNetCore.Components.Routing.csproj" />
     <ProjectReference Include="..\Routing.ModularRouterSample.Shared\Routing.ModularRouterSample.Shared.csproj" />
   </ItemGroup>
   

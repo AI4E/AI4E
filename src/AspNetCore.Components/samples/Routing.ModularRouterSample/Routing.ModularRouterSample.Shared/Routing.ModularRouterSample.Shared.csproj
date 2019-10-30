@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\AI4E.AspNetCore.Components.Extensibility\AI4E.AspNetCore.Components.Extensibility.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.AspNetCore.Components.Extensibility\AI4E.AspNetCore.Components.Extensibility.csproj" />
   </ItemGroup>
 
 </Project>

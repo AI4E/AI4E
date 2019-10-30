@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\AI4E.AspNetCore.Components.Routing\AI4E.AspNetCore.Components.Routing.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.AspNetCore.Components.Routing\AI4E.AspNetCore.Components.Routing.csproj" />
   </ItemGroup>
 
 </Project>
