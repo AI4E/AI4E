@@ -1,0 +1,16 @@
+﻿@page "/plugins"
+@inject PluginManager PluginManager
+<h3>Plugins</h3>
+
+<div>
+    @if (PluginManager.IsPluginInstalled)
+    {
+        <input type="button" @onclick="@PluginManager.UninstallPluginAsync" value="Uninstall Plugin" />
+
+        <a href="/plugin">Goto Plugin page</a>
+    }
+    else
+    {
+        <input type="button" @onclick="@PluginManager.InstallPluginAsync" value="Install Plugin" />
+    }
+</div>

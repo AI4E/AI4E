@@ -1,5 +1,4 @@
 ﻿@page "/"
-@inject PluginManager PluginManager
 @functions{
     private EditModel _model = new EditModel();
 
@@ -23,6 +22,6 @@
         </div>
     </EditForm>
     <IndexViewExtension Message="@_model.Message" Number="_model.Number">
-        Child content from the page
+        Child content from the core (non-plugin).
     </IndexViewExtension>
 </div>
