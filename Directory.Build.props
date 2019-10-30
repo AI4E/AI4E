@@ -67,7 +67,7 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <Compile Include="$(SolutionDir)src\Shared\NullabilityAttributes.cs" Link="Shared\NullabilityAttributes.cs" />
+    <Compile Include="$(RepositoryRoot)src\Shared\NullabilityAttributes.cs" Link="Shared\NullabilityAttributes.cs" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">

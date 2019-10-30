@@ -29,6 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="$(SolutionDir)src\Shared\TypeConverter.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositoryRoot)src\Shared\TypeConverter.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>
