@@ -1,5 +1,6 @@
 using System.Reflection;
 using AI4E.AspNetCore.Components.Extensibility;
+using AI4E.AspNetCore.Components.Modularity;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,9 +18,11 @@ namespace Routing.Modularity.Sample
             services.AddMvc()
                 .AddNewtonsoftJson();
 
+            services.AddSingleton(new AssemblyManager(Assembly.GetEntryAssembly() ?? typeof(Startup).Assembly));
             services.AddSingleton<PluginManager>();
-            services.AddSingleton(new AssemblyManager(Assembly.GetEntryAssembly()));
-            services.AddSingleton<IAssemblySource>(p => p.GetRequiredService<AssemblyManager>());
+            services.AddSingleton<IBlazorModuleSource>(p => p.GetRequiredService<PluginManager>());
+
+            services.AddModularity();
 
             services.AddServerSideBlazor();
         }

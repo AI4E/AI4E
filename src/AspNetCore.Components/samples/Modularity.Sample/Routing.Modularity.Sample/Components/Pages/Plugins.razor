@@ -3,14 +3,26 @@
 <h3>Plugins</h3>
 
 <div>
-    @if (PluginManager.IsPluginInstalled)
-    {
-        <input type="button" @onclick="@PluginManager.UninstallPluginAsync" value="Uninstall Plugin" />
+    <ul>
+        @foreach (var plugin in PluginManager.AvailablePlugins)
+        {
+            <li>
+                @plugin.ModuleDescriptor.Name
 
-        <a href="/plugin">Goto Plugin page</a>
-    }
-    else
-    {
-        <input type="button" @onclick="@PluginManager.InstallPluginAsync" value="Install Plugin" />
-    }
+                @if (plugin.IsInstalled)
+                {
+                    <p>Installed</p>
+                    <p>
+                        <input type="button" @onclick="plugin.Uninstall" value="Uninstall" />
+                    </p>
+                }
+                else
+                {
+                    <p>
+                        <input type="button" @onclick="plugin.Install" value="Install" />
+                    </p>
+                }
+            </li>
+        }
+    </ul>
 </div>

@@ -1,7 +1,9 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <PropertyGroup>
     <TargetFramework>$(NetStandardVersion)</TargetFramework>
+    <BlazorLinkOnBuild>false</BlazorLinkOnBuild>
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,6 +13,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Routing.Modularity.Sample.Shared\Routing.Modularity.Sample.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\" />
   </ItemGroup>
 
 </Project>

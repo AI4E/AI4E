@@ -21,6 +21,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using AI4E.AspNetCore.Components.Extensibility;
 using AI4E.AspNetCore.Components.Modularity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -29,6 +30,7 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class AI4EComponentsServiceCollectionExtension
     {
+        // TODO: Rename to AddBlazorModularity
         public static IBlazorModularityBuilder AddModularity(this IServiceCollection services)
         {
             var descriptor = services.FirstOrDefault(p => p.ServiceType == typeof(BlazorModularityBuilder));
@@ -43,15 +45,18 @@ namespace Microsoft.Extensions.DependencyInjection
             var builder = new BlazorModularityBuilder(services);
             services.AddSingleton(builder);
 
-            services.TryAddSingleton<IBlazorModuleSource, BlazorModuleSource>();
+            
 #if SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT // TODO
             services.TryAddSingleton<IBlazorModuleManager, BlazorModuleManager>();
-#endif
-            services.AddSingleton<IBlazorModuleAssemblyLoader, BlazorModuleAssemblyLoader>();
+#endif      //services.TryAddSingleton<IBlazorModuleSource, BlazorModuleSource>();
+            //services.AddSingleton<IBlazorModuleAssemblyLoader, BlazorModuleAssemblyLoader>();
+            services.TryAddSingleton<AssemblyManager>();
+            services.TryAddSingleton<IAssemblySource>(p => p.GetRequiredService<AssemblyManager>());
             BlazorModuleRunner.Configure(services);
             return builder;
         }
 
+        // TODO: Rename to AddBlazorModularity
         public static IBlazorModularityBuilder AddModularity(
             this IServiceCollection services,
             Action<BlazorModuleOptions> configuration)

@@ -1,243 +1,132 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
+using System.Collections.Immutable;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Runtime.Loader;
-using System.Threading.Tasks;
-using AI4E.AspNetCore.Components.Extensibility;
+using System.Threading;
+using AI4E.AspNetCore.Components.Modularity;
 
 namespace Routing.Modularity.Sample.Services
 {
-    public class PluginManager
+    public sealed class PluginManager : IBlazorModuleSource
     {
-        private readonly AssemblyManager _assemblyManager;
-        private readonly Dictionary<AssemblyName, Assembly> _hostAssemblies;
-        private PluginAssemblyLoadContext _loadContext;
-        private Assembly _pluginAssembly;
+        private readonly ImmutableHashSet<Plugin> _availablePlugins;
+        private ImmutableHashSet<Plugin> _installedPlugins = ImmutableHashSet<Plugin>.Empty;
 
-        public PluginManager(AssemblyManager assemblyManager)
+        public PluginManager()
         {
-            _assemblyManager = assemblyManager;
-            _hostAssemblies = AppDomain.CurrentDomain.GetAssemblies().ToDictionary(p => p.GetName(), p => p, new AssemblyNameComparer());
+            _availablePlugins = PluginSource.Instance.GetAvailablePlugins(this);
         }
 
-        private const string _pluginName = "Routing.ModularRouterSample.Plugin";
+        public IReadOnlyCollection<Plugin> AvailablePlugins => _availablePlugins;
 
-        private static string GetPluginPath()
+        internal void Install(Plugin plugin)
         {
-            var dir = Assembly.GetExecutingAssembly().Location;
-            var targetFramework = Path.GetFileName(dir = GetDirectoryName(dir));
-            var configuration = Path.GetFileName(dir = GetDirectoryName(dir));
-            dir = GetDirectoryName(dir);
-            dir = GetDirectoryName(dir);
+            ImmutableHashSet<Plugin> current = Volatile.Read(ref _installedPlugins), start, desired;
 
-            var pluginAssemblyDir = Path.Combine(dir, _pluginName, configuration, "netstandard2.0");
-            return Path.Combine(pluginAssemblyDir, _pluginName + ".dll");
-        }
-
-        private static string GetDirectoryName(string path)
-        {
-            path = Path.GetDirectoryName(path);
-            if (path.Last() == '/' || path.Last() == '\\')
+            do
             {
-                path = path.Substring(0, path.Length - 1);
+                start = current;
+                desired = start.Add(plugin);
+                if (desired == start)
+                    return;
+                current = Interlocked.CompareExchange(ref _installedPlugins, desired, start);
+            }
+            while (start != current);
+
+            OnModulesChanged();
+        }
+
+        internal void Uninstall(Plugin plugin)
+        {
+            ImmutableHashSet<Plugin> current = Volatile.Read(ref _installedPlugins), start, desired;
+
+            do
+            {
+                start = current;
+                desired = start.Remove(plugin);
+                if (desired == start)
+                    return;
+                current = Interlocked.CompareExchange(ref _installedPlugins, desired, start);
+            }
+            while (start != current);
+
+            OnModulesChanged();
+        }
+
+        internal bool IsInstalled(Plugin plugin)
+        {
+            var plugins = Volatile.Read(ref _installedPlugins);
+            return plugins.Contains(plugin);
+        }
+
+        #region IBlazorModuleSource
+
+        public event EventHandler? ModulesChanged;
+
+        public IAsyncEnumerable<IBlazorModuleDescriptor> GetModulesAsync(CancellationToken cancellation)
+        {
+            var plugins = Volatile.Read(ref _installedPlugins);
+            return plugins.Select(p => p.ModuleDescriptor).ToAsyncEnumerable();
+        }
+
+        private void OnModulesChanged()
+        {
+            ModulesChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        #endregion
+
+        public readonly struct Plugin : IEquatable<Plugin>
+        {
+            private readonly PluginManager _pluginManager;
+
+            internal Plugin(PluginManager pluginManager, IBlazorModuleDescriptor blazorModuleDescriptor)
+            {
+                _pluginManager = pluginManager;
+                ModuleDescriptor = blazorModuleDescriptor;
             }
 
-            return path;
-        }
+            public bool IsInstalled => _pluginManager.IsInstalled(this);
+            public IBlazorModuleDescriptor ModuleDescriptor { get; }
 
-        public async Task InstallPluginAsync()
-        {
-            if (IsPluginInstalled)
-                return;
-
-            var assemblyPath = GetPluginPath();
-            _loadContext = new PluginAssemblyLoadContext(assemblyPath, _hostAssemblies);
-            _pluginAssembly = _loadContext.LoadFromAssemblyPath(assemblyPath);
-
-            await _assemblyManager.AddAssemblyAsync(_pluginAssembly, _loadContext);
-            IsPluginInstalled = true;
-        }
-
-        public async Task UninstallPluginAsync()
-        {
-            if (!IsPluginInstalled)
-                return;
-
-            await RemoveFromAssemblyManagerAsync();
-            await Task.Yield(); // We are running on a sync-context. Allow the renderer to re-render.
-            Unload(out var weakRef);
-
-            for (var i = 0; weakRef.IsAlive && (i < 100); i++)
+            public void Install()
             {
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
+                _pluginManager.Install(this);
             }
 
-            if (weakRef.IsAlive)
+            public void Uninstall()
             {
-                Debugger.Break();
-                //throw new Exception("Unable to unload plugin.");
+                _pluginManager.Uninstall(this);
             }
 
-            IsPluginInstalled = false;
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private async ValueTask RemoveFromAssemblyManagerAsync()
-        {
-            await _assemblyManager.RemoveAssemblyAsync(_pluginAssembly);
-            RemoveFromInternalCaches(_pluginAssembly.Yield().ToHashSet());
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private void Unload(out WeakReference weakRef)
-        {
-            _loadContext.Unload();
-            weakRef = new WeakReference(_loadContext);
-            _loadContext = null;
-            _pluginAssembly = null;
-        }
-
-        private static readonly Action<HashSet<Assembly>> RemoveFromAttributeAuthorizeDataCache = RemoveFromCache(
-            "Microsoft.AspNetCore.Components.Authorization",
-            "Microsoft.AspNetCore.Components.Authorization.AttributeAuthorizeDataCache",
-            "_cache");
-
-        private static readonly Action<HashSet<Assembly>> RemoveFromFormatterDelegateCache = RemoveFromCache(
-            "Microsoft.AspNetCore.Components",
-            "Microsoft.AspNetCore.Components.BindConverter+FormatterDelegateCache",
-            "_cache");
-
-        private static readonly Action<HashSet<Assembly>> RemoveFromParserDelegateCache = RemoveFromCache(
-           "Microsoft.AspNetCore.Components",
-           "Microsoft.AspNetCore.Components.BindConverter+ParserDelegateCache",
-           "_cache");
-
-        private static readonly Action<HashSet<Assembly>> RemoveFromCascadingParameterState = RemoveFromCache(
-           "Microsoft.AspNetCore.Components",
-           "Microsoft.AspNetCore.Components.CascadingParameterState",
-           "_cachedInfos");
-
-        private static readonly Action<HashSet<Assembly>> RemoveFromComponentFactory
-            = BuildRemoveFromComponentFactory();
-
-        private static readonly Action<HashSet<Assembly>> RemoveFromComponentProperties = RemoveFromCache(
-         "Microsoft.AspNetCore.Components",
-         "Microsoft.AspNetCore.Components.Reflection.ComponentProperties",
-         "_cachedWritersByType");
-
-        private static readonly Action<HashSet<Assembly>> RemoveFromInternalCaches =
-            RemoveFromAttributeAuthorizeDataCache +
-            RemoveFromFormatterDelegateCache +
-            RemoveFromParserDelegateCache +
-            RemoveFromCascadingParameterState +
-            RemoveFromComponentFactory +
-            RemoveFromComponentProperties;
-
-        private static Action<HashSet<Assembly>> RemoveFromCache(
-            string assembly,
-            string typeName,
-            string fieldName,
-            object instance = null)
-        {
-            var type = GetType(assembly, typeName);
-
-            var bindingFlags = BindingFlags.Public | BindingFlags.NonPublic;
-
-            if (instance is null)
+            public bool Equals(in Plugin other)
             {
-                bindingFlags |= BindingFlags.Static;
-            }
-            else
-            {
-                bindingFlags |= BindingFlags.Instance;
+                return (_pluginManager, ModuleDescriptor) == (other._pluginManager, other.ModuleDescriptor);
             }
 
-            var field = type.GetField(fieldName, bindingFlags)
-                ?? throw new Exception($"Unable to reflect field '{fieldName}' of type '{type}'");
-
-            if (!(field.GetValue(instance) is IDictionary cache))
-                return _ => { };
-
-            void RemoveFromCache(HashSet<Assembly> unloaded)
+            public bool Equals(Plugin other)
             {
-                var typesToRemove = cache.Keys.OfType<Type>().Where(p => unloaded.Contains(p.Assembly)).ToList();
-
-                foreach (var type in typesToRemove)
-                {
-                    cache.Remove(type);
-                }
+                return Equals(in other);
             }
 
-            return RemoveFromCache;
-        }
-
-        private static Action<HashSet<Assembly>> BuildRemoveFromComponentFactory()
-        {
-            var assembly = "Microsoft.AspNetCore.Components";
-            var typeName = "Microsoft.AspNetCore.Components.ComponentFactory";
-            var fieldName = "_cachedInitializers";
-
-            var type = GetType(assembly, typeName);
-            var instance = type.GetField(
-                "Instance", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
-                .GetValue(null);
-            return RemoveFromCache(assembly, typeName, fieldName, instance);
-        }
-
-        private static Type GetType(string assembly, string typeName)
-        {
-            return Type.GetType($"{typeName}, {assembly}")
-            ?? throw new Exception($"Unable to reflect type '{typeName}, {assembly}'.");
-        }
-
-        public bool IsPluginInstalled { get; private set; }
-
-        // https://github.com/dotnet/samples/blob/master/core/tutorials/Unloading/Host/Program.cs
-        private sealed class PluginAssemblyLoadContext : AssemblyLoadContext
-        {
-            private readonly AssemblyDependencyResolver _resolver;
-            private readonly Dictionary<AssemblyName, Assembly> _hostAssemblies;
-
-            public PluginAssemblyLoadContext(string pluginPath, Dictionary<AssemblyName, Assembly> hostAssemblies) : base(isCollectible: true)
+            public override bool Equals(object? obj)
             {
-                _resolver = new AssemblyDependencyResolver(pluginPath);
-                _hostAssemblies = hostAssemblies;
+                return obj is Plugin plugin && Equals(in plugin);
             }
 
-            protected override Assembly Load(AssemblyName assemblyName)
+            public override int GetHashCode()
             {
-                if (_hostAssemblies.TryGetValue(assemblyName, out var assembly))
-                {
-                    return assembly;
-                }
-
-                var assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
-                if (assemblyPath != null)
-                {
-                    Console.WriteLine($"Loading assembly {assemblyPath} into the HostAssemblyLoadContext");
-                    return LoadFromAssemblyPath(assemblyPath);
-                }
-
-                return null;
-            }
-        }
-
-        private class AssemblyNameComparer : IEqualityComparer<AssemblyName>
-        {
-            public bool Equals(AssemblyName x, AssemblyName y)
-            {
-                return string.Equals(x?.FullName, y?.FullName, StringComparison.Ordinal);
+                return (_pluginManager, ModuleDescriptor).GetHashCode();
             }
 
-            public int GetHashCode(AssemblyName obj)
+            public static bool operator ==(in Plugin left, in Plugin right)
             {
-                return obj.FullName.GetHashCode();
+                return left.Equals(in right);
+            }
+
+            public static bool operator !=(in Plugin left, in Plugin right)
+            {
+                return !left.Equals(in right);
             }
         }
     }
