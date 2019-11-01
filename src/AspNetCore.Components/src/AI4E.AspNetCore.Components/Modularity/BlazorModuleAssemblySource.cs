@@ -28,26 +28,26 @@ namespace AI4E.AspNetCore.Components.Modularity
 #pragma warning restore CA1815
     {
         private readonly SlicedMemoryOwner<byte> _assemblyBytesOwner;
-        private readonly SlicedMemoryOwner<byte> _assemblySymbolsBytesOwner;
+        private readonly SlicedMemoryOwner<byte> _symbolsBytesOwner;
 
         public BlazorModuleAssemblySource(
             SlicedMemoryOwner<byte> assemblyBytesOwner,
-            SlicedMemoryOwner<byte> assemblySymbolsBytesOwner)
+            SlicedMemoryOwner<byte> symbolsBytesOwner)
         {
             _assemblyBytesOwner = assemblyBytesOwner;
-            _assemblySymbolsBytesOwner = assemblySymbolsBytesOwner;
+            _symbolsBytesOwner = symbolsBytesOwner;
             HasSymbols = true;
         }
 
         public BlazorModuleAssemblySource(SlicedMemoryOwner<byte> assemblyBytesOwner)
         {
             _assemblyBytesOwner = assemblyBytesOwner;
-            _assemblySymbolsBytesOwner = default;
+            _symbolsBytesOwner = default;
             HasSymbols = false;
         }
 
         public ReadOnlyMemory<byte> AssemblyBytes => _assemblyBytesOwner.Memory;
-        public ReadOnlyMemory<byte> AssemblySymbolsBytes => _assemblySymbolsBytesOwner.Memory;
+        public ReadOnlyMemory<byte> SymbolsBytes => _symbolsBytesOwner.Memory;
 
         public bool HasSymbols { get; }
 
@@ -61,7 +61,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             {
                 if (HasSymbols)
                 {
-                    _assemblySymbolsBytesOwner.Dispose(); // TODO: If this throws, the original exception gets lost.
+                    _symbolsBytesOwner.Dispose(); // TODO: If this throws, the original exception gets lost.
                 }
             }
         }

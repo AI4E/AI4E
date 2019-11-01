@@ -124,7 +124,8 @@ namespace Routing.Modularity.Sample.Services
                 var result = (BlazorModuleDescriptor)FormatterServices.GetUninitializedObject(
                     typeof(BlazorModuleDescriptor));
 
-                var assemblyDescriptors = _assemblies.Select(p => p.Build(result)).ToImmutableList<IBlazorModuleAssemblyDescriptor>();
+                var assemblyDescriptors = _assemblies.Select(
+                    p => p.Build(result)).ToImmutableList<IBlazorModuleAssemblyDescriptor>();
 
                 // This is rather slow but we do not expect this called very frequently.
                 _ctor.Invoke(result, new object[] { assemblyDescriptors, _name, _urlPrefix });

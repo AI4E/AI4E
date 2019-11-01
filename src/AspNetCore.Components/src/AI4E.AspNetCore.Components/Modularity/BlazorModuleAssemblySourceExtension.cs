@@ -37,7 +37,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             using var assemblyStream = new PooledMemoryStream(assemblySource.AssemblyBytes);
             if (assemblySource.HasSymbols)
             {
-                using var assemblySymbolsStream = new PooledMemoryStream(assemblySource.AssemblySymbolsBytes);
+                using var assemblySymbolsStream = new PooledMemoryStream(assemblySource.SymbolsBytes);
                 return assemblyLoadContext.LoadFromStream(assemblyStream, assemblySymbolsStream);
             }
             else
