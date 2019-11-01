@@ -30,8 +30,7 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class AI4EComponentsServiceCollectionExtension
     {
-        // TODO: Rename to AddBlazorModularity
-        public static IBlazorModularityBuilder AddModularity(this IServiceCollection services)
+        public static IBlazorModularityBuilder AddBlazorModularity(this IServiceCollection services)
         {
             var descriptor = services.FirstOrDefault(p => p.ServiceType == typeof(BlazorModularityBuilder));
 
@@ -44,24 +43,25 @@ namespace Microsoft.Extensions.DependencyInjection
 
             var builder = new BlazorModularityBuilder(services);
             services.AddSingleton(builder);
-
-            
+      
 #if SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT // TODO
             services.TryAddSingleton<IBlazorModuleManager, BlazorModuleManager>();
-#endif      //services.TryAddSingleton<IBlazorModuleSource, BlazorModuleSource>();
+#endif      
+            
+            //services.TryAddSingleton<IBlazorModuleSource, BlazorModuleSource>();
             //services.AddSingleton<IBlazorModuleAssemblyLoader, BlazorModuleAssemblyLoader>();
+
             services.TryAddSingleton<AssemblyManager>();
             services.TryAddSingleton<IAssemblySource>(p => p.GetRequiredService<AssemblyManager>());
             BlazorModuleRunner.Configure(services);
             return builder;
         }
 
-        // TODO: Rename to AddBlazorModularity
-        public static IBlazorModularityBuilder AddModularity(
+        public static IBlazorModularityBuilder AddBlazorModularity(
             this IServiceCollection services,
             Action<BlazorModuleOptions> configuration)
         {
-            return AddModularity(services).Configure(configuration);
+            return AddBlazorModularity(services).Configure(configuration);
         }
     }
 }

@@ -22,7 +22,7 @@ namespace Routing.Modularity.Sample
             services.AddSingleton<PluginManager>();
             services.AddSingleton<IBlazorModuleSource>(p => p.GetRequiredService<PluginManager>());
 
-            services.AddModularity();
+            services.AddBlazorModularity();
 
             services.AddServerSideBlazor();
         }
