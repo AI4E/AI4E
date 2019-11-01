@@ -22,6 +22,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -96,6 +97,10 @@ namespace AI4E.AspNetCore.Components.Modularity
 
             if (weakLoadContext.IsAlive)
             {
+#if DEBUG
+                // This is here to enable finding unloadability problems via WINDBG/SOS
+                Debugger.Break();
+#endif
                 throw new Exception($"Unable to unload module {ModuleDescriptor.Name}."); // TODO: Exception type
             }
 

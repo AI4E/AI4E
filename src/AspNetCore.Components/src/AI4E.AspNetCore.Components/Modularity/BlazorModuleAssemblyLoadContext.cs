@@ -58,6 +58,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         private void OnUnloading(AssemblyLoadContext obj)
         {
             Unloading -= OnUnloading;
+            _assemblyCache.Clear();
 
             foreach (var source in _assemblySources!.Values)
             {

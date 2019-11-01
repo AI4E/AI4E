@@ -121,6 +121,7 @@ namespace AI4E.AspNetCore.Components.Modularity
                     }
 
                     _inProcess = true;
+                    _needsUpdate = false;
                 }
             }
 
