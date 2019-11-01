@@ -101,7 +101,7 @@ namespace AI4E.AspNetCore.Components.Modularity
                 // This is here to enable finding unloadability problems via WINDBG/SOS
                 Debugger.Break();
 #endif
-                throw new Exception($"Unable to unload module {ModuleDescriptor.Name}."); // TODO: Exception type
+                throw new BlazorModuleManagerException($"Unable to unload module {ModuleDescriptor.Name}.");
             }
 
             IsInstalled = false;
