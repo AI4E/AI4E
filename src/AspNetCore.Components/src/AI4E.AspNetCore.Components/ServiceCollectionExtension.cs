@@ -44,13 +44,7 @@ namespace Microsoft.Extensions.DependencyInjection
             var builder = new BlazorModularityBuilder(services);
             services.AddSingleton(builder);
       
-#if SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT // TODO
-            services.TryAddSingleton<IBlazorModuleManager, BlazorModuleManager>();
-#endif      
-            
-            //services.TryAddSingleton<IBlazorModuleSource, BlazorModuleSource>();
-            //services.AddSingleton<IBlazorModuleAssemblyLoader, BlazorModuleAssemblyLoader>();
-
+            services.TryAddSingleton<IBlazorModuleManager, BlazorModuleManager>();        
             services.TryAddSingleton<AssemblyManager>();
             services.TryAddSingleton<IAssemblySource>(p => p.GetRequiredService<AssemblyManager>());
             BlazorModuleRunner.Configure(services);

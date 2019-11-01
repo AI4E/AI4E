@@ -20,23 +20,36 @@
 
 using System;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
     public static class BlazorModularityBuilderExtension
     {
         public static IBlazorModularityBuilder Configure(
-            this IBlazorModularityBuilder modularityBuilder,
+            this IBlazorModularityBuilder builder,
             Action<BlazorModuleOptions> configuration)
         {
             if (configuration is null)
                 throw new ArgumentNullException(nameof(configuration));
 
 #pragma warning disable CA1062
-            modularityBuilder.Services.Configure(configuration);
+            builder.Services.Configure(configuration);
 #pragma warning restore CA1062
 
-            return modularityBuilder;
+            return builder;
+        }
+
+        public static IBlazorModularityBuilder UseDefaultModuleSource(this IBlazorModularityBuilder builder)
+        {
+#pragma warning disable CA1062
+            var services = builder.Services;
+#pragma warning restore CA1062
+
+            services.AddSingleton<IBlazorModuleSource, BlazorModuleSource>();
+            services.TryAddSingleton<IBlazorModuleAssemblyLoader, BlazorModuleAssemblyLoader>();
+
+            return builder;
         }
     }
 }
