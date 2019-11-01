@@ -83,7 +83,7 @@ namespace AI4E.AspNetCore.Components.Extensibility
             if (assembly is null)
                 throw new ArgumentNullException(nameof(assembly));
 
-            if (!AddCore(assembly, assemblyLoadContext))
+            if (!_assemblies.AddOrReplace(assembly, assemblyLoadContext))
             {
                 return default;
             }
@@ -105,22 +105,10 @@ namespace AI4E.AspNetCore.Components.Extensibility
                     throw new ArgumentException("The collection must not contain null entries.", nameof(assemblies));
                 }
 
-                changed |= AddCore(assembly, assemblyLoadContext);
+                changed |= _assemblies.AddOrReplace(assembly, assemblyLoadContext);
             }
 
             return changed ? NotifyAssembliesChangedAsync() : default;
-        }
-
-        private bool AddCore(Assembly assembly, AssemblyLoadContext? assemblyLoadContext)
-        {
-            if (_assemblies.TryGetValue(assembly, out var comparisonALC)
-               && comparisonALC == assemblyLoadContext)
-            {
-                return false;
-            }
-
-            _assemblies[assembly] = assemblyLoadContext;
-            return true;
         }
 
         /// <summary>
