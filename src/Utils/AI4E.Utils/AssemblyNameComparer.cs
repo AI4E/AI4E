@@ -22,25 +22,25 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace AI4E.AspNetCore.Components.Modularity
+namespace AI4E.Utils
 {
     /// <summary>
     /// An equality comparer that compares assembly names via their full-name property.
     /// </summary>
-    internal class AssemblyNameComparer : IEqualityComparer<AssemblyName>
+    public class AssemblyNameComparer : IEqualityComparer<AssemblyName>
     {
         public static AssemblyNameComparer Instance { get; } = new AssemblyNameComparer();
 
         private AssemblyNameComparer() { }
 
-        public bool Equals(AssemblyName x, AssemblyName y)
+        public bool Equals(AssemblyName? x, AssemblyName? y)
         {
             return string.Equals(x?.FullName, y?.FullName, StringComparison.Ordinal);
         }
 
         public int GetHashCode(AssemblyName obj)
         {
-            return obj.FullName.GetHashCode(StringComparison.Ordinal);
+            return obj?.FullName.GetHashCode(StringComparison.Ordinal) ?? 0;
         }
     }
 }

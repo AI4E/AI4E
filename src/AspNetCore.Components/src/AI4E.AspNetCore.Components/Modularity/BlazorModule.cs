@@ -28,6 +28,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Extensibility;
+using AI4E.Utils;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
@@ -176,10 +177,10 @@ namespace AI4E.AspNetCore.Components.Modularity
 #if !SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT
             throw new NotSupportedException("Uninstalling modules is not supported on this platform.");
 #else
-                _assemblyLoadContext!.Unload();
-                weakRef = new WeakReference(_assemblyLoadContext);
-                _assemblyLoadContext = null;
-                _installedAssemblies = null;
+            _assemblyLoadContext!.Unload();
+            weakRef = new WeakReference(_assemblyLoadContext);
+            _assemblyLoadContext = null;
+            _installedAssemblies = null;
 #endif
         }
 

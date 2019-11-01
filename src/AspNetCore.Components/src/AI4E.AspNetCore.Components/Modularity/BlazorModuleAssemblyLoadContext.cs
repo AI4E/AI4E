@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Runtime.Loader;
+using AI4E.Utils;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
