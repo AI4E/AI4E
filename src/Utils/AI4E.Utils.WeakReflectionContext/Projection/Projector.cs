@@ -32,6 +32,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Xml.Schema;
 
 namespace AI4E.Utils.Projection
 {
@@ -60,15 +61,13 @@ namespace AI4E.Utils.Projection
         [return: NotNullIfNotNull("value")]
         public T Project<T>(T value, Func<T, T> project)
         {
-            if (NeedsProjection(value!))
-            {
-                // NeedsProjection should guarantee this.
-                Debug.Assert(!(value is IProjectable) || ((IProjectable)value).Projector != this);
+            if (!NeedsProjection(value!))
+                return value;
 
-                return project(value);
-            }
+            // NeedsProjection should guarantee this.
+            Debug.Assert(!(value is IProjectable) || ((IProjectable)value).Projector != this);
 
-            return value;
+            return project(value);
         }
 
         [return: NotNullIfNotNull("value")]
@@ -154,6 +153,13 @@ namespace AI4E.Utils.Projection
             if (value == null)
                 return false;
 
+#if NETSTD20
+            if (value is ProjectingTypeWrapper typeWrapper)
+            {
+                value = typeWrapper.ProjectingType;
+            }
+#endif
+
             if (value is IProjectable projector && projector == this)
                 return false;   // Already projected
 
@@ -170,13 +176,13 @@ namespace AI4E.Utils.Projection
             Debug.Assert(null != project);
             Debug.Assert(values != null && values.Count > 0);
 
-            var projected = new T[values.Count];
+            var projected = new T[values!.Count];
 
             for (var i = 0; i < projected.Length; i++)
             {
                 var value = values[i];
                 Debug.Assert(value != null && NeedsProjection(value));
-                projected[i] = project(value);
+                projected[i] = project!(value);
             }
 
             return projected;

@@ -41,7 +41,7 @@ namespace AI4E.Utils.Delegation
         {
             Debug.Assert(clause != null);
 
-            _clause = new WeakReference<ExceptionHandlingClause>(clause);
+            _clause = new WeakReference<ExceptionHandlingClause>(clause!);
         }
 
         private ExceptionHandlingClause Clause

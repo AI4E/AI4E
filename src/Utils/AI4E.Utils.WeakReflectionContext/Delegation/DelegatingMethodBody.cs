@@ -42,7 +42,7 @@ namespace AI4E.Utils.Delegation
         {
             Debug.Assert(null != body);
 
-            _body = new WeakReference<MethodBody>(body);
+            _body = new WeakReference<MethodBody>(body!);
         }
 
         private MethodBody Body

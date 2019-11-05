@@ -43,7 +43,7 @@ namespace AI4E.Utils.Projection
         {
             Debug.Assert(null != projector);
 
-            _projector = projector;
+            _projector = projector!;
         }
 
         public override Assembly ReferencedAssembly => _projector.ProjectAssembly(base.ReferencedAssembly);

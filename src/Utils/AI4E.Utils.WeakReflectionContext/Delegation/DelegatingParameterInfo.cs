@@ -42,7 +42,7 @@ namespace AI4E.Utils.Delegation
         {
             Debug.Assert(null != parameter);
 
-            _underlyingParameter = new WeakReference<ParameterInfo>(parameter);
+            _underlyingParameter = new WeakReference<ParameterInfo>(parameter!);
         }
 
         public ParameterInfo UnderlyingParameter

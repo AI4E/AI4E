@@ -43,7 +43,7 @@ namespace AI4E.Utils.Projection
         {
             Debug.Assert(null != projector);
 
-            Projector = projector;
+            Projector = projector!;
         }
 
         public Projector Projector { get; }
@@ -65,7 +65,7 @@ namespace AI4E.Utils.Projection
 
         public override IList<CustomAttributeData> GetCustomAttributesData()
         {
-            return Projector.Project(base.GetCustomAttributesData(), Projector.ProjectCustomAttributeData);
+            return Projector.Project(base.GetCustomAttributesData(), Projector.ProjectCustomAttributeData!);
         }
 
         public override bool IsDefined(Type attributeType, bool inherit)

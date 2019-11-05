@@ -42,7 +42,7 @@ namespace AI4E.Utils.Delegation
         {
             Debug.Assert(null != @event);
 
-            _underlyingEvent = new WeakReference<EventInfo>(@event);
+            _underlyingEvent = new WeakReference<EventInfo>(@event!);
         }
 
         public EventInfo UnderlyingEvent

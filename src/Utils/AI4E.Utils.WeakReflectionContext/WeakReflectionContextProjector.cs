@@ -32,6 +32,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using AI4E.Utils.Custom;
+using AI4E.Utils.Delegation;
 using AI4E.Utils.Projection;
 
 namespace AI4E.Utils
@@ -52,7 +53,7 @@ namespace AI4E.Utils
 
             // Map the assembly to the underlying context first
             Debug.Assert(ReflectionContext.SourceContext != null);
-            value = ReflectionContext.SourceContext.MapType(value);
+            value = ReflectionContext.SourceContext!.MapType(value);
             return ProjectType(value);
         }
 
@@ -63,7 +64,7 @@ namespace AI4E.Utils
 
             // Map the assembly to the underlying context first
             Debug.Assert(ReflectionContext.SourceContext != null);
-            value = ReflectionContext.SourceContext.MapAssembly(value);
+            value = ReflectionContext.SourceContext!.MapAssembly(value);
             return ProjectAssembly(value);
         }
 
@@ -74,7 +75,13 @@ namespace AI4E.Utils
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-            return new CustomType(value, ReflectionContext);
+            var type = new CustomType(value, ReflectionContext);
+
+#if NETSTD20
+            return new ProjectingTypeWrapper(type);
+#else
+            return type;
+#endif
         }
 
         [return: NotNullIfNotNull("value")]
@@ -262,9 +269,9 @@ namespace AI4E.Utils
         {
             return new InterfaceMapping
             {
-                InterfaceMethods = Project(value.InterfaceMethods, ProjectMethod),
+                InterfaceMethods = Project(value.InterfaceMethods, ProjectMethod!),
                 InterfaceType = ProjectType(value.InterfaceType),
-                TargetMethods = Project(value.TargetMethods, ProjectMethod),
+                TargetMethods = Project(value.TargetMethods, ProjectMethod!),
                 TargetType = ProjectType(value.TargetType)
             };
         }

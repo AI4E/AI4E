@@ -48,7 +48,7 @@ namespace AI4E.Utils.Delegation
         {
             Debug.Assert(null != assembly);
 
-            _underlyingAssembly = new WeakReference<Assembly>(assembly);
+            _underlyingAssembly = new WeakReference<Assembly>(assembly!);
         }
 
         public Assembly UnderlyingAssembly

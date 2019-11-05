@@ -42,7 +42,7 @@ namespace AI4E.Utils.Delegation
         {
             Debug.Assert(null != module);
 
-            _underlyingModule = new WeakReference<Module>(module);
+            _underlyingModule = new WeakReference<Module>(module!);
         }
 
         public Module UnderlyingModule

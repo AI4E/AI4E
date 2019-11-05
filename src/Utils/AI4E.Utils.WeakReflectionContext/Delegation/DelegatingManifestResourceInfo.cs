@@ -42,7 +42,7 @@ namespace AI4E.Utils.Delegation
         {
             Debug.Assert(null != resource);
 
-            _underlyingResource = new WeakReference<ManifestResourceInfo>(resource);
+            _underlyingResource = new WeakReference<ManifestResourceInfo>(resource!);
         }
 
         public ManifestResourceInfo UnderlyingResource

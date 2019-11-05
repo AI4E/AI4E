@@ -43,7 +43,7 @@ namespace AI4E.Utils.Delegation
         {
             Debug.Assert(null != field);
 
-            _underlyingField = new WeakReference<FieldInfo>(field);
+            _underlyingField = new WeakReference<FieldInfo>(field!);
         }
 
         public FieldInfo UnderlyingField

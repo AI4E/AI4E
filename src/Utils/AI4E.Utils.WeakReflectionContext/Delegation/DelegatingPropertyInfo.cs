@@ -43,7 +43,7 @@ namespace AI4E.Utils.Delegation
         {
             Debug.Assert(null != property);
 
-            _underlyingProperty = new WeakReference<PropertyInfo>(property);
+            _underlyingProperty = new WeakReference<PropertyInfo>(property!);
         }
 
         public PropertyInfo UnderlyingProperty

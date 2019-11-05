@@ -44,7 +44,7 @@ namespace AI4E.Utils.Projection
         {
             Debug.Assert(null != projector);
 
-            _projector = projector;
+            _projector = projector!;
         }
 
         public override Type LocalType => _projector.ProjectType(base.LocalType);

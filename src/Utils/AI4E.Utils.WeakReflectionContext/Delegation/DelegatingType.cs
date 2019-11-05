@@ -36,7 +36,12 @@ using System.Runtime.InteropServices;
 
 namespace AI4E.Utils.Delegation
 {
-    internal abstract class DelegatingType : TypeInfo
+    internal abstract class DelegatingType :
+#if NETSTD20
+        Type
+#else
+        TypeInfo
+#endif
     {
         private readonly WeakReference<TypeInfo> _typeInfo;
 
@@ -47,7 +52,7 @@ namespace AI4E.Utils.Delegation
             var typeInfo = type.GetTypeInfo();
             if (typeInfo == null)
             {
-                throw new InvalidOperationException($"Cannot get the TypeInfo object from the Type object: {type.FullName}.");
+                throw new InvalidOperationException($"Cannot get the TypeInfo object from the Type object: {type!.FullName}.");
             }
 
             _typeInfo = new WeakReference<TypeInfo>(typeInfo);

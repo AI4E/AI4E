@@ -44,7 +44,7 @@ namespace AI4E.Utils.Delegation
         {
             Debug.Assert(null != method);
 
-            _underlyingMethod = new WeakReference<MethodInfo>(method);
+            _underlyingMethod = new WeakReference<MethodInfo>(method!);
         }
 
         public MethodInfo UnderlyingMethod

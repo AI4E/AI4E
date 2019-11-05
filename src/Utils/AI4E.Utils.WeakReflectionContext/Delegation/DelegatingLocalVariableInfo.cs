@@ -41,7 +41,7 @@ namespace AI4E.Utils.Delegation
         {
             Debug.Assert(variable != null);
 
-            _underlyingVariable = new WeakReference<LocalVariableInfo>(variable);
+            _underlyingVariable = new WeakReference<LocalVariableInfo>(variable!);
         }
 
         public LocalVariableInfo UnderlyingVariable

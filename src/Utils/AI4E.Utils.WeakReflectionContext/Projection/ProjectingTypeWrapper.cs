@@ -26,47 +26,19 @@
  * See the LICENSE file in the project root for more information.
  * --------------------------------------------------------------------------------------------------------------------
  */
-
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+#if NETSTD20
 using System.Reflection;
 
-namespace AI4E.Utils.Delegation
+namespace AI4E.Utils.Projection
 {
-    internal class DelegatingCustomAttributeData : CustomAttributeData
+    internal sealed class ProjectingTypeWrapper : TypeDelegator
     {
-        private readonly WeakReference<CustomAttributeData> _underlyingAttribute;
-
-        public DelegatingCustomAttributeData(CustomAttributeData attribute)
+        public ProjectingTypeWrapper(ProjectingType projectingType)
         {
-            Debug.Assert(null != attribute);
-
-            _underlyingAttribute = new WeakReference<CustomAttributeData>(attribute!);
+            ProjectingType = projectingType;
         }
 
-        public CustomAttributeData UnderlyingAttribute
-        {
-            get
-            {
-                if (_underlyingAttribute.TryGetTarget(out var result))
-                {
-                    return result;
-                }
-
-                throw new ContextUnloadedException();
-            }
-        }
-
-        public override ConstructorInfo Constructor => UnderlyingAttribute.Constructor;
-
-        public override IList<CustomAttributeTypedArgument> ConstructorArguments => UnderlyingAttribute.ConstructorArguments;
-
-        public override IList<CustomAttributeNamedArgument> NamedArguments => UnderlyingAttribute.NamedArguments;
-
-        public override string ToString()
-        {
-            return UnderlyingAttribute.ToString();
-        }
+        public ProjectingType ProjectingType { get; }
     }
 }
+#endif

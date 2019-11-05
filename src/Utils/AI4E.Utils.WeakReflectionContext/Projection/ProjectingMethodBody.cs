@@ -44,13 +44,13 @@ namespace AI4E.Utils.Projection
         {
             Debug.Assert(null != projector);
 
-            _projector = projector;
+            _projector = projector!;
         }
 
         public override IList<ExceptionHandlingClause> ExceptionHandlingClauses 
-            => _projector.Project(base.ExceptionHandlingClauses, _projector.ProjectExceptionHandlingClause);
+            => _projector.Project(base.ExceptionHandlingClauses, _projector.ProjectExceptionHandlingClause!);
 
         public override IList<LocalVariableInfo> LocalVariables 
-            => _projector.Project(base.LocalVariables, _projector.ProjectLocalVariable);
+            => _projector.Project(base.LocalVariables, _projector.ProjectLocalVariable!);
     }
 }

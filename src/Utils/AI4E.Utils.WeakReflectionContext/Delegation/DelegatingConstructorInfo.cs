@@ -43,7 +43,7 @@ namespace AI4E.Utils.Delegation
         {
             Debug.Assert(null != constructor);
 
-            _underlyingConstructor = new WeakReference<ConstructorInfo>(constructor);
+            _underlyingConstructor = new WeakReference<ConstructorInfo>(constructor!);
         }
 
         public ConstructorInfo UnderlyingConstructor
