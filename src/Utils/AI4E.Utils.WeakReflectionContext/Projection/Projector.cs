@@ -153,7 +153,7 @@ namespace AI4E.Utils.Projection
             if (value == null)
                 return false;
 
-#if NETSTD20
+#if !SUPPORTS_INHERIT_TYPE_INFO
             if (value is ProjectingTypeWrapper typeWrapper)
             {
                 value = typeWrapper.ProjectingType;

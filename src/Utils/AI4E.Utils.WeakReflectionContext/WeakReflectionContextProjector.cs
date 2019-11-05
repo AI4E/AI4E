@@ -77,10 +77,10 @@ namespace AI4E.Utils
             Debug.Assert(NeedsProjection(value));
             var type = new CustomType(value, ReflectionContext);
 
-#if NETSTD20
-            return new ProjectingTypeWrapper(type);
+#if SUPPORTS_INHERIT_TYPE_INFO
+            return type;    
 #else
-            return type;
+            return new ProjectingTypeWrapper(type);
 #endif
         }
 

@@ -26,7 +26,7 @@
  * See the LICENSE file in the project root for more information.
  * --------------------------------------------------------------------------------------------------------------------
  */
-#if NETSTD20
+#if !SUPPORTS_INHERIT_TYPE_INFO
 using System.Reflection;
 
 namespace AI4E.Utils.Projection

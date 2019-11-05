@@ -37,10 +37,10 @@ using System.Runtime.InteropServices;
 namespace AI4E.Utils.Delegation
 {
     internal abstract class DelegatingType :
-#if NETSTD20
-        Type
-#else
+#if SUPPORTS_INHERIT_TYPE_INFO
         TypeInfo
+#else
+        Type
 #endif
     {
         private readonly WeakReference<TypeInfo> _typeInfo;
