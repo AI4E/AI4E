@@ -47,57 +47,50 @@ namespace AI4E.Utils
 
         public TypeInfo ProjectTypeIfNeeded(TypeInfo value)
         {
-            if (NeedsProjection(value))
-            {
-                // Map the assembly to the underlying context first
-                Debug.Assert(ReflectionContext.SourceContext != null);
-                value = ReflectionContext.SourceContext.MapType(value);
-                return ProjectType(value);
-            }
-            else
+            if (!NeedsProjection(value))
                 return value;
+
+            // Map the assembly to the underlying context first
+            Debug.Assert(ReflectionContext.SourceContext != null);
+            value = ReflectionContext.SourceContext.MapType(value);
+            return ProjectType(value);
         }
 
         public Assembly ProjectAssemblyIfNeeded(Assembly value)
         {
-            if (NeedsProjection(value))
-            {
-                // Map the assembly to the underlying context first
-                Debug.Assert(ReflectionContext.SourceContext != null);
-                value = ReflectionContext.SourceContext.MapAssembly(value);
-
-                return ProjectAssembly(value);
-            }
-            else
+            if (!NeedsProjection(value))
                 return value;
+
+            // Map the assembly to the underlying context first
+            Debug.Assert(ReflectionContext.SourceContext != null);
+            value = ReflectionContext.SourceContext.MapAssembly(value);
+            return ProjectAssembly(value);
         }
 
         [return: NotNullIfNotNull("value")]
         public override TypeInfo? ProjectType(Type? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-
             return new CustomType(value, ReflectionContext);
         }
 
         [return: NotNullIfNotNull("value")]
         public override Assembly? ProjectAssembly(Assembly? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-
             return new CustomAssembly(value, ReflectionContext);
         }
 
         [return: NotNullIfNotNull("value")]
         public override Module? ProjectModule(Module? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
@@ -108,51 +101,47 @@ namespace AI4E.Utils
         [return: NotNullIfNotNull("value")]
         public override FieldInfo? ProjectField(FieldInfo? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-
             return new CustomFieldInfo(value, ReflectionContext);
         }
 
         [return: NotNullIfNotNull("value")]
         public override EventInfo? ProjectEvent(EventInfo? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-
             return new CustomEventInfo(value, ReflectionContext);
         }
 
         [return: NotNullIfNotNull("value")]
         public override ConstructorInfo? ProjectConstructor(ConstructorInfo? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-
             return new CustomConstructorInfo(value, ReflectionContext);
         }
 
         [return: NotNullIfNotNull("value")]
         public override MethodInfo? ProjectMethod(MethodInfo? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-
             return new CustomMethodInfo(value, ReflectionContext);
         }
 
         [return: NotNullIfNotNull("value")]
         public override MethodBase? ProjectMethodBase(MethodBase? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             if (value is MethodInfo method)
@@ -168,84 +157,77 @@ namespace AI4E.Utils
         [return: NotNullIfNotNull("value")]
         public override PropertyInfo? ProjectProperty(PropertyInfo? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-
             return new CustomPropertyInfo(value, ReflectionContext);
         }
 
         [return: NotNullIfNotNull("value")]
         public override ParameterInfo? ProjectParameter(ParameterInfo? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-
             return new CustomParameterInfo(value, ReflectionContext);
         }
 
         [return: NotNullIfNotNull("value")]
         public override MethodBody? ProjectMethodBody(MethodBody? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-
             return new ProjectingMethodBody(value, this);
         }
 
         [return: NotNullIfNotNull("value")]
         public override LocalVariableInfo? ProjectLocalVariable(LocalVariableInfo? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-
             return new ProjectingLocalVariableInfo(value, this);
         }
 
         [return: NotNullIfNotNull("value")]
         public override ExceptionHandlingClause? ProjectExceptionHandlingClause(ExceptionHandlingClause? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-
             return new ProjectingExceptionHandlingClause(value, this);
         }
 
         [return: NotNullIfNotNull("value")]
         public override CustomAttributeData? ProjectCustomAttributeData(CustomAttributeData? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-
             return new ProjectingCustomAttributeData(value, this);
         }
 
         [return: NotNullIfNotNull("value")]
         public override ManifestResourceInfo? ProjectManifestResource(ManifestResourceInfo? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             Debug.Assert(NeedsProjection(value));
-
             return new ProjectingManifestResourceInfo(value, this);
         }
 
         [return: NotNullIfNotNull("value")]
         public override MemberInfo? ProjectMember(MemberInfo? value)
         {
-            if (value == null)
+            if (value is null)
                 return null;
 
             return value.MemberType switch
@@ -265,7 +247,6 @@ namespace AI4E.Utils
         public override CustomAttributeTypedArgument ProjectTypedArgument(CustomAttributeTypedArgument value)
         {
             Type argumentType = ProjectType(value.ArgumentType);
-
             return new CustomAttributeTypedArgument(argumentType, value.Value);
         }
 
