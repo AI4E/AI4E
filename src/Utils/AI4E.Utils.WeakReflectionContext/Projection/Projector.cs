@@ -74,7 +74,8 @@ namespace AI4E.Utils.Projection
         [return: NotNullIfNotNull("value")]
         public abstract TypeInfo? ProjectType(Type? value);
 
-        public abstract Assembly ProjectAssembly(Assembly value);
+        [return: NotNullIfNotNull("value")]
+        public abstract Assembly? ProjectAssembly(Assembly? value);
 
         [return: NotNullIfNotNull("value")]
         public abstract Module? ProjectModule(Module? value);
@@ -97,16 +98,24 @@ namespace AI4E.Utils.Projection
         [return: NotNullIfNotNull("value")]
         public abstract PropertyInfo? ProjectProperty(PropertyInfo? value);
 
-        public abstract ParameterInfo ProjectParameter(ParameterInfo value);
+        [return: NotNullIfNotNull("value")]
+        public abstract ParameterInfo? ProjectParameter(ParameterInfo? value);
 
         [return: NotNullIfNotNull("value")]
         public abstract MethodBody? ProjectMethodBody(MethodBody? value);
-        public abstract LocalVariableInfo ProjectLocalVariable(LocalVariableInfo value);
-        public abstract ExceptionHandlingClause ProjectExceptionHandlingClause(ExceptionHandlingClause value);
-        public abstract CustomAttributeData ProjectCustomAttributeData(CustomAttributeData value);
+
+        [return: NotNullIfNotNull("value")]
+        public abstract LocalVariableInfo? ProjectLocalVariable(LocalVariableInfo? value);
+
+        [return: NotNullIfNotNull("value")]
+        public abstract ExceptionHandlingClause? ProjectExceptionHandlingClause(ExceptionHandlingClause? value);
+
+        [return: NotNullIfNotNull("value")]
+        public abstract CustomAttributeData? ProjectCustomAttributeData(CustomAttributeData? value);
 
         [return: NotNullIfNotNull("value")]
         public abstract ManifestResourceInfo? ProjectManifestResource(ManifestResourceInfo? value);
+
         public abstract CustomAttributeTypedArgument ProjectTypedArgument(CustomAttributeTypedArgument value);
         public abstract CustomAttributeNamedArgument ProjectNamedArgument(CustomAttributeNamedArgument value);
         public abstract InterfaceMapping ProjectInterfaceMapping(InterfaceMapping value);
