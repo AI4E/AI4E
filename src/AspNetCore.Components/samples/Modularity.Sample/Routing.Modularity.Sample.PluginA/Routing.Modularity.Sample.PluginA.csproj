@@ -12,6 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\..\Messaging\AI4E.Messaging\AI4E.Messaging.csproj" />
+    <ProjectReference Include="..\Routing.Modularity.Sample.PluginA.Shared\Routing.Modularity.Sample.PluginA.Shared.csproj" />
     <ProjectReference Include="..\Routing.Modularity.Sample.Shared\Routing.Modularity.Sample.Shared.csproj" />
   </ItemGroup>
 

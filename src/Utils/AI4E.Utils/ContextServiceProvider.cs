@@ -30,12 +30,23 @@ namespace AI4E.Utils
         private readonly ImmutableArray<ServiceDescriptor> _coreServices;
         private readonly IServiceProvider _coreServiceProvider;
 
-        public ContextServiceProvider(IServiceCollection services, bool validateScopes = true)
+        public ContextServiceProvider(IServiceCollection services, ContextServiceProviderOptions options)
         {
+            if (services is null)
+                throw new ArgumentNullException(nameof(services));
+
+            if (options is null)
+                throw new ArgumentNullException(nameof(options));
+
             _coreServices = services.ToImmutableArray();
-            services.AddSingleton<IContextServiceManager>(_ => new ContextServiceManager(_coreServices, _coreServiceProvider, validateScopes));
-            _coreServiceProvider = services.BuildServiceProvider(validateScopes);
+            services.AddSingleton<IContextServiceManager>(_ => new ContextServiceManager(_coreServices, _coreServiceProvider, options));
+            _coreServiceProvider = services.BuildServiceProvider(options.ToServiceProviderOptions());
         }
+
+        public ContextServiceProvider(
+            IServiceCollection services, bool validateScopes = true)
+            : this(services, new ContextServiceProviderOptions { ValidateScopes = validateScopes })
+        { }
 
         public object? GetService(Type serviceType)
         {
@@ -50,6 +61,59 @@ namespace AI4E.Utils
         public void Dispose()
         {
             _coreServiceProvider.DisposeIfDisposable();
+        }
+    }
+
+    public sealed class ContextServiceProviderFactory : IServiceProviderFactory<IServiceCollection>
+    {
+        private readonly ContextServiceProviderOptions _options;
+
+        public ContextServiceProviderFactory() : this(ContextServiceProviderOptions.Default)
+        { }
+
+        public ContextServiceProviderFactory(ContextServiceProviderOptions options)
+        {
+            if (options is null)
+                throw new ArgumentNullException(nameof(options));
+
+            _options = options;
+        }
+
+        public IServiceCollection CreateBuilder(IServiceCollection services)
+        {
+            return services;
+        }
+
+        public IServiceProvider CreateServiceProvider(IServiceCollection containerBuilder)
+        {
+            return new ContextServiceProvider(containerBuilder, _options);
+        }
+    }
+
+    public sealed class ContextServiceProviderOptions
+    {
+        internal static ContextServiceProviderOptions Default { get; } = new ContextServiceProviderOptions();
+
+        /// <summary>
+        /// <c>true</c> to perform check verifying that scoped services never gets resolved from root provider; 
+        /// otherwise <c>false</c>. Defaults to <c>false</c>.
+        /// </summary>
+        public bool ValidateScopes { get; set; }
+
+        /// <summary>
+        /// <c>true</c> to perform check verifying that all services can be created during
+        /// <code>BuildContextServiceProvider</code> call; otherwise <c>false</c>. Defaults to <c>false</c>.
+        /// NOTE: this check doesn't verify open generics services.
+        /// </summary>
+        public bool ValidateOnBuild { get; set; }
+
+        internal ServiceProviderOptions ToServiceProviderOptions()
+        {
+            return new ServiceProviderOptions
+            {
+                ValidateOnBuild = ValidateOnBuild,
+                ValidateScopes = ValidateScopes
+            };
         }
     }
 }

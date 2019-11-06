@@ -30,6 +30,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Extensibility;
 using AI4E.Utils;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
@@ -37,7 +38,8 @@ namespace AI4E.AspNetCore.Components.Modularity
     {
         private readonly ImmutableDictionary<AssemblyName, Assembly> _coreAssemblies;
         private readonly AssemblyManager _assemblyManager;
-
+        private readonly IContextServiceManager _contextServiceManager;
+        private readonly IBlazorModuleServicesContextNameResolver _servicesContextNameResolver;
         private BlazorModuleAssemblyLoadContext? _assemblyLoadContext;
         private WeakReflectionContext? _reflectionContext;
         private ImmutableList<Assembly>? _installedAssemblies;
@@ -45,7 +47,9 @@ namespace AI4E.AspNetCore.Components.Modularity
         public BlazorModule(
             IBlazorModuleDescriptor moduleDescriptor,
             ImmutableDictionary<AssemblyName, Assembly> coreAssemblies,
-            AssemblyManager assemblyManager)
+            AssemblyManager assemblyManager,
+            IContextServiceManager contextServiceManager,
+            IBlazorModuleServicesContextNameResolver servicesContextNameResolver)
         {
             if (moduleDescriptor is null)
                 throw new ArgumentNullException(nameof(moduleDescriptor));
@@ -56,9 +60,17 @@ namespace AI4E.AspNetCore.Components.Modularity
             if (assemblyManager is null)
                 throw new ArgumentNullException(nameof(assemblyManager));
 
+            if (contextServiceManager is null)
+                throw new ArgumentNullException(nameof(contextServiceManager));
+
+            if (servicesContextNameResolver is null)
+                throw new ArgumentNullException(nameof(servicesContextNameResolver));
+
             ModuleDescriptor = moduleDescriptor;
             _coreAssemblies = coreAssemblies;
             _assemblyManager = assemblyManager;
+            _contextServiceManager = contextServiceManager;
+            _servicesContextNameResolver = servicesContextNameResolver;
         }
 
         public IBlazorModuleDescriptor ModuleDescriptor { get; }
@@ -75,9 +87,87 @@ namespace AI4E.AspNetCore.Components.Modularity
             _reflectionContext = new WeakReflectionContext();
             _installedAssemblies = GetComponentAssemblies().ToImmutableList();
 
+            var contextServices = ConfigureContextServices();
+            var appServices = contextServices.GetService<ApplicationServiceManager>();
+
+            if (appServices != null)
+            {
+                await appServices
+                    .InitializeApplicationServicesAsync(contextServices, cancellation)
+                    .ConfigureAwait(false);
+            }
+
             await _assemblyManager.AddAssembliesAsync(_installedAssemblies, _assemblyLoadContext);
 
             IsInstalled = true;
+        }
+
+        private IServiceProvider ConfigureContextServices()
+        {
+            var serviceContext = _servicesContextNameResolver.ResolveServicesContextName(ModuleDescriptor);
+
+            var success = _contextServiceManager.TryConfigureContextServices(
+                serviceContext,
+                ConfigureServices,
+                out var contextServices);
+
+            if (!success)
+            {
+                throw new BlazorModuleManagerException(
+                    $"Unable to load module. The requested service-context {serviceContext} is already assigned.");
+            }
+
+            return contextServices!;
+        }
+
+        private void ConfigureServices(IServiceCollection services)
+        {
+            services.AddSingleton(new ApplicationServiceManager());
+
+            var startupType = GetStartupType();
+
+            if (startupType != null)
+            {
+                var hostingServiceProvider = services.BuildServiceProvider();
+
+                IBlazorModuleStartup startup;
+
+                if (typeof(IBlazorModuleStartup).IsAssignableFrom(startupType))
+                {
+                    startup = (IBlazorModuleStartup)ActivatorUtilities.GetServiceOrCreateInstance(
+                        hostingServiceProvider, startupType);
+                }
+                else
+                {
+                    startup = new ConventionBasedBlazorModuleStartup(
+                        hostingServiceProvider, startupType, string.Empty); // TODO: Specify environment name
+                }
+
+                // TODO: We currently do not support custom service providers. We can strip the support for this in
+                //       * ConventionBasedBlazorModuleStartup
+                //       * IBlazorModuleStartup
+                //       * ConfigureServicesBuilder
+                startup.ConfigureServices(services);
+            }
+
+            // TODO: Add a service to allow modules to map assemblies/types
+        }
+
+        private Type? GetStartupType()
+        {
+            if (ModuleDescriptor.StartupType is null)
+                return null;
+
+            if (ModuleDescriptor.StartupType.Value.TryGetType(out var result))
+                return result;
+
+            Debug.Assert(_installedAssemblies != null);
+            var typeResolver = new TypeResolver(_installedAssemblies!);
+
+            if (typeResolver.TryResolveType(ModuleDescriptor.StartupType.Value.TypeName.AsSpan(), out result))
+                return result;
+
+            return null;
         }
 
         public async ValueTask UninstallAsync()
@@ -88,6 +178,11 @@ namespace AI4E.AspNetCore.Components.Modularity
             }
 
             await RemoveFromAssemblyManagerAsync();
+            var serviceContext = _servicesContextNameResolver.ResolveServicesContextName(ModuleDescriptor);
+            if(_contextServiceManager.TryGetContextServices(serviceContext, out var contextServices))
+            {
+                await contextServices.DisposeAsync();
+            }
             await Task.Yield(); // We are running on a sync-context. Allow the renderer to re-render.
             Unload(out var weakLoadContext);
 
@@ -268,7 +363,7 @@ namespace AI4E.AspNetCore.Components.Modularity
 
                 foreach (var type in typesToRemove)
                 {
-                    cache.Clear(); //.Remove(type);
+                    cache.Remove(type);
                 }
             }
 

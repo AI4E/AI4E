@@ -20,8 +20,6 @@
 
 using System;
 using AI4E;
-using AI4E.Utils;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -37,21 +35,28 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="services">The service collection.</param>
         /// <param name="configuration">The application service manager configuration.</param>
         /// <returns>The service collection.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="configuration"/> is <c>null</c>.</exception>
-        public static IServiceCollection ConfigureApplicationServices(this IServiceCollection services, Action<ApplicationServiceManager> configuration)
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="configuration"/> is <c>null</c>.
+        /// </exception>
+        public static IServiceCollection ConfigureApplicationServices(
+            this IServiceCollection services,
+            Action<ApplicationServiceManager> configuration)
         {
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
-            var serviceManager = services.GetService<ApplicationServiceManager>();
-
-            if (serviceManager == null)
+            Func<ApplicationServiceManager, ApplicationServiceManager> Decorator = appServices =>
             {
-                serviceManager = new ApplicationServiceManager();
-            }
+                configuration(appServices);
+                return appServices;
+            };
 
-            configuration(serviceManager);
-            services.TryAddSingleton(serviceManager);
+            if (!services.TryDecorate(Decorator))
+            {
+                var appServices = new ApplicationServiceManager();
+                configuration(appServices);
+                services.AddSingleton(appServices);
+            }
 
             return services;
         }

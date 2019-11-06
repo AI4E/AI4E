@@ -43,6 +43,13 @@ namespace Microsoft.Extensions.DependencyInjection
             return new ContextServiceProvider(services, validateScopes);
         }
 
+        public static ContextServiceProvider BuildContextServiceProvider(
+            this IServiceCollection services,
+            ContextServiceProviderOptions options)
+        {
+            return new ContextServiceProvider(services, options);
+        }
+
         [return: MaybeNull]
         public static T GetService<T>(this IServiceCollection services)
         {

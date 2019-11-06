@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 
 namespace AI4E.Messaging
 {
+    // TODO: Move to Utils
     [JsonConverter(typeof(SerializableTypeConverter))]
     public readonly struct SerializableType : IEquatable<SerializableType>
     {

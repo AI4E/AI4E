@@ -36,20 +36,21 @@ namespace AI4E.Utils
 
         private readonly ImmutableArray<ServiceDescriptor> _coreServices;
         private readonly IServiceProvider _coreServiceProvider;
-        private readonly bool _validateScopes;
+        private readonly ContextServiceProviderOptions _options;
 
         private ConcurrentDictionary<string, ContextServicesDescriptor>? _contextDescriptors;
 
         public ContextServiceManager(
             ImmutableArray<ServiceDescriptor> coreServices,
             IServiceProvider coreServiceProvider,
-            bool validateScopes)
+            ContextServiceProviderOptions options)
         {
             Debug.Assert(coreServiceProvider != null);
+            Debug.Assert(options != null);
 
             _coreServices = coreServices;
             _coreServiceProvider = coreServiceProvider!;
-            _validateScopes = validateScopes;
+            _options = options!;
             _contextDescriptors = new ConcurrentDictionary<string, ContextServicesDescriptor>();
         }
 
@@ -148,7 +149,7 @@ namespace AI4E.Utils
 
             serviceConfiguration(serviceCollection);
 
-            return serviceCollection.BuildServiceProvider(_validateScopes);
+            return serviceCollection.BuildServiceProvider(_options.ToServiceProviderOptions());
         }
 
         public ContextServicesDescriptor GetContextServices(string context, bool coreServicesIfNotFound = true)
