@@ -39,6 +39,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         private readonly AssemblyManager _assemblyManager;
 
         private BlazorModuleAssemblyLoadContext? _assemblyLoadContext;
+        private WeakReflectionContext? _reflectionContext;
         private ImmutableList<Assembly>? _installedAssemblies;
 
         public BlazorModule(
@@ -71,6 +72,7 @@ namespace AI4E.AspNetCore.Components.Modularity
 
             var assemblySources = await PrefetchAssemblySourcesAsync(ModuleDescriptor.Assemblies, cancellation);
             _assemblyLoadContext = new BlazorModuleAssemblyLoadContext(_coreAssemblies, assemblySources);
+            _reflectionContext = new WeakReflectionContext();
             _installedAssemblies = GetComponentAssemblies().ToImmutableList();
 
             await _assemblyManager.AddAssembliesAsync(_installedAssemblies, _assemblyLoadContext);
@@ -98,7 +100,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             if (weakLoadContext.IsAlive)
             {
 #if DEBUG
-                // This is here to enable finding unloadability problems via WINDBG/SOS
+                // This is here to enable tracking down unloadability problems via WINDBG/SOS
                 Debugger.Break();
 #endif
                 throw new BlazorModuleManagerException($"Unable to unload module {ModuleDescriptor.Name}.");
@@ -109,17 +111,23 @@ namespace AI4E.AspNetCore.Components.Modularity
 
         private IEnumerable<Assembly> GetComponentAssemblies()
         {
-            return ModuleDescriptor.Assemblies.Where(p => p.IsComponentAssembly).Select(GetComponentAssembly);
+            return ModuleDescriptor.Assemblies
+                .Where(p => p.IsComponentAssembly)
+                .Select(GetComponentAssembly);
         }
 
         private Assembly GetComponentAssembly(IBlazorModuleAssemblyDescriptor moduleAssemblyDescriptor)
         {
+            Debug.Assert(_reflectionContext != null);
+
             var assemblyName = new AssemblyName(moduleAssemblyDescriptor.AssemblyName)
             {
                 Version = moduleAssemblyDescriptor.AssemblyVersion
             };
 
-            return _assemblyLoadContext!.LoadFromAssemblyName(assemblyName);
+            var assembly = _assemblyLoadContext!.LoadFromAssemblyName(assemblyName);
+            assembly = _reflectionContext!.MapAssembly(assembly);
+            return assembly;
         }
 
         private async ValueTask<ImmutableDictionary<AssemblyName, BlazorModuleAssemblySource>> PrefetchAssemblySourcesAsync(
@@ -172,7 +180,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         private async ValueTask RemoveFromAssemblyManagerAsync()
         {
             await _assemblyManager.RemoveAssembliesAsync(_installedAssemblies!);
-            RemoveFromInternalCaches(_installedAssemblies!.ToHashSet());
+            RemoveFromInternalCaches(_reflectionContext!, _installedAssemblies!.ToHashSet());
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -193,35 +201,35 @@ namespace AI4E.AspNetCore.Components.Modularity
 
         #region Blazor caching workaround
 
-        private static readonly Action<HashSet<Assembly>> RemoveFromAttributeAuthorizeDataCache = RemoveFromCache(
+        private static readonly Action<ReflectionContext, HashSet<Assembly>> RemoveFromAttributeAuthorizeDataCache = RemoveFromCache(
         "Microsoft.AspNetCore.Components.Authorization",
         "Microsoft.AspNetCore.Components.Authorization.AttributeAuthorizeDataCache",
         "_cache");
 
-        private static readonly Action<HashSet<Assembly>> RemoveFromFormatterDelegateCache = RemoveFromCache(
+        private static readonly Action<ReflectionContext, HashSet<Assembly>> RemoveFromFormatterDelegateCache = RemoveFromCache(
             "Microsoft.AspNetCore.Components",
             "Microsoft.AspNetCore.Components.BindConverter+FormatterDelegateCache",
             "_cache");
 
-        private static readonly Action<HashSet<Assembly>> RemoveFromParserDelegateCache = RemoveFromCache(
+        private static readonly Action<ReflectionContext, HashSet<Assembly>> RemoveFromParserDelegateCache = RemoveFromCache(
            "Microsoft.AspNetCore.Components",
            "Microsoft.AspNetCore.Components.BindConverter+ParserDelegateCache",
            "_cache");
 
-        private static readonly Action<HashSet<Assembly>> RemoveFromCascadingParameterState = RemoveFromCache(
+        private static readonly Action<ReflectionContext, HashSet<Assembly>> RemoveFromCascadingParameterState = RemoveFromCache(
            "Microsoft.AspNetCore.Components",
            "Microsoft.AspNetCore.Components.CascadingParameterState",
            "_cachedInfos");
 
-        private static readonly Action<HashSet<Assembly>> RemoveFromComponentFactory
+        private static readonly Action<ReflectionContext, HashSet<Assembly>> RemoveFromComponentFactory
             = BuildRemoveFromComponentFactory();
 
-        private static readonly Action<HashSet<Assembly>> RemoveFromComponentProperties = RemoveFromCache(
+        private static readonly Action<ReflectionContext, HashSet<Assembly>> RemoveFromComponentProperties = RemoveFromCache(
          "Microsoft.AspNetCore.Components",
          "Microsoft.AspNetCore.Components.Reflection.ComponentProperties",
          "_cachedWritersByType");
 
-        private static readonly Action<HashSet<Assembly>> RemoveFromInternalCaches =
+        private static readonly Action<ReflectionContext, HashSet<Assembly>> RemoveFromInternalCaches =
             RemoveFromAttributeAuthorizeDataCache +
             RemoveFromFormatterDelegateCache +
             RemoveFromParserDelegateCache +
@@ -229,7 +237,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             RemoveFromComponentFactory +
             RemoveFromComponentProperties;
 
-        private static Action<HashSet<Assembly>> RemoveFromCache(
+        private static Action<ReflectionContext, HashSet<Assembly>> RemoveFromCache(
             string assembly,
             string typeName,
             string fieldName,
@@ -252,22 +260,22 @@ namespace AI4E.AspNetCore.Components.Modularity
                 ?? throw new Exception($"Unable to reflect field '{fieldName}' of type '{type}'");
 
             if (!(field.GetValue(instance) is IDictionary cache))
-                return _ => { };
+                return (x, y) => { };
 
-            void RemoveFromCache(HashSet<Assembly> unloaded)
+            void RemoveFromCache(ReflectionContext reflectionContext, HashSet<Assembly> unloaded)
             {
-                var typesToRemove = cache.Keys.OfType<Type>().Where(p => unloaded.Contains(p.Assembly)).ToList();
+                var typesToRemove = cache.Keys.OfType<Type>().Where(p => unloaded.Contains(reflectionContext.MapAssembly(p.Assembly))).ToList();
 
                 foreach (var type in typesToRemove)
                 {
-                    cache.Remove(type);
+                    cache.Clear(); //.Remove(type);
                 }
             }
 
             return RemoveFromCache;
         }
 
-        private static Action<HashSet<Assembly>> BuildRemoveFromComponentFactory()
+        private static Action<ReflectionContext, HashSet<Assembly>> BuildRemoveFromComponentFactory()
         {
             var assembly = "Microsoft.AspNetCore.Components";
             var typeName = "Microsoft.AspNetCore.Components.ComponentFactory";
