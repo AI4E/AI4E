@@ -21,6 +21,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using AI4E.AspNetCore.Components.Extensibility;
 using AI4E.AspNetCore.Components.Modularity;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,7 +31,9 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class AI4EComponentsServiceCollectionExtension
     {
-        public static IBlazorModularityBuilder AddBlazorModularity(this IServiceCollection services)
+        private static IBlazorModularityBuilder AddBlazorModuleManagerCore(
+            this IServiceCollection services,
+            Assembly? entryAssembly)
         {
             var descriptor = services.FirstOrDefault(p => p.ServiceType == typeof(BlazorModularityBuilder));
 
@@ -43,19 +46,55 @@ namespace Microsoft.Extensions.DependencyInjection
 
             var builder = new BlazorModularityBuilder(services);
             services.AddSingleton(builder);
-      
-            services.TryAddSingleton<IBlazorModuleManager, BlazorModuleManager>();        
-            services.TryAddSingleton<AssemblyManager>();
+            
+            services.TryAddSingleton<IBlazorModuleManager, BlazorModuleManager>();
+
+            if (entryAssembly is null)
+            {
+                services.TryAddSingleton<AssemblyManager>();
+            }
+            else
+            {
+                services.TryAddSingleton(new AssemblyManager(entryAssembly));
+            }
+
             services.TryAddSingleton<IAssemblySource>(p => p.GetRequiredService<AssemblyManager>());
+            services.TryAddSingleton<IBlazorModuleServicesContextNameResolver, BlazorModuleServicesContextNameResolver>();
             BlazorModuleRunner.Configure(services);
             return builder;
         }
 
         public static IBlazorModularityBuilder AddBlazorModularity(
             this IServiceCollection services,
+            Assembly entryAssembly)
+        {
+            if (entryAssembly is null)
+                throw new ArgumentNullException(nameof(entryAssembly));
+
+            return AddBlazorModuleManagerCore(services, entryAssembly);
+        }
+
+        public static IBlazorModularityBuilder AddBlazorModularity(this IServiceCollection services)
+        {
+            return AddBlazorModuleManagerCore(services, entryAssembly: null);
+        }
+
+        public static IBlazorModularityBuilder AddBlazorModularity(
+            this IServiceCollection services,
             Action<BlazorModuleOptions> configuration)
         {
-            return AddBlazorModularity(services).Configure(configuration);
+            return AddBlazorModuleManagerCore(services, entryAssembly: null).Configure(configuration);
+        }
+
+        public static IBlazorModularityBuilder AddBlazorModularity(
+            this IServiceCollection services,
+            Assembly entryAssembly,
+            Action<BlazorModuleOptions> configuration)
+        {
+            if (entryAssembly is null)
+                throw new ArgumentNullException(nameof(entryAssembly));
+
+            return AddBlazorModuleManagerCore(services, entryAssembly).Configure(configuration);
         }
     }
 }

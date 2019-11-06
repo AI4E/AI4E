@@ -19,33 +19,34 @@
  */
 
 using System;
-using System.Collections.Immutable;
-using AI4E.Messaging;
+using Microsoft.Extensions.Options;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
-    /// <summary>
-    /// Describes a single blazor-module.
-    /// </summary>
-    public interface IBlazorModuleDescriptor
+    public sealed class BlazorModuleServicesContextNameResolver : IBlazorModuleServicesContextNameResolver
     {
-        /// <summary>
-        /// Gets a collection of <see cref="IBlazorModuleAssemblyDescriptor"/> 
-        /// describing the assemblies the module contains of.
-        /// </summary>
-        ImmutableList<IBlazorModuleAssemblyDescriptor> Assemblies { get; }
+        private readonly IOptions<BlazorModuleOptions> _optionsAccessor;
 
-        /// <summary>
-        /// Gets the module name.
-        /// </summary>
-        string Name { get; }
+        public BlazorModuleServicesContextNameResolver(IOptions<BlazorModuleOptions> optionsAccessor)
+        {
+            if (optionsAccessor is null)
+                throw new ArgumentNullException(nameof(optionsAccessor));
 
-        SerializableType? StartupType { get; }
+            _optionsAccessor = optionsAccessor;
+        }
 
-        /// <summary>
-        /// Gets the url that the module's assemblies can be requested from.
-        /// </summary>
-        [Obsolete]
-        string UrlPrefix { get; }
+        public string ResolveServicesContextName(IBlazorModuleDescriptor moduleDescriptor)
+        {
+            if (moduleDescriptor is null)
+                throw new ArgumentNullException(nameof(moduleDescriptor));
+            var prefix = _optionsAccessor.Value.ServicesContextNamePrefix;
+
+            if (string.IsNullOrWhiteSpace(prefix))
+            {
+                prefix = BlazorModuleOptions.DefaultServicesContextNamePrefix;
+            }
+
+            return prefix + moduleDescriptor.Name;
+        }
     }
 }

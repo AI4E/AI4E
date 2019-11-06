@@ -1,0 +1,63 @@
+﻿@page "/transmitplugina"
+@using Routing.Modularity.Sample.PluginA
+@using AI4E.Utils
+@using Microsoft.Extensions.DependencyInjection;
+@inject IContextServiceManager ContextServiceManager
+
+<h3>TransmitPluginA</h3>
+
+@code {
+    private string Str { get; set; }
+    private IDispatchResult DispatchResult { get; set; }
+    private bool InProgress { get; set; }
+
+    private IMessageDispatcher? MessageDispatcher
+    {
+        get
+        {
+            var moduleName = "BlazorModule_Routing.Modularity.Sample.PluginB";
+
+            if(!ContextServiceManager.TryGetContextServices(moduleName, out var serviceProvider))
+            {
+                return null;
+            }
+
+            return serviceProvider.GetRequiredService<IMessageDispatcher>();
+        }
+    }
+
+    private async Task TransmitAsync()
+    {
+        if (InProgress)
+            return;
+
+        InProgress = true;
+        if(MessageDispatcher != null)
+        {
+            DispatchResult = await MessageDispatcher.DispatchAsync(new TestMessage(Str));
+        }
+        else
+        {
+            DispatchResult = null;
+        }
+
+        InProgress = false;
+    }
+}
+
+<div>
+    <p>
+        <label>Str <input type="text" @bind="Str" /></label>
+        <button @onclick="TransmitAsync">Transmit</button>
+    </p>
+    @if (InProgress)
+    {
+        <p>In progress...</p>
+    }
+    else if (DispatchResult != null)
+    {
+        <p>
+            @DispatchResult
+        </p>
+    }
+</div>

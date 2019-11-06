@@ -19,33 +19,12 @@
  */
 
 using System;
-using System.Collections.Immutable;
-using AI4E.Messaging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
-    /// <summary>
-    /// Describes a single blazor-module.
-    /// </summary>
-    public interface IBlazorModuleDescriptor
+    public interface IBlazorModuleStartup
     {
-        /// <summary>
-        /// Gets a collection of <see cref="IBlazorModuleAssemblyDescriptor"/> 
-        /// describing the assemblies the module contains of.
-        /// </summary>
-        ImmutableList<IBlazorModuleAssemblyDescriptor> Assemblies { get; }
-
-        /// <summary>
-        /// Gets the module name.
-        /// </summary>
-        string Name { get; }
-
-        SerializableType? StartupType { get; }
-
-        /// <summary>
-        /// Gets the url that the module's assemblies can be requested from.
-        /// </summary>
-        [Obsolete]
-        string UrlPrefix { get; }
+        IServiceProvider? ConfigureServices(IServiceCollection services);
     }
 }

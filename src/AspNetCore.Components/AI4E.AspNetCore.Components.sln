@@ -43,7 +43,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SignalR.Sample.App", "sampl
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SignalR.Sample.Server", "samples\SignalR.Sample\SignalR.Sample.Server\SignalR.Sample.Server.csproj", "{9E0EDFFC-E2E4-4117-83CA-ED41702C94E5}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "refs", "refs", "{D51B21EF-F729-4357-ADCB-CABC59C6FB5B}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dependencies", "dependencies", "{D51B21EF-F729-4357-ADCB-CABC59C6FB5B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils", "..\Utils\AI4E.Utils\AI4E.Utils.csproj", "{434A0B14-711E-460F-B63E-802EC0671C9D}"
 EndProject
@@ -74,6 +74,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Routing.Modularity.Sample.PluginB", "samples\Modularity.Sample\Routing.Modularity.Sample.PluginB\Routing.Modularity.Sample.PluginB.csproj", "{110875D9-1233-422F-BB2C-AEAAE320989D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore", "..\AspNetCore\AI4E.AspNetCore\AI4E.AspNetCore.csproj", "{EFB30ED5-C7D9-48C4-A316-AF00D40BA160}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Routing.Modularity.Sample.PluginA.Shared", "samples\Modularity.Sample\Routing.Modularity.Sample.PluginA.Shared\Routing.Modularity.Sample.PluginA.Shared.csproj", "{C514EAD5-0635-4D94-8F47-1B6498C790DD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -197,6 +199,10 @@ Global
 		{EFB30ED5-C7D9-48C4-A316-AF00D40BA160}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EFB30ED5-C7D9-48C4-A316-AF00D40BA160}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EFB30ED5-C7D9-48C4-A316-AF00D40BA160}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C514EAD5-0635-4D94-8F47-1B6498C790DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C514EAD5-0635-4D94-8F47-1B6498C790DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C514EAD5-0635-4D94-8F47-1B6498C790DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C514EAD5-0635-4D94-8F47-1B6498C790DD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -234,6 +240,7 @@ Global
 		{5C797788-BAA0-476D-858F-9C601F67FE19} = {CBC890B3-2425-4424-A272-CE3C4FAFA6BC}
 		{110875D9-1233-422F-BB2C-AEAAE320989D} = {CBC890B3-2425-4424-A272-CE3C4FAFA6BC}
 		{EFB30ED5-C7D9-48C4-A316-AF00D40BA160} = {D51B21EF-F729-4357-ADCB-CABC59C6FB5B}
+		{C514EAD5-0635-4D94-8F47-1B6498C790DD} = {CBC890B3-2425-4424-A272-CE3C4FAFA6BC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CE658A01-D5E2-43E3-91BA-DB3AF5BB9471}

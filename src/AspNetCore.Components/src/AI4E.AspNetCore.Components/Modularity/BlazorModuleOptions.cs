@@ -22,6 +22,9 @@ namespace AI4E.AspNetCore.Components.Modularity
 {
     public sealed class BlazorModuleOptions
     {
+        internal const string DefaultServicesContextNamePrefix = "BlazorModule_";
+
         public bool LoadSymbols { get; set; }
+        public string ServicesContextNamePrefix { get; set; } = DefaultServicesContextNamePrefix;
     }
 }

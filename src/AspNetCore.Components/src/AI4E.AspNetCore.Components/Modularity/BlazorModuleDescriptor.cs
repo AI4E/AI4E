@@ -28,6 +28,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using AI4E.AspNetCore.Components.Modularity;
+using AI4E.Messaging;
 using AI4E.Utils;
 
 namespace Routing.Modularity.Sample.Services
@@ -40,10 +41,12 @@ namespace Routing.Modularity.Sample.Services
 #pragma warning restore IDE0051
             ImmutableList<IBlazorModuleAssemblyDescriptor> assemblies,
             string name,
+            SerializableType? startupType,
             string urlPrefix)
         {
             Assemblies = assemblies;
             Name = name;
+            StartupType = startupType;
             UrlPrefix = urlPrefix;
         }
 
@@ -51,6 +54,9 @@ namespace Routing.Modularity.Sample.Services
 
         public string Name { get; }
 
+        public SerializableType? StartupType { get; }
+
+        [Obsolete]
         public string UrlPrefix { get; }
 
         public static Builder CreateBuilder(string name, string urlPrefix)
@@ -74,7 +80,13 @@ namespace Routing.Modularity.Sample.Services
                 var result = typeof(BlazorModuleDescriptor).GetConstructor(
                     BindingFlags.Instance | BindingFlags.NonPublic,
                     Type.DefaultBinder,
-                    new[] { typeof(ImmutableList<IBlazorModuleAssemblyDescriptor>), typeof(string), typeof(string) },
+                    new[] 
+                    { 
+                        typeof(ImmutableList<IBlazorModuleAssemblyDescriptor>),
+                        typeof(string), 
+                        typeof(SerializableType?),
+                        typeof(string) 
+                    },
                     modifiers: null);
 
                 Debug.Assert(result != null);
@@ -107,6 +119,9 @@ namespace Routing.Modularity.Sample.Services
                 }
             }
 
+            public SerializableType? StartupType { get; set; }
+
+            [Obsolete]
             public string UrlPrefix
             {
                 get => _urlPrefix;
@@ -128,7 +143,7 @@ namespace Routing.Modularity.Sample.Services
                     p => p.Build(result)).ToImmutableList<IBlazorModuleAssemblyDescriptor>();
 
                 // This is rather slow but we do not expect this called very frequently.
-                _ctor.Invoke(result, new object[] { assemblyDescriptors, _name, _urlPrefix });
+                _ctor.Invoke(result, new object?[] { assemblyDescriptors, _name, StartupType, _urlPrefix });
                 return result;
             }
         }

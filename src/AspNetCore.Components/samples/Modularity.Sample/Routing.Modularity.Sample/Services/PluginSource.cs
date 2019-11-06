@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Modularity;
+using AI4E.Messaging;
 using Newtonsoft.Json;
 using static Routing.Modularity.Sample.Services.PluginManager;
 
@@ -47,6 +48,8 @@ namespace Routing.Modularity.Sample.Services
 
                 var binPath = Path.Combine(distPath, "_framework", "_bin");
                 var moduleDescriptorBuilder = BlazorModuleDescriptor.CreateBuilder(pluginName, string.Empty);
+
+                moduleDescriptorBuilder.StartupType = new SerializableType(pluginName + ".Startup");
 
                 foreach (var assembly in GetAssemblies(blazorBoot))
                 {
