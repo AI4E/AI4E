@@ -19,6 +19,7 @@
  */
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -282,7 +283,7 @@ namespace AI4E.AspNetCore.Components
             return default;
         }
 
-        protected virtual bool IsSuccess(IDispatchResult dispatchResult, out TModel model)
+        protected virtual bool IsSuccess(IDispatchResult dispatchResult, [NotNullWhen(true)] out TModel? model)
         {
             if (dispatchResult is null)
                 throw new ArgumentNullException(nameof(dispatchResult));
