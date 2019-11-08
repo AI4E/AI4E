@@ -161,6 +161,16 @@ namespace AI4E.AspNetCore.Components
             StateHasChanged();
         }
 
+        protected virtual bool TryExtractModelAsync(
+            IDispatchResult dispatchResult,
+            [NotNullWhen(true)] out TModel? model)
+        {
+            if (dispatchResult is null)
+                throw new ArgumentNullException(nameof(dispatchResult));
+
+            return dispatchResult.IsSuccessWithResult(out model);
+        }
+
         #region Loading
 
         protected void LoadModel()
@@ -268,7 +278,7 @@ namespace AI4E.AspNetCore.Components
 
         protected virtual async ValueTask<TModel?> EvaluateLoadResultAsync(IDispatchResult dispatchResult)
         {
-            if (IsSuccess(dispatchResult, out var model))
+            if (TryExtractModelAsync(dispatchResult, out var model))
             {
                 await OnLoadSuccessAsync(model, dispatchResult);
                 return model;
@@ -281,14 +291,6 @@ namespace AI4E.AspNetCore.Components
         protected virtual ValueTask OnLoadSuccessAsync(TModel model, IDispatchResult dispatchResult)
         {
             return default;
-        }
-
-        protected virtual bool IsSuccess(IDispatchResult dispatchResult, [NotNullWhen(true)] out TModel? model)
-        {
-            if (dispatchResult is null)
-                throw new ArgumentNullException(nameof(dispatchResult));
-
-            return dispatchResult.IsSuccessWithResult(out model);
         }
 
         protected virtual void OnModelLoaded() { }
