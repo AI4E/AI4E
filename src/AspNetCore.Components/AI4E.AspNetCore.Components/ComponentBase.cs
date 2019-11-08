@@ -35,7 +35,7 @@ using Nito.AsyncEx;
 namespace AI4E.AspNetCore.Components
 {
     public abstract class ComponentBase<TModel> : ComponentBase, IDisposable
-        where TModel : class
+        where TModel : class, new()
     {
         #region Fields
 
@@ -58,6 +58,8 @@ namespace AI4E.AspNetCore.Components
             _ambientNotifications = new AsyncLocal<INotificationManager?>();
             _logger = new Lazy<ILogger?>(BuildLogger);
 
+            Model = new TModel();
+
             // These will be set by DI. Just to disable warnings here.
             NotificationManager = null!;
             DateTimeProvider = null!;
@@ -74,13 +76,13 @@ namespace AI4E.AspNetCore.Components
 
         #region Properties
 
-        protected internal TModel? Model { get; private set; }
+        protected internal TModel Model { get; private set; }
 
         protected internal bool IsLoading
             => _loadModelCancellationSource != null;
 
         protected internal bool IsLoaded
-            => !IsLoading && Model != null;
+            => !IsLoading && IsInitiallyLoaded;
 
         protected internal bool IsInitiallyLoaded { get; private set; }
 
@@ -265,15 +267,7 @@ namespace AI4E.AspNetCore.Components
 
         protected virtual ValueTask<TModel?> LoadModelAsync(CancellationToken cancellation)
         {
-            try
-            {
-                return new ValueTask<TModel?>(Activator.CreateInstance<TModel>());
-            }
-            catch (MissingMethodException exc)
-            {
-                throw new InvalidOperationException(
-                    $"Cannot create a model of type {typeof(TModel)}. The type does not have a public default constructor.", exc);
-            }
+            return new ValueTask<TModel?>(new TModel());
         }
 
         protected virtual async ValueTask<TModel?> EvaluateLoadResultAsync(IDispatchResult dispatchResult)
