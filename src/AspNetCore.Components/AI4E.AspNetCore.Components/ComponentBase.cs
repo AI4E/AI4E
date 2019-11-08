@@ -26,6 +26,7 @@ using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Notifications;
 using AI4E.Messaging;
 using AI4E.Messaging.Validation;
+using AI4E.Utils;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,6 +39,8 @@ namespace AI4E.AspNetCore.Components
         where TModel : class, new()
     {
         #region Fields
+
+        private TModel? _model;
 
         private readonly AsyncLocal<INotificationManager?> _ambientNotifications;
         private readonly Lazy<ILogger?> _logger;
@@ -58,8 +61,6 @@ namespace AI4E.AspNetCore.Components
             _ambientNotifications = new AsyncLocal<INotificationManager?>();
             _logger = new Lazy<ILogger?>(BuildLogger);
 
-            Model = new TModel();
-
             // These will be set by DI. Just to disable warnings here.
             NotificationManager = null!;
             DateTimeProvider = null!;
@@ -76,13 +77,13 @@ namespace AI4E.AspNetCore.Components
 
         #region Properties
 
-        protected internal TModel Model { get; private set; }
+        protected internal TModel Model => _model ??= new TModel();
 
         protected internal bool IsLoading
             => _loadModelCancellationSource != null;
 
         protected internal bool IsLoaded
-            => !IsLoading && IsInitiallyLoaded;
+            => !IsLoading && _model != null;
 
         protected internal bool IsInitiallyLoaded { get; private set; }
 
@@ -90,7 +91,7 @@ namespace AI4E.AspNetCore.Components
             => _ambientNotifications.Value ?? NotificationManager;
 
         [Inject] private NotificationManager NotificationManager { get; set; }
-        [Inject] private Utils.IDateTimeProvider DateTimeProvider { get; set; }
+        [Inject] private IDateTimeProvider DateTimeProvider { get; set; }
         [Inject] private IServiceProvider ServiceProvider { get; set; }
         [Inject] private NavigationManager NavigationManager { get; set; }
 
@@ -100,7 +101,7 @@ namespace AI4E.AspNetCore.Components
         {
             IsInitiallyLoaded = false;
             NavigationManager.LocationChanged += OnLocationChanged;
-            LoadModel();
+            Load();
             OnInitialized(false);
         }
 
@@ -123,7 +124,7 @@ namespace AI4E.AspNetCore.Components
 
         private ValueTask OnLocationChangedAsync()
         {
-            LoadModel();
+            Load();
             OnInitialized(true);
 
             var task = OnInitializedAsync(true);
@@ -173,97 +174,7 @@ namespace AI4E.AspNetCore.Components
             return dispatchResult.IsSuccessWithResult(out model);
         }
 
-        #region Loading
-
-        protected void LoadModel()
-        {
-            // An operation is in progress currently.
-            if (_loadModelCancellationSource != null)
-            {
-                try
-                {
-                    _loadModelCancellationSource.Cancel();
-                }
-                catch (ObjectDisposedException) { }
-            }
-
-            _loadModelCancellationSource = new CancellationTokenSource();
-            InternalLoadModelProtectedAsync(_loadModelCancellationSource)
-                .HandleExceptions(Logger);
-        }
-
-        private async Task InternalLoadModelProtectedAsync(CancellationTokenSource cancellationSource)
-        {
-            using (cancellationSource)
-            {
-                try
-                {
-                    await InternalLoadModelAsync(cancellationSource)
-                        .ConfigureAwait(true);
-                }
-                catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested) { }
-            }
-        }
-
-        private async Task InternalLoadModelAsync(CancellationTokenSource cancellationSource)
-        {
-            TModel? model = null;
-            var notifications = NotificationManager.CreateRecorder();
-
-            try
-            {
-                // Set the ambient alert message handler
-                _ambientNotifications.Value = notifications;
-
-                try
-                {
-                    model = await LoadModelAsync(cancellationSource.Token);
-                }
-                finally
-                {
-                    // Reset the ambient alert message handler
-                    _ambientNotifications.Value = null;
-                }
-            }
-            finally
-            {
-                await CommitLoadOperationAsync(cancellationSource, model, notifications);
-            }
-        }
-
-        private async ValueTask CommitLoadOperationAsync(
-            CancellationTokenSource cancellationSource,
-            TModel? model,
-            NotificationRecorder notifications)
-        {
-            // We are running on a synchronization context, but we await on the result task of
-            // OnModelLoadedAsync. Therefore, multiple invokations of CommitLoadOperationAsync
-            // may actually run concurrently overriding the results of each other and
-            // bringing concurrency to the derived component via concurrent calls to OnModelLoadedAsync.
-            // We protect us be only executing only one CommitLoadOperationAsync call a time.
-
-            using (await _loadModelMutex.LockAsync(cancellationSource.Token))
-            {
-                if (_loadModelCancellationSource != cancellationSource)
-                    return;
-
-                _loadModelCancellationSource = null;
-
-                _loadModelNotifications?.Dispose();
-                _loadModelNotifications = notifications;
-                notifications.PublishNotifications();
-
-                if (model != null)
-                {
-                    IsInitiallyLoaded = true;
-                    Model = model;
-
-                    OnModelLoaded();
-                    await OnModelLoadedAsync();
-                    StateHasChanged();
-                }
-            }
-        }
+        #region Load model
 
         protected virtual ValueTask<TModel?> LoadModelAsync(CancellationToken cancellation)
         {
@@ -287,16 +198,9 @@ namespace AI4E.AspNetCore.Components
             return default;
         }
 
-        protected virtual void OnModelLoaded() { }
-
-        protected virtual ValueTask OnModelLoadedAsync()
-        {
-            return default;
-        }
-
         #endregion
 
-        #region Store
+        #region Store model
 
         protected virtual ValueTask EvaluateStoreResultAsync(IDispatchResult dispatchResult)
         {
@@ -321,6 +225,108 @@ namespace AI4E.AspNetCore.Components
             };
 
             Notifications.PlaceNotification(notification);
+            return default;
+        }
+
+        #endregion
+
+        #region Load operation
+
+        protected void Load()
+        {
+            // An operation is in progress currently.
+            if (_loadModelCancellationSource != null)
+            {
+                try
+                {
+                    _loadModelCancellationSource.Cancel();
+                }
+                catch (ObjectDisposedException) { }
+            }
+
+            _loadModelCancellationSource = new CancellationTokenSource();
+            InternalLoadProtectedAsync(_loadModelCancellationSource)
+                .HandleExceptions(Logger);
+        }
+
+        private async Task InternalLoadProtectedAsync(CancellationTokenSource cancellationSource)
+        {
+            using (cancellationSource)
+            {
+                try
+                {
+                    await InternalLoadAsync(cancellationSource)
+                        .ConfigureAwait(true);
+                }
+                catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested) { }
+            }
+        }
+
+        private async Task InternalLoadAsync(CancellationTokenSource cancellationSource)
+        {
+            TModel? model = null;
+            var notifications = NotificationManager.CreateRecorder();
+
+            try
+            {
+                // Set the ambient alert message handler
+                _ambientNotifications.Value = notifications;
+
+                try
+                {
+                    model = await LoadModelAsync(cancellationSource.Token);
+                }
+                finally
+                {
+                    // Reset the ambient alert message handler
+                    _ambientNotifications.Value = null;
+                }
+            }
+            finally
+            {
+                await CommitLoadAsync(cancellationSource, model, notifications);
+            }
+        }
+
+        private async ValueTask CommitLoadAsync(
+            CancellationTokenSource cancellationSource,
+            TModel? model,
+            NotificationRecorder notifications)
+        {
+            // We are running on a synchronization context, but we await on the result task of
+            // OnModelLoadedAsync. Therefore, multiple invokations of CommitLoadOperationAsync
+            // may actually run concurrently overriding the results of each other and
+            // bringing concurrency to the derived component via concurrent calls to OnModelLoadedAsync.
+            // We protect us be only executing only one CommitLoadOperationAsync call a time.
+
+            using (await _loadModelMutex.LockAsync(cancellationSource.Token))
+            {
+                if (_loadModelCancellationSource != cancellationSource)
+                    return;
+
+                _loadModelCancellationSource = null;
+
+                _loadModelNotifications?.Dispose();
+                _loadModelNotifications = notifications;
+                notifications.PublishNotifications();
+
+                _model = model;
+
+                if (model != null)
+                {
+                    IsInitiallyLoaded = true;
+
+                    OnLoaded();
+                    await OnLoadedAsync();
+                    StateHasChanged();
+                }
+            }
+        }
+
+        protected virtual void OnLoaded() { }
+
+        protected virtual ValueTask OnLoadedAsync()
+        {
             return default;
         }
 

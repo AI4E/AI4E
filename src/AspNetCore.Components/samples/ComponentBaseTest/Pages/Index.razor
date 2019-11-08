@@ -10,13 +10,16 @@
 
     protected override async ValueTask<FormsModel> LoadModelAsync(CancellationToken cancellation)
     {
+        if (Id == default)
+            return null;
+
         await Task.Delay(4000);
         var model = await base.LoadModelAsync(cancellation);
         model.Id = Id;
         return model;
     }
 
-    protected override ValueTask OnModelLoadedAsync()
+    protected override ValueTask OnLoadedAsync()
     {
         Console.WriteLine("test");
         return default;
@@ -30,7 +33,7 @@
 <div class="container">
     @if (IsLoading)
     {
-        <text>Loading...</text>
+        <div>Loading...</div>
     }
     else if (IsLoaded)
     {
@@ -70,8 +73,12 @@
     }
     else
     {
-        <text>404</text>
+        <div>Not found</div>
     }
-
-    <a href="/@Guid.NewGuid()">X</a>
+    <div>
+        <a href="/@Guid.NewGuid()">Create new</a>
+    </div>
+    <div>
+        <a href="/">Non existing resource</a>
+    </div>
 </div>
