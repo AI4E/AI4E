@@ -27,6 +27,7 @@ using AI4E.AspNetCore.Components.Notifications;
 using AI4E.Messaging;
 using AI4E.Messaging.Validation;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,6 +51,7 @@ namespace AI4E.AspNetCore.Components
 #pragma warning disable IDE0069, CA2213
         // If _loadModelCancellationSource is null, no operation is in progress currently.
         private CancellationTokenSource? _loadModelCancellationSource;
+        private ValueTaskCompletionSource<TModel?> _loadModelCompletion = ValueTaskCompletionSource.Create<TModel?>();
 #pragma warning restore IDE0069, CA2213
 
         #endregion
@@ -185,17 +187,16 @@ namespace AI4E.AspNetCore.Components
         {
             if (TryExtractModelAsync(dispatchResult, out var model))
             {
-                await OnLoadSuccessAsync(model, dispatchResult);
-                return model;
+                return await OnLoadSuccessAsync(model, dispatchResult);
             }
 
             await EvaluateFailureResultAsync(dispatchResult);
             return null;
         }
 
-        protected virtual ValueTask OnLoadSuccessAsync(TModel model, IDispatchResult dispatchResult)
+        protected virtual ValueTask<TModel?> OnLoadSuccessAsync(TModel model, IDispatchResult dispatchResult)
         {
-            return default;
+            return new ValueTask<TModel?>(model);
         }
 
         #endregion
@@ -234,6 +235,11 @@ namespace AI4E.AspNetCore.Components
 
         protected void Load()
         {
+            LoadAsync().HandleExceptions(Logger);
+        }
+
+        protected async ValueTask<TModel?> LoadAsync(CancellationToken cancellation = default)
+        {
             // An operation is in progress currently.
             if (_loadModelCancellationSource != null)
             {
@@ -244,22 +250,28 @@ namespace AI4E.AspNetCore.Components
                 catch (ObjectDisposedException) { }
             }
 
-            _loadModelCancellationSource = new CancellationTokenSource();
-            InternalLoadProtectedAsync(_loadModelCancellationSource)
-                .HandleExceptions(Logger);
-        }
+            using var cancellationSource = cancellation.CanBeCanceled
+                 ? CancellationTokenSource.CreateLinkedTokenSource(cancellation, default)
+                 : new CancellationTokenSource();
 
-        private async Task InternalLoadProtectedAsync(CancellationTokenSource cancellationSource)
-        {
-            using (cancellationSource)
+            _loadModelCancellationSource = cancellationSource;
+
+            try
             {
-                try
-                {
-                    await InternalLoadAsync(cancellationSource)
-                        .ConfigureAwait(true);
-                }
-                catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested) { }
+                await InternalLoadAsync(_loadModelCancellationSource).ConfigureAwait(true);
             }
+            catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested && !cancellation.IsCancellationRequested)
+            {
+                if (_isDisposed)
+                {
+                    return null;
+                }
+            }
+
+            // We do not pass the model from the commit operation back to us (the caller) 
+            // because we may not actually succeed loading the model. 
+            // We may be canceled by a concurrent load operation that's result we need to return here.
+            return await _loadModelCompletion.Task.ConfigureAwait(true);
         }
 
         private async Task InternalLoadAsync(CancellationTokenSource cancellationSource)
@@ -311,6 +323,8 @@ namespace AI4E.AspNetCore.Components
                 notifications.PublishNotifications();
 
                 _model = model;
+                _loadModelCompletion.SetResult(model);
+                _loadModelCompletion = ValueTaskCompletionSource.Create<TModel?>();
 
                 if (model != null)
                 {
@@ -445,10 +459,19 @@ namespace AI4E.AspNetCore.Components
 
         #region IDisposable
 
+        private bool _isDisposed;
+
         protected virtual void Dispose(bool disposing)
         {
             if (disposing)
             {
+                if (_isDisposed)
+                {
+                    return;
+                }
+
+                _isDisposed = true;
+
                 lock (_loadModelMutex)
                 {
                     try
