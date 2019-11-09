@@ -19,8 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Utils\src\AI4E.Utils.ApplicationParts\AI4E.Utils.ApplicationParts.csproj" />
-    <ProjectReference Include="..\..\Utils\src\AI4E.Utils\AI4E.Utils.csproj" />
+    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.ApplicationParts\AI4E.Utils.ApplicationParts.csproj" />
+    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils\AI4E.Utils.csproj" />
     <ProjectReference Include="..\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
   </ItemGroup>
 
@@ -29,6 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="$(SolutionDir)src\Shared\TypeConverter.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositorySharedPath)TypeConverter.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

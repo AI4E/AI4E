@@ -28,7 +28,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Messaging;
-using AI4E.Messaging.MessageHandlers;
+using AI4E.Utils;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.DependencyInjection;
 using static System.Diagnostics.Debug;
@@ -152,7 +152,7 @@ namespace AI4E.Storage.Domain
 
             foreach (var method in methods)
             {
-                var invoker = HandlerActionInvoker.GetInvoker(method);
+                var invoker = TypeMemberInvoker.GetInvoker(method);
 
                 ValueTask<object> LookupAccessor(object handler, object message, IServiceProvider serviceProvider, CancellationToken cancellation)
                 {

@@ -27,17 +27,17 @@ using System.Threading.Tasks;
 using AI4E.Utils.Async;
 using System.Diagnostics;
 
-namespace AI4E.Messaging.MessageHandlers
+namespace AI4E.Utils
 {
     /// <summary>
     /// Represents an action invoker that can invoke action methods.
     /// </summary>
-    public sealed class HandlerActionInvoker
+    public sealed class TypeMemberInvoker
     {
-        private static readonly ConcurrentDictionary<MethodInfo, HandlerActionInvoker> _cache = new ConcurrentDictionary<MethodInfo, HandlerActionInvoker>();
+        private static readonly ConcurrentDictionary<MethodInfo, TypeMemberInvoker> _cache = new ConcurrentDictionary<MethodInfo, TypeMemberInvoker>();
         private readonly Func<object, object?, Func<ParameterInfo, object?>, object?> _invoker;
 
-        private HandlerActionInvoker(MethodInfo method)
+        private TypeMemberInvoker(MethodInfo method)
         {
             if (method == null)
                 throw new ArgumentNullException(nameof(method));
@@ -53,13 +53,13 @@ namespace AI4E.Messaging.MessageHandlers
         }
 
         /// <summary>
-        /// Gets the <see cref="HandlerActionInvoker"/> for the sepcfied method.
+        /// Gets the <see cref="TypeMemberInvoker"/> for the sepcfied method.
         /// </summary>
         /// <param name="methodInfo">The method.</param>
-        /// <returns>The <see cref="HandlerActionInvoker"/> for <paramref name="methodInfo"/>.</returns>
-        public static HandlerActionInvoker GetInvoker(MethodInfo methodInfo)
+        /// <returns>The <see cref="TypeMemberInvoker"/> for <paramref name="methodInfo"/>.</returns>
+        public static TypeMemberInvoker GetInvoker(MethodInfo methodInfo)
         {
-            return _cache.GetOrAdd(methodInfo, _ => new HandlerActionInvoker(methodInfo));
+            return _cache.GetOrAdd(methodInfo, _ => new TypeMemberInvoker(methodInfo));
         }
 
         private MethodInfo Method { get; }
@@ -166,7 +166,7 @@ namespace AI4E.Messaging.MessageHandlers
             else
             {
                 var parameters = method.GetParameters();
-                var resolveParameterMethod = typeof(HandlerActionInvoker).GetMethod(nameof(ResolveParameter), BindingFlags.Static | BindingFlags.NonPublic);
+                var resolveParameterMethod = typeof(TypeMemberInvoker).GetMethod(nameof(ResolveParameter), BindingFlags.Static | BindingFlags.NonPublic);
 
                 var firstArgument = Expression.Parameter(typeof(object), "firstArgument");
                 var convertedFirstArgument = Expression.Convert(firstArgument, firstParameterType); // TODO: Null-check the first argument

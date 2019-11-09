@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.0</TargetFramework>
@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E.Messaging\AI4E.Messaging.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Messaging\AI4E.Messaging.csproj" />
   </ItemGroup>
 
 </Project>

@@ -24,7 +24,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Messaging.MessageHandlers;
+using AI4E.Utils;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -39,7 +39,7 @@ namespace AI4E.Messaging.Validation
             IServiceProvider serviceProvider,
             CancellationToken cancellation)
         {
-            var invoker = HandlerActionInvoker.GetInvoker(descriptor.Member);
+            var invoker = TypeMemberInvoker.GetInvoker(descriptor.Member);
             var returnTypeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(descriptor.Member.ReturnType);
 
             ValidationResultsBuilder? validationResultsBuilder = null;

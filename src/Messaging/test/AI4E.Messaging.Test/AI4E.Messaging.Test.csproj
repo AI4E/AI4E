@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="$(SolutionDir)src\Shared\Serializer.cs" Link="Shared\%(Filename)%(Extension)" />
-    <Compile Include="$(SolutionDir)src\Shared\TypeConverter.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositorySharedPath)Serializer.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositorySharedPath)TypeConverter.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="..\AI4E.Messaging.EndToEndTest\TestAssemblyLoadContext.cs" Link="Shared\TestAssemblyLoadContext.cs" />
   </ItemGroup>
 
@@ -23,8 +23,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
-    <ProjectReference Include="..\AI4E.Messaging\AI4E.Messaging.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Messaging\AI4E.Messaging.csproj" />
   </ItemGroup>
 
 </Project>

@@ -28,6 +28,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Messaging.MessageHandlers
@@ -243,7 +244,7 @@ namespace AI4E.Messaging.MessageHandlers
 
             var member = _memberDescriptor.Member;
             Debug.Assert(member != null);
-            var invoker = HandlerActionInvoker.GetInvoker(member!);
+            var invoker = TypeMemberInvoker.GetInvoker(member!);
 
             object? ResolveParameter(ParameterInfo parameter)
             {
