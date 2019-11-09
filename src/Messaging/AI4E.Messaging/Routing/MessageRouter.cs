@@ -54,26 +54,35 @@ namespace AI4E.Messaging.Routing
 
         #region Disposal
 
-        private async Task DisposeInternalAsync()
-        {
-            await _receiveProcess
-                .TerminateAsync()
-                .HandleExceptionsAsync(_logger);
-
-            await _routeEndPoint
-                .DisposeAsync()
-                .HandleExceptionsAsync(_logger);
-
-            await _routeManager
-                .RemoveRoutesAsync(_routeEndPoint.EndPoint, removePersistentRoutes: false, cancellation: default)
-                .HandleExceptionsAsync(_logger);
-        }
-
+        /// <inheritdoc />
         public void Dispose()
         {
             _disposeHelper.Dispose();
         }
 
+        /// <inheritdoc />
+        public ValueTask DisposeAsync()
+        {
+            return _disposeHelper.DisposeAsync();
+        }
+
+        private async Task DisposeInternalAsync()
+        {
+            await _receiveProcess
+                .TerminateAsync()
+                .HandleExceptionsAsync(_logger)
+                .ConfigureAwait(false);
+
+            await _routeEndPoint
+                .DisposeAsync()
+                .HandleExceptionsAsync(_logger)
+                .ConfigureAwait(false);
+
+            await _routeManager
+                .RemoveRoutesAsync(_routeEndPoint.EndPoint, removePersistentRoutes: false)
+                .HandleExceptionsAsync(_logger)
+                .ConfigureAwait(false);
+        }
         #endregion
 
         #region Receive Process
@@ -90,7 +99,9 @@ namespace AI4E.Messaging.Routing
                     HandleReceiveResult(receiveResult, cancellation).HandleExceptions(_logger);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
+#pragma warning disable CA1031
                 catch (Exception exc)
+#pragma warning restore CA1031
                 {
                     _logger?.LogWarning(
                         exc,

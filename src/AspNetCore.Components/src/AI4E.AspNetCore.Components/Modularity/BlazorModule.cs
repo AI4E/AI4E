@@ -30,6 +30,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Extensibility;
 using AI4E.Utils;
+using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.AspNetCore.Components.Modularity
@@ -42,6 +43,8 @@ namespace AI4E.AspNetCore.Components.Modularity
         private readonly IBlazorModuleServicesContextNameResolver _servicesContextNameResolver;
         private BlazorModuleAssemblyLoadContext? _assemblyLoadContext;
         private WeakReflectionContext? _reflectionContext;
+        private ImmutableList<Assembly>? _componentAssemblies;
+        private ImmutableList<Assembly>? _weakComponentAssemblies;
         private ImmutableList<Assembly>? _installedAssemblies;
 
         public BlazorModule(
@@ -85,7 +88,11 @@ namespace AI4E.AspNetCore.Components.Modularity
             var assemblySources = await PrefetchAssemblySourcesAsync(ModuleDescriptor.Assemblies, cancellation);
             _assemblyLoadContext = new BlazorModuleAssemblyLoadContext(_coreAssemblies, assemblySources);
             _reflectionContext = new WeakReflectionContext();
-            _installedAssemblies = GetComponentAssemblies().ToImmutableList();
+            _componentAssemblies = GetComponentAssemblies().ToImmutableList();
+            _weakComponentAssemblies = _componentAssemblies
+                .Select(p => _reflectionContext!.MapAssembly(p))
+                .ToImmutableList();
+            _installedAssemblies = GetInstalledAssemblies().ToImmutableList();
 
             var contextServices = ConfigureContextServices();
             var appServices = contextServices.GetService<ApplicationServiceManager>();
@@ -97,7 +104,7 @@ namespace AI4E.AspNetCore.Components.Modularity
                     .ConfigureAwait(false);
             }
 
-            await _assemblyManager.AddAssembliesAsync(_installedAssemblies, _assemblyLoadContext);
+            await _assemblyManager.AddAssembliesAsync(_weakComponentAssemblies, _assemblyLoadContext);
 
             IsInstalled = true;
         }
@@ -122,9 +129,26 @@ namespace AI4E.AspNetCore.Components.Modularity
 
         private void ConfigureServices(IServiceCollection services)
         {
+            // Build and attach type-resolver
+            Debug.Assert(_installedAssemblies != null);
+            var typeResolver = new TypeResolver(_installedAssemblies!);
+            services.AddSingleton<ITypeResolver>(typeResolver);
+
+            // Reset application services.
             services.AddSingleton(new ApplicationServiceManager());
 
-            var startupType = GetStartupType();
+            // Reset pplication parts and add installed assemblies by default.
+            var partManager = new ApplicationPartManager();
+            partManager.ApplicationParts.Clear();
+            foreach (var componentAssembly in _componentAssemblies!)
+            {
+                partManager.ApplicationParts.Add(new AssemblyPart(componentAssembly));
+            }
+
+            services.AddSingleton(partManager);
+
+            // Call the modules Startup.ConfigureServices method
+            var startupType = GetStartupType(typeResolver);
 
             if (startupType != null)
             {
@@ -153,16 +177,13 @@ namespace AI4E.AspNetCore.Components.Modularity
             // TODO: Add a service to allow modules to map assemblies/types
         }
 
-        private Type? GetStartupType()
+        private Type? GetStartupType(ITypeResolver typeResolver)
         {
             if (ModuleDescriptor.StartupType is null)
                 return null;
 
             if (ModuleDescriptor.StartupType.Value.TryGetType(out var result))
                 return result;
-
-            Debug.Assert(_installedAssemblies != null);
-            var typeResolver = new TypeResolver(_installedAssemblies!);
 
             if (typeResolver.TryResolveType(ModuleDescriptor.StartupType.Value.TypeName.AsSpan(), out result))
                 return result;
@@ -177,12 +198,7 @@ namespace AI4E.AspNetCore.Components.Modularity
                 return;
             }
 
-            await RemoveFromAssemblyManagerAsync();
-            var serviceContext = _servicesContextNameResolver.ResolveServicesContextName(ModuleDescriptor);
-            if(_contextServiceManager.TryGetContextServices(serviceContext, out var contextServices))
-            {
-                await contextServices.DisposeAsync();
-            }
+            await UnloadModuleServicesAsync();
             await Task.Yield(); // We are running on a sync-context. Allow the renderer to re-render.
             Unload(out var weakLoadContext);
 
@@ -211,6 +227,12 @@ namespace AI4E.AspNetCore.Components.Modularity
                 .Select(GetComponentAssembly);
         }
 
+        private IEnumerable<Assembly> GetInstalledAssemblies()
+        {
+            return ModuleDescriptor.Assemblies
+                .Select(GetComponentAssembly);
+        }
+
         private Assembly GetComponentAssembly(IBlazorModuleAssemblyDescriptor moduleAssemblyDescriptor)
         {
             Debug.Assert(_reflectionContext != null);
@@ -220,9 +242,7 @@ namespace AI4E.AspNetCore.Components.Modularity
                 Version = moduleAssemblyDescriptor.AssemblyVersion
             };
 
-            var assembly = _assemblyLoadContext!.LoadFromAssemblyName(assemblyName);
-            assembly = _reflectionContext!.MapAssembly(assembly);
-            return assembly;
+            return _assemblyLoadContext!.LoadFromAssemblyName(assemblyName);
         }
 
         private async ValueTask<ImmutableDictionary<AssemblyName, BlazorModuleAssemblySource>> PrefetchAssemblySourcesAsync(
@@ -272,10 +292,16 @@ namespace AI4E.AspNetCore.Components.Modularity
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private async ValueTask RemoveFromAssemblyManagerAsync()
+        private async ValueTask UnloadModuleServicesAsync()
         {
-            await _assemblyManager.RemoveAssembliesAsync(_installedAssemblies!);
-            RemoveFromInternalCaches(_reflectionContext!, _installedAssemblies!.ToHashSet());
+            await _assemblyManager.RemoveAssembliesAsync(_weakComponentAssemblies!);
+            RemoveFromInternalCaches(_reflectionContext!, _weakComponentAssemblies!.ToHashSet());
+
+            var serviceContext = _servicesContextNameResolver.ResolveServicesContextName(ModuleDescriptor);
+            if (_contextServiceManager.TryGetContextServices(serviceContext, out var contextServices))
+            {
+                await contextServices.DisposeAsync();
+            }
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -288,6 +314,8 @@ namespace AI4E.AspNetCore.Components.Modularity
             _assemblyLoadContext!.Unload();
             weakRef = new WeakReference(_assemblyLoadContext);
             _assemblyLoadContext = null;
+            _componentAssemblies = null;
+            _weakComponentAssemblies = null;
             _installedAssemblies = null;
 #endif
         }
@@ -359,7 +387,10 @@ namespace AI4E.AspNetCore.Components.Modularity
 
             void RemoveFromCache(ReflectionContext reflectionContext, HashSet<Assembly> unloaded)
             {
-                var typesToRemove = cache.Keys.OfType<Type>().Where(p => unloaded.Contains(reflectionContext.MapAssembly(p.Assembly))).ToList();
+                var typesToRemove = cache.Keys
+                    .OfType<Type>()
+                    .Where(p => unloaded.Contains(reflectionContext.MapAssembly(p.Assembly)))
+                    .ToList();
 
                 foreach (var type in typesToRemove)
                 {

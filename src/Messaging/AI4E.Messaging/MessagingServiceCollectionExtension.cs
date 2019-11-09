@@ -75,6 +75,11 @@ namespace Microsoft.Extensions.DependencyInjection
                 services.Configure<MessagingOptions>(
                     options => options.LocalEndPoint = new RouteEndPointAddress(Guid.NewGuid().ToString())); // TODO: Is this a good default implementation?
 
+                // Force the message-dispatcher to initialize on application startup.
+                // This is needed to ensure handlers are available and registered in multi-process or networking setups.
+                services.ConfigureApplicationServices(manager => manager.AddService<IMessageDispatcher>(isRequiredService: true));
+                services.ConfigureApplicationParts(MessageHandlerFeatureProvider.Configure);
+
                 builder = new MessagingBuilderImpl(services);
                 MessageHandlers.Register(builder);
                 services.AddSingleton(builder);

@@ -38,8 +38,7 @@ using Newtonsoft.Json.Serialization;
 
 namespace AI4E.Messaging
 {
-    public sealed class MessageDispatcher
-        : IMessageDispatcher, IAsyncInitialization
+    public sealed class MessageDispatcher : IMessageDispatcher, IAsyncInitialization
     // We need to implement IAsyncInitialization in order to enable this type beeing registered as app-service.
     {
         #region Fields
@@ -110,9 +109,16 @@ namespace AI4E.Messaging
 
         #region Disposal
 
+        /// <inheritdoc />
         public void Dispose()
         {
             _disposeHelper.Dispose();
+        }
+
+        /// <inheritdoc />
+        public ValueTask DisposeAsync()
+        {
+            return _disposeHelper.DisposeAsync();
         }
 
         private async Task DisposeInternalAsync()
@@ -122,17 +128,8 @@ namespace AI4E.Messaging
                 .ConfigureAwait(false);
 
             if (success)
-            {
-                try
-                {
-                    await messageRouter
-                        .UnregisterRoutesAsync(removePersistentRoutes: false)
-                        .ConfigureAwait(false);
-                }
-                finally
-                {
-                    messageRouter.Dispose();
-                }
+            {           
+                    await messageRouter.DisposeAsync();              
             }
         }
 
@@ -160,8 +157,8 @@ namespace AI4E.Messaging
                 _logger?.LogDebug("Remote message dispatcher initialized.");
             }
             catch
-            {
-                messageRouter.Dispose();
+            {            
+                await messageRouter.DisposeAsync();
                 throw;
             }
 
@@ -273,9 +270,10 @@ namespace AI4E.Messaging
 
         public IMessageHandlerProvider MessageHandlerProvider => _messageHandlerProvider; // Volatile read op;
 
-        public ValueTask<RouteEndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)
+        public async ValueTask<RouteEndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)
         {
-            return _messageRouterFactory.GetDefaultEndPointAsync(cancellation);
+            var router = await GetMessageRouterAsync(cancellation).ConfigureAwait(false);
+            return await router.GetLocalEndPointAsync(cancellation).ConfigureAwait(false);
         }
 
         private sealed class RouteMessageHandler : IRouteMessageHandler

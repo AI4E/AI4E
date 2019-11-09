@@ -19,7 +19,7 @@ using Nito.AsyncEx;
 
 namespace AI4E.Messaging.SignalR.Client
 {
-    public sealed class SignalRClientEndPoint : ISignalRClientEndPoint, IAsyncDisposable
+    public sealed class SignalRClientEndPoint : ISignalRClientEndPoint
     {
         #region Fields
 

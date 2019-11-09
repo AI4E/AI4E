@@ -99,6 +99,8 @@ namespace AI4E.Utils.Delegation
 
         public override bool IsGenericTypeDefinition => TypeInfo.IsGenericTypeDefinition;
 
+        public override bool IsConstructedGenericType => TypeInfo.IsConstructedGenericType;
+
         public override bool IsSecurityCritical => TypeInfo.IsSecurityCritical;
 
         public override bool IsSecuritySafeCritical => TypeInfo.IsSecuritySafeCritical;

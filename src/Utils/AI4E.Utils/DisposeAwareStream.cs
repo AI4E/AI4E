@@ -180,8 +180,10 @@ namespace AI4E.Utils
 
         #region Disposal
 
+        [Obsolete("Call DiposeAsync() to get a task representing the object's disposal.")]
         public Task Disposal => _disposeHelper.Disposal;
 
+        /// <inheritdoc/>
 #if SUPPORTS_ASYNC_DISPOSABLE
         public override ValueTask DisposeAsync()
 #else
@@ -191,6 +193,7 @@ namespace AI4E.Utils
             return _disposeHelper.DisposeAsync();
         }
 
+        /// <inheritdoc/>
         protected override void Dispose(bool disposing)
         {
             if (disposing)

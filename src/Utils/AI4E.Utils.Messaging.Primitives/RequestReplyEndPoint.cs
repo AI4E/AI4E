@@ -31,7 +31,7 @@ using Nito.AsyncEx;
 
 namespace AI4E.Utils.Messaging.Primitives
 {
-    public sealed class RequestReplyEndPoint<TPacket> : IAsyncDisposable, IDisposable
+    public sealed class RequestReplyEndPoint<TPacket> : IDisposable, IAsyncDisposable
         where TPacket : IPacket<TPacket>
     {
         #region Fields
@@ -192,11 +192,13 @@ namespace AI4E.Utils.Messaging.Primitives
 
         #region Disposal
 
+        /// <inheritdoc/>
         public void Dispose()
         {
             _disposeHelper.Dispose();
         }
 
+        /// <inheritdoc/>
         public ValueTask DisposeAsync()
         {
             return _disposeHelper.DisposeAsync();

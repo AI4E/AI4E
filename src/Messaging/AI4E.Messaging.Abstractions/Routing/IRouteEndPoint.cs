@@ -25,7 +25,7 @@ using AI4E.Utils.Messaging.Primitives;
 
 namespace AI4E.Messaging.Routing
 {
-    public interface IRouteEndPoint : IAsyncDisposable
+    public interface IRouteEndPoint : IDisposable, IAsyncDisposable
     {
         RouteEndPointAddress EndPoint { get; }
 
