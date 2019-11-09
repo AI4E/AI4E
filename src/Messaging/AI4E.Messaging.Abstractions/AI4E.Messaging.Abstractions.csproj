@@ -24,8 +24,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Utils\AI4E.Utils.Messaging.Primitives\AI4E.Utils.Messaging.Primitives.csproj" />
-    <ProjectReference Include="..\..\Utils\AI4E.Utils\AI4E.Utils.csproj" />
+    <ProjectReference Include="..\..\Utils\src\AI4E.Utils.Messaging.Primitives\AI4E.Utils.Messaging.Primitives.csproj" />
+    <ProjectReference Include="..\..\Utils\src\AI4E.Utils\AI4E.Utils.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E.Utils.ApplicationParts\AI4E.Utils.ApplicationParts.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Utils.ApplicationParts\AI4E.Utils.ApplicationParts.csproj" />
   </ItemGroup>
 
 </Project>
