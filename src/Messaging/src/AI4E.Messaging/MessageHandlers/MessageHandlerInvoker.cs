@@ -270,9 +270,9 @@ namespace AI4E.Messaging.MessageHandlers
                 {
                     return dispatchData;
                 }
-                else if (parameter.HasDefaultValue)
+                else if (ParameterDefaultValue.TryGetDefaultValue(parameter, out var defaultValue))
                 {
-                    return _serviceProvider.GetService(parameter.ParameterType) ?? parameter.DefaultValue;
+                    return _serviceProvider.GetService(parameter.ParameterType) ?? defaultValue;
                 }
                 else
                 {

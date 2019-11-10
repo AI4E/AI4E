@@ -166,9 +166,9 @@ namespace AI4E.Storage.Domain
                         {
                             return cancellation;
                         }
-                        else if (parameter.HasDefaultValue)
+                        else if (ParameterDefaultValue.TryGetDefaultValue(parameter, out var defaultValue))
                         {
-                            return serviceProvider.GetService(parameter.ParameterType) ?? parameter.DefaultValue;
+                            return serviceProvider.GetService(parameter.ParameterType) ?? defaultValue;
                         }
                         else
                         {
