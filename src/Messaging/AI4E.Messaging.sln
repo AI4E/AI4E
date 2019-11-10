@@ -51,6 +51,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage", "..\Storage\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.ObjectClone", "..\Utils\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj", "{12ED75C9-5514-4894-995C-F7C14F48A524}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.DependencyInjection", "..\Utils\src\AI4E.Utils.DependencyInjection\AI4E.Utils.DependencyInjection.csproj", "{B076B4C1-332C-4C49-B50D-AB6A6394780D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -141,6 +143,10 @@ Global
 		{12ED75C9-5514-4894-995C-F7C14F48A524}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{12ED75C9-5514-4894-995C-F7C14F48A524}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{12ED75C9-5514-4894-995C-F7C14F48A524}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B076B4C1-332C-4C49-B50D-AB6A6394780D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B076B4C1-332C-4C49-B50D-AB6A6394780D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B076B4C1-332C-4C49-B50D-AB6A6394780D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B076B4C1-332C-4C49-B50D-AB6A6394780D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -167,6 +173,7 @@ Global
 		{7C35FFD4-BDBB-4579-9484-8ECE5299BC4F} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
 		{0570ED27-B5BB-45E4-B0E1-72DE97C3A6AC} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
 		{12ED75C9-5514-4894-995C-F7C14F48A524} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
+		{B076B4C1-332C-4C49-B50D-AB6A6394780D} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BCE694B7-D9D2-439F-9225-C8693CA4C6CA}
