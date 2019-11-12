@@ -26,7 +26,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using AI4E.Messaging.MessageHandlers;
+using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Projection
@@ -141,7 +141,7 @@ namespace AI4E.Storage.Projection
 
             var member = _projectionDescriptor.Member;
             Debug.Assert(member != null);
-            var invoker = HandlerActionInvoker.GetInvoker(member);
+            var invoker = TypeMemberInvoker.GetInvoker(member);
 
             object ResolveParameter(ParameterInfo parameter)
             {
@@ -153,9 +153,9 @@ namespace AI4E.Storage.Projection
                 {
                     return cancellation;
                 }
-                else if (parameter.HasDefaultValue)
+                else if (ParameterDefaultValue.TryGetDefaultValue(parameter, out var defaultValue))
                 {
-                    return _serviceProvider.GetService(parameter.ParameterType) ?? parameter.DefaultValue;
+                    return _serviceProvider.GetService(parameter.ParameterType) ?? defaultValue;
                 }
                 else
                 {

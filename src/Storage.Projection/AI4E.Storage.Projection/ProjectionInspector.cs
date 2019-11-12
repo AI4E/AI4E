@@ -22,7 +22,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using AI4E.Messaging.MessageHandlers;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 

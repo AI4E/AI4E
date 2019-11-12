@@ -5,12 +5,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Messaging\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
-    <ProjectReference Include="..\..\Messaging\AI4E.Messaging.Remote.Abstractions\AI4E.Messaging.Remote.Abstractions.csproj" />
-    <ProjectReference Include="..\..\Messaging\AI4E.Messaging\AI4E.Messaging.csproj" />
+    <ProjectReference Include="..\..\Messaging\src\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Messaging\src\AI4E.Messaging.Remote.Abstractions\AI4E.Messaging.Remote.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
     <ProjectReference Include="..\..\Storage.Coordination\AI4E.Coordination\AI4E.Coordination.csproj" />
     <ProjectReference Include="..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
-    <ProjectReference Include="..\..\Utils\AI4E.Utils.Proxying\AI4E.Utils.Proxying.csproj" />
+    <ProjectReference Include="..\..\Utils\src\AI4E.Utils.Proxying\AI4E.Utils.Proxying.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,7 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="$(SolutionDir)src\Shared\IdGenerator.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositorySharedPath)IdGenerator.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
   
 </Project>

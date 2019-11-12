@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageTags>.Net Core Extensions Utils Utilities Span&lt;T&gt; Memory&lt;T&gt;</PackageTags>
+    <PackageReleaseNotes></PackageReleaseNotes>
+    <Description>Provides utilities and extension methods for work with Span&lt;T&gt; and Memory&lt;T&gt; based code.</Description>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == '$(NetStandardVersion)'">
+    <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == '$(NetStandardVersion)'">
+    <ProjectReference Include="..\AI4E.Utils.Memory.Compatibility\AI4E.Utils.Memory.Compatibility.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AI4E.Utils\AI4E.Utils.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="$(RepositorySharedPath)PrefixCodingHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+  
+</Project>

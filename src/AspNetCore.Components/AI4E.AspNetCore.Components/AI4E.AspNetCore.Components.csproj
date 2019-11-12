@@ -9,7 +9,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\..\Messaging\AI4E.Messaging\AI4E.Messaging.csproj" />
+    <ProjectReference Include="..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
     <ProjectReference Include="..\AI4E.AspNetCore.Components.Extensibility\AI4E.AspNetCore.Components.Extensibility.csproj" />
     <ProjectReference Include="..\AI4E.AspNetCore.Components.Notifications\AI4E.AspNetCore.Components.Notifications.csproj" />
   </ItemGroup>

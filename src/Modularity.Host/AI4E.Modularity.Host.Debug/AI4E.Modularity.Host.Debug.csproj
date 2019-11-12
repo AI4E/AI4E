@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="$(SolutionDir)src\Shared\IPEndPointConverter.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositorySharedPath)IPEndPointConverter.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

@@ -5,16 +5,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Domain.Abstractions\AI4E.Storage.Domain.Abstractions.csproj" />
     <ProjectReference Include="..\..\Storage\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\..\Storage.Projection\AI4E.Storage.Projection\AI4E.Storage.Projection.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="$(SolutionDir)src\Shared\CompressionHelper.cs" Link="Shared\%(Filename)%(Extension)" />
-    <Compile Include="$(SolutionDir)src\Shared\EscapeHelper.cs" Link="Shared\%(Filename)%(Extension)" />
-    <Compile Include="$(SolutionDir)src\Shared\IdGenerator.cs" Link="Shared\%(Filename)%(Extension)" />
-    <Compile Include="$(SolutionDir)src\Shared\DataPropertyHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositorySharedPath)CompressionHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositorySharedPath)EscapeHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositorySharedPath)IdGenerator.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositorySharedPath)DataPropertyHelper.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
