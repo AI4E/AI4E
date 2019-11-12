@@ -19,6 +19,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
@@ -42,11 +43,11 @@ namespace AI4E.AspNetCore.Components
         #region Fields
 
         private TModel? _model;
+        private readonly AsyncLocal<OperationContext?> _ambientOperationContext;
+        private OperationContext? _lastSuccessFullOperationContext;
 
-        private readonly AsyncLocal<INotificationManager?> _ambientNotifications;
         private readonly Lazy<ILogger?> _logger;
         private readonly AsyncLock _loadModelMutex = new AsyncLock();
-        private INotificationManagerScope? _loadModelNotifications;
         private ILogger? Logger => _logger.Value;
 #pragma warning disable IDE0069, CA2213
         // If _loadModelCancellationSource is null, no operation is in progress currently.
@@ -60,7 +61,7 @@ namespace AI4E.AspNetCore.Components
 
         protected ComponentBase()
         {
-            _ambientNotifications = new AsyncLocal<INotificationManager?>();
+            _ambientOperationContext = new AsyncLocal<OperationContext?>();
             _logger = new Lazy<ILogger?>(BuildLogger);
 
             // These will be set by DI. Just to disable warnings here.
@@ -90,7 +91,28 @@ namespace AI4E.AspNetCore.Components
         protected internal bool IsInitiallyLoaded { get; private set; }
 
         protected internal INotificationManager Notifications
-            => _ambientNotifications.Value ?? NotificationManager;
+            => _ambientOperationContext.Value?.Notifications ?? NotificationManager;
+
+        private IEnumerable<ValidationResult> _validationResults = Enumerable.Empty<ValidationResult>();
+
+        protected internal IEnumerable<ValidationResult> ValidationResults
+        {
+            get => _ambientOperationContext.Value?.ValidationResults ?? _validationResults;
+            set
+            {
+                if (value is null)
+                    throw new ArgumentNullException(nameof(value));
+
+                if (_ambientOperationContext.Value != null)
+                {
+                    _ambientOperationContext.Value.ValidationResults = value;
+                }
+                else
+                {
+                    _validationResults = value;
+                }
+            }
+        }
 
         [Inject] private NotificationManager NotificationManager { get; set; }
         [Inject] private IDateTimeProvider DateTimeProvider { get; set; }
@@ -277,12 +299,11 @@ namespace AI4E.AspNetCore.Components
         private async Task InternalLoadAsync(CancellationTokenSource cancellationSource)
         {
             TModel? model = null;
-            var notifications = NotificationManager.CreateRecorder();
-
+            var operationContext = new OperationContext(this);
             try
             {
-                // Set the ambient alert message handler
-                _ambientNotifications.Value = notifications;
+                // Set the ambient operation context.
+                _ambientOperationContext.Value = operationContext;
 
                 try
                 {
@@ -291,19 +312,19 @@ namespace AI4E.AspNetCore.Components
                 finally
                 {
                     // Reset the ambient alert message handler
-                    _ambientNotifications.Value = null;
+                    _ambientOperationContext.Value = null;
                 }
             }
             finally
             {
-                await CommitLoadAsync(cancellationSource, model, notifications);
+                await CommitLoadAsync(cancellationSource, model, operationContext);
             }
         }
 
         private async ValueTask CommitLoadAsync(
             CancellationTokenSource cancellationSource,
             TModel? model,
-            NotificationRecorder notifications)
+            OperationContext operationContext)
         {
             // We are running on a synchronization context, but we await on the result task of
             // OnModelLoadedAsync. Therefore, multiple invokations of CommitLoadOperationAsync
@@ -318,9 +339,9 @@ namespace AI4E.AspNetCore.Components
 
                 _loadModelCancellationSource = null;
 
-                _loadModelNotifications?.Dispose();
-                _loadModelNotifications = notifications;
-                notifications.PublishNotifications();
+                _lastSuccessFullOperationContext?.Dispose();
+                _lastSuccessFullOperationContext = operationContext;
+                operationContext.Publish();
 
                 _model = model;
                 _loadModelCompletion.SetResult(model);
@@ -400,10 +421,11 @@ namespace AI4E.AspNetCore.Components
 
         protected virtual ValueTask OnValidationFailureAsync(IDispatchResult dispatchResult)
         {
-            var validationResults = (dispatchResult as ValidationFailureDispatchResult)
+            ValidationResults = (dispatchResult as ValidationFailureDispatchResult)
                 ?.ValidationResults
                 ?? Enumerable.Empty<ValidationResult>();
-            var validationMessages = validationResults.Where(p => string.IsNullOrWhiteSpace(p.Member)).Select(p => p.Message);
+
+            var validationMessages = ValidationResults.Where(p => string.IsNullOrWhiteSpace(p.Member)).Select(p => p.Message);
 
             if (!validationMessages.Any())
             {
@@ -495,5 +517,32 @@ namespace AI4E.AspNetCore.Components
         }
 
         #endregion
+
+        private sealed class OperationContext : IDisposable
+        {
+            private readonly ComponentBase<TModel> _componentBase;
+            private readonly INotificationRecorder _notifications;
+
+            public OperationContext(ComponentBase<TModel> componentBase)
+            {
+                _notifications = _componentBase.NotificationManager.CreateRecorder();
+                ValidationResults = _componentBase._validationResults;
+                _componentBase = componentBase;
+            }
+
+            public INotificationManager Notifications => _notifications;
+            public IEnumerable<ValidationResult> ValidationResults { get; set; } = Enumerable.Empty<ValidationResult>();
+
+            public void Publish()
+            {
+                _componentBase._validationResults = ValidationResults;
+                _notifications.PublishNotifications();
+            }
+
+            public void Dispose()
+            {
+                _notifications.Dispose();
+            }
+        }
     }
 }
