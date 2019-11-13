@@ -22,7 +22,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Notifications;
@@ -80,7 +79,8 @@ namespace AI4E.AspNetCore.Components
 
         #region Properties
 
-        protected internal TModel Model => _model ??= new TModel();
+        protected internal TModel Model 
+            => _ambientOperationContext.Value?.Model ?? (_model ??= new TModel());
 
         protected internal bool IsLoading
             => _pendingOperationCancellationSource != null;
@@ -148,6 +148,7 @@ namespace AI4E.AspNetCore.Components
 
         private ValueTask OnLocationChangedAsync()
         {
+            // TODO: Only load, if we are not in the commit-phase of a store operation currently.
             Load();
             OnInitialized(true);
 
@@ -246,7 +247,10 @@ namespace AI4E.AspNetCore.Components
             }
 
             await EvaluateFailureResultAsync(dispatchResult);
-            return null;
+            
+            // TODO: Model may be an updated version of the model we stored. 
+            //       Is this ok or do we need to store the original model in the ambient context?
+            return Model; 
         }
 
         protected virtual async ValueTask<TModel?> OnStoreSuccessAsync(TModel? model, IDispatchResult dispatchResult)
@@ -279,7 +283,9 @@ namespace AI4E.AspNetCore.Components
                 return await LoadModelAsync(cancellation);
             }
 
+#pragma warning disable CA2000, IDE0067
             var operationContext = new LoadOperationContext(this, cancellation);
+#pragma warning restore CA2000, IDE0067
 
             try
             {
@@ -312,7 +318,9 @@ namespace AI4E.AspNetCore.Components
                 return await StoreModelAsync(cancellation);
             }
 
+#pragma warning disable CA2000, IDE0067
             var operationContext = new StoreOperationContext(this, cancellation);
+#pragma warning restore CA2000, IDE0067
 
             try
             {
@@ -507,9 +515,10 @@ namespace AI4E.AspNetCore.Components
                 ComponentBase<TModel> componentBase,
                 CancellationToken cancellation)
             {
+                ComponentBase = componentBase;
                 _notifications = ComponentBase.NotificationManager.CreateRecorder();
                 ValidationResults = ComponentBase._validationResults;
-                ComponentBase = componentBase;
+                Model = ComponentBase.Model;
 
                 // An operation is in progress currently.
                 if (ComponentBase._pendingOperationCancellationSource != null)
@@ -533,6 +542,7 @@ namespace AI4E.AspNetCore.Components
             public INotificationManager Notifications => _notifications;
             public IEnumerable<ValidationResult> ValidationResults { get; set; } = Enumerable.Empty<ValidationResult>();
             public CancellationTokenSource CancellationTokenSource { get; }
+            public TModel Model { get; }
 
             protected abstract ValueTask<TModel?> ExcuteModelOperationAsync(CancellationToken cancellation);
 
@@ -592,16 +602,18 @@ namespace AI4E.AspNetCore.Components
                 ComponentBase._pendingOperationCompletion.SetResult(model);
                 ComponentBase._pendingOperationCompletion = ValueTaskCompletionSource.Create<TModel?>();
 
-                if (model != null)
+                if (IsSuccess(model))
                 {
                     ComponentBase.IsInitiallyLoaded = true;
 
-                    await OnCommitedAsync();
+                    await OnCommitSuccessAsync();
                     ComponentBase.StateHasChanged();
                 }
             }
 
-            protected abstract ValueTask OnCommitedAsync();
+            protected abstract bool IsSuccess(TModel? model);
+
+            protected abstract ValueTask OnCommitSuccessAsync();
 
             public void Dispose()
             {
@@ -621,7 +633,12 @@ namespace AI4E.AspNetCore.Components
                 return ComponentBase.LoadModelAsync(cancellation);
             }
 
-            protected override async ValueTask OnCommitedAsync()
+            protected override bool IsSuccess(TModel? model)
+            {
+                return model != null;
+            }
+
+            protected override async ValueTask OnCommitSuccessAsync()
             {
                 ComponentBase.OnLoaded();
                 await ComponentBase.OnLoadedAsync();
@@ -640,7 +657,12 @@ namespace AI4E.AspNetCore.Components
                 return ComponentBase.StoreModelAsync(cancellation);
             }
 
-            protected override async ValueTask OnCommitedAsync()
+            protected override bool IsSuccess(TModel? model)
+            {
+                return model != null && !ReferenceEquals(model, Model); // TODO: Does this really indicate success?
+            }
+
+            protected override async ValueTask OnCommitSuccessAsync()
             {
                 ComponentBase.OnStored();
                 await ComponentBase.OnStoredAsync();

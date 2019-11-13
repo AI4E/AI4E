@@ -8,14 +8,16 @@
 
     [Parameter] public Guid Id { get; set; }
 
-    protected override async ValueTask<FormsModel> LoadModelAsync(CancellationToken cancellation)
+    protected override async ValueTask<FormsModel?> LoadModelAsync(CancellationToken cancellation)
     {
         if (Id == default)
             return null;
 
         await Task.Delay(4000);
         var model = await base.LoadModelAsync(cancellation);
-        model.Id = Id;
+
+        if (model != null)
+            model.Id = Id;
         return model;
     }
 

@@ -1,0 +1,41 @@
+﻿@page "/resource/list"
+@inherits ComponentBase<List<Resource>>
+@inject IMessageDispatcher MessageDispatcher
+@code {
+    protected override async ValueTask<List<Resource>?> LoadModelAsync(CancellationToken cancellation)
+    {
+        var message = new Query<IEnumerable<Resource>>();
+        var dispatchResult = await MessageDispatcher.DispatchAsync(message, cancellation);
+        return await EvaluateLoadResultAsync(dispatchResult);
+    }
+
+    protected override bool TryExtractModelAsync(
+        IDispatchResult dispatchResult, [NotNullWhen(true)] out List<Resource>? model)
+    {
+        var success = dispatchResult.IsSuccessWithResults<Resource>(out var resources);
+        model = success ? (resources as List<Resource>) ?? resources.ToList() : new List<Resource>();
+        return success;
+    }
+}
+
+<div class="container">
+    <h3>Resources</h3>
+    @if (IsLoading)
+    {
+        <div>Loading...</div>
+    }
+    else if (Model.Count > 0)
+    {
+        <ul>
+            @foreach (var resource in Model)
+            {
+                <li>
+                    <a href="/resource/@resource.Id">@resource.Name</a>
+                </li>
+            }
+        </ul>
+    }
+    <div>
+        <a href="/resource/create" class="btn btn-primary">Create new</a>
+    </div>
+</div>

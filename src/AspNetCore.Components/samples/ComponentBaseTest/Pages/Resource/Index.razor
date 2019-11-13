@@ -1,0 +1,108 @@
+﻿@page "/resource"
+@page "/resource/create"
+@page "/resource/{id:guid}"
+@inherits ComponentBase<Resource>
+@inject IMessageDispatcher MessageDispatcher
+@inject NavigationManager NavigationManager
+@code{
+    [Parameter] public Guid Id { get; set; }
+
+    protected override async ValueTask<Resource?> LoadModelAsync(CancellationToken cancellation)
+    {
+        if (Id == Guid.Empty)
+        {
+            Id = Guid.NewGuid();
+            return new Resource { Id = Id };
+        }
+
+        var message = new ByIdQuery<Resource>(Id);
+        var dispatchResult = await MessageDispatcher.DispatchAsync(message, cancellation);
+        return await EvaluateLoadResultAsync(dispatchResult);
+    }
+
+    protected override async ValueTask<Resource?> StoreModelAsync(CancellationToken cancellation)
+    {
+        var message = new Update<Resource>(Model);
+        var dispatchResult = await MessageDispatcher.DispatchAsync(message, cancellation);
+        return await EvaluateStoreResultAsync(dispatchResult);
+    }
+
+    protected override void OnStored()
+    {
+        // TODO: This will fire InitAsync and reload the model again. Can we skip this somehow?
+        NavigationManager.NavigateTo("/resource/" + Model.Id);
+    }
+
+    // TODO: EventCallback is not able to bind to StoreAsync directly.
+    private Task StoreAsync()
+    {
+        return base.StoreAsync().AsTask();
+    }
+}
+
+<div class="container">
+    @if (IsLoading)
+    {
+        <div>Loading...</div>
+    }
+    else if (IsLoaded)
+    {
+        <EditForm Model="Model" OnSubmit="StoreAsync">
+            <ValidationResultsValidator ValidationResults="ValidationResults"/>
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label">
+                    Id
+                </label>
+                <div class="col-lg-9">
+                    <span class="form-control">@Model.Id</span>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label">
+                    ConcurrencyToken
+                </label>
+                <div class="col-lg-9">
+                    <span class="form-control">@Model.ConcurrencyToken</span>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label" for="name">
+                    Name
+                </label>
+                <div class="col-lg-9">
+                    <InputText id="name" @bind-Value="Model.Name" class="form-control" />
+                </div>
+                <ValidationMessage For="@(() => Model.Name)" />
+            </div>
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label" for="amount">
+                    Amount
+                </label>
+                <div class="col-lg-9">
+                    <InputNumber id="amount" @bind-Value="Model.Amount" class="form-control" />
+                </div>
+                <ValidationMessage For="@(() => Model.Amount)" />
+            </div>
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label" for="date-of-creation">
+                    DateOfCreation
+                </label>
+                <div class="col-lg-9">
+                    <InputDate id="date-of-creation" @bind-Value="Model.DateOfCreation" class="form-control" />
+                </div>
+                <ValidationMessage For="@(() => Model.DateOfCreation)" />
+            </div>
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label"></label>
+                <div class="col-lg-9">
+                    <input type="reset" value="Reset" class="btn btn-secondary" />
+                    <input type="submit" value="Save" class="btn btn-primary" />
+                </div>
+            </div>
+        </EditForm>
+    }
+    else
+    {
+        <div>Not found</div>
+    }
+</div>
