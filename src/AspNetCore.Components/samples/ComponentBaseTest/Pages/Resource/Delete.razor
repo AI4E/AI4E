@@ -6,6 +6,13 @@
     [Parameter] public Guid Id { get; set; }
     private string? Name { get; set; }
 
+    protected override void OnInitialized(bool locationChanged)
+    {
+        // Supress reloading the model after store (= delete) as this will always result in a not-found dispatch-result
+        // and we are redirecting anyway.
+        EnableLoadAfterStore = false;
+    }
+
     protected override async ValueTask<Resource?> LoadModelAsync(CancellationToken cancellation)
     {
         if (Id == Guid.Empty)

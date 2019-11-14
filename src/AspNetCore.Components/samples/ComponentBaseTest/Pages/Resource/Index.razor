@@ -34,10 +34,18 @@
         await EvaluateValidateResultAsync(dispatchResult);
     }
 
+    protected override void OnLoaded()
+    {
+        // When we are creating the model, we are redirecting to the same page anyway, thus reloading the model.
+        EnableLoadAfterStore = (Model.ConcurrencyToken != Guid.Empty);
+    }
+
     protected override void OnStored()
     {
-        // TODO: This will fire InitAsync and reload the model again. Can we skip this somehow?
-        NavigationManager.NavigateTo("/resource/" + Model.Id);
+        if (Model.ConcurrencyToken == Guid.Empty)
+        {
+            NavigationManager.NavigateTo("/resource/" + Model.Id);
+        }
     }
 }
 

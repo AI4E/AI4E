@@ -116,6 +116,9 @@ namespace AI4E.AspNetCore.Components
             }
         }
 
+        protected internal bool EnableLoadAfterStore { get; set; } = true;
+        protected internal bool EnableLoadOnRedirect { get; set; } = true;
+
         [Inject] private NotificationManager NotificationManager { get; set; }
         [Inject] private IDateTimeProvider DateTimeProvider { get; set; }
         [Inject] private IServiceProvider ServiceProvider { get; set; }
@@ -150,8 +153,11 @@ namespace AI4E.AspNetCore.Components
 
         private ValueTask OnLocationChangedAsync()
         {
-            // TODO: Only load, if we are not in the commit-phase of a store operation currently.
-            Load();
+            if (EnableLoadOnRedirect)
+            {
+                Load();
+            }
+
             OnInitialized(true);
 
             var task = OnInitializedAsync(true);
@@ -254,26 +260,6 @@ namespace AI4E.AspNetCore.Components
             return Model;
         }
 
-        protected internal void NotifyFailure()
-        {
-            NotifyStatus(false);
-        }
-
-        protected internal void NotifySuccess()
-        {
-            NotifyStatus(true);
-        }
-
-        private void NotifyStatus(bool success)
-        {
-            var context = _ambientOperationContext.Value;
-
-            if (context != null)
-            {
-                context.IsSuccess = success;
-            }
-        }
-
         protected virtual async ValueTask<TModel?> OnStoreSuccessAsync(TModel? model, IDispatchResult dispatchResult)
         {
             var notification = new NotificationMessage(
@@ -284,7 +270,7 @@ namespace AI4E.AspNetCore.Components
             };
 
             Notifications.PlaceNotification(notification);
-            return model ?? await LoadAsync();
+            return model ?? (EnableLoadAfterStore ?  await LoadAsync().ConfigureAwait(true) : Model);
         }
 
         #endregion
@@ -613,6 +599,26 @@ namespace AI4E.AspNetCore.Components
         }
 
         #endregion
+
+        protected internal void NotifyFailure()
+        {
+            NotifyStatus(false);
+        }
+
+        protected internal void NotifySuccess()
+        {
+            NotifyStatus(true);
+        }
+
+        private void NotifyStatus(bool success)
+        {
+            var context = _ambientOperationContext.Value;
+
+            if (context != null)
+            {
+                context.IsSuccess = success;
+            }
+        }
 
         private abstract class OperationContext : IDisposable
         {

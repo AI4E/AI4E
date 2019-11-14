@@ -31,13 +31,7 @@ namespace ComponentBaseTest.Services
             var copy = DeepCloneResource(resource);
             copy.ConcurrencyToken = CreateConcurrencyToken();
 
-            if (_resources.TryAdd(resource.Id, copy))
-            {
-                resource.ConcurrencyToken = copy.ConcurrencyToken;
-                return true;
-            }
-
-            return false;
+            return _resources.TryAdd(resource.Id, copy);
         }
 
         public bool TryRemoveResource(Resource resource)
@@ -93,7 +87,6 @@ namespace ComponentBaseTest.Services
             }
             while (!_resources.TryUpdate(resource.Id, copy, comparand));
 
-            resource.ConcurrencyToken = copy.ConcurrencyToken;
             return true;
         }
 
