@@ -35,6 +35,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 
+// TODO: Validate, Store and Load operations currently cannot overlap each other. Is this inteded?
+
 namespace AI4E.AspNetCore.Components
 {
     public abstract class ComponentBase<TModel> : ComponentBase, IDisposable
@@ -51,7 +53,7 @@ namespace AI4E.AspNetCore.Components
 #pragma warning disable IDE0069, IDE0044, CA2213
         private OperationContext? _lastSuccessOperationContext;
         private CancellationTokenSource? _pendingOperationCancellationSource;
-        private ValueTaskCompletionSource<TModel?> _pendingOperationCompletion = ValueTaskCompletionSource.Create<TModel?>();
+        private TaskCompletionSource<TModel?> _pendingOperationCompletion = new TaskCompletionSource<TModel?>();
 #pragma warning restore IDE0069, IDE0044, CA2213
 
         #endregion
@@ -79,7 +81,7 @@ namespace AI4E.AspNetCore.Components
 
         #region Properties
 
-        protected internal TModel Model 
+        protected internal TModel Model
             => _ambientOperationContext.Value?.Model ?? (_model ??= new TModel());
 
         protected internal bool IsLoading
@@ -243,14 +245,33 @@ namespace AI4E.AspNetCore.Components
                     model = null;
                 }
 
+                NotifySuccess();
                 return await OnStoreSuccessAsync(model, dispatchResult);
             }
 
+            NotifyFailure();
             await EvaluateFailureResultAsync(dispatchResult);
-            
-            // TODO: Model may be an updated version of the model we stored. 
-            //       Is this ok or do we need to store the original model in the ambient context?
-            return Model; 
+            return Model;
+        }
+
+        protected internal void NotifyFailure()
+        {
+            NotifyStatus(false);
+        }
+
+        protected internal void NotifySuccess()
+        {
+            NotifyStatus(true);
+        }
+
+        private void NotifyStatus(bool success)
+        {
+            var context = _ambientOperationContext.Value;
+
+            if (context != null)
+            {
+                context.IsSuccess = success;
+            }
         }
 
         protected virtual async ValueTask<TModel?> OnStoreSuccessAsync(TModel? model, IDispatchResult dispatchResult)
@@ -268,6 +289,34 @@ namespace AI4E.AspNetCore.Components
 
         #endregion
 
+        #region Validate model
+
+        protected virtual ValueTask ValidateModelAsync(CancellationToken cancellation)
+        {
+            return default;
+        }
+
+        protected virtual async ValueTask EvaluateValidateResultAsync(IDispatchResult dispatchResult)
+        {
+            if (dispatchResult is null)
+                throw new ArgumentNullException(nameof(dispatchResult));
+
+            if (dispatchResult.IsSuccess)
+            {
+                await OnValidateSuccessAsync(dispatchResult);
+            }
+
+            await EvaluateFailureResultAsync(dispatchResult);
+        }
+
+        protected virtual ValueTask OnValidateSuccessAsync(IDispatchResult dispatchResult)
+        {
+            ValidationResults = Enumerable.Empty<ValidationResult>();
+            return default;
+        }
+
+        #endregion
+
         #region Operation execution
 
         protected void Load()
@@ -275,7 +324,12 @@ namespace AI4E.AspNetCore.Components
             LoadAsync().HandleExceptions(Logger);
         }
 
-        protected async ValueTask<TModel?> LoadAsync(CancellationToken cancellation = default)
+        protected Task<TModel?> LoadAsync()
+        {
+            return LoadAsync(default);
+        }
+
+        protected async Task<TModel?> LoadAsync(CancellationToken cancellation)
         {
             // We are already in a context. Skip operation setup.
             if (_ambientOperationContext.Value != null)
@@ -310,7 +364,12 @@ namespace AI4E.AspNetCore.Components
             StoreAsync().HandleExceptions(Logger);
         }
 
-        protected async ValueTask<TModel?> StoreAsync(CancellationToken cancellation = default)
+        protected Task<TModel?> StoreAsync()
+        {
+            return StoreAsync(default);
+        }
+
+        protected async Task<TModel?> StoreAsync(CancellationToken cancellation)
         {
             // We are already in a context. Skip operation setup.
             if (_ambientOperationContext.Value != null)
@@ -338,6 +397,54 @@ namespace AI4E.AspNetCore.Components
             // because we may not actually succeed loading the model. 
             // We may be canceled by a concurrent load operation that's result we need to return here.
             return await _pendingOperationCompletion.Task.ConfigureAwait(true);
+        }
+
+        protected void Validate()
+        {
+            ValidateAsync().HandleExceptions(Logger);
+        }
+
+        protected Task ValidateAsync()
+        {
+            return ValidateAsync(default);
+        }
+
+        protected async Task ValidateAsync(CancellationToken cancellation)
+        {
+            // We are already in a context. Skip operation setup.
+            if (_ambientOperationContext.Value != null)
+            {
+                await ValidateModelAsync(cancellation);
+                return;
+            }
+
+#pragma warning disable CA2000, IDE0067
+            var operationContext = new ValidateOperationContext(this, cancellation);
+#pragma warning restore CA2000, IDE0067
+
+            try
+            {
+                await operationContext.ExecuteOperationAsync().ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) when (operationContext.CancellationTokenSource.IsCancellationRequested && !cancellation.IsCancellationRequested)
+            {
+                if (_isDisposed)
+                {
+                    return;
+                }
+            }
+
+            // We do not pass the model from the commit operation back to us (the caller) 
+            // because we may not actually succeed loading the model. 
+            // We may be canceled by a concurrent load operation that's result we need to return here.
+            await _pendingOperationCompletion.Task.ConfigureAwait(true);
+        }
+
+        protected virtual void OnValidated() { }
+
+        protected virtual ValueTask OnValidatedAsync()
+        {
+            return default;
         }
 
         protected virtual void OnStored() { }
@@ -512,20 +619,20 @@ namespace AI4E.AspNetCore.Components
             private readonly INotificationRecorder _notifications;
 
             public OperationContext(
-                ComponentBase<TModel> componentBase,
+                ComponentBase<TModel> component,
                 CancellationToken cancellation)
             {
-                ComponentBase = componentBase;
-                _notifications = ComponentBase.NotificationManager.CreateRecorder();
-                ValidationResults = ComponentBase._validationResults;
-                Model = ComponentBase.Model;
+                Component = component;
+                _notifications = Component.NotificationManager.CreateRecorder();
+                ValidationResults = Component._validationResults;
+                Model = Component.Model;
 
                 // An operation is in progress currently.
-                if (ComponentBase._pendingOperationCancellationSource != null)
+                if (Component._pendingOperationCancellationSource != null)
                 {
                     try
                     {
-                        ComponentBase._pendingOperationCancellationSource.Cancel();
+                        Component._pendingOperationCancellationSource.Cancel();
                     }
                     catch (ObjectDisposedException) { }
                 }
@@ -534,15 +641,16 @@ namespace AI4E.AspNetCore.Components
                                  ? CancellationTokenSource.CreateLinkedTokenSource(cancellation, default)
                                  : new CancellationTokenSource();
 
-                ComponentBase._pendingOperationCancellationSource = CancellationTokenSource;
+                Component._pendingOperationCancellationSource = CancellationTokenSource;
             }
 
-            protected ComponentBase<TModel> ComponentBase { get; }
+            protected ComponentBase<TModel> Component { get; }
 
             public INotificationManager Notifications => _notifications;
             public IEnumerable<ValidationResult> ValidationResults { get; set; } = Enumerable.Empty<ValidationResult>();
             public CancellationTokenSource CancellationTokenSource { get; }
             public TModel Model { get; }
+            public bool IsSuccess { get; set; } = true;
 
             protected abstract ValueTask<TModel?> ExcuteModelOperationAsync(CancellationToken cancellation);
 
@@ -553,7 +661,7 @@ namespace AI4E.AspNetCore.Components
                 try
                 {
                     // Set the ambient operation context.
-                    ComponentBase._ambientOperationContext.Value = this;
+                    Component._ambientOperationContext.Value = this;
 
                     try
                     {
@@ -562,7 +670,7 @@ namespace AI4E.AspNetCore.Components
                     finally
                     {
                         // Reset the ambient alert message handler
-                        ComponentBase._ambientOperationContext.Value = null;
+                        Component._ambientOperationContext.Value = null;
                     }
                 }
                 finally
@@ -579,15 +687,15 @@ namespace AI4E.AspNetCore.Components
                 // bringing concurrency to the derived component via concurrent calls to OnModelLoadedAsync.
                 // We protect us be only executing only one CommitLoadOperationAsync call a time.
 
-                using (await ComponentBase._loadModelMutex.LockAsync(CancellationTokenSource.Token))
+                using (await Component._loadModelMutex.LockAsync(CancellationTokenSource.Token))
                 {
-                    if (ComponentBase._pendingOperationCancellationSource != CancellationTokenSource)
+                    if (Component._pendingOperationCancellationSource != CancellationTokenSource)
                         return;
 
-                    ComponentBase._pendingOperationCancellationSource = null;
+                    Component._pendingOperationCancellationSource = null;
 
-                    ComponentBase._lastSuccessOperationContext?.Dispose();
-                    ComponentBase._lastSuccessOperationContext = this;
+                    Component._lastSuccessOperationContext?.Dispose();
+                    Component._lastSuccessOperationContext = this;
 
                     await PublishAsync(model);
                 }
@@ -595,25 +703,28 @@ namespace AI4E.AspNetCore.Components
 
             private async ValueTask PublishAsync(TModel? model)
             {
-                ComponentBase._validationResults = ValidationResults;
+                Component._validationResults = ValidationResults;
                 _notifications.PublishNotifications();
 
-                ComponentBase._model = model;
-                ComponentBase._pendingOperationCompletion.SetResult(model);
-                ComponentBase._pendingOperationCompletion = ValueTaskCompletionSource.Create<TModel?>();
-
-                if (IsSuccess(model))
+                if (CommitModel(model))
                 {
-                    ComponentBase.IsInitiallyLoaded = true;
 
-                    await OnCommitSuccessAsync();
-                    ComponentBase.StateHasChanged();
+                    Component._model = model;
+                    Component._pendingOperationCompletion.SetResult(model);
+                    Component._pendingOperationCompletion = new TaskCompletionSource<TModel?>();
                 }
+
+                await OnCommittedAsync(model);
+
+                Component.StateHasChanged();
             }
 
-            protected abstract bool IsSuccess(TModel? model);
+            protected virtual bool CommitModel(TModel? model)
+            {
+                return true;
+            }
 
-            protected abstract ValueTask OnCommitSuccessAsync();
+            protected abstract ValueTask OnCommittedAsync(TModel? model);
 
             public void Dispose()
             {
@@ -630,18 +741,18 @@ namespace AI4E.AspNetCore.Components
 
             protected override ValueTask<TModel?> ExcuteModelOperationAsync(CancellationToken cancellation)
             {
-                return ComponentBase.LoadModelAsync(cancellation);
+                return Component.LoadModelAsync(cancellation);
             }
 
-            protected override bool IsSuccess(TModel? model)
+            protected override async ValueTask OnCommittedAsync(TModel? model)
             {
-                return model != null;
-            }
+                if (model != null && !ReferenceEquals(model, Model))
+                {
+                    Component.IsInitiallyLoaded = true;
 
-            protected override async ValueTask OnCommitSuccessAsync()
-            {
-                ComponentBase.OnLoaded();
-                await ComponentBase.OnLoadedAsync();
+                    Component.OnLoaded();
+                    await Component.OnLoadedAsync();
+                }
             }
         }
 
@@ -654,21 +765,58 @@ namespace AI4E.AspNetCore.Components
 
             protected override ValueTask<TModel?> ExcuteModelOperationAsync(CancellationToken cancellation)
             {
-                return ComponentBase.StoreModelAsync(cancellation);
+                return Component.StoreModelAsync(cancellation);
             }
 
-            protected override bool IsSuccess(TModel? model)
+            protected override async ValueTask OnCommittedAsync(TModel? model)
             {
-                return model != null && !ReferenceEquals(model, Model); // TODO: Does this really indicate success?
+                // We are at the end of our commit step. The store operation may have been executed
+                // - successfully and yield a new model (This indicated that we performed an implicit or explicit model load)
+                // - successfully and yield no new model
+                // - successfully and yield a null model (For example for deletion operations.)
+                // - non successfully (Via the IsSuccess state)
+
+                Component.OnValidated();
+                await Component.OnValidatedAsync();
+
+                if (IsSuccess)
+                {
+                    Component.OnStored();
+                    await Component.OnStoredAsync();
+                }
+
+                if (model != null && !ReferenceEquals(model, Model))
+                {
+                    Component.IsInitiallyLoaded = true;
+
+                    Component.OnLoaded();
+                    await Component.OnLoadedAsync();
+                }
+            }
+        }
+
+        private sealed class ValidateOperationContext : OperationContext
+        {
+            public ValidateOperationContext(
+                ComponentBase<TModel> componentBase,
+                CancellationToken cancellationToken)
+                : base(componentBase, cancellationToken) { }
+
+            protected override async ValueTask<TModel?> ExcuteModelOperationAsync(CancellationToken cancellation)
+            {
+                await Component.ValidateModelAsync(cancellation);
+                return null; // Just return anything. Theses value will never get committed back.
             }
 
-            protected override async ValueTask OnCommitSuccessAsync()
+            protected override bool CommitModel(TModel? model)
             {
-                ComponentBase.OnStored();
-                await ComponentBase.OnStoredAsync();
+                return false;
+            }
 
-                ComponentBase.OnLoaded();
-                await ComponentBase.OnLoadedAsync();
+            protected override async ValueTask OnCommittedAsync(TModel? model)
+            {
+                Component.OnValidated();
+                await Component.OnValidatedAsync();
             }
         }
     }

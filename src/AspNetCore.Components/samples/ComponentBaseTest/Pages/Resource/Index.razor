@@ -27,16 +27,17 @@
         return await EvaluateStoreResultAsync(dispatchResult);
     }
 
+    protected override async ValueTask ValidateModelAsync(CancellationToken cancellation)
+    {
+        var message = AI4E.Messaging.Validation.Validate.Create(new Update<Resource>(Model)); // TODO: Name conflict
+        var dispatchResult = await MessageDispatcher.DispatchAsync(message, cancellation);
+        await EvaluateValidateResultAsync(dispatchResult);
+    }
+
     protected override void OnStored()
     {
         // TODO: This will fire InitAsync and reload the model again. Can we skip this somehow?
         NavigationManager.NavigateTo("/resource/" + Model.Id);
-    }
-
-    // TODO: EventCallback is not able to bind to StoreAsync directly.
-    private Task StoreAsync()
-    {
-        return base.StoreAsync().AsTask();
     }
 }
 
@@ -47,8 +48,8 @@
     }
     else if (IsLoaded)
     {
-        <EditForm Model="Model" OnSubmit="StoreAsync">
-            <ValidationResultsValidator ValidationResults="ValidationResults"/>
+        <EditForm Model="Model" OnValidSubmit="StoreAsync">
+            <ValidationResultsValidator ValidationResults="ValidationResults" OnValidationRequested="ValidateAsync" />
             <div class="form-group row">
                 <label class="col-lg-3 col-form-label form-control-label">
                     Id
@@ -94,9 +95,25 @@
             </div>
             <div class="form-group row">
                 <label class="col-lg-3 col-form-label form-control-label"></label>
-                <div class="col-lg-9">
-                    <input type="reset" value="Reset" class="btn btn-secondary" />
-                    <input type="submit" value="Save" class="btn btn-primary" />
+                <div class="col-lg-9 d-flex justify-content-between">
+                    <div>
+                        <a class="btn btn-outline-primary" href="/resource/list">Back</a>
+                    </div>
+                    <div>
+                        @if (Model.ConcurrencyToken != Guid.Empty)
+                        {
+                            <a class="btn btn-outline-danger" href="/resource/delete/@Id">Delete</a>
+                        }
+                        <input type="reset" value="Reset" class="btn btn-secondary" />
+                        @if (Model.ConcurrencyToken != Guid.Empty)
+                        {
+                            <input type="submit" value="Save" class="btn btn-primary" />
+                        }
+                        else
+                        {
+                            <input type="submit" value="Create" class="btn btn-primary" />
+                        }
+                    </div>
                 </div>
             </div>
         </EditForm>

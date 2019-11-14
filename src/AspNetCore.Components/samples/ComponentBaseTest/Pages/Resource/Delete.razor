@@ -1,0 +1,114 @@
+﻿@page "/resource/delete/{id:guid}"
+@inherits ComponentBase<Resource>
+@inject IMessageDispatcher MessageDispatcher
+@inject NavigationManager NavigationManager
+@code{
+    [Parameter] public Guid Id { get; set; }
+    private string? Name { get; set; }
+
+    protected override async ValueTask<Resource?> LoadModelAsync(CancellationToken cancellation)
+    {
+        if (Id == Guid.Empty)
+        {
+            return null;
+        }
+
+        var message = new ByIdQuery<Resource>(Id);
+        var dispatchResult = await MessageDispatcher.DispatchAsync(message, cancellation);
+        return await EvaluateLoadResultAsync(dispatchResult);
+    }
+
+    protected override async ValueTask<Resource?> StoreModelAsync(CancellationToken cancellation)
+    {
+        if (ValidateModel())
+        {
+            var message = new Delete<Resource>(Model);
+            var dispatchResult = await MessageDispatcher.DispatchAsync(message, cancellation);
+            return await EvaluateStoreResultAsync(dispatchResult);
+        }
+
+        return Model;
+    }
+
+    protected override ValueTask<Resource?> OnStoreSuccessAsync(Resource? model, IDispatchResult dispatchResult)
+    {
+        return new ValueTask<Resource?>(model);
+    }
+
+    private bool ValidateModel()
+    {
+        if (Name != Model.Name) // TODO: Culture
+        {
+            ValidationResults = new ValidationResult(
+                nameof(Model.Name),
+                "The text must be equal to the resource name.").Yield();
+
+            NotifyFailure();
+            return false;
+        }
+
+        return true;
+    }
+
+    protected override ValueTask ValidateModelAsync(CancellationToken cancellation)
+    {
+        if (ValidateModel())
+        {
+            ValidationResults = Enumerable.Empty<ValidationResult>();
+        }
+
+        return default;
+    }
+
+    protected override void OnLoaded()
+    {
+        Name = Model.Name;
+        Model.Name = null;
+    }
+
+    protected override void OnStored()
+    {
+        NavigationManager.NavigateTo("/resource/list");
+    }
+}
+
+<div class="container">
+    @if (IsLoading)
+    {
+        <div>Loading...</div>
+    }
+    else if (IsLoaded)
+    {
+        <div>
+            Are you sure to delete the resource <span style="background-color: darkred; color: white">@Name</span>. Type the resource name to delete it.
+        </div>
+
+        <EditForm Model="Model" OnValidSubmit="StoreAsync">
+            <ValidationResultsValidator ValidationResults="ValidationResults" OnValidationRequested="ValidateAsync" />
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label" for="name">
+                    Name
+                </label>
+                <div class="col-lg-9">
+                    <InputText id="name" @bind-Value="Model.Name" class="form-control" />
+                </div>
+                <ValidationMessage For="@(() => Model.Name)" />
+            </div>
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label"></label>
+                <div class="col-lg-9 d-flex justify-content-between">
+                    <div>
+                        <a class="btn btn-outline-primary" href="/resource/@Id">Back</a>
+                    </div>
+                    <div>
+                        <input type="submit" value="Delete" class="btn btn-primary" />
+                    </div>
+                </div>
+            </div>
+        </EditForm>
+    }
+    else
+    {
+        <div>Not found</div>
+    }
+</div>
