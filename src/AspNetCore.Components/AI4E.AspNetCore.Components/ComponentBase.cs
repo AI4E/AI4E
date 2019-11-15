@@ -130,7 +130,7 @@ namespace AI4E.AspNetCore.Components
         {
             IsInitiallyLoaded = false;
             NavigationManager.LocationChanged += OnLocationChanged;
-            Load();
+            _ = LoadAsync();
             OnInitialized(false);
         }
 
@@ -155,7 +155,7 @@ namespace AI4E.AspNetCore.Components
         {
             if (EnableLoadOnRedirect)
             {
-                Load();
+                _ = LoadAsync();
             }
 
             OnInitialized(true);
@@ -305,11 +305,6 @@ namespace AI4E.AspNetCore.Components
 
         #region Operation execution
 
-        protected void Load()
-        {
-            LoadAsync().HandleExceptions(Logger);
-        }
-
         protected Task<TModel?> LoadAsync()
         {
             return LoadAsync(default);
@@ -345,11 +340,6 @@ namespace AI4E.AspNetCore.Components
             return await _pendingOperationCompletion.Task.ConfigureAwait(true);
         }
 
-        protected void Store()
-        {
-            StoreAsync().HandleExceptions(Logger);
-        }
-
         protected Task<TModel?> StoreAsync()
         {
             return StoreAsync(default);
@@ -383,11 +373,6 @@ namespace AI4E.AspNetCore.Components
             // because we may not actually succeed loading the model. 
             // We may be canceled by a concurrent load operation that's result we need to return here.
             return await _pendingOperationCompletion.Task.ConfigureAwait(true);
-        }
-
-        protected void Validate()
-        {
-            ValidateAsync().HandleExceptions(Logger);
         }
 
         protected Task ValidateAsync()

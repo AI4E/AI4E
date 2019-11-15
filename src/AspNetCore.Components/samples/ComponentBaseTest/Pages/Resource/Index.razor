@@ -29,7 +29,7 @@
 
     protected override async ValueTask ValidateModelAsync(CancellationToken cancellation)
     {
-        var message = AI4E.Messaging.Validation.Validate.Create(new Update<Resource>(Model)); // TODO: Name conflict
+        var message = Validate.Create(new Update<Resource>(Model));
         var dispatchResult = await MessageDispatcher.DispatchAsync(message, cancellation);
         await EvaluateValidateResultAsync(dispatchResult);
     }
