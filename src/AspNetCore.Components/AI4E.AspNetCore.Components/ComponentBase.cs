@@ -19,34 +19,43 @@
  */
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Notifications;
 using AI4E.Messaging;
 using AI4E.Messaging.Validation;
+using AI4E.Utils;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 
+// TODO: Validate, Store and Load operations currently cannot overlap each other. Is this inteded?
+// TODO: Loads can starve if load request happpens more frequently then the completion of the load operations 
+//       within a sufficient small amount of time.
+
 namespace AI4E.AspNetCore.Components
 {
     public abstract class ComponentBase<TModel> : ComponentBase, IDisposable
-        where TModel : class
+        where TModel : class, new()
     {
         #region Fields
 
-        private readonly AsyncLocal<INotificationManager?> _ambientNotifications;
+        private readonly AsyncLocal<OperationContext?> _ambientOperationContext;
         private readonly Lazy<ILogger?> _logger;
         private readonly AsyncLock _loadModelMutex = new AsyncLock();
-        private INotificationManagerScope? _loadModelNotifications;
         private ILogger? Logger => _logger.Value;
-#pragma warning disable IDE0069, CA2213
-        // If _loadModelCancellationSource is null, no operation is in progress currently.
-        private CancellationTokenSource? _loadModelCancellationSource;
-#pragma warning restore IDE0069, CA2213
+        private TModel? _model;
+
+#pragma warning disable IDE0069, IDE0044, CA2213
+        private OperationContext? _lastSuccessOperationContext;
+        private CancellationTokenSource? _pendingOperationCancellationSource;
+        private TaskCompletionSource<TModel?> _pendingOperationCompletion = new TaskCompletionSource<TModel?>();
+#pragma warning restore IDE0069, IDE0044, CA2213
 
         #endregion
 
@@ -54,7 +63,7 @@ namespace AI4E.AspNetCore.Components
 
         protected ComponentBase()
         {
-            _ambientNotifications = new AsyncLocal<INotificationManager?>();
+            _ambientOperationContext = new AsyncLocal<OperationContext?>();
             _logger = new Lazy<ILogger?>(BuildLogger);
 
             // These will be set by DI. Just to disable warnings here.
@@ -73,21 +82,46 @@ namespace AI4E.AspNetCore.Components
 
         #region Properties
 
-        protected internal TModel? Model { get; private set; }
+        protected internal TModel Model
+            => _ambientOperationContext.Value?.Model ?? (_model ??= new TModel());
 
         protected internal bool IsLoading
-            => _loadModelCancellationSource != null;
+            => _pendingOperationCancellationSource != null;
 
         protected internal bool IsLoaded
-            => !IsLoading && Model != null;
+            => !IsLoading && _model != null;
 
         protected internal bool IsInitiallyLoaded { get; private set; }
 
         protected internal INotificationManager Notifications
-            => _ambientNotifications.Value ?? NotificationManager;
+            => _ambientOperationContext.Value?.Notifications ?? NotificationManager;
+
+        private IEnumerable<ValidationResult> _validationResults = Enumerable.Empty<ValidationResult>();
+
+        protected internal IEnumerable<ValidationResult> ValidationResults
+        {
+            get => _ambientOperationContext.Value?.ValidationResults ?? _validationResults;
+            set
+            {
+                if (value is null)
+                    throw new ArgumentNullException(nameof(value));
+
+                if (_ambientOperationContext.Value != null)
+                {
+                    _ambientOperationContext.Value.ValidationResults = value;
+                }
+                else
+                {
+                    _validationResults = value;
+                }
+            }
+        }
+
+        protected internal bool EnableLoadAfterStore { get; set; } = true;
+        protected internal bool EnableLoadOnRedirect { get; set; } = true;
 
         [Inject] private NotificationManager NotificationManager { get; set; }
-        [Inject] private Utils.IDateTimeProvider DateTimeProvider { get; set; }
+        [Inject] private IDateTimeProvider DateTimeProvider { get; set; }
         [Inject] private IServiceProvider ServiceProvider { get; set; }
         [Inject] private NavigationManager NavigationManager { get; set; }
 
@@ -97,7 +131,7 @@ namespace AI4E.AspNetCore.Components
         {
             IsInitiallyLoaded = false;
             NavigationManager.LocationChanged += OnLocationChanged;
-            LoadModel();
+            _ = LoadAsync();
             OnInitialized(false);
         }
 
@@ -120,7 +154,11 @@ namespace AI4E.AspNetCore.Components
 
         private ValueTask OnLocationChangedAsync()
         {
-            LoadModel();
+            if (EnableLoadOnRedirect)
+            {
+                _ = LoadAsync();
+            }
+
             OnInitialized(true);
 
             var task = OnInitializedAsync(true);
@@ -160,129 +198,9 @@ namespace AI4E.AspNetCore.Components
             StateHasChanged();
         }
 
-        #region Loading
-
-        protected void LoadModel()
-        {
-            // An operation is in progress currently.
-            if (_loadModelCancellationSource != null)
-            {
-                try
-                {
-                    _loadModelCancellationSource.Cancel();
-                }
-                catch (ObjectDisposedException) { }
-            }
-
-            _loadModelCancellationSource = new CancellationTokenSource();
-            InternalLoadModelProtectedAsync(_loadModelCancellationSource)
-                .HandleExceptions(Logger);
-        }
-
-        private async Task InternalLoadModelProtectedAsync(CancellationTokenSource cancellationSource)
-        {
-            using (cancellationSource)
-            {
-                try
-                {
-                    await InternalLoadModelAsync(cancellationSource)
-                        .ConfigureAwait(true);
-                }
-                catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested) { }
-            }
-        }
-
-        private async Task InternalLoadModelAsync(CancellationTokenSource cancellationSource)
-        {
-            TModel? model = null;
-            var notifications = NotificationManager.CreateRecorder();
-
-            try
-            {
-                // Set the ambient alert message handler
-                _ambientNotifications.Value = notifications;
-
-                try
-                {
-                    model = await LoadModelAsync(cancellationSource.Token);
-                }
-                finally
-                {
-                    // Reset the ambient alert message handler
-                    _ambientNotifications.Value = null;
-                }
-            }
-            finally
-            {
-                await CommitLoadOperationAsync(cancellationSource, model, notifications);
-            }
-        }
-
-        private async ValueTask CommitLoadOperationAsync(
-            CancellationTokenSource cancellationSource,
-            TModel? model,
-            NotificationRecorder notifications)
-        {
-            // We are running on a synchronization context, but we await on the result task of
-            // OnModelLoadedAsync. Therefore, multiple invokations of CommitLoadOperationAsync
-            // may actually run concurrently overriding the results of each other and
-            // bringing concurrency to the derived component via concurrent calls to OnModelLoadedAsync.
-            // We protect us be only executing only one CommitLoadOperationAsync call a time.
-
-            using (await _loadModelMutex.LockAsync(cancellationSource.Token))
-            {
-                if (_loadModelCancellationSource != cancellationSource)
-                    return;
-
-                _loadModelCancellationSource = null;
-
-                _loadModelNotifications?.Dispose();
-                _loadModelNotifications = notifications;
-                notifications.PublishNotifications();
-
-                if (model != null)
-                {
-                    IsInitiallyLoaded = true;
-                    Model = model;
-
-                    OnModelLoaded();
-                    await OnModelLoadedAsync();
-                    StateHasChanged();
-                }
-            }
-        }
-
-        protected virtual ValueTask<TModel?> LoadModelAsync(CancellationToken cancellation)
-        {
-            try
-            {
-                return new ValueTask<TModel?>(Activator.CreateInstance<TModel>());
-            }
-            catch (MissingMethodException exc)
-            {
-                throw new InvalidOperationException(
-                    $"Cannot create a model of type {typeof(TModel)}. The type does not have a public default constructor.", exc);
-            }
-        }
-
-        protected virtual async ValueTask<TModel?> EvaluateLoadResultAsync(IDispatchResult dispatchResult)
-        {
-            if (IsSuccess(dispatchResult, out var model))
-            {
-                await OnLoadSuccessAsync(model, dispatchResult);
-                return model;
-            }
-
-            await EvaluateFailureResultAsync(dispatchResult);
-            return null;
-        }
-
-        protected virtual ValueTask OnLoadSuccessAsync(TModel model, IDispatchResult dispatchResult)
-        {
-            return default;
-        }
-
-        protected virtual bool IsSuccess(IDispatchResult dispatchResult, out TModel model)
+        protected virtual bool TryExtractModelAsync(
+            IDispatchResult dispatchResult,
+            [NotNullWhen(true)] out TModel? model)
         {
             if (dispatchResult is null)
                 throw new ArgumentNullException(nameof(dispatchResult));
@@ -290,31 +208,60 @@ namespace AI4E.AspNetCore.Components
             return dispatchResult.IsSuccessWithResult(out model);
         }
 
-        protected virtual void OnModelLoaded() { }
+        #region Load model
 
-        protected virtual ValueTask OnModelLoadedAsync()
+        protected virtual ValueTask<TModel?> LoadModelAsync(CancellationToken cancellation)
         {
-            return default;
+            return new ValueTask<TModel?>(result: null);
+        }
+
+        protected virtual async ValueTask<TModel?> EvaluateLoadResultAsync(IDispatchResult dispatchResult)
+        {
+            if (TryExtractModelAsync(dispatchResult, out var model))
+            {
+                return await OnLoadSuccessAsync(model, dispatchResult);
+            }
+
+            await EvaluateFailureResultAsync(dispatchResult);
+            return null;
+        }
+
+        protected virtual ValueTask<TModel?> OnLoadSuccessAsync(TModel model, IDispatchResult dispatchResult)
+        {
+            return new ValueTask<TModel?>(model);
         }
 
         #endregion
 
-        #region Store
+        #region Store model
 
-        protected virtual ValueTask EvaluateStoreResultAsync(IDispatchResult dispatchResult)
+        protected virtual ValueTask<TModel?> StoreModelAsync(CancellationToken cancellation)
+        {
+            return new ValueTask<TModel?>(result: null);
+        }
+
+        protected virtual async ValueTask<TModel?> EvaluateStoreResultAsync(IDispatchResult dispatchResult)
         {
             if (dispatchResult is null)
                 throw new ArgumentNullException(nameof(dispatchResult));
 
             if (dispatchResult.IsSuccess)
             {
-                return OnStoreSuccessAsync(Model, dispatchResult);
+                if (!TryExtractModelAsync(dispatchResult, out var model))
+                {
+                    model = null;
+                }
+
+                NotifySuccess();
+                return await OnStoreSuccessAsync(model, dispatchResult);
             }
 
-            return EvaluateFailureResultAsync(dispatchResult);
+            NotifyFailure();
+            await EvaluateFailureResultAsync(dispatchResult);
+            return Model;
         }
 
-        protected virtual ValueTask OnStoreSuccessAsync(TModel? model, IDispatchResult dispatchResult)
+        protected virtual async ValueTask<TModel?> OnStoreSuccessAsync(TModel? model, IDispatchResult dispatchResult)
         {
             var notification = new NotificationMessage(
                 NotificationType.Success,
@@ -324,6 +271,165 @@ namespace AI4E.AspNetCore.Components
             };
 
             Notifications.PlaceNotification(notification);
+            return model ?? (EnableLoadAfterStore ?  await LoadAsync().ConfigureAwait(true) : Model);
+        }
+
+        #endregion
+
+        #region Validate model
+
+        protected virtual ValueTask ValidateModelAsync(CancellationToken cancellation)
+        {
+            return default;
+        }
+
+        protected virtual async ValueTask EvaluateValidateResultAsync(IDispatchResult dispatchResult)
+        {
+            if (dispatchResult is null)
+                throw new ArgumentNullException(nameof(dispatchResult));
+
+            if (dispatchResult.IsSuccess)
+            {
+                await OnValidateSuccessAsync(dispatchResult);
+            }
+
+            await EvaluateFailureResultAsync(dispatchResult);
+        }
+
+        protected virtual ValueTask OnValidateSuccessAsync(IDispatchResult dispatchResult)
+        {
+            ValidationResults = Enumerable.Empty<ValidationResult>();
+            return default;
+        }
+
+        #endregion
+
+        #region Operation execution
+
+        protected Task<TModel?> LoadAsync()
+        {
+            return LoadAsync(default);
+        }
+
+        protected async Task<TModel?> LoadAsync(CancellationToken cancellation)
+        {
+            // We are already in a context. Skip operation setup.
+            if (_ambientOperationContext.Value != null)
+            {
+                return await LoadModelAsync(cancellation);
+            }
+
+#pragma warning disable CA2000, IDE0067
+            var operationContext = new LoadOperationContext(this, cancellation);
+#pragma warning restore CA2000, IDE0067
+
+            try
+            {
+                await operationContext.ExecuteOperationAsync().ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) when (operationContext.CancellationTokenSource.IsCancellationRequested && !cancellation.IsCancellationRequested)
+            {
+                if (_isDisposed)
+                {
+                    return null;
+                }
+            }
+
+            // We do not pass the model from the commit operation back to us (the caller) 
+            // because we may not actually succeed loading the model. 
+            // We may be canceled by a concurrent load operation that's result we need to return here.
+            return await _pendingOperationCompletion.Task.ConfigureAwait(true);
+        }
+
+        protected Task<TModel?> StoreAsync()
+        {
+            return StoreAsync(default);
+        }
+
+        protected async Task<TModel?> StoreAsync(CancellationToken cancellation)
+        {
+            // We are already in a context. Skip operation setup.
+            if (_ambientOperationContext.Value != null)
+            {
+                return await StoreModelAsync(cancellation);
+            }
+
+#pragma warning disable CA2000, IDE0067
+            var operationContext = new StoreOperationContext(this, cancellation);
+#pragma warning restore CA2000, IDE0067
+
+            try
+            {
+                await operationContext.ExecuteOperationAsync().ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) when (operationContext.CancellationTokenSource.IsCancellationRequested && !cancellation.IsCancellationRequested)
+            {
+                if (_isDisposed)
+                {
+                    return null;
+                }
+            }
+
+            // We do not pass the model from the commit operation back to us (the caller) 
+            // because we may not actually succeed loading the model. 
+            // We may be canceled by a concurrent load operation that's result we need to return here.
+            return await _pendingOperationCompletion.Task.ConfigureAwait(true);
+        }
+
+        protected Task ValidateAsync()
+        {
+            return ValidateAsync(default);
+        }
+
+        protected async Task ValidateAsync(CancellationToken cancellation)
+        {
+            // We are already in a context. Skip operation setup.
+            if (_ambientOperationContext.Value != null)
+            {
+                await ValidateModelAsync(cancellation);
+                return;
+            }
+
+#pragma warning disable CA2000, IDE0067
+            var operationContext = new ValidateOperationContext(this, cancellation);
+#pragma warning restore CA2000, IDE0067
+
+            try
+            {
+                await operationContext.ExecuteOperationAsync().ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) when (operationContext.CancellationTokenSource.IsCancellationRequested && !cancellation.IsCancellationRequested)
+            {
+                if (_isDisposed)
+                {
+                    return;
+                }
+            }
+
+            // We do not pass the model from the commit operation back to us (the caller) 
+            // because we may not actually succeed loading the model. 
+            // We may be canceled by a concurrent load operation that's result we need to return here.
+            await _pendingOperationCompletion.Task.ConfigureAwait(true);
+        }
+
+        protected virtual void OnValidated() { }
+
+        protected virtual ValueTask OnValidatedAsync()
+        {
+            return default;
+        }
+
+        protected virtual void OnStored() { }
+
+        protected virtual ValueTask OnStoredAsync()
+        {
+            return default;
+        }
+
+        protected virtual void OnLoaded() { }
+
+        protected virtual ValueTask OnLoadedAsync()
+        {
             return default;
         }
 
@@ -383,10 +489,11 @@ namespace AI4E.AspNetCore.Components
 
         protected virtual ValueTask OnValidationFailureAsync(IDispatchResult dispatchResult)
         {
-            var validationResults = (dispatchResult as ValidationFailureDispatchResult)
+            ValidationResults = (dispatchResult as ValidationFailureDispatchResult)
                 ?.ValidationResults
                 ?? Enumerable.Empty<ValidationResult>();
-            var validationMessages = validationResults.Where(p => string.IsNullOrWhiteSpace(p.Member)).Select(p => p.Message);
+
+            var validationMessages = ValidationResults.Where(p => string.IsNullOrWhiteSpace(p.Member)).Select(p => p.Message);
 
             if (!validationMessages.Any())
             {
@@ -442,15 +549,24 @@ namespace AI4E.AspNetCore.Components
 
         #region IDisposable
 
+        private bool _isDisposed;
+
         protected virtual void Dispose(bool disposing)
         {
             if (disposing)
             {
+                if (_isDisposed)
+                {
+                    return;
+                }
+
+                _isDisposed = true;
+
                 lock (_loadModelMutex)
                 {
                     try
                     {
-                        _loadModelCancellationSource?.Cancel();
+                        _pendingOperationCancellationSource?.Cancel();
                     }
                     catch (ObjectDisposedException) { }
                 }
@@ -469,5 +585,231 @@ namespace AI4E.AspNetCore.Components
         }
 
         #endregion
+
+        protected internal void NotifyFailure()
+        {
+            NotifyStatus(false);
+        }
+
+        protected internal void NotifySuccess()
+        {
+            NotifyStatus(true);
+        }
+
+        private void NotifyStatus(bool success)
+        {
+            var context = _ambientOperationContext.Value;
+
+            if (context != null)
+            {
+                context.IsSuccess = success;
+            }
+        }
+
+        private abstract class OperationContext : IDisposable
+        {
+            private readonly INotificationRecorder _notifications;
+
+            public OperationContext(
+                ComponentBase<TModel> component,
+                CancellationToken cancellation)
+            {
+                Component = component;
+                _notifications = Component.NotificationManager.CreateRecorder();
+                ValidationResults = Component._validationResults;
+                Model = Component.Model;
+
+                // An operation is in progress currently.
+                if (Component._pendingOperationCancellationSource != null)
+                {
+                    try
+                    {
+                        Component._pendingOperationCancellationSource.Cancel();
+                    }
+                    catch (ObjectDisposedException) { }
+                }
+
+                CancellationTokenSource = cancellation.CanBeCanceled
+                                 ? CancellationTokenSource.CreateLinkedTokenSource(cancellation, default)
+                                 : new CancellationTokenSource();
+
+                Component._pendingOperationCancellationSource = CancellationTokenSource;
+            }
+
+            protected ComponentBase<TModel> Component { get; }
+
+            public INotificationManager Notifications => _notifications;
+            public IEnumerable<ValidationResult> ValidationResults { get; set; } = Enumerable.Empty<ValidationResult>();
+            public CancellationTokenSource CancellationTokenSource { get; }
+            public TModel Model { get; }
+            public bool IsSuccess { get; set; } = true;
+
+            protected abstract ValueTask<TModel?> ExcuteModelOperationAsync(CancellationToken cancellation);
+
+            public async ValueTask ExecuteOperationAsync()
+            {
+                TModel? model = null;
+
+                try
+                {
+                    // Set the ambient operation context.
+                    Component._ambientOperationContext.Value = this;
+
+                    try
+                    {
+                        model = await ExcuteModelOperationAsync(CancellationTokenSource.Token);
+                    }
+                    finally
+                    {
+                        // Reset the ambient alert message handler
+                        Component._ambientOperationContext.Value = null;
+                    }
+                }
+                finally
+                {
+                    await CommitLoadAsync(model);
+                }
+            }
+
+            private async ValueTask CommitLoadAsync(TModel? model)
+            {
+                // We are running on a synchronization context, but we await on the result task of
+                // OnModelLoadedAsync. Therefore, multiple invokations of CommitLoadOperationAsync
+                // may actually run concurrently overriding the results of each other and
+                // bringing concurrency to the derived component via concurrent calls to OnModelLoadedAsync.
+                // We protect us be only executing only one CommitLoadOperationAsync call a time.
+
+                using (await Component._loadModelMutex.LockAsync(CancellationTokenSource.Token))
+                {
+                    if (Component._pendingOperationCancellationSource != CancellationTokenSource)
+                        return;
+
+                    Component._pendingOperationCancellationSource = null;
+
+                    Component._lastSuccessOperationContext?.Dispose();
+                    Component._lastSuccessOperationContext = this;
+
+                    await PublishAsync(model);
+                }
+            }
+
+            private async ValueTask PublishAsync(TModel? model)
+            {
+                Component._validationResults = ValidationResults;
+                _notifications.PublishNotifications();
+
+                if (CommitModel(model))
+                {
+
+                    Component._model = model;
+                    Component._pendingOperationCompletion.SetResult(model);
+                    Component._pendingOperationCompletion = new TaskCompletionSource<TModel?>();
+                }
+
+                await OnCommittedAsync(model);
+
+                Component.StateHasChanged();
+            }
+
+            protected virtual bool CommitModel(TModel? model)
+            {
+                return true;
+            }
+
+            protected abstract ValueTask OnCommittedAsync(TModel? model);
+
+            public void Dispose()
+            {
+                _notifications.Dispose();
+            }
+        }
+
+        private sealed class LoadOperationContext : OperationContext
+        {
+            public LoadOperationContext(
+                ComponentBase<TModel> componentBase,
+                CancellationToken cancellationToken)
+                : base(componentBase, cancellationToken) { }
+
+            protected override ValueTask<TModel?> ExcuteModelOperationAsync(CancellationToken cancellation)
+            {
+                return Component.LoadModelAsync(cancellation);
+            }
+
+            protected override async ValueTask OnCommittedAsync(TModel? model)
+            {
+                if (model != null && !ReferenceEquals(model, Model))
+                {
+                    Component.IsInitiallyLoaded = true;
+
+                    Component.OnLoaded();
+                    await Component.OnLoadedAsync();
+                }
+            }
+        }
+
+        private sealed class StoreOperationContext : OperationContext
+        {
+            public StoreOperationContext(
+                ComponentBase<TModel> componentBase,
+                CancellationToken cancellationToken)
+                : base(componentBase, cancellationToken) { }
+
+            protected override ValueTask<TModel?> ExcuteModelOperationAsync(CancellationToken cancellation)
+            {
+                return Component.StoreModelAsync(cancellation);
+            }
+
+            protected override async ValueTask OnCommittedAsync(TModel? model)
+            {
+                // We are at the end of our commit step. The store operation may have been executed
+                // - successfully and yield a new model (This indicated that we performed an implicit or explicit model load)
+                // - successfully and yield no new model
+                // - successfully and yield a null model (For example for deletion operations.)
+                // - non successfully (Via the IsSuccess state)
+
+                Component.OnValidated();
+                await Component.OnValidatedAsync();
+
+                if (IsSuccess)
+                {
+                    Component.OnStored();
+                    await Component.OnStoredAsync();
+                }
+
+                if (model != null && !ReferenceEquals(model, Model))
+                {
+                    Component.IsInitiallyLoaded = true;
+
+                    Component.OnLoaded();
+                    await Component.OnLoadedAsync();
+                }
+            }
+        }
+
+        private sealed class ValidateOperationContext : OperationContext
+        {
+            public ValidateOperationContext(
+                ComponentBase<TModel> componentBase,
+                CancellationToken cancellationToken)
+                : base(componentBase, cancellationToken) { }
+
+            protected override async ValueTask<TModel?> ExcuteModelOperationAsync(CancellationToken cancellation)
+            {
+                await Component.ValidateModelAsync(cancellation);
+                return null; // Just return anything. Theses value will never get committed back.
+            }
+
+            protected override bool CommitModel(TModel? model)
+            {
+                return false;
+            }
+
+            protected override async ValueTask OnCommittedAsync(TModel? model)
+            {
+                Component.OnValidated();
+                await Component.OnValidatedAsync();
+            }
+        }
     }
 }
