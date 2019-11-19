@@ -186,7 +186,8 @@ namespace AI4E.AspNetCore.Components.Notifications
 
                 lock (_mutex)
                 {
-                    if (!_isDisposed)
+                    // The notification may already be removed in the meantime.
+                    if (!_isDisposed && node.List != null)
                     {
                         _notificationMessages.Remove(node);
                     }
