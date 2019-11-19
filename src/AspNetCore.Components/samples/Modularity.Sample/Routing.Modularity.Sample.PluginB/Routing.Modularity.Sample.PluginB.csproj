@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\Messaging\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
-    <ProjectReference Include="..\..\..\..\Messaging\AI4E.Messaging\AI4E.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\..\Messaging\src\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.AspNetCore.Components\AI4E.AspNetCore.Components.csproj" />
     <ProjectReference Include="..\Routing.Modularity.Sample.PluginA.Shared\Routing.Modularity.Sample.PluginA.Shared.csproj" />
     <ProjectReference Include="..\Routing.Modularity.Sample.Shared\Routing.Modularity.Sample.Shared.csproj" />

@@ -31,6 +31,7 @@
 
   <PropertyGroup>
     <RepositoryRootPath>$(RepositoryRoot)\</RepositoryRootPath>
+    <RepositorySharedPath>$(RepositoryRoot)\src\Shared\</RepositorySharedPath>
     <RepositoryBuiltPath>$(RepositoryRootPath)artifacts\</RepositoryBuiltPath>
     <RootOutputPath>$(RepositoryBuiltPath)bin\</RootOutputPath>
     <RootIntermediateOutputPath>$(RepositoryBuiltPath)obj\</RootIntermediateOutputPath>
@@ -54,8 +55,9 @@
     <NetStandardVersions>$(NetStandardVersion);netstandard2.1</NetStandardVersions>
     <NetCoreAppVersion>netcoreapp3.0</NetCoreAppVersion>
     <NetCoreAppVersions>$(NetCoreAppVersion)</NetCoreAppVersions>
-    <FrameworkVersions>$(NetStandardVersions);$(NetCoreAppVersions)</FrameworkVersions>
-
+    <RuntimeVersions>$(NetCoreAppVersions)</RuntimeVersions>
+    <FrameworkVersions>$(NetStandardVersions);$(RuntimeVersions)</FrameworkVersions>
+    
     <NETSTD20Features></NETSTD20Features>
     <NETSTD21Features>$(NETSTD20Features);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS;SUPPORTS_NULLABILITY_ATTRIBUTES;SUPPORTS_INHERIT_TYPE_INFO</NETSTD21Features>
     <NETCORE30Features>$(NETSTD21Features);SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT;</NETCORE30Features>
@@ -67,7 +69,7 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <Compile Include="$(RepositoryRoot)src\Shared\NullabilityAttributes.cs" Link="Shared\NullabilityAttributes.cs" />
+    <Compile Include="$(RepositorySharedPath)NullabilityAttributes.cs" Link="Shared\NullabilityAttributes.cs" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">

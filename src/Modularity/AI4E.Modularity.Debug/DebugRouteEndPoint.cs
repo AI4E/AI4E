@@ -80,6 +80,11 @@ namespace AI4E.Modularity.Debug
 
         #region Disposal
 
+        public void Dispose()
+        {
+            _proxy.DisposeAsync().ConfigureAwait(false).GetAwaiter().GetResult(); // TODO
+        }
+
         public ValueTask DisposeAsync()
         {
             return _proxy.DisposeAsync();

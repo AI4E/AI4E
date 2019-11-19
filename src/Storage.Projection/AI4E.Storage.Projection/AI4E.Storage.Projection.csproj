@@ -5,13 +5,14 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <ProjectReference Include="..\..\Utils\src\AI4E.Utils.ApplicationParts\AI4E.Utils.ApplicationParts.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Projection.Abstractions\AI4E.Storage.Projection.Abstractions.csproj" />
     <ProjectReference Include="..\..\Storage\AI4E.Storage\AI4E.Storage.csproj" />
-    <ProjectReference Include="..\..\Utils\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj" />
+    <ProjectReference Include="..\..\Utils\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="$(SolutionDir)src\Shared\DataPropertyHelper.cs" Link="Shared\%(Filename)%(Extension)" />
-    <Compile Include="$(SolutionDir)src\Shared\IdGenerator.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositorySharedPath)DataPropertyHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositorySharedPath)IdGenerator.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>
