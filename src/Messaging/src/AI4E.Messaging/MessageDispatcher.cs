@@ -296,6 +296,27 @@ namespace AI4E.Messaging
                 bool localDispatch,
                 CancellationToken cancellation)
             {
+                try
+                {
+                    return await HandleUnprotectedAsync(routeMessage, route, publish, localDispatch, cancellation);
+                }
+#pragma warning disable CA1031
+                catch (Exception exc)
+#pragma warning restore CA1031
+                {
+                    var dispatchResult = _messageDispatcher.WrapException(exc);
+                    var resultRouteMessage = _messageDispatcher.BuildRouteMessage(dispatchResult);
+                    return new RouteMessageHandleResult(resultRouteMessage, handled: false);
+                }
+            }
+
+            private async ValueTask<RouteMessageHandleResult> HandleUnprotectedAsync(
+                RouteMessage<DispatchDataDictionary> routeMessage,
+                Route route,
+                bool publish,
+                bool localDispatch,
+                CancellationToken cancellation)
+            {
                 var dispatchData = _messageDispatcher.GetDispatchData(routeMessage);
 
                 // The type of message in the dispatch-data is not necessarily the type that we use for dispatch,
@@ -325,7 +346,6 @@ namespace AI4E.Messaging
                     cancellation);
 
                 var resultRouteMessage = _messageDispatcher.BuildRouteMessage(dispatchResult);
-
                 return new RouteMessageHandleResult(resultRouteMessage, handled: handlersFound);
             }
         }
@@ -421,9 +441,19 @@ namespace AI4E.Messaging
             return DeserializeDispatchResult(routeMessage.Message);
         }
 
+        private IDispatchResult WrapException(Exception exc)
+        {
+            if (_optionsAccessor.Value.EnableVerboseFailureResults)
+            {
+                return new FailureDispatchResult(exc);
+            }
+
+            return new FailureDispatchResult("An error occured while handling the message.");
+        }
+
         #region Dispatch
 
-        public ValueTask<IDispatchResult> DispatchAsync(
+        public async ValueTask<IDispatchResult> DispatchAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
             RouteEndPointAddress endPoint,
@@ -434,10 +464,10 @@ namespace AI4E.Messaging
 
             if (endPoint != default)
             {
-                return InternalDispatchAsync(dispatchData, publish, endPoint, cancellation);
+                return await InternalDispatchAsync(dispatchData, publish, endPoint, cancellation);
             }
 
-            return InternalDispatchAsync(dispatchData, publish, cancellation);
+            return await InternalDispatchAsync(dispatchData, publish, cancellation);
         }
 
         public ValueTask<IDispatchResult> DispatchAsync(
@@ -533,8 +563,8 @@ namespace AI4E.Messaging
                 throw new ArgumentNullException(nameof(dispatchData));
 
             await _initializationHelper.Initialization
-                .WithCancellation(cancellation)
-                .ConfigureAwait(false);
+                                       .WithCancellation(cancellation)
+                                       .ConfigureAwait(false);
 
             var (dispatchResult, _) = await InternalDispatchLocalAsync(
                 dispatchData.MessageType,
@@ -651,8 +681,22 @@ namespace AI4E.Messaging
                         continue;
                     }
 
-                    var dispatchOperation = InternalDispatchLocalSingleHandlerAsync(
-                        handlerRegistration, dispatchData!, publish, localDispatch, cancellation);
+                    async ValueTask<IDispatchResult> DispatchProtected()
+                    {
+                        try
+                        {
+                            return await InternalDispatchLocalSingleHandlerAsync(
+                                handlerRegistration, dispatchData!, publish, localDispatch, cancellation);
+                        }
+#pragma warning disable CA1031
+                        catch (Exception exc)
+#pragma warning restore CA1031
+                        {
+                            return WrapException(exc);
+                        }
+                    }
+
+                    var dispatchOperation = DispatchProtected();
 
                     dispatchOperations.Add(dispatchOperation);
                 }
@@ -662,11 +706,18 @@ namespace AI4E.Messaging
                     return (result: new SuccessDispatchResult(), handlersFound: false);
                 }
 
-                var dispatchResults = await dispatchOperations.WhenAll(preserveOrder: false);
+                var dispatchResults = (await dispatchOperations.WhenAll(preserveOrder: false))
+                    .Where(p => !(p is DispatchFailureDispatchResult))
+                    .ToList();
 
-                if (dispatchResults.Count() == 1)
+                if (!dispatchResults.Any())
                 {
-                    return (result: dispatchResults.First(), handlersFound: true);
+                    return (result: new SuccessDispatchResult(), handlersFound: false);
+                }
+
+                if (dispatchResults.Count == 1)
+                {
+                    return (result: dispatchResults[0], handlersFound: true);
                 }
 
                 return (result: new AggregateDispatchResult(dispatchResults), handlersFound: true);
@@ -685,12 +736,26 @@ namespace AI4E.Messaging
                         continue;
                     }
 
-                    var result = await InternalDispatchLocalSingleHandlerAsync(
-                        handlerRegistration, dispatchData!, publish, localDispatch, cancellation);
+                    IDispatchResult result;
 
-                    if (result.IsDispatchFailure())
+                    try
                     {
-                        continue;
+                        result = await InternalDispatchLocalSingleHandlerAsync(
+                            handlerRegistration, dispatchData!, publish, localDispatch, cancellation);
+
+                        // If the handler returns with a dispatch failure, this is the same as if we never had found 
+                        // the handler to enable dynamically opting out of message handling.
+                        // This is not an exceptional case, in the sense of returning a failure here.
+                        if (result.IsDispatchFailure())
+                        {
+                            continue;
+                        }
+                    }
+#pragma warning disable CA1031
+                    catch (Exception exc)
+#pragma warning restore CA1031
+                    {
+                        result = WrapException(exc);
                     }
 
                     return (result, handlersFound: true);
@@ -715,24 +780,17 @@ namespace AI4E.Messaging
 
             if (handler == null)
             {
+                // TODO: Log failure
                 throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData!.MessageType}' to a handler that is null.");
             }
 
             if (!handler.MessageType.IsAssignableFrom(dispatchData!.MessageType))
             {
+                // TODO: Log failure
                 throw new InvalidOperationException($"Cannot dispatch a message of type '{dispatchData.MessageType}' to a handler that handles messages of type '{handler.MessageType}'.");
             }
 
-            try
-            {
-                return await handler.HandleAsync(dispatchData, publish, localDispatch, cancellation);
-            }
-#pragma warning disable CA1031
-            catch (Exception exc)
-#pragma warning restore CA1031
-            {
-                return new FailureDispatchResult(exc);
-            }
+            return await handler.HandleAsync(dispatchData, publish, localDispatch, cancellation);
         }
 
         #endregion
