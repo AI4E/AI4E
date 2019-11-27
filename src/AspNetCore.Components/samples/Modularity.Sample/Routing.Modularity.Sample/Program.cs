@@ -1,3 +1,5 @@
+using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using AI4E.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
@@ -17,7 +19,11 @@ namespace Routing.Modularity.Sample
         public static IHostBuilder CreateHostBuilder(string[] args)
         {
             return Host.CreateDefaultBuilder(args)
-                .ConfigureWebHostDefaults(webBuilder => webBuilder.UseStartup<Startup>())
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+                    webBuilder.UseContentRoot(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+                })
                 .UseContextServiceProvider(options => options.ValidateScopes = true);
         }
     }

@@ -16,6 +16,12 @@
     <ProjectReference Include="..\..\..\src\AI4E.AspNetCore.Components\AI4E.AspNetCore.Components.csproj" />
     <ProjectReference Include="..\Routing.Modularity.Sample.Shared\Routing.Modularity.Sample.Shared.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="wwwroot\\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
   
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Command="dotnet build $(ProjectDir)\..\Routing.Modularity.Sample.PluginA -c $(Configuration)" />
