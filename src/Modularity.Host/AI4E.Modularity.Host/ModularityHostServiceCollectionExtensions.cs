@@ -35,9 +35,7 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         public static IModularityBuilder AddModularity(this IServiceCollection services)
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
+            services.AddModuleManagement();
             services.AddOptions();
             services.AddMessaging()
                 .UseTcpEndPoint();
