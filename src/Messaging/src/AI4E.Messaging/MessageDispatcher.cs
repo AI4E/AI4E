@@ -319,34 +319,45 @@ namespace AI4E.Messaging
             {
                 var dispatchData = _messageDispatcher.GetDispatchData(routeMessage);
 
-                // The type of message in the dispatch-data is not necessarily the type that we use for dispatch,
-                // because of route descend. The route contains the actual message-type that we use for dispatch.
-                // The message-type that the dispatch-data provices MUST ALWAYS be assignable to the message-type
-                // in the route.
-
-                // This returns false, if it is the default value of the route-type,
-                // or the message-type encoded in the route could not be load.
-                if (!route.TryGetMessageType(_messageDispatcher._typeResolver, out var messageType))
+                if (dispatchData is null)
                 {
-                    // TODO: Is this an error, or can we safely fallback to the type encoded in the dispatch-data?
-                    messageType = dispatchData.MessageType;
+                    var dispatchResult = new FailureDispatchResult("Unable to deserialize the dispatch data."); // TODO
+                    var resultRouteMessage = _messageDispatcher.BuildRouteMessage(dispatchResult);
+                    return new RouteMessageHandleResult(resultRouteMessage, handled: false);
+                }
+                else
+                {
+                    // The type of message in the dispatch-data is not necessarily the type that we use for dispatch,
+                    // because of route descend. The route contains the actual message-type that we use for dispatch.
+                    // The message-type that the dispatch-data provices MUST ALWAYS be assignable to the message-type
+                    // in the route.
+
+                    // This returns false, if it is the default value of the route-type,
+                    // or the message-type encoded in the route could not be load.
+                    if (!route.TryGetMessageType(_messageDispatcher._typeResolver, out var messageType))
+                    {
+                        // TODO: Is this an error, or can we safely fallback to the type encoded in the dispatch-data?
+                        messageType = dispatchData.MessageType;
+                    }
+
+                    Debug.Assert(messageType != null);
+                    Debug.Assert(messageType!.IsAssignableFrom(dispatchData.MessageType));
+
+                    // We allow target route descend on publishing only (See https://github.com/AI4E/AI4E/issues/82#issuecomment-448269275)
+                    // TODO: Is this correct for dispatching to known end-point, too?
+                    var (dispatchResult, handlersFound) = await _messageDispatcher.InternalDispatchLocalAsync(
+                        messageType!,
+                        dispatchData,
+                        publish,
+                        allowRouteDescend: publish,
+                        localDispatch,
+                        cancellation);
+
+                    var resultRouteMessage = _messageDispatcher.BuildRouteMessage(dispatchResult);
+                    return new RouteMessageHandleResult(resultRouteMessage, handled: handlersFound);
                 }
 
-                Debug.Assert(messageType != null);
-                Debug.Assert(messageType!.IsAssignableFrom(dispatchData.MessageType));
 
-                // We allow target route descend on publishing only (See https://github.com/AI4E/AI4E/issues/82#issuecomment-448269275)
-                // TODO: Is this correct for dispatching to known end-point, too?
-                var (dispatchResult, handlersFound) = await _messageDispatcher.InternalDispatchLocalAsync(
-                    messageType!,
-                    dispatchData,
-                    publish,
-                    allowRouteDescend: publish,
-                    localDispatch,
-                    cancellation);
-
-                var resultRouteMessage = _messageDispatcher.BuildRouteMessage(dispatchResult);
-                return new RouteMessageHandleResult(resultRouteMessage, handled: handlersFound);
             }
         }
 
@@ -373,7 +384,8 @@ namespace AI4E.Messaging
             using var frameStream = frame.OpenStream();
             using var reader = new StreamReader(frameStream);
             using var jsonReader = new JsonTextReader(reader);
-            return Serializer.Deserialize<IDispatchResult>(jsonReader);
+            return Serializer.Deserialize<IDispatchResult>(jsonReader)
+                ?? new FailureDispatchResult("Unable to deserialize the dispatch result"); // TODO
         }
 
         private Message SerializeDispatchData(DispatchDataDictionary dispatchData)
@@ -392,7 +404,7 @@ namespace AI4E.Messaging
             return messageBuilder.BuildMessage();
         }
 
-        private DispatchDataDictionary DeserializeDispatchData(Message message)
+        private DispatchDataDictionary? DeserializeDispatchData(Message message)
         {
             message.PopFrame(out var frame);
 
@@ -421,7 +433,7 @@ namespace AI4E.Messaging
                    type == objType;
         }
 
-        private DispatchDataDictionary GetDispatchData(RouteMessage<DispatchDataDictionary> routeMessage)
+        private DispatchDataDictionary? GetDispatchData(RouteMessage<DispatchDataDictionary> routeMessage)
         {
             if (routeMessage.TryGetOriginal(out var dispatchData) && IsFromSameContext(dispatchData))
             {

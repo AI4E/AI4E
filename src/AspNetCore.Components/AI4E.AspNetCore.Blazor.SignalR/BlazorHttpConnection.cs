@@ -34,9 +34,9 @@ using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Blazor.Http;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
@@ -422,10 +422,13 @@ namespace AI4E.AspNetCore.Blazor.SignalR
             return uriBuilder.Uri;
         }
 
+        static readonly Func<Type> _monoWasmHttpMessageHandlerType = () 
+            => Assembly.Load("WebAssembly.Net.Http").GetType("WebAssembly.Net.Http.HttpClient.WasmHttpMessageHandler")!;
+
         private HttpClient CreateHttpClient()
         {
 #pragma warning disable IDE0068
-            HttpMessageHandler handler = new WebAssemblyHttpMessageHandler();
+            var handler = (HttpMessageHandler)Activator.CreateInstance(_monoWasmHttpMessageHandlerType())!;
 #pragma warning restore IDE0068
 
             if (_options.HttpMessageHandlerFactory != null)
