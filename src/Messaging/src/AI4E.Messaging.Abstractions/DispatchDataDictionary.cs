@@ -593,7 +593,7 @@ namespace AI4E.Messaging
     public sealed class DispatchDataDictionaryConverter : JsonConverter
     {
         /// <inheritdoc />
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
             if (writer is null)
                 throw new ArgumentNullException(nameof(writer));
@@ -645,7 +645,7 @@ namespace AI4E.Messaging
         }
 
         /// <inheritdoc />
-        public override object? ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
         {
             if (reader is null)
                 throw new ArgumentNullException(nameof(reader));
@@ -657,13 +657,13 @@ namespace AI4E.Messaging
                 throw new ArgumentNullException(nameof(serializer));
 
             if (!CanConvert(objectType))
-                throw new InvalidOperationException();
+                throw new JsonSerializationException();
 
             if (reader.TokenType == JsonToken.Null)
                 return null;
 
             if (reader.TokenType != JsonToken.StartObject)
-                throw new InvalidOperationException();
+                throw new JsonSerializationException();
 
             var messageType = objectType.IsGenericTypeDefinition ? objectType.GetGenericArguments().First() : null;
             object? message = null;
@@ -678,46 +678,46 @@ namespace AI4E.Messaging
 
                 else if (reader.TokenType == JsonToken.PropertyName)
                 {
-                    if ((string)reader.Value == "message-type")
+                    if (StringComparer.OrdinalIgnoreCase.Equals(reader.Value, "message-type"))
                     {
                         reader.Read();
 
-                        if(!(reader.Value is string deserializedMessageTypeName))
+                        if (!(reader.Value is string deserializedMessageTypeName))
                         {
-                            throw new InvalidOperationException();
+                            throw new JsonSerializationException();
                         }
 
                         var deserializedMessageType = serializer.SerializationBinder.BindToType(assemblyName: null, deserializedMessageTypeName);
 
                         if (messageType != null && messageType != deserializedMessageType)
                         {
-                            throw new InvalidOperationException();
+                            throw new JsonSerializationException();
                         }
 
                         messageType = deserializedMessageType;
                     }
-                    else if ((string)reader.Value == "message")
+                    else if (StringComparer.OrdinalIgnoreCase.Equals(reader.Value, "message"))
                     {
                         reader.Read();
                         message = serializer.Deserialize(reader, typeof(object));
                     }
-                    else if ((string)reader.Value == "data")
+                    else if (StringComparer.OrdinalIgnoreCase.Equals(reader.Value, "data"))
                     {
                         data = ReadDataItems(reader, serializer);
                     }
                     else
                     {
-                        throw new InvalidOperationException();
+                        throw new JsonSerializationException();
                     }
                 }
                 else
                 {
-                    throw new InvalidOperationException();
+                    throw new JsonSerializationException();
                 }
             }
 
             if (messageType == null || message == null)
-                throw new InvalidOperationException();
+                throw new JsonSerializationException();
 
             return DispatchDataDictionary.Create(messageType, message, data?.ToImmutable() ?? ImmutableDictionary<string, object?>.Empty);
         }
@@ -741,7 +741,7 @@ namespace AI4E.Messaging
                 }
                 else
                 {
-                    throw new InvalidOperationException();
+                    throw new JsonSerializationException();
                 }
             }
 
@@ -750,20 +750,27 @@ namespace AI4E.Messaging
 
         private static void ReadSingleDataItem(JsonReader reader, JsonSerializer serializer, ImmutableDictionary<string, object?>.Builder result)
         {
-            var key = (string)reader.Value;
+            if (!(reader.Value is string key))
+                throw new JsonSerializationException();
+
             reader.Read(); // Read start object
             reader.Read(); // Read type property-name
 
-            if (reader.TokenType != JsonToken.PropertyName || (string)reader.Value != "type")
-                throw new InvalidOperationException();
+            if (reader.TokenType != JsonToken.PropertyName || !StringComparer.OrdinalIgnoreCase.Equals(reader.Value, "type"))
+                throw new JsonSerializationException();
 
             reader.Read(); // Read type property value
-            var type = serializer.SerializationBinder.BindToType(assemblyName: null, (string)reader.Value);
+
+
+            if (!(reader.Value is string stringifiedType))
+                throw new JsonSerializationException();
+
+            var type = serializer.SerializationBinder.BindToType(assemblyName: null, stringifiedType);
 
             reader.Read(); // Read value property-name
 
-            if (reader.TokenType != JsonToken.PropertyName || (string)reader.Value != "value")
-                throw new InvalidOperationException();
+            if (reader.TokenType != JsonToken.PropertyName || !StringComparer.OrdinalIgnoreCase.Equals(reader.Value, "value"))
+                throw new JsonSerializationException();
 
             reader.Read();
 

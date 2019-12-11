@@ -51,16 +51,18 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <NetStandardVersion>netstandard2.0</NetStandardVersion>
-    <NetStandardVersions>$(NetStandardVersion);netstandard2.1</NetStandardVersions>
-    <NetCoreAppVersion>netcoreapp3.0</NetCoreAppVersion>
-    <NetCoreAppVersions>$(NetCoreAppVersion)</NetCoreAppVersions>
+    <NetStandardVersion>netstandard2.1</NetStandardVersion>
+    <NetStandardVersions>$(NetStandardVersion);netstandard2.0</NetStandardVersions>
+    <NetCoreAppVersion>netcoreapp3.1</NetCoreAppVersion>
+    <NetCoreAppVersions>$(NetCoreAppVersion);netcoreapp3.0</NetCoreAppVersions>
     <RuntimeVersions>$(NetCoreAppVersions)</RuntimeVersions>
     <FrameworkVersions>$(NetStandardVersions);$(RuntimeVersions)</FrameworkVersions>
+    <BlazorFrameworkVersions>netstandard2.1;$(RuntimeVersions)</BlazorFrameworkVersions>
     
     <NETSTD20Features></NETSTD20Features>
     <NETSTD21Features>$(NETSTD20Features);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS;SUPPORTS_NULLABILITY_ATTRIBUTES;</NETSTD21Features>
     <NETCORE30Features>$(NETSTD21Features);SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT;</NETCORE30Features>
+    <NETCORE31Features>$(NETCORE30Features);</NETCORE31Features>
 
   </PropertyGroup>
 
@@ -78,6 +80,10 @@
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.0'">
     <DefineConstants>$(DefineConstants);$(NETCORE30Features);NETCORE30;</DefineConstants>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
+    <DefineConstants>$(DefineConstants);$(NETCORE31Features);NETCORE31;</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

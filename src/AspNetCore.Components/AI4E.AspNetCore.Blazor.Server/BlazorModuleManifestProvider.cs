@@ -68,7 +68,7 @@ namespace AI4E.AspNetCore.Blazor.Server
             using (var fileStream = new FileStream(blazorBootPath, FileMode.Open))
             using (var streamReader = new StreamReader(fileStream))
             {
-                blazorBoot = (BlazorBoot)JsonSerializer.CreateDefault().Deserialize(streamReader, typeof(BlazorBoot));
+                blazorBoot = (BlazorBoot)JsonSerializer.CreateDefault().Deserialize(streamReader, typeof(BlazorBoot))!;
             }
 
             var binPath = Path.Combine(distPath, "_framework", "_bin");
