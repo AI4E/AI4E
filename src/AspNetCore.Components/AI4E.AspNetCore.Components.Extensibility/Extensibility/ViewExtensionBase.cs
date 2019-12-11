@@ -18,6 +18,8 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
@@ -34,23 +36,26 @@ namespace AI4E.AspNetCore.Components.Extensibility
     /// </remarks>
     public abstract class ViewExtensionBase : ComponentBase, IViewExtensionDefinition
     {
-        private ParameterView _parameters;
+        private IReadOnlyDictionary<string, object?>? _parameters;
 
         /// <inheritdoc />
         protected override void BuildRenderTree(RenderTreeBuilder builder)
         {
             if (builder is null)
-                throw new System.ArgumentNullException(nameof(builder));
+                throw new ArgumentNullException(nameof(builder));
 
             builder.OpenComponent(sequence: 0, typeof(ViewExtensionPlaceholder<>).MakeGenericType(GetType()));
-            builder.AddMultipleAttributes(sequence: 0, _parameters.ToDictionary());
+            if (_parameters != null)
+            {
+                builder.AddMultipleAttributes(sequence: 0, _parameters);
+            }
             builder.CloseComponent();
         }
 
         /// <inheritdoc />
         public override Task SetParametersAsync(ParameterView parameters)
         {
-            _parameters = parameters;
+            _parameters = parameters.ToDictionary();
             return base.SetParametersAsync(parameters);
         }
     }

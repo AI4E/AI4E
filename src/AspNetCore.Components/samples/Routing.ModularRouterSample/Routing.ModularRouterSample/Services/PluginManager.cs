@@ -30,12 +30,12 @@ namespace Routing.ModularRouterSample.Services
         private static string GetPluginPath()
         {
             var dir = Assembly.GetExecutingAssembly().Location;
-            var targetFramework = Path.GetFileName(dir = GetDirectoryName(dir));
+            dir = GetDirectoryName(dir);
             var configuration = Path.GetFileName(dir = GetDirectoryName(dir));
             dir = GetDirectoryName(dir);
             dir = GetDirectoryName(dir);
 
-            var pluginAssemblyDir = Path.Combine(dir, _pluginName, configuration, "netstandard2.0");
+            var pluginAssemblyDir = Path.Combine(dir, _pluginName, configuration, "netstandard2.1");
             return Path.Combine(pluginAssemblyDir, _pluginName + ".dll");
         }
 

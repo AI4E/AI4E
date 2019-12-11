@@ -147,6 +147,9 @@ namespace AI4E.AspNetCore.Components.Extensibility
             if (type.IsInterface)
                 return false;
 
+            if (type.IsAbstract)
+                return false;
+
             // The view-extension definition itself is not a view-extension we may consider,
             // otherwise we end up in an infinite loop.
             return type != typeof(TViewExtension);
