@@ -40,6 +40,10 @@ using Nito.AsyncEx;
 
 namespace AI4E.AspNetCore.Components
 {
+    /// <summary>
+    /// A base class for components that presents a model.
+    /// </summary>
+    /// <typeparam name="TModel">The type of model the component presents.</typeparam>
     public abstract class ComponentBase<TModel> : ComponentBase, IDisposable
         where TModel : class, new()
     {
@@ -49,18 +53,23 @@ namespace AI4E.AspNetCore.Components
         private readonly Lazy<ILogger?> _logger;
         private readonly AsyncLock _loadModelMutex = new AsyncLock();
         private ILogger? Logger => _logger.Value;
+#pragma warning disable IDE0044 
         private TModel? _model;
-
-#pragma warning disable IDE0069, IDE0044, CA2213
+        private TModel _nonNullModel = new TModel();
+#pragma warning disable IDE0069, CA2213
         private OperationContext? _lastSuccessOperationContext;
         private CancellationTokenSource? _pendingOperationCancellationSource;
         private TaskCompletionSource<TModel?> _pendingOperationCompletion = new TaskCompletionSource<TModel?>();
-#pragma warning restore IDE0069, IDE0044, CA2213
+#pragma warning restore IDE0069, CA2213
+#pragma warning restore IDE0044
 
         #endregion
 
         #region C'tor
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="ComponentBase{TModel}"/> type in a derived class.
+        /// </summary>
         protected ComponentBase()
         {
             _ambientOperationContext = new AsyncLocal<OperationContext?>();
@@ -82,22 +91,40 @@ namespace AI4E.AspNetCore.Components
 
         #region Properties
 
+        /// <summary>
+        /// Gets the model to present.
+        /// </summary>
         protected internal TModel Model
-            => _ambientOperationContext.Value?.Model ?? (_model ??= new TModel());
+            => _ambientOperationContext.Value?.Model ?? _model ?? _nonNullModel;
 
+        /// <summary>
+        /// Gets a boolean value indicating whether a model load operation is in progress.
+        /// </summary>
         protected internal bool IsLoading
             => _pendingOperationCancellationSource != null;
 
+        /// <summary>
+        /// Gets a boolean value indicating whether the model loaded successfully.
+        /// </summary>
         protected internal bool IsLoaded
             => !IsLoading && _model != null;
 
+        /// <summary>
+        /// Gets a boolean value indicating whether the model is loaded initially successfully.
+        /// </summary>
         protected internal bool IsInitiallyLoaded { get; private set; }
 
+        /// <summary>
+        /// Gets the notification manager for the current context.
+        /// </summary>
         protected internal INotificationManager Notifications
             => _ambientOperationContext.Value?.Notifications ?? NotificationManager;
 
         private IEnumerable<ValidationResult> _validationResults = Enumerable.Empty<ValidationResult>();
 
+        /// <summary>
+        /// Gets or sets the validation results for the current context.
+        /// </summary>
         protected internal IEnumerable<ValidationResult> ValidationResults
         {
             get => _ambientOperationContext.Value?.ValidationResults ?? _validationResults;
@@ -117,7 +144,16 @@ namespace AI4E.AspNetCore.Components
             }
         }
 
+        /// <summary>
+        /// Gets or sets a boolean value indicating whether a load operation shall be performed 
+        /// after a successful store.
+        /// </summary>
         protected internal bool EnableLoadAfterStore { get; set; } = true;
+
+        /// <summary>
+        /// Gets pr sets a boolean value indicating whether a load operation shall be performed 
+        /// when a redirect to the current component is executed.
+        /// </summary>
         protected internal bool EnableLoadOnRedirect { get; set; } = true;
 
         [Inject] private NotificationManager NotificationManager { get; set; }
@@ -127,6 +163,7 @@ namespace AI4E.AspNetCore.Components
 
         #endregion
 
+        /// <inheritdoc/>
         protected sealed override void OnInitialized()
         {
             IsInitiallyLoaded = false;
@@ -135,13 +172,30 @@ namespace AI4E.AspNetCore.Components
             OnInitialized(false);
         }
 
+        /// <inheritdoc/>
         protected sealed override Task OnInitializedAsync()
         {
             return OnInitializedAsync(false);
         }
 
+        /// <summary>
+        /// Method invoked when the component is ready to start, having received its initial
+        /// parameters from its parent in the render tree.
+        /// </summary>
+        /// <param name="locationChanged">
+        /// A boolean value indicating whether the method is called due to a redirect to the current component.
+        /// </param>
         protected virtual void OnInitialized(bool locationChanged) { }
 
+        /// <summary>
+        /// Method invoked when the component is ready to start, having received its initial
+        /// parameters from its parent in the render tree. Override this method if you will
+        /// perform an asynchronous operation and want the component to refresh when that
+        /// </summary>
+        /// <param name="locationChanged">
+        /// A boolean value indicating whether the method is called due to a redirect to the current component.
+        /// </param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         protected virtual Task OnInitializedAsync(bool locationChanged)
         {
             return Task.CompletedTask;
@@ -198,6 +252,15 @@ namespace AI4E.AspNetCore.Components
             StateHasChanged();
         }
 
+        /// <summary>
+        /// Tries to extract the model from the specified dispach result.
+        /// </summary>
+        /// <param name="dispatchResult">The dispatch result that contains the model.</param>
+        /// <param name="model">Cotnains the model if can be extracted.</param>
+        /// <returns>True if the model can be extracted, false otherwise.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="dispatchResult"/> is <c>null</c>.
+        /// </exception>
         protected virtual bool TryExtractModelAsync(
             IDispatchResult dispatchResult,
             [NotNullWhen(true)] out TModel? model)
@@ -210,11 +273,33 @@ namespace AI4E.AspNetCore.Components
 
         #region Load model
 
+        /// <summary>
+        /// Asynchronously loads the model.
+        /// </summary>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the loaded model, or <c>null</c> if the model cannot be loaded.
+        /// </returns>
         protected virtual ValueTask<TModel?> LoadModelAsync(CancellationToken cancellation)
         {
             return new ValueTask<TModel?>(result: null);
         }
 
+        /// <summary>
+        /// Asynchronously evaluates the specified load result.
+        /// </summary>
+        /// <param name="dispatchResult">The load result.</param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the extracted model, or <c>null</c> if the model cannot be loaded.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="dispatchResult"/> is <c>null</c>.
+        /// </exception>
         protected virtual async ValueTask<TModel?> EvaluateLoadResultAsync(IDispatchResult dispatchResult)
         {
             if (TryExtractModelAsync(dispatchResult, out var model))
@@ -226,6 +311,18 @@ namespace AI4E.AspNetCore.Components
             return null;
         }
 
+        /// <summary>
+        /// Asynchronously post-processes a successfully loaded model.
+        /// </summary>
+        /// <param name="model">The loaded model.</param>
+        /// <param name="dispatchResult">The load result.</param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the extracted model, or <c>null</c> if the model cannot be loaded.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="model"/> or <paramref name="dispatchResult"/> is <c>null</c>.
+        /// </exception>
         protected virtual ValueTask<TModel?> OnLoadSuccessAsync(TModel model, IDispatchResult dispatchResult)
         {
             return new ValueTask<TModel?>(model);
@@ -235,11 +332,33 @@ namespace AI4E.AspNetCore.Components
 
         #region Store model
 
+        /// <summary>
+        /// Asynchronously stores the model and returns the updated model.
+        /// </summary>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous opeeration.
+        /// When evaluated, the tasks result contains the updated model, or <c>null</c> if the model cannot be updated.
+        /// </returns>
         protected virtual ValueTask<TModel?> StoreModelAsync(CancellationToken cancellation)
         {
             return new ValueTask<TModel?>(result: null);
         }
 
+        /// <summary>
+        /// Asynchronously evaluates the specified store result.
+        /// </summary>
+        /// <param name="dispatchResult">The store result.</param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the extracted model, or <c>null</c> if the model cannot be loaded.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="dispatchResult"/> is <c>null</c>.
+        /// </exception>
         protected virtual async ValueTask<TModel?> EvaluateStoreResultAsync(IDispatchResult dispatchResult)
         {
             if (dispatchResult is null)
@@ -261,6 +380,18 @@ namespace AI4E.AspNetCore.Components
             return Model;
         }
 
+        /// <summary>
+        /// Asynchronously post-processes an upated model after a successful store.
+        /// </summary>
+        /// <param name="model">The loaded model.</param>
+        /// <param name="dispatchResult">The load result.</param>
+        /// <returns>
+        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the extracted model, or <c>null</c> if the model cannot be loaded.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="dispatchResult"/> is <c>null</c>.
+        /// </exception>
         protected virtual async ValueTask<TModel?> OnStoreSuccessAsync(TModel? model, IDispatchResult dispatchResult)
         {
             var notification = new NotificationMessage(
@@ -271,18 +402,38 @@ namespace AI4E.AspNetCore.Components
             };
 
             Notifications.PlaceNotification(notification);
-            return model ?? (EnableLoadAfterStore ?  await LoadAsync().ConfigureAwait(true) : Model);
+            return model ?? (EnableLoadAfterStore ? await LoadAsync().ConfigureAwait(true) : Model);
         }
 
         #endregion
 
         #region Validate model
 
+        /// <summary>
+        /// Asynchronously validates the model.
+        /// </summary>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask"/> representing the asynchronous opeeration.
+        /// </returns>
         protected virtual ValueTask ValidateModelAsync(CancellationToken cancellation)
         {
             return default;
         }
 
+        /// <summary>
+        /// Asynchronously evaluates the specified validate result.
+        /// </summary>
+        /// <param name="dispatchResult">The validate result.</param>
+        /// <returns>
+        /// A <see cref="ValueTask"/> representing the asynchronous operation.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="dispatchResult"/> is <c>null</c>.
+        /// </exception>
         protected virtual async ValueTask EvaluateValidateResultAsync(IDispatchResult dispatchResult)
         {
             if (dispatchResult is null)
@@ -296,6 +447,16 @@ namespace AI4E.AspNetCore.Components
             await EvaluateFailureResultAsync(dispatchResult);
         }
 
+        /// <summary>
+        /// Asynchronously post-processes the validation results after a successful validation.
+        /// </summary>
+        /// <param name="dispatchResult">The validate result.</param>
+        /// <returns>
+        /// A <see cref="ValueTask"/> representing the asynchronous operation.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="dispatchResult"/> is <c>null</c>.
+        /// </exception>
         protected virtual ValueTask OnValidateSuccessAsync(IDispatchResult dispatchResult)
         {
             ValidationResults = Enumerable.Empty<ValidationResult>();
@@ -306,11 +467,29 @@ namespace AI4E.AspNetCore.Components
 
         #region Operation execution
 
+        /// <summary>
+        /// Asynchronously performs a model load operation.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="Task{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the loaded model.
+        /// </returns>
         protected Task<TModel?> LoadAsync()
         {
             return LoadAsync(default);
         }
 
+        /// <summary>
+        /// Asynchronously performs a model load operation.
+        /// </summary>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="Task{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the loaded model.
+        /// </returns>
         protected async Task<TModel?> LoadAsync(CancellationToken cancellation)
         {
             // We are already in a context. Skip operation setup.
@@ -341,11 +520,29 @@ namespace AI4E.AspNetCore.Components
             return await _pendingOperationCompletion.Task.ConfigureAwait(true);
         }
 
+        /// <summary>
+        /// Asynchronously performs a model store operation.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="Task{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the updated model.
+        /// </returns>
         protected Task<TModel?> StoreAsync()
         {
             return StoreAsync(default);
         }
 
+        /// <summary>
+        /// Asynchronously performs a model store operation.
+        /// </summary>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="Task{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the updated model.
+        /// </returns>
         protected async Task<TModel?> StoreAsync(CancellationToken cancellation)
         {
             // We are already in a context. Skip operation setup.
@@ -376,11 +573,27 @@ namespace AI4E.AspNetCore.Components
             return await _pendingOperationCompletion.Task.ConfigureAwait(true);
         }
 
+        /// <summary>
+        /// Asynchronously performs a model validate operation.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="Task"/> representing the asynchronous operation.
+        /// </returns>
         protected Task ValidateAsync()
         {
             return ValidateAsync(default);
         }
 
+        /// <summary>
+        /// Asynchronously performs a model validate operation.
+        /// </summary>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="Task"/> representing the asynchronous operation.
+        /// </returns>
         protected async Task ValidateAsync(CancellationToken cancellation)
         {
             // We are already in a context. Skip operation setup.
@@ -412,22 +625,49 @@ namespace AI4E.AspNetCore.Components
             await _pendingOperationCompletion.Task.ConfigureAwait(true);
         }
 
+        /// <summary>
+        /// Method invoked when the component has validated the model.
+        /// </summary>
         protected virtual void OnValidated() { }
 
+        /// <summary>
+        /// Method invoked when the component has validated the model.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="ValueTask"/> representing the asynchronous operation.
+        /// </returns>
         protected virtual ValueTask OnValidatedAsync()
         {
             return default;
         }
 
+        /// <summary>
+        /// Method invoked when the component has stored the model.
+        /// </summary>
         protected virtual void OnStored() { }
 
+        /// <summary>
+        /// Method invoked when the component has stored the model.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="ValueTask"/> representing the asynchronous operation.
+        /// </returns>
         protected virtual ValueTask OnStoredAsync()
         {
             return default;
         }
 
+        /// <summary>
+        /// Method invoked when the component has loaded the model.
+        /// </summary>
         protected virtual void OnLoaded() { }
 
+        /// <summary>
+        /// Method invoked when the component has loaded the model.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="ValueTask"/> representing the asynchronous operation.
+        /// </returns>
         protected virtual ValueTask OnLoadedAsync()
         {
             return default;
@@ -551,6 +791,10 @@ namespace AI4E.AspNetCore.Components
 
         private bool _isDisposed;
 
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+        /// </summary>
+        /// <param name="disposing">A boolean value indicating whether the component is disposing.</param>
         protected virtual void Dispose(bool disposing)
         {
             if (disposing)
@@ -578,6 +822,7 @@ namespace AI4E.AspNetCore.Components
             }
         }
 
+        /// <inheritdoc/>
         public void Dispose()
         {
             Dispose(true);
@@ -586,11 +831,17 @@ namespace AI4E.AspNetCore.Components
 
         #endregion
 
+        /// <summary>
+        /// Norifies an operation failure status.
+        /// </summary>
         protected internal void NotifyFailure()
         {
             NotifyStatus(false);
         }
 
+        /// <summary>
+        /// Norifies an operation success status.
+        /// </summary>
         protected internal void NotifySuccess()
         {
             NotifyStatus(true);
@@ -700,8 +951,8 @@ namespace AI4E.AspNetCore.Components
 
                 if (CommitModel(model))
                 {
-
                     Component._model = model;
+                    Component._nonNullModel = model ?? Component._model ?? new TModel();
                     Component._pendingOperationCompletion.SetResult(model);
                     Component._pendingOperationCompletion = new TaskCompletionSource<TModel?>();
                 }

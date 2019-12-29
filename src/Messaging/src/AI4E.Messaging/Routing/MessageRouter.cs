@@ -210,8 +210,9 @@ namespace AI4E.Messaging.Routing
             CancellationToken cancellation)
         {
             var localEndPoint = await GetLocalEndPointAsync(cancellation);
-            var tasks = new List<ValueTask<RouteMessageHandleResult>>();
+            List<ValueTask<RouteMessageHandleResult>>? tasks = null;
             var handledEndPoints = new HashSet<RouteEndPointAddress>();
+            RouteMessage<IDispatchResult>? lastNonSuccessful = default;
 
             _logger?.LogTrace($"Routing a message ({(publish ? "publish" : "p2p")}) with routes: {routes}");
 
@@ -247,6 +248,10 @@ namespace AI4E.Messaging.Routing
                             {
                                 return routeResult.RouteMessage.Yield().ToImmutableList();
                             }
+                            else
+                            {
+                                lastNonSuccessful = routeResult.RouteMessage;
+                            }
                         }
                     }
                     else
@@ -256,10 +261,22 @@ namespace AI4E.Messaging.Routing
 
                         var endPoints = matches.Select(p => p.EndPoint);
                         handledEndPoints.UnionWith(endPoints);
+
+                        tasks ??= new List<ValueTask<RouteMessageHandleResult>>();
                         tasks.AddRange(endPoints.Select(endPoint => InternalRouteAsync(
                             route, routeMessage, publish: true, endPoint, cancellation)));
                     }
                 }
+            }
+
+            if (!publish && lastNonSuccessful != null)
+            {
+                return lastNonSuccessful.Value.Yield().ToImmutableList();
+            }
+
+            if (tasks is null)
+            {
+                return ImmutableList<RouteMessage<IDispatchResult>>.Empty;
             }
 
             var result = await tasks.WhenAll(preserveOrder: false);

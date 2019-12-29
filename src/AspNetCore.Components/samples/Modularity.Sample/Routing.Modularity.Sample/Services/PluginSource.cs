@@ -143,7 +143,7 @@ namespace Routing.Modularity.Sample.Services
                 .Append(blazorBoot.Main);
         }
 
-        private static string GetPluginPath(string pluginName)
+         private static string GetPluginPath(string pluginName)
         {
             var dir = Assembly.GetExecutingAssembly().Location;
             dir = GetDirectoryName(dir);
@@ -151,7 +151,7 @@ namespace Routing.Modularity.Sample.Services
             dir = GetDirectoryName(dir);
             dir = GetDirectoryName(dir);
 
-            return Path.Combine(dir, pluginName, configuration, "netstandard2.0", pluginName + ".dll");
+            return Path.Combine(dir, pluginName, configuration, "netstandard2.1", pluginName + ".dll");
         }
 
         private static string GetDirectoryName(string path)

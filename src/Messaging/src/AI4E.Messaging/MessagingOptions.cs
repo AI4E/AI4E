@@ -21,7 +21,6 @@
 using System.Collections.Generic;
 using System.Reflection;
 using AI4E.Messaging.Routing;
-using AI4E.Messaging.Validation;
 
 namespace AI4E.Messaging
 {
@@ -46,6 +45,7 @@ namespace AI4E.Messaging
 
             return default;
         }
+
         public static RouteEndPointAddress DefaultLocalEndPoint { get; } = BuildDefaultLocalEndPoint();
 
         public RouteEndPointAddress LocalEndPoint { get; set; } = DefaultLocalEndPoint;
@@ -56,5 +56,7 @@ namespace AI4E.Messaging
         public IList<IMessageProcessorRegistration> MessageProcessors { get; } = new List<IMessageProcessorRegistration>();
 
         public IList<IRouteResolver> RoutesResolvers { get; } = new List<IRouteResolver>();
+
+        public bool EnableVerboseFailureResults { get; set; } = true;
     }
 }
