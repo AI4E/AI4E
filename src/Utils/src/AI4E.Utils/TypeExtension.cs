@@ -44,13 +44,23 @@
  * THE SOFTWARE.
  * --------------------------------------------------------------------------------------------------------------------
  */
+ 
+/* Based on
+ * --------------------------------------------------------------------------------------------------------------------
+ * .Net Extensions (https://github.com/aspnet/Extensions)
+ * Copyright (c) .NET Foundation. All rights reserved.
+ * Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
 
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace System
@@ -231,55 +241,186 @@ namespace System
             return baseTypeInfo.IsAssignableToGenericTypeDefinition(genericTypeInfo);
         }
 
-        // Based on: https://github.com/khellang/Scrutor/blob/master/src/Scrutor/MissingTypeRegistrationException.cs
+        [Obsolete("Use GetDisplayName")]
         public static string GetFriendlyName(this Type type)
         {
-            if (type == typeof(int))
-                return "int";
-
-            if (type == typeof(short))
-                return "short";
-
-            if (type == typeof(byte))
-                return "byte";
-
-            if (type == typeof(bool))
-                return "bool";
-
-            if (type == typeof(char))
-                return "char";
-
-            if (type == typeof(long))
-                return "long";
-
-            if (type == typeof(float))
-                return "float";
-
-            if (type == typeof(double))
-                return "double";
-
-            if (type == typeof(decimal))
-                return "decimal";
-
-            if (type == typeof(string))
-                return "string";
-
-            if (type == typeof(object))
-                return "object";
-
-#pragma warning disable CA1062
-            return type.IsGenericType ? GetGenericFriendlyName(type) : type.Name;
-#pragma warning restore CA1062
+            return type.GetDisplayName();
         }
 
-        private static string GetGenericFriendlyName(Type type)
+        #region GetDisplayName
+
+        private const char DefaultNestedTypeDelimiter = '+';
+
+        private static readonly Dictionary<Type, string> _builtInTypeNames = new Dictionary<Type, string>
         {
-            var argumentNames = type.GenericTypeArguments.Select(GetFriendlyName).ToArray();
+            { typeof(void), "void" },
+            { typeof(bool), "bool" },
+            { typeof(byte), "byte" },
+            { typeof(char), "char" },
+            { typeof(decimal), "decimal" },
+            { typeof(double), "double" },
+            { typeof(float), "float" },
+            { typeof(int), "int" },
+            { typeof(long), "long" },
+            { typeof(object), "object" },
+            { typeof(sbyte), "sbyte" },
+            { typeof(short), "short" },
+            { typeof(string), "string" },
+            { typeof(uint), "uint" },
+            { typeof(ulong), "ulong" },
+            { typeof(ushort), "ushort" }
+        };
 
-            var baseName = type.Name.Split('`').First();
-
-            return $"{baseName}<{string.Join(", ", argumentNames)}>";
+        /// <summary>
+        /// Gets the display name of a type.
+        /// </summary>
+        /// <param name="type">The <see cref="Type"/>.</param>
+        /// <param name="fullName"><c>true</c> to print a fully qualified name.</param>
+        /// <param name="includeGenericParameterNames"><c>true</c> to include generic parameter names.</param>
+        /// <param name="includeGenericParameters"><c>true</c> to include generic parameters.</param>
+        /// <param name="nestedTypeDelimiter">Character to use as a delimiter in nested type names</param>
+        /// <returns>The pretty printed type name.</returns>
+        public static string GetDisplayName(
+            this Type type,
+            bool fullName = true,
+            bool includeGenericParameterNames = false,
+            bool includeGenericParameters = true,
+            char nestedTypeDelimiter = DefaultNestedTypeDelimiter)
+        {
+            var builder = new StringBuilder();
+#pragma warning disable CA1062
+            ProcessType(builder, type, new DisplayNameOptions(fullName, includeGenericParameterNames, includeGenericParameters, nestedTypeDelimiter));
+#pragma warning restore CA1062
+            return builder.ToString();
         }
+
+        private static void ProcessType(StringBuilder builder, Type type, in DisplayNameOptions options)
+        {
+            if (type.IsGenericType)
+            {
+                var genericArguments = type.GetGenericArguments();
+                ProcessGenericType(builder, type, genericArguments, genericArguments.Length, options);
+            }
+            else if (type.IsArray)
+            {
+                ProcessArrayType(builder, type, options);
+            }
+            else if (_builtInTypeNames.TryGetValue(type, out var builtInName))
+            {
+                builder.Append(builtInName);
+            }
+            else if (type.IsGenericParameter)
+            {
+                if (options.IncludeGenericParameterNames)
+                {
+                    builder.Append(type.Name);
+                }
+            }
+            else
+            {
+                var name = options.FullName ? type.FullName ?? type.Name : type.Name;
+                builder.Append(name);
+
+                if (options.NestedTypeDelimiter != DefaultNestedTypeDelimiter)
+                {
+                    builder.Replace(DefaultNestedTypeDelimiter, options.NestedTypeDelimiter, builder.Length - name.Length, name.Length);
+                }
+            }
+        }
+
+        private static void ProcessArrayType(StringBuilder builder, Type type, in DisplayNameOptions options)
+        {
+            var innerType = type;
+            while (innerType!.IsArray)
+            {
+                innerType = innerType.GetElementType()!;
+                Debug.Assert(innerType != null);
+            }
+
+            ProcessType(builder, innerType, options);
+
+            while (type!.IsArray)
+            {
+                builder.Append('[');
+                builder.Append(',', type.GetArrayRank() - 1);
+                builder.Append(']');
+                type = type.GetElementType()!;
+                Debug.Assert(type != null);
+            }
+        }
+
+        private static void ProcessGenericType(StringBuilder builder, Type type, Type[] genericArguments, int length, in DisplayNameOptions options)
+        {
+            var offset = 0;
+            if (type.IsNested)
+            {
+                offset = type.DeclaringType!.GetGenericArguments().Length;
+            }
+
+            if (options.FullName)
+            {
+                if (type.IsNested)
+                {
+                    ProcessGenericType(builder, type.DeclaringType!, genericArguments, offset, options);
+                    builder.Append(options.NestedTypeDelimiter);
+                }
+                else if (!string.IsNullOrEmpty(type.Namespace))
+                {
+                    builder.Append(type.Namespace);
+                    builder.Append('.');
+                }
+            }
+
+            var genericPartIndex = type.Name.IndexOf('`', StringComparison.Ordinal);
+            if (genericPartIndex <= 0)
+            {
+                builder.Append(type.Name);
+                return;
+            }
+
+            builder.Append(type.Name, 0, genericPartIndex);
+
+            if (options.IncludeGenericParameters)
+            {
+                builder.Append('<');
+                for (var i = offset; i < length; i++)
+                {
+                    ProcessType(builder, genericArguments[i], options);
+                    if (i + 1 == length)
+                    {
+                        continue;
+                    }
+
+                    builder.Append(',');
+                    if (options.IncludeGenericParameterNames || !genericArguments[i + 1].IsGenericParameter)
+                    {
+                        builder.Append(' ');
+                    }
+                }
+                builder.Append('>');
+            }
+        }
+
+        private readonly struct DisplayNameOptions
+        {
+            public DisplayNameOptions(bool fullName, bool includeGenericParameterNames, bool includeGenericParameters, char nestedTypeDelimiter)
+            {
+                FullName = fullName;
+                IncludeGenericParameters = includeGenericParameters;
+                IncludeGenericParameterNames = includeGenericParameterNames;
+                NestedTypeDelimiter = nestedTypeDelimiter;
+            }
+
+            public bool FullName { get; }
+
+            public bool IncludeGenericParameters { get; }
+
+            public bool IncludeGenericParameterNames { get; }
+
+            public char NestedTypeDelimiter { get; }
+        }
+
+        #endregion
 
         public static bool CanContainNull(this Type type)
         {
