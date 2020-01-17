@@ -19,21 +19,24 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace AI4E.Messaging.MessageHandlers
 {
     /// <summary>
     /// Represents a type descriptor used to set a message processors's context.
     /// </summary>
-    public readonly struct MessageProcessorContextDescriptor
+    public sealed class MessageProcessorContextDescriptor
     {
-        private static readonly ConcurrentDictionary<Type, MessageProcessorContextDescriptor> _descriptors
-            = new ConcurrentDictionary<Type, MessageProcessorContextDescriptor>();
+        private static readonly ConditionalWeakTable<Type, MessageProcessorContextDescriptor> _descriptors
+            = new ConditionalWeakTable<Type, MessageProcessorContextDescriptor>();
+
+        private static readonly ConditionalWeakTable<Type, MessageProcessorContextDescriptor>.CreateValueCallback _buildDescriptor
+            = BuildDescriptor; // Cache delegate for perf reasons
 
         /// <summary>
         /// Gets the <see cref="MessageProcessorContextDescriptor"/> for the specified type.
@@ -47,7 +50,7 @@ namespace AI4E.Messaging.MessageHandlers
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            return _descriptors.GetOrAdd(type, BuildDescriptor);
+            return _descriptors.GetValue(type, _buildDescriptor);
         }
 
         private static MessageProcessorContextDescriptor BuildDescriptor(Type type)
@@ -55,7 +58,7 @@ namespace AI4E.Messaging.MessageHandlers
             Debug.Assert(type != null);
 
             if (type!.IsAbstract)
-                return default;
+                return new MessageProcessorContextDescriptor(type, null);
 
             if (type.IsGenericTypeDefinition)
                 throw new ArgumentException("The argument must not be an open generic type definition.", nameof(type));

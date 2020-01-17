@@ -19,10 +19,10 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using AI4E.Utils;
 
 namespace AI4E.Messaging
@@ -117,9 +117,9 @@ namespace AI4E.Messaging
             private readonly ImmutableHashSet<IMessageHandlerRegistrationFactory> _handlerRegistrationFactories;
 
             // Cache delegate for perf reasons.
-            private readonly ConditionalWeakTable<Type, ImmutableList<IMessageHandlerRegistration>>.CreateValueCallback _buildHandlerRegistrations;
-            private readonly ConditionalWeakTable<Type, ImmutableList<IMessageHandlerRegistration>> _handlerRegistrationsLookup
-                = new ConditionalWeakTable<Type, ImmutableList<IMessageHandlerRegistration>>();
+            private readonly Func<Type, ImmutableList<IMessageHandlerRegistration>> _buildHandlerRegistrations;
+            private readonly ConcurrentDictionary<Type, ImmutableList<IMessageHandlerRegistration>> _handlerRegistrationsLookup
+                = new ConcurrentDictionary<Type, ImmutableList<IMessageHandlerRegistration>>();
 
             public MessageHandlerProvider(
                 Dictionary<Type, OrderedSet<IMessageHandlerRegistration>> handlerRegistrations,
@@ -161,7 +161,7 @@ namespace AI4E.Messaging
                 if (messageType is null)
                     throw new ArgumentNullException(nameof(messageType));
 
-                return _handlerRegistrationsLookup.GetValue(messageType, _buildHandlerRegistrations);
+                return _handlerRegistrationsLookup.GetOrAdd(messageType, _buildHandlerRegistrations);
             }
 
             private ImmutableList<IMessageHandlerRegistration> BuildHandlerRegistrations(Type messageType)
