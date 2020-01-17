@@ -2,6 +2,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using AI4E.AspNetCore;
+using Autofac.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 
@@ -19,6 +20,7 @@ namespace Routing.Modularity.Sample
         public static IHostBuilder CreateHostBuilder(string[] args)
         {
             return Host.CreateDefaultBuilder(args)
+                .UseServiceProviderFactory(new AutofacServiceProviderFactory())
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();

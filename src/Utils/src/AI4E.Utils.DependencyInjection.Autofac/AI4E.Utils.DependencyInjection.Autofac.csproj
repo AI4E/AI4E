@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+    <RestoreAdditionalProjectSources>
+      $(RestoreAdditionalProjectSources);https://www.myget.org/F/autofac/api/v3/index.json
+    </RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="5.0.1" />
+    <PackageReference Include="Autofac" Version="5.0.0-develop-00681" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AI4E.Utils.DependencyInjection\AI4E.Utils.DependencyInjection.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\AspNetCore\AI4E.AspNetCore\AI4E.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\..\..\Utils\src\AI4E.Utils.DependencyInjection.Autofac\AI4E.Utils.DependencyInjection.Autofac.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.AspNetCore.Components.Routing\AI4E.AspNetCore.Components.Routing.csproj" />
     <ProjectReference Include="..\..\..\src\AI4E.AspNetCore.Components\AI4E.AspNetCore.Components.csproj" />
     <ProjectReference Include="..\Routing.Modularity.Sample.Shared\Routing.Modularity.Sample.Shared.csproj" />

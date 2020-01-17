@@ -85,6 +85,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting", "..\Remotin
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.DependencyInjection", "..\Utils\src\AI4E.Utils.DependencyInjection\AI4E.Utils.DependencyInjection.csproj", "{CFDAB138-A92D-45FA-ABB9-5DABACA860C2}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.DependencyInjection.Autofac", "..\Utils\src\AI4E.Utils.DependencyInjection.Autofac\AI4E.Utils.DependencyInjection.Autofac.csproj", "{639CA384-C057-4847-81CA-00DA42101405}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -227,6 +229,10 @@ Global
 		{CFDAB138-A92D-45FA-ABB9-5DABACA860C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CFDAB138-A92D-45FA-ABB9-5DABACA860C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CFDAB138-A92D-45FA-ABB9-5DABACA860C2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{639CA384-C057-4847-81CA-00DA42101405}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{639CA384-C057-4847-81CA-00DA42101405}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{639CA384-C057-4847-81CA-00DA42101405}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{639CA384-C057-4847-81CA-00DA42101405}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -269,6 +275,7 @@ Global
 		{28E787A7-1E46-4509-84D1-56BBAE8F4250} = {D51B21EF-F729-4357-ADCB-CABC59C6FB5B}
 		{5093FC88-8D44-4620-BD60-50F6A462AFB4} = {D51B21EF-F729-4357-ADCB-CABC59C6FB5B}
 		{CFDAB138-A92D-45FA-ABB9-5DABACA860C2} = {D51B21EF-F729-4357-ADCB-CABC59C6FB5B}
+		{639CA384-C057-4847-81CA-00DA42101405} = {D51B21EF-F729-4357-ADCB-CABC59C6FB5B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CE658A01-D5E2-43E3-91BA-DB3AF5BB9471}
