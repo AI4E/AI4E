@@ -32,7 +32,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using AI4E.Utils.Custom;
-using AI4E.Utils.Delegation;
 using AI4E.Utils.Projection;
 
 namespace AI4E.Utils
