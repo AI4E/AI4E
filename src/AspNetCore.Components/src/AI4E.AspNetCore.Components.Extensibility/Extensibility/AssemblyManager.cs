@@ -18,13 +18,12 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-// TODO: This type should be thread-safe.
-
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Utils;
 
@@ -35,9 +34,9 @@ namespace AI4E.AspNetCore.Components.Extensibility
     /// </summary>
     public class AssemblyManager : IAssemblySource
     {
-        private readonly Dictionary<Assembly, AssemblyContext> _assemblies;
+        private ImmutableDictionary<Assembly, AssemblyContext> _assemblies;
 
-        private sealed class AssemblyContext
+        private readonly struct AssemblyContext : IEquatable<AssemblyContext>
         {
             public static AssemblyContext Empty { get; } = new AssemblyContext(null, null);
 
@@ -61,6 +60,32 @@ namespace AI4E.AspNetCore.Components.Extensibility
 
             public AssemblyLoadContext? AssemblyLoadContext { get; }
             public IServiceProvider? AssemblyServiceProvider { get; }
+
+            public bool Equals(AssemblyContext other)
+            {
+                return AssemblyLoadContext == other.AssemblyLoadContext &&
+                       AssemblyServiceProvider == other.AssemblyServiceProvider;
+            }
+
+            public override bool Equals(object? obj)
+            {
+                return obj is AssemblyContext assemblyContext && Equals(assemblyContext);
+            }
+
+            public override int GetHashCode()
+            {
+                return (AssemblyLoadContext, AssemblyServiceProvider).GetHashCode();
+            }
+
+            public static bool operator ==(AssemblyContext left, AssemblyContext right)
+            {
+                return left.Equals(right);
+            }
+
+            public static bool operator !=(AssemblyContext left, AssemblyContext right)
+            {
+                return !left.Equals(right);
+            }
         }
 
         /// <summary>
@@ -68,7 +93,7 @@ namespace AI4E.AspNetCore.Components.Extensibility
         /// </summary>
         public AssemblyManager()
         {
-            _assemblies = new Dictionary<Assembly, AssemblyContext>(AssemblyByDisplayNameComparer.Instance);
+            _assemblies = ImmutableDictionary.Create<Assembly, AssemblyContext>(AssemblyByDisplayNameComparer.Instance);
         }
 
         /// <summary>
@@ -80,20 +105,31 @@ namespace AI4E.AspNetCore.Components.Extensibility
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="entryAssembly"/> is <c>null</c>.
         /// </exception>
-        public AssemblyManager(Assembly entryAssembly) : this()
+        public AssemblyManager(Assembly entryAssembly)
         {
             if (entryAssembly == null)
                 throw new ArgumentNullException(nameof(entryAssembly));
 
             var assemblies = ComponentResolver.EnumerateComponentAssemblies(entryAssembly);
+            var builder = ImmutableDictionary.CreateBuilder<Assembly, AssemblyContext>(AssemblyByDisplayNameComparer.Instance);
             foreach (var assembly in assemblies)
             {
-                _assemblies.Add(assembly, AssemblyContext.Empty);
+                builder.Add(assembly, AssemblyContext.Empty);
             }
+            _assemblies = builder.ToImmutable();
         }
 
         /// <inheritdoc />
-        public IReadOnlyCollection<Assembly> Assemblies => _assemblies.Keys.ToImmutableList();
+        public IReadOnlyCollection<Assembly> Assemblies
+        {
+            get
+            {
+                var assemblies = Volatile.Read(ref _assemblies);
+                var keys = assemblies.Keys;
+
+                return (keys as IReadOnlyCollection<Assembly>) ?? keys.ToImmutableList();
+            }
+        }
 
         /// <inheritdoc />
         public event IAssemblySource.AssembliedChangedEventHandler? AssembliesChanged;
@@ -116,10 +152,23 @@ namespace AI4E.AspNetCore.Components.Extensibility
 
             var context = AssemblyContext.Create(assemblyLoadContext, assemblyServiceProvider);
 
-            if (!_assemblies.AddOrReplace(assembly, context))
+            ImmutableDictionary<Assembly, AssemblyContext> current = Volatile.Read(ref _assemblies),
+                                                           start,
+                                                           desired;
+
+            do
             {
-                return default;
+                start = current;
+
+                if (start.TryGetValue(assembly, out var comparandContext) && comparandContext == context)
+                {
+                    return default;
+                }
+
+                desired = start.SetItem(assembly, context);
+                current = Interlocked.CompareExchange(ref _assemblies!, desired, start)!;
             }
+            while (start != current);
 
             return NotifyAssembliesChangedAsync();
         }
@@ -132,20 +181,44 @@ namespace AI4E.AspNetCore.Components.Extensibility
             if (assemblies is null)
                 throw new ArgumentNullException(nameof(assemblies));
 
-            var changed = false;
             var context = AssemblyContext.Create(assemblyLoadContext, assemblyServiceProvider);
+            ImmutableDictionary<Assembly, AssemblyContext> current = Volatile.Read(ref _assemblies),
+                                                           start,
+                                                           desired;
 
-            foreach (var assembly in assemblies)
+            do
             {
-                if (assembly is null)
+                start = current;
+
+                var changed = false;
+                desired = start;
+
+                foreach (var assembly in assemblies)
                 {
-                    throw new ArgumentException("The collection must not contain null entries.", nameof(assemblies));
+                    if (assembly is null)
+                    {
+                        throw new ArgumentException("The collection must not contain null entries.", nameof(assemblies));
+                    }
+
+                    if (start.TryGetValue(assembly, out var comparandContext) && comparandContext == context)
+                    {
+                        continue;
+                    }
+
+                    changed = true;
+                    desired = desired.SetItem(assembly, context);
                 }
 
-                changed |= _assemblies.AddOrReplace(assembly, context);
-            }
+                if (!changed)
+                {
+                    return default;
+                }
 
-            return changed ? NotifyAssembliesChangedAsync() : default;
+                current = Interlocked.CompareExchange(ref _assemblies!, desired, start)!;
+            }
+            while (start != current);
+
+            return NotifyAssembliesChangedAsync();
         }
 
         /// <summary>
@@ -158,10 +231,23 @@ namespace AI4E.AspNetCore.Components.Extensibility
             if (assembly == null)
                 throw new ArgumentNullException(nameof(assembly));
 
-            if (!_assemblies.Remove(assembly))
+            ImmutableDictionary<Assembly, AssemblyContext> current = Volatile.Read(ref _assemblies),
+                                                           start,
+                                                           desired;
+
+            do
             {
-                return default;
+                start = current;
+                desired = start.Remove(assembly);
+
+                if (start == desired)
+                {
+                    return default;
+                }
+
+                current = Interlocked.CompareExchange(ref _assemblies!, desired, start)!;
             }
+            while (start != current);
 
             return NotifyAssembliesChangedAsync();
         }
@@ -171,19 +257,38 @@ namespace AI4E.AspNetCore.Components.Extensibility
             if (assemblies == null)
                 throw new ArgumentNullException(nameof(assemblies));
 
-            var changed = false;
+            ImmutableDictionary<Assembly, AssemblyContext> current = Volatile.Read(ref _assemblies),
+                                               start,
+                                               desired;
 
-            foreach (var assembly in assemblies)
+            do
             {
-                if (assembly is null)
+                start = current;
+
+                var changed = false;
+                desired = start;
+
+                foreach (var assembly in assemblies)
                 {
-                    throw new ArgumentException("The collection must not contain null entries.", nameof(assemblies));
+                    if (assembly is null)
+                    {
+                        throw new ArgumentException("The collection must not contain null entries.", nameof(assemblies));
+                    }
+
+                    desired = desired.Remove(assembly);
+                    changed |= start != desired;
                 }
 
-                changed |= _assemblies.Remove(assembly);
-            }
+                if (!changed)
+                {
+                    return default;
+                }
 
-            return changed ? NotifyAssembliesChangedAsync() : default;
+                current = Interlocked.CompareExchange(ref _assemblies!, desired, start)!;
+            }
+            while (start != current);
+
+            return NotifyAssembliesChangedAsync();
         }
 
         private ValueTask NotifyAssembliesChangedAsync()
@@ -214,7 +319,9 @@ namespace AI4E.AspNetCore.Components.Extensibility
 
         private AssemblyContext GetAssemblyContext(Assembly assembly)
         {
-            if (_assemblies.TryGetValue(assembly, out var assemblyContext))
+            var assemblies = Volatile.Read(ref _assemblies);
+
+            if (assemblies.TryGetValue(assembly, out var assemblyContext))
             {
                 return assemblyContext;
             }
@@ -246,8 +353,9 @@ namespace AI4E.AspNetCore.Components.Extensibility
             if (assembly is null)
                 throw new ArgumentNullException(nameof(assembly));
 
-            return _assemblies.ContainsKey(assembly);
+            var assemblies = Volatile.Read(ref _assemblies);
+
+            return assemblies.ContainsKey(assembly);
         }
     }
 }
-
