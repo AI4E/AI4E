@@ -29,14 +29,14 @@ namespace AI4E.Utils
         bool TryConfigureContextServices(
             string context,
             Action<IServiceCollection> serviceConfiguration,
-            [NotNullWhen(true)] out ContextServicesDescriptor? servicesDescriptor);
+            [NotNullWhen(true)] out IServiceProvider? servicesDescriptor);
 
-        ContextServicesDescriptor GetContextServices(
+        IServiceProvider GetContextServices(
             string context,
             bool coreServicesIfNotFound = true);
 
         bool TryGetContextServices(
             string context,
-            [NotNullWhen(true)] out ContextServicesDescriptor? serviceProvider);
+            [NotNullWhen(true)] out IServiceProvider? serviceProvider);
     }
 }

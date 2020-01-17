@@ -47,7 +47,7 @@
 
 using System;
 
-namespace AI4E.Utils
+namespace AI4E.Utils.DependencyInjection
 {
     public class MissingTypeRegistrationException : InvalidOperationException
     {

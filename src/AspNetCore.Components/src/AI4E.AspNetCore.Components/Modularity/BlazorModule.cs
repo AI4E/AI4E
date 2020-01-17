@@ -300,7 +300,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             var serviceContext = _servicesContextNameResolver.ResolveServicesContextName(ModuleDescriptor);
             if (_contextServiceManager.TryGetContextServices(serviceContext, out var contextServices))
             {
-                await contextServices.DisposeAsync();
+                await contextServices.DisposeIfDisposableAsync();
             }
         }
 

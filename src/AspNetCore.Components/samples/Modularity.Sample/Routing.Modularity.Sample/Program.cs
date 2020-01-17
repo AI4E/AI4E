@@ -23,8 +23,7 @@ namespace Routing.Modularity.Sample
                 {
                     webBuilder.UseStartup<Startup>();
                     webBuilder.UseContentRoot(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
-                })
-                .UseContextServiceProvider(options => options.ValidateScopes = true);
+                });
         }
     }
 }
