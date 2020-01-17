@@ -19,13 +19,13 @@
  */
 
 using System;
-using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using AI4E.Utils.Async;
-using System.Diagnostics;
 
 namespace AI4E.Utils
 {
@@ -34,7 +34,12 @@ namespace AI4E.Utils
     /// </summary>
     public sealed class TypeMemberInvoker
     {
-        private static readonly ConcurrentDictionary<MethodInfo, TypeMemberInvoker> _cache = new ConcurrentDictionary<MethodInfo, TypeMemberInvoker>();
+        private static readonly ConditionalWeakTable<MethodInfo, TypeMemberInvoker>.CreateValueCallback _buildInvoker
+           = BuildInvoker; // Cache delegate for perf reasons
+
+        private static readonly ConditionalWeakTable<MethodInfo, TypeMemberInvoker> _cache
+            = new ConditionalWeakTable<MethodInfo, TypeMemberInvoker>();
+
         private readonly Func<object, object?, Func<ParameterInfo, object?>, object?> _invoker;
 
         private TypeMemberInvoker(MethodInfo method)
@@ -59,7 +64,12 @@ namespace AI4E.Utils
         /// <returns>The <see cref="TypeMemberInvoker"/> for <paramref name="methodInfo"/>.</returns>
         public static TypeMemberInvoker GetInvoker(MethodInfo methodInfo)
         {
-            return _cache.GetOrAdd(methodInfo, _ => new TypeMemberInvoker(methodInfo));
+            return _cache.GetValue(methodInfo, _buildInvoker);
+        }
+
+        private static TypeMemberInvoker BuildInvoker(MethodInfo methodInfo)
+        {
+            return new TypeMemberInvoker(methodInfo);
         }
 
         private MethodInfo Method { get; }
