@@ -38,7 +38,9 @@ namespace Microsoft.Extensions.DependencyInjection
         /// </summary>
         /// <param name="services">The service collection.</param>
         /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
-        public static IMessagingBuilder AddMessaging(this IServiceCollection services)
+        public static IMessagingBuilder AddMessaging(
+            this IServiceCollection services,
+            bool suppressRoutingSystem = false)
         {
             var builder = services.GetService<MessagingBuilderImpl>();
 
@@ -47,45 +49,40 @@ namespace Microsoft.Extensions.DependencyInjection
                 services.AddOptions();
                 services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
                 services.TryAddSingleton<ITypeResolver>(TypeResolver.Default);
-                services.AddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-                services.AddSingleton<IMessageDispatcher, MessageDispatcher>();
+                services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
+                services.TryAddSingleton<IMessageDispatcher, MessageDispatcher>();
 
-                services.AddSingleton<IMessageRouterFactory, MessageRouterFactory>();
-                services.AddSingleton<IRoutingSystem, RoutingSystem>();
-                services.AddSingleton<IRouteManager, RouteManager>();
+                if (!suppressRoutingSystem)
+                {
+                    AddRoutingSystem(services);
+                }
 
                 // Force the message-dispatcher to initialize on application startup.
                 // This is needed to ensure handlers are available and registered in multi-process or networking setups.
                 services.ConfigureApplicationServices(manager => manager.AddService<IMessageDispatcher>(isRequiredService: true));
                 services.ConfigureApplicationParts(MessageHandlerFeatureProvider.Configure);
 
-                builder = new MessagingBuilderImpl(services);
+                builder = new MessagingBuilderImpl(services)
+                {
+                    RoutingSystemSuppressed = suppressRoutingSystem
+                };
                 MessageHandlers.Register(builder);
                 services.AddSingleton(builder);
             }
-            else if(!ReferenceEquals(builder.Services, services))
+            else if (builder.RoutingSystemSuppressed && !suppressRoutingSystem)
             {
-                // We have to override some of the default services to resolve the services correctly for the respective context.
-                services.AddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-
-                // TODO: Does this conflict, with a custom dispatcher registered?
-                services.AddSingleton<IMessageDispatcher, MessageDispatcher>(); 
-
-                // We generally we inherit the messaging configuration from the core but we have to override the end-point.
-                services.Configure<MessagingOptions>(
-                    options => options.LocalEndPoint = new RouteEndPointAddress(Guid.NewGuid().ToString())); // TODO: Is this a good default implementation?
-
-                // Force the message-dispatcher to initialize on application startup.
-                // This is needed to ensure handlers are available and registered in multi-process or networking setups.
-                services.ConfigureApplicationServices(manager => manager.AddService<IMessageDispatcher>(isRequiredService: true));
-                services.ConfigureApplicationParts(MessageHandlerFeatureProvider.Configure);
-
-                builder = new MessagingBuilderImpl(services);
-                MessageHandlers.Register(builder);
-                services.AddSingleton(builder);
+                AddRoutingSystem(services);
+                builder.RoutingSystemSuppressed = false;
             }
 
             return builder;
+        }
+
+        private static void AddRoutingSystem(IServiceCollection services)
+        {
+            services.AddSingleton<IMessageRouterFactory, MessageRouterFactory>();
+            services.AddSingleton<IRoutingSystem, RoutingSystem>();
+            services.AddSingleton<IRouteManager, RouteManager>();
         }
 
         /// <summary>
@@ -95,9 +92,12 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="configuration">Configures the messaging options.</param>
         /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="configuration"/> is null.</exception>
-        public static IMessagingBuilder AddMessaging(this IServiceCollection services, Action<MessagingOptions> configuration)
+        public static IMessagingBuilder AddMessaging(
+            this IServiceCollection services,
+            Action<MessagingOptions> configuration,
+            bool suppressRoutingSystem = false)
         {
-            var builder = services.AddMessaging();
+            var builder = services.AddMessaging(suppressRoutingSystem);
             builder.Services.Configure(configuration);
             return builder;
         }
