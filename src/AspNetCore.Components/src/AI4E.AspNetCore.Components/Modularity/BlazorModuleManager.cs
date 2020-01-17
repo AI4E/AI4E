@@ -28,6 +28,7 @@ using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Extensibility;
 using AI4E.Utils;
 using AI4E.Utils.Async;
+using AI4E.Utils.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 
@@ -36,8 +37,7 @@ namespace AI4E.AspNetCore.Components.Modularity
     public sealed class BlazorModuleManager : IBlazorModuleManager, IAsyncDisposable
     {
         private readonly AssemblyManager _assemblyManager;
-        private readonly IContextServiceManager _contextServiceManager;
-        private readonly IBlazorModuleServicesContextNameResolver _servicesContextNameResolver;
+        private readonly IChildContainerBuilder _childContainerBuilder;
         private readonly ILogger<BlazorModuleManager>? _logger;
         private readonly ImmutableDictionary<AssemblyName, Assembly> _coreAssemblies;
 
@@ -49,22 +49,17 @@ namespace AI4E.AspNetCore.Components.Modularity
 
         public BlazorModuleManager(
             AssemblyManager assemblyManager,
-            IContextServiceManager contextServiceManager,
-            IBlazorModuleServicesContextNameResolver servicesContextNameResolver,
+            IChildContainerBuilder childContainerBuilder,
             ILogger<BlazorModuleManager>? logger = null)
         {
             if (assemblyManager is null)
                 throw new ArgumentNullException(nameof(assemblyManager));
 
-            if (contextServiceManager is null)
-                throw new ArgumentNullException(nameof(contextServiceManager));
-
-            if (servicesContextNameResolver is null)
-                throw new ArgumentNullException(nameof(servicesContextNameResolver));
+            if (childContainerBuilder is null)
+                throw new ArgumentNullException(nameof(childContainerBuilder));
 
             _assemblyManager = assemblyManager;
-            _contextServiceManager = contextServiceManager;
-            _servicesContextNameResolver = servicesContextNameResolver;
+            _childContainerBuilder = childContainerBuilder;
             _logger = logger;
 
             _coreAssemblies = AppDomain.CurrentDomain
@@ -91,11 +86,10 @@ namespace AI4E.AspNetCore.Components.Modularity
             }
 
             var blazorModule = new BlazorModule(
-                moduleDescriptor, 
-                _coreAssemblies, 
-                _assemblyManager, 
-                _contextServiceManager, 
-                _servicesContextNameResolver);
+                moduleDescriptor,
+                _coreAssemblies,
+                _assemblyManager,
+                _childContainerBuilder);
 
             return InstallAsync(blazorModule, cancellation);
         }

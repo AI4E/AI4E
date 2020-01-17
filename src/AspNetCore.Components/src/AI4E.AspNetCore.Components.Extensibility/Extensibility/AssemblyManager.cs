@@ -20,13 +20,13 @@
 
 // TODO: This type should be thread-safe.
 
-
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Threading.Tasks;
+using AI4E.Utils;
 
 namespace AI4E.AspNetCore.Components.Extensibility
 {
@@ -35,13 +35,41 @@ namespace AI4E.AspNetCore.Components.Extensibility
     /// </summary>
     public class AssemblyManager : IAssemblySource
     {
-        private readonly Dictionary<Assembly, AssemblyLoadContext?> _assemblies
-            = new Dictionary<Assembly, AssemblyLoadContext?>();
+        private readonly Dictionary<Assembly, AssemblyContext> _assemblies;
+
+        private sealed class AssemblyContext
+        {
+            public static AssemblyContext Empty { get; } = new AssemblyContext(null, null);
+
+            public static AssemblyContext Create(AssemblyLoadContext? assemblyLoadContext, IServiceProvider? assemblyServiceProvider)
+            {
+                // Do not create a new instance, if not necessary.
+                if (assemblyLoadContext is null &&
+                   assemblyServiceProvider is null)
+                {
+                    return Empty;
+                }
+
+                return new AssemblyContext(assemblyLoadContext, assemblyServiceProvider);
+            }
+
+            private AssemblyContext(AssemblyLoadContext? assemblyLoadContext, IServiceProvider? assemblyServiceProvider)
+            {
+                AssemblyLoadContext = assemblyLoadContext;
+                AssemblyServiceProvider = assemblyServiceProvider;
+            }
+
+            public AssemblyLoadContext? AssemblyLoadContext { get; }
+            public IServiceProvider? AssemblyServiceProvider { get; }
+        }
 
         /// <summary>
         /// Creates a new instance of the <see cref="AssemblyManager"/> type.
         /// </summary>
-        public AssemblyManager() { }
+        public AssemblyManager()
+        {
+            _assemblies = new Dictionary<Assembly, AssemblyContext>(AssemblyByDisplayNameComparer.Instance);
+        }
 
         /// <summary>
         /// Creates a new instance of the <see cref="AssemblyManager"/> type that
@@ -52,7 +80,7 @@ namespace AI4E.AspNetCore.Components.Extensibility
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="entryAssembly"/> is <c>null</c>.
         /// </exception>
-        public AssemblyManager(Assembly entryAssembly)
+        public AssemblyManager(Assembly entryAssembly) : this()
         {
             if (entryAssembly == null)
                 throw new ArgumentNullException(nameof(entryAssembly));
@@ -60,7 +88,7 @@ namespace AI4E.AspNetCore.Components.Extensibility
             var assemblies = ComponentResolver.EnumerateComponentAssemblies(entryAssembly);
             foreach (var assembly in assemblies)
             {
-                _assemblies.Add(assembly, null);
+                _assemblies.Add(assembly, AssemblyContext.Empty);
             }
         }
 
@@ -78,12 +106,17 @@ namespace AI4E.AspNetCore.Components.Extensibility
         /// The <see cref="AssemblyLoadContext"/> that <paramref name="assembly"/> was loaded from, or <c>null</c>.
         /// </param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="assembly"/> is <c>null</c>.</exception>
-        public ValueTask AddAssemblyAsync(Assembly assembly, AssemblyLoadContext? assemblyLoadContext = null)
+        public ValueTask AddAssemblyAsync(
+            Assembly assembly,
+            AssemblyLoadContext? assemblyLoadContext = null,
+            IServiceProvider? assemblyServiceProvider = null)
         {
             if (assembly is null)
                 throw new ArgumentNullException(nameof(assembly));
 
-            if (!_assemblies.AddOrReplace(assembly, assemblyLoadContext))
+            var context = AssemblyContext.Create(assemblyLoadContext, assemblyServiceProvider);
+
+            if (!_assemblies.AddOrReplace(assembly, context))
             {
                 return default;
             }
@@ -91,12 +124,16 @@ namespace AI4E.AspNetCore.Components.Extensibility
             return NotifyAssembliesChangedAsync();
         }
 
-        public ValueTask AddAssembliesAsync(IEnumerable<Assembly> assemblies, AssemblyLoadContext? assemblyLoadContext = null)
+        public ValueTask AddAssembliesAsync(
+            IEnumerable<Assembly> assemblies,
+            AssemblyLoadContext? assemblyLoadContext = null,
+            IServiceProvider? assemblyServiceProvider = null)
         {
             if (assemblies is null)
                 throw new ArgumentNullException(nameof(assemblies));
 
             var changed = false;
+            var context = AssemblyContext.Create(assemblyLoadContext, assemblyServiceProvider);
 
             foreach (var assembly in assemblies)
             {
@@ -105,7 +142,7 @@ namespace AI4E.AspNetCore.Components.Extensibility
                     throw new ArgumentException("The collection must not contain null entries.", nameof(assemblies));
                 }
 
-                changed |= _assemblies.AddOrReplace(assembly, assemblyLoadContext);
+                changed |= _assemblies.AddOrReplace(assembly, context);
             }
 
             return changed ? NotifyAssembliesChangedAsync() : default;
@@ -175,18 +212,32 @@ namespace AI4E.AspNetCore.Components.Extensibility
 #endif
         }
 
+        private AssemblyContext GetAssemblyContext(Assembly assembly)
+        {
+            if (_assemblies.TryGetValue(assembly, out var assemblyContext))
+            {
+                return assemblyContext;
+            }
+
+            return AssemblyContext.Empty;
+        }
+
         /// <inheritdoc />
         public AssemblyLoadContext? GetAssemblyLoadContext(Assembly assembly)
         {
             if (assembly is null)
                 throw new ArgumentNullException(nameof(assembly));
 
-            if (!_assemblies.TryGetValue(assembly, out var assemblyLoadContext))
-            {
-                assemblyLoadContext = null;
-            }
+            return GetAssemblyContext(assembly).AssemblyLoadContext;
+        }
 
-            return assemblyLoadContext;
+        /// <inhertdoc />
+        public IServiceProvider? GetAssemblyServiceProvider(Assembly assembly)
+        {
+            if (assembly is null)
+                throw new ArgumentNullException(nameof(assembly));
+
+            return GetAssemblyContext(assembly).AssemblyServiceProvider;
         }
 
         /// <inheritdoc />

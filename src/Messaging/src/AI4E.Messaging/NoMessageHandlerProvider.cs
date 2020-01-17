@@ -19,34 +19,32 @@
  */
 
 using System;
-using Microsoft.Extensions.Options;
+using System.Collections.Generic;
 
-namespace AI4E.AspNetCore.Components.Modularity
+namespace AI4E.Messaging
 {
-    public sealed class BlazorModuleServicesContextNameResolver : IBlazorModuleServicesContextNameResolver
+    /// <summary>
+    /// Implements the null-object design pattern for the <see cref="IMessageHandlerProvider"/> interface.
+    /// </summary>
+    public sealed class NoMessageHandlerProvider : IMessageHandlerProvider
     {
-        private readonly IOptions<BlazorModuleOptions> _optionsAccessor;
+        /// <summary>
+        /// Gets the singleton instance of the <see cref="NoMessageHandlerProvider"/> type.
+        /// </summary>
+        public static NoMessageHandlerProvider Instance { get; } = new NoMessageHandlerProvider();
 
-        public BlazorModuleServicesContextNameResolver(IOptions<BlazorModuleOptions> optionsAccessor)
+        private NoMessageHandlerProvider() { }
+
+        /// <inheritdoc />
+        public IReadOnlyList<IMessageHandlerRegistration> GetHandlerRegistrations(Type messageType)
         {
-            if (optionsAccessor is null)
-                throw new ArgumentNullException(nameof(optionsAccessor));
-
-            _optionsAccessor = optionsAccessor;
+            return Array.Empty<IMessageHandlerRegistration>();
         }
 
-        public string ResolveServicesContextName(IBlazorModuleDescriptor moduleDescriptor)
+        /// <inheritdoc />
+        public IReadOnlyList<IMessageHandlerRegistration> GetHandlerRegistrations()
         {
-            if (moduleDescriptor is null)
-                throw new ArgumentNullException(nameof(moduleDescriptor));
-            var prefix = _optionsAccessor.Value.ServicesContextNamePrefix;
-
-            if (string.IsNullOrWhiteSpace(prefix))
-            {
-                prefix = BlazorModuleOptions.DefaultServicesContextNamePrefix;
-            }
-
-            return prefix + moduleDescriptor.Name;
+            return Array.Empty<IMessageHandlerRegistration>();
         }
     }
 }

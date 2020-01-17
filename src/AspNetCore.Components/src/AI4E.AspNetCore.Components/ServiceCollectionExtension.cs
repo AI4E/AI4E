@@ -59,7 +59,6 @@ namespace Microsoft.Extensions.DependencyInjection
             }
 
             services.TryAddSingleton<IAssemblySource>(p => p.GetRequiredService<AssemblyManager>());
-            services.TryAddSingleton<IBlazorModuleServicesContextNameResolver, BlazorModuleServicesContextNameResolver>();
             BlazorModuleRunner.Configure(services);
             return builder;
         }

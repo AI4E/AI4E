@@ -59,6 +59,17 @@ namespace AI4E.AspNetCore.Components.Extensibility
         AssemblyLoadContext? GetAssemblyLoadContext(Assembly assembly);
 
         /// <summary>
+        /// Returns the <see cref="IServiceProvider"/> that is responsible to load services from the specified assembly.
+        /// </summary>
+        /// <param name="assembly">The <see cref="Assembly"/>.</param>
+        /// <returns>
+        /// The <see cref="IServiceProvider"/> that is responsible to load services from the specified assembly,
+        /// or <c>null</c> if no service provider is registered.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="assembly"/> is <c>null</c>.</exception>
+        IServiceProvider? GetAssemblyServiceProvider(Assembly assembly);
+
+        /// <summary>
         /// Returns a boolean value indicating whether the specified assembly is contained in the assembly source.
         /// </summary>
         /// <param name="assembly">The <see cref="Assembly"/>.</param>

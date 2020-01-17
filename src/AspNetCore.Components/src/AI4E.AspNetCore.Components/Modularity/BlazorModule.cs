@@ -31,6 +31,7 @@ using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Extensibility;
 using AI4E.Utils;
 using AI4E.Utils.ApplicationParts;
+using AI4E.Utils.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.AspNetCore.Components.Modularity
@@ -39,20 +40,19 @@ namespace AI4E.AspNetCore.Components.Modularity
     {
         private readonly ImmutableDictionary<AssemblyName, Assembly> _coreAssemblies;
         private readonly AssemblyManager _assemblyManager;
-        private readonly IContextServiceManager _contextServiceManager;
-        private readonly IBlazorModuleServicesContextNameResolver _servicesContextNameResolver;
+        private readonly IChildContainerBuilder _childContainerBuilder;
         private BlazorModuleAssemblyLoadContext? _assemblyLoadContext;
         private WeakReflectionContext? _reflectionContext;
         private ImmutableList<Assembly>? _componentAssemblies;
         private ImmutableList<Assembly>? _weakComponentAssemblies;
         private ImmutableList<Assembly>? _installedAssemblies;
+        private IChildServiceProvider? _moduleServices;
 
         public BlazorModule(
             IBlazorModuleDescriptor moduleDescriptor,
             ImmutableDictionary<AssemblyName, Assembly> coreAssemblies,
             AssemblyManager assemblyManager,
-            IContextServiceManager contextServiceManager,
-            IBlazorModuleServicesContextNameResolver servicesContextNameResolver)
+            IChildContainerBuilder childContainerBuilder)
         {
             if (moduleDescriptor is null)
                 throw new ArgumentNullException(nameof(moduleDescriptor));
@@ -63,17 +63,13 @@ namespace AI4E.AspNetCore.Components.Modularity
             if (assemblyManager is null)
                 throw new ArgumentNullException(nameof(assemblyManager));
 
-            if (contextServiceManager is null)
-                throw new ArgumentNullException(nameof(contextServiceManager));
-
-            if (servicesContextNameResolver is null)
-                throw new ArgumentNullException(nameof(servicesContextNameResolver));
+            if (childContainerBuilder is null)
+                throw new ArgumentNullException(nameof(childContainerBuilder));
 
             ModuleDescriptor = moduleDescriptor;
             _coreAssemblies = coreAssemblies;
             _assemblyManager = assemblyManager;
-            _contextServiceManager = contextServiceManager;
-            _servicesContextNameResolver = servicesContextNameResolver;
+            _childContainerBuilder = childContainerBuilder;
         }
 
         public IBlazorModuleDescriptor ModuleDescriptor { get; }
@@ -94,37 +90,24 @@ namespace AI4E.AspNetCore.Components.Modularity
                 .ToImmutableList();
             _installedAssemblies = GetInstalledAssemblies().ToImmutableList();
 
-            var contextServices = ConfigureContextServices();
-            var appServices = contextServices.GetService<ApplicationServiceManager>();
+            _moduleServices = ConfigureModuleServices();
+            var appServices = _moduleServices.GetService<ApplicationServiceManager>();
 
             if (appServices != null)
             {
                 await appServices
-                    .InitializeApplicationServicesAsync(contextServices, cancellation)
+                    .InitializeApplicationServicesAsync(_moduleServices, cancellation)
                     .ConfigureAwait(false);
             }
 
-            await _assemblyManager.AddAssembliesAsync(_weakComponentAssemblies, _assemblyLoadContext);
+            await _assemblyManager.AddAssembliesAsync(_weakComponentAssemblies, _assemblyLoadContext, _moduleServices);
 
             IsInstalled = true;
         }
 
-        private IServiceProvider ConfigureContextServices()
+        private IChildServiceProvider ConfigureModuleServices()
         {
-            var serviceContext = _servicesContextNameResolver.ResolveServicesContextName(ModuleDescriptor);
-
-            var success = _contextServiceManager.TryConfigureContextServices(
-                serviceContext,
-                ConfigureServices,
-                out var contextServices);
-
-            if (!success)
-            {
-                throw new BlazorModuleManagerException(
-                    $"Unable to load module. The requested service-context {serviceContext} is already assigned.");
-            }
-
-            return contextServices!;
+            return _childContainerBuilder.CreateChildContainer(ConfigureServices);
         }
 
         private void ConfigureServices(IServiceCollection services)
@@ -297,11 +280,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             await _assemblyManager.RemoveAssembliesAsync(_weakComponentAssemblies!);
             RemoveFromInternalCaches(_reflectionContext!, _weakComponentAssemblies!.ToHashSet());
 
-            var serviceContext = _servicesContextNameResolver.ResolveServicesContextName(ModuleDescriptor);
-            if (_contextServiceManager.TryGetContextServices(serviceContext, out var contextServices))
-            {
-                await contextServices.DisposeIfDisposableAsync();
-            }
+            await _moduleServices!.DisposeAsync();
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]

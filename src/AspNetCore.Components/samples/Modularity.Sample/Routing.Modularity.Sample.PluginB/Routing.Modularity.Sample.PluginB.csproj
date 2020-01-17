@@ -4,6 +4,7 @@
     <TargetFramework>$(NetStandardVersion)</TargetFramework>
     <BlazorLinkOnBuild>false</BlazorLinkOnBuild>
     <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
