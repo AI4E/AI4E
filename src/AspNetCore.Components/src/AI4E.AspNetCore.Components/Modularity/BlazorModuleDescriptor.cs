@@ -27,11 +27,10 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
-using AI4E.AspNetCore.Components.Modularity;
 using AI4E.Messaging;
 using AI4E.Utils;
 
-namespace Routing.Modularity.Sample.Services
+namespace AI4E.AspNetCore.Components.Modularity
 {
     public sealed class BlazorModuleDescriptor : IBlazorModuleDescriptor
     {
@@ -80,12 +79,12 @@ namespace Routing.Modularity.Sample.Services
                 var result = typeof(BlazorModuleDescriptor).GetConstructor(
                     BindingFlags.Instance | BindingFlags.NonPublic,
                     Type.DefaultBinder,
-                    new[] 
-                    { 
+                    new[]
+                    {
                         typeof(ImmutableList<IBlazorModuleAssemblyDescriptor>),
-                        typeof(string), 
+                        typeof(string),
                         typeof(SerializableType?),
-                        typeof(string) 
+                        typeof(string)
                     },
                     modifiers: null);
 
@@ -103,6 +102,18 @@ namespace Routing.Modularity.Sample.Services
                 _name = name;
                 _urlPrefix = urlPrefix;
                 _assemblies = new ValueCollection<BlazorModuleAssemblyDescriptor.Builder>();
+            }
+
+            internal Builder(IBlazorModuleDescriptor moduleDescriptor)
+            {
+                if (moduleDescriptor is null)
+                    throw new ArgumentNullException(nameof(moduleDescriptor));
+
+                _name = moduleDescriptor.Name;
+                _urlPrefix = moduleDescriptor.UrlPrefix;
+                StartupType = moduleDescriptor.StartupType;
+                _assemblies = new ValueCollection<BlazorModuleAssemblyDescriptor.Builder>();
+                _assemblies.AddRange(moduleDescriptor.Assemblies.Select(p => p.ToBuilder()));
             }
 
             public ICollection<BlazorModuleAssemblyDescriptor.Builder> Assemblies => _assemblies;

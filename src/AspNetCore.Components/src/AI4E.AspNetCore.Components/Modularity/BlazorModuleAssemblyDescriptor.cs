@@ -20,11 +20,11 @@
 
 
 using System;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.AspNetCore.Components.Modularity;
 
-namespace Routing.Modularity.Sample.Services
+namespace AI4E.AspNetCore.Components.Modularity
 {
     public sealed class BlazorModuleAssemblyDescriptor : IBlazorModuleAssemblyDescriptor
     {
@@ -58,9 +58,9 @@ namespace Routing.Modularity.Sample.Services
 
         public IBlazorModuleDescriptor ModuleDescriptor { get; }
 
-        public string AssemblyName { get; }
+        public string AssemblyName { get; } // TODO: Does this encode the simple-name or the display-name?
 
-        public Version AssemblyVersion { get; }
+        public Version AssemblyVersion { get; } // TODO: This should be nullable
 
         public bool IsComponentAssembly { get; }
 
@@ -86,6 +86,21 @@ namespace Routing.Modularity.Sample.Services
             return new Builder(assemblyName, assemblyVersion, loadAssemblySourceAsync);
         }
 
+        public static Builder CreateBuilder(Assembly assembly, bool forceLoad = false)
+        {
+            if (assembly is null)
+                throw new ArgumentNullException(nameof(assembly));
+
+            var assemblyName = assembly.GetName();
+
+            ValueTask<BlazorModuleAssemblySource> LoadAssemblySourceAsync(CancellationToken cancellation)
+            {
+                return BlazorModuleAssemblySource.FromLocationAsync(assembly.Location, forceLoad, cancellation);
+            }
+
+            return new Builder(assemblyName.FullName, assemblyName.Version!, LoadAssemblySourceAsync);
+        }
+
 #pragma warning disable CA1034
         public sealed class Builder
 #pragma warning restore CA1034
@@ -102,6 +117,26 @@ namespace Routing.Modularity.Sample.Services
                 _assemblyName = assemblyName;
                 _assemblyVersion = assemblyVersion;
                 _loadAssemblySourceAsync = loadAssemblySourceAsync;
+            }
+
+            internal Builder(IBlazorModuleAssemblyDescriptor assemblyDescriptor)
+            {
+                if (assemblyDescriptor is null)
+                    throw new ArgumentNullException(nameof(assemblyDescriptor));
+
+                _assemblyName = assemblyDescriptor.AssemblyName;
+                _assemblyVersion = assemblyDescriptor.AssemblyVersion;
+
+                if (assemblyDescriptor is BlazorModuleAssemblyDescriptor knownImpl)
+                {
+                    _loadAssemblySourceAsync = knownImpl._loadAssemblySourceAsync;
+                }
+                else
+                {
+                    _loadAssemblySourceAsync = assemblyDescriptor.LoadAssemblySourceAsync;
+                }
+
+                IsComponentAssembly = assemblyDescriptor.IsComponentAssembly;
             }
 
             public string AssemblyName
@@ -142,7 +177,7 @@ namespace Routing.Modularity.Sample.Services
                 }
             }
 
-            internal BlazorModuleAssemblyDescriptor Build(IBlazorModuleDescriptor moduleDescriptor)
+            public BlazorModuleAssemblyDescriptor Build(IBlazorModuleDescriptor moduleDescriptor)
             {
                 if (moduleDescriptor is null)
                     throw new ArgumentNullException(nameof(moduleDescriptor));
