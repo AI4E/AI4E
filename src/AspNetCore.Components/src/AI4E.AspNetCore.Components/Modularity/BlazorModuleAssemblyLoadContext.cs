@@ -21,20 +21,24 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Threading;
 using AI4E.Utils;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
+    // TODO: Do we have to guarantee thread safety?
     internal sealed class BlazorModuleAssemblyLoadContext : AssemblyLoadContext
     {
-        private readonly ImmutableDictionary<AssemblyName, Assembly> _coreAssemblies;
         private readonly ImmutableDictionary<AssemblyName, BlazorModuleAssemblySource> _assemblySources;
-        private readonly Dictionary<AssemblyName, Assembly> _assemblyCache;
+        private readonly Dictionary<AssemblyName, Assembly> _assemblyCache; // TODO: Do we have to guarantee thread safety?
+        private readonly ImmutableHashSet<AssemblyName> _coreAssemblies;
+
+        private bool _unloading = false;
 
         public BlazorModuleAssemblyLoadContext(
-            ImmutableDictionary<AssemblyName, Assembly> coreAssemblies,
             ImmutableDictionary<AssemblyName, BlazorModuleAssemblySource> assemblySources)
 
         // TODO: Either remove the multi-targeting, or add a shim for this.
@@ -42,21 +46,19 @@ namespace AI4E.AspNetCore.Components.Modularity
                 : base(isCollectible: true)
 #endif
         {
-            if (coreAssemblies is null)
-                throw new ArgumentNullException(nameof(coreAssemblies));
-
             if (assemblySources is null)
                 throw new ArgumentNullException(nameof(assemblySources));
 
-            _coreAssemblies = coreAssemblies;
             _assemblySources = assemblySources;
-            _assemblyCache = new Dictionary<AssemblyName, Assembly>(AssemblyNameComparer.Instance);
+            _assemblyCache = new Dictionary<AssemblyName, Assembly>(AssemblyNameComparer.ByDisplayName);
+            _coreAssemblies = BuildCoreAssemblies();
 
             Unloading += OnUnloading;
         }
 
         private void OnUnloading(AssemblyLoadContext obj)
         {
+            Volatile.Write(ref _unloading, true);
             Unloading -= OnUnloading;
             _assemblyCache.Clear();
 
@@ -66,18 +68,54 @@ namespace AI4E.AspNetCore.Components.Modularity
             }
         }
 
+        public
+#if NETCORE30 || NETCORE31
+            new 
+#endif
+            IEnumerable<Assembly> Assemblies => _assemblyCache.Values;
+
+        private ImmutableHashSet<AssemblyName> BuildCoreAssemblies()
+        {
+            return AppDomain.CurrentDomain
+                .GetAssemblies()
+                .Where(p => GetLoadContext(p) == Default)
+                .Select(p => p.GetName())
+                .Append(typeof(object).Assembly.GetName())
+                .ToImmutableHashSet(AssemblyNameComparer.ByDisplayName);
+        }
+
         protected override Assembly? Load(AssemblyName assemblyName)
         {
-            if (_coreAssemblies.TryGetValue(assemblyName, out var assembly)
-                || _assemblyCache.TryGetValue(assemblyName, out assembly!))
+            if (Volatile.Read(ref _unloading))
             {
+                throw new Exception("Unable to load an assembly while unloading the assembly load context.");
+            }
+
+            Console.WriteLine($"Requested loading assembly {assemblyName}.");
+
+            if (_assemblyCache.TryGetValue(assemblyName, out var assembly))
+            {
+                Console.WriteLine($"Found requested assembly {assemblyName} in cache.");
+
                 return assembly;
             }
 
-            if (!_assemblySources.TryGetValue(assemblyName, out var assemblySource))
+            var hasSource = _assemblySources.TryGetValue(assemblyName, out var assemblySource);
+
+            // We have no source => Fallback to core or throw.
+            if (!hasSource)
             {
+                Console.WriteLine($"Requested assembly {assemblyName} has no source. Falling back to default context.");
                 return null;
             }
+
+            if (_coreAssemblies.Contains(assemblyName))
+            {
+                Console.WriteLine($"Requested assembly {assemblyName} has matching core assembly. Falling back to core assembly.");
+                return null;
+            }
+
+            Console.WriteLine($"Loding requested assembly {assemblyName} from source into current context.");
 
             assembly = assemblySource.Load(this);
             _assemblyCache.Add(assemblyName, assembly);

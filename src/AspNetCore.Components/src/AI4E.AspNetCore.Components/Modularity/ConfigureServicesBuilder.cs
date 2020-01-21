@@ -82,7 +82,7 @@ namespace AI4E.AspNetCore.Components.Modularity
                 arguments[0] = services;
             }
 
-            return MethodInfo.InvokeWithoutWrappingExceptions(instance, arguments) as IServiceProvider;
+            return MethodInfo.InvokeUnwrapExceptions(instance, arguments) as IServiceProvider;
         }
     }
 }

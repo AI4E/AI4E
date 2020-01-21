@@ -19,28 +19,39 @@
  */
 
 using System;
-using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace AI4E.Utils
 {
-    /// <summary>
-    /// An equality comparer that compares assembly names via their full-name property.
-    /// </summary>
-    public class AssemblyNameComparer : IEqualityComparer<AssemblyName>
+    internal sealed class ReflectionContextTypeResolver : ITypeResolver
     {
-        public static AssemblyNameComparer Instance { get; } = new AssemblyNameComparer();
+        private readonly ITypeResolver _typeResolver;
+        private readonly ReflectionContext _reflectionContext;
 
-        private AssemblyNameComparer() { }
-
-        public bool Equals(AssemblyName? x, AssemblyName? y)
+        public ReflectionContextTypeResolver(
+            ITypeResolver typeResolver,
+            ReflectionContext reflectionContext)
         {
-            return string.Equals(x?.FullName, y?.FullName, StringComparison.Ordinal);
+            if (typeResolver is null)
+                throw new ArgumentNullException(nameof(typeResolver));
+
+            if (reflectionContext is null)
+                throw new ArgumentNullException(nameof(reflectionContext));
+
+            _typeResolver = typeResolver;
+            _reflectionContext = reflectionContext;
         }
 
-        public int GetHashCode(AssemblyName obj)
+        public bool TryResolveType(ReadOnlySpan<char> unqualifiedTypeName, [NotNullWhen(true)] out Type? type)
         {
-            return obj?.FullName.GetHashCode(StringComparison.Ordinal) ?? 0;
+            if (!_typeResolver.TryResolveType(unqualifiedTypeName, out type))
+            {
+                return false;
+            }
+
+            type = _reflectionContext.MapType(type.GetTypeInfo());
+            return true;
         }
     }
 }

@@ -34,16 +34,21 @@ using Nito.AsyncEx;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
+    /// <summary>
+    /// Manages the installation of blazor modules.
+    /// </summary>
+    /// <remarks>
+    /// This type is not thread-safe.
+    /// </remarks>
     public sealed class BlazorModuleManager : IBlazorModuleManager, IAsyncDisposable
     {
         private readonly AssemblyManager _assemblyManager;
         private readonly IChildContainerBuilder _childContainerBuilder;
         private readonly ILogger<BlazorModuleManager>? _logger;
-        private readonly ImmutableDictionary<AssemblyName, Assembly> _coreAssemblies;
 
         // Contains all BlazorModule instances that are currently installed.
         // It has to be ensured that all installed modules are registered and no uninstalled modules are registered.
-        private readonly Dictionary<IBlazorModuleDescriptor, BlazorModule> _modules;
+        private readonly Dictionary<IBlazorModuleDescriptor, BlazorModuleInstaller> _moduleInstallers;
 
         private readonly AsyncDisposeHelper _disposeHelper;
 
@@ -62,11 +67,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             _childContainerBuilder = childContainerBuilder;
             _logger = logger;
 
-            _coreAssemblies = AppDomain.CurrentDomain
-                .GetAssemblies()
-                .ToImmutableDictionary(p => p.GetName(), AssemblyNameComparer.Instance);
-
-            _modules = new Dictionary<IBlazorModuleDescriptor, BlazorModule>();
+            _moduleInstallers = new Dictionary<IBlazorModuleDescriptor, BlazorModuleInstaller>();
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Default);
         }
 
@@ -80,14 +81,13 @@ namespace AI4E.AspNetCore.Components.Modularity
             if (_disposeHelper.IsDisposed)
                 throw new ObjectDisposedException(GetType().FullName);
 
-            if (_modules.ContainsKey(moduleDescriptor))
+            if (_moduleInstallers.ContainsKey(moduleDescriptor))
             {
                 return new ValueTask<bool>(false);
             }
 
-            var blazorModule = new BlazorModule(
+            var blazorModule = new BlazorModuleInstaller(
                 moduleDescriptor,
-                _coreAssemblies,
                 _assemblyManager,
                 _childContainerBuilder);
 
@@ -95,11 +95,11 @@ namespace AI4E.AspNetCore.Components.Modularity
         }
 
         private async ValueTask<bool> InstallAsync(
-            BlazorModule installedModule,
+            BlazorModuleInstaller installedModule,
             CancellationToken cancellation)
         {
             await installedModule.InstallAsync(cancellation).ConfigureAwait(false);
-            _modules[installedModule.ModuleDescriptor] = installedModule;
+            _moduleInstallers[installedModule.ModuleDescriptor] = installedModule;
             return true;
         }
 
@@ -113,7 +113,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             if (_disposeHelper.IsDisposed)
                 throw new ObjectDisposedException(GetType().FullName);
 
-            if (!_modules.TryGetValue(moduleDescriptor, out var installedModule))
+            if (!_moduleInstallers.TryGetValue(moduleDescriptor, out var installedModule))
             {
                 return new ValueTask<bool>(false);
             }
@@ -121,13 +121,13 @@ namespace AI4E.AspNetCore.Components.Modularity
             return UninstallAsync(installedModule);
         }
 
-        private async ValueTask<bool> UninstallAsync(BlazorModule installedModule)
+        private async ValueTask<bool> UninstallAsync(BlazorModuleInstaller installedModule)
         {
             await installedModule
                 .UninstallAsync()
                 .ConfigureAwait(false);
 
-            _modules.Remove(installedModule.ModuleDescriptor);
+            _moduleInstallers.Remove(installedModule.ModuleDescriptor);
             return true;
         }
 
@@ -136,10 +136,10 @@ namespace AI4E.AspNetCore.Components.Modularity
             if (moduleDescriptor is null)
                 throw new ArgumentNullException(nameof(moduleDescriptor));
 
-            return _modules.ContainsKey(moduleDescriptor);
+            return _moduleInstallers.ContainsKey(moduleDescriptor);
         }
 
-        public IEnumerable<IBlazorModuleDescriptor> InstalledModules => _modules.Keys.ToImmutableList();
+        public IEnumerable<IBlazorModuleDescriptor> InstalledModules => _moduleInstallers.Keys.ToImmutableList();
 
         #region Disposal
 
@@ -155,7 +155,7 @@ namespace AI4E.AspNetCore.Components.Modularity
 
         private ValueTask DisposeInternalAsync()
         {
-            return _modules.Values
+            return _moduleInstallers.Values
                 .Select(p => p.UninstallAsync())
                 .WhenAll();
         }
