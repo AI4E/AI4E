@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>$(NetCoreAppVersion)</TargetFramework>
     <Nullable>enable</Nullable>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>

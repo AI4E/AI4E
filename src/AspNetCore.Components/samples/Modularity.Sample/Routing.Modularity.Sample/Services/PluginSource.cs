@@ -1,16 +1,11 @@
 ﻿using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Modularity;
 using AI4E.Messaging;
-using Newtonsoft.Json;
 using static Routing.Modularity.Sample.Services.PluginManager;
 
 namespace Routing.Modularity.Sample.Services
@@ -33,101 +28,7 @@ namespace Routing.Modularity.Sample.Services
 
             foreach (var pluginName in _pluginNames)
             {
-                var pluginPath = GetPluginPath(pluginName);
-                var blazorConfig = BlazorConfig.Read(pluginPath);
-                var distPath = blazorConfig.DistPath;
-                var blazorBootPath = Path.Combine(distPath, "_framework", "blazor.boot.json");
-
-                BlazorBoot blazorBoot;
-
-                using (var fileStream = new FileStream(blazorBootPath, FileMode.Open))
-                using (var streamReader = new StreamReader(fileStream))
-                {
-                    blazorBoot = (BlazorBoot)JsonSerializer.CreateDefault().Deserialize(streamReader, typeof(BlazorBoot))!;
-                }
-
-                var binPath = Path.Combine(distPath, "_framework", "_bin");
-                var moduleDescriptorBuilder = BlazorModuleDescriptor.CreateBuilder(pluginName, string.Empty);
-
-                moduleDescriptorBuilder.StartupType = new SerializableType(pluginName + ".Startup");
-
-                foreach (var assembly in GetAssemblies(blazorBoot))
-                {
-                    var assemblyLocation = Path.Combine(binPath, assembly!);
-
-                    if (!File.Exists(assemblyLocation))
-                    {
-                        // TODO: Is this an error?
-                        continue;
-                    }
-
-                    var assemblyName = AssemblyName.GetAssemblyName(assemblyLocation);
-
-                    async ValueTask<BlazorModuleAssemblySource> LoadAssemblySourceAsync(CancellationToken cancellation)
-                    {
-                        using var assemblyStream = new FileStream(
-                            assemblyLocation,
-                            FileMode.Open,
-                            FileAccess.Read,
-                            FileShare.Read,
-                            bufferSize: 4096,
-                            useAsync: true);
-
-                        Debug.Assert(assemblyStream.CanSeek);
-                        var assemblyBytesOwner = MemoryPool<byte>.Shared.RentExact(checked((int)assemblyStream.Length));
-
-                        try
-                        {
-                            await assemblyStream.ReadExactAsync(assemblyBytesOwner.Memory, cancellation);
-
-                            var symbolsLocation = Path.ChangeExtension(assemblyLocation, "pdb");
-
-                            if (!File.Exists(symbolsLocation))
-                            {
-                                return new BlazorModuleAssemblySource(assemblyBytesOwner);
-                            }
-
-                            using var symbolsStream = new FileStream(
-                                symbolsLocation,
-                                FileMode.Open,
-                                FileAccess.Read,
-                                FileShare.Read,
-                                bufferSize: 4096,
-                                useAsync: true);
-
-                            Debug.Assert(symbolsStream.CanSeek);
-                            var symbolsBytesOwner = MemoryPool<byte>.Shared.RentExact(checked((int)symbolsStream.Length));
-
-                            try
-                            {
-                                await symbolsStream.ReadExactAsync(symbolsBytesOwner.Memory, cancellation);
-                                return new BlazorModuleAssemblySource(assemblyBytesOwner, symbolsBytesOwner);
-                            }
-                            catch
-                            {
-                                symbolsBytesOwner.Dispose();
-                                throw;
-                            }
-                        }
-                        catch
-                        {
-                            assemblyBytesOwner.Dispose();
-                            throw;
-                        }
-                    }
-
-                    Debug.Assert(assemblyName.Version != null);
-
-                    var moduleAssemblyDescriptorBuilder = BlazorModuleAssemblyDescriptor.CreateBuilder(
-                        assemblyName.FullName,
-                        assemblyName.Version!,
-                        LoadAssemblySourceAsync);
-
-                    moduleAssemblyDescriptorBuilder.IsComponentAssembly = (assembly == blazorBoot.Main);
-                    moduleDescriptorBuilder.Assemblies.Add(moduleAssemblyDescriptorBuilder);
-                }
-
-                var moduleDescriptor = moduleDescriptorBuilder.Build();
+                var moduleDescriptor = BuildModuleDescriptor(pluginName);
                 var plugin = new Plugin(pluginManager, moduleDescriptor);
                 availablePluginsBuilder.Add(plugin);
             }
@@ -135,15 +36,47 @@ namespace Routing.Modularity.Sample.Services
             return availablePluginsBuilder.ToImmutable();
         }
 
-        private static IEnumerable<string> GetAssemblies(BlazorBoot blazorBoot)
+        private BlazorModuleDescriptor BuildModuleDescriptor(string pluginName)
         {
-            return blazorBoot
-                .AssemblyReferences
-                .Where(p => p.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-                .Append(blazorBoot.Main);
+            var pluginPath = GetPluginPath(pluginName);
+            var assemblyLocations = GetAssemblyLocations(pluginPath);
+            var moduleDescriptorBuilder = BlazorModuleDescriptor.CreateBuilder(pluginName, urlPrefix: string.Empty);
+
+            foreach (var assemblyLocation in assemblyLocations)
+            {
+                var assemblyName = AssemblyName.GetAssemblyName(assemblyLocation);
+
+                var moduleAssemblyDescriptorBuilder = BlazorModuleAssemblyDescriptor.CreateBuilder(
+                        assemblyName.FullName,
+                        assemblyName.Version!,
+                        cancellation => BlazorModuleAssemblySource.FromLocationAsync(assemblyLocation, forceLoad: false, cancellation));
+
+                if (StringComparer.OrdinalIgnoreCase.Equals(assemblyName.Name, pluginName))
+                {
+                    moduleAssemblyDescriptorBuilder.IsComponentAssembly = true;
+                }
+
+                moduleDescriptorBuilder.Assemblies.Add(moduleAssemblyDescriptorBuilder);
+            }
+
+            moduleDescriptorBuilder.StartupType = new SerializableType(pluginName + ".Startup");
+
+            return moduleDescriptorBuilder.Build();
         }
 
-         private static string GetPluginPath(string pluginName)
+        private static readonly EnumerationOptions _assemblyEnumerationOptions = new EnumerationOptions
+        {
+            RecurseSubdirectories = false,
+            MatchType = MatchType.Simple,
+            MatchCasing = MatchCasing.CaseInsensitive
+        };
+
+        private static IEnumerable<string> GetAssemblyLocations(string pluginPath)
+        {
+            return Directory.EnumerateFiles(pluginPath, "*.dll", _assemblyEnumerationOptions);
+        }
+
+        private static string GetPluginPath(string pluginName)
         {
             var dir = Assembly.GetExecutingAssembly().Location;
             dir = GetDirectoryName(dir);
@@ -151,7 +84,7 @@ namespace Routing.Modularity.Sample.Services
             dir = GetDirectoryName(dir);
             dir = GetDirectoryName(dir);
 
-            return Path.Combine(dir, pluginName, configuration, "netstandard2.1", pluginName + ".dll");
+            return Path.Combine(dir, pluginName, configuration, "netstandard2.1");
         }
 
         private static string GetDirectoryName(string path)

@@ -3,21 +3,32 @@
   <PropertyGroup>
     <TargetFramework>$(NetStandardVersion)</TargetFramework>
     <BlazorLinkOnBuild>false</BlazorLinkOnBuild>
-    <OutputType>Exe</OutputType>
+    <DefineConstants>$(DefineConstants);MODULE</DefineConstants>
+    <Nullable>enable</Nullable>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\..\..\Messaging\src\AI4E.Messaging\Serialization\DispatchDataDictionaryConverter.cs" Link="Serialization\DispatchDataDictionaryConverter.cs" />
+    <Compile Include="..\..\..\..\Messaging\src\AI4E.Messaging\Serialization\MessageSerializer.cs" Link="Serialization\MessageSerializer.cs" />
+    <Compile Include="..\..\..\..\Messaging\src\AI4E.Messaging\Serialization\SerializationBinder.cs" Link="Serialization\SerializationBinder.cs" />
+    <Compile Include="..\..\..\..\Messaging\src\AI4E.Messaging\Serialization\ContractResolver.cs" Link="Serialization\ContractResolver.cs" />
+    <Compile Include="..\..\..\..\Shared\TypeConverter.cs" Link="Serialization\TypeConverter.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="3.1.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="3.1.0-preview4.19579.2" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.AspNetCore.Components\AI4E.AspNetCore.Components.csproj" />
     <ProjectReference Include="..\Routing.Modularity.Sample.PluginA.Shared\Routing.Modularity.Sample.PluginA.Shared.csproj" />
     <ProjectReference Include="..\Routing.Modularity.Sample.Shared\Routing.Modularity.Sample.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Serialization\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>
 
