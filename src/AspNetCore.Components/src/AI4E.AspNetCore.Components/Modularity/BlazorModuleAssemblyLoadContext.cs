@@ -109,10 +109,15 @@ namespace AI4E.AspNetCore.Components.Modularity
                 return null;
             }
 
-            if (_coreAssemblies.Contains(assemblyName))
+            // We either have no source 
+            // or we have a source but are not forces to load the assembly in the current context.
+            if (!assemblySource.ForceLoad)
             {
-                Console.WriteLine($"Requested assembly {assemblyName} has matching core assembly. Falling back to core assembly.");
-                return null;
+                if (_coreAssemblies.Contains(assemblyName))
+                {
+                    Console.WriteLine($"Requested assembly {assemblyName} has matching core assembly. Falling back to core assembly.");
+                    return null;
+                }
             }
 
             Console.WriteLine($"Loding requested assembly {assemblyName} from source into current context.");
