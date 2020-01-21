@@ -19,7 +19,10 @@
  */
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Utils.Async;
@@ -160,7 +163,40 @@ namespace AI4E.AspNetCore.Components.Modularity
             var toBeUninstalled = installedModules.Except(modules);
             var toBeInstalled = modules.Except(installedModules);
 
-            // Do NOT parallelize this. IModuleManager instances are guaranteed to be thread-safe.
+            if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
+            {
+                Debug.Assert(_logger != null);
+
+                static async ValueTask<string> FormatAsync(IAsyncEnumerable<IBlazorModuleDescriptor> modules)
+                {
+                    StringBuilder? result = null;
+                    await foreach (var module in modules)
+                    {
+                        if (result is null)
+                        {
+                            result = new StringBuilder(module.Name);
+                        }
+                        else
+                        {
+                            result.Append(',');
+                            result.Append(' ');
+                            result.Append(module.Name);
+                        }
+                    }
+
+                    if (result is null)
+                        return string.Empty;
+
+                    return result.ToString();
+                }
+
+                _logger.LogTrace("Desired installation set: " + await FormatAsync(modules));
+                _logger.LogTrace("Current installation set: " + await FormatAsync(installedModules));
+                _logger.LogTrace("To be uninstalled modules: " + await FormatAsync(toBeUninstalled));
+                _logger.LogTrace("To be installed modules: " + await FormatAsync(toBeInstalled));
+            }
+
+            // Do NOT parallelize this. IModuleManager instances are NOT guaranteed to be thread-safe.
             await foreach (var module in toBeUninstalled)
             {
                 cancellation.ThrowIfCancellationRequested();
