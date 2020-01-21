@@ -97,6 +97,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             var assemblySources = await PrefetchAssemblySourcesAsync(ModuleDescriptor.Assemblies, cancellation);
             var assemblyLoadContext = new BlazorModuleAssemblyLoadContext(assemblySources);
             var reflectionContext = new WeakReflectionContext();
+            var moduleContext = new ModuleContext(assemblyLoadContext, reflectionContext);
 
             IEnumerable<Assembly> GetComponentAssemblies()
             {
@@ -143,6 +144,7 @@ namespace AI4E.AspNetCore.Components.Modularity
                 }
 
                 services.AddSingleton(partManager);
+                services.AddSingleton(moduleContext);
 
                 // TODO: Add an extensibility point to allow custom service reset actions.
 
