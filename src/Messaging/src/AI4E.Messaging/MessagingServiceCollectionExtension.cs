@@ -23,6 +23,7 @@ using AI4E;
 using AI4E.Messaging;
 using AI4E.Messaging.MessageHandlers;
 using AI4E.Messaging.Routing;
+using AI4E.Messaging.Serialization;
 using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -51,6 +52,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 services.TryAddSingleton<ITypeResolver>(TypeResolver.Default);
                 services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
                 services.TryAddSingleton<IMessageDispatcher, MessageDispatcher>();
+                services.TryAddSingleton<IMessageSerializer, MessageSerializer>();
 
                 if (!suppressRoutingSystem)
                 {

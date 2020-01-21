@@ -1,4 +1,4 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -18,32 +18,20 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
 using AI4E.Messaging.Serialization;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using AI4E.Utils;
 
 namespace AI4E.Messaging
 {
-    [TestClass]
-    public class NotAuthorizedDispatchResultTests : DispatchResultsTestsBase
+    public abstract class DispatchResultsTestsBase
     {
-        [TestMethod]
-        public void SerializeRoundtripTest()
+        protected IMessageSerializer Serializer { get; } = new MessageSerializer(TypeResolver.Default);
+
+        protected IMessageSerializer BuildSerializer(ITypeResolver deserializationTypeResolver)
         {
-            var resultData = new Dictionary<string, object>
-            {
-                ["abc"] = "def",
-                ["xyz"] = 1234L
-            };
-
-            var dispatchResult = new NotAuthorizedDispatchResult("DispatchResultMessage", resultData);
-            var deserializedResult = Serializer.Roundtrip(dispatchResult);
-
-            Assert.IsFalse(deserializedResult.IsSuccess);
-            Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);
-            Assert.AreEqual(2, deserializedResult.ResultData.Count);
-            Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
-            Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
+            return new MessageSerializerPair(
+                new MessageSerializer(TypeResolver.Default),
+                new MessageSerializer(deserializationTypeResolver));
         }
     }
 }

@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace AI4E.Messaging
 {
     // TODO: Move to Utils
-    [JsonConverter(typeof(SerializableTypeConverter))]
-    public readonly struct SerializableType : IEquatable<SerializableType>
+    [Serializable]
+    public readonly struct SerializableType : IEquatable<SerializableType>, ISerializable
     {
         private readonly Type? _type;
         private readonly string? _typeName;
@@ -30,6 +30,23 @@ namespace AI4E.Messaging
 
             _typeName = typeName;
             _type = null;
+        }
+
+        private SerializableType(SerializationInfo serializationInfo, StreamingContext streamingContext)
+        {
+            if (serializationInfo is null)
+                throw new ArgumentNullException(nameof(serializationInfo));
+
+            _typeName = serializationInfo.GetString(nameof(TypeName));
+            _type = null;
+        }
+
+        void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            if (info is null)
+                throw new ArgumentNullException(nameof(info));
+
+            info.AddValue(nameof(TypeName), _typeName);
         }
 
         public string TypeName => _typeName ?? typeof(object).GetUnqualifiedTypeName();
@@ -68,55 +85,6 @@ namespace AI4E.Messaging
         public static bool operator !=(in SerializableType left, in SerializableType right)
         {
             return !left.Equals(right);
-        }
-    }
-
-    public sealed class SerializableTypeConverter : JsonConverter<SerializableType?>
-    {
-        public override void WriteJson(
-            JsonWriter writer,
-            SerializableType? value,
-            JsonSerializer serializer)
-        {
-            if (writer is null)
-                throw new ArgumentNullException(nameof(writer));
-
-            if (value is null)
-            {
-                writer.WriteNull();
-            }
-            else
-            {
-                writer.WriteValue(((SerializableType)value).TypeName);
-            }
-        }
-
-        public override SerializableType? ReadJson(
-            JsonReader reader,
-            Type objectType,
-            SerializableType? existingValue,
-            bool hasExistingValue,
-            JsonSerializer serializer)
-        {
-            if (reader is null)
-                throw new ArgumentNullException(nameof(reader));
-
-            if (serializer is null)
-                throw new ArgumentNullException(nameof(serializer));
-
-            if (reader.Value is null)
-            {
-                return null;
-            }
-
-            if (reader.Value is string typeName)
-            {
-                var type = serializer.SerializationBinder.BindToType(assemblyName: null, typeName);
-
-                return new SerializableType(typeName, type);
-            }
-
-            throw new JsonSerializationException();
         }
     }
 }

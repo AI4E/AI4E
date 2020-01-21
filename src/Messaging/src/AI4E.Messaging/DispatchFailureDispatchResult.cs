@@ -21,29 +21,19 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace AI4E.Messaging
 {
     /// <summary>
     /// Describes the result of a message dispatch operation that failed because the message cannot be dispatched.
     /// </summary>
+    [Serializable]
     public sealed class DispatchFailureDispatchResult : FailureDispatchResult
     {
-        [JsonProperty("MessageType")]
         private readonly SerializableType _messageType;
 
-#pragma warning disable IDE0051
-        [JsonConstructor]
-        private DispatchFailureDispatchResult(
-            SerializableType messageType,
-            string message,
-            IReadOnlyDictionary<string, object?> resultData)
-            : base(message, resultData)
-        {
-            _messageType = messageType;
-        }
-#pragma warning restore IDE0051
+        #region C'tor
 
         /// <summary>
         /// Creates a new instance of the <see cref="DispatchFailureDispatchResult"/> type.
@@ -85,6 +75,41 @@ namespace AI4E.Messaging
         {
             _messageType = new SerializableType(messageType.GetUnqualifiedTypeName(), messageType);
         }
+
+        #endregion
+
+        #region ISerializable
+
+        private DispatchFailureDispatchResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext)
+        {
+            SerializableType? messageType;
+
+            try
+            {
+#pragma warning disable CA1062
+                messageType = serializationInfo.GetValue(
+                    "MessageType", typeof(SerializableType?)) as SerializableType?;
+#pragma warning restore CA1062
+            }
+            catch (InvalidCastException exc)
+            {
+                // TODO: More specific error message
+                throw new SerializationException("Cannot deserialize dispatch result.", exc);
+            }
+
+            _messageType = messageType ?? default;
+        }
+
+        protected override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+#pragma warning disable CA1062
+            info.AddValue("MessageType", _messageType, typeof(SerializableType?));
+#pragma warning restore CA1062
+        }
+
+        #endregion
 
         /// <summary>
         /// Gets the unqualified type-name of message that cannot be dispatched.

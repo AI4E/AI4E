@@ -32,11 +32,15 @@ namespace AI4E.Messaging.MessageHandlers
     /// </summary>
     public sealed class MessageProcessorContextDescriptor
     {
+        public static MessageProcessorContextDescriptor None { get; } = new MessageProcessorContextDescriptor();
+
         private static readonly ConditionalWeakTable<Type, MessageProcessorContextDescriptor> _descriptors
             = new ConditionalWeakTable<Type, MessageProcessorContextDescriptor>();
 
         private static readonly ConditionalWeakTable<Type, MessageProcessorContextDescriptor>.CreateValueCallback _buildDescriptor
             = BuildDescriptor; // Cache delegate for perf reasons
+
+        private MessageProcessorContextDescriptor() { }
 
         /// <summary>
         /// Gets the <see cref="MessageProcessorContextDescriptor"/> for the specified type.
@@ -94,7 +98,7 @@ namespace AI4E.Messaging.MessageHandlers
             return lambda.Compile();
         }
 
-        private readonly Type _type;
+        private readonly Type? _type;
         private readonly Action<object, IMessageProcessorContext>? _contextSetter;
 
         private MessageProcessorContextDescriptor(Type type, Action<object, IMessageProcessorContext>? contextSetter)

@@ -20,30 +20,19 @@
 
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace AI4E.Messaging
 {
     /// <summary>
     /// Describes the result of a message dispatch operation timeout.
     /// </summary>
+    [Serializable]
     public class TimeoutDispatchResult : FailureDispatchResult
     {
         public static string DefaultMessage { get; } = "The message was not handled in due time";
 
-#pragma warning disable IDE0051
-
-        [JsonConstructor]
-        private TimeoutDispatchResult(
-            DateTime? dueTime,
-            string message,
-            IReadOnlyDictionary<string, object?> resultData)
-            : base(message, resultData)
-        {
-            DueTime = dueTime;
-        }
-
-#pragma warning restore IDE0051
+        #region C'tor
 
         /// <summary>
         /// Creates a new instance of the <see cref="TimeoutDispatchResult"/> type.
@@ -77,6 +66,40 @@ namespace AI4E.Messaging
         {
             DueTime = dueTime;
         }
+
+        #endregion
+
+        #region ISerializable
+
+        protected TimeoutDispatchResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext)
+        {
+            DateTime? dueTime;
+
+            try
+            {
+#pragma warning disable CA1062
+                dueTime = serializationInfo.GetValue(nameof(DueTime), typeof(DateTime?)) as DateTime?;
+#pragma warning restore CA1062
+            }
+            catch (InvalidCastException exc)
+            {
+                // TODO: More specific error message
+                throw new SerializationException("Cannot deserialize dispatch result.", exc);
+            }
+
+            DueTime = dueTime;
+        }
+
+        protected override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+#pragma warning disable CA1062
+            info.AddValue(nameof(DueTime), DueTime, typeof(DateTime?));
+#pragma warning restore CA1062
+        }
+
+        #endregion
 
         /// <summary>
         /// Gets the due time that the message could not be handled in.

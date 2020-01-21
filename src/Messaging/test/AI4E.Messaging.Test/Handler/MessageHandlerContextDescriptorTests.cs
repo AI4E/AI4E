@@ -31,7 +31,7 @@ namespace AI4E.Messaging.MessageHandlers
         [TestMethod]
         public void DefaultDescriptorTest()
         {
-            var descriptor = default(MessageHandlerContextDescriptor);
+            var descriptor = MessageHandlerContextDescriptor.None;
             var handler = new object();
 
             Assert.ThrowsException<InvalidOperationException>(() =>

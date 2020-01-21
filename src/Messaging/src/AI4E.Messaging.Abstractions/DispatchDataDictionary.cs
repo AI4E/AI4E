@@ -20,7 +20,6 @@
 
 using System;
 using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -28,7 +27,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using Newtonsoft.Json;
+using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
 
 namespace AI4E.Messaging
 {
@@ -39,9 +39,9 @@ namespace AI4E.Messaging
     /// <summary>
     /// Contains the dispatch data of a dispatch operation.
     /// </summary>
-    [JsonConverter(typeof(DispatchDataDictionaryConverter))]
 #pragma warning disable CA1710
-    public abstract class DispatchDataDictionary : IReadOnlyDictionary<string, object?>
+    [Serializable]
+    public abstract class DispatchDataDictionary : IReadOnlyDictionary<string, object?>, ISerializable
 #pragma warning restore CA1710
     {
         private protected readonly ImmutableDictionary<string, object?>? _data;
@@ -52,11 +52,10 @@ namespace AI4E.Messaging
         // anyone could inherit from the type. We cannot ensure immutability in this case.
         // Normally this type is not created directly anyway but an instance of the derived (generic type is used) and this type is used 
         // only as cast target, if we do not know the message type.
-        private protected DispatchDataDictionary(Type messageType, object message, IEnumerable<KeyValuePair<string, object?>> data)
+        private protected DispatchDataDictionary(object message, IEnumerable<KeyValuePair<string, object?>> data)
         {
-            ValidateArguments(messageType, message, data);
+            ValidateArguments(MessageType, message, data);
 
-            MessageType = messageType;
             Message = message;
             _data = data as ImmutableDictionary<string, object?> ?? data.ToImmutableDictionary();
         }
@@ -112,10 +111,46 @@ namespace AI4E.Messaging
 
         #endregion
 
+        #region ISerializable
+
+#pragma warning disable CA2229
+        private protected DispatchDataDictionary(SerializationInfo serializationInfo, StreamingContext streamingContext)
+#pragma warning restore CA2229
+        {
+            if (serializationInfo is null)
+                throw new ArgumentNullException(nameof(serializationInfo));
+
+            var message = serializationInfo.GetValue(nameof(Message), typeof(object));
+
+            if (message is null)
+            {
+                throw new SerializationException($"Unable to deserialize the {GetType().FullName}. There is no message specified.");
+            }
+
+            Message = message;
+            _data = serializationInfo.GetValueOrDefault<ImmutableDictionary<string, object?>>("Data");
+        }
+
+        void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            GetObjectData(info, context);
+        }
+
+        protected void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            if (info is null)
+                throw new ArgumentNullException(nameof(info));
+
+            info.AddValue(nameof(Message), Message);
+            info.AddValue<ImmutableDictionary<string, object?>?>("Data", _data);
+        }
+
+        #endregion
+
         /// <summary>
         /// Gets the type of message that is dispatched.
         /// </summary>
-        public Type MessageType { get; }
+        public abstract Type MessageType { get; }
 
         /// <summary>
         /// Gets the message that is dispatched.
@@ -402,8 +437,11 @@ namespace AI4E.Messaging
         #region Factory methods
 
         private static readonly Type _dispatchDataDictionaryTypeDefinition = typeof(DispatchDataDictionary<>);
-        private static readonly ConcurrentDictionary<Type, Func<object, IEnumerable<KeyValuePair<string, object?>>, DispatchDataDictionary>> _factories
-            = new ConcurrentDictionary<Type, Func<object, IEnumerable<KeyValuePair<string, object?>>, DispatchDataDictionary>>();
+        private static readonly ConditionalWeakTable<Type, Func<object, IEnumerable<KeyValuePair<string, object?>>, DispatchDataDictionary>> _factories
+            = new ConditionalWeakTable<Type, Func<object, IEnumerable<KeyValuePair<string, object?>>, DispatchDataDictionary>>();
+
+        private static readonly ConditionalWeakTable<Type, Func<object, IEnumerable<KeyValuePair<string, object?>>, DispatchDataDictionary>>.CreateValueCallback _buildFactory
+            = BuildFactory; // Cache delegate for perf reasons.
 
         /// <summary>
         /// Creates an instance of the <see cref="DispatchDataDictionary"/> type.
@@ -441,7 +479,7 @@ namespace AI4E.Messaging
         {
             ValidateArguments(messageType, message, data);
 
-            var factory = _factories.GetOrAdd(messageType, BuildFactory);
+            var factory = _factories.GetValue(messageType, _buildFactory);
             return factory(message, data);
         }
 
@@ -510,9 +548,9 @@ namespace AI4E.Messaging
     /// <summary>
     /// Contains the dispatch data of a dispatch operation.
     /// </summary>
-    /// <typeparam name="TMessage">The type of message that is dispatched.</typeparam>
-    [JsonConverter(typeof(DispatchDataDictionaryConverter))]
+    /// <typeparam name="TMessage">The type of message that is dispatched.</typeparam> 
 #pragma warning disable CA1710
+    [Serializable]
     public sealed class DispatchDataDictionary<TMessage> : DispatchDataDictionary
 #pragma warning restore CA1710
         where TMessage : class
@@ -530,7 +568,7 @@ namespace AI4E.Messaging
         /// Thrown if <typeparamref name="TMessage"/> is not a valid message type.
         /// </exception>
         public DispatchDataDictionary(TMessage message, IEnumerable<KeyValuePair<string, object?>> data)
-            : base(typeof(TMessage), message, data)
+            : base(message, data)
         { }
 
         /// <summary>
@@ -543,8 +581,15 @@ namespace AI4E.Messaging
         /// Thrown if <typeparamref name="TMessage"/> is not a valid message type.
         /// </exception>
         public DispatchDataDictionary(TMessage message)
-            : base(typeof(TMessage), message, ImmutableDictionary<string, object?>.Empty)
+            : base(message, ImmutableDictionary<string, object?>.Empty)
         { }
+
+        private DispatchDataDictionary(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext)
+        { }
+
+        /// <inheritdoc/>
+        public override Type MessageType => typeof(TMessage);
 
         /// <summary>
         /// Gets the message that is dispatched.
@@ -585,209 +630,5 @@ namespace AI4E.Messaging
         }
 
         #endregion
-    }
-
-    /// <summary>
-    /// A json converter for the <see cref="DispatchDataDictionary"/> type.
-    /// </summary>
-    public sealed class DispatchDataDictionaryConverter : JsonConverter
-    {
-        /// <inheritdoc />
-        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
-        {
-            if (writer is null)
-                throw new ArgumentNullException(nameof(writer));
-
-            if (serializer is null)
-                throw new ArgumentNullException(nameof(serializer));
-
-            if (!(value is DispatchDataDictionary dispatchData))
-            {
-                writer.WriteNull();
-                return;
-            }
-
-            writer.WriteStartObject();
-
-            // Write message type
-            writer.WritePropertyName("message-type");
-            writer.WriteValue(dispatchData.MessageType.GetUnqualifiedTypeName());
-
-            // Write message
-            writer.WritePropertyName("message");
-            serializer.Serialize(writer, dispatchData.Message, typeof(object));
-
-            // Write data
-            if (dispatchData.Any())
-            {
-                writer.WritePropertyName("data");
-                writer.WriteStartObject();
-
-                foreach (var kvp in dispatchData)
-                {
-                    if (kvp.Value is null)
-                        continue;
-
-                    writer.WritePropertyName(kvp.Key);
-                    writer.WriteStartObject();
-                    writer.WritePropertyName("type");
-                    writer.WriteValue(kvp.Value.GetType().GetUnqualifiedTypeName());
-                    writer.WritePropertyName("value");
-                    serializer.Serialize(writer, kvp.Value, kvp.Value.GetType());
-
-                    writer.WriteEndObject();
-                }
-
-                writer.WriteEndObject();
-            }
-
-            writer.WriteEndObject();
-        }
-
-        /// <inheritdoc />
-        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
-        {
-            if (reader is null)
-                throw new ArgumentNullException(nameof(reader));
-
-            if (objectType is null)
-                throw new ArgumentNullException(nameof(objectType));
-
-            if (serializer is null)
-                throw new ArgumentNullException(nameof(serializer));
-
-            if (!CanConvert(objectType))
-                throw new JsonSerializationException();
-
-            if (reader.TokenType == JsonToken.Null)
-                return null;
-
-            if (reader.TokenType != JsonToken.StartObject)
-                throw new JsonSerializationException();
-
-            var messageType = objectType.IsGenericTypeDefinition ? objectType.GetGenericArguments().First() : null;
-            object? message = null;
-            ImmutableDictionary<string, object?>.Builder? data = null;
-
-            while (reader.Read())
-            {
-                if (reader.TokenType == JsonToken.EndObject)
-                {
-                    break;
-                }
-
-                else if (reader.TokenType == JsonToken.PropertyName)
-                {
-                    if (StringComparer.OrdinalIgnoreCase.Equals(reader.Value, "message-type"))
-                    {
-                        reader.Read();
-
-                        if (!(reader.Value is string deserializedMessageTypeName))
-                        {
-                            throw new JsonSerializationException();
-                        }
-
-                        var deserializedMessageType = serializer.SerializationBinder.BindToType(assemblyName: null, deserializedMessageTypeName);
-
-                        if (messageType != null && messageType != deserializedMessageType)
-                        {
-                            throw new JsonSerializationException();
-                        }
-
-                        messageType = deserializedMessageType;
-                    }
-                    else if (StringComparer.OrdinalIgnoreCase.Equals(reader.Value, "message"))
-                    {
-                        reader.Read();
-                        message = serializer.Deserialize(reader, typeof(object));
-                    }
-                    else if (StringComparer.OrdinalIgnoreCase.Equals(reader.Value, "data"))
-                    {
-                        data = ReadDataItems(reader, serializer);
-                    }
-                    else
-                    {
-                        throw new JsonSerializationException();
-                    }
-                }
-                else
-                {
-                    throw new JsonSerializationException();
-                }
-            }
-
-            if (messageType == null || message == null)
-                throw new JsonSerializationException();
-
-            return DispatchDataDictionary.Create(messageType, message, data?.ToImmutable() ?? ImmutableDictionary<string, object?>.Empty);
-        }
-
-        private ImmutableDictionary<string, object?>.Builder? ReadDataItems(JsonReader reader, JsonSerializer serializer)
-        {
-            var result = ImmutableDictionary.CreateBuilder<string, object?>();
-
-            if (!reader.Read() || reader.TokenType != JsonToken.StartObject)
-                return null;
-
-            while (reader.Read())
-            {
-                if (reader.TokenType == JsonToken.EndObject)
-                {
-                    return result;
-                }
-                else if (reader.TokenType == JsonToken.PropertyName)
-                {
-                    ReadSingleDataItem(reader, serializer, result);
-                }
-                else
-                {
-                    throw new JsonSerializationException();
-                }
-            }
-
-            return result;
-        }
-
-        private static void ReadSingleDataItem(JsonReader reader, JsonSerializer serializer, ImmutableDictionary<string, object?>.Builder result)
-        {
-            if (!(reader.Value is string key))
-                throw new JsonSerializationException();
-
-            reader.Read(); // Read start object
-            reader.Read(); // Read type property-name
-
-            if (reader.TokenType != JsonToken.PropertyName || !StringComparer.OrdinalIgnoreCase.Equals(reader.Value, "type"))
-                throw new JsonSerializationException();
-
-            reader.Read(); // Read type property value
-
-
-            if (!(reader.Value is string stringifiedType))
-                throw new JsonSerializationException();
-
-            var type = serializer.SerializationBinder.BindToType(assemblyName: null, stringifiedType);
-
-            reader.Read(); // Read value property-name
-
-            if (reader.TokenType != JsonToken.PropertyName || !StringComparer.OrdinalIgnoreCase.Equals(reader.Value, "value"))
-                throw new JsonSerializationException();
-
-            reader.Read();
-
-            var value = serializer.Deserialize(reader, type);
-            result[key] = value;
-            reader.Read(); // Read end object
-        }
-
-        /// <inheritdoc />
-        public override bool CanConvert(Type objectType)
-        {
-            if (objectType is null)
-                throw new ArgumentNullException(nameof(objectType));
-
-            return objectType == typeof(DispatchDataDictionary) ||
-                   objectType.IsGenericType &&
-                   objectType.GetGenericTypeDefinition() == typeof(DispatchDataDictionary<>);
-        }
     }
 }

@@ -21,15 +21,18 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace AI4E.Messaging.Validation
 {
     /// <summary>
     /// Describes the result of a message dispatch operation thats validation failed.
     /// </summary>
+    [Serializable]
     public class ValidationFailureDispatchResult : FailureDispatchResult
     {
+        #region C'tor
+
         /// <summary>
         /// Creates a new instance of the <see cref="ValidationFailureDispatchResult"/> type.
         /// </summary>
@@ -44,7 +47,6 @@ namespace AI4E.Messaging.Validation
         /// <param name="validationResults">
         /// An enumerable of <see cref="ValidationResult"/>s that describe the failed validation.
         /// </param>
-        [JsonConstructor]
         public ValidationFailureDispatchResult(IEnumerable<ValidationResult> validationResults) : this()
         {
             if (validationResults == null)
@@ -52,6 +54,47 @@ namespace AI4E.Messaging.Validation
 
             ValidationResults = validationResults.ToImmutableList();
         }
+
+        #endregion
+
+        #region ISerializable
+
+        protected ValidationFailureDispatchResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext)
+        {
+            ImmutableList<ValidationResult>? validationResults;
+
+            try
+            {
+#pragma warning disable CA1062
+                validationResults = serializationInfo.GetValue(nameof(ValidationResults), typeof(ImmutableList<ValidationResult>))
+                    as ImmutableList<ValidationResult>;
+#pragma warning restore CA1062
+            }
+            catch (InvalidCastException exc)
+            {
+                // TODO: More specific error message
+                throw new SerializationException("Cannot deserialize dispatch result.", exc);
+            }
+
+            if (validationResults is null)
+            {
+                // TODO: More specific error message
+                throw new SerializationException("Cannot deserialize dispatch result.");
+            }
+
+            ValidationResults = validationResults;
+        }
+
+        protected override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+#pragma warning disable CA1062
+            info.AddValue(nameof(ValidationResults), ValidationResults, typeof(ImmutableList<ValidationResult>));
+#pragma warning restore CA1062
+        }
+
+        #endregion
 
         /// <summary>
         /// Gets an enumerable of <see cref="ValidationResult"/>s that describe the failed validation.

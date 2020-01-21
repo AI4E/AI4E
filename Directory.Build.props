@@ -18,7 +18,7 @@
     <LangVersion>8.0</LangVersion>
     <RazorLangVersion>3.0</RazorLangVersion>
     <TypeScriptToolsVersion>3.5</TypeScriptToolsVersion>
-    <WarningsAsErrors>$(WarningsAsErrors);CS8597;CS8600;CS8601;CS8602;CS8603;CS8604;CS8609;CS8610;CS8613;CS8618;CS8620;CS8622;CS8625;CS8653;CS8714;</WarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);CS8597;CS8600;CS8601;CS8602;CS8603;CS8604;CS8609;CS8610;CS8613;CS8618;CS8620;CS8622;CS8625;CS8653;CS8714;CA2229;</WarningsAsErrors>
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
     <NoWarn>$(NoWarn);NU5105</NoWarn>
     <GenerateDocumentationFile Condition="'$(Configuration)' == 'Release'">true</GenerateDocumentationFile>

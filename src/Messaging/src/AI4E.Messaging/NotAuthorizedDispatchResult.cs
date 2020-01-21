@@ -20,13 +20,14 @@
 
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace AI4E.Messaging
 {
     /// <summary>
     /// Describes the result of a message dispatch operation that failed due to missing authorization.
     /// </summary>
+    [Serializable]
     public class NotAuthorizedDispatchResult : FailureDispatchResult
     {
         internal const string DefaultMessage = "Action forbidden";
@@ -51,9 +52,12 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
-        [JsonConstructor]
         public NotAuthorizedDispatchResult(string message, IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
+        { }
+
+        protected NotAuthorizedDispatchResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext)
         { }
     }
 }

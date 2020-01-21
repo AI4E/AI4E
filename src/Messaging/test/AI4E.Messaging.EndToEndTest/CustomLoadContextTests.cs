@@ -88,7 +88,7 @@ namespace AI4E.Messaging.EndToEndTest
                 services => ConfigureChildServices(services, Assembly1, configureHandlers: false));
 
             var servicesDescriptor2 = childContainerBuilder.CreateChildContainer(
-                services => ConfigureChildServices(services, Assembly2, configureHandlers: false));
+                services => ConfigureChildServices(services, Assembly2, configureHandlers: true));
 
             MessageDispatcher1 = servicesDescriptor1.GetRequiredService<IMessageDispatcher>();
             MessageDispatcher2 = servicesDescriptor2.GetRequiredService<IMessageDispatcher>();

@@ -19,13 +19,13 @@
  */
 
 using System.Collections.Generic;
-using AI4E.Internal;
+using AI4E.Messaging.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Messaging
 {
     [TestClass]
-    public class SuccessDispatchResultTests
+    public class SuccessDispatchResultTests : DispatchResultsTestsBase
     {
         [TestMethod]
         public void CreateMessageResultDataTest()
@@ -145,25 +145,6 @@ namespace AI4E.Messaging
         }
 
         [TestMethod]
-        public void SerializeUnknownTypeRoundtripTest()
-        {
-            var resultData = new Dictionary<string, object>
-            {
-                ["abc"] = "def",
-                ["xyz"] = 1234L
-            };
-
-            var dispatchResult = new SuccessDispatchResult("DispatchResultMessage", resultData);
-            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult);
-
-            Assert.IsTrue(deserializedResult.IsSuccess);
-            Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);
-            Assert.AreEqual(2, deserializedResult.ResultData.Count);
-            Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
-            Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
-        }
-
-        [TestMethod]
         public void GenericSerializeRoundtripTest()
         {
             var result = "thisistheresult";
@@ -175,27 +156,6 @@ namespace AI4E.Messaging
 
             var dispatchResult = new SuccessDispatchResult<string>(result, "DispatchResultMessage", resultData);
             var deserializedResult = Serializer.Roundtrip(dispatchResult);
-
-            Assert.IsTrue(deserializedResult.IsSuccess);
-            Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);
-            Assert.AreEqual(2, deserializedResult.ResultData.Count);
-            Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
-            Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
-            Assert.AreEqual(result, deserializedResult.Result);
-        }
-
-        [TestMethod]
-        public void GenericSerializeUnknownTypeRoundtripTest()
-        {
-            var result = "thisistheresult";
-            var resultData = new Dictionary<string, object>
-            {
-                ["abc"] = "def",
-                ["xyz"] = 1234L
-            };
-
-            var dispatchResult = new SuccessDispatchResult<string>(result, "DispatchResultMessage", resultData);
-            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult);
 
             Assert.IsTrue(deserializedResult.IsSuccess);
             Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);

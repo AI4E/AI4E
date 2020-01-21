@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="$(RepositorySharedPath)Serializer.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="$(RepositorySharedPath)TypeConverter.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="..\AI4E.Messaging.EndToEndTest\TestAssemblyLoadContext.cs" Link="Shared\TestAssemblyLoadContext.cs" />
   </ItemGroup>

@@ -22,23 +22,23 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Threading;
-using Newtonsoft.Json;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Messaging
 {
     /// <summary>
     /// Aggregates multiple message dispatch results to a single result.
     /// </summary>
+    [Serializable]
     public sealed class AggregateDispatchResult : DispatchResult, IAggregateDispatchResult
     {
-        [JsonProperty("ResultData")]
-#pragma warning disable IDE0052 // This is needed for serialization
-        private readonly ImmutableDictionary<string, object?> _resultData;
-#pragma warning restore IDE0052 
+        private readonly ImmutableList<IDispatchResult> _dispatchResults;
+
+        #region C'tors
 
         /// <summary>
         /// Creates a new instance of type <see cref="AggregateDispatchResult"/>.
@@ -48,8 +48,8 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="dispatchResults"/> or <paramref name="resultData"/> is null.
         /// </exception>
-        [JsonConstructor]
         public AggregateDispatchResult(IEnumerable<IDispatchResult> dispatchResults, IReadOnlyDictionary<string, object?> resultData)
+            : base(resultData: resultData)
         {
             if (dispatchResults == null)
                 throw new ArgumentNullException(nameof(dispatchResults));
@@ -59,7 +59,7 @@ namespace AI4E.Messaging
 
             if (dispatchResults.Any(p => p is null))
             {
-                DispatchResults = dispatchResults.Where(p => !(p is null)).ToImmutableList();
+                _dispatchResults = dispatchResults.Where(p => !(p is null)).ToImmutableList();
             }
             else
             {
@@ -68,18 +68,10 @@ namespace AI4E.Messaging
                     immutableResults = dispatchResults.ToImmutableList();
                 }
 
-                DispatchResults = immutableResults;
+                _dispatchResults = immutableResults;
             }
 
-            if (!(resultData is ImmutableDictionary<string, object?> immutableData))
-            {
-                immutableData = resultData.ToImmutableDictionary();
-            }
-
-            Assert(immutableData != null);
-            _resultData = immutableData!;
-
-            ResultData = new AggregateDispatchResultDataDictionary((ImmutableList<IDispatchResult>)DispatchResults, immutableData!);
+            ResultData = new AggregateDispatchResultDataDictionary(_dispatchResults, base.ResultData);
         }
 
         /// <summary>
@@ -103,15 +95,51 @@ namespace AI4E.Messaging
             : this((dispatchResult ?? throw new ArgumentNullException(nameof(dispatchResult))).Yield(), resultData)
         { }
 
-        /// <inheritdoc />
-        public IEnumerable<IDispatchResult> DispatchResults { get; }
+        #endregion
+
+        private AggregateDispatchResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext)
+        {
+            ImmutableList<IDispatchResult>? dispatchResults;
+
+            try
+            {
+#pragma warning disable CA1062
+                dispatchResults = serializationInfo.GetValue(
+                    nameof(DispatchResults), typeof(ImmutableList<IDispatchResult>)) as ImmutableList<IDispatchResult>;
+#pragma warning restore CA1062
+            }
+            catch (InvalidCastException exc)
+            {
+                // TODO: More specific error message
+                throw new SerializationException("Cannot deserialize dispatch result.", exc);
+            }
+
+            if (dispatchResults is null)
+            {
+                // TODO: More specific error message
+                throw new SerializationException("Cannot deserialize dispatch result.");
+            }
+
+            _dispatchResults = dispatchResults;
+            ResultData = new AggregateDispatchResultDataDictionary((ImmutableList<IDispatchResult>)DispatchResults, base.ResultData);
+        }
+
+        protected override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+#pragma warning disable CA1062
+            info.AddValue(nameof(DispatchResults), DispatchResults, typeof(ImmutableList<IDispatchResult>));
+#pragma warning restore CA1062
+        }
 
         /// <inheritdoc />
-        [JsonIgnore]
+        public IEnumerable<IDispatchResult> DispatchResults => _dispatchResults;
+
+        /// <inheritdoc />
         public override bool IsSuccess => !DispatchResults.Any() || DispatchResults.All(p => p.IsSuccess);
 
         /// <inheritdoc />
-        [JsonIgnore]
         public override string Message
         {
             get
@@ -133,20 +161,19 @@ namespace AI4E.Messaging
         }
 
         /// <inheritdoc />
-        [JsonIgnore]
         public override IReadOnlyDictionary<string, object?> ResultData { get; }
 
         private sealed class AggregateDispatchResultDataDictionary : IReadOnlyDictionary<string, object?>
         {
             private readonly ImmutableList<IDispatchResult> _dispatchResults;
-            private readonly ImmutableDictionary<string, object?> _resultData;
+            private readonly IReadOnlyDictionary<string, object?> _resultData;
 
             // This is generated only when needed.
             private readonly Lazy<ImmutableDictionary<string, object>> _combinedResultData;
 
             public AggregateDispatchResultDataDictionary(
                 ImmutableList<IDispatchResult> dispatchResults,
-                ImmutableDictionary<string, object?> resultData)
+                IReadOnlyDictionary<string, object?> resultData)
             {
                 _dispatchResults = dispatchResults;
                 _resultData = resultData;
@@ -221,9 +248,24 @@ namespace AI4E.Messaging
                 return ((IEnumerable)_combinedResultData.Value).GetEnumerator();
             }
 
+            private ImmutableDictionary<string, object?>.Builder GetBuilder()
+            {
+                if (_resultData is ImmutableDictionary<string, object?> immutableDictionary)
+                    return immutableDictionary.ToBuilder();
+
+                var result = ImmutableDictionary.CreateBuilder<string, object?>();
+
+                if (_resultData != null)
+                {
+                    result.AddRange(_resultData);
+                }
+
+                return result;
+            }
+
             private ImmutableDictionary<string, object> CreateCombinedResultData()
             {
-                var builder = (_resultData ?? ImmutableDictionary<string, object?>.Empty).ToBuilder();
+                var builder = GetBuilder();
 
                 foreach (var dispatchResult in _dispatchResults)
                 {
@@ -252,7 +294,7 @@ namespace AI4E.Messaging
                 builder.RemoveRange((_resultData ?? ImmutableDictionary<string, object?>.Empty).Where(p => p.Value == null).Select(p => p.Key));
 
 #if DEBUG
-                Assert(!builder.Any(p => p.Value == null));
+                Debug.Assert(!builder.Any(p => p.Value == null));
 #endif
 
                 return builder.ToImmutable()!;
