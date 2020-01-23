@@ -19,6 +19,10 @@
  */
 
 using System;
+using System.Collections.Immutable;
+using System.Reflection;
+using System.Threading.Tasks;
+using AI4E.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -46,10 +50,148 @@ namespace AI4E.AspNetCore.Components.Modularity
             var services = builder.Services;
 #pragma warning restore CA1062
 
-            services.AddSingleton<IBlazorModuleSource, BlazorModuleSource>();
+            services.AddSingleton<IBlazorModuleSourceFactory, BlazorModuleSourceFactory>();
             services.TryAddSingleton<IBlazorModuleAssemblyLoader, BlazorModuleAssemblyLoader>();
 
             return builder;
+        }
+
+        public static IBlazorModularityBuilder ConfigureCleanup(
+            this IBlazorModularityBuilder builder,
+            Func<ImmutableHashSet<Assembly>, ValueTask> cleanup)
+        {
+            if (cleanup is null)
+                throw new ArgumentNullException(nameof(cleanup));
+
+#pragma warning disable CA1062
+            var services = builder.Services;
+#pragma warning restore CA1062
+
+
+            services.Configure<BlazorModuleOptions>(options =>
+            {
+                options.ConfigureCleanup.Add(cleanup);
+            });
+
+            return builder;
+        }
+
+        public static IBlazorModularityBuilder ConfigureCleanup(
+            this IBlazorModularityBuilder builder,
+            Action<ImmutableHashSet<Assembly>> cleanup)
+        {
+            return ConfigureCleanup(builder, assemblies =>
+            {
+                cleanup(assemblies); return default;
+            });
+        }
+
+        public static IBlazorModularityBuilder ConfigureModuleServices(
+            this IBlazorModularityBuilder builder,
+            Action<ModuleContext, IServiceCollection> configuration)
+        {
+            if (configuration is null)
+                throw new ArgumentNullException(nameof(configuration));
+
+#pragma warning disable CA1062
+            var services = builder.Services;
+#pragma warning restore CA1062
+
+
+            services.Configure<BlazorModuleOptions>(options =>
+            {
+                options.ConfigureModuleServices.Add(configuration);
+            });
+
+            return builder;
+        }
+
+        public static IBlazorModularityBuilder ConfigureModuleServices(
+            this IBlazorModularityBuilder builder,
+            Action<IServiceCollection> configuration)
+        {
+            return ConfigureModuleServices(builder, (_, services) => configuration(services));
+        }
+
+        public static IBlazorModularityBuilder UseBlazorCachingWorkaround(this IBlazorModularityBuilder builder)
+        {
+            BlazorCachingWorkaround.Configure(builder);
+            return builder;
+        }
+
+        public static IBlazorModularityBuilder UseAutofacCachingWorkaround(this IBlazorModularityBuilder builder)
+        {
+            AutofacCachingWorkaround.Configure(builder);
+            return builder;
+        }
+
+        public static IBlazorModularityBuilder UseModuleSourceFactory<TBlazorModuleSourceFactory>(this IBlazorModularityBuilder builder)
+            where TBlazorModuleSourceFactory : class, IBlazorModuleSourceFactory
+        {
+#pragma warning disable CA1062
+            var services = builder.Services;
+#pragma warning restore CA1062
+
+            services.AddSingleton<IBlazorModuleSourceFactory, TBlazorModuleSourceFactory>();
+            return builder;
+        }
+
+        public static IBlazorModularityBuilder UseModuleSourceFactory(
+            this IBlazorModularityBuilder builder, IBlazorModuleSourceFactory moduleSourceFactory)
+        {
+#pragma warning disable CA1062
+            var services = builder.Services;
+#pragma warning restore CA1062
+
+            services.AddSingleton(moduleSourceFactory);
+            return builder;
+        }
+
+        public static IBlazorModularityBuilder UseModuleSourceFactory(
+            this IBlazorModularityBuilder builder,
+            Func<IServiceProvider, IBlazorModuleSourceFactory> implementationFactory)
+        {
+#pragma warning disable CA1062
+            var services = builder.Services;
+#pragma warning restore CA1062
+
+            services.AddSingleton(implementationFactory);
+            return builder;
+        }
+
+        public static IBlazorModularityBuilder ConfigureModuleSource(
+           this IBlazorModularityBuilder builder,
+           Func<IBlazorModuleSource, IBlazorModuleSource> configuration)
+        {
+            if (configuration is null)
+                throw new ArgumentNullException(nameof(configuration));
+
+#pragma warning disable CA1062
+            var services = builder.Services;
+#pragma warning restore CA1062
+
+
+            services.Configure<BlazorModuleOptions>(options =>
+            {
+                options.ConfigureModuleSource.Add(configuration);
+            });
+
+            return builder;
+        }
+
+        public static IBlazorModularityBuilder ConfigureModuleSource(
+           this IBlazorModularityBuilder builder,
+           Func<IBlazorModuleDescriptor, IBlazorModuleDescriptor> configuration)
+        {
+            return builder.ConfigureModuleSource(moduleSource => moduleSource.Configure(configuration));
+        }
+
+        public static IBlazorModularityBuilder LoadAssembliesInContext(
+            this IBlazorModularityBuilder builder,
+            params Assembly[] assemblies)
+        {
+            return builder.ConfigureModuleSource(
+                moduleDescriptor => moduleDescriptor.LoadAssembliesInContext(assemblies));
         }
     }
 }

@@ -1,8 +1,4 @@
-﻿using System;
-using AI4E.Messaging;
-using AI4E.Messaging.Routing;
-using AI4E.Messaging.Serialization;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace Routing.Modularity.Sample.PluginB
 {
@@ -10,10 +6,7 @@ namespace Routing.Modularity.Sample.PluginB
     {
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMessaging(suppressRoutingSystem: true);
-            services.Configure<MessagingOptions>(
-                      options => options.LocalEndPoint = new RouteEndPointAddress(Guid.NewGuid().ToString()));
-            services.AddSingleton<IMessageSerializer, MessageSerializer>();
+            
         }
     }
 }

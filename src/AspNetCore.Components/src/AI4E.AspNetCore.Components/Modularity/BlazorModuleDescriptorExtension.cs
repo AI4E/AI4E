@@ -18,6 +18,9 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+using System.Reflection;
+
 namespace AI4E.AspNetCore.Components.Modularity
 {
     public static class BlazorModuleDescriptorExtension
@@ -26,6 +29,31 @@ namespace AI4E.AspNetCore.Components.Modularity
             this IBlazorModuleDescriptor moduleDescriptor)
         {
             return new BlazorModuleDescriptor.Builder(moduleDescriptor);
+        }
+
+        public static IBlazorModuleDescriptor LoadAssembliesInContext(
+            this IBlazorModuleDescriptor moduleDescriptor,
+            params Assembly[] assemblies)
+        {
+            if (assemblies is null)
+                throw new ArgumentNullException(nameof(assemblies));
+
+            if (assemblies.Length == 0)
+            {
+                return moduleDescriptor;
+            }
+
+            var builder = moduleDescriptor.ToBuilder();
+
+            foreach (var assembly in assemblies)
+            {
+                if (assembly is null)
+                    throw new ArgumentException("The collection must not contain null entries.", nameof(assemblies));
+
+                builder.LoadAssemblyInContext(assembly);
+            }
+
+            return builder.Build();
         }
     }
 }

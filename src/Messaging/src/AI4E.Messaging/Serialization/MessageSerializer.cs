@@ -32,14 +32,17 @@ using Newtonsoft.Json;
 using AI4E.Messaging;
 using AI4E.Messaging.Serialization;
 
-#nullable enable
-
-namespace Routing.Modularity
+namespace AI4E.AspNetCore.Components.Modularity
 #else
 namespace AI4E.Messaging.Serialization
 #endif
 {
-    public sealed class MessageSerializer : IMessageSerializer, IDisposable
+#if MODULE
+    internal
+#else
+    public 
+#endif
+        sealed class MessageSerializer : IMessageSerializer, IDisposable
     {
         private readonly ITypeResolver _typeResolver;
         private readonly ThreadLocal<JsonSerializer> _serializer;

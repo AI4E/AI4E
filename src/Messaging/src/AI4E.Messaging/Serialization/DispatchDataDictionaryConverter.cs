@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
 
 namespace AI4E.Messaging.Serialization
 {
-    public sealed class DispatchDataDictionaryConverter : JsonConverter
+    internal sealed class DispatchDataDictionaryConverter : JsonConverter
     {
         public override bool CanConvert(Type objectType)
         {
@@ -158,7 +154,7 @@ namespace AI4E.Messaging.Serialization
 
                         builder.Add(itemName, value);
 
-                        if (!reader.Read() 
+                        if (!reader.Read()
                             || reader.TokenType != JsonToken.EndObject)
                         {
                             goto THROW_FORMAT_EXCEPTION;

@@ -9,14 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\..\..\Messaging\src\AI4E.Messaging\Serialization\DispatchDataDictionaryConverter.cs" Link="Serialization\DispatchDataDictionaryConverter.cs" />
-    <Compile Include="..\..\..\..\Messaging\src\AI4E.Messaging\Serialization\MessageSerializer.cs" Link="Serialization\MessageSerializer.cs" />
-    <Compile Include="..\..\..\..\Messaging\src\AI4E.Messaging\Serialization\SerializationBinder.cs" Link="Serialization\SerializationBinder.cs" />
-    <Compile Include="..\..\..\..\Messaging\src\AI4E.Messaging\Serialization\ContractResolver.cs" Link="Serialization\ContractResolver.cs" />
-    <Compile Include="..\..\..\..\Shared\TypeConverter.cs" Link="Serialization\TypeConverter.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="3.1.1" />
   </ItemGroup>
 

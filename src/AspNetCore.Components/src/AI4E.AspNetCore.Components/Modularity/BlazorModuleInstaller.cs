@@ -19,7 +19,6 @@
  */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -34,6 +33,8 @@ using AI4E.Utils;
 using AI4E.Utils.ApplicationParts;
 using AI4E.Utils.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
@@ -61,13 +62,16 @@ namespace AI4E.AspNetCore.Components.Modularity
 
         private readonly AssemblyManager _assemblyManager;
         private readonly IChildContainerBuilder _childContainerBuilder;
-
+        private readonly IOptions<BlazorModuleOptions> _options;
+        private readonly ILogger<BlazorModuleManager> _logger;
         private BlazorModule? _module = null;
 
         public BlazorModuleInstaller(
             IBlazorModuleDescriptor moduleDescriptor,
             AssemblyManager assemblyManager,
-            IChildContainerBuilder childContainerBuilder)
+            IChildContainerBuilder childContainerBuilder,
+            IOptions<BlazorModuleOptions> options,
+            ILogger<BlazorModuleManager> logger)
         {
             if (moduleDescriptor is null)
                 throw new ArgumentNullException(nameof(moduleDescriptor));
@@ -78,9 +82,17 @@ namespace AI4E.AspNetCore.Components.Modularity
             if (childContainerBuilder is null)
                 throw new ArgumentNullException(nameof(childContainerBuilder));
 
+            if (options is null)
+                throw new ArgumentNullException(nameof(options));
+
+            if (logger is null)
+                throw new ArgumentNullException(nameof(logger));
+
             ModuleDescriptor = moduleDescriptor;
             _assemblyManager = assemblyManager;
             _childContainerBuilder = childContainerBuilder;
+            _options = options;
+            _logger = logger;
         }
 
         public IBlazorModuleDescriptor ModuleDescriptor { get; }
@@ -97,7 +109,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             var assemblySources = await PrefetchAssemblySourcesAsync(ModuleDescriptor.Assemblies, cancellation);
             var assemblyLoadContext = new BlazorModuleAssemblyLoadContext(assemblySources);
             var reflectionContext = new WeakReflectionContext();
-            var moduleContext = new ModuleContext(assemblyLoadContext, reflectionContext);
+            var moduleContext = new ModuleContext(ModuleDescriptor, assemblyLoadContext, reflectionContext);
 
             IEnumerable<Assembly> GetComponentAssemblies()
             {
@@ -135,20 +147,17 @@ namespace AI4E.AspNetCore.Components.Modularity
                 // Reset application services.
                 services.AddSingleton(new ApplicationServiceManager());
 
-                // Reset pplication parts and add installed assemblies by default.
-                var partManager = new ApplicationPartManager();
-                partManager.ApplicationParts.Clear();
-                foreach (var componentAssembly in componentAssemblies)
+                // Invoke module service configuration actions.
+                var options = _options.Value;
+                foreach (var configuration in options.ConfigureModuleServices)
                 {
-                    partManager.ApplicationParts.Add(new AssemblyPart(componentAssembly));
+                    configuration(moduleContext, services);
                 }
 
-                services.AddSingleton(partManager);
+                // Add module context to services.
                 services.AddSingleton(moduleContext);
 
-                // TODO: Add an extensibility point to allow custom service reset actions.
-
-                // Call the modules Startup.ConfigureServices method
+                // Call the modules Startup.ConfigureServices method.
                 var startupType = GetStartupType(typeResolver);
 
                 if (startupType != null)
@@ -219,9 +228,13 @@ namespace AI4E.AspNetCore.Components.Modularity
                 return;
             }
 
-            await UnloadModuleServicesAsync();
-            await Task.Yield(); // We are running on a sync-context. Allow the renderer to re-render.
-            Unload(out var weakLoadContext);
+            var weakLoadContext = await UnloadModuleServicesAsync();
+
+#if DEBUG
+
+            // We are running on a sync-context.
+            // Allow the renderer to re-render before disposing of module services that may be used by components.
+            await Task.Yield();
 
             for (var i = 0; weakLoadContext.IsAlive && i < 100; i++)
             {
@@ -231,14 +244,14 @@ namespace AI4E.AspNetCore.Components.Modularity
 
             if (weakLoadContext.IsAlive)
             {
-#if DEBUG
                 // This is here to enable tracking down unloadability problems via WINDBG/SOS
                 Debugger.Break();
-#endif
+
                 throw new BlazorModuleManagerException($"Unable to unload module {ModuleDescriptor.Name}.");
             }
 
             Console.WriteLine($"Module {ModuleDescriptor.Name} unloaded successfully.");
+#endif
         }
 
         private async ValueTask<ImmutableDictionary<AssemblyName, BlazorModuleAssemblySource>> PrefetchAssemblySourcesAsync(
@@ -282,201 +295,34 @@ namespace AI4E.AspNetCore.Components.Modularity
             return result.ToImmutable();
         }
 
+#if DEBUG
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private async ValueTask UnloadModuleServicesAsync()
+#endif
+        private async ValueTask<WeakReference> UnloadModuleServicesAsync()
         {
             Debug.Assert(_module != null);
+
+            // Get all installed modules before! unloading 
             var assemblyLoadContext = _module!.AssemblyLoadContext;
             var installedAssemblies = assemblyLoadContext.InstalledAssemblies.ToImmutableHashSet(AssemblyByDisplayNameComparer.Instance);
-            assemblyLoadContext!.Unload();
 
-            await _assemblyManager.RemoveAssembliesAsync(_module!.ComponentAssemblies);
+            // Trigger alc unload
+            assemblyLoadContext.Unload();
 
-            // TODO: Add an extensibility point to allow custom unload actions.
+            // Remove the component assemblies from the assembly manager and dispose all module services.
+            await _assemblyManager.RemoveAssembliesAsync(_module.ComponentAssemblies);
+            await _module.ModuleServices.DisposeAsync();
 
-            RemoveFromInternalCaches(installedAssemblies);
-            RemoveFromAutofac(installedAssemblies);
+            // Invoke registered cleanup actions
+            var options = _options.Value;
+            foreach (var cleanup in options.ConfigureCleanup)
+            {
+                await cleanup(installedAssemblies);
+            }
 
-            await _module!.ModuleServices.DisposeAsync();
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private void Unload(out WeakReference weakRef)
-        {
-            Debug.Assert(_module != null);
-
-            var assemblyLoadContext = _module!.AssemblyLoadContext;
-            weakRef = new WeakReference(assemblyLoadContext);
+            // Cleanup our datastructure to allow successfully gc'ing the alc
             _module = null;
+            return new WeakReference(assemblyLoadContext);
         }
-
-        #region Autofac caching workaround
-
-        private static void RemoveFromAutofac(ImmutableHashSet<Assembly> unloaded)
-        {
-            var autofac = Assembly.Load("Autofac");
-
-            void RemoveFromConstructorParameterBinding(ImmutableHashSet<Assembly> unloaded)
-            {
-                var constructorParameterBindingType = autofac.GetType("Autofac.Core.Activators.Reflection.ConstructorParameterBinding");
-                var constructorInvokers = (IDictionary)constructorParameterBindingType!.GetField("ConstructorInvokers", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)!.GetValue(null)!;
-                var keysToRemove = constructorInvokers.Keys
-                    .OfType<ConstructorInfo>()
-                    .Where(p => unloaded.Contains(p.DeclaringType!.Assembly))
-                    .ToList();
-
-                foreach (var key in keysToRemove)
-                {
-                    constructorInvokers.Remove(key);
-                }
-            }
-
-            void RemoveFromAutowiringPropertyInjector(ImmutableHashSet<Assembly> unloaded)
-            {
-                var autowiringPropertyInjectorType = autofac.GetType("Autofac.Core.Activators.Reflection.AutowiringPropertyInjector");
-                var propertySetters = (IDictionary)autowiringPropertyInjectorType!.GetField("PropertySetters", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)!.GetValue(null)!;
-                var propertySettersKeysToRemove = propertySetters.Keys
-                    .OfType<PropertyInfo>()
-                    .Where(p => unloaded.Contains(p.DeclaringType!.Assembly))
-                    .ToList();
-
-                foreach (var key in propertySettersKeysToRemove)
-                {
-                    propertySetters.Remove(key);
-                }
-
-                var injectableProperties = (IDictionary)autowiringPropertyInjectorType!.GetField("InjectableProperties", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)!.GetValue(null)!;
-                var injectablePropertiesKeysToRemove = injectableProperties.Keys
-                    .OfType<Type>()
-                    .Where(p => unloaded.Contains(p.Assembly))
-                    .ToList();
-
-                foreach (var key in injectablePropertiesKeysToRemove)
-                {
-                    injectableProperties.Remove(key);
-                }
-            }
-
-            void RemoveFromDefaultConstructorFinder(ImmutableHashSet<Assembly> unloaded)
-            {
-                var defaultConstructorFinderType = autofac.GetType("Autofac.Core.Activators.Reflection.DefaultConstructorFinder");
-                var defaultPublicConstructorsCache = (IDictionary)defaultConstructorFinderType!.GetField("DefaultPublicConstructorsCache", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)!.GetValue(null)!;
-                var defaultPublicConstructorsCacheKeysToRemove = defaultPublicConstructorsCache.Keys
-                    .OfType<Type>()
-                    .Where(p => unloaded.Contains(p.Assembly))
-                    .ToList();
-
-                foreach (var key in defaultPublicConstructorsCacheKeysToRemove)
-                {
-                    defaultPublicConstructorsCache.Remove(key);
-                }
-            }
-
-            RemoveFromConstructorParameterBinding(unloaded);
-            RemoveFromAutowiringPropertyInjector(unloaded);
-            RemoveFromDefaultConstructorFinder(unloaded);
-        }
-
-        #endregion
-
-        #region Blazor caching workaround
-
-        private static readonly Action<ImmutableHashSet<Assembly>> RemoveFromAttributeAuthorizeDataCache = RemoveFromCache(
-        "Microsoft.AspNetCore.Components.Authorization",
-        "Microsoft.AspNetCore.Components.Authorization.AttributeAuthorizeDataCache",
-        "_cache");
-
-        private static readonly Action<ImmutableHashSet<Assembly>> RemoveFromFormatterDelegateCache = RemoveFromCache(
-            "Microsoft.AspNetCore.Components",
-            "Microsoft.AspNetCore.Components.BindConverter+FormatterDelegateCache",
-            "_cache");
-
-        private static readonly Action<ImmutableHashSet<Assembly>> RemoveFromParserDelegateCache = RemoveFromCache(
-           "Microsoft.AspNetCore.Components",
-           "Microsoft.AspNetCore.Components.BindConverter+ParserDelegateCache",
-           "_cache");
-
-        private static readonly Action<ImmutableHashSet<Assembly>> RemoveFromCascadingParameterState = RemoveFromCache(
-           "Microsoft.AspNetCore.Components",
-           "Microsoft.AspNetCore.Components.CascadingParameterState",
-           "_cachedInfos");
-
-        private static readonly Action<ImmutableHashSet<Assembly>> RemoveFromComponentFactory
-            = BuildRemoveFromComponentFactory();
-
-        private static readonly Action<ImmutableHashSet<Assembly>> RemoveFromComponentProperties = RemoveFromCache(
-         "Microsoft.AspNetCore.Components",
-         "Microsoft.AspNetCore.Components.Reflection.ComponentProperties",
-         "_cachedWritersByType");
-
-        private static readonly Action<ImmutableHashSet<Assembly>> RemoveFromInternalCaches =
-            RemoveFromAttributeAuthorizeDataCache +
-            RemoveFromFormatterDelegateCache +
-            RemoveFromParserDelegateCache +
-            RemoveFromCascadingParameterState +
-            RemoveFromComponentFactory +
-            RemoveFromComponentProperties;
-
-        private static Action<ImmutableHashSet<Assembly>> RemoveFromCache(
-            string assembly,
-            string typeName,
-            string fieldName,
-            object? instance = null)
-        {
-            var type = GetType(assembly, typeName);
-
-            var bindingFlags = BindingFlags.Public | BindingFlags.NonPublic;
-
-            if (instance is null)
-            {
-                bindingFlags |= BindingFlags.Static;
-            }
-            else
-            {
-                bindingFlags |= BindingFlags.Instance;
-            }
-
-            var field = type.GetField(fieldName, bindingFlags)
-                ?? throw new Exception($"Unable to reflect field '{fieldName}' of type '{type}'");
-
-            if (!(field.GetValue(instance) is IDictionary cache))
-                return _ => { };
-
-            void RemoveFromCache(ImmutableHashSet<Assembly> unloaded)
-            {
-                var typesToRemove = cache.Keys
-                    .OfType<Type>()
-                    .Where(p => unloaded.Contains(p.Assembly))
-                    .ToList();
-
-                foreach (var type in typesToRemove)
-                {
-                    cache.Remove(type);
-                }
-            }
-
-            return RemoveFromCache;
-        }
-
-        private static Action<ImmutableHashSet<Assembly>> BuildRemoveFromComponentFactory()
-        {
-            var assembly = "Microsoft.AspNetCore.Components";
-            var typeName = "Microsoft.AspNetCore.Components.ComponentFactory";
-            var fieldName = "_cachedInitializers";
-
-            var type = GetType(assembly, typeName);
-            var instance = type.GetField(
-                "Instance", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
-                !.GetValue(null);
-            return RemoveFromCache(assembly, typeName, fieldName, instance);
-        }
-
-        private static Type GetType(string assembly, string typeName)
-        {
-            return Type.GetType($"{typeName}, {assembly}")
-            ?? throw new Exception($"Unable to reflect type '{typeName}, {assembly}'.");
-        }
-
-        #endregion
     }
 }

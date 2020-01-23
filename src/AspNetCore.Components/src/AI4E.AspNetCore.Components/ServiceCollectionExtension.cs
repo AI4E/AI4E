@@ -44,9 +44,13 @@ namespace Microsoft.Extensions.DependencyInjection
                 return (IBlazorModularityBuilder)descriptor.ImplementationInstance!;
             }
 
-            var builder = new BlazorModularityBuilder(services);
+            var builder = new BlazorModularityBuilder(services)
+                .UseBlazorCachingWorkaround()
+                .UseAutofacCachingWorkaround()
+                .UseDefaultModuleSource();
+
             services.AddSingleton(builder);
-            
+
             services.TryAddSingleton<IBlazorModuleManager, BlazorModuleManager>();
 
             if (entryAssembly is null)

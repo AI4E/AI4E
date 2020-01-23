@@ -18,13 +18,21 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Reflection;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+
 namespace AI4E.AspNetCore.Components.Modularity
 {
     public sealed class BlazorModuleOptions
     {
-        internal const string DefaultServicesContextNamePrefix = "BlazorModule_";
-
         public bool LoadSymbols { get; set; }
-        public string ServicesContextNamePrefix { get; set; } = DefaultServicesContextNamePrefix;
+
+        public List<Func<ImmutableHashSet<Assembly>, ValueTask>> ConfigureCleanup { get; } = new List<Func<ImmutableHashSet<Assembly>, ValueTask>>();
+        public List<Action<ModuleContext, IServiceCollection>> ConfigureModuleServices { get; } = new List<Action<ModuleContext, IServiceCollection>>();
+        public List<Func<IBlazorModuleSource, IBlazorModuleSource>> ConfigureModuleSource { get; } = new List<Func<IBlazorModuleSource, IBlazorModuleSource>>();
     }
 }

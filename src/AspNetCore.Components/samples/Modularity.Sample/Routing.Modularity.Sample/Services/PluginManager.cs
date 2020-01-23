@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using System.Threading;
 using AI4E.AspNetCore.Components.Modularity;
 
 namespace Routing.Modularity.Sample.Services
 {
-    public sealed class PluginManager : IBlazorModuleSource
+    public sealed class PluginManager 
     {
         private readonly ImmutableHashSet<Plugin> _availablePlugins;
         private ImmutableHashSet<Plugin> _installedPlugins = ImmutableHashSet<Plugin>.Empty;
@@ -18,6 +17,8 @@ namespace Routing.Modularity.Sample.Services
         }
 
         public IReadOnlyCollection<Plugin> AvailablePlugins => _availablePlugins;
+
+        public IReadOnlyCollection<Plugin> InstalledPlugins => Volatile.Read(ref _installedPlugins);
 
         internal void Install(Plugin plugin)
         {
@@ -33,7 +34,7 @@ namespace Routing.Modularity.Sample.Services
             }
             while (start != current);
 
-            OnModulesChanged();
+            OnPluginsChanged();
         }
 
         internal void Uninstall(Plugin plugin)
@@ -50,7 +51,7 @@ namespace Routing.Modularity.Sample.Services
             }
             while (start != current);
 
-            OnModulesChanged();
+            OnPluginsChanged();
         }
 
         internal bool IsInstalled(Plugin plugin)
@@ -59,22 +60,12 @@ namespace Routing.Modularity.Sample.Services
             return plugins.Contains(plugin);
         }
 
-        #region IBlazorModuleSource
+        public event EventHandler? InstalledPluginsChanged;
 
-        public event EventHandler? ModulesChanged;
-
-        public IAsyncEnumerable<IBlazorModuleDescriptor> GetModulesAsync(CancellationToken cancellation)
+        private void OnPluginsChanged()
         {
-            var plugins = Volatile.Read(ref _installedPlugins);
-            return plugins.Select(p => p.ModuleDescriptor).ToAsyncEnumerable();
+            InstalledPluginsChanged?.Invoke(this, EventArgs.Empty);
         }
-
-        private void OnModulesChanged()
-        {
-            ModulesChanged?.Invoke(this, EventArgs.Empty);
-        }
-
-        #endregion
 
         public readonly struct Plugin : IEquatable<Plugin>
         {

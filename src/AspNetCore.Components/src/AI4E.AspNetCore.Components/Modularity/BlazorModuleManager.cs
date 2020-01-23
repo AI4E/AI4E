@@ -22,14 +22,14 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Extensibility;
-using AI4E.Utils;
 using AI4E.Utils.Async;
 using AI4E.Utils.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Nito.AsyncEx;
 
 namespace AI4E.AspNetCore.Components.Modularity
@@ -44,7 +44,8 @@ namespace AI4E.AspNetCore.Components.Modularity
     {
         private readonly AssemblyManager _assemblyManager;
         private readonly IChildContainerBuilder _childContainerBuilder;
-        private readonly ILogger<BlazorModuleManager>? _logger;
+        private readonly IOptions<BlazorModuleOptions> _options;
+        private readonly ILogger<BlazorModuleManager> _logger;
 
         // Contains all BlazorModule instances that are currently installed.
         // It has to be ensured that all installed modules are registered and no uninstalled modules are registered.
@@ -55,6 +56,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         public BlazorModuleManager(
             AssemblyManager assemblyManager,
             IChildContainerBuilder childContainerBuilder,
+            IOptions<BlazorModuleOptions> options,
             ILogger<BlazorModuleManager>? logger = null)
         {
             if (assemblyManager is null)
@@ -63,9 +65,13 @@ namespace AI4E.AspNetCore.Components.Modularity
             if (childContainerBuilder is null)
                 throw new ArgumentNullException(nameof(childContainerBuilder));
 
+            if (options is null)
+                throw new ArgumentNullException(nameof(options));
+
             _assemblyManager = assemblyManager;
             _childContainerBuilder = childContainerBuilder;
-            _logger = logger;
+            _options = options;
+            _logger = logger ?? NullLogger<BlazorModuleManager>.Instance;
 
             _moduleInstallers = new Dictionary<IBlazorModuleDescriptor, BlazorModuleInstaller>();
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Default);
@@ -89,7 +95,9 @@ namespace AI4E.AspNetCore.Components.Modularity
             var blazorModule = new BlazorModuleInstaller(
                 moduleDescriptor,
                 _assemblyManager,
-                _childContainerBuilder);
+                _childContainerBuilder,
+                _options,
+                _logger);
 
             return InstallAsync(blazorModule, cancellation);
         }

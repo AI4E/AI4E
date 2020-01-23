@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+    <DefineConstants>$(DefineConstants);MODULE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\..\Messaging\src\AI4E.Messaging\Serialization\*.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositorySharedPath)TypeConverter.cs" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.ApplicationParts\AI4E.Utils.ApplicationParts.csproj" />
+    <ProjectReference Include="..\AI4E.AspNetCore.Components.Extensibility\AI4E.AspNetCore.Components.Extensibility.csproj" />
+    <ProjectReference Include="..\AI4E.AspNetCore.Components\AI4E.AspNetCore.Components.csproj" />
+  </ItemGroup>
+
+</Project>

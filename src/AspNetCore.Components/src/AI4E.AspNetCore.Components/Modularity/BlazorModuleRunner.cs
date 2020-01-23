@@ -28,6 +28,7 @@ using System.Threading.Tasks;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
@@ -52,15 +53,26 @@ namespace AI4E.AspNetCore.Components.Modularity
         #region C'tor
 
         public BlazorModuleRunner(
-            IBlazorModuleSource moduleSource,
+            IBlazorModuleSourceFactory moduleSourceFactory,
             IBlazorModuleManager moduleManager,
+            IOptions<BlazorModuleOptions> options,
             ILogger<BlazorModuleRunner>? logger)
         {
-            if (moduleSource is null)
-                throw new ArgumentNullException(nameof(moduleSource));
+            if (moduleSourceFactory is null)
+                throw new ArgumentNullException(nameof(moduleSourceFactory));
 
             if (moduleManager is null)
                 throw new ArgumentNullException(nameof(moduleManager));
+
+            if (options is null)
+                throw new ArgumentNullException(nameof(options));
+
+            var moduleSource = moduleSourceFactory.CreateModuleSource();
+
+            foreach(var moduleSourceConfiguration in options.Value.ConfigureModuleSource)
+            {
+                moduleSource = moduleSourceConfiguration(moduleSource);
+            }
 
             _moduleSource = moduleSource;
             _moduleManager = moduleManager;

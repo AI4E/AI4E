@@ -58,17 +58,4 @@ namespace AI4E.AspNetCore.Components.Modularity
             }
         }
     }
-
-    public static class BlazorModuleSourceExtension
-    {
-        public static IBlazorModuleSource Configure(
-            this IBlazorModuleSource moduleSource,
-            Func<IBlazorModuleDescriptor, IBlazorModuleDescriptor> processor)
-        {
-            if (processor is null)
-                throw new ArgumentNullException(nameof(processor));
-
-            return new BlazorModuleSourceWrapper(moduleSource, processor);
-        }
-    }
 }
