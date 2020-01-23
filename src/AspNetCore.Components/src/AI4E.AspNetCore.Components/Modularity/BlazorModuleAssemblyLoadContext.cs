@@ -21,25 +21,28 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
-using System.Threading;
 using AI4E.Utils;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
-    // TODO: Do we have to guarantee thread safety? YES, because the module can access this via the module context.
     internal sealed class BlazorModuleAssemblyLoadContext : AssemblyLoadContext
     {
         private readonly ImmutableDictionary<AssemblyName, BlazorModuleAssemblySource> _assemblySources;
-        private readonly Dictionary<AssemblyName, Assembly> _assemblyCache; // TODO: Do we have to guarantee thread safety? YES, because the module can access this via the module context.
-        private readonly ImmutableHashSet<AssemblyName> _coreAssemblies;
+        private readonly ILogger<BlazorModuleAssemblyLoadContext> _logger;
 
-        private bool _unloading = false;
+        private readonly ImmutableHashSet<AssemblyName> _coreAssemblies;
+        private ImmutableDictionary<AssemblyName, Assembly>? _assemblyCache;
+        private readonly object _mutex = new object();
 
         public BlazorModuleAssemblyLoadContext(
-            ImmutableDictionary<AssemblyName, BlazorModuleAssemblySource> assemblySources)
+            ImmutableDictionary<AssemblyName, BlazorModuleAssemblySource> assemblySources,
+            ILogger<BlazorModuleAssemblyLoadContext>? logger = null)
 #if SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT
                 : base(isCollectible: true)
 #endif
@@ -48,38 +51,15 @@ namespace AI4E.AspNetCore.Components.Modularity
                 throw new ArgumentNullException(nameof(assemblySources));
 
             _assemblySources = assemblySources;
-            _assemblyCache = new Dictionary<AssemblyName, Assembly>(AssemblyNameComparer.ByDisplayName);
+            _logger = logger ?? NullLogger<BlazorModuleAssemblyLoadContext>.Instance;
+
             _coreAssemblies = BuildCoreAssemblies();
+            _assemblyCache = ImmutableDictionary.Create<AssemblyName, Assembly>(AssemblyNameComparer.ByDisplayName);
 
             Unloading += OnUnloading;
         }
 
-        private void OnUnloading(AssemblyLoadContext obj)
-        {
-            Volatile.Write(ref _unloading, true);
-            Unloading -= OnUnloading;
-            _assemblyCache.Clear();
-
-            foreach (var source in _assemblySources!.Values)
-            {
-                source.Dispose();
-            }
-        }
-
-        public IReadOnlyCollection<Assembly> InstalledAssemblies
-        {
-            get
-            {
-                if (Volatile.Read(ref _unloading))
-                {
-                    throw new Exception("Unable to request the loaded assemblies while unloading the assembly load context");
-                }
-
-                return _assemblyCache.Values;
-            }
-        }
-
-        private ImmutableHashSet<AssemblyName> BuildCoreAssemblies()
+        private static ImmutableHashSet<AssemblyName> BuildCoreAssemblies()
         {
             return AppDomain.CurrentDomain
                 .GetAssemblies()
@@ -89,18 +69,60 @@ namespace AI4E.AspNetCore.Components.Modularity
                 .ToImmutableHashSet(AssemblyNameComparer.ByDisplayName);
         }
 
-        protected override Assembly? Load(AssemblyName assemblyName)
+        private void OnUnloading(AssemblyLoadContext obj)
         {
-            if (Volatile.Read(ref _unloading))
+            Unloading -= OnUnloading;
+
+            lock (_mutex)
             {
-                throw new Exception("Unable to load an assembly while unloading the assembly load context.");
+                _assemblyCache = null;
             }
 
-            Console.WriteLine($"Requested loading assembly {assemblyName}.");
-
-            if (_assemblyCache.TryGetValue(assemblyName, out var assembly))
+            foreach (var source in _assemblySources!.Values)
             {
-                Console.WriteLine($"Found requested assembly {assemblyName} in cache.");
+                source.Dispose();
+            }
+        }
+
+        public IEnumerable<Assembly> InstalledAssemblies
+        {
+            get
+            {
+                ImmutableDictionary<AssemblyName, Assembly>? assemblyCache;
+
+                lock (_mutex)
+                {
+                    assemblyCache = _assemblyCache;
+                }
+
+                if (assemblyCache is null)
+                {
+                    ThrowUnloadingException();
+                }
+
+                return assemblyCache.Values;
+            }
+        }
+
+        protected override Assembly? Load(AssemblyName assemblyName)
+        {
+            ImmutableDictionary<AssemblyName, Assembly>? assemblyCache;
+
+            lock (_mutex)
+            {
+                assemblyCache = _assemblyCache;
+            }
+
+            if (assemblyCache is null)
+            {
+                ThrowUnloadingException();
+            }
+
+            _logger.LogDebug("Requested loading assembly {0}.", assemblyName);
+
+            if (assemblyCache.TryGetValue(assemblyName, out var assembly))
+            {
+                _logger.LogDebug("Found requested assembly {0} in cache.", assemblyName);
 
                 return assembly;
             }
@@ -110,7 +132,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             // We have no source => Fallback to core or throw.
             if (!hasSource)
             {
-                Console.WriteLine($"Requested assembly {assemblyName} has no source. Falling back to default context.");
+                _logger.LogDebug("Requested assembly {0} has no source. Falling back to default context.", assemblyName);
                 return null;
             }
 
@@ -120,16 +142,46 @@ namespace AI4E.AspNetCore.Components.Modularity
             {
                 if (_coreAssemblies.Contains(assemblyName))
                 {
-                    Console.WriteLine($"Requested assembly {assemblyName} has matching core assembly. Falling back to core assembly.");
+                    _logger.LogDebug("Requested assembly {0} has matching core assembly. Falling back to core assembly.", assemblyName);
                     return null;
                 }
             }
 
-            Console.WriteLine($"Loding requested assembly {assemblyName} from source into current context.");
+            _logger.LogDebug("Loading requested assembly {0} from source into current context.", assemblyName);
 
-            assembly = assemblySource.Load(this);
-            _assemblyCache.Add(assemblyName, assembly);
+            try
+            {
+                assembly = assemblySource.Load(this);
+            }
+            catch (ObjectDisposedException exc)
+            {
+                ThrowUnloadingException(exc);
+            }
+
+            lock (_mutex)
+            {
+                if (_assemblyCache is null)
+                {
+                    ThrowUnloadingException();
+                }
+
+                _assemblyCache = _assemblyCache.Add(assemblyName, assembly);
+            }
+
             return assembly;
+        }
+
+        [DoesNotReturn]
+        private static void ThrowUnloadingException(Exception? innerException = null)
+        {
+            if (innerException is null)
+            {
+                throw new Exception("Unable to load an assembly while unloading the assembly load context.", innerException);
+            }
+            else
+            {
+                throw new Exception("Unable to load an assembly while unloading the assembly load context.");
+            }
         }
     }
 }
