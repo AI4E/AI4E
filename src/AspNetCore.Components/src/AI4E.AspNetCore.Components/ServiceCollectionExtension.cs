@@ -46,12 +46,12 @@ namespace Microsoft.Extensions.DependencyInjection
 
             var builder = new BlazorModularityBuilder(services)
                 .UseBlazorCachingWorkaround()
-                .UseAutofacCachingWorkaround()
-                .UseDefaultModuleSource();
+                .UseAutofacCachingWorkaround();
 
             services.AddSingleton(builder);
 
             services.TryAddSingleton<IBlazorModuleManager, BlazorModuleManager>();
+            services.TryAddSingleton<IBlazorModuleSourceFactory>(NoModuleSourceFactory.Instance);
 
             if (entryAssembly is null)
             {
