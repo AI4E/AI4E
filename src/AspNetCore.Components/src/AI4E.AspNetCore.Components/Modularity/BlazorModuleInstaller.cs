@@ -26,6 +26,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Extensibility;
@@ -287,14 +288,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             Debug.Assert(_module != null);
             var assemblyLoadContext = _module!.AssemblyLoadContext;
             var installedAssemblies = assemblyLoadContext.InstalledAssemblies.ToImmutableHashSet(AssemblyByDisplayNameComparer.Instance);
-
-            // TODO: Either remove the multi-targeting, or add a shim for this.
-#if !SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT
-            throw new NotSupportedException("Uninstalling modules is not supported on this platform.");
-#else
-            // TODO: Move the unload into UnloadModuleServicesAsync() to prevent any new assemblies beeing loaded from the ALC while unloading (sealing it)
             assemblyLoadContext!.Unload();
-#endif
 
             await _assemblyManager.RemoveAssembliesAsync(_module!.ComponentAssemblies);
 
