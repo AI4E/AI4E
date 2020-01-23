@@ -29,19 +29,17 @@ using AI4E.Utils;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
-    // TODO: Do we have to guarantee thread safety?
+    // TODO: Do we have to guarantee thread safety? YES, because the module can access this via the module context.
     internal sealed class BlazorModuleAssemblyLoadContext : AssemblyLoadContext
     {
         private readonly ImmutableDictionary<AssemblyName, BlazorModuleAssemblySource> _assemblySources;
-        private readonly Dictionary<AssemblyName, Assembly> _assemblyCache; // TODO: Do we have to guarantee thread safety?
+        private readonly Dictionary<AssemblyName, Assembly> _assemblyCache; // TODO: Do we have to guarantee thread safety? YES, because the module can access this via the module context.
         private readonly ImmutableHashSet<AssemblyName> _coreAssemblies;
 
         private bool _unloading = false;
 
         public BlazorModuleAssemblyLoadContext(
             ImmutableDictionary<AssemblyName, BlazorModuleAssemblySource> assemblySources)
-
-        // TODO: Either remove the multi-targeting, or add a shim for this.
 #if SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT
                 : base(isCollectible: true)
 #endif
@@ -68,11 +66,18 @@ namespace AI4E.AspNetCore.Components.Modularity
             }
         }
 
-        public
-#if NETCORE30 || NETCORE31
-            new 
-#endif
-            IEnumerable<Assembly> Assemblies => _assemblyCache.Values;
+        public IReadOnlyCollection<Assembly> InstalledAssemblies
+        {
+            get
+            {
+                if (Volatile.Read(ref _unloading))
+                {
+                    throw new Exception("Unable to request the loaded assemblies while unloading the assembly load context");
+                }
+
+                return _assemblyCache.Values;
+            }
+        }
 
         private ImmutableHashSet<AssemblyName> BuildCoreAssemblies()
         {

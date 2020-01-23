@@ -49,7 +49,6 @@ namespace AI4E.AspNetCore.Components.Modularity
                 AssemblyLoadContext = assemblyLoadContext;
                 ReflectionContext = reflectionContext;
                 ComponentAssemblies = componentAssemblies;
-                //InstalledAssemblies = installedAssemblies;
                 ModuleServices = moduleServices;
             }
 
@@ -195,7 +194,6 @@ namespace AI4E.AspNetCore.Components.Modularity
                 assemblyLoadContext,
                 reflectionContext,
                 componentAssemblies,
-                //installedAssemblies,
                 moduleServices);
         }
 
@@ -288,6 +286,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         {
             Debug.Assert(_module != null);
             var assemblyLoadContext = _module!.AssemblyLoadContext;
+            var installedAssemblies = assemblyLoadContext.InstalledAssemblies.ToImmutableHashSet(AssemblyByDisplayNameComparer.Instance);
 
             // TODO: Either remove the multi-targeting, or add a shim for this.
 #if !SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT
@@ -298,8 +297,6 @@ namespace AI4E.AspNetCore.Components.Modularity
 #endif
 
             await _assemblyManager.RemoveAssembliesAsync(_module!.ComponentAssemblies);
-
-            var installedAssemblies = assemblyLoadContext.Assemblies.ToImmutableHashSet(AssemblyByDisplayNameComparer.Instance);
 
             // TODO: Add an extensibility point to allow custom unload actions.
 
