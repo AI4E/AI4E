@@ -19,22 +19,23 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Extensibility;
 using AI4E.Utils;
-using AI4E.Utils.ApplicationParts;
 using AI4E.Utils.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
+#if !SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT
+using System.Runtime.Loader;
+#endif
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
@@ -45,17 +46,14 @@ namespace AI4E.AspNetCore.Components.Modularity
             public BlazorModule(
                 BlazorModuleAssemblyLoadContext assemblyLoadContext,
                 WeakReflectionContext reflectionContext,
-                ImmutableList<Assembly> componentAssemblies,
                 IChildServiceProvider moduleServices)
             {
                 AssemblyLoadContext = assemblyLoadContext;
                 ReflectionContext = reflectionContext;
-                ComponentAssemblies = componentAssemblies;
                 ModuleServices = moduleServices;
             }
 
             public WeakReflectionContext ReflectionContext { get; }
-            public ImmutableList<Assembly> ComponentAssemblies { get; }
             public IChildServiceProvider ModuleServices { get; }
             public BlazorModuleAssemblyLoadContext AssemblyLoadContext { get; }
         }
@@ -109,40 +107,26 @@ namespace AI4E.AspNetCore.Components.Modularity
             var assemblySources = await PrefetchAssemblySourcesAsync(ModuleDescriptor.Assemblies, cancellation);
             var assemblyLoadContext = new BlazorModuleAssemblyLoadContext(assemblySources);
             var reflectionContext = new WeakReflectionContext();
-            var moduleContext = new ModuleContext(ModuleDescriptor, assemblyLoadContext, reflectionContext);
+            var moduleTypeResolver = new ReflectionContextTypeResolver(
+                        new BlazorModuleTypeResolver(assemblyLoadContext), reflectionContext);
 
-            IEnumerable<Assembly> GetComponentAssemblies()
+            var moduleContext = new ModuleContext(ModuleDescriptor, assemblyLoadContext, reflectionContext, moduleTypeResolver);
+
+            Assembly LoadAssembly(IBlazorModuleAssemblyDescriptor moduleAssemblyDescriptor)
             {
-                return ModuleDescriptor.Assemblies
-                    .Where(p => p.IsComponentAssembly)
-                    .Select(GetComponentAssembly);
+                return assemblyLoadContext.LoadFromAssemblyName(moduleAssemblyDescriptor.GetAssemblyName());
             }
 
-            IEnumerable<Assembly> GetInstalledAssemblies()
-            {
-                return ModuleDescriptor.Assemblies
-                    .Select(GetComponentAssembly);
-            }
-
-            Assembly GetComponentAssembly(IBlazorModuleAssemblyDescriptor moduleAssemblyDescriptor)
-            {
-                var assemblyName = new AssemblyName(moduleAssemblyDescriptor.AssemblyName)
-                {
-                    Version = moduleAssemblyDescriptor.AssemblyVersion
-                };
-
-                return assemblyLoadContext.LoadFromAssemblyName(assemblyName);
-            }
-
-            var installedAssemblies = GetInstalledAssemblies().ToImmutableList();
-            var componentAssemblies = GetComponentAssemblies().ToImmutableList();
+            var componentAssemblies = ModuleDescriptor
+                .Assemblies
+                .Where(p => p.IsComponentAssembly)
+                .Select(LoadAssembly)
+                .ToImmutableList();
 
             void ConfigureServices(IServiceCollection services)
             {
-                // Build and attach type-resolver
-                var typeResolver = new TypeResolver(installedAssemblies);
-                services.AddSingleton<ITypeResolver>(
-                    new ReflectionContextTypeResolver(typeResolver, reflectionContext));
+                // Build and attach type-resolver             
+                services.AddSingleton<ITypeResolver>(moduleTypeResolver);
 
                 // Reset application services.
                 services.AddSingleton(new ApplicationServiceManager());
@@ -158,7 +142,7 @@ namespace AI4E.AspNetCore.Components.Modularity
                 services.AddSingleton(moduleContext);
 
                 // Call the modules Startup.ConfigureServices method.
-                var startupType = GetStartupType(typeResolver);
+                var startupType = GetStartupType(new TypeResolver(componentAssemblies));
 
                 if (startupType != null)
                 {
@@ -203,7 +187,6 @@ namespace AI4E.AspNetCore.Components.Modularity
             _module = new BlazorModule(
                 assemblyLoadContext,
                 reflectionContext,
-                componentAssemblies,
                 moduleServices);
         }
 
@@ -264,16 +247,11 @@ namespace AI4E.AspNetCore.Components.Modularity
             {
                 foreach (var moduleAssemblyDescriptor in moduleAssemblyDescriptors)
                 {
-                    var assemblyName = new AssemblyName(moduleAssemblyDescriptor.AssemblyName)
-                    {
-                        Version = moduleAssemblyDescriptor.AssemblyVersion
-                    };
-
                     var source = await moduleAssemblyDescriptor.LoadAssemblySourceAsync(cancellation);
 
                     try
                     {
-                        result.Add(assemblyName, source);
+                        result.Add(moduleAssemblyDescriptor.GetAssemblyName(), source);
                     }
                     catch
                     {
@@ -309,8 +287,9 @@ namespace AI4E.AspNetCore.Components.Modularity
             // Trigger alc unload
             assemblyLoadContext.Unload();
 
-            // Remove the component assemblies from the assembly manager and dispose all module services.
-            await _assemblyManager.RemoveAssembliesAsync(_module.ComponentAssemblies);
+            // Remove the component assemblies (a subset of the installed assemblies) from the assembly manager 
+            // and dispose all module services.
+            await _assemblyManager.RemoveAssembliesAsync(installedAssemblies);
             await _module.ModuleServices.DisposeAsync();
 
             // Invoke registered cleanup actions

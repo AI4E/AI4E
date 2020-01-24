@@ -33,7 +33,7 @@ namespace AI4E.Utils.Projection
 {
     internal sealed class ProjectingTypeWrapper : TypeDelegator
     {
-        public ProjectingTypeWrapper(ProjectingType projectingType)
+        public ProjectingTypeWrapper(ProjectingType projectingType) : base(projectingType)
         {
             ProjectingType = projectingType;
         }

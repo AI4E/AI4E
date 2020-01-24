@@ -91,6 +91,10 @@ namespace AI4E.Utils.Delegation
 
         public override Guid GUID => TypeInfo.GUID;
 
+#if SUPPORTS_TYPE_IS_SZ_ARRAY
+        public override bool IsSZArray => TypeInfo.IsSZArray;
+#endif
+
         public override bool IsEnum => TypeInfo.IsEnum;
 
         public override bool IsGenericParameter => TypeInfo.IsGenericParameter;

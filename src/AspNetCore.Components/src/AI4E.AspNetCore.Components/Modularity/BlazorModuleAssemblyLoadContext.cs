@@ -19,8 +19,8 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
@@ -38,6 +38,7 @@ namespace AI4E.AspNetCore.Components.Modularity
 
         private readonly ImmutableHashSet<AssemblyName> _coreAssemblies;
         private ImmutableDictionary<AssemblyName, Assembly>? _assemblyCache;
+        private ImmutableHashSet<Assembly>? _installedAssemblies;
         private readonly object _mutex = new object();
 
         public BlazorModuleAssemblyLoadContext(
@@ -55,6 +56,7 @@ namespace AI4E.AspNetCore.Components.Modularity
 
             _coreAssemblies = BuildCoreAssemblies();
             _assemblyCache = ImmutableDictionary.Create<AssemblyName, Assembly>(AssemblyNameComparer.ByDisplayName);
+            _installedAssemblies = ImmutableHashSet.Create<Assembly>(AssemblyByDisplayNameComparer.Instance);
 
             Unloading += OnUnloading;
         }
@@ -76,6 +78,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             lock (_mutex)
             {
                 _assemblyCache = null;
+                _installedAssemblies = null;
             }
 
             foreach (var source in _assemblySources!.Values)
@@ -84,23 +87,23 @@ namespace AI4E.AspNetCore.Components.Modularity
             }
         }
 
-        public IEnumerable<Assembly> InstalledAssemblies
+        public ImmutableHashSet<Assembly> InstalledAssemblies
         {
             get
             {
-                ImmutableDictionary<AssemblyName, Assembly>? assemblyCache;
+                ImmutableHashSet<Assembly>? installedAssemblies;
 
                 lock (_mutex)
                 {
-                    assemblyCache = _assemblyCache;
+                    installedAssemblies = _installedAssemblies;
                 }
 
-                if (assemblyCache is null)
+                if (installedAssemblies is null)
                 {
                     ThrowUnloadingException();
                 }
 
-                return assemblyCache.Values;
+                return installedAssemblies;
             }
         }
 
@@ -165,7 +168,10 @@ namespace AI4E.AspNetCore.Components.Modularity
                     ThrowUnloadingException();
                 }
 
+                Debug.Assert(_installedAssemblies != null);
+
                 _assemblyCache = _assemblyCache.Add(assemblyName, assembly);
+                _installedAssemblies = _installedAssemblies!.Add(assembly);
             }
 
             return assembly;
