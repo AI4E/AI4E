@@ -24,6 +24,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Extensibility;
@@ -33,10 +34,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-#if !SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT
-using System.Runtime.Loader;
-#endif
-
 namespace AI4E.AspNetCore.Components.Modularity
 {
     internal sealed class BlazorModuleInstaller
@@ -44,8 +41,8 @@ namespace AI4E.AspNetCore.Components.Modularity
         private sealed class BlazorModule
         {
             public BlazorModule(
-                BlazorModuleAssemblyLoadContext assemblyLoadContext,
-                WeakReflectionContext reflectionContext,
+                AssemblyLoadContext assemblyLoadContext,
+                ReflectionContext reflectionContext,
                 IChildServiceProvider moduleServices)
             {
                 AssemblyLoadContext = assemblyLoadContext;
@@ -53,9 +50,9 @@ namespace AI4E.AspNetCore.Components.Modularity
                 ModuleServices = moduleServices;
             }
 
-            public WeakReflectionContext ReflectionContext { get; }
+            public ReflectionContext ReflectionContext { get; }
             public IChildServiceProvider ModuleServices { get; }
-            public BlazorModuleAssemblyLoadContext AssemblyLoadContext { get; }
+            public AssemblyLoadContext AssemblyLoadContext { get; }
         }
 
         private readonly AssemblyManager _assemblyManager;
@@ -104,90 +101,108 @@ namespace AI4E.AspNetCore.Components.Modularity
                 return;
             }
 
-            var assemblySources = await PrefetchAssemblySourcesAsync(ModuleDescriptor.Assemblies, cancellation);
-            var assemblyLoadContext = new BlazorModuleAssemblyLoadContext(assemblySources);
-            var reflectionContext = new WeakReflectionContext();
-            var moduleTypeResolver = new ReflectionContextTypeResolver(
-                        new BlazorModuleTypeResolver(assemblyLoadContext), reflectionContext);
+            var moduleContext = await BuildModuleContextAsync(cancellation);
+            var componentAssemblies = GetComponentAssemblies(moduleContext);
+            var moduleServices = _childContainerBuilder.CreateChildContainer(
+                services => ConfigureServices(services, moduleContext, componentAssemblies));
 
-            var moduleContext = new ModuleContext(ModuleDescriptor, assemblyLoadContext, reflectionContext, moduleTypeResolver);
+            await InitializeApplicationServicesAsync(moduleServices, cancellation).ConfigureAwait(false);
 
-            Assembly LoadAssembly(IBlazorModuleAssemblyDescriptor moduleAssemblyDescriptor)
+            await _assemblyManager.AddAssembliesAsync(
+                componentAssemblies.Select(p => moduleContext.ModuleReflectionContext.MapAssembly(p)),
+                moduleContext.ModuleLoadContext,
+                new WeakServiceProvider(moduleServices));
+
+            _module = new BlazorModule(
+                moduleContext.ModuleLoadContext,
+                moduleContext.ModuleReflectionContext,
+                moduleServices);
+        }
+
+        private static Task InitializeApplicationServicesAsync(
+            IChildServiceProvider moduleServices,
+            CancellationToken cancellation)
+        {
+            var appServices = moduleServices.GetService<ApplicationServiceManager>();
+
+            if (appServices is null)
+                return Task.CompletedTask;
+
+            return appServices.InitializeApplicationServicesAsync(moduleServices, cancellation);
+        }
+
+        private void ConfigureServices(
+            IServiceCollection services,
+            ModuleContext moduleContext,
+            ImmutableList<Assembly> componentAssemblies)
+        {
+            // Build and attach type-resolver             
+            services.AddSingleton(moduleContext.ModuleTypeResolver);
+
+            // Reset application services.
+            services.AddSingleton(new ApplicationServiceManager());
+
+            // Invoke module service configuration actions.
+            var options = _options.Value;
+            foreach (var configuration in options.ConfigureModuleServices)
             {
-                return assemblyLoadContext.LoadFromAssemblyName(moduleAssemblyDescriptor.GetAssemblyName());
+                configuration(moduleContext, services);
             }
 
-            var componentAssemblies = ModuleDescriptor
+            // Add module context to services.
+            services.AddSingleton(moduleContext);
+
+            // Call the modules Startup.ConfigureServices method.
+            var startupType = GetStartupType(new TypeResolver(componentAssemblies));
+
+            if (startupType != null)
+            {
+                var hostingServiceProvider = services.BuildServiceProvider();
+
+                IBlazorModuleStartup startup;
+
+                if (typeof(IBlazorModuleStartup).IsAssignableFrom(startupType))
+                {
+                    startup = (IBlazorModuleStartup)ActivatorUtilities.GetServiceOrCreateInstance(
+                        hostingServiceProvider, startupType);
+                }
+                else
+                {
+                    startup = new ConventionBasedBlazorModuleStartup(
+                        hostingServiceProvider, startupType, string.Empty); // TODO: Specify environment name
+                }
+
+                // TODO: We currently do not support custom service providers. We can strip the support for this in
+                //       * ConventionBasedBlazorModuleStartup
+                //       * IBlazorModuleStartup
+                //       * ConfigureServicesBuilder
+                startup.ConfigureServices(services);
+            }
+        }
+
+        private ImmutableList<Assembly> GetComponentAssemblies(ModuleContext moduleContext)
+        {
+            Assembly LoadAssembly(IBlazorModuleAssemblyDescriptor moduleAssemblyDescriptor)
+            {
+                return moduleContext.ModuleLoadContext.LoadFromAssemblyName(moduleAssemblyDescriptor.GetAssemblyName());
+            }
+
+            return ModuleDescriptor
                 .Assemblies
                 .Where(p => p.IsComponentAssembly)
                 .Select(LoadAssembly)
                 .ToImmutableList();
+        }
 
-            void ConfigureServices(IServiceCollection services)
-            {
-                // Build and attach type-resolver             
-                services.AddSingleton<ITypeResolver>(moduleTypeResolver);
+        private async ValueTask<ModuleContext> BuildModuleContextAsync(CancellationToken cancellation)
+        {
+            var assemblySources = await PrefetchAssemblySourcesAsync(ModuleDescriptor.Assemblies, cancellation);
+            var moduleLoadContext = new BlazorModuleAssemblyLoadContext(assemblySources);
+            var moduleReflectionContext = new WeakReflectionContext();
+            var moduleTypeResolver = new ReflectionContextTypeResolver(
+                        new BlazorModuleTypeResolver(moduleLoadContext), moduleReflectionContext);
 
-                // Reset application services.
-                services.AddSingleton(new ApplicationServiceManager());
-
-                // Invoke module service configuration actions.
-                var options = _options.Value;
-                foreach (var configuration in options.ConfigureModuleServices)
-                {
-                    configuration(moduleContext, services);
-                }
-
-                // Add module context to services.
-                services.AddSingleton(moduleContext);
-
-                // Call the modules Startup.ConfigureServices method.
-                var startupType = GetStartupType(new TypeResolver(componentAssemblies));
-
-                if (startupType != null)
-                {
-                    var hostingServiceProvider = services.BuildServiceProvider();
-
-                    IBlazorModuleStartup startup;
-
-                    if (typeof(IBlazorModuleStartup).IsAssignableFrom(startupType))
-                    {
-                        startup = (IBlazorModuleStartup)ActivatorUtilities.GetServiceOrCreateInstance(
-                            hostingServiceProvider, startupType);
-                    }
-                    else
-                    {
-                        startup = new ConventionBasedBlazorModuleStartup(
-                            hostingServiceProvider, startupType, string.Empty); // TODO: Specify environment name
-                    }
-
-                    // TODO: We currently do not support custom service providers. We can strip the support for this in
-                    //       * ConventionBasedBlazorModuleStartup
-                    //       * IBlazorModuleStartup
-                    //       * ConfigureServicesBuilder
-                    startup.ConfigureServices(services);
-                }
-            }
-
-            var moduleServices = _childContainerBuilder.CreateChildContainer(ConfigureServices);
-            var appServices = moduleServices.GetService<ApplicationServiceManager>();
-
-            if (appServices != null)
-            {
-                await appServices
-                    .InitializeApplicationServicesAsync(moduleServices, cancellation)
-                    .ConfigureAwait(false);
-            }
-
-            await _assemblyManager.AddAssembliesAsync(
-                componentAssemblies.Select(p => reflectionContext.MapAssembly(p)),
-                assemblyLoadContext,
-                new WeakServiceProvider(moduleServices));
-
-            _module = new BlazorModule(
-                assemblyLoadContext,
-                reflectionContext,
-                moduleServices);
+            return new ModuleContext(ModuleDescriptor, moduleLoadContext, moduleReflectionContext, moduleTypeResolver);
         }
 
         private Type? GetStartupType(ITypeResolver typeResolver)
@@ -282,7 +297,7 @@ namespace AI4E.AspNetCore.Components.Modularity
 
             // Get all installed modules before! unloading 
             var assemblyLoadContext = _module!.AssemblyLoadContext;
-            var installedAssemblies = assemblyLoadContext.InstalledAssemblies.ToImmutableHashSet(AssemblyByDisplayNameComparer.Instance);
+            var installedAssemblies = ((BlazorModuleAssemblyLoadContext)assemblyLoadContext).InstalledAssemblies.ToImmutableHashSet(AssemblyByDisplayNameComparer.Instance);
 
             // Trigger alc unload
             assemblyLoadContext.Unload();
