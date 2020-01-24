@@ -22,6 +22,7 @@ using System;
 using AI4E.Modularity.Debug;
 using AI4E.Modularity.Host.Debug;
 using AI4E.Utils.ApplicationParts;
+using AI4E.Utils.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 

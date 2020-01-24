@@ -6,13 +6,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.DependencyInjection\AI4E.Utils.DependencyInjection.csproj" />
+    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
     <ProjectReference Include="..\AI4E.AspNetCore.Components.Routing\AI4E.AspNetCore.Components.Routing.csproj" />
+    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.WeakReflectionContext\AI4E.Utils.WeakReflectionContext.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Forms" Version="3.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="3.1.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Components" Version="[3.1.1]" /> 
     <PackageReference Include="System.Collections.Immutable" Version="1.7.0" />
+    <PackageReference Include="System.Linq.Async" Version="4.0.0" />
   </ItemGroup>
 
 </Project>

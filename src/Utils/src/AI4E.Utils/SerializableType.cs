@@ -2,9 +2,8 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
 
-namespace AI4E.Messaging
+namespace AI4E.Utils
 {
-    // TODO: Move to Utils
     [Serializable]
     public readonly struct SerializableType : IEquatable<SerializableType>, ISerializable
     {

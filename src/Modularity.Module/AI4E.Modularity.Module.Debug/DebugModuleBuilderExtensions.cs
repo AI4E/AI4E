@@ -24,6 +24,7 @@ using AI4E.Coordination;
 using AI4E.Messaging;
 using AI4E.Messaging.Routing;
 using AI4E.Modularity.Debug;
+using AI4E.Utils.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 

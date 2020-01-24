@@ -21,9 +21,9 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.Utils
+namespace AI4E.Utils.DependencyInjection
 {
-    internal sealed class WeakServiceProvider : IServiceProvider, ISupportRequiredService
+    public sealed class WeakServiceProvider : IServiceProvider, ISupportRequiredService
     {
         private readonly WeakReference<IServiceProvider> _serviceProvider;
 

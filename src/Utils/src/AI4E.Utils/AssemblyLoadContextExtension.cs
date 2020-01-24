@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace System.Runtime.Loader
 {
-    internal static class AI4EAspNetCoreComponentsAssemblyLoadContextExtension
+    public static class AI4EAspNetCoreComponentsAssemblyLoadContextExtension
     {
 #if !SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT
 

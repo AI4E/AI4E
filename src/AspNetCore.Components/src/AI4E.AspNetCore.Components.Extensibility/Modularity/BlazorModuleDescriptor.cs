@@ -27,7 +27,6 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
-using AI4E.Messaging;
 using AI4E.Utils;
 
 namespace AI4E.AspNetCore.Components.Modularity

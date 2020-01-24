@@ -24,7 +24,7 @@ using AI4E.Utils.Async;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace AI4E.Messaging
+namespace AI4E.Utils.DependencyInjection.Test
 {
     [TestClass]
     public class ApplicationServiceManagerTests

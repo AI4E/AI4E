@@ -19,14 +19,13 @@
  */
 
 using System;
-using AI4E;
+using AI4E.Utils.DependencyInjection;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
     /// <summary>
     /// Contains extensions for the <see cref="IServiceCollection"/> type.
     /// </summary>
-    [Obsolete]
     public static class ApplicationServiceManagerServiceCollectionExtension
     {
         /// <summary>

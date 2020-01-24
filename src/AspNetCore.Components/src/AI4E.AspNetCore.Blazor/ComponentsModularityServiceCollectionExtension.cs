@@ -27,6 +27,7 @@ using AI4E.Messaging;
 using AI4E.Messaging.SignalR.Client;
 using AI4E.Modularity;
 using AI4E.Utils.ApplicationParts;
+using AI4E.Utils.DependencyInjection;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.JSInterop;

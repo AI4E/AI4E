@@ -22,7 +22,6 @@ using System;
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Threading.Tasks;
-using AI4E.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -40,18 +39,6 @@ namespace AI4E.AspNetCore.Components.Modularity
 #pragma warning disable CA1062
             builder.Services.Configure(configuration);
 #pragma warning restore CA1062
-
-            return builder;
-        }
-
-        public static IBlazorModularityBuilder UseDefaultModuleSource(this IBlazorModularityBuilder builder)
-        {
-#pragma warning disable CA1062
-            var services = builder.Services;
-#pragma warning restore CA1062
-
-            services.AddSingleton<IBlazorModuleSourceFactory, BlazorModuleSourceFactory>();
-            services.TryAddSingleton<IBlazorModuleAssemblyLoader, BlazorModuleAssemblyLoader>();
 
             return builder;
         }

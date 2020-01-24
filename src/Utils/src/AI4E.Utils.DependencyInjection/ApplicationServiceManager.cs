@@ -26,12 +26,11 @@ using System.Threading.Tasks;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E
+namespace AI4E.Utils.DependencyInjection
 {
     /// <summary>
     /// Manages the intialization of application services.
     /// </summary>
-    [Obsolete("Move to Utils")]
     public sealed class ApplicationServiceManager
     {
         /// <summary>
@@ -198,7 +197,7 @@ namespace AI4E
             if (serviceType == null)
                 throw new ArgumentNullException(nameof(serviceType));
 
-            Task ServiceInitialization(object service, IServiceProvider serviceProvider)
+            static Task ServiceInitialization(object service, IServiceProvider serviceProvider)
             {
                 if (service is IAsyncInitialization asyncInitialization)
                 {
@@ -275,7 +274,7 @@ namespace AI4E
             if (applicationServiceManager == null)
                 throw new ArgumentNullException(nameof(applicationServiceManager));
 
-            Task ServiceInitialization(object service, IServiceProvider serviceProvider)
+            static Task ServiceInitialization(object service, IServiceProvider serviceProvider)
             {
                 var s = (TService)service;
 

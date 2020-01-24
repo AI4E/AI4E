@@ -25,6 +25,7 @@ using AI4E.Messaging.MessageHandlers;
 using AI4E.Messaging.Routing;
 using AI4E.Messaging.Serialization;
 using AI4E.Utils;
+using AI4E.Utils.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection

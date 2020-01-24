@@ -20,7 +20,7 @@
 
 using System;
 using System.Threading.Tasks;
-using AI4E;
+using AI4E.Utils.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.AspNetCore.Blazor.Hosting

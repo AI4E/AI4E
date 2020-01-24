@@ -24,7 +24,7 @@ using System.Reflection;
 
 namespace AI4E.Utils
 {
-    internal sealed class ReflectionContextTypeResolver : ITypeResolver
+    public sealed class ReflectionContextTypeResolver : ITypeResolver
     {
         private readonly ITypeResolver _typeResolver;
         private readonly ReflectionContext _reflectionContext;

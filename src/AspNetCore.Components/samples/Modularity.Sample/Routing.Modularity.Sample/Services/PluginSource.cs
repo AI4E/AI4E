@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using AI4E.AspNetCore.Components.Modularity;
 using AI4E.Messaging;
+using AI4E.Utils;
 using static Routing.Modularity.Sample.Services.PluginManager;
 
 namespace Routing.Modularity.Sample.Services
