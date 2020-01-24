@@ -45,14 +45,28 @@ namespace AI4E.Messaging.Serialization
         sealed class MessageSerializer : IMessageSerializer, IDisposable
     {
         private readonly ITypeResolver _typeResolver;
+#if MODULE
+        private readonly ModuleContext _moduleContext;
+#endif
         private readonly ThreadLocal<JsonSerializer> _serializer;
 
-        public MessageSerializer(ITypeResolver typeResolver)
+        public MessageSerializer(
+            ITypeResolver typeResolver
+#if MODULE
+            , ModuleContext moduleContext
+#endif
+            )
         {
             if (typeResolver is null)
                 throw new ArgumentNullException(nameof(typeResolver));
-
+#if MODULE
+            if (moduleContext is null)
+                throw new ArgumentNullException(nameof(moduleContext));
+#endif
             _typeResolver = typeResolver;
+#if MODULE
+            _moduleContext = moduleContext;
+#endif
             _serializer = new ThreadLocal<JsonSerializer>(BuildSerializer, trackAllValues: false);
         }
 
@@ -127,7 +141,11 @@ namespace AI4E.Messaging.Serialization
         {
             var result = new JsonSerializer
             {
+#if MODULE
+                ContractResolver = new ContractResolver(_moduleContext),
+#else
                 ContractResolver = ContractResolver.Instance,
+#endif
                 SerializationBinder = new SerializationBinder(_typeResolver),
                 TypeNameHandling = TypeNameHandling.Auto,
             };
