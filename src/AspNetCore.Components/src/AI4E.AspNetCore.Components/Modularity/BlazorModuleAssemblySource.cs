@@ -174,5 +174,58 @@ namespace AI4E.AspNetCore.Components.Modularity
                 throw;
             }
         }
+
+        public static BlazorModuleAssemblySource FromLocation(
+            string assemblyLocation,
+            bool forceLoad = false)
+        {
+            using var assemblyStream = new FileStream(
+                            assemblyLocation,
+                            FileMode.Open,
+                            FileAccess.Read,
+                            FileShare.Read,
+                            bufferSize: 4096);
+
+            Debug.Assert(assemblyStream.CanSeek);
+            var assemblyBytesOwner = MemoryPool<byte>.Shared.RentExact(checked((int)assemblyStream.Length));
+
+            try
+            {
+                assemblyStream.ReadExact(assemblyBytesOwner.Memory.Span);
+
+                var symbolsLocation = Path.ChangeExtension(assemblyLocation, "pdb");
+
+                if (!File.Exists(symbolsLocation))
+                {
+                    return new BlazorModuleAssemblySource(assemblyBytesOwner, forceLoad);
+                }
+
+                using var symbolsStream = new FileStream(
+                    symbolsLocation,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    bufferSize: 4096);
+
+                Debug.Assert(symbolsStream.CanSeek);
+                var symbolsBytesOwner = MemoryPool<byte>.Shared.RentExact(checked((int)symbolsStream.Length));
+
+                try
+                {
+                    symbolsStream.ReadExact(symbolsBytesOwner.Memory.Span);
+                    return new BlazorModuleAssemblySource(assemblyBytesOwner, symbolsBytesOwner, forceLoad);
+                }
+                catch
+                {
+                    symbolsBytesOwner.Dispose();
+                    throw;
+                }
+            }
+            catch
+            {
+                assemblyBytesOwner.Dispose();
+                throw;
+            }
+        }
     }
 }

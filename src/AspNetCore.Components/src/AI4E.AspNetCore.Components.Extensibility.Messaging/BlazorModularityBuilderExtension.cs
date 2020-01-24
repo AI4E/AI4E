@@ -6,7 +6,6 @@ using AI4E.Messaging.Routing;
 using AI4E.Messaging.Serialization;
 using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
 
 namespace AI4E.AspNetCore.Components.Modularity
 {
@@ -14,9 +13,16 @@ namespace AI4E.AspNetCore.Components.Modularity
     {
         public static IBlazorModularityBuilder UseModuleMessaging(this IBlazorModularityBuilder builder)
         {
+            var assembliesToLoad = new[]
+            {
+                typeof(System.ComponentModel.TypeConverter).Assembly,
+                typeof(Newtonsoft.Json.JsonSerializer).Assembly,
+                Assembly.GetExecutingAssembly()
+            };
+
             return builder
                 .ConfigureModuleServices(ConfigureMessagingServices)
-                .LoadAssembliesInContext(typeof(JsonSerializer).Assembly, Assembly.GetExecutingAssembly());
+                .LoadAssembliesInContext(assembliesToLoad);
         }
 
         public static IBlazorModularityBuilder UseModuleMessaging(
@@ -72,6 +78,6 @@ namespace AI4E.AspNetCore.Components.Modularity
             var assemblyName = assembly.GetName();
 
             return context.ModuleLoadContext.LoadFromAssemblyName(assemblyName);
-        }        
+        }
     }
 }

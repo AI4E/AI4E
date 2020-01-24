@@ -58,7 +58,8 @@ namespace AI4E.AspNetCore.Components.Modularity
         private readonly AssemblyManager _assemblyManager;
         private readonly IChildContainerBuilder _childContainerBuilder;
         private readonly IOptions<BlazorModuleOptions> _options;
-        private readonly ILogger<BlazorModuleManager> _logger;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger<BlazorModuleInstaller> _logger;
         private BlazorModule? _module = null;
 
         public BlazorModuleInstaller(
@@ -66,7 +67,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             AssemblyManager assemblyManager,
             IChildContainerBuilder childContainerBuilder,
             IOptions<BlazorModuleOptions> options,
-            ILogger<BlazorModuleManager> logger)
+            ILoggerFactory loggerFactory)
         {
             if (moduleDescriptor is null)
                 throw new ArgumentNullException(nameof(moduleDescriptor));
@@ -80,14 +81,15 @@ namespace AI4E.AspNetCore.Components.Modularity
             if (options is null)
                 throw new ArgumentNullException(nameof(options));
 
-            if (logger is null)
-                throw new ArgumentNullException(nameof(logger));
+            if (loggerFactory is null)
+                throw new ArgumentNullException(nameof(loggerFactory));
 
             ModuleDescriptor = moduleDescriptor;
             _assemblyManager = assemblyManager;
             _childContainerBuilder = childContainerBuilder;
             _options = options;
-            _logger = logger;
+            _loggerFactory = loggerFactory;
+            _logger = loggerFactory.CreateLogger<BlazorModuleInstaller>();
         }
 
         public IBlazorModuleDescriptor ModuleDescriptor { get; }
@@ -197,7 +199,8 @@ namespace AI4E.AspNetCore.Components.Modularity
         private async ValueTask<ModuleContext> BuildModuleContextAsync(CancellationToken cancellation)
         {
             var assemblySources = await PrefetchAssemblySourcesAsync(ModuleDescriptor.Assemblies, cancellation);
-            var moduleLoadContext = new BlazorModuleAssemblyLoadContext(assemblySources);
+            var moduleLoadContext = new BlazorModuleAssemblyLoadContext(
+                assemblySources, _loggerFactory.CreateLogger<BlazorModuleAssemblyLoadContext>());
             var moduleReflectionContext = new WeakReflectionContext();
             var moduleTypeResolver = new ReflectionContextTypeResolver(
                         new BlazorModuleTypeResolver(moduleLoadContext), moduleReflectionContext);

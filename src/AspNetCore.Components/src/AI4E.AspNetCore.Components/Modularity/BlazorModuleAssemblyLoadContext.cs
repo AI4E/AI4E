@@ -22,6 +22,7 @@ using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -107,6 +108,11 @@ namespace AI4E.AspNetCore.Components.Modularity
             }
         }
 
+        private static string FormatAssemblyName(AssemblyName assemblyName)
+        {
+            return "'" + assemblyName.Name + ", " + assemblyName.Version + "'";
+        }
+
         protected override Assembly? Load(AssemblyName assemblyName)
         {
             ImmutableDictionary<AssemblyName, Assembly>? assemblyCache;
@@ -121,36 +127,59 @@ namespace AI4E.AspNetCore.Components.Modularity
                 ThrowUnloadingException();
             }
 
-            _logger.LogDebug("Requested loading assembly {0}.", assemblyName);
-
             if (assemblyCache.TryGetValue(assemblyName, out var assembly))
             {
-                _logger.LogDebug("Found requested assembly {0} in cache.", assemblyName);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Found requested assembly {0} in cache.", FormatAssemblyName(assemblyName));
 
                 return assembly;
             }
 
-            var hasSource = _assemblySources.TryGetValue(assemblyName, out var assemblySource);
+            var isNetStandard = AssemblyNameComparer.BySimpleName.Equals(assemblyName, new AssemblyName("netstandard"));
 
             // We have no source => Fallback to core or throw.
-            if (!hasSource)
+            if (!_assemblySources.TryGetValue(assemblyName, out var assemblySource))
             {
-                _logger.LogDebug("Requested assembly {0} has no source. Falling back to default context.", assemblyName);
-                return null;
-            }
-
-            // We either have no source 
-            // or we have a source but are not forces to load the assembly in the current context.
-            if (!assemblySource.ForceLoad)
-            {
-                if (_coreAssemblies.Contains(assemblyName))
+                if (isNetStandard)
                 {
-                    _logger.LogDebug("Requested assembly {0} has matching core assembly. Falling back to core assembly.", assemblyName);
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("Requested assembly {0} has no source. Creating source from default context.", FormatAssemblyName(assemblyName));
+
+                    try
+                    {
+                        assembly = Default.LoadFromAssemblyName(assemblyName);
+                    }
+                    catch (FileNotFoundException)
+                    {
+                        return null;
+                    }
+
+                    assemblySource = BlazorModuleAssemblySource.FromLocation(assembly.Location);
+                }
+                else
+                {
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("Requested assembly {0} has no source. Falling back to default context.", FormatAssemblyName(assemblyName));
+
                     return null;
                 }
             }
 
-            _logger.LogDebug("Loading requested assembly {0} from source into current context.", assemblyName);
+            // We either have no source 
+            // or we have a source but are not forces to load the assembly in the current context.
+            if (!assemblySource.ForceLoad && !isNetStandard)
+            {
+                if (_coreAssemblies.Contains(assemblyName))
+                {
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("Requested assembly {0} has matching core assembly. Falling back to core assembly.", FormatAssemblyName(assemblyName));
+
+                    return null;
+                }
+            }
+
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("Loading requested assembly {0} from source into current context.", FormatAssemblyName(assemblyName));
 
             try
             {

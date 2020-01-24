@@ -45,6 +45,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         private readonly AssemblyManager _assemblyManager;
         private readonly IChildContainerBuilder _childContainerBuilder;
         private readonly IOptions<BlazorModuleOptions> _options;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<BlazorModuleManager> _logger;
 
         // Contains all BlazorModule instances that are currently installed.
@@ -57,7 +58,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             AssemblyManager assemblyManager,
             IChildContainerBuilder childContainerBuilder,
             IOptions<BlazorModuleOptions> options,
-            ILogger<BlazorModuleManager>? logger = null)
+            ILoggerFactory? loggerFactory = null)
         {
             if (assemblyManager is null)
                 throw new ArgumentNullException(nameof(assemblyManager));
@@ -71,7 +72,8 @@ namespace AI4E.AspNetCore.Components.Modularity
             _assemblyManager = assemblyManager;
             _childContainerBuilder = childContainerBuilder;
             _options = options;
-            _logger = logger ?? NullLogger<BlazorModuleManager>.Instance;
+            _loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
+            _logger = _loggerFactory.CreateLogger<BlazorModuleManager>();
 
             _moduleInstallers = new Dictionary<IBlazorModuleDescriptor, BlazorModuleInstaller>();
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Default);
@@ -97,7 +99,7 @@ namespace AI4E.AspNetCore.Components.Modularity
                 _assemblyManager,
                 _childContainerBuilder,
                 _options,
-                _logger);
+                _loggerFactory);
 
             return InstallAsync(blazorModule, cancellation);
         }
