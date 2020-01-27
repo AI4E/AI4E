@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <PackageReference Include="AI4E.AspNetCore.Components.Build" Version="*" PrivateAssets="All" />
+    <PackageReference Include="AI4E.AspNetCore.Components.Factory.Loader" Version="*" PrivateAssets="All" />
+  </ItemGroup>
+</Project>

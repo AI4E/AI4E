@@ -89,7 +89,17 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.DependencyInject
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore.Components.Extensibility.Messaging", "src\AI4E.AspNetCore.Components.Extensibility.Messaging\AI4E.AspNetCore.Components.Extensibility.Messaging.csproj", "{D53BF718-3A8D-4410-AC85-2F5E8658BAEB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.AspNetCore.Components.Modularity", "src\AI4E.AspNetCore.Components.Modularity\AI4E.AspNetCore.Components.Modularity.csproj", "{6DDA2E9E-8955-4936-82C7-2C3A2D0718F6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore.Components.Modularity", "src\AI4E.AspNetCore.Components.Modularity\AI4E.AspNetCore.Components.Modularity.csproj", "{6DDA2E9E-8955-4936-82C7-2C3A2D0718F6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore.Components.Factory", "src\AI4E.AspNetCore.Components.Factory\AI4E.AspNetCore.Components.Factory.csproj", "{8C878C99-A2B2-4FB3-BA0F-04EC7139057E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore.Components.Factory.Loader", "src\AI4E.AspNetCore.Components.Factory.Loader\AI4E.AspNetCore.Components.Factory.Loader.csproj", "{0DDDE2D1-29CF-44E9-9ECD-FCA9B002CB6B}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore.Components.Build", "src\AI4E.AspNetCore.Components.Build\AI4E.AspNetCore.Components.Build.csproj", "{0A20C132-0521-4D07-B986-A66C7EEB9A43}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore.Components.Build.Test", "test\AI4E.AspNetCore.Components.Build.Test\AI4E.AspNetCore.Components.Build.Test.csproj", "{6AC778CA-E41C-42E4-A862-712096D191BD}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore.Components.Build.Test.TestTypes", "test\AI4E.AspNetCore.Components.Build.Test.TestTypes\AI4E.AspNetCore.Components.Build.Test.TestTypes.csproj", "{3B6C066D-F009-4490-9217-9421B3E19CA8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -245,6 +255,26 @@ Global
 		{6DDA2E9E-8955-4936-82C7-2C3A2D0718F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6DDA2E9E-8955-4936-82C7-2C3A2D0718F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6DDA2E9E-8955-4936-82C7-2C3A2D0718F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C878C99-A2B2-4FB3-BA0F-04EC7139057E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C878C99-A2B2-4FB3-BA0F-04EC7139057E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C878C99-A2B2-4FB3-BA0F-04EC7139057E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C878C99-A2B2-4FB3-BA0F-04EC7139057E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0DDDE2D1-29CF-44E9-9ECD-FCA9B002CB6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0DDDE2D1-29CF-44E9-9ECD-FCA9B002CB6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0DDDE2D1-29CF-44E9-9ECD-FCA9B002CB6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0DDDE2D1-29CF-44E9-9ECD-FCA9B002CB6B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A20C132-0521-4D07-B986-A66C7EEB9A43}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A20C132-0521-4D07-B986-A66C7EEB9A43}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A20C132-0521-4D07-B986-A66C7EEB9A43}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A20C132-0521-4D07-B986-A66C7EEB9A43}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6AC778CA-E41C-42E4-A862-712096D191BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6AC778CA-E41C-42E4-A862-712096D191BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6AC778CA-E41C-42E4-A862-712096D191BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6AC778CA-E41C-42E4-A862-712096D191BD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B6C066D-F009-4490-9217-9421B3E19CA8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B6C066D-F009-4490-9217-9421B3E19CA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B6C066D-F009-4490-9217-9421B3E19CA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B6C066D-F009-4490-9217-9421B3E19CA8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -290,6 +320,11 @@ Global
 		{639CA384-C057-4847-81CA-00DA42101405} = {D51B21EF-F729-4357-ADCB-CABC59C6FB5B}
 		{D53BF718-3A8D-4410-AC85-2F5E8658BAEB} = {3BFE31C6-7563-4A5D-97E7-2DA621FD949D}
 		{6DDA2E9E-8955-4936-82C7-2C3A2D0718F6} = {3BFE31C6-7563-4A5D-97E7-2DA621FD949D}
+		{8C878C99-A2B2-4FB3-BA0F-04EC7139057E} = {3BFE31C6-7563-4A5D-97E7-2DA621FD949D}
+		{0DDDE2D1-29CF-44E9-9ECD-FCA9B002CB6B} = {3BFE31C6-7563-4A5D-97E7-2DA621FD949D}
+		{0A20C132-0521-4D07-B986-A66C7EEB9A43} = {3BFE31C6-7563-4A5D-97E7-2DA621FD949D}
+		{6AC778CA-E41C-42E4-A862-712096D191BD} = {365927B2-2E03-4170-BC4B-E8022FB748C0}
+		{3B6C066D-F009-4490-9217-9421B3E19CA8} = {365927B2-2E03-4170-BC4B-E8022FB748C0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CE658A01-D5E2-43E3-91BA-DB3AF5BB9471}
