@@ -24,7 +24,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Coordination;
+using AI4E.Storage.Coordination;
 using AI4E.Utils.Async;
 using AI4E.Utils.Proxying;
 using Microsoft.Extensions.Logging;
