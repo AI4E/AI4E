@@ -2,8 +2,10 @@
 
   <PropertyGroup>
     <TargetFramework>$(NetCoreAppVersion)</TargetFramework>
+
     <IsPackable>false</IsPackable>
-    <RootNamespace>AI4E.Storage</RootNamespace>
+
+    <RootNamespace>AI4E.Coordination</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,9 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
-    <ProjectReference Include="..\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj" />
-    <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.Coordination\AI4E.Storage.Coordination.csproj" />
   </ItemGroup>
 
 </Project>

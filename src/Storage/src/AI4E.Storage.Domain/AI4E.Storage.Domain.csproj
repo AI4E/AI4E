@@ -5,10 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Domain.Abstractions\AI4E.Storage.Domain.Abstractions.csproj" />
-    <ProjectReference Include="..\..\Storage\AI4E.Storage\AI4E.Storage.csproj" />
-    <ProjectReference Include="..\..\Storage.Projection\AI4E.Storage.Projection\AI4E.Storage.Projection.csproj" />
+    <ProjectReference Include="..\AI4E.Storage.Projection\AI4E.Storage.Projection.csproj" />
+    <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
   </ItemGroup>
 
   <ItemGroup>

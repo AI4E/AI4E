@@ -14,8 +14,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Storage\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj" />
-    <ProjectReference Include="..\AI4E.Storage.Projection\AI4E.Storage.Projection.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.Projection\AI4E.Storage.Projection.csproj" />
   </ItemGroup>
 
 </Project>

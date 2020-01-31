@@ -19,8 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Remoting\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
-    <ProjectReference Include="..\..\Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
+    <ProjectReference Include="..\..\..\Remoting\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
   </ItemGroup>
 
 </Project>
