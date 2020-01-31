@@ -8,7 +8,7 @@ using AI4E.Storage;
 using AI4E.Utils.Memory;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     public sealed class CoordinationStorage : ICoordinationStorage, ISessionStorage
     {

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     public class DuplicateSessionException : Exception
     {

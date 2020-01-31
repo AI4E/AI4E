@@ -1,6 +1,6 @@
 using System;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     /// <summary>
     /// Represents a provider for the specified type.

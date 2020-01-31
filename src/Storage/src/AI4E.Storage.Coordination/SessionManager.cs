@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Utils;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     public sealed class SessionManager : ISessionManager
     {

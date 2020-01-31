@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 using AI4E.Utils;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     public sealed class StoredSessionManager : IStoredSessionManager
     {

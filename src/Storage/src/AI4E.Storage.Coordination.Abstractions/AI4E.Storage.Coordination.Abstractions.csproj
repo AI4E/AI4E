@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
-    <RootNamespace>AI4E.Coordination</RootNamespace>
+    <RootNamespace>AI4E.Storage.Coordination</RootNamespace>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
 

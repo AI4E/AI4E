@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using AI4E.Utils;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     public sealed class StoredEntryManager : IStoredEntryManager
     {

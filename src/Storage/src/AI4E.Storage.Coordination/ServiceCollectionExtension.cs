@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     public static partial class ServiceCollectionExtension
     {

@@ -28,7 +28,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Coordination;
+using AI4E.Storage.Coordination;
 using AI4E.Internal;
 using AI4E.Messaging.Routing;
 using AI4E.Modularity.Metadata;

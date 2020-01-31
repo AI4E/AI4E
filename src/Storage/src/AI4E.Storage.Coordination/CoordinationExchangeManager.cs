@@ -12,7 +12,7 @@ using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     internal sealed class CoordinationExchangeManager<TAddress> : ICoordinationExchangeManager<TAddress>
     {

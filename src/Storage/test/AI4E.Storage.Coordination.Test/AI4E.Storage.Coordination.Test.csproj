@@ -5,7 +5,7 @@
 
     <IsPackable>false</IsPackable>
 
-    <RootNamespace>AI4E.Coordination</RootNamespace>
+    <RootNamespace>AI4E.Storage.Coordination</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

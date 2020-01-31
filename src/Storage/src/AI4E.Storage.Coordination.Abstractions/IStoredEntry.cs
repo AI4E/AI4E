@@ -21,7 +21,7 @@
 using System;
 using System.Collections.Immutable;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     public interface IStoredEntry
     {

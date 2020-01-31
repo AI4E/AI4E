@@ -4,7 +4,7 @@ using System.Threading;
 using AI4E.Remoting;
 using AI4E.Utils;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     public sealed class SessionProvider<TAddress> : ISessionProvider
     {

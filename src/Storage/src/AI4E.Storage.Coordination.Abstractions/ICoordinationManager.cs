@@ -23,7 +23,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Utils.Async;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     /// <summary>
     /// Represents a coordination service.

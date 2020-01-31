@@ -20,7 +20,7 @@
 
 using System;
 using System.Linq;
-using AI4E.Coordination;
+using AI4E.Storage.Coordination;
 using AI4E.Messaging;
 using AI4E.Messaging.Routing;
 using AI4E.Modularity.Debug;

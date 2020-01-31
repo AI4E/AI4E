@@ -23,7 +23,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Diagnostics;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     /// <summary>
     /// The datastructure the coordination service uses to cache entries.

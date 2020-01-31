@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     internal static class StoredEntryUtil
     {

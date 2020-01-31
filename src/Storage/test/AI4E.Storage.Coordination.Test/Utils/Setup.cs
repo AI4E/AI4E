@@ -3,7 +3,7 @@ using AI4E.Remoting;
 using AI4E.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.Coordination.Utils
+namespace AI4E.Storage.Coordination.Utils
 {
     public static class Setup
     {

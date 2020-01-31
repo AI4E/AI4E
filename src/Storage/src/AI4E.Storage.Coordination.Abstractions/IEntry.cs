@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 using AI4E.Utils;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     /// <summary>
     /// Represents an entry of the coordination service.

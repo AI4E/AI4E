@@ -5,7 +5,7 @@ using AI4E.Remoting;
 using AI4E.Utils.Messaging.Primitives;
 using Nito.AsyncEx;
 
-namespace AI4E.Coordination.Utils
+namespace AI4E.Storage.Coordination.Utils
 {
     public sealed class InMemoryPhysicalEndPoint : IPhysicalEndPoint<InMemoryPhysicalAddress>
     {

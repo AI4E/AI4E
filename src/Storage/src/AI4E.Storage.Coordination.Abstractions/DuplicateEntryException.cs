@@ -2,7 +2,7 @@ using System;
 using System.Runtime.Serialization;
 using AI4E.Utils.Memory;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     public class DuplicateEntryException : Exception
     {

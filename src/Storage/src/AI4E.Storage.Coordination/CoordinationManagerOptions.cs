@@ -20,7 +20,7 @@
 
 using System;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     public class CoordinationManagerOptions
     {

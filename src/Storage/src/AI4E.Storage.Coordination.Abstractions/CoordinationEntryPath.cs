@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using AI4E.Utils.Memory;
 using static System.Diagnostics.Debug;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
 #if NETCORE30
     using static System.MemoryExtensions;

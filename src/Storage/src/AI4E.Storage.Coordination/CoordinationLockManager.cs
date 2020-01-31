@@ -7,7 +7,7 @@ using AI4E.Utils;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.Logging;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     internal sealed class CoordinationLockManager : ICoordinationLockManager
     {

@@ -1,10 +1,10 @@
 using System.Linq;
 using System.Threading.Tasks;
-using AI4E.Coordination.Utils;
+using AI4E.Storage.Coordination.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     [TestClass]
     public class CoordinationManagerTest

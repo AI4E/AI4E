@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     internal sealed class CoordinationWaitManager : ICoordinationWaitManager
     {

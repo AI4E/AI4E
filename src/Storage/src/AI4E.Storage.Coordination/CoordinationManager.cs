@@ -1,15 +1,3 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        CoordinationManager.cs 
- * Types:           (1) AI4E.Coordination.CoordinationManager'1
- *                  (2) AI4E.Coordination.CoordinationManager'1.Entry
- *                  (3) AI4E.Coordination.CoordinationManagerFactory'1
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   30.09.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -42,7 +30,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     public sealed partial class CoordinationManager<TAddress> : ICoordinationManager
     {

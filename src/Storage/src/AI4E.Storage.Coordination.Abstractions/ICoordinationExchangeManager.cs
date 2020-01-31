@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Remoting;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     public interface ICoordinationExchangeManager : IDisposable
     {

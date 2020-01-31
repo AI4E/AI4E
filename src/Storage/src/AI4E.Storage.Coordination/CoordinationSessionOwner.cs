@@ -8,7 +8,7 @@ using AI4E.Utils.Async;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace AI4E.Coordination
+namespace AI4E.Storage.Coordination
 {
     public sealed class CoordinationSessionOwner : ICoordinationSessionOwner
     {
