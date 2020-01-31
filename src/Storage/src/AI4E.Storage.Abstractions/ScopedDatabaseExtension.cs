@@ -1,9 +1,9 @@
 using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,36 +11,42 @@ namespace AI4E.Storage
 {
     public static class ScopedDatabaseExtension
     {
-        private static readonly MethodInfo _storeMethodDefinition;
-        private static readonly MethodInfo _removeMethodDefinition;
+        private static readonly MethodInfo _storeMethodDefinition = GetStoreMethodDefinition();
+        private static readonly MethodInfo _removeMethodDefinition = GetRemoveMethodDefinition();
 
-        static ScopedDatabaseExtension()
+        private static MethodInfo GetStoreMethodDefinition()
         {
-            _storeMethodDefinition = typeof(ScopedDatabaseExtension)
+            return typeof(ScopedDatabaseExtension)
                 .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
-                .Single(p => p.Name == nameof(ScopedDatabaseExtension.StoreAsync) &&
-                             p.IsGenericMethodDefinition);
-
-            _removeMethodDefinition = typeof(ScopedDatabaseExtension)
-                .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
-                .Single(p => p.Name == nameof(ScopedDatabaseExtension.RemoveAsync) &&
-                             p.IsGenericMethodDefinition);
+                .Single(p => p.Name == nameof(ScopedDatabaseExtension.StoreAsync) && p.IsGenericMethodDefinition);
         }
 
-        private static readonly ConcurrentDictionary<Type, Func<IScopedDatabase, object, CancellationToken, Task>> _storeMethods = new ConcurrentDictionary<Type, Func<IScopedDatabase, object, CancellationToken, Task>>();
-        private static readonly ConcurrentDictionary<Type, Func<IScopedDatabase, object, CancellationToken, Task>> _removeMethods = new ConcurrentDictionary<Type, Func<IScopedDatabase, object, CancellationToken, Task>>();
+        private static MethodInfo GetRemoveMethodDefinition()
+        {
+            return typeof(ScopedDatabaseExtension)
+                .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+                .Single(p => p.Name == nameof(ScopedDatabaseExtension.RemoveAsync) && p.IsGenericMethodDefinition);
+        }
 
-        private static readonly Func<Type, Func<IScopedDatabase, object, CancellationToken, Task>> _buildStoreMethodCache = BuildStoreMethod;
-        private static readonly Func<Type, Func<IScopedDatabase, object, CancellationToken, Task>> _buildRemoveMethodCache = BuildRemoveMethod;
+        private static readonly ConditionalWeakTable<Type, Func<IScopedDatabase, object, CancellationToken, Task>> _storeMethods
+            = new ConditionalWeakTable<Type, Func<IScopedDatabase, object, CancellationToken, Task>>();
+        private static readonly ConditionalWeakTable<Type, Func<IScopedDatabase, object, CancellationToken, Task>> _removeMethods
+            = new ConditionalWeakTable<Type, Func<IScopedDatabase, object, CancellationToken, Task>>();
+
+        // Cache delegates for perf reason
+        private static readonly ConditionalWeakTable<Type, Func<IScopedDatabase, object, CancellationToken, Task>>.CreateValueCallback _buildStoreMethod 
+            = BuildStoreMethod;
+        private static readonly ConditionalWeakTable<Type, Func<IScopedDatabase, object, CancellationToken, Task>>.CreateValueCallback _buildRemoveMethod 
+            = BuildRemoveMethod;
 
         private static Func<IScopedDatabase, object, CancellationToken, Task> GetStoreMethod(Type dataType)
         {
-            return _storeMethods.GetOrAdd(dataType, _buildStoreMethodCache);
+            return _storeMethods.GetValue(dataType, _buildStoreMethod);
         }
 
         private static Func<IScopedDatabase, object, CancellationToken, Task> GetRemoveMethod(Type dataType)
         {
-            return _removeMethods.GetOrAdd(dataType, _buildRemoveMethodCache);
+            return _removeMethods.GetValue(dataType, _buildRemoveMethod);
         }
 
 

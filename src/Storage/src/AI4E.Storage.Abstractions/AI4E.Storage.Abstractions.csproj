@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
     <RootNamespace>AI4E.Storage</RootNamespace>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>

@@ -3,76 +3,77 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
 using AI4E.Utils;
-using static System.Diagnostics.Debug;
+using System.Diagnostics;
 
 namespace AI4E.Storage
 {
     public static class DatabaseExtension
     {
-        public static async Task UpdateAsync<TEntry>(this IDatabase database, TEntry entry, CancellationToken cancellation = default)
+        public static async Task UpdateAsync<TEntry>(
+            this IDatabase database, 
+            TEntry entry, 
+            CancellationToken cancellation = default)
             where TEntry : class
         {
-            if (database == null)
-                throw new ArgumentNullException(nameof(database));
-
-            var success = await
-            database.UpdateAsync(entry, _ => true, cancellation);
-            Assert(success);
+#pragma warning disable CA1062
+            var success = await database.UpdateAsync(entry, _ => true, cancellation).ConfigureAwait(false);
+#pragma warning restore CA1062
+            Debug.Assert(success);
         }
 
-        public static async Task RemoveAsync<TEntry>(this IDatabase database, TEntry entry, CancellationToken cancellation = default)
+        public static async Task RemoveAsync<TEntry>(
+            this IDatabase database, 
+            TEntry entry, 
+            CancellationToken cancellation = default)
             where TEntry : class
         {
-            if (database == null)
-                throw new ArgumentNullException(nameof(database));
-
-            var success = await database.RemoveAsync(entry, _ => true, cancellation);
-            Assert(success);
+#pragma warning disable CA1062
+            var success = await database.RemoveAsync(entry, _ => true, cancellation).ConfigureAwait(false);
+#pragma warning restore CA1062
+            Debug.Assert(success);
         }
 
-        public static ValueTask<TEntry> GetOneAsync<TEntry>(this IDatabase database, CancellationToken cancellation = default)
+        public static ValueTask<TEntry?> GetOneAsync<TEntry>(
+            this IDatabase database, 
+            CancellationToken cancellation = default)
             where TEntry : class
         {
-            if (database == null)
-                throw new ArgumentNullException(nameof(database));
-
+#pragma warning disable CA1062
             return database.GetOneAsync<TEntry>(p => true, cancellation);
+#pragma warning restore CA1062
         }
 
-        public static Task<bool> CompareExchangeAsync<TEntry, TVersion>(this IDatabase database,
-                                                                             TEntry entry,
-                                                                             TEntry comparand,
-                                                                             Expression<Func<TEntry, TVersion>> versionSelector,
-                                                                             CancellationToken cancellation = default)
+        public static Task<bool> CompareExchangeAsync<TEntry, TVersion>(
+            this IDatabase database,
+            TEntry entry,
+            TEntry comparand,
+            Expression<Func<TEntry, TVersion>> versionSelector,
+            CancellationToken cancellation = default)
             where TEntry : class
             where TVersion : IEquatable<TVersion>
         {
-            if (database == null)
-                throw new ArgumentNullException(nameof(database));
-
             if (versionSelector == null)
                 throw new ArgumentNullException(nameof(versionSelector));
 
-            return database.CompareExchangeAsync<TEntry>(entry, comparand, BuildEqualityComparer(versionSelector), cancellation);
+            return database.CompareExchangeAsync(entry, comparand, BuildEqualityComparer(versionSelector), cancellation);
         }
 
         private static Expression<Func<TEntry, TEntry, bool>> BuildEqualityComparer<TEntry, TVersion>(Expression<Func<TEntry, TVersion>> versionSelector)
             where TEntry : class
             where TVersion : IEquatable<TVersion>
         {
-            Assert(versionSelector != null);
+            Debug.Assert(versionSelector != null);
 
             var param1 = Expression.Parameter(typeof(TEntry), "left");
             var param2 = Expression.Parameter(typeof(TEntry), "right");
 
-            var version1 = ParameterExpressionReplacer.ReplaceParameter(versionSelector.Body, versionSelector.Parameters.First(), param1);
+            var version1 = ParameterExpressionReplacer.ReplaceParameter(versionSelector!.Body, versionSelector.Parameters.First(), param1);
             var version2 = ParameterExpressionReplacer.ReplaceParameter(versionSelector.Body, versionSelector.Parameters.First(), param2);
 
             var equalityMethod = typeof(IEquatable<TVersion>).GetMethod(nameof(Equals));
 
-            Assert(equalityMethod != null);
+            Debug.Assert(equalityMethod != null);
 
             var call = Expression.Call(version1, equalityMethod, version2);
 

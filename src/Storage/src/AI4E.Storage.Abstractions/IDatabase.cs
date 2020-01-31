@@ -145,7 +145,7 @@ namespace AI4E.Storage
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified predicate.</exception>
-        ValueTask<TEntry> GetOneAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
+        ValueTask<TEntry?> GetOneAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
             where TEntry : class;
 
         /// <summary>

@@ -19,12 +19,12 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
@@ -34,44 +34,58 @@ namespace AI4E.Storage
 {
     public static class CommonDatabaseExtensions
     {
-        private static readonly MethodInfo _addMethodDefinition;
-        private static readonly MethodInfo _updateMethodDefinition;
-        private static readonly MethodInfo _removeMethodDefinition;
+        private static readonly MethodInfo _addMethodDefinition = GetAddMethodDefinition();
+        private static readonly MethodInfo _updateMethodDefinition = GetUpdateMethodDefinition();
+        private static readonly MethodInfo _removeMethodDefinition = GetRemoveMethodDefinition();
 
-        static CommonDatabaseExtensions()
+        private static MethodInfo GetAddMethodDefinition()
         {
-            _addMethodDefinition = typeof(CommonDatabaseExtensions).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
-                                                               .Single(p => p.Name == nameof(CommonDatabaseExtensions.AddAsync) &&
-                                                                            p.IsGenericMethodDefinition);
-            _updateMethodDefinition = typeof(CommonDatabaseExtensions).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
-                                                               .Single(p => p.Name == nameof(CommonDatabaseExtensions.UpdateAsync) &&
-                                                                            p.IsGenericMethodDefinition);
-            _removeMethodDefinition = typeof(CommonDatabaseExtensions).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
-                                                               .Single(p => p.Name == nameof(CommonDatabaseExtensions.RemoveAsync) &&
-                                                                            p.IsGenericMethodDefinition);
+            return typeof(CommonDatabaseExtensions)
+                .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+                .Single(p => p.Name == nameof(CommonDatabaseExtensions.AddAsync) && p.IsGenericMethodDefinition);
         }
 
-        private static readonly ConcurrentDictionary<Type, Func<IDatabase, object, CancellationToken, Task<bool>>> _addMethods = new ConcurrentDictionary<Type, Func<IDatabase, object, CancellationToken, Task<bool>>>();
-        private static readonly ConcurrentDictionary<Type, Func<IDatabase, object, CancellationToken, Task<bool>>> _updateMethods = new ConcurrentDictionary<Type, Func<IDatabase, object, CancellationToken, Task<bool>>>();
-        private static readonly ConcurrentDictionary<Type, Func<IDatabase, object, CancellationToken, Task<bool>>> _removeMethods = new ConcurrentDictionary<Type, Func<IDatabase, object, CancellationToken, Task<bool>>>();
+        private static MethodInfo GetUpdateMethodDefinition()
+        {
+            return typeof(CommonDatabaseExtensions)
+                .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+                .Single(p => p.Name == nameof(CommonDatabaseExtensions.UpdateAsync) && p.IsGenericMethodDefinition);
+        }
+        private static MethodInfo GetRemoveMethodDefinition()
+        {
+            return typeof(CommonDatabaseExtensions)
+                 .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+                 .Single(p => p.Name == nameof(CommonDatabaseExtensions.RemoveAsync) && p.IsGenericMethodDefinition);
+        }
 
-        private static readonly Func<Type, Func<IDatabase, object, CancellationToken, Task<bool>>> _buildAddMethodCache = BuildAddMethod;
-        private static readonly Func<Type, Func<IDatabase, object, CancellationToken, Task<bool>>> _buildUpdateMethodCache = BuildUpdateMethod;
-        private static readonly Func<Type, Func<IDatabase, object, CancellationToken, Task<bool>>> _buildRemoveMethodCache = BuildRemoveMethod;
+        private static readonly ConditionalWeakTable<Type, Func<IDatabase, object, CancellationToken, Task<bool>>> _addMethods
+            = new ConditionalWeakTable<Type, Func<IDatabase, object, CancellationToken, Task<bool>>>();
+        private static readonly ConditionalWeakTable<Type, Func<IDatabase, object, CancellationToken, Task<bool>>> _updateMethods
+            = new ConditionalWeakTable<Type, Func<IDatabase, object, CancellationToken, Task<bool>>>();
+        private static readonly ConditionalWeakTable<Type, Func<IDatabase, object, CancellationToken, Task<bool>>> _removeMethods
+            = new ConditionalWeakTable<Type, Func<IDatabase, object, CancellationToken, Task<bool>>>();
+
+        // Caching delegates for perf reason
+        private static readonly ConditionalWeakTable<Type, Func<IDatabase, object, CancellationToken, Task<bool>>>.CreateValueCallback _buildAddMethod
+            = BuildAddMethod;
+        private static readonly ConditionalWeakTable<Type, Func<IDatabase, object, CancellationToken, Task<bool>>>.CreateValueCallback _buildUpdateMethod
+            = BuildUpdateMethod;
+        private static readonly ConditionalWeakTable<Type, Func<IDatabase, object, CancellationToken, Task<bool>>>.CreateValueCallback _buildRemoveMethod
+            = BuildRemoveMethod;
 
         private static Func<IDatabase, object, CancellationToken, Task<bool>> GetAddMethod(Type dataType)
         {
-            return _addMethods.GetOrAdd(dataType, _buildAddMethodCache);
+            return _addMethods.GetValue(dataType, _buildAddMethod);
         }
 
         private static Func<IDatabase, object, CancellationToken, Task<bool>> GetUpdateMethod(Type dataType)
         {
-            return _updateMethods.GetOrAdd(dataType, _buildUpdateMethodCache);
+            return _updateMethods.GetValue(dataType, _buildUpdateMethod);
         }
 
         private static Func<IDatabase, object, CancellationToken, Task<bool>> GetRemoveMethod(Type dataType)
         {
-            return _removeMethods.GetOrAdd(dataType, _buildRemoveMethodCache);
+            return _removeMethods.GetValue(dataType, _buildRemoveMethod);
         }
 
         private static Func<IDatabase, object, CancellationToken, Task<bool>> BuildMethod(MethodInfo methodDefinition, Type dataType)
@@ -129,88 +143,67 @@ namespace AI4E.Storage
         /// Stores an object in the store.
         /// </summary>
         /// <param name="database">The data store.</param>
-        /// <param name="data">The object to update.</param>
+        /// <param name="entry">The object to update.</param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="database"/> or <paramref name="data"/> is null.</exception>
+        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="database"/> or <paramref name="entry"/> is null.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if the object is disposed.</exception>
-        public static Task<bool> AddAsync(this IDatabase database, object data, CancellationToken cancellation = default)
+        public static Task<bool> AddAsync(this IDatabase database, object entry, CancellationToken cancellation = default)
         {
-            if (database == null)
-                throw new ArgumentNullException(nameof(database));
-
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
-            if (data is ValueType)
-                throw new ArgumentException("The argument must be a reference type.", nameof(data));
-
-            return database.AddAsync(data.GetType(), data, cancellation);
+            return database.AddAsync(entry?.GetType()!, entry!, cancellation);
         }
 
-        public static Task<bool> UpdateAsync(this IDatabase database, object data, CancellationToken cancellation = default)
+        public static Task<bool> UpdateAsync(this IDatabase database, object entry, CancellationToken cancellation = default)
         {
-            return database.UpdateAsync(data.GetType(), data, cancellation);
+            return database.UpdateAsync(entry?.GetType()!, entry!, cancellation);
         }
 
         /// <summary>
         /// Removes an object from the store.
         /// </summary>
         /// <param name="database">The data store.</param>
-        /// <param name="data">The object to remove.</param>
+        /// <param name="entry">The object to remove.</param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="database"/> or <paramref name="data"/> is null.</exception>
+        /// <exception cref="ArgumentNullException">Thrown if either <paramref name="database"/> or <paramref name="entry"/> is null.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if the object is disposed.</exception>
-        public static Task<bool> RemoveAsync(this IDatabase database, object data, CancellationToken cancellation = default)
+        public static Task<bool> RemoveAsync(this IDatabase database, object entry, CancellationToken cancellation = default)
         {
-            if (database == null)
-                throw new ArgumentNullException(nameof(database));
-
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
-            if (data is ValueType)
-                throw new ArgumentException("The argument must be a reference type.", nameof(data));
-
-            return database.RemoveAsync(data.GetType(), data, cancellation);
+            return database.RemoveAsync(entry?.GetType()!, entry!, cancellation);
         }
 
-        public static Task<bool> AddAsync(this IDatabase database, Type dataType, object data, CancellationToken cancellation = default)
+        public static Task<bool> AddAsync(this IDatabase database, Type entryType, object data, CancellationToken cancellation = default)
         {
-            CheckArguments(database, dataType, data);
-            var invoker = GetAddMethod(dataType);
+            CheckArguments(database, entryType, data);
+            var invoker = GetAddMethod(entryType);
             return invoker(database, data, cancellation);
         }
 
-        public static Task<bool> UpdateAsync(this IDatabase database, Type dataType, object data, CancellationToken cancellation = default)
+        public static Task<bool> UpdateAsync(this IDatabase database, Type entryType, object entry, CancellationToken cancellation = default)
         {
-            CheckArguments(database, dataType, data);
-            var invoker = GetUpdateMethod(dataType);
-            return invoker(database, data, cancellation);
+            CheckArguments(database, entryType, entry);
+            var invoker = GetUpdateMethod(entryType);
+            return invoker(database, entry, cancellation);
         }
 
-        public static Task<bool> RemoveAsync(this IDatabase database, Type dataType, object data, CancellationToken cancellation = default)
+        public static Task<bool> RemoveAsync(this IDatabase database, Type entryType, object entry, CancellationToken cancellation = default)
         {
-            CheckArguments(database, dataType, data);
-            var invoker = GetRemoveMethod(dataType);
-            return invoker(database, data, cancellation);
+            CheckArguments(database, entryType, entry);
+            var invoker = GetRemoveMethod(entryType);
+            return invoker(database, entry, cancellation);
         }
 
-        private static void CheckArguments(IDatabase dataStore, Type dataType, object data)
+        private static void CheckArguments(IDatabase database, Type entryType, object entry)
         {
-            if (dataStore == null)
-                throw new ArgumentNullException(nameof(dataStore));
+            if (entryType == null)
+                throw new ArgumentNullException(nameof(entryType));
 
-            if (dataType == null)
-                throw new ArgumentNullException(nameof(dataType));
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
 
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
+            if (entryType.IsValueType)
+                throw new ArgumentException("The argument must be a reference type.", nameof(entryType));
 
-            if (dataType.IsValueType)
-                throw new ArgumentException("The argument must be a reference type.", nameof(dataType));
-
-            if (!dataType.IsAssignableFrom(data.GetType()))
-                throw new ArgumentException($"The specified data must be of type '{dataType.FullName}' or an assignable type.");
+            if (!entryType.IsAssignableFrom(entry.GetType()))
+                throw new ArgumentException($"The specified data must be of type '{entryType.FullName}' or an assignable type.");
         }
 
         /// <summary>
@@ -235,8 +228,8 @@ namespace AI4E.Storage
         /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified equality comparer.</exception>
         public static Task<bool> CompareExchangeAsync<TEntry>(
             this IDatabase database,
-            TEntry entry,
-            TEntry comparand,
+            TEntry? entry,
+            TEntry? comparand,
             Expression<Func<TEntry, TEntry, bool>> equalityComparer,
             CancellationToken cancellation = default)
            where TEntry : class
@@ -244,10 +237,24 @@ namespace AI4E.Storage
             if (equalityComparer == null)
                 throw new ArgumentNullException(nameof(equalityComparer));
 
+            if (entry is null ^ comparand is null)
+            {
+                return Task.FromResult(false);
+            }
+
+            if (entry is null && comparand is null)
+            {
+                throw new ArgumentException(); // TODO: Message
+            }
+
             // This is a nop actually. But we check whether comparand is up to date.
             if (entry == comparand)
             {
-                return CheckComparandToBeUpToDate(database, comparand, equalityComparer, cancellation);
+                Debug.Assert(comparand != null);
+
+#pragma warning disable CA1062
+                return CheckComparandToBeUpToDate(database, comparand!, equalityComparer, cancellation);
+#pragma warning restore CA1062
             }
 
             // Trying to update an entry.
@@ -265,7 +272,7 @@ namespace AI4E.Storage
             // Trying to remove an entry.
             Debug.Assert(comparand != null);
 
-            return database.RemoveAsync(comparand, BuildPredicate(comparand, equalityComparer), cancellation);
+            return database.RemoveAsync(comparand!, BuildPredicate(comparand!, equalityComparer!), cancellation);
         }
 
         private static async Task<bool> CheckComparandToBeUpToDate<TEntry>(
@@ -292,13 +299,14 @@ namespace AI4E.Storage
         private static Expression<Func<TEntry, bool>> BuildPredicate<TEntry>(
             TEntry comparand,
             Expression<Func<TEntry, TEntry, bool>> equalityComparer)
+            where TEntry : class
         {
             Debug.Assert(comparand != null);
             Debug.Assert(equalityComparer != null);
 
             var idSelector = DataPropertyHelper.BuildPredicate(comparand);
             var comparandConstant = Expression.Constant(comparand, typeof(TEntry));
-            var parameter = equalityComparer.Parameters.First();
+            var parameter = equalityComparer!.Parameters.First();
             var equality = ParameterExpressionReplacer.ReplaceParameter(equalityComparer.Body, equalityComparer.Parameters.Last(), comparandConstant);
             var idEquality = ParameterExpressionReplacer.ReplaceParameter(idSelector.Body, idSelector.Parameters.First(), parameter);
             var body = Expression.AndAlso(idEquality, equality);
@@ -319,18 +327,21 @@ namespace AI4E.Storage
         public static IAsyncEnumerable<TEntry> GetAsync<TEntry>(this IDatabase database, CancellationToken cancellation = default)
              where TEntry : class
         {
+#pragma warning disable CA1062
             return database.GetAsync<TEntry>(_ => true, cancellation);
+#pragma warning restore CA1062
         }
 
         public static async ValueTask<TEntry> GetOrAdd<TEntry>(this IDatabase database, TEntry entry, CancellationToken cancellation = default)
             where TEntry : class
         {
-            if (database == null)
-                throw new ArgumentNullException(nameof(database));
+
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
 
-            while (!await database.AddAsync(entry, cancellation))
+#pragma warning disable CA1062 
+            while (!await database.AddAsync(entry, cancellation).ConfigureAwait(false))
+#pragma warning restore CA1062
             {
                 var result = await database.GetOneAsync(DataPropertyHelper.BuildPredicate(entry), cancellation);
 
