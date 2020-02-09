@@ -35,7 +35,7 @@ using static AI4E.Storage.MongoDB.MongoExceptionHelper;
 
 namespace AI4E.Storage.MongoDB
 {
-    public sealed partial class MongoDatabase : IQueryableDatabase
+    public sealed partial class MongoDatabase : IDatabase
     {
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<MongoDatabase> _logger;
@@ -79,7 +79,7 @@ namespace AI4E.Storage.MongoDB
 
         private static readonly InsertOneOptions _defaultInsertOneOptions = new InsertOneOptions();
 
-        public async Task<bool> AddAsync<TEntry>(TEntry entry, CancellationToken cancellation = default)
+        public async ValueTask<bool> AddAsync<TEntry>(TEntry entry, CancellationToken cancellation = default)
             where TEntry : class
         {
             if (entry == null)
@@ -111,7 +111,7 @@ namespace AI4E.Storage.MongoDB
             return true;
         }
 
-        public async Task<bool> RemoveAsync<TEntry>(
+        public async ValueTask<bool> RemoveAsync<TEntry>(
             TEntry entry,
             Expression<Func<TEntry, bool>> predicate,
             CancellationToken cancellation = default)
@@ -138,7 +138,7 @@ namespace AI4E.Storage.MongoDB
             return deleteResult.DeletedCount > 0;
         }
 
-        public async Task Clear<TEntry>(CancellationToken cancellation = default)
+        public async ValueTask Clear<TEntry>(CancellationToken cancellation = default)
              where TEntry : class
         {
             var collection = await GetCollectionAsync<TEntry>(cancellation).ConfigureAwait(false);
@@ -152,7 +152,7 @@ namespace AI4E.Storage.MongoDB
             }
         }
 
-        public async Task<bool> UpdateAsync<TEntry>(
+        public async ValueTask<bool> UpdateAsync<TEntry>(
             TEntry entry,
             Expression<Func<TEntry, bool>> predicate,
             CancellationToken cancellation = default)
@@ -225,7 +225,7 @@ namespace AI4E.Storage.MongoDB
             return new MongoQueryEvaluator<TResult>(GetCursorSourceAsync());
         }
 
-        public IScopedDatabase CreateScope()
+        public IDatabaseScope CreateScope()
         {
             return new MongoDatabaseScope(this, _loggerFactory.CreateLogger<MongoDatabaseScope>());
         }

@@ -34,7 +34,6 @@ namespace AI4E.Storage
             var services = builder.Services;
 
             services.AddSingleton<IDatabase, TDatabase>();
-            services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IQueryableDatabase);
 
             return builder;
         }
@@ -51,7 +50,6 @@ namespace AI4E.Storage
             var services = builder.Services;
 
             services.AddSingleton<IDatabase, TDatabase>(factory);
-            services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IQueryableDatabase);
 
 
             return builder;

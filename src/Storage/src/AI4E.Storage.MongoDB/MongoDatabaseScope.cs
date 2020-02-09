@@ -10,10 +10,11 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using System.Diagnostics;
 using static AI4E.Storage.MongoDB.MongoExceptionHelper;
+using System.Runtime.CompilerServices;
 
 namespace AI4E.Storage.MongoDB
 {
-    public sealed class MongoDatabaseScope : IScopedDatabase
+    public sealed class MongoDatabaseScope : IDatabaseScope
     {
         private volatile int _operationInProgress = 0;
 
@@ -73,13 +74,11 @@ namespace AI4E.Storage.MongoDB
 
         #endregion
 
-        #region IScopedTransactionalDatabase
-
-        public async Task StoreAsync<TData>(TData data, CancellationToken cancellation = default)
-            where TData : class
+        public async ValueTask StoreAsync<TEntry>(TEntry entry, CancellationToken cancellation = default)
+            where TEntry : class
         {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
 
             if (Interlocked.Exchange(ref _operationInProgress, 1) != 0)
             {
@@ -98,8 +97,8 @@ namespace AI4E.Storage.MongoDB
                 }
 
                 var session = await EnsureTransactionAsync(cancellation).ConfigureAwait(false);
-                var predicate = DataPropertyHelper.BuildPredicate(data);
-                var collection = await GetCollection<TData>(session, cancellation).ConfigureAwait(false);
+                var predicate = DataPropertyHelper.BuildPredicate(entry);
+                var collection = await GetCollection<TEntry>(session, cancellation).ConfigureAwait(false);
 
                 if (collection == null)
                 {
@@ -109,7 +108,7 @@ namespace AI4E.Storage.MongoDB
                 }
 
                 _logger.LogTrace(
-                    $"Storing an entry of type '{typeof(TData)}' via " +
+                    $"Storing an entry of type '{typeof(TEntry)}' via " +
                     $"mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
 
                 ReplaceOneResult updateResult;
@@ -119,7 +118,7 @@ namespace AI4E.Storage.MongoDB
                     updateResult = await TryWriteOperation(() => collection.ReplaceOneAsync(
                         session,
                         predicate,
-                        data,
+                        entry,
                         options: new UpdateOptions { IsUpsert = true },
                         cancellationToken: cancellation)).ConfigureAwait(false);
                 }
@@ -150,11 +149,11 @@ namespace AI4E.Storage.MongoDB
             }
         }
 
-        public async Task RemoveAsync<TData>(TData data, CancellationToken cancellation = default)
-            where TData : class
+        public async ValueTask RemoveAsync<TEntry>(TEntry entry, CancellationToken cancellation = default)
+            where TEntry : class
         {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
 
             if (Interlocked.Exchange(ref _operationInProgress, 1) != 0)
             {
@@ -172,8 +171,8 @@ namespace AI4E.Storage.MongoDB
                 }
 
                 var session = await EnsureTransactionAsync(cancellation).ConfigureAwait(false);
-                var predicate = DataPropertyHelper.BuildPredicate(data);
-                var collection = await GetCollection<TData>(session, cancellation).ConfigureAwait(false);
+                var predicate = DataPropertyHelper.BuildPredicate(entry);
+                var collection = await GetCollection<TEntry>(session, cancellation).ConfigureAwait(false);
 
                 if (collection == null)
                 {
@@ -183,7 +182,7 @@ namespace AI4E.Storage.MongoDB
                 }
 
                 _logger.LogTrace(
-                    $"Removing an entry of type '{typeof(TData)}' via " +
+                    $"Removing an entry of type '{typeof(TEntry)}' via " +
                     $"mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
 
                 DeleteResult deleteResult;
@@ -222,12 +221,12 @@ namespace AI4E.Storage.MongoDB
             }
         }
 
-        public IAsyncEnumerable<TData> GetAsync<TData>(
-            Expression<Func<TData, bool>> predicate,
+        public IAsyncEnumerable<TEntry> GetAsync<TEntry>(
+            Expression<Func<TEntry, bool>> predicate,
             CancellationToken cancellation = default)
-            where TData : class
+            where TEntry : class
         {
-            async ValueTask<IAsyncCursor<TData>?> BuildAsyncCursor(CancellationToken sequenceCancellation)
+            async ValueTask<IAsyncCursor<TEntry>?> BuildAsyncCursor(CancellationToken sequenceCancellation)
             {
                 var session = await GetClientSessionHandle(sequenceCancellation).ConfigureAwait(false);
 
@@ -246,7 +245,7 @@ namespace AI4E.Storage.MongoDB
                     }
 
                     EnsureTransaction(session);
-                    var collection = await GetCollection<TData>(session, sequenceCancellation)
+                    var collection = await GetCollection<TEntry>(session, sequenceCancellation)
                         .ConfigureAwait(false);
 
                     if (collection == null)
@@ -260,7 +259,7 @@ namespace AI4E.Storage.MongoDB
                         $"Performing query " +
                         $"via mongo client session handle '{ session.WrappedCoreSession.Id.ToString()}'.");
 
-                    return await collection.FindAsync<TData>(
+                    return await collection.FindAsync<TEntry>(
                         session,
                         predicate,
                         cancellationToken: sequenceCancellation).ConfigureAwait(false);
@@ -279,22 +278,44 @@ namespace AI4E.Storage.MongoDB
                 }
             }
 
-            void AsyncCursorDisposal(IAsyncCursor<TData>? asyncCursor)
+            void AsyncCursorDisposal(IAsyncCursor<TEntry>? asyncCursor)
             {
                 asyncCursor?.Dispose();
 
                 _operationInProgress = 0; // Volatile write op
             }
 
-            return new MongoQueryEvaluator<TData>(BuildAsyncCursor, AsyncCursorDisposal);
+            return new MongoQueryEvaluator<TEntry>(BuildAsyncCursor, AsyncCursorDisposal);
         }
 
-        private async Task<IMongoCollection<TData>?> GetCollection<TData>(
+        public async IAsyncEnumerable<TResult> QueryAsync<TEntry, TResult>(
+           Func<IQueryable<TEntry>, IQueryable<TResult>> queryShaper,
+           [EnumeratorCancellation]  CancellationToken cancellation = default)
+           where TEntry : class
+        {
+            if (queryShaper is null)
+                throw new ArgumentNullException(nameof(queryShaper));
+
+            // TODO: We need 
+            //       https://jira.mongodb.org/browse/CSHARP-2596
+            //       https://github.com/mongodb/mongo-csharp-driver/pull/371
+            //       to implement this properly.
+            //       Is there a workaround other then an all in-memory processing?
+
+            var entries = await GetAsync<TEntry>(_ => true, cancellation);
+            var queryable = entries.AsQueryable();
+            foreach (var entry in queryShaper(queryable))
+            {
+                yield return entry;
+            }
+        }
+
+        private async Task<IMongoCollection<TEntry>?> GetCollection<TEntry>(
             IClientSessionHandle session,
             CancellationToken cancellation)
-            where TData : class
+            where TEntry : class
         {
-            var collection = await _owner.GetCollectionAsync<TData>(isInTransaction: true, cancellation)
+            var collection = await _owner.GetCollectionAsync<TEntry>(isInTransaction: true, cancellation)
                 .ConfigureAwait(false);
 
             if (collection is null)
@@ -308,7 +329,7 @@ namespace AI4E.Storage.MongoDB
 
                 // We are not in a transaction any more any can freely create the collection and
                 // await its creation in order that the collection is already there if the transaction is re-executed.
-                await _owner.GetCollectionAsync<TData>(isInTransaction: false, cancellation)
+                await _owner.GetCollectionAsync<TEntry>(isInTransaction: false, cancellation)
                     .ConfigureAwait(false);
             }
 
@@ -335,7 +356,7 @@ namespace AI4E.Storage.MongoDB
             }
         }
 
-        public async Task<bool> TryCommitAsync(CancellationToken cancellation = default)
+        public async ValueTask<bool> TryCommitAsync(CancellationToken cancellation = default)
         {
             var session = await GetClientSessionHandle(cancellation)
                 .ConfigureAwait(false);
@@ -375,7 +396,7 @@ namespace AI4E.Storage.MongoDB
             }
         }
 
-        public async Task RollbackAsync(CancellationToken cancellation)
+        public async ValueTask RollbackAsync(CancellationToken cancellation)
         {
             var session = await GetClientSessionHandle(cancellation)
                 .ConfigureAwait(false);
@@ -405,11 +426,14 @@ namespace AI4E.Storage.MongoDB
             Debug.Assert(!session.IsInTransaction);
         }
 
-        #endregion
-
         public void Dispose()
         {
             _clientSessionHandle.Dispose();
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            return _clientSessionHandle.DisposeAsync();
         }
     }
 }

@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -22,13 +22,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace AI4E.Storage
 {
     /// <summary>
-    /// An abstraction of a database with minimal functionality.
+    /// An abstraction of a database with basic functionality.
     /// </summary>
     public interface IDatabase
     {
@@ -50,7 +51,7 @@ namespace AI4E.Storage
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.</exception>
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
-        Task<bool> AddAsync<TEntry>(TEntry entry, CancellationToken cancellation = default)
+        ValueTask<bool> AddAsync<TEntry>(TEntry entry, CancellationToken cancellation = default)
             where TEntry : class;
 
         /// <summary>
@@ -73,7 +74,7 @@ namespace AI4E.Storage
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified predicate.</exception>
-        Task<bool> UpdateAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
+        ValueTask<bool> UpdateAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
             where TEntry : class;
 
         /// <summary>
@@ -96,7 +97,7 @@ namespace AI4E.Storage
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified predicate.</exception>
-        Task<bool> RemoveAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
+        ValueTask<bool> RemoveAsync<TEntry>(TEntry entry, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
             where TEntry : class;
 
         /// <summary>
@@ -107,7 +108,7 @@ namespace AI4E.Storage
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-        Task Clear<TEntry>(CancellationToken cancellation = default)
+        ValueTask Clear<TEntry>(CancellationToken cancellation = default)
             where TEntry : class;
 
         /// <summary>
@@ -128,6 +129,7 @@ namespace AI4E.Storage
         IAsyncEnumerable<TEntry> GetAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
             where TEntry : class;
 
+#if SUPPORTS_DEFAULT_INTERFACE_METHODS
         /// <summary>
         /// Asynchronously retrieves a single entry that match the specified predicate.
         /// </summary>
@@ -145,27 +147,36 @@ namespace AI4E.Storage
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified predicate.</exception>
-        ValueTask<TEntry?> GetOneAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
-            where TEntry : class;
+        public ValueTask<TEntry?> GetOneAsync<TEntry>(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation = default)
+            where TEntry : class
+        {
+            return DatabaseExtension.GetOneAsync(this, predicate, cancellation);
+        }
+#endif
 
         /// <summary>
-        /// Creates a <see cref="IScopedDatabase"/> that can be used to permform multiple operations atomically.
+        /// Creates a <see cref="IDatabaseScope"/> that can be used to perform multiple operations atomically.
         /// </summary>
-        /// <returns>The created <see cref="IScopedDatabase"/>.</returns>
+        /// <returns>The created <see cref="IDatabaseScope"/>.</returns>
         /// <exception cref="NotSupportedException">Thrown if <see cref="SupportsScopes"/> is false.</exception>
-        IScopedDatabase CreateScope();
+#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
+        IDatabaseScope CreateScope();
+#else
+        public IDatabaseScope CreateScope()
+        {
+            throw new NotSupportedException();
+        }
+#endif
 
         /// <summary>
         /// Gets a boolean value indicating whether the database supports scoping.
         /// </summary>
+#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
         bool SupportsScopes { get; }
-    }
+#else
+        public bool SupportsScopes => false;
+#endif
 
-    /// <summary>
-    /// An abstraction of a database with <see cref="IQueryable"/> support.
-    /// </summary>
-    public interface IQueryableDatabase : IDatabase
-    {
         /// <summary>
         /// Asynchronously performs a database query specified by a query shaper.
         /// </summary>
@@ -180,7 +191,29 @@ namespace AI4E.Storage
         /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
         /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified query.</exception>
-        IAsyncEnumerable<TResult> QueryAsync<TEntry, TResult>(Func<IQueryable<TEntry>, IQueryable<TResult>> queryShaper, CancellationToken cancellation = default)
+#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
+        IAsyncEnumerable<TResult> QueryAsync<TEntry, TResult>(
+            Func<IQueryable<TEntry>, IQueryable<TResult>> queryShaper, 
+            CancellationToken cancellation = default)
             where TEntry : class;
+#else
+        public async IAsyncEnumerable<TResult> QueryAsync<TEntry, TResult>(
+            Func<IQueryable<TEntry>, IQueryable<TResult>> queryShaper,
+            [EnumeratorCancellation] CancellationToken cancellation = default)
+            where TEntry : class
+        {
+            if (queryShaper is null)
+                throw new ArgumentNullException(nameof(queryShaper));
+
+            // TODO: Add a default implementation that intelligently falls back to filtering and in-memory processing. 
+
+            var entries = await GetAsync<TEntry>(_ => true, cancellation);
+            var queryable = entries.AsQueryable();
+            foreach (var entry in queryShaper(queryable))
+            {
+                yield return entry;
+            }
+        }
+#endif
     }
 }

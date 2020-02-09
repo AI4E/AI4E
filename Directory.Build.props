@@ -54,10 +54,11 @@
     <NetStandardVersion>netstandard2.1</NetStandardVersion>
     <NetStandardVersions>$(NetStandardVersion);netstandard2.0</NetStandardVersions>
     <NetCoreAppVersion>netcoreapp3.1</NetCoreAppVersion>
-    <NetCoreAppVersions>$(NetCoreAppVersion);netcoreapp3.0</NetCoreAppVersions>
+    <NetCoreAppVersions>$(NetCoreAppVersion);</NetCoreAppVersions>
     <RuntimeVersions>$(NetCoreAppVersions)</RuntimeVersions>
     <FrameworkVersions>$(RuntimeVersions);$(NetStandardVersions)</FrameworkVersions>
     <BlazorFrameworkVersions>netstandard2.1;$(RuntimeVersions)</BlazorFrameworkVersions>
+    <TestFrameworkVersions>netcoreapp3.1;netcoreapp3.0;netcoreapp2.1</TestFrameworkVersions>
     
     <NETSTD20Features></NETSTD20Features>
     <NETSTD21Features>$(NETSTD20Features);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS;SUPPORTS_NULLABILITY_ATTRIBUTES;RUNTIME_FEATURES_IS_SUPPORTED;IL_EMIT;BINDING_FLAGS_DO_NOT_WRAP_EXCEPTIONS</NETSTD21Features>

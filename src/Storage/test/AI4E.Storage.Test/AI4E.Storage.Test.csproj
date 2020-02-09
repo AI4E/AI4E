@@ -1,20 +1,17 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>$(NetCoreAppVersion)</TargetFramework>
-    <IsPackable>false</IsPackable>
-    <RootNamespace>AI4E.Storage</RootNamespace>
+    <TargetFrameworks>$(TestFrameworkVersions)</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0-preview-20191115-01" />
-    <PackageReference Include="MSTest.TestAdapter" Version="2.1.0-beta" />
-    <PackageReference Include="MSTest.TestFramework" Version="2.1.0-beta" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.2.0" />
+    <PackageReference Include="xunit" Version="2.4.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.0" />
+    <PackageReference Include="coverlet.collector" Version="1.0.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
-    <ProjectReference Include="..\..\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Storage\AI4E.Storage.csproj" />
   </ItemGroup>
 

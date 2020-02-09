@@ -23,6 +23,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
@@ -69,7 +70,7 @@ namespace AI4E.Storage.InMemory
 
         #region IDatabase
 
-        IScopedDatabase IDatabase.CreateScope()
+        IDatabaseScope IDatabase.CreateScope()
         {
             throw new NotSupportedException();
         }
@@ -77,7 +78,7 @@ namespace AI4E.Storage.InMemory
         bool IDatabase.SupportsScopes => false;
 
         /// <inheritdoc />
-        public Task<bool> AddAsync<TEntry>(
+        public ValueTask<bool> AddAsync<TEntry>(
             TEntry data,
             CancellationToken cancellation)
              where TEntry : class
@@ -89,7 +90,7 @@ namespace AI4E.Storage.InMemory
         }
 
         /// <inheritdoc />
-        public Task<bool> UpdateAsync<TEntry>(
+        public ValueTask<bool> UpdateAsync<TEntry>(
             TEntry data,
             Expression<Func<TEntry, bool>> predicate,
             CancellationToken cancellation)
@@ -105,7 +106,7 @@ namespace AI4E.Storage.InMemory
         }
 
         /// <inheritdoc />
-        public Task<bool> RemoveAsync<TEntry>(
+        public ValueTask<bool> RemoveAsync<TEntry>(
             TEntry data,
             Expression<Func<TEntry, bool>> predicate,
             CancellationToken cancellation)
@@ -121,12 +122,12 @@ namespace AI4E.Storage.InMemory
         }
 
         /// <inheritdoc />
-        public Task Clear<TEntry>(CancellationToken cancellation)
+        public ValueTask Clear<TEntry>(CancellationToken cancellation)
             where TEntry : class
         {
             _typedStores.TryRemove(typeof(TEntry), out _);
 
-            return Task.CompletedTask;
+            return default;
         }
 
         /// <inheritdoc />
@@ -153,15 +154,31 @@ namespace AI4E.Storage.InMemory
             return GetTypedStore<TEntry>().GetOneAsync(predicate, cancellation);
         }
 
+        public async IAsyncEnumerable<TResult> QueryAsync<TEntry, TResult>(
+            Func<IQueryable<TEntry>, IQueryable<TResult>> queryShaper,
+            [EnumeratorCancellation] CancellationToken cancellation = default)
+            where TEntry : class
+        {
+            if (queryShaper is null)
+                throw new ArgumentNullException(nameof(queryShaper));
+
+            var entries = await GetAsync<TEntry>(_ => true, cancellation);
+            var queryable = entries.AsQueryable();
+            foreach (var entry in queryShaper(queryable))
+            {
+                yield return entry;
+            }
+        }
+
         #endregion
     }
 
     internal interface IInMemoryDatabase<TEntry>
         where TEntry : class
     {
-        Task<bool> AddAsync(TEntry data, CancellationToken cancellation = default);
-        Task<bool> StoreAsync(TEntry data, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation);
-        Task<bool> RemoveAsync(TEntry data, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation);
+        ValueTask<bool> AddAsync(TEntry data, CancellationToken cancellation = default);
+        ValueTask<bool> StoreAsync(TEntry data, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation);
+        ValueTask<bool> RemoveAsync(TEntry data, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation);
         IAsyncEnumerable<TEntry> GetAsync(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation);
         ValueTask<TEntry> GetOneAsync(Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation);
     }
@@ -174,7 +191,7 @@ namespace AI4E.Storage.InMemory
 
         public InMemoryDatabase() { }
 
-        public async Task<bool> StoreAsync(TEntry data, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation)
+        public async ValueTask<bool> StoreAsync(TEntry data, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation)
         {
             var id = DataPropertyHelper.GetId<TId, TEntry>(data);
 
@@ -203,7 +220,7 @@ namespace AI4E.Storage.InMemory
             return await ExecuteAsync(data, p, (_1, _2) => _entries[id] = copy, cancellation);
         }
 
-        public async Task<bool> AddAsync(TEntry data, CancellationToken cancellation = default)
+        public async ValueTask<bool> AddAsync(TEntry data, CancellationToken cancellation = default)
         {
             var id = DataPropertyHelper.GetId<TId, TEntry>(data);
 
@@ -240,12 +257,12 @@ namespace AI4E.Storage.InMemory
             return true;
         }
 
-        public Task<bool> RemoveAsync(TEntry data, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation)
+        public ValueTask<bool> RemoveAsync(TEntry data, Expression<Func<TEntry, bool>> predicate, CancellationToken cancellation)
         {
             return ExecuteAsync(data, predicate.Compile(), (id, _) => _entries.Remove(id), cancellation);
         }
 
-        private async Task<bool> ExecuteAsync(TEntry data, Func<TEntry, bool> predicate, Action<TId, TEntry> action, CancellationToken cancellation)
+        private async ValueTask<bool> ExecuteAsync(TEntry data, Func<TEntry, bool> predicate, Action<TId, TEntry> action, CancellationToken cancellation)
         {
             var id = DataPropertyHelper.GetId<TId, TEntry>(data);
 
