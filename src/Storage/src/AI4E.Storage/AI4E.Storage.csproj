@@ -17,6 +17,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="$(RepositorySharedPath)DataPropertyHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+
+  <ItemGroup>
     <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
   </ItemGroup>
 
