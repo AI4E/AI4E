@@ -20,6 +20,7 @@
 
 using System;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AI4E.Storage
 {
@@ -31,22 +32,9 @@ namespace AI4E.Storage
                 throw new ArgumentNullException(nameof(services));
 
             services.AddOptions();
-           
+            services.TryAddSingleton<IDatabase>(NoDatabase.Instance);
+
             return new StorageBuilder(services);
-        }
-
-        public static IStorageBuilder AddStorage(this IServiceCollection services, Action<StorageOptions> configuration)
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            if (configuration == null)
-                throw new ArgumentNullException(nameof(configuration));
-
-            var builder = services.AddStorage();
-            builder.Configure(configuration);
-
-            return builder;
         }
     }
 }

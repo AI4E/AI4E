@@ -51,21 +51,7 @@ namespace AI4E.Storage
 
             services.AddSingleton<IDatabase, TDatabase>(factory);
 
-
             return builder;
-        }
-
-        public static IStorageBuilder Configure(this IStorageBuilder builder, Action<StorageOptions> configuration)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
-            if (configuration == null)
-                throw new ArgumentNullException(nameof(configuration));
-
-            builder.Services.Configure(configuration);
-
-            return builder;
-        }
+        }   
     }
 }
