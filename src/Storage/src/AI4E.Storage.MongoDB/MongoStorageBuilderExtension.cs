@@ -19,20 +19,20 @@
  */
 
 using System;
+using AI4E.Storage.MongoDB;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
-namespace AI4E.Storage.MongoDB
+namespace AI4E.Storage
 {
-    public static class StorageBuilderExtension
+    public static class MongoStorageBuilderExtension
     {
         public static IStorageBuilder UseMongoDB(this IStorageBuilder builder)
         {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
+#pragma warning disable CA1062
             builder.Services.AddOptions();
+#pragma warning restore CA1062
             builder.Services.AddSingleton(BuildMongoClient);
             builder.Services.AddSingleton(BuildMongoDatabase);
             builder.UseDatabase<MongoDatabase>();
@@ -42,30 +42,28 @@ namespace AI4E.Storage.MongoDB
 
         public static IStorageBuilder UseMongoDB(this IStorageBuilder builder, Action<MongoOptions> configuration)
         {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
             builder.UseMongoDB();
 
+#pragma warning disable CA1062
             builder.Services.Configure(configuration);
+#pragma warning restore CA1062
 
             return builder;
         }
 
         public static IStorageBuilder UseMongoDB(this IStorageBuilder builder, string database)
         {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
 
             builder.UseMongoDB();
 
+#pragma warning disable CA1062
             builder.Services.Configure<MongoOptions>(options =>
+#pragma warning restore CA1062
             {
                 options.Database = database;
             });

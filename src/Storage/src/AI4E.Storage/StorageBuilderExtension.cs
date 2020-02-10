@@ -28,13 +28,11 @@ namespace AI4E.Storage
         public static IStorageBuilder UseDatabase<TDatabase>(this IStorageBuilder builder)
             where TDatabase : class, IDatabase
         {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
+#pragma warning disable CA1062
             var services = builder.Services;
+#pragma warning restore CA1062
 
             services.AddSingleton<IDatabase, TDatabase>();
-            services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IQueryableDatabase);
 
             return builder;
         }
@@ -42,32 +40,16 @@ namespace AI4E.Storage
         public static IStorageBuilder UseDatabase<TDatabase>(this IStorageBuilder builder, Func<IServiceProvider, TDatabase> factory)
             where TDatabase : class, IDatabase
         {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
 
+#pragma warning disable CA1062
             var services = builder.Services;
+#pragma warning restore CA1062
 
             services.AddSingleton<IDatabase, TDatabase>(factory);
-            services.AddSingleton(p => p.GetRequiredService<IDatabase>() as IQueryableDatabase);
-
 
             return builder;
-        }
-
-        public static IStorageBuilder Configure(this IStorageBuilder builder, Action<StorageOptions> configuration)
-        {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
-            if (configuration == null)
-                throw new ArgumentNullException(nameof(configuration));
-
-            builder.Services.Configure(configuration);
-
-            return builder;
-        }
+        }   
     }
 }

@@ -19,18 +19,34 @@
  */
 
 using Microsoft.Extensions.DependencyInjection;
-using static System.Diagnostics.Debug;
+using System.Diagnostics;
 
 namespace AI4E.Storage
 {
-    internal sealed class StorageBuilder : IStorageBuilder
+    public class StorageBuilder : IStorageBuilder
     {
-        public StorageBuilder(IServiceCollection services)
+        private protected StorageBuilder(IServiceCollection services)
         {
-            Assert(services != null);
-            Services = services;
+            Debug.Assert(services != null);
+            Services = services!;
+        }
+
+        public StorageBuilder()
+        {
+            Services = new ServiceCollection();
         }
 
         public IServiceCollection Services { get; }
+
+        public IDatabase Build()
+        {
+            var serviceProvider = Services.BuildServiceProvider();
+            return serviceProvider.GetRequiredService<IDatabase>();
+        }
+    }
+
+    internal sealed class StorageBuilderImpl : StorageBuilder
+    {
+        public StorageBuilderImpl(IServiceCollection services) : base(services) { }
     }
 }

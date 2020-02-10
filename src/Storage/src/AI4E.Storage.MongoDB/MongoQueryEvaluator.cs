@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,18 +30,23 @@ namespace AI4E.Storage.MongoDB
 {
     public sealed class MongoQueryEvaluator<T> : IAsyncEnumerable<T>
     {
-        private readonly Func<CancellationToken, ValueTask<IAsyncCursor<T>>> _asyncCursorSource;
-        private readonly Action<IAsyncCursor<T>> _asyncCursorDisposal;
+        private readonly Func<CancellationToken, ValueTask<IAsyncCursor<T>?>> _asyncCursorSource;
+        private readonly Action<IAsyncCursor<T>?>? _asyncCursorDisposal;
 
         public MongoQueryEvaluator(ValueTask<IAsyncCursorSource<T>> asyncCursorSource)
         {
-            if (asyncCursorSource == null)
-                throw new ArgumentNullException(nameof(asyncCursorSource));
+            async ValueTask<IAsyncCursor<T>?> AsyncCursorSource(CancellationToken cancellation)
+            {
+                var mongoCursorSource = await asyncCursorSource.ConfigureAwait(false);
+                return await mongoCursorSource.ToCursorAsync(cancellation).ConfigureAwait(false);
+            }
 
-            _asyncCursorSource = async cancellation => await (await asyncCursorSource).ToCursorAsync(cancellation);
+            _asyncCursorSource = AsyncCursorSource;
         }
 
-        public MongoQueryEvaluator(Func<CancellationToken, ValueTask<IAsyncCursor<T>>> asyncCursorSource, Action<IAsyncCursor<T>> asyncCursorDisposal = null)
+        public MongoQueryEvaluator(
+            Func<CancellationToken, ValueTask<IAsyncCursor<T>?>> asyncCursorSource,
+            Action<IAsyncCursor<T>?>? asyncCursorDisposal = null)
         {
             if (asyncCursorSource == null)
                 throw new ArgumentNullException(nameof(asyncCursorSource));
@@ -49,16 +55,29 @@ namespace AI4E.Storage.MongoDB
             _asyncCursorDisposal = asyncCursorDisposal;
         }
 
-        public MongoQueryEvaluator(Task<IMongoCollection<T>> collection,
-                                   Expression<Func<T, bool>> predicate)
+        public MongoQueryEvaluator(
+            Task<IMongoCollection<T>?> collectionFuture,
+            Expression<Func<T, bool>> predicate)
         {
-            if (collection == null)
-                throw new ArgumentNullException(nameof(collection));
+            if (collectionFuture == null)
+                throw new ArgumentNullException(nameof(collectionFuture));
 
             if (predicate == null)
                 throw new ArgumentNullException(nameof(predicate));
 
-            _asyncCursorSource = async cancellation => await (await collection).FindAsync<T>(predicate, cancellationToken: cancellation);
+            async ValueTask<IAsyncCursor<T>?> AsyncCursorSource(CancellationToken cancellation)
+            {
+                var collection = await collectionFuture.ConfigureAwait(false);
+
+                if (collection is null)
+                    return null;
+
+                return await collection
+                    .FindAsync<T>(predicate, cancellationToken: cancellation)
+                    .ConfigureAwait(false);
+            }
+
+            _asyncCursorSource = AsyncCursorSource;
         }
 
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
@@ -69,21 +88,20 @@ namespace AI4E.Storage.MongoDB
 
     public sealed class MongoQueryResult<T> : IAsyncEnumerator<T>
     {
-        private ValueTask<IAsyncCursor<T>> _asyncCursor;
+        private ValueTask<IAsyncCursor<T>?> _asyncCursor;
         private bool _asyncCursorInitialized = false;
-        private readonly Func<CancellationToken, ValueTask<IAsyncCursor<T>>> _asyncCursorSource;
-        private readonly Action<IAsyncCursor<T>> _asyncCursorDisposal;
+        private readonly Func<CancellationToken, ValueTask<IAsyncCursor<T>?>>? _asyncCursorSource;
+        private readonly Action<IAsyncCursor<T>?>? _asyncCursorDisposal;
         private readonly CancellationToken _cancellation;
-        private IAsyncCursor<T> _asyncCursorInstance;
-        private IEnumerator<T> _currentBatch;
+        private IAsyncCursor<T>? _asyncCursorInstance;
+        private IEnumerator<T>? _currentBatch;
         private bool _endOfSeq = false;
         private bool _isDisposed = false;
 
         public MongoQueryResult(
-            Func<CancellationToken, ValueTask<IAsyncCursor<T>>> asyncCursorSource,
-            Action<IAsyncCursor<T>> asyncCursorDisposal = null,
-            CancellationToken cancellation = default
-            )
+            Func<CancellationToken, ValueTask<IAsyncCursor<T>?>> asyncCursorSource,
+            Action<IAsyncCursor<T>?>? asyncCursorDisposal = null,
+            CancellationToken cancellation = default)
         {
             if (asyncCursorSource == null)
                 throw new ArgumentNullException(nameof(asyncCursorSource));
@@ -98,10 +116,11 @@ namespace AI4E.Storage.MongoDB
             if (asyncCursor == null)
                 throw new ArgumentNullException(nameof(asyncCursor));
 
-            _asyncCursor = new ValueTask<IAsyncCursor<T>>(asyncCursor);
+            _asyncCursor = new ValueTask<IAsyncCursor<T>?>(asyncCursor);
             _asyncCursorInitialized = true;
         }
 
+        [MaybeNull]
         public T Current
         {
             get
@@ -110,10 +129,10 @@ namespace AI4E.Storage.MongoDB
                     throw new ObjectDisposedException(GetType().FullName);
 
                 if (_asyncCursorInstance == null)
-                    return default;
+                    return default!;
 
                 if (_currentBatch == null)
-                    return default;
+                    return default!;
 
                 return _currentBatch.Current;
             }
@@ -151,7 +170,7 @@ namespace AI4E.Storage.MongoDB
             if (!_asyncCursorInitialized)
             {
                 _asyncCursorInitialized = true;
-                _asyncCursor = _asyncCursorSource(_cancellation);
+                _asyncCursor = _asyncCursorSource!.Invoke(_cancellation);
             }
 
             if (_asyncCursorInstance == null)
@@ -170,7 +189,8 @@ namespace AI4E.Storage.MongoDB
                 _currentBatch?.Dispose();
 
                 // TODO: Catch all exceptions and abort the transaction
-                if (!await MongoExceptionHelper.TryWriteOperation(() => _asyncCursorInstance.MoveNextAsync(_cancellation)))
+                if (!await MongoExceptionHelper.TryWriteOperation(
+                    () => _asyncCursorInstance.MoveNextAsync(_cancellation)).ConfigureAwait(false))
                 {
                     _endOfSeq = true;
                     return false;

@@ -22,7 +22,7 @@ namespace AI4E.Storage.Domain
         private readonly IServiceProvider _serviceProvider;
 
         private readonly JsonDiffPatch _differ;
-        private readonly StorageOptions _options;
+        private readonly DomainStorageOptions _options;
         private readonly IAsyncProcess _snapshotProcess;
         private readonly CancellationTokenSource _cancellationSource = new CancellationTokenSource();
         private readonly Task _initialization;
@@ -36,7 +36,7 @@ namespace AI4E.Storage.Domain
 
         public SnapshotProcessor(IStreamStore streamStore,
                                  IServiceProvider serviceProvider,
-                                 IOptions<StorageOptions> optionsAccessor)
+                                 IOptions<DomainStorageOptions> optionsAccessor)
         {
             if (streamStore == null)
                 throw new ArgumentNullException(nameof(streamStore));
@@ -51,7 +51,7 @@ namespace AI4E.Storage.Domain
             _serviceProvider = serviceProvider;
 
             _differ = new JsonDiffPatch();
-            _options = optionsAccessor.Value ?? new StorageOptions();
+            _options = optionsAccessor.Value ?? new DomainStorageOptions();
             _snapshotProcess = new AsyncProcess(SnapshotProcess);
             _initialization = InitializeInternalAsync(_cancellationSource.Token);
         }
@@ -104,7 +104,7 @@ namespace AI4E.Storage.Domain
             }
         }
 
-        public ValueTask  DisposeAsync()
+        public ValueTask DisposeAsync()
         {
             Dispose();
             return Disposal.AsValueTask();

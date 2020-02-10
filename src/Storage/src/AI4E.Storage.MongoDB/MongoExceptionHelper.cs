@@ -30,7 +30,7 @@ namespace AI4E.Storage.MongoDB
         {
             try
             {
-                await operation();
+                await operation().ConfigureAwait(false);
             }
             catch (MongoWriteException exc) when (exc.WriteError?.Category == ServerErrorCategory.DuplicateKey)
             {
@@ -58,7 +58,7 @@ namespace AI4E.Storage.MongoDB
         {
             try
             {
-                return await operation();
+                return await operation().ConfigureAwait(false);
             }
             catch (MongoWriteException exc) when (exc.WriteError?.Category == ServerErrorCategory.DuplicateKey)
             {

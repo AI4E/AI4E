@@ -10,5 +10,9 @@ namespace AI4E.Storage.Domain
         }
 
         public string Scope { get; set; }
+        
+        public int SnapshotInterval { get; set; } = 60 * 60 * 1000;
+
+        public int SnapshotRevisionThreshold { get; set; } = 20;
     }
 }

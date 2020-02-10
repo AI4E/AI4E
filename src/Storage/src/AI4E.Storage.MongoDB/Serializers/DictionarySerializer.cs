@@ -8,10 +8,12 @@ using MongoDB.Bson;
 using MongoDB.Bson.IO;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
-using static System.Diagnostics.Debug;
+using System.Diagnostics;
 
 namespace AI4E.Storage.MongoDB.Serializers
 {
+#nullable disable
+
     public sealed class DictionarySerializerProvider : IBsonSerializationProvider
     {
         private static readonly Type _serializerTypeDefinition = typeof(DictionarySerializer<,,>);
@@ -56,21 +58,21 @@ namespace AI4E.Storage.MongoDB.Serializers
 
         private IBsonSerializer CreateSerializer(Type type)
         {
-            Assert(type != null);
-            Assert(_serializerTypeDefinition != null);
+            Debug.Assert(type != null);
+            Debug.Assert(_serializerTypeDefinition != null);
             var implementedInterface = type.GetInterfaces().FirstOrDefault(p => p.IsGenericType && p.GetGenericTypeDefinition() == typeof(IDictionary<,>));
 
-            Assert(implementedInterface != null);
+            Debug.Assert(implementedInterface != null);
 
             var types = implementedInterface.GetGenericArguments();
 
-            Assert(types != null && types.Length == 2);
+            Debug.Assert(types != null && types.Length == 2);
 
             var keyType = types[0];
             var valueType = types[1];
             var serializerType = _serializerTypeDefinition.MakeGenericType(type, keyType, valueType);
             var serializer = Activator.CreateInstance(serializerType) as IBsonSerializer;
-            Assert(serializer != null);
+            Debug.Assert(serializer != null);
 
             return serializer;
         }
@@ -185,4 +187,6 @@ namespace AI4E.Storage.MongoDB.Serializers
             return result;
         }
     }
+
+#nullable restore
 }

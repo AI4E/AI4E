@@ -2,15 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>$(NetCoreAppVersion)</TargetFramework>
-    <IsPackable>false</IsPackable>
     <RootNamespace>AI4E.Storage.Projection</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0-preview-20191115-01" />
-    <PackageReference Include="MSTest.TestAdapter" Version="2.1.0-beta" />
-    <PackageReference Include="MSTest.TestFramework" Version="2.1.0-beta" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.4.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="2.1.0" />
+    <PackageReference Include="MSTest.TestFramework" Version="2.1.0" />
   </ItemGroup>
 
   <ItemGroup>

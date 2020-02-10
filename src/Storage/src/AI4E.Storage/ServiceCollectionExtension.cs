@@ -19,7 +19,10 @@
  */
 
 using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AI4E.Storage
 {
@@ -27,26 +30,29 @@ namespace AI4E.Storage
     {
         public static IStorageBuilder AddStorage(this IServiceCollection services)
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
+            if (services is null)
+                throw new NullReferenceException();
 
-            services.AddOptions();
-           
-            return new StorageBuilder(services);
+            if (!TryGetStorageBuilder(services, out var storageBuilder))
+            {
+                services.AddOptions();
+                services.TryAddSingleton<IDatabase>(NoDatabase.Instance);
+
+                storageBuilder = new StorageBuilderImpl(services);
+                services.AddSingleton(storageBuilder);
+            }
+
+            return storageBuilder;
         }
 
-        public static IStorageBuilder AddStorage(this IServiceCollection services, Action<StorageOptions> configuration)
+        private static bool TryGetStorageBuilder(
+            IServiceCollection services,
+            [NotNullWhen(true)] out StorageBuilderImpl? storageBuilder)
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
+            storageBuilder = services.LastOrDefault(
+                p => p.ServiceType == typeof(StorageBuilderImpl))?.ImplementationInstance as StorageBuilderImpl;
 
-            if (configuration == null)
-                throw new ArgumentNullException(nameof(configuration));
-
-            var builder = services.AddStorage();
-            builder.Configure(configuration);
-
-            return builder;
+            return storageBuilder != null;
         }
     }
 }

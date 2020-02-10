@@ -18,10 +18,6 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace AI4E.Storage.MongoDB
 {
     public sealed class MongoOptions

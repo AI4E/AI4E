@@ -179,6 +179,16 @@ namespace AI4E.Internal
 
         public static object GetId(Type dataType, object data)
         {
+            if (!TryGetId(dataType, data, out var result))
+            {
+                result = null;
+            }
+
+            return result;
+        }
+
+        public static bool TryGetId(Type dataType, object data, out object id)
+        {
             if (dataType == null)
                 throw new ArgumentNullException(nameof(dataType));
 
@@ -189,11 +199,19 @@ namespace AI4E.Internal
                 throw new ArgumentException();
 
             var idType = GetIdType(dataType);
+
+            if (idType is null)
+            {
+                id = null;
+                return false;
+            }
+
             var idAccessor = _idAccessors.GetOrAdd(dataType, _ => GetIdAccessor(dataType));
 
             Assert(idAccessor != null);
 
-            return idAccessor.DynamicInvoke(data);
+            id = idAccessor.DynamicInvoke(data);
+            return true;
         }
 
         public static LambdaExpression BuildIdAccessor(Type type)
@@ -228,7 +246,7 @@ namespace AI4E.Internal
             return BuildIdAccessor(type).Compile();
         }
 
-        private static Expression BuildIdEqualityExpression(Type idType, Expression leftOperand, Expression rightOperand)
+        public static Expression BuildIdEqualityExpression(Type idType, Expression leftOperand, Expression rightOperand)
         {
             var equalityOperator = idType.GetMethod("op_Equality", BindingFlags.Static); // TODO
 
@@ -236,20 +254,44 @@ namespace AI4E.Internal
             {
                 return Expression.Equal(leftOperand, rightOperand);
             }
-            else if (idType.GetInterfaces().Any(p => p.IsGenericType && p.GetGenericTypeDefinition() == typeof(IEquatable<>) && p.GetGenericArguments()[0] == idType))
+
+            Expression areEqual;
+
+            if (idType.GetInterfaces().Any(p => p.IsGenericType && p.GetGenericTypeDefinition() == typeof(IEquatable<>) && p.GetGenericArguments()[0] == idType))
             {
                 var equalsMethod = typeof(IEquatable<>).MakeGenericType(idType).GetMethod(nameof(Equals));
-
-                // TODO: Check left operand to be non-null
-                return Expression.Call(leftOperand, equalsMethod, rightOperand);
+                areEqual = Expression.Call(leftOperand, equalsMethod, rightOperand);
             }
             else
             {
                 var equalsMethod = typeof(object).GetMethod(nameof(Equals), BindingFlags.Public | BindingFlags.Instance);
-
-                // TODO: Check left operand to be non-null
-                return Expression.Call(Expression.Convert(leftOperand, typeof(object)), equalsMethod, Expression.Convert(rightOperand, typeof(object)));
+                areEqual = Expression.Call(Expression.Convert(leftOperand, typeof(object)), equalsMethod, Expression.Convert(rightOperand, typeof(object)));
             }
+
+            return Expression.AndAlso(IsNotNull(idType, leftOperand), areEqual);
+        }
+
+        private static Expression IsNotNull(Type idType, Expression operand)
+        {
+            if (idType.IsConstructedGenericType && idType.GetGenericTypeDefinition() == typeof(Nullable<>))
+            {
+                var hasValueProperty = idType.GetProperty(
+                    "HasValue",
+                    BindingFlags.Public | BindingFlags.Instance,
+                    Type.DefaultBinder,
+                    returnType: typeof(bool),
+                    Type.EmptyTypes,
+                    modifiers: null);
+
+                return Expression.MakeMemberAccess(operand, hasValueProperty);
+            }
+
+            if (!idType.IsValueType)
+            {
+                return Expression.ReferenceNotEqual(operand, Expression.Constant(null, idType));
+            }
+
+            return Expression.Constant(true);
         }
 
         public static Expression<Func<TId, TId, bool>> BuildIdEquality<TId>()

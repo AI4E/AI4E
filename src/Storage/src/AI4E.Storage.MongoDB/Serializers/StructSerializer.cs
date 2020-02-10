@@ -28,10 +28,12 @@ using MongoDB.Bson;
 using MongoDB.Bson.IO;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
-using static System.Diagnostics.Debug;
+using System.Diagnostics;
 
 namespace AI4E.Storage.MongoDB.Serializers
 {
+#nullable disable
+
     // Based on: 
     // https://stackoverflow.com/questions/16501145/serializing-immutable-value-types-with-mongo-c-sharp-driver#answer-39613579
     // https://stackoverflow.com/questions/26788855/how-do-you-serialize-value-types-with-mongodb-c-sharp-serializer#answer-38911049
@@ -73,7 +75,7 @@ namespace AI4E.Storage.MongoDB.Serializers
 
         private bool CanHandle(Type type)
         {
-            Assert(type != null);
+            Debug.Assert(type != null);
 
             if (!type.IsValueType)
                 return false;
@@ -151,14 +153,14 @@ namespace AI4E.Storage.MongoDB.Serializers
 
         private IBsonSerializer CreateSerializer(Type type)
         {
-            Assert(type != null);
-            Assert(type.IsValueType);
-            Assert(_serializerTypeDefinition != null);
+            Debug.Assert(type != null);
+            Debug.Assert(type.IsValueType);
+            Debug.Assert(_serializerTypeDefinition != null);
 
             var serializerType = _serializerTypeDefinition.MakeGenericType(type);
             var serializer = Activator.CreateInstance(serializerType) as IBsonSerializer;
 
-            Assert(serializer != null);
+            Debug.Assert(serializer != null);
 
             return serializer;
         }
@@ -166,7 +168,7 @@ namespace AI4E.Storage.MongoDB.Serializers
 
     public sealed class StructSerializer<T> : StructSerializerBase<T> where T : struct
     {
-        private static readonly PropertyInfo[] _emtptyProperties = new PropertyInfo[0];
+        private static readonly PropertyInfo[] _emtptyProperties = Array.Empty<PropertyInfo>();
 
         private readonly BindingFlags _bindingFlags;
         private readonly IImmutableSet<PropertyInfo> _properties;
@@ -220,8 +222,8 @@ namespace AI4E.Storage.MongoDB.Serializers
                 }
             }
 
-            Assert(_constructor != null);
-            Assert(properties != null);
+            Debug.Assert(_constructor != null);
+            Debug.Assert(properties != null);
 
             _properties = properties.ToImmutableHashSet();
 
@@ -266,7 +268,7 @@ namespace AI4E.Storage.MongoDB.Serializers
 
             foreach (var property in properties)
             {
-                Assert(!_properties.Contains(property));
+                Debug.Assert(!_properties.Contains(property));
 
                 bsonWriter.WriteName(property.Name);
                 BsonSerializer.Serialize(bsonWriter, property.PropertyType, property.GetValue(value, null));
@@ -299,7 +301,7 @@ namespace AI4E.Storage.MongoDB.Serializers
 
                 if (missingConstructorArgumentCount == 0)
                 {
-                    Assert(result != null);
+                    Debug.Assert(result != null);
 
                     var field = type.GetField(name);
                     if (field != null)
@@ -441,4 +443,6 @@ namespace AI4E.Storage.MongoDB.Serializers
                    parameter.ParameterType.IsAssignableFrom(property.PropertyType);
         }
     }
+
+#nullable restore
 }
