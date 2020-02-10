@@ -1,13 +1,3 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        CommitAttempt.cs 
- * Types:           (1) AI4E.Storage.Domain.CommitAttempt
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   13.06.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -57,90 +47,49 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Streaming
 {
-    public sealed class CommitAttempt
+    /// <summary>
+    /// Represents a series of events which have been fully committed as a single unit and which apply to the stream indicated.
+    /// </summary>
+    public interface ICommit
     {
-        /// <summary>
-        /// Initializes a new instance of the Commit class.
-        /// </summary>
-        /// <param name="bucketId">The value which identifies bucket to which the the stream and the the commit belongs</param>
-        /// <param name="streamId">The value which uniquely identifies the stream in a bucket to which the commit belongs.</param>
-        /// <param name="streamRevision">The value which indicates the revision of the most recent event in the stream to which this commit applies.</param>
-        /// <param name="concurrencyToken">The value which uniquely identifies the commit within the stream.</param>
-        /// <param name="streamRevision">The value which indicates the sequence (or position) in the stream to which this commit applies.</param>
-        /// <param name="commitStamp">The point in time at which the commit was persisted.</param>
-        /// <param name="headers">The metadata which provides additional, unstructured information about this commit.</param>
-        /// <param name="events">The collection of event messages to be committed as a single unit.</param>
-        public CommitAttempt(
-            string bucketId,
-            string streamId,
-            //string concurrencyToken,
-            long streamRevision,
-            DateTime commitStamp,
-            IReadOnlyDictionary<string, object> headers,
-            object body,
-            IEnumerable<EventMessage> events)
-        {
-            if (string.IsNullOrWhiteSpace(bucketId))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(bucketId));
-
-            if (string.IsNullOrWhiteSpace(streamId))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(streamId));
-
-            //if (string.IsNullOrWhiteSpace(concurrencyToken))
-            //    throw new ArgumentNullOrWhiteSpaceException(nameof(concurrencyToken));
-
-            if (streamRevision <= 0)
-                throw new ArgumentOutOfRangeException(nameof(streamRevision));
-
-            BucketId = bucketId;
-            StreamId = streamId;
-            //ConcurrencyToken = concurrencyToken;
-            StreamRevision = streamRevision;
-            CommitStamp = commitStamp;
-            Body = body;
-            Headers = headers?.ToImmutableDictionary() ?? ImmutableDictionary<string, object>.Empty;
-            Events = events?.ToImmutableList() ?? ImmutableList<EventMessage>.Empty;
-        }
-
         /// <summary>
         /// Gets the value which identifies bucket to which the the stream and the the commit belongs.
         /// </summary>
-        public string BucketId { get; }
+        string BucketId { get; }
 
         /// <summary>
         /// Gets the value which uniquely identifies the stream to which the commit belongs.
         /// </summary>
-        public string StreamId { get; }
+        string StreamId { get; }
 
         ///// <summary>
         ///// Gets the value which uniquely identifies the commit within the stream.
         ///// </summary>
-        //public string ConcurrencyToken { get; }
+        //string ConcurrencyToken { get; }
 
         /// <summary>
         /// Gets the value which indicates the sequence (or position) in the stream to which this commit applies.
         /// </summary>
-        public long StreamRevision { get; }
+        long StreamRevision { get; }
 
         /// <summary>
         /// Gets the point in time at which the commit was persisted.
         /// </summary>
-        public DateTime CommitStamp { get; }
+        DateTime CommitStamp { get; }
 
         /// <summary>
         /// Gets the metadata which provides additional, unstructured information about this commit.
         /// </summary>
-        public IReadOnlyDictionary<string, object> Headers { get; }
+        IReadOnlyDictionary<string, object> Headers { get; }
 
-        public object Body { get; }
+        object Body { get; }
 
         /// <summary>
         /// Gets the collection of event messages to be committed as a single unit.
         /// </summary>
-        public IReadOnlyCollection<EventMessage> Events { get; }
+        IReadOnlyCollection<EventMessage> Events { get; }
     }
 }

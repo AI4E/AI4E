@@ -1,104 +1,69 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using AI4E.Messaging;
-using AI4E.Storage.Projection;
+using AI4E.Storage.Domain;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage
 {
     public static class StorageBuilderExtension
     {
-        public static IDomainStorageBuilder UseDomainStorage(this IStorageBuilder builder)
+        private static IDomainStorageBuilder InternalUseDomainStorage(this IStorageBuilder builder)
         {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
-            var services = builder.Services;
-
-            services.AddSingleton<IMessageAccessor, DefaultMessageAccessor>();
-
-            // TODO: Replace
-            services.AddSingleton(new JsonSerializerSettings
+            if (!TryGetDomainStorageBuilder(builder, out var domainStorageBuilder))
             {
-                TypeNameHandling = TypeNameHandling.Auto,
-                Formatting = Formatting.Indented,
-                PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-                ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
-                ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
-            });
+                var services = builder.Services;
+                services.TryAddSingleton<IMessageAccessor, DefaultMessageAccessor>();
 
-            services.AddTransient<ISerializerSettingsResolver, SerializerSettingsResolver>();
+                // TODO: Add default entity storage engine
 
-            AddStreamStore(services);
-            AddDomainStorageEngine(services);
-            AddMessageProcessors(services);
+                AddMessageProcessors(services);
 
-            builder.AddProjection(projection => projection.UseSourceProcessor<EntityStorageEngineProjectionSourceProcessorFactory>());
-            services.AddMessaging().ConfigureMessageHandlers((registry, _) =>
-            {
-                registry.Register(new MessageHandlerRegistration<ProjectEntityMessage>(
-                    serviceProvider => ActivatorUtilities.CreateInstance<ProjectEntityMessageHandler>(serviceProvider)));
-            });
+                domainStorageBuilder = new DomainStorageBuilder(builder);
+                builder.Services.AddSingleton(domainStorageBuilder);
+            }
 
-            return new DomainStorageBuilder(builder);
+            return domainStorageBuilder;
         }
 
-        public static IDomainStorageBuilder UseDomainStorage(this IStorageBuilder builder,
-                                                             Action<DomainStorageOptions> configuration)
+        private static bool TryGetDomainStorageBuilder(
+            this IStorageBuilder builder,
+            [NotNullWhen(true)] out DomainStorageBuilder? domainStorageBuilder)
         {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
+            domainStorageBuilder = builder.Services.LastOrDefault(
+                p => p.ServiceType == typeof(DomainStorageBuilder))?.ImplementationInstance as DomainStorageBuilder;
 
+            return domainStorageBuilder != null;
+        }
+
+        public static IStorageBuilder UseDomainStorage(this IStorageBuilder builder)
+        {
+#pragma warning disable CA1062
+            _ = InternalUseDomainStorage(builder);
+#pragma warning restore CA1062
+            return builder;
+        }
+
+        public static IStorageBuilder UseDomainStorage(this IStorageBuilder builder, Action<IDomainStorageBuilder> configuration)
+        {
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
 
-            var result = UseDomainStorage(builder);
-            result.Services.Configure(configuration);
-            return result;
-        }
-
-        private static void AddStreamStore(IServiceCollection services)
-        {
-            services.AddSingleton<IStreamPersistence, StreamPersistence>();
-            services.AddSingleton<IStreamStore, StreamStore>();
-        }
-
-        private static void AddDomainStorageEngine(IServiceCollection services)
-        {
-            // Domain storage engine
-            services.AddScoped<IEntityStorageEngine, EntityStorageEngine>();
-
-            // Domain storage engine background worker
-            services.AddSingleton<ICommitDispatcher, CommitDispatcher>();
-            services.AddSingleton<ISnapshotProcessor, SnapshotProcessor>();
-
-            // Helpers
-            services.AddSingleton<IEntityPropertyAccessor, EntityPropertyAccessor>();
+#pragma warning disable CA1062
+            var domainStorageBuilder = InternalUseDomainStorage(builder);
+#pragma warning restore CA1062
+            configuration(domainStorageBuilder);
+            return builder;
         }
 
         private static void AddMessageProcessors(IServiceCollection services)
         {
-            services.Configure<MessagingOptions>(options =>
+            services.AddMessaging(options =>
             {
                 options.MessageProcessors.Add(MessageProcessorRegistration.Create<EntityMessageHandlerProcessor>());
             });
-        }
-
-        private sealed class SerializerSettingsResolver : ISerializerSettingsResolver
-        {
-            public JsonSerializerSettings ResolveSettings(IEntityStorageEngine entityStorageEngine)
-            {
-                var settings = new JsonSerializerSettings
-                {
-                    TypeNameHandling = TypeNameHandling.Auto,
-                    Formatting = Formatting.Indented,
-                    PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-                    ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
-                    ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
-                };
-
-                return settings;
-            }
         }
     }
 }

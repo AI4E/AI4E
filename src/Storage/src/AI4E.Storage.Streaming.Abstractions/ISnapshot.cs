@@ -1,13 +1,3 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        EventMessage.cs 
- * Types:           (1) AI4E.Storage.Domain.EventMessage
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   13.06.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -55,51 +45,37 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Runtime.Serialization;
-using Newtonsoft.Json;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Streaming
 {
     /// <summary>
-    /// Represents a single element in a stream of events.
+    /// Represents a materialized view of a stream at specific revision.
     /// </summary>
-    public sealed class EventMessage
+    public interface ISnapshot
     {
         /// <summary>
-        /// Initializes a new instance of the EventMessage class.
+        /// Gets the value which uniquely identifies the bucket to which the snapshot applies.
         /// </summary>
-        [JsonConstructor]
-        public EventMessage(object body, ImmutableDictionary<string, object> headers)
-        {
-            if (body == null)
-                throw new ArgumentNullException(nameof(body));
-
-            if (headers == null)
-                throw new ArgumentNullException(nameof(headers));
-
-            Body = body;
-            Headers = headers;
-        }
-
-        public EventMessage(object body, IEnumerable<KeyValuePair<string, object>> headers)
-            : this(body, headers as ImmutableDictionary<string, object> ?? headers?.ToImmutableDictionary())
-        { }
-
-        public EventMessage(object body) : this(body, ImmutableDictionary<string, object>.Empty) { }
+        string BucketId { get; }
 
         /// <summary>
-        /// Gets the metadata which provides additional, unstructured information about this message.
+        /// Gets the value which uniquely identifies the stream to which the snapshot applies.
         /// </summary>
-        [JsonProperty]
-        public ImmutableDictionary<string, object> Headers { get; }
+        string StreamId { get; }
 
         /// <summary>
-        /// Gets or sets the actual event message body.
+        /// Gets the position at which the snapshot applies.
         /// </summary>
-        [JsonProperty]
-        public object Body { get; }
+        long StreamRevision { get; }
+
+        /// <summary>
+        /// Gets the snapshot or materialized view of the stream at the revision indicated.
+        /// </summary>
+        object Payload { get; }
+
+        //string ConcurrencyToken { get; }
+
+        IReadOnlyDictionary<string, object> Headers { get; }
     }
 }

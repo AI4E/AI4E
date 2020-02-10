@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using AI4E.Internal;
 using AI4E.Messaging;
 using AI4E.Storage.Projection;
+using AI4E.Storage.Streaming;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +16,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Domain.Streaming
 {
     public sealed class CommitDispatcher : ICommitDispatcher
     {

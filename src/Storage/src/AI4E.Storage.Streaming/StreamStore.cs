@@ -1,14 +1,3 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        StreamStore.cs 
- * Types:           (1) AI4E.Storage.Domain.StreamStore
- *                  (2) AI4E.Storage.Domain.StreamStore.Stream
- *                  (3) AI4E.Storage.Domain.StreamStore.Snapshot
- * Version:         1.0
- * Author:          Andreas Trütschel
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -67,7 +56,7 @@ using System.Threading.Tasks;
 using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Streaming
 {
     public sealed partial class StreamStore : IStreamStore
     {

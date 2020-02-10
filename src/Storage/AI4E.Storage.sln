@@ -59,9 +59,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Specification"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.MongoDB.Test", "test\AI4E.Storage.MongoDB.Test\AI4E.Storage.MongoDB.Test.csproj", "{CCE26D9E-5BC9-40E2-BFF0-406E3C4A42BD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Storage.InMemory.Test", "test\AI4E.Storage.InMemory.Test\AI4E.Storage.InMemory.Test.csproj", "{D3E216F5-6CC5-44F3-A5CF-9309F915E373}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.InMemory.Test", "test\AI4E.Storage.InMemory.Test\AI4E.Storage.InMemory.Test.csproj", "{D3E216F5-6CC5-44F3-A5CF-9309F915E373}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Storage.Test", "test\AI4E.Storage.Test\AI4E.Storage.Test.csproj", "{33923A2A-FE64-4516-A248-680DBF05F615}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Test", "test\AI4E.Storage.Test\AI4E.Storage.Test.csproj", "{33923A2A-FE64-4516-A248-680DBF05F615}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Streaming.Abstractions", "src\AI4E.Storage.Streaming.Abstractions\AI4E.Storage.Streaming.Abstractions.csproj", "{16FEC469-10FC-456B-A4CE-CC3C3FE882FE}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Streaming", "src\AI4E.Storage.Streaming\AI4E.Storage.Streaming.csproj", "{F52CC8A6-CD10-4C58-8C70-1E102C55824D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Storage.Domain.Streaming", "src\AI4E.Storage.Domain.Streaming\AI4E.Storage.Domain.Streaming.csproj", "{B1FAB04D-0F09-4281-8E6E-340837321580}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -177,6 +183,18 @@ Global
 		{33923A2A-FE64-4516-A248-680DBF05F615}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{33923A2A-FE64-4516-A248-680DBF05F615}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{33923A2A-FE64-4516-A248-680DBF05F615}.Release|Any CPU.Build.0 = Release|Any CPU
+		{16FEC469-10FC-456B-A4CE-CC3C3FE882FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{16FEC469-10FC-456B-A4CE-CC3C3FE882FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{16FEC469-10FC-456B-A4CE-CC3C3FE882FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{16FEC469-10FC-456B-A4CE-CC3C3FE882FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F52CC8A6-CD10-4C58-8C70-1E102C55824D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F52CC8A6-CD10-4C58-8C70-1E102C55824D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F52CC8A6-CD10-4C58-8C70-1E102C55824D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F52CC8A6-CD10-4C58-8C70-1E102C55824D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1FAB04D-0F09-4281-8E6E-340837321580}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1FAB04D-0F09-4281-8E6E-340837321580}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1FAB04D-0F09-4281-8E6E-340837321580}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1FAB04D-0F09-4281-8E6E-340837321580}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -209,6 +227,9 @@ Global
 		{CCE26D9E-5BC9-40E2-BFF0-406E3C4A42BD} = {96226123-6132-4378-BE88-1046FD08ED29}
 		{D3E216F5-6CC5-44F3-A5CF-9309F915E373} = {96226123-6132-4378-BE88-1046FD08ED29}
 		{33923A2A-FE64-4516-A248-680DBF05F615} = {96226123-6132-4378-BE88-1046FD08ED29}
+		{16FEC469-10FC-456B-A4CE-CC3C3FE882FE} = {DD4B5CAB-32A7-43F8-A3E1-E2CF0D22E8B2}
+		{F52CC8A6-CD10-4C58-8C70-1E102C55824D} = {DD4B5CAB-32A7-43F8-A3E1-E2CF0D22E8B2}
+		{B1FAB04D-0F09-4281-8E6E-340837321580} = {DD4B5CAB-32A7-43F8-A3E1-E2CF0D22E8B2}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {AE7003AF-4F6E-4DBC-8BCB-55B2696A2F47}

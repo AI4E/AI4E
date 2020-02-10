@@ -3,14 +3,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
-using AI4E.Utils;
 using AI4E.Utils.Processing;
 using JsonDiffPatchDotNet;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Streaming
 {
     public sealed class SnapshotProcessor : ISnapshotProcessor, IAsyncDisposable, IDisposable
     {
@@ -22,7 +21,7 @@ namespace AI4E.Storage.Domain
         private readonly IServiceProvider _serviceProvider;
 
         private readonly JsonDiffPatch _differ;
-        private readonly DomainStorageOptions _options;
+        private readonly StreamingOptions _options;
         private readonly IAsyncProcess _snapshotProcess;
         private readonly CancellationTokenSource _cancellationSource = new CancellationTokenSource();
         private readonly Task _initialization;
@@ -36,7 +35,7 @@ namespace AI4E.Storage.Domain
 
         public SnapshotProcessor(IStreamStore streamStore,
                                  IServiceProvider serviceProvider,
-                                 IOptions<DomainStorageOptions> optionsAccessor)
+                                 IOptions<StreamingOptions> optionsAccessor)
         {
             if (streamStore == null)
                 throw new ArgumentNullException(nameof(streamStore));
@@ -51,7 +50,7 @@ namespace AI4E.Storage.Domain
             _serviceProvider = serviceProvider;
 
             _differ = new JsonDiffPatch();
-            _options = optionsAccessor.Value ?? new DomainStorageOptions();
+            _options = optionsAccessor.Value ?? new StreamingOptions();
             _snapshotProcess = new AsyncProcess(SnapshotProcess);
             _initialization = InitializeInternalAsync(_cancellationSource.Token);
         }
@@ -145,14 +144,13 @@ namespace AI4E.Storage.Domain
             using var scope = _serviceProvider.CreateScope();
 
             var scopedServiceProvider = scope.ServiceProvider;
-            var entityStorageEngine = scopedServiceProvider.GetRequiredService<IEntityStorageEngine>(); // TODO: This is not used?!
 
             await foreach (var stream in _streamStore.OpenStreamsToSnapshotAsync(snapshotRevisionThreshold, cancellation))
             {
                 if (stream.Snapshot == null && !stream.Commits.Any())
                     continue;
 
-                var serializedEntity = default(JToken);
+                JToken serializedEntity;
 
                 if (stream.Snapshot == null)
                 {

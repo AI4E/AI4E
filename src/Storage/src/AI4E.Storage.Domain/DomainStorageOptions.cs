@@ -9,10 +9,6 @@ namespace AI4E.Storage.Domain
             Scope = Assembly.GetEntryAssembly().GetName().Name;
         }
 
-        public string Scope { get; set; }
-        
-        public int SnapshotInterval { get; set; } = 60 * 60 * 1000;
-
-        public int SnapshotRevisionThreshold { get; set; } = 20;
+        public string Scope { get; set; }   
     }
 }

@@ -19,7 +19,6 @@
  */
 
 using System;
-using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Projection

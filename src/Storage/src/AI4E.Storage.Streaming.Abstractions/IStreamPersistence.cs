@@ -1,13 +1,3 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IStreamPersistence.cs 
- * Types:           (1) AI4E.Storage.Domain.IStreamPersistence
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   13.06.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -60,7 +50,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Streaming
 {
     /// <summary>
     /// Indicates the ability to adapt the underlying persistence infrastructure to behave like a stream of events.

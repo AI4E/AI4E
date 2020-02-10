@@ -19,7 +19,7 @@
  */
 
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Streaming
 {
     public interface ISnapshotProcessor
     {

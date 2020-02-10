@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 using AI4E.Messaging;
 using AI4E.Messaging.Validation;
 using Microsoft.Extensions.DependencyInjection;
-using static System.Diagnostics.Debug;
+using System.Diagnostics;
 
 namespace AI4E.Storage.Domain
 {
@@ -38,9 +38,10 @@ namespace AI4E.Storage.Domain
         private readonly IEntityPropertyAccessor _entityPropertyAccessor;
         private volatile IMessageAccessor _messageAccessor = null;
 
-        public EntityMessageHandlerProcessor(IServiceProvider serviceProvider,
-                                             IEntityStorageEngine entityStorageEngine,
-                                             IEntityPropertyAccessor entityPropertyAccessor)
+        public EntityMessageHandlerProcessor(
+            IServiceProvider serviceProvider,
+            IEntityStorageEngine entityStorageEngine,
+            IEntityPropertyAccessor entityPropertyAccessor)
         {
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
@@ -56,9 +57,10 @@ namespace AI4E.Storage.Domain
             _entityPropertyAccessor = entityPropertyAccessor;
         }
 
-        public override async ValueTask<IDispatchResult> ProcessAsync<TMessage>(DispatchDataDictionary<TMessage> dispatchData,
-                                                                                Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
-                                                                                CancellationToken cancellation)
+        public override async ValueTask<IDispatchResult> ProcessAsync<TMessage>(
+            DispatchDataDictionary<TMessage> dispatchData,
+            Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
+            CancellationToken cancellation)
         {
             var message = dispatchData.Message;
             var handler = Context.MessageHandler;
@@ -152,7 +154,7 @@ namespace AI4E.Storage.Domain
                 }
                 catch (ConcurrencyException)
                 {
-                    Assert(false);
+                    Debug.Assert(false);
                     continue;
                 }
                 catch (StorageException exc)
@@ -172,7 +174,10 @@ namespace AI4E.Storage.Domain
             return new ConcurrencyIssueDispatchResult();
         }
 
-        private IDispatchResult AddAdditionalResultData(in EntityMessageHandlerContextDescriptor descriptor, object entity, IDispatchResult dispatchResult)
+        private IDispatchResult AddAdditionalResultData(
+            in EntityMessageHandlerContextDescriptor descriptor, 
+            object entity, 
+            IDispatchResult dispatchResult)
         {
             var newConcurrencyToken = _entityPropertyAccessor.GetConcurrencyToken(descriptor.EntityType, entity);
             var newRevision = _entityPropertyAccessor.GetRevision(descriptor.EntityType, entity);

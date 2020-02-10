@@ -18,13 +18,13 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Threading;
-using System.Threading.Tasks;
+using Newtonsoft.Json;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Domain.Streaming
 {
-    public interface ICommitDispatcher
+#warning TODO Replace
+    public interface ISerializerSettingsResolver
     {
-        Task DispatchAsync(ICommit commit, CancellationToken cancellation = default);
+        JsonSerializerSettings ResolveSettings(IEntityStorageEngine entityStorageEngine);
     }
 }

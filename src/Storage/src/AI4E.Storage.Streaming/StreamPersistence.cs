@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Streaming
 {
     public sealed class StreamPersistence : IStreamPersistence
     {

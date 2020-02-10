@@ -1,13 +1,3 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        IStreamHead.cs 
- * Types:           (1) AI4E.Storage.Domain.IStreamHead
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   13.06.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -57,33 +47,40 @@
 
 using System;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Streaming
 {
     /// <summary>
-    /// Indicates the most recent information representing the head of a given stream.
+    /// Provides the ability to hook into the pipeline of persisting a commit.
     /// </summary>
-    public interface IStreamHead
+    /// <remarks>
+    /// Instances of this class must be designed to be multi-thread safe such that they can be shared between threads.
+    /// </remarks>
+    public interface IStorageExtension : IDisposable
     {
         /// <summary>
-        /// Gets the value which uniquely identifies the stream where the last snapshot exceeds the allowed threshold.
+        /// Hooks into the selection pipeline just prior to the commit being returned to the caller.
         /// </summary>
-        string BucketId { get; }
+        /// <param name="commit">The commit to be filtered.</param>
+        void OnLoad(ICommit commit);
 
         /// <summary>
-        /// Gets the value which uniquely identifies the stream where the last snapshot exceeds the allowed threshold.
+        /// Hooks into the commit pipeline prior to persisting the commit to durable storage.
         /// </summary>
-        string StreamId { get; }
+        /// <param name="attempt">The attempt to be committed.</param>
+        /// <returns>If processing should continue, returns true; otherwise returns false.</returns>
+        bool OnCommit(CommitAttempt attempt);
 
         /// <summary>
-        /// Gets the value which indicates the sequence (or position) in the stream to which this commit applies.
+        /// Hooks into the commit pipeline just after the commit has been *successfully* committed to durable storage.
         /// </summary>
-        long HeadRevision { get; }
+        /// <param name="commit">The commit which has been persisted.</param>
+        void OnCommited(ICommit commit);
 
         /// <summary>
-        /// Gets the value which indicates the revision at which the last snapshot was taken.
+        /// Invoked when a stream has been deleted.
         /// </summary>
-        long SnapshotRevision { get; }
-
-        bool IsDeleted { get; }
+        /// <param name="bucketId">The bucket Id from which the stream whch has been deleted.</param>
+        /// <param name="streamId">The stream Id of the stream which has been deleted.</param>
+        void OnStreamDeleted(string bucketId, string streamId);
     }
 }

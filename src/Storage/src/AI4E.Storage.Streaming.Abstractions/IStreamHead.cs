@@ -1,13 +1,3 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        ISnapshot.cs 
- * Types:           (1) AI4E.Storage.Domain.ISnapshot
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   13.06.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -55,37 +45,35 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System.Collections.Generic;
+using System;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Streaming
 {
     /// <summary>
-    /// Represents a materialized view of a stream at specific revision.
+    /// Indicates the most recent information representing the head of a given stream.
     /// </summary>
-    public interface ISnapshot
+    public interface IStreamHead
     {
         /// <summary>
-        /// Gets the value which uniquely identifies the bucket to which the snapshot applies.
+        /// Gets the value which uniquely identifies the stream where the last snapshot exceeds the allowed threshold.
         /// </summary>
         string BucketId { get; }
 
         /// <summary>
-        /// Gets the value which uniquely identifies the stream to which the snapshot applies.
+        /// Gets the value which uniquely identifies the stream where the last snapshot exceeds the allowed threshold.
         /// </summary>
         string StreamId { get; }
 
         /// <summary>
-        /// Gets the position at which the snapshot applies.
+        /// Gets the value which indicates the sequence (or position) in the stream to which this commit applies.
         /// </summary>
-        long StreamRevision { get; }
+        long HeadRevision { get; }
 
         /// <summary>
-        /// Gets the snapshot or materialized view of the stream at the revision indicated.
+        /// Gets the value which indicates the revision at which the last snapshot was taken.
         /// </summary>
-        object Payload { get; }
+        long SnapshotRevision { get; }
 
-        //string ConcurrencyToken { get; }
-
-        IReadOnlyDictionary<string, object> Headers { get; }
+        bool IsDeleted { get; }
     }
 }

@@ -1,13 +1,3 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        ICommit.cs 
- * Types:           (1) AI4E.Storage.Domain.ICommit
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   13.06.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -57,49 +47,48 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using Newtonsoft.Json;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Streaming
 {
     /// <summary>
-    /// Represents a series of events which have been fully committed as a single unit and which apply to the stream indicated.
+    /// Represents a single element in a stream of events.
     /// </summary>
-    public interface ICommit
+    public sealed class EventMessage
     {
         /// <summary>
-        /// Gets the value which identifies bucket to which the the stream and the the commit belongs.
+        /// Initializes a new instance of the EventMessage class.
         /// </summary>
-        string BucketId { get; }
+        [JsonConstructor]
+        public EventMessage(object body, ImmutableDictionary<string, object> headers)
+        {
+            if (body == null)
+                throw new ArgumentNullException(nameof(body));
+
+            if (headers == null)
+                throw new ArgumentNullException(nameof(headers));
+
+            Body = body;
+            Headers = headers;
+        }
+
+        public EventMessage(object body, IEnumerable<KeyValuePair<string, object>> headers)
+            : this(body, headers as ImmutableDictionary<string, object> ?? headers?.ToImmutableDictionary())
+        { }
+
+        public EventMessage(object body) : this(body, ImmutableDictionary<string, object>.Empty) { }
 
         /// <summary>
-        /// Gets the value which uniquely identifies the stream to which the commit belongs.
+        /// Gets the metadata which provides additional, unstructured information about this message.
         /// </summary>
-        string StreamId { get; }
-
-        ///// <summary>
-        ///// Gets the value which uniquely identifies the commit within the stream.
-        ///// </summary>
-        //string ConcurrencyToken { get; }
+        [JsonProperty]
+        public ImmutableDictionary<string, object> Headers { get; }
 
         /// <summary>
-        /// Gets the value which indicates the sequence (or position) in the stream to which this commit applies.
+        /// Gets or sets the actual event message body.
         /// </summary>
-        long StreamRevision { get; }
-
-        /// <summary>
-        /// Gets the point in time at which the commit was persisted.
-        /// </summary>
-        DateTime CommitStamp { get; }
-
-        /// <summary>
-        /// Gets the metadata which provides additional, unstructured information about this commit.
-        /// </summary>
-        IReadOnlyDictionary<string, object> Headers { get; }
-
-        object Body { get; }
-
-        /// <summary>
-        /// Gets the collection of event messages to be committed as a single unit.
-        /// </summary>
-        IReadOnlyCollection<EventMessage> Events { get; }
+        [JsonProperty]
+        public object Body { get; }
     }
 }

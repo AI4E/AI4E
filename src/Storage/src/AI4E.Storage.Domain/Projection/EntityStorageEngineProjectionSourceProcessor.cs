@@ -33,7 +33,9 @@ namespace AI4E.Storage.Domain
     {
         private readonly IEntityStorageEngine _storageEngine;
 
-        public EntityStorageEngineProjectionSourceProcessor(IEntityStorageEngine storageEngine, ProjectionSourceDescriptor projectedSource)
+        public EntityStorageEngineProjectionSourceProcessor(
+            IEntityStorageEngine storageEngine, 
+            ProjectionSourceDescriptor projectedSource)
         {
             if (storageEngine == null)
                 throw new ArgumentNullException(nameof(storageEngine));
@@ -55,7 +57,8 @@ namespace AI4E.Storage.Domain
             bool bypassCache,
             CancellationToken cancellation)
         {
-            return _storageEngine.GetByIdAsync(projectionSource.SourceType, projectionSource.SourceId, bypassCache, cancellation);
+            return _storageEngine.GetByIdAsync(
+                projectionSource.SourceType, projectionSource.SourceId, bypassCache, cancellation);
         }
 
         public ValueTask<long> GetSourceRevisionAsync(
@@ -63,13 +66,16 @@ namespace AI4E.Storage.Domain
             bool bypassCache,
             CancellationToken cancellation)
         {
-            return _storageEngine.GetRevisionAsync(projectionSource.SourceType, projectionSource.SourceId, bypassCache, cancellation);
+            return _storageEngine.GetRevisionAsync(
+                projectionSource.SourceType, projectionSource.SourceId, bypassCache, cancellation);
         }
     }
 
     public sealed class EntityStorageEngineProjectionSourceProcessorFactory : IProjectionSourceProcessorFactory
     {
-        public IProjectionSourceProcessor CreateInstance(ProjectionSourceDescriptor projectedSource, IServiceProvider serviceProvider)
+        public IProjectionSourceProcessor CreateInstance(
+            ProjectionSourceDescriptor projectedSource, 
+            IServiceProvider serviceProvider)
         {
             var storageEngine = serviceProvider.GetRequiredService<IEntityStorageEngine>();
             return new EntityStorageEngineProjectionSourceProcessor(storageEngine, projectedSource);

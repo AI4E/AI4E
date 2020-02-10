@@ -1,18 +1,18 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using AI4E.Internal;
-using AI4E.Utils;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Domain
 {
     public sealed class EntityPropertyAccessor : IEntityPropertyAccessor
     {
-        private readonly ConcurrentDictionary<Type, TypedEntityPropertyAccessor> _typedAccessors = new ConcurrentDictionary<Type, TypedEntityPropertyAccessor>();
+        private readonly ConcurrentDictionary<Type, TypedEntityPropertyAccessor> _typedAccessors 
+            = new ConcurrentDictionary<Type, TypedEntityPropertyAccessor>();
 
         #region IEntityPropertyAccessor
 
@@ -159,7 +159,7 @@ namespace AI4E.Storage.Domain
 
             public TypedEntityPropertyAccessor(Type entityType)
             {
-                Assert(entityType != null);
+                Debug.Assert(entityType != null);
 
                 var metadataStorage = default(MetadataStorage);
 
@@ -193,7 +193,7 @@ namespace AI4E.Storage.Domain
 
             public string GetId(object entity)
             {
-                Assert(entity != null);
+                Debug.Assert(entity != null);
 
                 if (!CanGetId)
                 {
@@ -205,8 +205,8 @@ namespace AI4E.Storage.Domain
 
             public void SetId(object entity, string id)
             {
-                Assert(entity != null);
-                Assert(id != null);
+                Debug.Assert(entity != null);
+                Debug.Assert(id != null);
 
                 if (!CanSetId)
                 {
@@ -268,7 +268,7 @@ namespace AI4E.Storage.Domain
 
                 var toStringMethod = idType.GetMethod(nameof(ToString), BindingFlags.Public | BindingFlags.Instance, Type.DefaultBinder, Type.EmptyTypes, null);
 
-                Assert(toStringMethod != null);
+                Debug.Assert(toStringMethod != null);
 
                 if (idAccess != null)
                 {
@@ -287,14 +287,14 @@ namespace AI4E.Storage.Domain
 
             public string GetConcurrencyToken(object entity)
             {
-                Assert(entity != null);
+                Debug.Assert(entity != null);
                 return _concurrencyTokenGetAccessor(entity);
             }
 
             public void SetConcurrencyToken(object entity, string concurrencyToken)
             {
-                Assert(entity != null);
-                Assert(concurrencyToken != null);
+                Debug.Assert(entity != null);
+                Debug.Assert(concurrencyToken != null);
                 _concurrencyTokenSetAccessor(entity, concurrencyToken);
             }
 
@@ -386,13 +386,13 @@ namespace AI4E.Storage.Domain
 
             public long GetRevision(object entity)
             {
-                Assert(entity != null);
+                Debug.Assert(entity != null);
                 return _revisionGetAccessor(entity);
             }
 
             public void SetRevision(object entity, long revision)
             {
-                Assert(entity != null);
+                Debug.Assert(entity != null);
                 _revisionSetAccessor(entity, revision);
             }
 
@@ -478,20 +478,20 @@ namespace AI4E.Storage.Domain
 
             public void CommitEvents(object entity)
             {
-                Assert(entity != null);
+                Debug.Assert(entity != null);
                 _commitEventsInvoker(entity);
             }
 
             public IEnumerable<object> GetUncommittedEvents(object entity)
             {
-                Assert(entity != null);
+                Debug.Assert(entity != null);
                 return _uncommittedEventsGetAccessor(entity);
             }
 
             public void AddEvent(object entity, object evt)
             {
-                Assert(entity != null);
-                Assert(evt != null);
+                Debug.Assert(entity != null);
+                Debug.Assert(evt != null);
 
                 if (_addEventAccessor == null)
                 {
@@ -602,7 +602,7 @@ namespace AI4E.Storage.Domain
 
             public IEntityMetadata GetMetadata(object entity)
             {
-                Assert(entity != null);
+                Debug.Assert(entity != null);
 
                 //return _metaDataStorage.GetOrCreateValue(entity);
 

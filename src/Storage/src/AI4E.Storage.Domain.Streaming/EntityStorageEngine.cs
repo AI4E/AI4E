@@ -33,8 +33,9 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Diagnostics;
+using AI4E.Storage.Streaming;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Domain.Streaming
 {
     public sealed partial class EntityStorageEngine : IEntityStorageEngine
     {

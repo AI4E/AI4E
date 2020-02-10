@@ -1,18 +1,18 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using static System.Diagnostics.Debug;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Domain
 {
     internal sealed class DomainStorageBuilder : IDomainStorageBuilder
     {
-        private readonly IStorageBuilder _storageBuilder;
-
         public DomainStorageBuilder(IStorageBuilder storageBuilder)
         {
-            Assert(storageBuilder != null);
-            _storageBuilder = storageBuilder;
+            Debug.Assert(storageBuilder != null);
+            StorageBuilder = storageBuilder;
         }
 
-        public IServiceCollection Services => _storageBuilder.Services;
+        public IServiceCollection Services => StorageBuilder.Services;
+
+        public IStorageBuilder StorageBuilder { get; }
     }
 }

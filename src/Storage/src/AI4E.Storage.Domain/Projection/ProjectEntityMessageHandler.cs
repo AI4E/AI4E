@@ -6,7 +6,7 @@ using AI4E.Storage.Projection;
 
 namespace AI4E.Storage.Domain
 {
-    internal sealed class ProjectEntityMessageHandler : IMessageHandler<ProjectEntityMessage>
+    public sealed class ProjectEntityMessageHandler : IMessageHandler<ProjectEntityMessage>
     {
         private readonly IProjectionEngine _projectionEngine;
 
@@ -41,17 +41,5 @@ namespace AI4E.Storage.Domain
         }
 
         Type IMessageHandler.MessageType => typeof(ProjectEntityMessage);
-    }
-
-    internal sealed class ProjectEntityMessage
-    {
-        public ProjectEntityMessage(Type entityType, string entityId)
-        {
-            EntityType = entityType;
-            EntityId = entityId;
-        }
-
-        public Type EntityType { get; }
-        public string EntityId { get; }
     }
 }

@@ -1,13 +1,3 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        StreamNotFoundException.cs 
- * Types:           (1) AI4E.Storage.Domain.StreamNotFoundException
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   13.06.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 /* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
@@ -58,7 +48,7 @@
 using System;
 using System.Runtime.Serialization;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Streaming
 {
     /// <summary>
     /// Represents an attempt to retrieve a nonexistent event stream.
