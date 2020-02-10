@@ -24,6 +24,18 @@ namespace AI4E.Storage.Test.Mocks
 
         public bool SupportsScopes => false;
 
+        public IServiceProvider ServiceProvider { get; }
+
+        public DatabaseMock()
+        {
+
+        }
+
+        public DatabaseMock(IServiceProvider serviceProvider)
+        {
+            ServiceProvider = serviceProvider;
+        }
+
         public ValueTask<bool> AddAsync<TEntry>(TEntry entry, CancellationToken cancellation = default) where TEntry : class
         {
             AddCalled = true;

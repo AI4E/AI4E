@@ -19,6 +19,8 @@
  */
 
 using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -28,13 +30,29 @@ namespace AI4E.Storage
     {
         public static IStorageBuilder AddStorage(this IServiceCollection services)
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
+            if (services is null)
+                throw new NullReferenceException();
 
-            services.AddOptions();
-            services.TryAddSingleton<IDatabase>(NoDatabase.Instance);
+            if (!TryGetStorageBuilder(services, out var storageBuilder))
+            {
+                services.AddOptions();
+                services.TryAddSingleton<IDatabase>(NoDatabase.Instance);
 
-            return new StorageBuilder(services);
+                storageBuilder = new StorageBuilderImpl(services);
+                services.AddSingleton(storageBuilder);
+            }
+
+            return storageBuilder;
+        }
+
+        private static bool TryGetStorageBuilder(
+            IServiceCollection services,
+            [NotNullWhen(true)] out StorageBuilderImpl? storageBuilder)
+        {
+            storageBuilder = services.LastOrDefault(
+                p => p.ServiceType == typeof(StorageBuilderImpl))?.ImplementationInstance as StorageBuilderImpl;
+
+            return storageBuilder != null;
         }
     }
 }

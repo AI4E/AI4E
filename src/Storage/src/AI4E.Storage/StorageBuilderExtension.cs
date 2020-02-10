@@ -28,10 +28,9 @@ namespace AI4E.Storage
         public static IStorageBuilder UseDatabase<TDatabase>(this IStorageBuilder builder)
             where TDatabase : class, IDatabase
         {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
+#pragma warning disable CA1062
             var services = builder.Services;
+#pragma warning restore CA1062
 
             services.AddSingleton<IDatabase, TDatabase>();
 
@@ -41,13 +40,12 @@ namespace AI4E.Storage
         public static IStorageBuilder UseDatabase<TDatabase>(this IStorageBuilder builder, Func<IServiceProvider, TDatabase> factory)
             where TDatabase : class, IDatabase
         {
-            if (builder == null)
-                throw new ArgumentNullException(nameof(builder));
-
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
 
+#pragma warning disable CA1062
             var services = builder.Services;
+#pragma warning restore CA1062
 
             services.AddSingleton<IDatabase, TDatabase>(factory);
 
