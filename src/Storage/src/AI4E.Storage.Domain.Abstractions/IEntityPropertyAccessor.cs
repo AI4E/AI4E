@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace AI4E.Storage.Domain
 {
     public interface IEntityPropertyAccessor
     {
-        bool TryGetId(Type entityType, object entity, out string id);
+        bool TryGetId(Type entityType, object entity, [NotNullWhen(true)] out string? id);
         bool TrySetId(Type entityType, object entity, string id);
 
         string GetConcurrencyToken(Type entityType, object entity);
@@ -21,7 +22,10 @@ namespace AI4E.Storage.Domain
 
     public static class EntityPropertyAccessorExtension
     {
-        public static bool TryGetId<TEntity>(this IEntityPropertyAccessor entityPropertyAccessor, TEntity entity, out string id)
+        public static bool TryGetId<TEntity>(
+            this IEntityPropertyAccessor entityPropertyAccessor, 
+            TEntity entity, 
+            [NotNullWhen(true)] out string? id)
             where TEntity : class
         {
             if (entityPropertyAccessor == null)
@@ -39,7 +43,7 @@ namespace AI4E.Storage.Domain
             return entityPropertyAccessor.TrySetId(typeof(TEntity), entity, id);
         }
 
-        public static string GetConcurrencyToken<TEntity>(this IEntityPropertyAccessor entityPropertyAccessor, TEntity entityType, object entity)
+        public static string GetConcurrencyToken<TEntity>(this IEntityPropertyAccessor entityPropertyAccessor, object entity)
         {
             if (entityPropertyAccessor == null)
                 throw new ArgumentNullException(nameof(entityPropertyAccessor));

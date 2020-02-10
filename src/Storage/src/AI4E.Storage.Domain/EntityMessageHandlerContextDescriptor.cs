@@ -31,7 +31,7 @@ using AI4E.Messaging;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.DependencyInjection;
-using static System.Diagnostics.Debug;
+using System.Diagnostics;
 
 namespace AI4E.Storage.Domain
 {
@@ -52,21 +52,21 @@ namespace AI4E.Storage.Domain
 
         private static EntityMessageHandlerContextDescriptor BuildDescriptor(Type handlerType)
         {
-            Assert(handlerType != null);
+            Debug.Assert(handlerType != null);
 
-            var entityProperty = GetEntityProperty(handlerType);
+            var entityProperty = GetEntityProperty(handlerType!);
 
             if (entityProperty == null)
             {
                 return default;
             }
 
-            BuildEntityAccessor(handlerType, entityProperty, out var entityGetter, out var entitySetter);
+            BuildEntityAccessor(handlerType!, entityProperty, out var entityGetter, out var entitySetter);
 
             var entityType = GetEntityType(entityProperty);
 
-            var deleteFlagAccessor = BuildDeleteFlagAccessor(handlerType);
-            var lookupAccessors = BuildLookupAccessors(handlerType, entityType).ToImmutableArray();
+            var deleteFlagAccessor = BuildDeleteFlagAccessor(handlerType!);
+            var lookupAccessors = BuildLookupAccessors(handlerType!, entityType).ToImmutableArray();
 
             return new EntityMessageHandlerContextDescriptor(entitySetter, entityGetter, deleteFlagAccessor, entityType, lookupAccessors);
         }
@@ -86,13 +86,13 @@ namespace AI4E.Storage.Domain
                                                 out Func<object, object> entityGetter,
                                                 out Action<object, object> entitySetter)
         {
-            Assert(handlerType != null);
-            Assert(entityProperty != null);
+            Debug.Assert(handlerType != null);
+            Debug.Assert(entityProperty != null);
 
             var handlerParam = Expression.Parameter(typeof(object), "handler");
             var entityParam = Expression.Parameter(typeof(object), "entity");
             var convertedHandler = Expression.Convert(handlerParam, handlerType);
-            var convertedEntity = Expression.Convert(entityParam, entityProperty.PropertyType);
+            var convertedEntity = Expression.Convert(entityParam, entityProperty!.PropertyType);
             var propertyAccess = Expression.Property(convertedHandler, entityProperty);
             var propertyAssign = Expression.Assign(propertyAccess, convertedEntity);
             var getterLambda = Expression.Lambda<Func<object, object>>(propertyAccess, handlerParam);
@@ -104,10 +104,10 @@ namespace AI4E.Storage.Domain
 
         private static Type GetEntityType(PropertyInfo entityProperty)
         {
-            Assert(entityProperty != null);
+            Debug.Assert(entityProperty != null);
 
-            var result = entityProperty.PropertyType;
-            var customType = entityProperty.GetCustomAttribute<MessageHandlerEntityAttribute>().EntityType;
+            var result = entityProperty!.PropertyType;
+            var customType = entityProperty.GetCustomAttribute<MessageHandlerEntityAttribute>()?.EntityType;
 
             if (customType != null &&
                 result.IsAssignableFrom(customType)) // If the types do not match, we just ignore the custom type.
@@ -120,20 +120,20 @@ namespace AI4E.Storage.Domain
 
         private static PropertyInfo GetDeleteFlagProperty(Type handlerType)
         {
-            Assert(handlerType != null);
+            Debug.Assert(handlerType != null);
 
-            return handlerType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            return handlerType!.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                               .SingleOrDefault(p => p.PropertyType == typeof(bool) &&
                                                     p.CanRead &&
                                                     p.GetIndexParameters().Length == 0 &&
                                                     p.IsDefined<MessageHandlerEntityDeleteFlagAttribute>());
         }
 
-        private static Func<object, bool> BuildDeleteFlagAccessor(Type handlerType)
+        private static Func<object, bool>? BuildDeleteFlagAccessor(Type handlerType)
         {
-            Assert(handlerType != null);
+            Debug.Assert(handlerType != null);
 
-            var deleteFlagProperty = GetDeleteFlagProperty(handlerType);
+            var deleteFlagProperty = GetDeleteFlagProperty(handlerType!);
 
             if (deleteFlagProperty == null)
                 return null;
@@ -146,7 +146,7 @@ namespace AI4E.Storage.Domain
             return deleteFlagLambda.Compile();
         }
 
-        private static IEnumerable<(Type messageType, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> lookupAccessor)> BuildLookupAccessors(Type handlerType, Type entityType)
+        private static IEnumerable<(Type messageType, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object?>> lookupAccessor)> BuildLookupAccessors(Type handlerType, Type entityType)
         {
             var methods = GetEntityLookupMethods(handlerType, entityType);
 
@@ -154,7 +154,7 @@ namespace AI4E.Storage.Domain
             {
                 var invoker = TypeMemberInvoker.GetInvoker(method);
 
-                ValueTask<object> LookupAccessor(object handler, object message, IServiceProvider serviceProvider, CancellationToken cancellation)
+                ValueTask<object?> LookupAccessor(object handler, object message, IServiceProvider serviceProvider, CancellationToken cancellation)
                 {
                     object ResolveParameter(ParameterInfo parameter)
                     {
@@ -210,20 +210,20 @@ namespace AI4E.Storage.Domain
 
         #endregion
 
-        private readonly ConcurrentDictionary<Type, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>>> _matchingLookupAccessor;
+        private readonly ConcurrentDictionary<Type, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object?>>?> _matchingLookupAccessor;
         private readonly Action<object, object> _entitySetter;
         private readonly Func<object, object> _entityGetter;
-        private readonly Func<object, bool> _deleteFlagAccessor;
-        private readonly ImmutableArray<(Type messageType, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> lookupAccessor)> _lookupAccessors;
+        private readonly Func<object, bool>? _deleteFlagAccessor;
+        private readonly ImmutableArray<(Type messageType, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object?>> lookupAccessor)> _lookupAccessors;
 
         private EntityMessageHandlerContextDescriptor(
             Action<object, object> entitySetter,
             Func<object, object> entityGetter,
-            Func<object, bool> deleteFlagAccessor,
+            Func<object, bool>? deleteFlagAccessor,
             Type entityType,
-            ImmutableArray<(Type messageType, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> lookupAccessor)> lookupAccessors)
+            ImmutableArray<(Type messageType, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object?>> lookupAccessor)> lookupAccessors)
         {
-            _matchingLookupAccessor = new ConcurrentDictionary<Type, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>>>();
+            _matchingLookupAccessor = new ConcurrentDictionary<Type, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object?>>?>();
             _entitySetter = entitySetter;
             _entityGetter = entityGetter;
             _deleteFlagAccessor = deleteFlagAccessor;
@@ -267,7 +267,7 @@ namespace AI4E.Storage.Domain
             return _deleteFlagAccessor(handler);
         }
 
-        public Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> GetLookupAccessor(Type messageType)
+        public Func<object, object, IServiceProvider, CancellationToken, ValueTask<object?>>? GetLookupAccessor(Type messageType)
         {
             if (messageType == null)
                 throw new ArgumentNullException(nameof(messageType));
@@ -276,9 +276,9 @@ namespace AI4E.Storage.Domain
             return _matchingLookupAccessor.GetOrAdd(messageType, GetLookupAccessorInternal);
         }
 
-        private Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> GetLookupAccessorInternal(Type messageType)
+        private Func<object, object, IServiceProvider, CancellationToken, ValueTask<object?>>? GetLookupAccessorInternal(Type messageType)
         {
-            Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> fallbackMessageAccessor = null;
+            Func<object, object, IServiceProvider, CancellationToken, ValueTask<object?>>? fallbackMessageAccessor = null;
 
             // TODO: Select best matching accessor
             foreach (var (type, accessor) in _lookupAccessors)

@@ -40,22 +40,11 @@ namespace AI4E.Messaging
 
 #nullable restore
 
-        /// <summary>
-        /// When overridden in a derviced class, asynchronously processes the specified message.
-        /// </summary>
-        /// <typeparam name="TMessage">The type of message to process.</typeparam>
-        /// <param name="dispatchData">The typed dispatch data dictionary that contains the message.</param>
-        /// <param name="next">A function that can be used to invoke the next one in the call chain.</param>
-        /// <param name="cancellation">
-        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
-        /// </param>
-        /// <returns>
-        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
-        /// When evaluated, the tasks result contains the dispatch result tha tis the result of the message process operation.
-        /// </returns>
-        public virtual ValueTask<IDispatchResult> ProcessAsync<TMessage>(DispatchDataDictionary<TMessage> dispatchData,
-                                                                         Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
-                                                                         CancellationToken cancellation)
+        /// <inheritdoc/>
+        public virtual ValueTask<IDispatchResult> ProcessAsync<TMessage>(
+            DispatchDataDictionary<TMessage> dispatchData,
+            Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
+            CancellationToken cancellation)
             where TMessage : class
         {
             if (dispatchData == null)

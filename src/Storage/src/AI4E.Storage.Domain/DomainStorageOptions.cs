@@ -6,9 +6,9 @@ namespace AI4E.Storage.Domain
     {
         public DomainStorageOptions()
         {
-            Scope = Assembly.GetEntryAssembly().GetName().Name;
+            Scope = Assembly.GetEntryAssembly()?.GetName().Name;
         }
 
-        public string Scope { get; set; }   
+        public string? Scope { get; set; }   
     }
 }

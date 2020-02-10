@@ -31,7 +31,7 @@ namespace AI4E.Messaging
         public bool IsMarkedAsDeleted { get; internal set; }
 
         [MessageHandlerEntity]
-        public TEntity Entity { get; set; }
+        public TEntity? Entity { get; set; }
 
         [NoMessageHandler]
         protected void MarkAsDeleted()
@@ -43,7 +43,7 @@ namespace AI4E.Messaging
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
     public class MessageHandlerEntityAttribute : Attribute
     {
-        public Type EntityType { get; set; }
+        public Type? EntityType { get; set; }
     }
 
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]

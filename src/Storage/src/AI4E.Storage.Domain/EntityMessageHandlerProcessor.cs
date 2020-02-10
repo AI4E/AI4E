@@ -27,6 +27,7 @@ using AI4E.Messaging;
 using AI4E.Messaging.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace AI4E.Storage.Domain
 {
@@ -36,7 +37,7 @@ namespace AI4E.Storage.Domain
         private readonly IServiceProvider _serviceProvider;
         private readonly IEntityStorageEngine _entityStorageEngine;
         private readonly IEntityPropertyAccessor _entityPropertyAccessor;
-        private volatile IMessageAccessor _messageAccessor = null;
+        private volatile IMessageAccessor? _messageAccessor = null;
 
         public EntityMessageHandlerProcessor(
             IServiceProvider serviceProvider,
@@ -62,6 +63,12 @@ namespace AI4E.Storage.Domain
             Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
             CancellationToken cancellation)
         {
+            if (dispatchData is null)
+                throw new ArgumentNullException(nameof(dispatchData));
+
+            if (next is null)
+                throw new ArgumentNullException(nameof(next));
+
             var message = dispatchData.Message;
             var handler = Context.MessageHandler;
             var descriptor = EntityMessageHandlerContextDescriptor.GetDescriptor(handler.GetType());
@@ -130,19 +137,22 @@ namespace AI4E.Storage.Domain
 
                 try
                 {
+                    var nonNullEntity = entity ?? originalEntity;
+
                     // The Store/Delete calls must be protected to be called with a null entity.
-                    if (entity != null || originalEntity != null) // TODO: Do we care about events etc. here?
+                    // TODO: Do we care about events etc. here?
+                    if (nonNullEntity != null)
                     {
-                        if (!_entityPropertyAccessor.TryGetId(descriptor.EntityType, entity ?? originalEntity, out var id))
+                        if (!_entityPropertyAccessor.TryGetId(descriptor.EntityType, nonNullEntity, out var id))
                         {
                             return new FailureDispatchResult("Unable to determine the id of the specified entity.");
                         }
 
                         if (markedAsDeleted || entity == null)
                         {
-                            await _entityStorageEngine.DeleteAsync(descriptor.EntityType, entity ?? originalEntity, id);
+                            await _entityStorageEngine.DeleteAsync(descriptor.EntityType, nonNullEntity, id).ConfigureAwait(false);
                         }
-                        else if (await _entityStorageEngine.TryStoreAsync(descriptor.EntityType, entity, id))
+                        else if (await _entityStorageEngine.TryStoreAsync(descriptor.EntityType, entity, id).ConfigureAwait(false))
                         {
                             dispatchResult = AddAdditionalResultData(descriptor, entity, dispatchResult);
                         }
@@ -161,7 +171,9 @@ namespace AI4E.Storage.Domain
                 {
                     return new StorageIssueDispatchResult(exc);
                 }
+#pragma warning disable CA1031
                 catch (Exception exc)
+#pragma warning restore CA1031
                 {
                     return new FailureDispatchResult(exc);
                 }
@@ -175,14 +187,14 @@ namespace AI4E.Storage.Domain
         }
 
         private IDispatchResult AddAdditionalResultData(
-            in EntityMessageHandlerContextDescriptor descriptor, 
-            object entity, 
+            in EntityMessageHandlerContextDescriptor descriptor,
+            object entity,
             IDispatchResult dispatchResult)
         {
             var newConcurrencyToken = _entityPropertyAccessor.GetConcurrencyToken(descriptor.EntityType, entity);
             var newRevision = _entityPropertyAccessor.GetRevision(descriptor.EntityType, entity);
 
-            var additionalResultData = new Dictionary<string, object>
+            var additionalResultData = new Dictionary<string, object?>
             {
                 ["ConcurrencyToken"] = newConcurrencyToken,
                 ["Revision"] = newRevision
@@ -194,7 +206,8 @@ namespace AI4E.Storage.Domain
         private bool TryGetEntityLookup<TMessage>(
             TMessage message,
             EntityMessageHandlerContextDescriptor descriptor,
-            out Func<CancellationToken, ValueTask<object>> entityLookup)
+            [NotNullWhen(true)] out Func<CancellationToken, ValueTask<object?>>? entityLookup)
+            where TMessage : class
         {
             var lookupAccessor = GetMatchingLookupAccessor<TMessage>(descriptor);
 
@@ -206,7 +219,7 @@ namespace AI4E.Storage.Domain
 
             var messageAccessor = GetMessageAccessor();
 
-            if (messageAccessor.TryGetEntityId(message, out var id))
+            if (messageAccessor.TryGetEntityId(message, out var id) && id != null)
             {
                 entityLookup = _ => _entityStorageEngine.GetByIdAsync(descriptor.EntityType, id);
                 return true;
@@ -216,7 +229,7 @@ namespace AI4E.Storage.Domain
             return false;
         }
 
-        private static Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> GetMatchingLookupAccessor<TMessage>(
+        private static Func<object, object, IServiceProvider, CancellationToken, ValueTask<object?>>? GetMatchingLookupAccessor<TMessage>(
             in EntityMessageHandlerContextDescriptor descriptor)
         {
             return descriptor.GetLookupAccessor(typeof(TMessage));

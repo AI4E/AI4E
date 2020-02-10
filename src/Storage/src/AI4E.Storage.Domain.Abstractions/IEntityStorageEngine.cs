@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -27,9 +28,9 @@ namespace AI4E.Storage.Domain
 {
     public interface IEntityStorageEngine : IDisposable
     {
-        ValueTask<object> GetByIdAsync(Type entityType, string id, bool bypassCache, CancellationToken cancellation = default);
+        ValueTask<object?> GetByIdAsync(Type entityType, string id, bool bypassCache, CancellationToken cancellation = default);
 
-        ValueTask<object> GetByIdAsync(Type entityType, string id, long revision, CancellationToken cancellation = default);
+        ValueTask<object?> GetByIdAsync(Type entityType, string id, long revision, CancellationToken cancellation = default);
 
         ValueTask<long> GetRevisionAsync(Type entityType, string id, bool bypassCache, CancellationToken cancellation = default);
 
@@ -49,7 +50,7 @@ namespace AI4E.Storage.Domain
 
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
 
-        public ValueTask<object> GetByIdAsync(Type entityType, string id, CancellationToken cancellation = default)
+        public ValueTask<object?> GetByIdAsync(Type entityType, string id, CancellationToken cancellation = default)
         {
             return GetByIdAsync(entityType, id, bypassCache: false, cancellation);
         }

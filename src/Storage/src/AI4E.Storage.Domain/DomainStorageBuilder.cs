@@ -8,7 +8,7 @@ namespace AI4E.Storage.Domain
         public DomainStorageBuilder(IStorageBuilder storageBuilder)
         {
             Debug.Assert(storageBuilder != null);
-            StorageBuilder = storageBuilder;
+            StorageBuilder = storageBuilder!;
         }
 
         public IServiceCollection Services => StorageBuilder.Services;

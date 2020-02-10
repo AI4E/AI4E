@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -11,12 +12,12 @@ namespace AI4E.Storage.Domain
 {
     public sealed class EntityPropertyAccessor : IEntityPropertyAccessor
     {
-        private readonly ConcurrentDictionary<Type, TypedEntityPropertyAccessor> _typedAccessors 
+        private readonly ConcurrentDictionary<Type, TypedEntityPropertyAccessor> _typedAccessors
             = new ConcurrentDictionary<Type, TypedEntityPropertyAccessor>();
 
         #region IEntityPropertyAccessor
 
-        public bool TryGetId(Type entityType, object entity, out string id)
+        public bool TryGetId(Type entityType, object entity, [NotNullWhen(true)] out string? id)
         {
             CheckArguments(entityType, entity);
 
@@ -145,17 +146,17 @@ namespace AI4E.Storage.Domain
 
         private readonly struct TypedEntityPropertyAccessor
         {
-            private readonly MetadataStorage _metadataStorage;
+            private readonly MetadataStorage? _metadataStorage;
 
-            private readonly Func<object, string> _idGetAccessor;
-            private readonly Action<object, string> _idSetAccessor;
+            private readonly Func<object, string>? _idGetAccessor;
+            private readonly Action<object, string>? _idSetAccessor;
             private readonly Func<object, string> _concurrencyTokenGetAccessor;
             private readonly Action<object, string> _concurrencyTokenSetAccessor;
             private readonly Func<object, long> _revisionGetAccessor;
             private readonly Action<object, long> _revisionSetAccessor;
             private readonly Func<object, IEnumerable<object>> _uncommittedEventsGetAccessor;
             private readonly Action<object> _commitEventsInvoker;
-            private readonly Action<object, object> _addEventAccessor;
+            private readonly Action<object, object>? _addEventAccessor;
 
             public TypedEntityPropertyAccessor(Type entityType)
             {
@@ -163,21 +164,21 @@ namespace AI4E.Storage.Domain
 
                 var metadataStorage = default(MetadataStorage);
 
-                BuildIdAccess(entityType,
+                BuildIdAccess(entityType!,
                               ref metadataStorage,
                               out _idGetAccessor,
                               out _idSetAccessor);
 
-                BuildConcurrencyTokenAccess(entityType,
+                BuildConcurrencyTokenAccess(entityType!,
                                             ref metadataStorage,
                                             out _concurrencyTokenGetAccessor,
                                             out _concurrencyTokenSetAccessor);
-                BuildRevisionAccess(entityType,
+                BuildRevisionAccess(entityType!,
                                     ref metadataStorage,
                                     out _revisionGetAccessor,
                                     out _revisionSetAccessor);
 
-                BuildEventAccess(entityType,
+                BuildEventAccess(entityType!,
                                  ref metadataStorage,
                                  out _uncommittedEventsGetAccessor,
                                  out _commitEventsInvoker,
@@ -195,12 +196,12 @@ namespace AI4E.Storage.Domain
             {
                 Debug.Assert(entity != null);
 
-                if (!CanGetId)
+                if (_idGetAccessor is null)
                 {
                     throw new NotSupportedException();
                 }
 
-                return _idGetAccessor(entity);
+                return _idGetAccessor(entity!);
             }
 
             public void SetId(object entity, string id)
@@ -208,12 +209,12 @@ namespace AI4E.Storage.Domain
                 Debug.Assert(entity != null);
                 Debug.Assert(id != null);
 
-                if (!CanSetId)
+                if (_idSetAccessor is null)
                 {
                     throw new NotSupportedException();
                 }
 
-                _idSetAccessor(entity, id);
+                _idSetAccessor(entity!, id!);
             }
 
             private static MemberInfo GetIdMember(Type entityType)
@@ -221,16 +222,17 @@ namespace AI4E.Storage.Domain
                 return DataPropertyHelper.GetIdMember(entityType);
             }
 
-            private static void BuildIdAccess(Type entityType,
-                                              ref MetadataStorage metadataStorage,
-                                              out Func<object, string> idGetAccessor,
-                                               out Action<object, string> idSetAccessor)
+            private static void BuildIdAccess(
+                Type entityType,
+                ref MetadataStorage? metadataStorage,
+                out Func<object, string>? idGetAccessor,
+                out Action<object, string>? idSetAccessor)
             {
                 var idMember = GetIdMember(entityType);
 
                 if (idMember == null)
                 {
-                    var ms = metadataStorage = metadataStorage ?? new MetadataStorage();
+                    var ms = metadataStorage ??= new MetadataStorage();
 
                     string GetIdFromMetadata(object entity)
                     {
@@ -266,7 +268,11 @@ namespace AI4E.Storage.Domain
                     idAccess = Expression.MakeMemberAccess(convertedEntity, idMember);
                 }
 
-                var toStringMethod = idType.GetMethod(nameof(ToString), BindingFlags.Public | BindingFlags.Instance, Type.DefaultBinder, Type.EmptyTypes, null);
+                var toStringMethod = idType.GetMethod(
+                    nameof(ToString),
+                    BindingFlags.Public | BindingFlags.Instance,
+                    Type.DefaultBinder,
+                    Type.EmptyTypes, null);
 
                 Debug.Assert(toStringMethod != null);
 
@@ -288,26 +294,27 @@ namespace AI4E.Storage.Domain
             public string GetConcurrencyToken(object entity)
             {
                 Debug.Assert(entity != null);
-                return _concurrencyTokenGetAccessor(entity);
+                return _concurrencyTokenGetAccessor(entity!);
             }
 
             public void SetConcurrencyToken(object entity, string concurrencyToken)
             {
                 Debug.Assert(entity != null);
                 Debug.Assert(concurrencyToken != null);
-                _concurrencyTokenSetAccessor(entity, concurrencyToken);
+                _concurrencyTokenSetAccessor(entity!, concurrencyToken!);
             }
 
-            private static void BuildConcurrencyTokenAccess(Type entityType,
-                                                            ref MetadataStorage metadataStorage,
-                                                            out Func<object, string> concurrencyTokenGetAccessor,
-                                                            out Action<object, string> concurrencyTokenSetAccessor)
+            private static void BuildConcurrencyTokenAccess(
+                Type entityType,
+                ref MetadataStorage? metadataStorage,
+                out Func<object, string> concurrencyTokenGetAccessor,
+                out Action<object, string> concurrencyTokenSetAccessor)
             {
                 var concurrencyTokenProperty = GetConcurrencyTokenProperty(entityType);
 
                 if (concurrencyTokenProperty == null)
                 {
-                    var ms = metadataStorage = metadataStorage ?? new MetadataStorage();
+                    var ms = metadataStorage ??= new MetadataStorage();
 
                     string GetConcurrencyTokenFromMetadata(object entity)
                     {
@@ -336,22 +343,23 @@ namespace AI4E.Storage.Domain
                     concurrencyTokenAccess = Expression.Convert(concurrencyTokenAccess, typeof(string));
                 }
 
-                concurrencyTokenGetAccessor = Expression.Lambda<Func<object, string>>(concurrencyTokenAccess, entityParameter)
-                                                        .Compile();
+                concurrencyTokenGetAccessor = Expression.Lambda<Func<object, string>>(
+                    concurrencyTokenAccess, entityParameter).Compile();
 
                 var concurrencyTokenParameter = Expression.Parameter(typeof(string), "concurrencyToken");
                 var concurrencyTokenPropertyAssign = Expression.Assign(concurrencyTokenPropertyAccess, concurrencyTokenParameter);
 
-                concurrencyTokenSetAccessor = Expression.Lambda<Action<object, string>>(concurrencyTokenPropertyAssign,
-                                                                                        entityParameter,
-                                                                                        concurrencyTokenParameter)
-                                                        .Compile();
+                concurrencyTokenSetAccessor = Expression.Lambda<Action<object, string>>(
+                    concurrencyTokenPropertyAssign,
+                    entityParameter,
+                    concurrencyTokenParameter).Compile();
             }
 
-            private static PropertyInfo GetConcurrencyTokenProperty(Type entityType)
+            private static PropertyInfo? GetConcurrencyTokenProperty(Type entityType)
             {
-                var result = entityType.GetProperty("ConcurrencyToken",
-                                                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var result = entityType.GetProperty(
+                    "ConcurrencyToken",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
                 if (result == null)
                     return null;
@@ -387,25 +395,26 @@ namespace AI4E.Storage.Domain
             public long GetRevision(object entity)
             {
                 Debug.Assert(entity != null);
-                return _revisionGetAccessor(entity);
+                return _revisionGetAccessor(entity!);
             }
 
             public void SetRevision(object entity, long revision)
             {
                 Debug.Assert(entity != null);
-                _revisionSetAccessor(entity, revision);
+                _revisionSetAccessor(entity!, revision);
             }
 
-            private static void BuildRevisionAccess(Type entityType,
-                                                    ref MetadataStorage metadataStorage,
-                                                    out Func<object, long> revisionGetAccessor,
-                                                    out Action<object, long> revisionSetAccessor)
+            private static void BuildRevisionAccess(
+                Type entityType,
+                ref MetadataStorage? metadataStorage,
+                out Func<object, long> revisionGetAccessor,
+                out Action<object, long> revisionSetAccessor)
             {
                 var revisionProperty = GetRevisionProperty(entityType);
 
                 if (revisionProperty == null)
                 {
-                    var ms = metadataStorage = metadataStorage ?? new MetadataStorage();
+                    var ms = metadataStorage ??= new MetadataStorage();
 
                     long GetRevisionFromMetadata(object entity)
                     {
@@ -439,7 +448,7 @@ namespace AI4E.Storage.Domain
                                                 .Compile();
             }
 
-            private static PropertyInfo GetRevisionProperty(Type entityType)
+            private static PropertyInfo? GetRevisionProperty(Type entityType)
             {
                 var result = entityType.GetProperty("Revision",
                                                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
@@ -479,13 +488,13 @@ namespace AI4E.Storage.Domain
             public void CommitEvents(object entity)
             {
                 Debug.Assert(entity != null);
-                _commitEventsInvoker(entity);
+                _commitEventsInvoker(entity!);
             }
 
             public IEnumerable<object> GetUncommittedEvents(object entity)
             {
                 Debug.Assert(entity != null);
-                return _uncommittedEventsGetAccessor(entity);
+                return _uncommittedEventsGetAccessor(entity!);
             }
 
             public void AddEvent(object entity, object evt)
@@ -498,14 +507,15 @@ namespace AI4E.Storage.Domain
                     throw new NotSupportedException();
                 }
 
-                _addEventAccessor(entity, evt);
+                _addEventAccessor(entity!, evt!);
             }
 
-            private static void BuildEventAccess(Type entityType,
-                                                 ref MetadataStorage metadataStorage,
-                                                 out Func<object, IEnumerable<object>> uncommittedEventsGetAccessor,
-                                                 out Action<object> commitEventsInvoker,
-                                                 out Action<object, object> addEventAccessor)
+            private static void BuildEventAccess(
+                Type entityType,
+                ref MetadataStorage? metadataStorage,
+                out Func<object, IEnumerable<object>> uncommittedEventsGetAccessor,
+                out Action<object> commitEventsInvoker,
+                out Action<object, object>? addEventAccessor)
             {
                 var uncommittedEventsProperty = GetUncommittedEventsProperty(entityType);
                 var commitEventsMethod = GetCommitEventsMethod(entityType);
@@ -513,7 +523,7 @@ namespace AI4E.Storage.Domain
                 if (uncommittedEventsProperty == null ||
                     commitEventsMethod == null)
                 {
-                    var ms = metadataStorage = metadataStorage ?? new MetadataStorage();
+                    var ms = metadataStorage ??= new MetadataStorage();
 
                     IEnumerable<object> GetUncommittedEventsFromMetadata(object entity)
                     {
@@ -549,7 +559,7 @@ namespace AI4E.Storage.Domain
                 addEventAccessor = null;
             }
 
-            private static PropertyInfo GetUncommittedEventsProperty(Type entityType)
+            private static PropertyInfo? GetUncommittedEventsProperty(Type entityType)
             {
                 var result = entityType.GetProperty("UncommittedEvents",
                                                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
@@ -576,14 +586,14 @@ namespace AI4E.Storage.Domain
                 return result;
             }
 
-            private static MethodInfo GetCommitEventsMethod(Type entityType)
+            private static MethodInfo? GetCommitEventsMethod(Type entityType)
             {
                 // TODO
                 var result = entityType.GetMethod("CommitEvents",
                                                   BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                                                   binder: default,
-                                                  new Type[0],
-                                                  new ParameterModifier[0]);
+                                                  Type.EmptyTypes,
+                                                  modifiers: null);
 
                 return result;
             }
@@ -606,11 +616,11 @@ namespace AI4E.Storage.Domain
 
                 //return _metaDataStorage.GetOrCreateValue(entity);
 
-                if (!_storage.TryGetValue(entity, out var result))
+                if (!_storage.TryGetValue(entity!, out var result))
                 {
                     result = new EntityMetadata();
 
-                    _storage.Add(entity, result);
+                    _storage.Add(entity!, result);
                 }
 
                 return result;

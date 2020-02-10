@@ -22,8 +22,8 @@ namespace AI4E.Storage.Domain
 {
     public interface IMessageAccessor
     {
-        bool TryGetEntityId<TMessage>(TMessage message, out string id);
+        bool TryGetEntityId<TMessage>(TMessage message, out string? id);
 
-        bool TryGetConcurrencyToken<TMessage>(TMessage message, out string concurrencyToken);
+        bool TryGetConcurrencyToken<TMessage>(TMessage message, out string? concurrencyToken);
     }
 }
