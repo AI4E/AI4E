@@ -325,5 +325,14 @@ namespace AI4E.Messaging
         }
 
         #endregion
+
+        public static IMessageDispatcher BuildMessageDispatcher(this IMessagingBuilder messagingBuilder)
+        {
+#pragma warning disable CA1062
+            var serviceProvider = messagingBuilder.Services.BuildServiceProvider();
+#pragma warning restore CA1062
+
+            return serviceProvider.GetRequiredService<IMessageDispatcher>();
+        }
     }
 }
