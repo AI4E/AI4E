@@ -20,6 +20,7 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using AI4E.Utils;
@@ -198,13 +199,12 @@ namespace System.Threading.Tasks
 
         public static object? GetResultOrDefault(this Task task)
         {
-#pragma warning disable CS8625
             // Just ignore the nullability warning here as the value is never used in the target method.
             return GetResultOrDefault(task, null);
-#pragma warning restore CS8625
         }
 
-        public static object GetResultOrDefault(this Task task, object defaultValue)
+        [return: NotNullIfNotNull("defaultValue")]
+        public static object? GetResultOrDefault(this Task task, object? defaultValue)
         {
 #pragma warning disable CA1062
             task.ConfigureAwait(false).GetAwaiter().GetResult();
