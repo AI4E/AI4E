@@ -10,7 +10,9 @@ using AI4E.Utils;
 
 namespace AI4E.Messaging.Routing
 {
+#pragma warning disable CA1710
     public readonly struct RouteHierarchy : IEquatable<RouteHierarchy>, IEnumerable<Route>, IReadOnlyList<Route>
+#pragma warning restore CA1710
     {
         private readonly ImmutableArray<Route> _routes;
 
@@ -52,7 +54,7 @@ namespace AI4E.Messaging.Routing
                 ref readonly var routeA = ref _routes.ItemRef(i);
                 ref readonly var routeB = ref _routes.ItemRef(i);
 
-                if (!routeA.Equals(routeB))
+                if (!routeA.Equals(in routeB))
                 {
                     return false;
                 }
@@ -115,12 +117,16 @@ namespace AI4E.Messaging.Routing
 
         IEnumerator<Route> IEnumerable<Route>.GetEnumerator()
         {
+#pragma warning disable HAA0401, HAA0601
             return ((IEnumerable<Route>)_routes).GetEnumerator();
+#pragma warning restore HAA0401, HAA0601
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
+#pragma warning disable HAA0401, HAA0601
             return ((IEnumerable<Route>)_routes).GetEnumerator();
+#pragma warning restore HAA0401, HAA0601
         }
 
         public struct Enumerator : IEnumerator<Route>, IEnumerator
@@ -135,7 +141,9 @@ namespace AI4E.Messaging.Routing
 
             public Route Current => _underlying.Current;
 
+#pragma warning disable HAA0601
             object IEnumerator.Current => Current;
+#pragma warning restore HAA0601
 
             public bool MoveNext()
             {
