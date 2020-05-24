@@ -3,15 +3,8 @@
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
     <RootNamespace>AI4E.Storage.Coordination</RootNamespace>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <Nullable>annotations</Nullable>
   </PropertyGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Memory" Version="4.5.3" />
-    <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
-    <!-- We need this for the IAsyncDisposable and IAsyncEnumerable definition -->
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.0" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Collections.Immutable" Version="1.7.0" />

@@ -3,9 +3,8 @@
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
     <RootNamespace>AI4E.Storage.Domain</RootNamespace>
-    <Nullable>enable</Nullable>
   </PropertyGroup>
-
+  
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
   </ItemGroup>

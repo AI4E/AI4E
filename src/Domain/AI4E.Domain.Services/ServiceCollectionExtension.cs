@@ -33,27 +33,6 @@ namespace AI4E.Domain.Services
                 throw new ArgumentNullException(nameof(services));
 
             services.AddTransient<IReferenceResolver, ReferenceResolver>();
-            services.AddTransient<ISerializerSettingsResolver, SerializerSettingsResolver>();
-        }
-    }
-
-    public sealed class SerializerSettingsResolver : ISerializerSettingsResolver
-    {
-        public JsonSerializerSettings ResolveSettings(IEntityStorageEngine entityStorageEngine)
-        {
-            var settings = new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.All,
-                Formatting = Formatting.Indented,
-                PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-                ReferenceLoopHandling = ReferenceLoopHandling.Serialize,
-                ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
-            };
-
-            settings.Converters.Add(new ReferenceConverter(new ReferenceResolver(entityStorageEngine)));
-            settings.Converters.Add(new DictionaryConverter());
-
-            return settings;
         }
     }
 }

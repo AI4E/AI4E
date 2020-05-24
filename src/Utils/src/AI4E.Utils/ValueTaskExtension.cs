@@ -275,7 +275,7 @@ namespace System.Threading.Tasks
 #pragma warning disable CS8653
                             // We add a default (possibly null value) for now, but we ensure that we replace this with a
                             // legal value later.
-                            result.Add(default);
+                            result.Add(default!);
 #pragma warning restore CS8653
                         }
 

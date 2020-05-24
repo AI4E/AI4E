@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+    <Nullable>annotations</Nullable>
   </PropertyGroup>
   
   <ItemGroup>

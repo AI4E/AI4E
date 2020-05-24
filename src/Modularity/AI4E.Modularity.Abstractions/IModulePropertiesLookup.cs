@@ -26,6 +26,6 @@ namespace AI4E.Modularity
 {
     public interface IModulePropertiesLookup
     {
-        ValueTask<ModuleProperties> LookupAsync(ModuleIdentifier module, CancellationToken cancellation);
+        ValueTask<ModuleProperties?> LookupAsync(ModuleIdentifier module, CancellationToken cancellation);
     }
 }
