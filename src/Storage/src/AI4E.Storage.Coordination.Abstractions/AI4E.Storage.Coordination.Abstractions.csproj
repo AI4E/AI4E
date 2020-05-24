@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
     <RootNamespace>AI4E.Storage.Coordination</RootNamespace>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <Nullable>annotations</Nullable>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">

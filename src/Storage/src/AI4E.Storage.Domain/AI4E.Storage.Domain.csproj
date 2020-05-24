@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
   </PropertyGroup>
-
+  
   <ItemGroup>
     <ProjectReference Include="..\..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Domain.Abstractions\AI4E.Storage.Domain.Abstractions.csproj" />

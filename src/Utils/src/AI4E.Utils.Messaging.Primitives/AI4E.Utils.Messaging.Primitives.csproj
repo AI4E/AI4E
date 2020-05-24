@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
     <Nullable>enable</Nullable>
   </PropertyGroup>
 

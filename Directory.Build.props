@@ -18,7 +18,8 @@
     <LangVersion>8.0</LangVersion>
     <RazorLangVersion>3.0</RazorLangVersion>
     <TypeScriptToolsVersion>3.5</TypeScriptToolsVersion>
-    <WarningsAsErrors>$(WarningsAsErrors);CS8597;CS8600;CS8601;CS8602;CS8603;CS8604;CS8609;CS8610;CS8613;CS8618;CS8620;CS8622;CS8625;CS8653;CS8714;CA2229;</WarningsAsErrors>
+    <Nullable>annotations</Nullable> <!--TODO: enable See: https://github.com/AI4E/AI4E/issues/245-->
+    <WarningsAsErrors>$(WarningsAsErrors);CS8597;CS8600;CS8601;CS8602;CS8603;CS8604;CS8609;CS8610;CS8613;CS8618;CS8620;CS8622;CS8625;CS8653;CS8714;</WarningsAsErrors>
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
     <NoWarn>$(NoWarn);NU5105</NoWarn>
     <GenerateDocumentationFile Condition="'$(Configuration)' == 'Release'">true</GenerateDocumentationFile>
@@ -69,11 +70,20 @@
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <DefineConstants>$(DefineConstants);$(NETSTD20Features);NETSTD20;</DefineConstants>
+    <Nullable>annotations</Nullable>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <Compile Include="$(RepositorySharedPath)NullabilityAttributes.cs" Link="Shared\NullabilityAttributes.cs" />
      <Compile Include="$(RepositorySharedPath)Range.cs" Link="Shared\Range.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Memory" Version="4.5.4" />
+    <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.3" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Bcl.HashCode" Version="1.1.0" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
