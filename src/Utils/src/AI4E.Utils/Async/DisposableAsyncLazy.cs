@@ -140,7 +140,9 @@ namespace AI4E.Utils.Async
                 != DisposableAsyncLazyOptions.ExecuteOnCallingThread)
                 _factory = RunOnThreadPool(_factory);
 
+#pragma warning disable VSTHRD011
             _instance = new Lazy<Task<T>>(_factory);
+#pragma warning restore VSTHRD011
 
             if ((options & DisposableAsyncLazyOptions.Autostart) != DisposableAsyncLazyOptions.Autostart)
                 Start();
@@ -195,7 +197,9 @@ namespace AI4E.Utils.Async
                 != DisposableAsyncLazyOptions.ExecuteOnCallingThread)
                 _factory = RunOnThreadPool(_factory);
 
+#pragma warning disable VSTHRD011
             _instance = new Lazy<Task<T>>(_factory);
+#pragma warning restore VSTHRD011
 
             if ((options & DisposableAsyncLazyOptions.Autostart) == DisposableAsyncLazyOptions.Autostart)
                 Start();
@@ -257,7 +261,9 @@ namespace AI4E.Utils.Async
                     {
                         lock (_mutex)
                         {
+#pragma warning disable VSTHRD011
                             _instance = new Lazy<Task<T>>(_factory);
+#pragma warning restore VSTHRD011
                         }
                     }
                     throw;
