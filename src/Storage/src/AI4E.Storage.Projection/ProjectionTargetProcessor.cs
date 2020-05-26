@@ -26,6 +26,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Internal;
@@ -45,8 +46,11 @@ namespace AI4E.Storage.Projection
 
         private readonly MetadataCache<ProjectionSourceDescriptor, ProjectionSourceMetadataEntry> _sourceMetadataCache;
         private readonly MetadataCache<ProjectionTargetDescriptor, ProjectionTargetMetadataEntry> _targetMetadataCache;
-        private readonly Dictionary<ProjectionTargetDescriptor, object> _targetsToUpdate = new Dictionary<ProjectionTargetDescriptor, object>();
-        private readonly Dictionary<ProjectionTargetDescriptor, object> _targetsToDelete = new Dictionary<ProjectionTargetDescriptor, object>();
+
+        private readonly Dictionary<ProjectionTargetDescriptor, object> _targetsToUpdate
+            = new Dictionary<ProjectionTargetDescriptor, object>();
+        private readonly Dictionary<ProjectionTargetDescriptor, object> _targetsToDelete
+            = new Dictionary<ProjectionTargetDescriptor, object>();
 
         #endregion
 
@@ -109,15 +113,17 @@ namespace AI4E.Storage.Projection
         /// <inheritdoc/>
         public async ValueTask<IEnumerable<ProjectionSourceDescriptor>> GetDependentsAsync(CancellationToken cancellation)
         {
-            var entry = await _sourceMetadataCache.GetEntryAsync(ProjectedSource, cancellation);
+            var entry = await _sourceMetadataCache.GetEntryAsync(ProjectedSource, cancellation).ConfigureAwait(false);
 
-            return entry == null ? Enumerable.Empty<ProjectionSourceDescriptor>() : entry.Dependents.Select(p => p.ToDescriptor()).ToImmutableList();
+            return entry == null
+                ? Enumerable.Empty<ProjectionSourceDescriptor>()
+                : entry.Dependents.Select(p => p.ToDescriptor()).ToImmutableList();
         }
 
         /// <inheritdoc/>
         public async ValueTask<ProjectionMetadata> GetMetadataAsync(CancellationToken cancellation)
         {
-            var entry = await _sourceMetadataCache.GetEntryAsync(ProjectedSource, cancellation);
+            var entry = await _sourceMetadataCache.GetEntryAsync(ProjectedSource, cancellation).ConfigureAwait(false);
 
             if (entry == null)
                 return default;
@@ -128,7 +134,7 @@ namespace AI4E.Storage.Projection
         /// <inheritdoc/>
         public async ValueTask UpdateAsync(ProjectionMetadata metadata, CancellationToken cancellation)
         {
-            var entry = await _sourceMetadataCache.GetEntryAsync(ProjectedSource, cancellation) ??
+            var entry = await _sourceMetadataCache.GetEntryAsync(ProjectedSource, cancellation).ConfigureAwait(false) ??
                         new ProjectionSourceMetadataEntry(
                             ProjectedSource.SourceId,
                             ProjectedSource.SourceType.GetUnqualifiedTypeName());
@@ -144,7 +150,7 @@ namespace AI4E.Storage.Projection
             }
             else if (!entry.Dependents.Any())
             {
-                await _sourceMetadataCache.DeleteEntryAsync(entry, cancellation);
+                await _sourceMetadataCache.DeleteEntryAsync(entry, cancellation).ConfigureAwait(false);
                 return;
             }
 
@@ -154,20 +160,24 @@ namespace AI4E.Storage.Projection
             foreach (var dependency in metadata.Dependencies.Select(p => p.Dependency).Except(storedDependencies))
             {
                 // Add ourself as dependent to `dependency`.            
-                var dependencyEntry = await _sourceMetadataCache.GetEntryAsync(dependency, cancellation) ??
-                    new ProjectionSourceMetadataEntry(
+                var dependencyEntry = await _sourceMetadataCache
+                    .GetEntryAsync(dependency, cancellation)
+                    .ConfigureAwait(false)
+                    ?? new ProjectionSourceMetadataEntry(
                         dependency.SourceId,
                         dependency.SourceType.GetUnqualifiedTypeName());
 
                 dependencyEntry.Dependents.Add(new DependentEntry(ProjectedSource));
-                await _sourceMetadataCache.UpdateEntryAsync(dependencyEntry, cancellation);
+                await _sourceMetadataCache.UpdateEntryAsync(dependencyEntry, cancellation).ConfigureAwait(false);
             }
 
             foreach (var dependency in storedDependencies.Except(metadata.Dependencies.Select(p => p.Dependency)))
             {
                 // Remove ourself as dependent from `dependency`.
-                var dependencyEntry = await _sourceMetadataCache.GetEntryAsync(dependency, cancellation) ??
-                    new ProjectionSourceMetadataEntry(
+                var dependencyEntry = await _sourceMetadataCache
+                    .GetEntryAsync(dependency, cancellation)
+                    .ConfigureAwait(false)
+                    ?? new ProjectionSourceMetadataEntry(
                         dependency.SourceId,
                         dependency.SourceType.GetUnqualifiedTypeName());
 
@@ -177,19 +187,19 @@ namespace AI4E.Storage.Projection
 
                 if (dependencyEntry.ProjectionTargets.Any() || dependencyEntry.Dependents.Any())
                 {
-                    await _sourceMetadataCache.UpdateEntryAsync(dependencyEntry, cancellation);
+                    await _sourceMetadataCache.UpdateEntryAsync(dependencyEntry, cancellation).ConfigureAwait(false);
                 }
                 else
                 {
                     Debug.Assert(!dependencyEntry.Dependencies.Any());
-                    await _sourceMetadataCache.DeleteEntryAsync(dependencyEntry, cancellation);
+                    await _sourceMetadataCache.DeleteEntryAsync(dependencyEntry, cancellation).ConfigureAwait(false);
                 }
             }
 
             entry.Dependencies.Clear();
             entry.Dependencies.AddRange(metadata.Dependencies.Select(p => new DependencyEntry(p)));
 
-           await _sourceMetadataCache.UpdateEntryAsync(entry, cancellation);
+            await _sourceMetadataCache.UpdateEntryAsync(entry, cancellation).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
@@ -200,42 +210,47 @@ namespace AI4E.Storage.Projection
             try
             {
                 // Write touched source metadata to database
-                foreach (var cacheEntry in _sourceMetadataCache.GetTrackedEntries().Where(p => p.State != MetadataCacheEntryState.Unchanged))
+                foreach (var cacheEntry in _sourceMetadataCache.GetTrackedEntries().Where(
+                    p => p.State != MetadataCacheEntryState.Unchanged))
                 {
                     // Check whether there are concurrent changes on the metadata.
                     var comparandMetdata = await scopedDatabase
-                        .GetAsync<ProjectionSourceMetadataEntry>(p => p.Id == (cacheEntry.Entry ?? cacheEntry.OriginalEntry).Id)
-                        .FirstOrDefaultAsync(cancellation);
+                        .GetAsync<ProjectionSourceMetadataEntry>(
+                        p => p.Id == (cacheEntry.Entry ?? cacheEntry.OriginalEntry).Id)
+                        .FirstOrDefaultAsync(cancellation)
+                        .ConfigureAwait(false);
 
                     if (!ProjectionSourceMetadataEntry.MatchesByRevision(cacheEntry.OriginalEntry, comparandMetdata))
                     {
-                        await scopedDatabase.RollbackAsync();
+                        await scopedDatabase.RollbackAsync().ConfigureAwait(false);
                         return false;
                     }
 
                     if (cacheEntry.State == MetadataCacheEntryState.Created
-                    || cacheEntry.State == MetadataCacheEntryState.Updated)
+                        || cacheEntry.State == MetadataCacheEntryState.Updated)
                     {
                         cacheEntry.Entry.MetadataRevision = (cacheEntry.OriginalEntry?.MetadataRevision ?? 0) + 1;
-                        await scopedDatabase.StoreAsync(cacheEntry.Entry, cancellation);
+                        await scopedDatabase.StoreAsync(cacheEntry.Entry, cancellation).ConfigureAwait(false);
                     }
                     else
                     {
-                        await scopedDatabase.RemoveAsync(cacheEntry.OriginalEntry, cancellation);
+                        await scopedDatabase.RemoveAsync(cacheEntry.OriginalEntry, cancellation).ConfigureAwait(false);
                     }
                 }
 
                 // Write touched target metadata to database
-                foreach (var cacheEntry in _targetMetadataCache.GetTrackedEntries().Where(p => p.State != MetadataCacheEntryState.Unchanged))
+                foreach (var cacheEntry in _targetMetadataCache.GetTrackedEntries().Where(
+                    p => p.State != MetadataCacheEntryState.Unchanged))
                 {
                     // Check whether there are concurrent changes on the metadata.
                     var comparandMetdata = await scopedDatabase
-                        .GetAsync<ProjectionTargetMetadataEntry>(p => p.Id == (cacheEntry.Entry ?? cacheEntry.OriginalEntry).Id)
-                        .FirstOrDefaultAsync(cancellation);
+                        .GetAsync<ProjectionTargetMetadataEntry>(
+                        p => p.Id == (cacheEntry.Entry ?? cacheEntry.OriginalEntry).Id)
+                        .FirstOrDefaultAsync(cancellation).ConfigureAwait(false);
 
                     if (!ProjectionTargetMetadataEntry.MatchesByRevision(cacheEntry.OriginalEntry, comparandMetdata))
                     {
-                        await scopedDatabase.RollbackAsync();
+                        await scopedDatabase.RollbackAsync().ConfigureAwait(false);
                         return false;
                     }
 
@@ -243,35 +258,39 @@ namespace AI4E.Storage.Projection
                      || cacheEntry.State == MetadataCacheEntryState.Updated)
                     {
                         cacheEntry.Entry.MetadataRevision = (cacheEntry.OriginalEntry?.MetadataRevision ?? 0) + 1;
-                        await scopedDatabase.StoreAsync(cacheEntry.Entry, cancellation);
+                        await scopedDatabase.StoreAsync(cacheEntry.Entry, cancellation).ConfigureAwait(false);
                     }
                     else
                     {
-                        await scopedDatabase.RemoveAsync(cacheEntry.OriginalEntry, cancellation);
+                        await scopedDatabase.RemoveAsync(cacheEntry.OriginalEntry, cancellation).ConfigureAwait(false);
                     }
                 }
 
                 // We do not need to check whether the targets were updated concurrently as
                 // we are already checking the metadata for concurrent changes and the projection targets are
-                // only updated/deleted in combination with the repective metadata transactionally.
+                // only updated/deleted in combination with the respective metadata transactionally.
 
                 foreach (var target in _targetsToUpdate)
                 {
-                    await scopedDatabase.StoreAsync(target.Key.TargetType, target.Value, cancellation);
+                    await GetTypedTargetProcessor(target.Key.TargetType)
+                        .StoreAsync(scopedDatabase, target.Value, cancellation)
+                        .ConfigureAwait(false);
                 }
 
                 foreach (var target in _targetsToDelete)
                 {
-                    await scopedDatabase.RemoveAsync(target.Key.TargetType, target.Value, cancellation);
+                    await GetTypedTargetProcessor(target.Key.TargetType)
+                        .RemoveAsync(scopedDatabase, target.Value, cancellation)
+                        .ConfigureAwait(false);
                 }
             }
             catch
             {
-                await scopedDatabase.RollbackAsync();
+                await scopedDatabase.RollbackAsync().ConfigureAwait(false);
                 throw;
             }
 
-            return await scopedDatabase.TryCommitAsync(cancellation);
+            return await scopedDatabase.TryCommitAsync(cancellation).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
@@ -291,19 +310,21 @@ namespace AI4E.Storage.Projection
             if (projectionResult is null)
                 throw new ArgumentNullException(nameof(projectionResult));
 
-            var target = new ProjectionTargetDescriptor(projectionResult.ResultType, projectionResult.ResultId.ToString());
+            var target = new ProjectionTargetDescriptor(
+                projectionResult.ResultType, projectionResult.ResultId.ToString());
             _targetsToUpdate[target] = projectionResult.Result;
 
-            var entry = await _targetMetadataCache.GetEntryAsync(target, cancellation) ?? new ProjectionTargetMetadataEntry
-            {
-                TargetId = projectionResult.ResultId,
-                TargetType = projectionResult.ResultType.GetUnqualifiedTypeName()
-            };
+            var entry = await _targetMetadataCache.GetEntryAsync(target, cancellation).ConfigureAwait(false)
+                ?? new ProjectionTargetMetadataEntry
+                {
+                    TargetId = projectionResult.ResultId,
+                    TargetType = projectionResult.ResultType.GetUnqualifiedTypeName()
+                };
 
             if (!entry.ProjectionSources.Any(p => p.ToDescriptor() == ProjectedSource))
             {
                 entry.ProjectionSources.Add(new ProjectionSourceEntry(ProjectedSource));
-                await _targetMetadataCache.UpdateEntryAsync(entry, cancellation);
+                await _targetMetadataCache.UpdateEntryAsync(entry, cancellation).ConfigureAwait(false);
             }
         }
 
@@ -315,7 +336,7 @@ namespace AI4E.Storage.Projection
             if (target == default)
                 throw new ArgumentDefaultException(nameof(target));
 
-            var entry = await _targetMetadataCache.GetEntryAsync(target, cancellation);
+            var entry = await _targetMetadataCache.GetEntryAsync(target, cancellation).ConfigureAwait(false);
 
             if (entry == null)
             {
@@ -328,9 +349,10 @@ namespace AI4E.Storage.Projection
 
             if (!entry.ProjectionSources.Any())
             {
-                await _targetMetadataCache.DeleteEntryAsync(entry, cancellation);
+                await _targetMetadataCache.DeleteEntryAsync(entry, cancellation).ConfigureAwait(false);
 
-                var projection = await LoadTargetAsync(_database, target.TargetType, entry.TargetId, cancellation);
+                var projection = await LoadTargetAsync(_database, target.TargetType, entry.TargetId, cancellation)
+                    .ConfigureAwait(false);
 
                 if (projection != null)
                 {
@@ -339,7 +361,7 @@ namespace AI4E.Storage.Projection
             }
             else
             {
-                await _targetMetadataCache.UpdateEntryAsync(entry, cancellation);
+                await _targetMetadataCache.UpdateEntryAsync(entry, cancellation).ConfigureAwait(false);
             }
         }
 
@@ -347,12 +369,15 @@ namespace AI4E.Storage.Projection
 
         #region LoadTarget
 
+        // TODO: If we can create a predicate from an object typed id, we can remove all of this and implement the stub in TypedTargetProcessor<TTarget>
+
         private static readonly MethodInfo _loadTargetMethodDefinition;
 
         private static readonly ConcurrentDictionary<Type, Func<IDatabase, object, CancellationToken, ValueTask<object>>> _loadTargetMethods
-                       = new ConcurrentDictionary<Type, Func<IDatabase, object, CancellationToken, ValueTask<object>>>();
+            = new ConcurrentDictionary<Type, Func<IDatabase, object, CancellationToken, ValueTask<object>>>();
 
-        private static readonly Func<Type, Func<IDatabase, object, CancellationToken, ValueTask<object>>> _buildLoadTargetMethodCache = BuildLoadTargetMethod;
+        private static readonly Func<Type, Func<IDatabase, object, CancellationToken, ValueTask<object>>> _buildLoadTargetMethodCache
+            = BuildLoadTargetMethod;
 
         static ProjectionTargetProcessor()
         {
@@ -392,10 +417,51 @@ namespace AI4E.Storage.Projection
             where TTarget : class
         {
             var predicate = DataPropertyHelper.BuildPredicate<TId, TTarget>(id);
-            return await database.GetOneAsync(predicate, cancellation);
+            return await database.GetOneAsync(predicate, cancellation).ConfigureAwait(false);
         }
 
         #endregion
+
+        private static readonly ConditionalWeakTable<Type, ITypedTargetProcessor> _typedProcessors
+            = new ConditionalWeakTable<Type, ITypedTargetProcessor>();
+
+        private static readonly ConditionalWeakTable<Type, ITypedTargetProcessor>.CreateValueCallback _buildTypedProcessor
+            = BuildTypedProcessor;
+
+        private static ITypedTargetProcessor GetTypedTargetProcessor(Type targetType)
+        {
+            return _typedProcessors.GetValue(targetType, _buildTypedProcessor);
+        }
+
+        private static ITypedTargetProcessor BuildTypedProcessor(Type targetType)
+        {
+            var result = Activator.CreateInstance(typeof(TypedTargetProcessor<>).MakeGenericType(targetType))
+                as ITypedTargetProcessor;
+
+            Debug.Assert(result != null);
+
+            return result;
+        }
+
+        private interface ITypedTargetProcessor
+        {
+            ValueTask StoreAsync(IDatabaseScope databaseScope, object target, CancellationToken cancellation);
+            ValueTask RemoveAsync(IDatabaseScope databaseScope, object target, CancellationToken cancellation);
+        }
+
+        private sealed class TypedTargetProcessor<TTarget> : ITypedTargetProcessor
+            where TTarget : class
+        {
+            public ValueTask StoreAsync(IDatabaseScope databaseScope, object target, CancellationToken cancellation)
+            {
+                return databaseScope.StoreAsync((TTarget)target, cancellation);
+            }
+
+            public ValueTask RemoveAsync(IDatabaseScope databaseScope, object target, CancellationToken cancellation)
+            {
+                return databaseScope.RemoveAsync((TTarget)target, cancellation);
+            }
+        }
     }
 
     /// <summary>

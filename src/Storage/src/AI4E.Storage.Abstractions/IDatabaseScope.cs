@@ -34,38 +34,67 @@ namespace AI4E.Storage
     public interface IDatabaseScope : IDisposable, IAsyncDisposable
     {
         /// <summary>
-        /// Asynchronously stores the specified entry in the database overriding any existing entry with the same identity.
+        /// Asynchronously stores the specified entry in the database overriding any existing entry with the same 
+        /// identity.
         /// </summary>
         /// <typeparam name="TEntry">The type of entry.</typeparam>
         /// <param name="entry">The entry that shall be stored into the database.</param>
+        /// <param name="predicate">
+        /// A predicate that the current database entry must match in order to perform the update operation.
+        /// </param>
         /// <param name="cancellation">
-        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
+        /// or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
-        /// A value task that represents the asynchronous operation. 
+        /// A <see cref="ValueTask{Boolean}"/> that represents the asynchronous operation. 
+        /// When evaluated, the tasks result contains a boolean value indicating whether the entry was stored 
+        /// successfully.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.</exception>
-        /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
-        /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
-        ValueTask StoreAsync<TEntry>(TEntry entry, CancellationToken cancellation = default)
-            where TEntry : class;
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="entry"/> or <paramref name="predicate"/> is <c>null</c>.
+        /// </exception>
+        /// <exception cref="StorageException">
+        /// Thrown if an unresolvable exception occurs in the storage subsystem.
+        /// </exception>
+        /// <exception cref="StorageUnavailableException">
+        /// Thrown if the storage subsystem is unavailable or unreachable.
+        /// </exception>
+        ValueTask<bool> StoreAsync<TEntry>(
+            TEntry entry, 
+            Expression<Func<TEntry?, bool>> predicate, 
+            CancellationToken cancellation = default) where TEntry : class;
 
         /// <summary>
         /// Asynchronously removes the specified entry from the database.
         /// </summary>
         /// <typeparam name="TEntry">The type of entry.</typeparam>
         /// <param name="entry">The entry that shall be removed from the database.</param>
+        /// <param name="predicate">
+        /// A predicate that the current database entry must match in order to perform the update operation.
+        /// </param>
         /// <param name="cancellation">
-        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
+        /// or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
-        /// A value task that represents the asynchronous operation.
+        /// A <see cref="ValueTask{Boolean}"/> that represents the asynchronous operation. 
+        /// When evaluated, the tasks result contains a boolean value indicating whether the entry was removed 
+        /// successfully.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.</exception>
-        /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
-        /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
-        ValueTask RemoveAsync<TEntry>(TEntry entry, CancellationToken cancellation = default)
-            where TEntry : class;
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="entry"/> or <paramref name="predicate"/> is <c>null</c>.
+        /// </exception>
+        /// <exception cref="StorageException">
+        /// Thrown if an unresolvable exception occurs in the storage subsystem.
+        /// </exception>
+        /// <exception cref="StorageUnavailableException">
+        /// Thrown if the storage subsystem is unavailable or unreachable.
+        /// </exception>
+        ValueTask<bool> RemoveAsync<TEntry>(
+            TEntry entry, 
+            Expression<Func<TEntry?, bool>> predicate, 
+            CancellationToken cancellation = default) where TEntry : class;
 
         /// <summary>
         /// Asynchronously retrieves a collection of all stored entries that match the specified predicate.
@@ -73,21 +102,53 @@ namespace AI4E.Storage
         /// <typeparam name="TEntry">The type of entry.</typeparam>
         /// <param name="predicate">The predicate that the entries must match.</param>
         /// <param name="cancellation">
-        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
+        /// or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
-        /// An async enumerable that enumerates all stored entries of type <typeparamref name="TEntry"/> that match the specified predicate.
+        /// An <see cref="IAsyncEnumerable{TEntry}"/> that enumerates all stored entries of type <typeparamref name="TEntry"/> 
+        /// that match the specified predicate.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="predicate"/> is null.</exception>
-        /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
-        /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
-        /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified predicate.</exception>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="predicate"/> is <c>null</c>.</exception>
+        /// <exception cref="StorageException">
+        /// Thrown if an unresolvable exception occurs in the storage subsystem.
+        /// </exception>
+        /// <exception cref="StorageUnavailableException">
+        /// Thrown if the storage subsystem is unavailable or unreachable.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown if the database does not support the specified predicate.
+        /// </exception>
         IAsyncEnumerable<TEntry> GetAsync<TEntry>(
             Expression<Func<TEntry, bool>> predicate,
             CancellationToken cancellation = default)
             where TEntry : class;
 
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
+        /// <summary>
+        /// Asynchronously retrieves a single entry that matches the specified predicate.
+        /// </summary>
+        /// <typeparam name="TEntry">The type of entry.</typeparam>
+        /// <param name="predicate">The predicate that the entry must match.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{TEntry}"/> that represents the asynchronous operation.
+        /// When evaluated, the tasks result contains an entry that matches <paramref name="predicate"/> or
+        /// <c>null</c> if no entry matched <paramref name="predicate"/>.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="predicate"/> is <c>null</c>.</exception>
+        /// <exception cref="StorageException">
+        /// Thrown if an unresolvable exception occurs in the storage subsystem.
+        /// </exception>
+        /// <exception cref="StorageUnavailableException">
+        /// Thrown if the storage subsystem is unavailable or unreachable.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown if the database does not support the specified predicate.
+        /// </exception>
         public ValueTask<TEntry?> GetOneAsync<TEntry>(
             Expression<Func<TEntry, bool>> predicate,
             CancellationToken cancellation = default)
@@ -98,22 +159,25 @@ namespace AI4E.Storage
 #endif
 
         /// <summary>
-        /// Asynchronously tries to commit the changes to the database.
+        /// Asynchronously tries to commit the changes to the database and rolls back the scope to its initial state.
         /// </summary>
         /// <param name="cancellation">
-        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
+        /// or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
-        /// A <see cref="ValueTask{TResult}"/> that represents the asynchronous operation.
-        /// When evaluated, the tasks result contains a boolean value indicating whether the commit operation was performed successfully.
+        /// A <see cref="ValueTask{Boolean}"/> that represents the asynchronous operation.
+        /// When evaluated, the tasks result contains a boolean value indicating whether the 
+        /// commit operation was performed successfully.
         /// </returns>
-        ValueTask<bool> TryCommitAsync(CancellationToken cancellation = default); // TODO: Specify whether we roll-back on failure.
+        ValueTask<bool> TryCommitAsync(CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously rolls back all changes.
         /// </summary>
         /// <param name="cancellation">
-        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
+        /// or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>A <see cref="ValueTask"/> that represents the asynchronous operation.</returns>
         ValueTask RollbackAsync(CancellationToken cancellation = default);
@@ -124,14 +188,23 @@ namespace AI4E.Storage
         /// <typeparam name="TEntry">The type of entry.</typeparam>
         /// <typeparam name="TResult">The type of result.</typeparam>
         /// <param name="queryShaper">A function that specifies the database query.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>
-        /// An async enumerable that enumerates items of type <typeparamref name="TResult"/> that are the query result.
+        /// An <see cref="IAsyncEnumerable{TResult}"/> that enumerates items of type <typeparamref name="TResult"/> that are the query result.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="queryShaper"/> is null.</exception>
-        /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
-        /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
-        /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified query.</exception>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="queryShaper"/> is <c>null</c>.</exception>
+        /// <exception cref="StorageException">
+        /// Thrown if an unresolvable exception occurs in the storage subsystem.
+        /// </exception>
+        /// <exception cref="StorageUnavailableException">
+        /// Thrown if the storage subsystem is unavailable or unreachable.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown if the database does not support the specified query.
+        /// </exception>
 #if !SUPPORTS_DEFAULT_INTERFACE_METHODS
         IAsyncEnumerable<TResult> QueryAsync<TEntry, TResult>(
             Func<IQueryable<TEntry>, IQueryable<TResult>> queryShaper,
