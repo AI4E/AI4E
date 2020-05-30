@@ -102,7 +102,7 @@ namespace AI4E.Storage.Projection
             {
                 _projectionRegistrations = projectionRegistrations.ToImmutableDictionary(
                     keySelector: kvp => kvp.Key,
-                    elementSelector: kvp => kvp.Value.Reverse().ToImmutableList()); // TODO: Reverse is not very performant
+                    elementSelector: kvp => kvp.Value.Reverse().ToImmutableList()); // TODO: Reverse is not very permanent
 
                 _combinedRegistrations = BuildCombinedCollection().ToImmutableList();
             }

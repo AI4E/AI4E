@@ -1,0 +1,315 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Committing" xml:space="preserve">
+    <value>Committing all changes to the domain storage. Scope {0}</value>
+  </data>
+  <data name="Deleting" xml:space="preserve">
+    <value>Deleting the entity with identifier {0} from the storage engine. Scope {1}</value>
+  </data>
+  <data name="DispatchingDomainEvent" xml:space="preserve">
+    <value>Dispatching domain-event of type {0}. Scope: {1}</value>
+  </data>
+  <data name="EngineCheckingConcurrency" xml:space="preserve">
+    <value>Checking for concurrent changes on entity with identifier {0}. Scope: {1}</value>
+  </data>
+  <data name="EngineCommitAttemptConcurrencyCheckFailed" xml:space="preserve">
+    <value>Refused to further the process commit attempt as the concurrency check failed. Scope: {0}</value>
+  </data>
+  <data name="EngineCommitSuccess" xml:space="preserve">
+    <value>Successfully commit attempt. Scope: {0}</value>
+  </data>
+  <data name="EngineConcurrencyCheckFailed" xml:space="preserve">
+    <value>Concurrency check on entity with identifier {0} failed. Scope: {1}</value>
+  </data>
+  <data name="EngineConcurrencyCheckFailedUpdatingCache" xml:space="preserve">
+    <value>Concurrency check on entity with identifier {0} failed. Updating cache. Scope: {1}</value>
+  </data>
+  <data name="EngineDeletetingEntityFromDatabase" xml:space="preserve">
+    <value>Deleting entity with identifier {0} in the underlying database. Scope: {1}</value>
+  </data>
+  <data name="EngineDeletingDomainEventBatchAndEntityFromDatabase" xml:space="preserve">
+    <value>Deleting the domain-event batch of the entity with the identifier {0} and the marked as deleted entity from the underlying database. Scope: {1}</value>
+  </data>
+  <data name="EngineDeletingDomainEventBatchFromDatabase" xml:space="preserve">
+    <value>Deleting the domain-event batch of the entity with the identifier {0} from the underlying database. Scope: {1}</value>
+  </data>
+  <data name="EngineDispatchedDomainEventBatch" xml:space="preserve">
+    <value>Domain-event batch of entity with identifer {0} dispatched successfully. Scope: {1}</value>
+  </data>
+  <data name="EngineDispatchingDomainEventBatch" xml:space="preserve">
+    <value>Registering domain-event batch of entity with identifer {0} for dispatch. Scope: {1}</value>
+  </data>
+  <data name="EngineDispatchingMultipleDomainEventBatches" xml:space="preserve">
+    <value>Registering all domain-event batched for dispatch. Scope: {1}</value>
+  </data>
+  <data name="EngineFailedToCommitTransaction" xml:space="preserve">
+    <value>Failed to commit the transaction to the underlying database due to concurrency issues. Restarting the transaction. Scope: {0}</value>
+  </data>
+  <data name="EngineFailureLoadingEntityFromDatabase" xml:space="preserve">
+    <value>Failed loading entity with identifier {0} from underlying database for reason: '{1}'. Scope: {2}</value>
+  </data>
+  <data name="EngineInitialized" xml:space="preserve">
+    <value>Initialized the domain storage engine. Scope: {1}</value>
+  </data>
+  <data name="EngineInitializing" xml:space="preserve">
+    <value>Initializing the domain storage engine. Scope: {1}</value>
+  </data>
+  <data name="EngineLoadedEntitiesFromDatabase" xml:space="preserve">
+    <value>Loaded and processed entities of type {0} from the underlying database. Scope: {1}</value>
+  </data>
+  <data name="EngineLoadedEntityFromDatabase" xml:space="preserve">
+    <value>Loaded entity with identifier {0} from the underyling database. Scope: {1}</value>
+  </data>
+  <data name="EngineLoadingDefaultEntityIdentifier" xml:space="preserve">
+    <value>Loading entity with default identity from the underlying database results in failure loading-result. Scope: {0}</value>
+  </data>
+  <data name="EngineLoadingEntitiesFromDatabase" xml:space="preserve">
+    <value>Loading entities of type {0} from the underlying database. Scope: {1}</value>
+  </data>
+  <data name="EngineLoadingEntityFromCache" xml:space="preserve">
+    <value>Loading entity with identifier {0} in from cache. Scope: {1}</value>
+  </data>
+  <data name="EngineLoadingEntityFromDatabase" xml:space="preserve">
+    <value>Loading entity with identifier {0} in from the underyling database. Scope: {1}</value>
+  </data>
+  <data name="EngineMarkingDomainEventBatchAsDispatched" xml:space="preserve">
+    <value>Marking the domain-event batch of entity with identifier {0} as dispatched. Scope: {1}</value>
+  </data>
+  <data name="EngineProcessingCommitAttempt" xml:space="preserve">
+    <value>Processing commit attempt. Scope: {0}</value>
+  </data>
+  <data name="EngineProcessingEntity" xml:space="preserve">
+    <value>Processing loaded entity with identifier {0}. Scope: {1}</value>
+  </data>
+  <data name="EngineStartedCommitTransaction" xml:space="preserve">
+    <value>Concurrency check for commit attempt succeeded. Started database transaction. Scope: {0}</value>
+  </data>
+  <data name="EngineStoringEntityMarkedAsDeletedToDatabase" xml:space="preserve">
+    <value>Writing store operation to the underlying database marking the entity with identifer {0} as deleted. Scope: {1}</value>
+  </data>
+  <data name="EngineStoringEntityToDatabase" xml:space="preserve">
+    <value>Storing entity with identifier {0} in the underlying database. Scope: {1}</value>
+  </data>
+  <data name="EngineWritingDomainEventBatchToDatabase" xml:space="preserve">
+    <value>Writing domain-event batch of entity with identifier {0} to the underlying database. Scope: {1}</value>
+  </data>
+  <data name="EntityLoadResultMustIndicateSuccess" xml:space="preserve">
+    <value>The specified load result must indicate success.</value>
+  </data>
+  <data name="EntityMustBeAsignableToEntityType" xml:space="preserve">
+    <value>The specified entity must be assignable to the specified entity-type.</value>
+  </data>
+  <data name="EntityMustBeAssignableToEntityType" xml:space="preserve">
+    <value>The specified entity must be assignable to the specified entity type.</value>
+  </data>
+  <data name="EventMustBeAssignableToEventType" xml:space="preserve">
+    <value>The specified event is not assignable to the specified event type.</value>
+  </data>
+  <data name="ExceptionDispatchingDomainEvent" xml:space="preserve">
+    <value>Exception thrown on dispatching domain-event of type {0}. Scope: {1}</value>
+  </data>
+  <data name="FailureDispatchingDomainEvent" xml:space="preserve">
+    <value>Failed to dispatch domain-event of type {0} for reason: '{1}'. Scope: {2}</value>
+  </data>
+  <data name="FailureLoadingEntity" xml:space="preserve">
+    <value>Failed loading entity with identifier {0} for reason: '{1}'. Scope: {2}</value>
+  </data>
+  <data name="InvokingQueryExecutor" xml:space="preserve">
+    <value>Invoking query-executor for entity with identifier {0}. Scope {1}</value>
+  </data>
+  <data name="LoadedEntities" xml:space="preserve">
+    <value>Loaded and processed entities of type {0} from the underlying storage-engine. Scope: {1}</value>
+  </data>
+  <data name="LoadedEntity" xml:space="preserve">
+    <value>Loaded entity with identifier {0}. Scope: {1}</value>
+  </data>
+  <data name="LoadingDefaultEntityIdentifier" xml:space="preserve">
+    <value>Loading entity with default identity from th eunderlying storage engine resulted in failure loading-result. Scope: {0}</value>
+  </data>
+  <data name="LoadingEntities" xml:space="preserve">
+    <value>Loading entities of type {0} from the underlying storage-engine. Scope: {1}</value>
+  </data>
+  <data name="NoScope" xml:space="preserve">
+    <value>[None]</value>
+  </data>
+  <data name="NotFound" xml:space="preserve">
+    <value>The entity cannot be found.</value>
+  </data>
+  <data name="NotMatchedExpectedConcurrencyToken" xml:space="preserve">
+    <value>The entity does not match the expected concurrency token.</value>
+  </data>
+  <data name="NotMatchedExpectedRevision" xml:space="preserve">
+    <value>The entity does not match the expected range of revision.</value>
+  </data>
+  <data name="ProcessingEntity" xml:space="preserve">
+    <value>Processing loaded entity with identifier {0}. Scope: {1}</value>
+  </data>
+  <data name="QueryExecutorFailureLoadingEntity" xml:space="preserve">
+    <value>Query executor failed loading entity with identifier {0} for reason: '{1}'. Scope: {2}</value>
+  </data>
+  <data name="QueryExecutorLoadedEntity" xml:space="preserve">
+    <value>Query executor loaded entity with identifier {0}. Scope: {1}</value>
+  </data>
+  <data name="QueryExecutorLoadingEntityFromStorageEngine" xml:space="preserve">
+    <value>Query executor is loading entity with identifier {0} from the underlying storage engine. Scope {1}</value>
+  </data>
+  <data name="QueryExecutorLoadingEntityFromUnitOfWork" xml:space="preserve">
+    <value>Query executor is loading entity with identifier {0} from the unit of work. Scope {1}</value>
+  </data>
+  <data name="RequestedEntity" xml:space="preserve">
+    <value>Requested entity with identifier {0}. Invoking query processor {1}. Scope: {1}</value>
+  </data>
+  <data name="RollingBack" xml:space="preserve">
+    <value>Rolling back all changes to the domain storage. Scope {0}</value>
+  </data>
+  <data name="Storing" xml:space="preserve">
+    <value>Storing the entity with identifier {0} to the storage engine. Scope {1}</value>
+  </data>
+  <data name="SuccessfullyDispatchedDomainEvent" xml:space="preserve">
+    <value>Successfully dispatched domain-event of type {0}. Scope: {1}</value>
+  </data>
+  <data name="SuccessfullyLoaded" xml:space="preserve">
+    <value>The entity was loaded successfully.</value>
+  </data>
+  <data name="TimeSpanMustNotBeNegative" xml:space="preserve">
+    <value>The argument must not indicate a negative time-span.</value>
+  </data>
+  <data name="TrackedEntityMustNotBeInState" xml:space="preserve">
+    <value>The specified tracked-entity must not be in state {0}.</value>
+  </data>
+  <data name="UnknownReason" xml:space="preserve">
+    <value>Unknown reason</value>
+  </data>
+  <data name="UpdatedTrackedEntityInUnitOfWork" xml:space="preserve">
+    <value>Replaced or updated the processed entity with identifier {0} in the unit of work. Scope {1}</value>
+  </data>
+  <data name="UpdatedTrackedEntityInUnitOfWorkNonExisting" xml:space="preserve">
+    <value>Replaced the processed entity with identifier {0} in the unit of work. Skipping entity. Scope {1}</value>
+  </data>
+  <data name="UpdatingUnitOfWork" xml:space="preserve">
+    <value>Updating unit of work with loaded entity with identifier {0}. Scope {1}</value>
+  </data>
+  <data name="ValueMustNotBeNegative" xml:space="preserve">
+    <value>The value must not be negative.</value>
+  </data>
+  <data name="WritingMetadataToEntity" xml:space="preserve">
+    <value>Writing metadata to entity with identifier {0}. Concurrency-token: {1}. Revision: {2}. Scope: {3}</value>
+  </data>
+</root>

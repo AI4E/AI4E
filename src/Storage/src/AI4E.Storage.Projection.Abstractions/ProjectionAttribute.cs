@@ -44,7 +44,7 @@ namespace AI4E.Storage.Projection
         public MultipleProjectionResults MultipleResults { get; set; }
 
         /// <summary>
-        /// Gets or sets a boolean value inidicating whether the projection shall be invoked for non-existing sources.
+        /// Gets or sets a boolean value indicating whether the projection shall be invoked for non-existing sources.
         /// </summary>
         public bool ProjectNonExisting { get; set; }
     }

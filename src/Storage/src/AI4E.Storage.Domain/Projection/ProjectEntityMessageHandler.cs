@@ -24,10 +24,13 @@ namespace AI4E.Storage.Domain
             bool localDispatch,
             CancellationToken cancellation)
         {
+            if (dispatchData is null)
+                throw new ArgumentNullException(nameof(dispatchData));
+
             var entityType = dispatchData.Message.EntityType;
             var entityId = dispatchData.Message.EntityId;
 
-            await _projectionEngine.ProjectAsync(entityType, entityId, cancellation);
+            await _projectionEngine.ProjectAsync(entityType, entityId, cancellation).ConfigureAwait(false);
             return new SuccessDispatchResult();
         }
 

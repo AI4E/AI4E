@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -26,59 +26,76 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Storage.Projection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.ObjectPool;
 
 namespace AI4E.Storage.Domain
 {
     public sealed class EntityStorageEngineProjectionSourceProcessor : IProjectionSourceProcessor
     {
-        private readonly IEntityStorageEngine _storageEngine;
+        private readonly IEntityStorage _entityStorage;
 
         public EntityStorageEngineProjectionSourceProcessor(
-            IEntityStorageEngine storageEngine, 
+            IEntityStorage entityStorage,
             ProjectionSourceDescriptor projectedSource)
         {
-            if (storageEngine == null)
-                throw new ArgumentNullException(nameof(storageEngine));
+            if (entityStorage == null)
+                throw new ArgumentNullException(nameof(entityStorage));
 
-            _storageEngine = storageEngine;
+            _entityStorage = entityStorage;
             ProjectedSource = projectedSource;
         }
 
         public ProjectionSourceDescriptor ProjectedSource { get; }
 
-        public IEnumerable<ProjectionSourceDependency> Dependencies => _storageEngine
-            .LoadedEntries
-            .Select(p => new ProjectionSourceDependency(p.type, p.id, p.revision))
+        public IEnumerable<ProjectionSourceDependency> Dependencies => _entityStorage
+            .LoadedEntities
+            .Select(p => new ProjectionSourceDependency(
+                p.EntityIdentifier.EntityType, p.EntityIdentifier.EntityId, p.Revision))
             .Where(p => p.Dependency != ProjectedSource)
             .ToImmutableList();
 
-        public ValueTask<object> GetSourceAsync(
+        public async ValueTask<object?> GetSourceAsync(
             ProjectionSourceDescriptor projectionSource,
-            bool bypassCache,
             CancellationToken cancellation)
         {
-            return _storageEngine.GetByIdAsync(
-                projectionSource.SourceType, projectionSource.SourceId, bypassCache, cancellation);
+            var entityLoadResult = await _entityStorage.LoadEntityAsync(
+                new EntityIdentifier(
+                    projectionSource.SourceType, projectionSource.SourceId), cancellation).ConfigureAwait(false);
+
+            return entityLoadResult?.GetEntityOrNull();
         }
 
-        public ValueTask<long> GetSourceRevisionAsync(
+        private static readonly ObjectPool<ExpectedRevisionDomainQueryProcessor> _domainQueryProcessorPool
+            = ObjectPool.Create<ExpectedRevisionDomainQueryProcessor>();
+
+        public async ValueTask<long> GetSourceRevisionAsync(
             ProjectionSourceDescriptor projectionSource,
-            bool bypassCache,
+            long? expectedMinRevision,
             CancellationToken cancellation)
         {
-            return _storageEngine.GetRevisionAsync(
-                projectionSource.SourceType, projectionSource.SourceId, bypassCache, cancellation);
+            var entityIdentifier = new EntityIdentifier(projectionSource.SourceType, projectionSource.SourceId);
+
+            using (_domainQueryProcessorPool.Get(out var domainQueryProcessor))
+            {
+                domainQueryProcessor.MinExpectedRevision = expectedMinRevision;
+                domainQueryProcessor.MaxExpectedRevision = null;
+
+                var entityLoadResult = await _entityStorage.LoadEntityAsync(
+                    entityIdentifier, domainQueryProcessor, cancellation).ConfigureAwait(false);
+
+                return entityLoadResult?.Revision ?? 0;
+            }
         }
     }
 
     public sealed class EntityStorageEngineProjectionSourceProcessorFactory : IProjectionSourceProcessorFactory
     {
         public IProjectionSourceProcessor CreateInstance(
-            ProjectionSourceDescriptor projectedSource, 
+            ProjectionSourceDescriptor projectedSource,
             IServiceProvider serviceProvider)
         {
-            var storageEngine = serviceProvider.GetRequiredService<IEntityStorageEngine>();
-            return new EntityStorageEngineProjectionSourceProcessor(storageEngine, projectedSource);
+            return ActivatorUtilities.CreateInstance<EntityStorageEngineProjectionSourceProcessor>(
+                serviceProvider, projectedSource);
         }
     }
 }

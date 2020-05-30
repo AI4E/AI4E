@@ -21,7 +21,6 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using AI4E.Utils;
 
 namespace AI4E.Storage.Projection
 {
@@ -41,7 +40,7 @@ namespace AI4E.Storage.Projection
         /// A boolean value indicating whether the projection projections to multiple targets.
         /// </param>
         /// <param name="projectNonExisting">
-        /// A boolean value inidicating whether the projection shall be invoked for non-existing sources.
+        /// A boolean value indicating whether the projection shall be invoked for non-existing sources.
         /// </param>
         /// <exception cref="ArgumentNullException">
         /// Thrown if any of <paramref name="handlerType"/>, <paramref name="sourceType"/>,
@@ -88,7 +87,7 @@ namespace AI4E.Storage.Projection
                 throw new ArgumentException("The specified source type must be assignable the type of the members first parameter.");
 
             if (!member.DeclaringType.IsAssignableFrom(handlerType))
-                throw new ArgumentException("The specififed handler type must be assignable to the type that declares the specified member.");
+                throw new ArgumentException("The specified handler type must be assignable to the type that declares the specified member.");
 
             // TODO: Do we also check whether any parameter/messageType/messageHandlerType is by ref or is a pointer, etc.
 
@@ -126,7 +125,7 @@ namespace AI4E.Storage.Projection
         public bool MultipleResults { get; }
 
         /// <summary>
-        /// Gets a boolean value inidicating whether the projection shall be invoked for non-existing sources.
+        /// Gets a boolean value indicating whether the projection shall be invoked for non-existing sources.
         /// </summary>
         public bool ProjectNonExisting { get; }
     }

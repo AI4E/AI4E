@@ -104,7 +104,7 @@ namespace AI4E.Storage.Projection
     /// <summary>
     /// Represents projections as <see cref="IProjection"/>.
     /// </summary>
-    /// <typeparam name="TSource">The tyep of projection source.</typeparam>
+    /// <typeparam name="TSource">The type of projection source.</typeparam>
     /// <typeparam name="TTarget">The type of projection target.</typeparam>
     public sealed class ProjectionInvoker<TSource, TTarget> : IProjection<TSource, TTarget>
         where TSource : class

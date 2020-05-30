@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -18,10 +18,9 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
+using System.Collections;
 
 #if DEBUG
 using System.Diagnostics;
@@ -34,6 +33,52 @@ namespace System.Linq
     /// </summary>
     public static class AI4EUtilsEnumerableExtension
     {
+        #region Cache
+
+        public static IEnumerable<TItem> Cached<TItem>(this IEnumerable<TItem> source)
+        {
+            return new CachedEnumerable<TItem>(source);
+        }
+
+        private sealed class CachedEnumerable<TItem> : IEnumerable<TItem>
+        {
+            private readonly IEnumerable<TItem> _source;
+            private readonly List<TItem> _cache = new List<TItem>();
+
+            private IEnumerator<TItem>? _enumerator;
+
+            public CachedEnumerable(IEnumerable<TItem> source)
+            {
+                if (source is null)
+                    throw new ArgumentNullException(nameof(source));
+
+                _source = source;
+            }
+
+            public IEnumerator<TItem> GetEnumerator()
+            {
+                foreach (var item in _cache)
+                {
+                    yield return item;
+                }
+
+                _enumerator ??= _source.GetEnumerator();
+
+                while (_enumerator.MoveNext())
+                {
+                    _cache.Add(_enumerator.Current);
+                    yield return _enumerator.Current;
+                }
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
+        }
+
+        #endregion
+
         #region Shuffle
 
         [ThreadStatic]

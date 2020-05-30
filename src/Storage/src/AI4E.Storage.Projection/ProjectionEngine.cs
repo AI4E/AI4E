@@ -145,9 +145,9 @@ namespace AI4E.Storage.Projection
                 return;
 
             var source = await sourceProcessor.GetSourceAsync(
-                targetProcessor.ProjectedSource, bypassCache: false, cancellation);
+                targetProcessor.ProjectedSource, cancellation);
             var sourceRevision = await sourceProcessor.GetSourceRevisionAsync(
-                targetProcessor.ProjectedSource, bypassCache: false, cancellation);
+                targetProcessor.ProjectedSource, expectedMinRevision: default, cancellation);
 
             var projectionResults = _projector.ExecuteProjectionAsync(
                 targetProcessor.ProjectedSource.SourceType, source, scopedServiceProvider, cancellation);
@@ -226,8 +226,11 @@ namespace AI4E.Storage.Projection
             ProjectionMetadata metadata,
             CancellationToken cancellation)
         {
-            var sourceRevision = await GetSourceRevisionAsync(
-                sourceProcessor, metadata.ProjectionRevision, cancellation);
+            var sourceRevision = await sourceProcessor.GetSourceRevisionAsync(
+                   sourceProcessor.ProjectedSource,
+                   expectedMinRevision: metadata.ProjectionRevision,
+                   cancellation);
+
             Debug.Assert(sourceRevision >= metadata.ProjectionRevision);
 
             if (sourceRevision > metadata.ProjectionRevision)
@@ -237,8 +240,11 @@ namespace AI4E.Storage.Projection
 
             foreach (var projectionRevision in metadata.Dependencies.Select(p => p.ProjectionRevision))
             {
-                var dependencyRevision = await GetSourceRevisionAsync(
-                    sourceProcessor, metadata.ProjectionRevision, cancellation);
+                var dependencyRevision = await sourceProcessor.GetSourceRevisionAsync(
+                   sourceProcessor.ProjectedSource,
+                   expectedMinRevision: metadata.ProjectionRevision,
+                   cancellation);
+
                 Debug.Assert(dependencyRevision >= projectionRevision);
 
                 if (dependencyRevision > projectionRevision)
@@ -248,26 +254,6 @@ namespace AI4E.Storage.Projection
             }
 
             return false;
-        }
-
-        private async ValueTask<long> GetSourceRevisionAsync(
-            IProjectionSourceProcessor sourceProcessor,
-            long projectionRevision,
-            CancellationToken cancellation)
-        {
-            long sourceRevision;
-            var sourceOutOfDate = false;
-
-            do
-            {
-                sourceRevision = await sourceProcessor.GetSourceRevisionAsync(
-                    bypassCache: sourceOutOfDate, cancellation);
-
-                sourceOutOfDate = sourceRevision < projectionRevision;
-
-            } while (sourceRevision < projectionRevision);
-
-            return sourceRevision;
         }
     }
 }

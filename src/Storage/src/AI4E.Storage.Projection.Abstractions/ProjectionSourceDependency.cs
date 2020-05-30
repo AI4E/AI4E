@@ -45,7 +45,7 @@ namespace AI4E.Storage.Projection
         /// <summary>
         /// Creates a new instance of the <see cref="ProjectionSourceDependency"/> type.
         /// </summary>
-        /// <param name="dependency">A <see cref="ProjectionSourceDescriptor"/> represeting the projection source.</param>
+        /// <param name="dependency">A <see cref="ProjectionSourceDescriptor"/> representing the projection source.</param>
         /// <param name="projectionRevision">The revision of the source that the projection is based on.</param>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="dependency"/> is <c>default</c>.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="projectionRevision"/> is negative.</exception>
@@ -87,7 +87,7 @@ namespace AI4E.Storage.Projection
         /// <inheritdoc/>
         public override int GetHashCode()
         {
-            return (Dependency, ProjectionRevision).GetHashCode();
+            return HashCode.Combine(Dependency, ProjectionRevision);
         }
 
         /// <summary>

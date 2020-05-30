@@ -31,7 +31,7 @@ namespace AI4E.Storage.Projection
     public class ProjectionFeature
     {
         /// <summary>
-        /// Gets the list of types that desclare projections.
+        /// Gets the list of types that declare projections.
         /// </summary>
         public IList<Type> Projections { get; } = new List<Type>();
     }

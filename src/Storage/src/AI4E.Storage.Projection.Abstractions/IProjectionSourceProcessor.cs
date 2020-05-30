@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -39,36 +39,33 @@ namespace AI4E.Storage.Projection
         /// Asynchronously retrieves a projection source.
         /// </summary>
         /// <param name="projectionSource">The descriptor of the projection source.</param>
-        /// <param name="bypassCache">A boolean value indicating whether the cache shall be by-passed.</param>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
-        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
+        /// A <see cref="ValueTask{Object}"/> representing the asynchronous operation.
         /// When evaluated, the tasks result contains the projection source, or <c>null</c> if the source was not found.
         /// </returns>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="projectionSource"/> is <c>default.</c></exception>
-        ValueTask<object> GetSourceAsync(
+        ValueTask<object?> GetSourceAsync(
             ProjectionSourceDescriptor projectionSource,
-            bool bypassCache,
             CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously retrieves the revision of a projection source.
         /// </summary>
         /// <param name="projectionSource">The descriptor of the projection source.</param>
-        /// <param name="bypassCache">A boolean value indicating whether the cache shall be by-passed.</param>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
-        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
+        /// A <see cref="ValueTask{Long}"/> representing the asynchronous operation.
         /// When evaluated, the tasks result contains the revision of the projection source, or <c>0</c> if the source was not found.
         /// </returns>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="projectionSource"/> is <c>default.</c></exception>
         ValueTask<long> GetSourceRevisionAsync(
             ProjectionSourceDescriptor projectionSource,
-            bool bypassCache,
+            long? expectedMinRevision = default,
             CancellationToken cancellation = default);
 
         /// <summary>
@@ -91,51 +88,5 @@ namespace AI4E.Storage.Projection
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="projectedSource"/> is <c>default</c>.</exception>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is <c>null</c>.</exception>
         IProjectionSourceProcessor CreateInstance(ProjectionSourceDescriptor projectedSource, IServiceProvider serviceProvider);
-    }
-
-    /// <summary>
-    /// Contains extensions for the <see cref="IProjectionSourceProcessor"/> type.
-    /// </summary>
-    public static class ProjectionSourceProcessorExtension
-    {
-        /// <summary>
-        /// Asynchronously retrieves the projected source.
-        /// </summary>
-        /// <param name="sourceProcessor">The source processor.</param>
-        /// <param name="bypassCache">A boolean value indicating whether the cache shall be by-passed.</param>
-        /// <param name="cancellation">
-        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.
-        /// </param>
-        /// <returns>
-        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
-        /// When evaluated, the tasks result contains the projected source, or <c>null</c> if the source was not found.
-        /// </returns>
-        public static ValueTask<object> GetSourceAsync(
-            this IProjectionSourceProcessor sourceProcessor,
-            bool bypassCache,
-            CancellationToken cancellation = default)
-        {
-            return sourceProcessor.GetSourceAsync(sourceProcessor.ProjectedSource, bypassCache, cancellation);
-        }
-
-        /// <summary>
-        /// Asynchronously retrieves the revision of the projected source.
-        /// </summary>
-        /// <param name="sourceProcessor">The source processor.</param>
-        /// <param name="bypassCache">A boolean value indicating whether the cache shall be by-passed.</param>
-        /// <param name="cancellation">
-        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.
-        /// </param>
-        /// <returns>
-        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
-        /// When evaluated, the tasks result contains the revision of the projected source, or <c>0</c> if the source was not found.
-        /// </returns>
-        public static ValueTask<long> GetSourceRevisionAsync(
-            this IProjectionSourceProcessor sourceProcessor,
-            bool bypassCache,
-            CancellationToken cancellation = default)
-        {
-            return sourceProcessor.GetSourceRevisionAsync(sourceProcessor.ProjectedSource, bypassCache, cancellation);
-        }
     }
 }

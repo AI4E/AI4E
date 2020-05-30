@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -125,7 +125,12 @@ namespace Microsoft.Extensions.ObjectPool
             _source.Dispose(_token);
         }
 
-        public bool Equals(PooledObjectReturner<T> other)
+        bool IEquatable<PooledObjectReturner<T>>.Equals(PooledObjectReturner<T> other)
+        {
+            return Equals(in other);
+        }
+
+        public bool Equals(in PooledObjectReturner<T> other)
         {
             return (_source, _token) == (other._source, other._token);
         }
@@ -133,22 +138,22 @@ namespace Microsoft.Extensions.ObjectPool
         public override bool Equals(object? obj)
         {
             return obj is PooledObjectReturner<T> pooledObjectReturner
-                && Equals(pooledObjectReturner);
+                && Equals(in pooledObjectReturner);
         }
 
         public override int GetHashCode()
         {
-            return (_source, _token).GetHashCode();
+            return HashCode.Combine(_source, _token);
         }
 
-        public static bool operator ==(PooledObjectReturner<T> left, PooledObjectReturner<T> right)
+        public static bool operator ==(in PooledObjectReturner<T> left, in PooledObjectReturner<T> right)
         {
-            return left.Equals(right);
+            return left.Equals(in right);
         }
 
-        public static bool operator !=(PooledObjectReturner<T> left, PooledObjectReturner<T> right)
+        public static bool operator !=(in PooledObjectReturner<T> left, in PooledObjectReturner<T> right)
         {
-            return !left.Equals(right);
+            return !left.Equals(in right);
         }
     }
 }

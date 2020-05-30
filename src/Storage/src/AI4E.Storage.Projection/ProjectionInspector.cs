@@ -100,7 +100,7 @@ namespace AI4E.Storage.Projection
                     continue;
 
                 // The type implements IEnumerable for multiple element types.
-                // As no one of them superseeds them all in the type hierachy,
+                // As no one of them supersedes them all in the type hierarchy,
                 // we have a conflict here.
                 elementType = null;
                 return false;
@@ -247,7 +247,7 @@ namespace AI4E.Storage.Projection
         /// A boolean value indicating whether the projection projections to multiple targets.
         /// </param>
         /// <param name="projectNonExisting">
-        /// A boolean value inidicating whether the projection shall be invoked for non-existing sources.
+        /// A boolean value indicating whether the projection shall be invoked for non-existing sources.
         /// </param>
         public ProjectionParameters(Type sourceType, Type targetType, bool multipleResults, bool projectNonExisting)
         {
@@ -273,7 +273,7 @@ namespace AI4E.Storage.Projection
         public bool MultipleResults { get; }
 
         /// <summary>
-        /// Gets a boolean value inidicating whether the projection shall be invoked for non-existing sources.
+        /// Gets a boolean value indicating whether the projection shall be invoked for non-existing sources.
         /// </summary>
         public bool ProjectNonExisting { get; }
     }

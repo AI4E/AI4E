@@ -72,7 +72,7 @@ namespace AI4E.Storage.Projection
 
         /// <summary>
         /// Asynchronously commits the recorded changes and
-        /// returns a boolean value indicating whether the operation suceeded.
+        /// returns a boolean value indicating whether the operation succeeded.
         /// </summary>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.

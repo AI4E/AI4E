@@ -122,7 +122,7 @@ namespace AI4E.Storage.Projection
     /// Represents the registration of a projection.
     /// </summary>
     /// <typeparam name="TSource">The type of projection source.</typeparam>
-    /// <typeparam name="TTarget">The type of projection targer.</typeparam>
+    /// <typeparam name="TTarget">The type of projection target.</typeparam>
     public sealed class ProjectionRegistration<TSource, TTarget> : IProjectionRegistration<TSource, TTarget>
         where TSource : class
         where TTarget : class

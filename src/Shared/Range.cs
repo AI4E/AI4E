@@ -3,6 +3,7 @@
 // https://github.com/dotnet/corefx/blob/1597b894a2e9cac668ce6e484506eca778a85197/src/Common/src/CoreLib/System/Index.cs
 // https://github.com/dotnet/corefx/blob/1597b894a2e9cac668ce6e484506eca778a85197/src/Common/src/CoreLib/System/Range.cs
 
+using System.Globalization;
 using System.Runtime.CompilerServices;
 
 namespace System
@@ -19,18 +20,22 @@ namespace System
     {
         private readonly int _value;
 
-        /// <summary>Construct an Index using a value and indicating if the index is from the start or from the end.</summary>
+        /// <summary>
+        /// Construct an Index using a value and indicating if the index is from the start or from the end.
+        /// </summary>
         /// <param name="value">The index value. it has to be zero or positive number.</param>
         /// <param name="fromEnd">Indicating if the index is from the start or from the end.</param>
         /// <remarks>
-        /// If the Index constructed from the end, index value 1 means pointing at the last element and index value 0 means pointing at beyond last element.
+        /// If the Index constructed from the end, index value 1 means pointing at the last element and index value 
+        /// 0 means pointing at beyond last element.
         /// </remarks>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="value"/> is negative.</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Index(int value, bool fromEnd = false)
         {
             if (value < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(value), "value must be non-negative");
+                throw new ArgumentOutOfRangeException(nameof(value));
             }
 
             if (fromEnd)
@@ -51,27 +56,33 @@ namespace System
         /// <summary>Create an Index pointing at beyond last element.</summary>
         public static Index End => new Index(~0);
 
-        /// <summary>Create an Index from the start at the position indicated by the value.</summary>
+        /// <summary>
+        /// Create an Index from the start at the position indicated by the value.
+        /// </summary>
         /// <param name="value">The index value from the start.</param>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="value"/> is negative.</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Index FromStart(int value)
         {
             if (value < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(value), "value must be non-negative");
+                throw new ArgumentOutOfRangeException(nameof(value));
             }
 
             return new Index(value);
         }
 
-        /// <summary>Create an Index from the end at the position indicated by the value.</summary>
+        /// <summary>
+        /// Create an Index from the end at the position indicated by the value.
+        /// </summary>
         /// <param name="value">The index value from the end.</param>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="value"/> is negative.</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Index FromEnd(int value)
         {
             if (value < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(value), "value must be non-negative");
+                throw new ArgumentOutOfRangeException(nameof(value));
             }
 
             return new Index(~value);
@@ -94,13 +105,18 @@ namespace System
         /// <summary>Indicates whether the index is from the start or the end.</summary>
         public bool IsFromEnd => _value < 0;
 
-        /// <summary>Calculate the offset from the start using the giving collection length.</summary>
-        /// <param name="length">The length of the collection that the Index will be used with. length has to be a positive value</param>
+        /// <summary>
+        /// Calculate the offset from the start using the giving collection length.
+        /// </summary>
+        /// <param name="length">
+        /// The length of the collection that the Index will be used with. length has to be a positive value
+        /// </param>
         /// <remarks>
-        /// For performance reason, we don't validate the input length parameter and the returned offset value against negative values.
-        /// we don't validate either the returned offset is greater than the input length.
-        /// It is expected Index will be used with collections which always have non negative length/count. If the returned offset is negative and
-        /// then used to index a collection will get out of range exception which will be same affect as the validation.
+        /// For performance reason, we don't validate the input length parameter and the returned offset value against 
+        /// negative values. We don't validate either the returned offset is greater than the input length.
+        /// It is expected Index will be used with collections which always have non negative length/count.
+        /// If the returned offset is negative and then used to index a collection will get out of range exception 
+        /// which will be same affect as the validation.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetOffset(int length)
@@ -147,9 +163,9 @@ namespace System
         public override string ToString()
         {
             if (IsFromEnd)
-                return "^" + ((uint)Value).ToString();
+                return "^" + ((uint)Value).ToString(CultureInfo.InvariantCulture);
 
-            return ((uint)Value).ToString();
+            return ((uint)Value).ToString(CultureInfo.InvariantCulture);
         }
     }
 
@@ -221,7 +237,9 @@ namespace System
         public static Range All => new Range(Index.Start, Index.End);
 
         /// <summary>Calculate the start offset and length of range object using a collection length.</summary>
-        /// <param name="length">The length of the collection that the range will be used with. length has to be a positive value.</param>
+        /// <param name="length">
+        /// The length of the collection that the range will be used with. length has to be a positive value.
+        /// </param>
         /// <remarks>
         /// For performance reason, we don't validate the input length parameter against negative values.
         /// It is expected Range will be used with collections which always have non negative length/count.
