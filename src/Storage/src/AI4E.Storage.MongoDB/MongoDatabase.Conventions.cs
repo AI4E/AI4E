@@ -26,7 +26,7 @@ namespace AI4E.Storage.MongoDB
             {
                 var idMember = DataPropertyHelper.GetIdMember(classMap.ClassType);
 
-                if (idMember != null)
+                if (idMember != null && idMember.DeclaringType == classMap.ClassType)
                 {
                     classMap.MapIdMember(idMember);
                 }

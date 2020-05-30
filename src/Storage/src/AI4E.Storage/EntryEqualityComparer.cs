@@ -41,13 +41,13 @@ namespace AI4E.Storage
         private static Func<TEntry, TEntry, bool> BuildEquality()
         {
             var idMember = DataPropertyHelper.GetIdMember<TEntry>();
+            var idType = DataPropertyHelper.GetIdType<TEntry>();
 
-            if (idMember == null)
+            if (idMember == null || idType is null)
             {
                 return EqualityComparer<TEntry>.Default.Equals;
             }
 
-            var idType = DataPropertyHelper.GetIdType<TEntry>();
             var x = Expression.Parameter(typeof(TEntry), "x");
             var y = Expression.Parameter(typeof(TEntry), "y");
 

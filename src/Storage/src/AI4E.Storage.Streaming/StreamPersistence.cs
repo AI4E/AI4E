@@ -324,7 +324,7 @@ namespace AI4E.Storage.Streaming
         {
             var streamHead = new StreamHead(bucketId, streamId, headRevision, snapshotRevision, dispatchedRevision, version: 1);
 
-            return _database.GetOrAdd(streamHead, cancellation);
+            return _database.GetOrAddAsync(streamHead, cancellation);
         }
 
         private async ValueTask<StreamHead> UpdateStreamHeadRevisionAsync(StreamHead streamHead, long headRevision, CancellationToken cancellation)

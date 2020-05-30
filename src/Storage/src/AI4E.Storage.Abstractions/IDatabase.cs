@@ -144,7 +144,7 @@ namespace AI4E.Storage
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
         /// or <see cref="CancellationToken.None"/>.
         /// </param>
-        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
         ValueTask Clear<TEntry>(CancellationToken cancellation = default)
             where TEntry : class;
 

@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -20,35 +20,141 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using AI4E.Utils;
-using static System.Diagnostics.Debug;
 
-#nullable disable
+#nullable enable
 
 namespace AI4E.Internal
 {
     internal static class DataPropertyHelper
     {
-        private static readonly ConcurrentDictionary<Type, MemberInfo> _idMembers = new ConcurrentDictionary<Type, MemberInfo>();
-        private static readonly ConcurrentDictionary<Type, Delegate> _idAccessors = new ConcurrentDictionary<Type, Delegate>();
+        private const BindingFlags DefaultBindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-        public static MemberInfo GetIdMember<TData>()
+        #region IdMember
+
+        private static readonly ConcurrentDictionary<Type, MemberInfo?> _idMembers
+            = new ConcurrentDictionary<Type, MemberInfo?>();
+
+        // Cache delegate for perf reasons.
+        private static readonly Func<Type, MemberInfo?> _getIdMemberUncached = GetIdMemberUncached;
+
+        public static bool TryGetIdMemberCore(
+            Type type,
+            [NotNullWhen(true)] out MemberInfo? memberInfo)
         {
-            return _idMembers.GetOrAdd(typeof(TData), type => GetIdMemberInternal(type));
+            memberInfo = _idMembers.GetOrAdd(type, _getIdMemberUncached);
+            return memberInfo != null;
         }
 
-        public static MemberInfo GetIdMember(Type type)
+        public static MemberInfo? GetIdMember<TData>()
         {
-            if (type == null)
+            if (!TryGetIdMemberCore(typeof(TData), out var memberInfo))
+            {
+                memberInfo = null;
+            }
+
+            return memberInfo;
+        }
+
+        public static bool TryGetIdMember<TData>([NotNullWhen(true)] out MemberInfo? memberInfo)
+        {
+            return TryGetIdMemberCore(typeof(TData), out memberInfo);
+        }
+
+        public static MemberInfo? GetIdMember(Type type)
+        {
+            if (type is null)
                 throw new ArgumentNullException(nameof(type));
 
-            return _idMembers.GetOrAdd(type, _ => GetIdMemberInternal(type));
+            if (!TryGetIdMemberCore(type, out var memberInfo))
+            {
+                memberInfo = null;
+            }
+
+            return memberInfo;
         }
 
-        private static MemberInfo GetIdMemberInternal(Type type)
+        public static bool TryGetIdMember(
+            Type type,
+            [NotNullWhen(true)] out MemberInfo? memberInfo)
+        {
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+
+            return TryGetIdMemberCore(type, out memberInfo);
+        }
+
+        private static bool TryGetIdTypeCore(Type type, [NotNullWhen(true)]out Type? idType)
+        {
+            if (!TryGetIdMember(type, out var idMember))
+            {
+                idType = null;
+                return false;
+            }
+
+            idType = idMember switch
+            {
+                MethodInfo method => method.ReturnType,
+                FieldInfo field => field.FieldType,
+                PropertyInfo property => property.PropertyType,
+                _ => null,
+            };
+
+            return idType != null;
+        }
+
+        public static Type? GetIdType<TData>()
+        {
+            if (!TryGetIdTypeCore(typeof(TData), out var idType))
+            {
+                idType = null;
+            }
+
+            return idType;
+        }
+
+        public static Type? GetIdType(Type type)
+        {
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+
+            if (!TryGetIdTypeCore(type, out var idType))
+            {
+                idType = null;
+            }
+
+            return idType;
+        }
+
+        public static bool TryGetIdType<TData>([NotNullWhen(true)]out Type? idType)
+        {
+            return TryGetIdTypeCore(typeof(TData), out idType);
+        }
+
+        public static bool TryGetIdType(Type type, [NotNullWhen(true)]out Type? idType)
+        {
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+
+            return TryGetIdTypeCore(type, out idType);
+        }
+
+        private static MemberInfo? GetIdMemberUncached(Type type)
+        {
+            if (!TryGetIdMemberUncached(type, out var result))
+            {
+                result = null;
+            }
+
+            return result;
+        }
+
+        private static bool TryGetIdMemberUncached(Type type, [MaybeNullWhen(false)] out MemberInfo member)
         {
             var properties = type.GetPublicProperties();
 
@@ -58,7 +164,9 @@ namespace AI4E.Internal
 
             if (getter != null && !getter.IsStatic)
             {
-                return idProperty;
+                Debug.Assert(idProperty != null);
+                member = idProperty!;
+                return true;
             }
 
             // 2. A readable instance property called '{TypeName}' + Id
@@ -67,97 +175,103 @@ namespace AI4E.Internal
 
             if (getter != null && !getter.IsStatic)
             {
-                return idProperty;
+                Debug.Assert(idProperty != null);
+                member = idProperty!;
+                return true;
             }
 
             // 3. A non void-returning parameterless instance method called 'GetId'
-            var idMethod = type.GetMethod("GetId", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, binder: default, Type.EmptyTypes, modifiers: default);
+            var idMethod = type.GetMethod(
+                "GetId",
+                DefaultBindingFlags,
+                binder: default,
+                Type.EmptyTypes,
+                modifiers: default);
 
             if (idMethod != null && idMethod.ReturnType != typeof(void))
             {
-                return idMethod;
+                member = idMethod;
+                return true;
             }
 
             // 4. An instance field called 'id'
-            var idField = type.GetField("id", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var idField = type.GetField(
+                "id",
+                DefaultBindingFlags);
 
             if (idField != null)
             {
-                return idProperty;
+                member = idField;
+                return true;
             }
 
             // 5. An instance field called '_id'
-            idField = type.GetField("_id", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            idField = type.GetField(
+                "_id",
+                DefaultBindingFlags);
 
             if (idField != null)
             {
-                return idProperty;
+                member = idField;
+                return true;
             }
 
+#pragma warning disable CA1308
             var lowercaseTypeName = type.Name.Substring(0, 1).ToLowerInvariant() + type.Name.Substring(1);
+#pragma warning restore CA1308
 
             // 6. An instance field called '{LowerCaseTypeName}Id'
-            idField = type.GetField(lowercaseTypeName + "Id", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            idField = type.GetField(
+                lowercaseTypeName + "Id",
+                DefaultBindingFlags);
 
             if (idField != null)
             {
-                return idProperty;
+                member = idField;
+                return true;
             }
 
             // 7. An instance field called '_{LowerCaseTypeName}id'
-            idField = type.GetField("_" + lowercaseTypeName + "Id", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            idField = type.GetField("_" + lowercaseTypeName + "Id", DefaultBindingFlags);
 
             if (idField != null)
             {
-                return idProperty;
+                member = idField;
+                return true;
             }
 
-            return null;
+            member = null!;
+            return false;
         }
 
-        public static Type GetIdType<TData>()
-        {
-            return GetIdType(typeof(TData));
-        }
+        #endregion
 
-        public static Type GetIdType(Type type)
-        {
-            if (type == null)
-                throw new ArgumentNullException(nameof(type));
+        #region GetId
 
-            var idMember = GetIdMember(type);
+        private static readonly ConcurrentDictionary<Type, Delegate?> _idAccessors
+            = new ConcurrentDictionary<Type, Delegate?>();
 
-            if (idMember != null)
-            {
-                if (idMember.MemberType == MemberTypes.Method)
-                    return ((MethodInfo)idMember).ReturnType;
+        // Cache delegate for perf reasons.
+        private static readonly Func<Type, Delegate?> _getIdAccessor = GetIdAccessor;
 
-                if (idMember.MemberType == MemberTypes.Field)
-                    return ((FieldInfo)idMember).FieldType;
-
-                if (idMember.MemberType == MemberTypes.Property)
-                    return ((PropertyInfo)idMember).PropertyType;
-            }
-
-            return null;
-        }
-
-        public static Func<TData, TId> GetIdAccessor<TId, TData>()
+        public static Func<TData, TId>? GetIdAccessor<TId, TData>()
         {
             var idType = GetIdType<TData>();
+
+            if (idType is null)
+            {
+                return null;
+            }
 
             if (!typeof(TId).IsAssignableFrom(idType))
             {
                 throw new Exception("Type mismatch.");
             }
 
-            var idAccessor = (Func<TData, TId>)_idAccessors.GetOrAdd(typeof(TData), GetIdAccessor);
-
-            Assert(idAccessor != null);
-
-            return idAccessor;
+            return _idAccessors.GetOrAdd(typeof(TData), _getIdAccessor) as Func<TData, TId>;
         }
 
+        [return: MaybeNull]
         public static TId GetId<TId, TData>(TData data)
         {
             if (data == null)
@@ -165,19 +279,25 @@ namespace AI4E.Internal
 
             var idType = GetIdType<TData>();
 
-            if (idType == null || !typeof(TId).IsAssignableFrom(idType))
+            if (idType is null)
+            {
+                return default!;
+            }
+
+            if (!typeof(TId).IsAssignableFrom(idType))
             {
                 throw new InvalidOperationException($"The type {typeof(TData)} does not have an id member that is assignable to type {typeof(TId)}.");
             }
 
-            var idAccessor = (Func<TData, TId>)_idAccessors.GetOrAdd(typeof(TData), GetIdAccessor);
+            if (_idAccessors.GetOrAdd(typeof(TData), _getIdAccessor) is Func<TData, TId> idAccessor)
+            {
+                return idAccessor.Invoke(data);
+            }
 
-            Assert(idAccessor != null);
-
-            return idAccessor(data);
+            return default!;
         }
 
-        public static object GetId(Type dataType, object data)
+        public static object? GetId(Type dataType, object data)
         {
             if (!TryGetId(dataType, data, out var result))
             {
@@ -187,12 +307,12 @@ namespace AI4E.Internal
             return result;
         }
 
-        public static bool TryGetId(Type dataType, object data, out object id)
+        public static bool TryGetId(Type dataType, object data, [NotNullWhen(true)] out object? id)
         {
-            if (dataType == null)
+            if (dataType is null)
                 throw new ArgumentNullException(nameof(dataType));
 
-            if (data == null)
+            if (data is null)
                 throw new ArgumentNullException(nameof(data));
 
             if (!dataType.IsAssignableFrom(data.GetType()))
@@ -206,48 +326,94 @@ namespace AI4E.Internal
                 return false;
             }
 
-            var idAccessor = _idAccessors.GetOrAdd(dataType, _ => GetIdAccessor(dataType));
+            var idAccessor = _idAccessors.GetOrAdd(dataType, _getIdAccessor);
 
-            Assert(idAccessor != null);
+            if (idAccessor is null)
+            {
+                id = null;
+                return false;
+            }
 
             id = idAccessor.DynamicInvoke(data);
             return true;
         }
 
-        public static LambdaExpression BuildIdAccessor(Type type)
+        private static Delegate? GetIdAccessor(Type type)
         {
-            var idMember = GetIdMember(type);
-            var idType = GetIdType(type);
+            return BuildIdAccessorCore(type)?.Compile();
+        }
 
-            if (idMember == null)
-                return null;
+        public static LambdaExpression? BuildIdAccessor(Type type)
+        {
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
 
+            return BuildIdAccessorCore(type);
+        }
+
+        public static LambdaExpression? BuildIdAccessorCore(Type type)
+        {
             var param = Expression.Parameter(type);
-            Expression idAccess;
 
-            if (idMember.MemberType == MemberTypes.Method)
+            if (TryBuildIdAccess(type, param, out var idAccess, out var idType))
             {
-                idAccess = Expression.Call(param, (MethodInfo)idMember);
-            }
-            else if (idMember.MemberType == MemberTypes.Field || idMember.MemberType == MemberTypes.Property)
-            {
-                idAccess = Expression.MakeMemberAccess(param, idMember);
-            }
-            else
-            {
-                return null;
+                return Expression.Lambda(typeof(Func<,>).MakeGenericType(type, idType), idAccess, param);
             }
 
-            return Expression.Lambda(typeof(Func<,>).MakeGenericType(type, idType), idAccess, param);
+            return null;
         }
 
-        private static Delegate GetIdAccessor(Type type)
+        private static bool TryBuildIdAccess(
+            Type type,
+            Expression instance,
+            [NotNullWhen(true)] out Expression? idAccess,
+            [NotNullWhen(true)] out Type? idType)
         {
-            return BuildIdAccessor(type).Compile();
+            if (TryGetIdMember(type, out var idMember))
+            {
+                if (idMember is MethodInfo method)
+                {
+                    idType = method.ReturnType;
+                    idAccess = Expression.Call(instance, method);
+                    Debug.Assert(idAccess.Type == idType);
+                    return true;
+                }
+
+                if (idMember is FieldInfo field)
+                {
+                    idType = field.FieldType;
+                    idAccess = Expression.MakeMemberAccess(instance, field);
+                    Debug.Assert(idAccess.Type == idType);
+                    return true;
+                }
+
+                if (idMember is PropertyInfo property)
+                {
+                    idType = property.PropertyType;
+                    idAccess = Expression.MakeMemberAccess(instance, property);
+                    Debug.Assert(idAccess.Type == idType);
+                    return true;
+                }
+            }
+
+            idAccess = null;
+            idType = null;
+            return false;
         }
+
+        #endregion
 
         public static Expression BuildIdEqualityExpression(Type idType, Expression leftOperand, Expression rightOperand)
         {
+            if (idType is null)
+                throw new ArgumentNullException(nameof(idType));
+
+            if (leftOperand is null)
+                throw new ArgumentNullException(nameof(leftOperand));
+
+            if (rightOperand is null)
+                throw new ArgumentNullException(nameof(rightOperand));
+
             var equalityOperator = idType.GetMethod("op_Equality", BindingFlags.Static); // TODO
 
             if (equalityOperator != null)
@@ -303,35 +469,17 @@ namespace AI4E.Internal
             return Expression.Lambda<Func<TId, TId, bool>>(BuildIdEqualityExpression(idType, leftOperand, rightOperand), leftOperand, rightOperand);
         }
 
-        public static Expression<Func<TData, bool>> BuildPredicate<TId, TData>(TId id)
+        public static Expression<Func<TData, bool>>? BuildPredicate<TId, TData>(TId id)
         {
-            var idMember = GetIdMember<TData>();
-
-            if (idMember == null)
-            {
-                throw new /*Storage*/Exception($"Unable to resolve primary key for type '{typeof(TData).FullName}'");
-            }
-
-            var idType = GetIdType<TData>();
             var param = Expression.Parameter(typeof(TData));
-            var idConstant = Expression.Constant(id);
-            Expression idAccessParam;
-
-            if (idMember.MemberType == MemberTypes.Method)
+            if (TryBuildIdAccess(typeof(TData), param, out var idAccess, out var idType))
             {
-                idAccessParam = Expression.Call(param, (MethodInfo)idMember);
-            }
-            else if (idMember.MemberType == MemberTypes.Field || idMember.MemberType == MemberTypes.Property)
-            {
-                idAccessParam = Expression.MakeMemberAccess(param, idMember);
-            }
-            else
-            {
-                return null;
+                var idConstant = Expression.Convert(Expression.Constant(id), idType);
+                var equalityExpression = BuildIdEqualityExpression(idType, idConstant, idAccess);
+                return Expression.Lambda<Func<TData, bool>>(equalityExpression, param);
             }
 
-            var equalityExpression = BuildIdEqualityExpression(idType, idConstant, idAccessParam);
-            return Expression.Lambda<Func<TData, bool>>(equalityExpression, param);
+            return null;
         }
 
         public static Expression<Func<TData, bool>> BuildPredicate<TId, TData>(TId id, Expression<Func<TData, TId>> idAccessor)
@@ -340,45 +488,50 @@ namespace AI4E.Internal
                 throw new ArgumentNullException(nameof(idAccessor));
 
             var idConstant = Expression.Constant(id);
-
             var equalityExpression = BuildIdEqualityExpression(typeof(TId), idConstant, idAccessor.Body);
             return Expression.Lambda<Func<TData, bool>>(equalityExpression, idAccessor.Parameters.First());
         }
 
-        public static Expression<Func<TData, bool>> BuildPredicate<TData>(TData comparand)
+        public static Expression<Func<TData, bool>>? BuildPredicate<TData>(TData comparand)
         {
-            var idMember = GetIdMember<TData>();
-
-            if (idMember == null)
-            {
-                throw new /*Storage*/Exception($"Unable to resolve primary key for type '{typeof(TData).FullName}'");
-            }
-
-            var idType = GetIdType<TData>();
-            var param = Expression.Parameter(typeof(TData));
             var comparandConstant = Expression.Constant(comparand);
-            Expression idAccessComparand, idAccessParam;
+            var param = Expression.Parameter(typeof(TData));
 
-            if (idMember.MemberType == MemberTypes.Method)
-            {
-                idAccessComparand = Expression.Call(comparandConstant, (MethodInfo)idMember);
-                idAccessParam = Expression.Call(param, (MethodInfo)idMember);
-            }
-            else if (idMember.MemberType == MemberTypes.Field || idMember.MemberType == MemberTypes.Property)
-            {
-                idAccessComparand = Expression.MakeMemberAccess(comparandConstant, idMember);
-                idAccessParam = Expression.MakeMemberAccess(param, idMember);
-            }
-            else
-            {
+            if (!TryBuildIdAccess(typeof(TData), comparandConstant, out var idAccessComparand, out var idType))
                 return null;
-            }
+
+            if (!TryBuildIdAccess(typeof(TData), param, out var idAccessParam, out _))
+                return null;
 
             var equalityExpression = BuildIdEqualityExpression(idType, idAccessComparand, idAccessParam);
             return Expression.Lambda<Func<TData, bool>>(equalityExpression, param);
         }
 
-        public static LambdaExpression BuildPredicate(Type dataType, object comparand)
+        public static bool TryBuildPredication<TData>(
+            TData comparand,
+            [NotNullWhen(true)] out Expression<Func<TData, bool>>? predicate)
+        {
+            var comparandConstant = Expression.Constant(comparand);
+            var param = Expression.Parameter(typeof(TData));
+
+            if (!TryBuildIdAccess(typeof(TData), comparandConstant, out var idAccessComparand, out var idType))
+            {
+                predicate = null;
+                return false;
+            }
+
+            if (!TryBuildIdAccess(typeof(TData), param, out var idAccessParam, out _))
+            {
+                predicate = null;
+                return false;
+            }
+
+            var equalityExpression = BuildIdEqualityExpression(idType, idAccessComparand, idAccessParam);
+            predicate = Expression.Lambda<Func<TData, bool>>(equalityExpression, param);
+            return true;
+        }
+
+        public static LambdaExpression? BuildPredicate(Type dataType, object comparand)
         {
             if (dataType == null)
                 throw new ArgumentNullException(nameof(dataType));
@@ -391,38 +544,20 @@ namespace AI4E.Internal
                 throw new ArgumentException($"The specified object must be of type {dataType.FullName} or a derived type");
             }
 
-            var idMember = GetIdMember(dataType);
-
-            if (idMember == null)
-            {
-                throw new /*Storage*/Exception($"Unable to resolve primary key for type '{dataType.FullName}'");
-            }
-
-            var idType = GetIdType(dataType);
+            var comparandConstant = Expression.Constant(comparand);
             var param = Expression.Parameter(dataType);
-            var comparandConstant = Expression.Constant(comparand, dataType);
-            Expression idAccessComparand, idAccessParam;
 
-            if (idMember.MemberType == MemberTypes.Method)
-            {
-                idAccessComparand = Expression.Call(comparandConstant, (MethodInfo)idMember);
-                idAccessParam = Expression.Call(param, (MethodInfo)idMember);
-            }
-            else if (idMember.MemberType == MemberTypes.Field || idMember.MemberType == MemberTypes.Property)
-            {
-                idAccessComparand = Expression.MakeMemberAccess(comparandConstant, idMember);
-                idAccessParam = Expression.MakeMemberAccess(param, idMember);
-            }
-            else
-            {
+            if (!TryBuildIdAccess(dataType, comparandConstant, out var idAccessComparand, out var idType))
                 return null;
-            }
+
+            if (!TryBuildIdAccess(dataType, param, out var idAccessParam, out _))
+                return null;
 
             var equalityExpression = BuildIdEqualityExpression(idType, idAccessComparand, idAccessParam);
             return Expression.Lambda(equalityExpression, param);
         }
 
-        public static Func<object, bool> CompilePredicate(Type dataType, object comparand)
+        public static Func<object, bool>? CompilePredicate(Type dataType, object comparand)
         {
             if (dataType == null)
                 throw new ArgumentNullException(nameof(dataType));
@@ -432,6 +567,9 @@ namespace AI4E.Internal
 
             var predicate = BuildPredicate(dataType, comparand);
 
+            if (predicate is null)
+                return null;
+
             var parameter = Expression.Parameter(typeof(object));
             var equality = ParameterExpressionReplacer.ReplaceParameter(predicate.Body, predicate.Parameters.First(), Expression.Convert(parameter, dataType));
             var typeCheck = Expression.TypeIs(parameter, dataType);
@@ -440,56 +578,9 @@ namespace AI4E.Internal
             return lambda.Compile();
         }
 
-        public static Func<TData, bool> CompilePredicate<TData>(TData comparand)
+        public static Func<TData, bool>? CompilePredicate<TData>(TData comparand)
         {
-            return BuildPredicate(comparand).Compile();
+            return BuildPredicate(comparand)?.Compile();
         }
-
-        // TODO: This has some duplications in EntityPropertyAccessor
-        #region Revision
-
-        internal static PropertyInfo GetRevisionProperty(Type entityType)
-        {
-            var result = entityType.GetProperty("Revision",
-                                                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
-            if (result == null)
-                return null;
-
-            if (result.GetIndexParameters().Length != 0)
-            {
-                return null;
-            }
-
-            if (result.PropertyType != typeof(long))
-            {
-                return null;
-            }
-
-            if (!result.CanRead)
-            {
-                return null;
-            }
-
-            return result;
-        }
-
-        internal static long GetRevision(Type entityType, object entity)
-        {
-            var revisionProperty = GetRevisionProperty(entityType);
-
-            if (revisionProperty == null)
-            {
-                throw new NotSupportedException();
-            }
-
-            var entityParameter = Expression.Parameter(typeof(object), "entity");
-            var convertedEntity = Expression.Convert(entityParameter, entityType);
-            var revisionPropertyAccess = Expression.Property(convertedEntity, revisionProperty);
-
-            return Expression.Lambda<Func<object, long>>(revisionPropertyAccess, entityParameter).Compile()(entity);
-        }
-
-        #endregion
     }
 }

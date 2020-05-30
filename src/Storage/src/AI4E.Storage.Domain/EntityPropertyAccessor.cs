@@ -219,7 +219,7 @@ namespace AI4E.Storage.Domain
 
             private static MemberInfo GetIdMember(Type entityType)
             {
-                return DataPropertyHelper.GetIdMember(entityType);
+                return DataPropertyHelper.GetIdMember(entityType)!;
             }
 
             private static void BuildIdAccess(
@@ -268,7 +268,7 @@ namespace AI4E.Storage.Domain
                     idAccess = Expression.MakeMemberAccess(convertedEntity, idMember);
                 }
 
-                var toStringMethod = idType.GetMethod(
+                var toStringMethod = idType!.GetMethod(
                     nameof(ToString),
                     BindingFlags.Public | BindingFlags.Instance,
                     Type.DefaultBinder,

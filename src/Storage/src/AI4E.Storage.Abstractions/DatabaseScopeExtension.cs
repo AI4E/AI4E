@@ -60,8 +60,7 @@ namespace AI4E.Storage
         /// </exception>
         public static IAsyncEnumerable<TEntry> GetAsync<TEntry>(
             this IDatabaseScope databaseScope,
-            CancellationToken cancellation = default)
-            where TEntry : class
+            CancellationToken cancellation = default) where TEntry : class
         {
             if (databaseScope is null)
                 throw new ArgumentNullException(nameof(databaseScope));
@@ -175,6 +174,8 @@ namespace AI4E.Storage
             if (databaseScope is null)
                 throw new ArgumentNullException(nameof(databaseScope));
 
+            // TODO: This is not guaranteed to succeed, as not only the predicate is checked but also the success 
+            // of the database operation ie. transaction abort, etc.? => Return ValueTask<bool> instead of ValueTask
             await databaseScope.StoreAsync(entry, _ => true, cancellation).ConfigureAwait(false);
         }
 
@@ -207,6 +208,9 @@ namespace AI4E.Storage
             if (databaseScope is null)
                 throw new ArgumentNullException(nameof(databaseScope));
 
+            // TODO: This is not guaranteed to succeed, as not only the predicate is checked but also the success 
+            // of the database operation ie. was there an entry to remove, transaction abort, etc.?
+            // => Return ValueTask<bool> instead of ValueTask
             await databaseScope.RemoveAsync(entry, _ => true, cancellation).ConfigureAwait(false);
         }
     }
