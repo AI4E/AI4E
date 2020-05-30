@@ -6,8 +6,8 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Storage\src\AI4E.Storage\AI4E.Storage.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Streaming.Abstractions\AI4E.Storage.Streaming.Abstractions.csproj" />
-    <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
   </ItemGroup>
   
   <ItemGroup>

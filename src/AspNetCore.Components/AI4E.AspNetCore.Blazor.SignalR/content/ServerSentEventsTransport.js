@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ServerSentEventsTransport = void 0;
 class ServerSentEventsTransport {
     constructor() {
         this.connections = new Map();

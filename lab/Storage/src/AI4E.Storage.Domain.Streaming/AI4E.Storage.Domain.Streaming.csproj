@@ -5,9 +5,9 @@
     <Nullable>annotations</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\AI4E.Storage.Domain.Abstractions\AI4E.Storage.Domain.Abstractions.csproj" />
-    <ProjectReference Include="..\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj" />
+  <ItemGroup>    <ProjectReference Include="..\..\..\..\src\Storage\src\AI4E.Storage.Domain.Abstractions\AI4E.Storage.Domain.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Storage\src\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj" />
+
     <ProjectReference Include="..\AI4E.Storage.Streaming.Abstractions\AI4E.Storage.Streaming.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Streaming\AI4E.Storage.Streaming.csproj" />
   </ItemGroup>

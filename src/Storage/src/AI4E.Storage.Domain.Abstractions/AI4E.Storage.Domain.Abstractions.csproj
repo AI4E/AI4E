@@ -4,6 +4,10 @@
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
     <RootNamespace>AI4E.Storage.Domain</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.1" />
+  </ItemGroup>
   
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />

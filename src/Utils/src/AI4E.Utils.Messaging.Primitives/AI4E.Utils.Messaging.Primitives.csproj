@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
     <ProjectReference Include="..\AI4E.Utils\AI4E.Utils.csproj" />
   </ItemGroup>
