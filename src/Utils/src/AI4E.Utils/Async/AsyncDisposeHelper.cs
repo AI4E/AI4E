@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -35,7 +35,9 @@ namespace AI4E.Utils.Async
         #region Fields
 
         private readonly Func<ValueTask> _disposal;
+#pragma warning disable CA2213
         internal volatile CancellationTokenSource? _disposalCancellationSource = new CancellationTokenSource();
+#pragma warning restore CA2213
         private Task? _disposalTask;
 
         // This is needed only if we have (or could have) an async dispose operation
@@ -151,6 +153,8 @@ namespace AI4E.Utils.Async
             }
         }
 
+        public AsyncDisposeHelper() : this(() => { }, AsyncDisposeHelperOptions.DisableRecursionDetection) { }
+
         #endregion
 
         #region IAsyncDisposable
@@ -164,9 +168,8 @@ namespace AI4E.Utils.Async
             if (_disposalCancellationSource == null)
                 return;
 
-#pragma warning disable 420
             var disposalCancellationSource = Interlocked.Exchange(ref _disposalCancellationSource, null);
-#pragma warning restore 420
+
             if (disposalCancellationSource != null)
             {
                 disposalCancellationSource.Cancel();
@@ -179,13 +182,13 @@ namespace AI4E.Utils.Async
         }
 
         /// <summary>
-        /// Gets a task that represents the asnchronous dispose operation.
+        /// Gets a task that represents the asynchronous dispose operation.
         /// </summary>
         /// <remarks>
         /// The value cannot be retrieved in the dispose operation itself,
         /// as this would lead to deadlock situations if the returning task is awaited.
         /// Instead, a completed task is returned.
-        /// This behaviour can be changed by specifying the <see cref="AsyncDisposeHelperOptions.DisableRecursionDetection"/> option on creation.
+        /// This behavior can be changed by specifying the <see cref="AsyncDisposeHelperOptions.DisableRecursionDetection"/> option on creation.
         /// </remarks>
         public Task Disposal
         {
@@ -207,7 +210,7 @@ namespace AI4E.Utils.Async
                     var exception = _exception; // Volatile read op.
                     if (exception != null)
                     {
-                        // Rethrow the exception preserving stack-trace information.
+                        // Re-throw the exception preserving stack-trace information.
                         ExceptionDispatchInfo.Capture(exception).Throw();
                     }
                 }
@@ -221,9 +224,9 @@ namespace AI4E.Utils.Async
         /// </summary>
         /// <returns>A task that represents the asynchronous dispose operation.</returns>
         /// <remarks>
-        /// When this operation is called in the dipose operation itself,
-        /// the returned task is always completed, to prevent deadlock sitatuations if awaited.
-        /// This behaviour can be changed by specifying the <see cref="AsyncDisposeHelperOptions.DisableRecursionDetection"/> option on creation.
+        /// When this operation is called in the dispose operation itself,
+        /// the returned task is always completed, to prevent deadlock situations if awaited.
+        /// This behavior can be changed by specifying the <see cref="AsyncDisposeHelperOptions.DisableRecursionDetection"/> option on creation.
         /// </remarks>
         public ValueTask DisposeAsync()
         {
@@ -240,7 +243,7 @@ namespace AI4E.Utils.Async
         public AsyncDisposeHelperOptions Options { get; }
 
         /// <summary>
-        /// Guards agains disposal and returns a <see cref="DisposalGuard"/>.
+        /// Guards against disposal and returns a <see cref="DisposalGuard"/>.
         /// </summary>
         /// <param name="cancellation">A <see cref="CancellationToken"/> that is passed to the guard to get the combined cancellation.</param>
         /// <returns>A disposal guard.</returns>
@@ -250,10 +253,10 @@ namespace AI4E.Utils.Async
         }
 
         /// <summary>
-        /// Asynchronously guards agains disposal and returns a <see cref="DisposalGuard"/>.
+        /// Asynchronously guards against disposal and returns a <see cref="DisposalGuard"/>.
         /// </summary>
         /// <param name="cancellation">A <see cref="CancellationToken"/> that is passed to the guard to get the combined cancellation.</param>
-        /// <returns>A task represeting the asynchronous operation. When evaluated, the tasks result contains the diposal guard.</returns>
+        /// <returns>A task representing the asynchronous operation. When evaluated, the tasks result contains the disposal guard.</returns>
         public ValueTask<DisposalGuard> GuardDisposalAsync(CancellationToken cancellation = default)
         {
             return DisposalGuard.CreateAsync(this, cancellation);
@@ -347,9 +350,9 @@ namespace AI4E.Utils.Async
             catch (Exception exc) when (!(exc is OperationCanceledException))
             {
                 // If the operation throws an exception we need to allocate a task completion source to allow for passing the exception to the outside.
-                // We prevent the allocation by setting the excpetion to a dedicated field.
+                // We prevent the allocation by setting the exception to a dedicated field.
 
-                // The exception MUST be written volatile to prevent a sitatuation that _exception is written after _disposalTaskSource.
+                // The exception MUST be written volatile to prevent a situation that _exception is written after _disposalTaskSource.
                 _exception = exc; // Volatile write op.
                 GetOrCreateDisposalTaskSource(() => CompletedTaskCompletionSource).TrySetException(exc);
                 return;
