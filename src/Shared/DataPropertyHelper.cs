@@ -31,6 +31,7 @@ using AI4E.Utils;
 
 namespace AI4E.Internal
 {
+    [ExcludeFromCodeCoverage]
     internal static class DataPropertyHelper
     {
         private const BindingFlags DefaultBindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;

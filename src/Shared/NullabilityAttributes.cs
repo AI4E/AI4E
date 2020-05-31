@@ -21,15 +21,19 @@
 #if !SUPPORTS_NULLABILITY_ATTRIBUTES
 namespace System.Diagnostics.CodeAnalysis
 {
+    [ExcludeFromCodeCoverage]
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Parameter | AttributeTargets.Property, Inherited = false)]
     internal sealed class AllowNullAttribute : Attribute { }
 
+    [ExcludeFromCodeCoverage]
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Parameter | AttributeTargets.Property, Inherited = false)]
     internal sealed class DisallowNullAttribute : Attribute { }
 
+    [ExcludeFromCodeCoverage]
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
     internal sealed class DoesNotReturnAttribute : Attribute { }
 
+    [ExcludeFromCodeCoverage]
     [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
     internal sealed class DoesNotReturnIfAttribute : Attribute
     {
@@ -41,9 +45,11 @@ namespace System.Diagnostics.CodeAnalysis
         public bool ParameterValue { get; }
     }
 
+    [ExcludeFromCodeCoverage]
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.ReturnValue, Inherited = false)]
     internal sealed class MaybeNullAttribute : Attribute { }
 
+    [ExcludeFromCodeCoverage]
     [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
     internal sealed class MaybeNullWhenAttribute : Attribute
     {
@@ -55,9 +61,11 @@ namespace System.Diagnostics.CodeAnalysis
         public bool ReturnValue { get; }
     }
 
+    [ExcludeFromCodeCoverage]
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.ReturnValue, Inherited = false)]
     internal sealed class NotNullAttribute : Attribute { }
 
+    [ExcludeFromCodeCoverage]
     [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.ReturnValue, AllowMultiple = true, Inherited = false)]
     internal sealed class NotNullIfNotNullAttribute : Attribute
     {
@@ -69,6 +77,7 @@ namespace System.Diagnostics.CodeAnalysis
         public string ParameterName { get; }
     }
 
+    [ExcludeFromCodeCoverage]
     [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
     internal sealed class NotNullWhenAttribute : Attribute
     {

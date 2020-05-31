@@ -23,6 +23,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 
@@ -31,7 +32,7 @@ namespace AI4E.Storage.Domain
     /// <summary>
     /// Represents a domain-event raised on a domain entity.
     /// </summary>
-    [TypeConverter(typeof(DomainEventConverter))]
+    [TypeConverter(typeof(DomainEventTypeConverter))]
     public readonly struct DomainEvent : IEquatable<DomainEvent>
     {
         private static readonly object _emptyObject = new object();
@@ -58,10 +59,26 @@ namespace AI4E.Storage.Domain
             if (@event is null)
                 throw new ArgumentNullException(nameof(@event));
 
+            if (eventType.IsDelegate())
+                throw new ArgumentException(Resources.ArgumentMustNotSpecifyDelegateType, nameof(eventType));
+
+            if (eventType.IsValueType)
+                throw new ArgumentException(Resources.ArgumentMustNotSpecifyValueType, nameof(eventType));
+
+            if (eventType.IsInterface)
+                throw new ArgumentException(Resources.ArgumentMustNotSpecifyInterfaceType, nameof(eventType));
+
+            if (eventType.IsGenericTypeDefinition)
+                throw new ArgumentException(Resources.ArgumentMustNotSpecifyOpenTypeDefinition, nameof(eventType));
+
             if (!eventType.IsAssignableFrom(@event.GetType()))
                 throw new ArgumentException(Resources.EventMustBeAssignableToEventType, nameof(@event));
 
-            // TODO: Validate event-type.
+            if (@event.GetType().IsDelegate())
+                throw new ArgumentException(Resources.ArgumentMustNotBeADelegate, nameof(@event));
+
+            if (@event.GetType().IsValueType)
+                throw new ArgumentException(Resources.ArgumentMustNotBeAValueType, nameof(@event));
 
             _eventType = eventType;
             _event = @event;
@@ -86,28 +103,6 @@ namespace AI4E.Storage.Domain
         {
             eventType = EventType;
             @event = Event;
-        }
-
-        /// <summary>
-        /// Implicitly converts a <c>(Type eventType, object @event)</c> tuple to a <see cref="DomainEvent"/>.
-        /// </summary>
-        /// <param name="tuple">The tuple describing that shall be converted.</param>
-#pragma warning disable CA2225
-        public static implicit operator DomainEvent((Type eventType, object @event) tuple)
-#pragma warning restore CA2225
-        {
-            return new DomainEvent(tuple.eventType, tuple.@event);
-        }
-
-        /// <summary>
-        /// Implicitly converts a <see cref="DomainEvent"/> to a <c>(Type eventType, object @event)</c> tuple.
-        /// </summary>
-        /// <param name="domainEvent">The <see cref="DomainEvent"/> to convert.</param>
-#pragma warning disable CA2225
-        public static implicit operator (Type eventType, object @event)(in DomainEvent domainEvent)
-#pragma warning restore CA2225
-        {
-            return (domainEvent.EventType, domainEvent.Event);
         }
 
         /// <inheritdoc cref="IEquatable{DomainEvent}.Equals(DomainEvent)"/>
@@ -159,7 +154,7 @@ namespace AI4E.Storage.Domain
     /// <summary>
     /// The type converter for the <see cref="DomainEvent"/> type.
     /// </summary>
-    public sealed class DomainEventConverter : TypeConverter
+    public sealed class DomainEventTypeConverter : TypeConverter
     {
         /// <inheritdoc/>
         public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
@@ -197,7 +192,8 @@ namespace AI4E.Storage.Domain
 
                 if (sourceType == typeof((Type, object)))
                 {
-                    return (DomainEvent)((Type eventType, object @event))value;
+                    var (eventType, @event) = ((Type eventType, object @event))value;
+                    return new DomainEvent(eventType, @event);
                 }
             }
 
@@ -214,7 +210,9 @@ namespace AI4E.Storage.Domain
 
             if (destinationType == typeof((Type, object)))
             {
-                return ((Type, object))(DomainEvent)value;
+                var (eventType, @event) = (DomainEvent)value;
+
+                return (eventType, @event);
             }
 
             return base.ConvertTo(context, culture, value, destinationType);
@@ -239,17 +237,10 @@ namespace AI4E.Storage.Domain
         /// </exception>
         public DomainEventCollection(IEnumerable<DomainEvent> domainEvents)
         {
-            if (domainEvents is ImmutableHashSet<DomainEvent> immutableHashSet)
-            {
-                this = new DomainEventCollection(immutableHashSet);
-            }
-            else
-            {
-                if (domainEvents is null)
-                    throw new ArgumentNullException(nameof(domainEvents));
+            if (domainEvents is null)
+                throw new ArgumentNullException(nameof(domainEvents));
 
-                _domainEvents = domainEvents.ToImmutableHashSet();
-            }
+            _domainEvents = UncheckedBuildHashSet(domainEvents);
         }
 
         /// <summary>
@@ -267,14 +258,27 @@ namespace AI4E.Storage.Domain
             if (domainEvents is null)
                 throw new ArgumentNullException(nameof(domainEvents));
 
+            _domainEvents = UncheckedBuildHashSet(domainEvents);
+        }
+
+        private static ImmutableHashSet<DomainEvent> UncheckedBuildHashSet(IEnumerable<DomainEvent> domainEvents)
+        {
+            if (domainEvents is ImmutableHashSet<DomainEvent> immutableHashSet)
+            {
+                return UncheckedBuildHashSet(immutableHashSet);
+            }
+
+            return domainEvents.ToImmutableHashSet();
+        }
+
+        private static ImmutableHashSet<DomainEvent> UncheckedBuildHashSet(ImmutableHashSet<DomainEvent> domainEvents)
+        {
             if (domainEvents.KeyComparer == EqualityComparer<DomainEvent>.Default)
             {
-                _domainEvents = domainEvents;
+                return domainEvents;
             }
-            else
-            {
-                _domainEvents = domainEvents.WithComparer(EqualityComparer<DomainEvent>.Default);
-            }
+
+            return domainEvents.WithComparer(EqualityComparer<DomainEvent>.Default);
         }
 
         /// <summary>
@@ -300,7 +304,7 @@ namespace AI4E.Storage.Domain
         /// A combined <see cref="DomainEventCollection"/> that contains all domain events from the current one 
         /// and <paramref name="other"/> but no duplicates.
         /// </returns>
-        public DomainEventCollection Concat(in DomainEventCollection other)
+        public DomainEventCollection Concat(DomainEventCollection other)
         {
             if (other._domainEvents is null || other.Count == 0)
                 return this;
@@ -311,8 +315,8 @@ namespace AI4E.Storage.Domain
             return new DomainEventCollection(_domainEvents.Union(other._domainEvents));
         }
 
-        /// <inheritdoc cref="IEquatable{DomainEventCollection}.Equals(DomainEventCollection)"/>
-        public bool Equals(in DomainEventCollection other)
+        /// <inheritdoc />
+        public bool Equals(DomainEventCollection other)
         {
             if (_domainEvents is null || _domainEvents.Count == 0)
                 return other._domainEvents is null || other._domainEvents.Count == 0;
@@ -323,15 +327,10 @@ namespace AI4E.Storage.Domain
             return _domainEvents.SetEquals(other._domainEvents);
         }
 
-        bool IEquatable<DomainEventCollection>.Equals(DomainEventCollection other)
-        {
-            return Equals(in other);
-        }
-
         /// <inheritdoc />
         public override bool Equals(object? obj)
         {
-            return obj is DomainEventCollection domainEvents && Equals(in domainEvents);
+            return obj is DomainEventCollection domainEvents && Equals(domainEvents);
         }
 
         /// <inheritdoc />
@@ -354,9 +353,9 @@ namespace AI4E.Storage.Domain
         /// <param name="left">The first <see cref="DomainEventCollection"/>.</param>
         /// <param name="right">The second <see cref="DomainEventCollection"/>.</param>
         /// <returns>True if <paramref name="left"/> equals <paramref name="right"/>, false otherwise.</returns>
-        public static bool operator ==(in DomainEventCollection left, in DomainEventCollection right)
+        public static bool operator ==(DomainEventCollection left, DomainEventCollection right)
         {
-            return left.Equals(in right);
+            return left.Equals(right);
         }
 
         /// <summary>
@@ -365,9 +364,9 @@ namespace AI4E.Storage.Domain
         /// <param name="left">The first <see cref="DomainEventCollection"/>.</param>
         /// <param name="right">The second <see cref="DomainEventCollection"/>.</param>
         /// <returns>True if <paramref name="left"/> does not equal <paramref name="right"/>, false otherwise.</returns>
-        public static bool operator !=(in DomainEventCollection left, in DomainEventCollection right)
+        public static bool operator !=(DomainEventCollection left, DomainEventCollection right)
         {
-            return !left.Equals(in right);
+            return !left.Equals(right);
         }
 
         /// <inheritdoc cref="IEnumerable.GetEnumerator"/>
@@ -378,7 +377,8 @@ namespace AI4E.Storage.Domain
 
         IEnumerator<DomainEvent> IEnumerable<DomainEvent>.GetEnumerator()
         {
-            return (_domainEvents as IEnumerable<DomainEvent>)?.GetEnumerator() ?? Enumerable.Empty<DomainEvent>().GetEnumerator();
+            return (_domainEvents as IEnumerable<DomainEvent>)?.GetEnumerator()
+                ?? Enumerable.Empty<DomainEvent>().GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -392,7 +392,8 @@ namespace AI4E.Storage.Domain
         public struct Enumerator : IEnumerator<DomainEvent>, IEnumerator
         {
             // This MUST NOT be marked read-only, to allow the compiler to access this field by reference.
-            private ImmutableHashSet<DomainEvent>.Enumerator? _underlying;
+            private ImmutableHashSet<DomainEvent>.Enumerator _underlying;
+            private readonly bool _isInitialized;
 
             /// <summary>
             /// Creates a new instance of the <see cref="Enumerator"/> type enumerating 
@@ -401,23 +402,39 @@ namespace AI4E.Storage.Domain
             /// <param name="collection">The <see cref="DomainEventCollection"/> to enumerate.</param>
             public Enumerator(DomainEventCollection collection)
             {
-                _underlying = collection._domainEvents?.GetEnumerator();
+                if (collection._domainEvents != null)
+                {
+                    _underlying = collection._domainEvents.GetEnumerator();
+                    _isInitialized = true;
+                }
+                else
+                {
+                    _underlying = default;
+                    _isInitialized = false;
+                }
             }
 
             /// <inheritdoc />
-            public DomainEvent Current => _underlying?.Current ?? default;
+            public DomainEvent Current => _isInitialized ? _underlying.Current : default;
 
+            [ExcludeFromCodeCoverage]
             object IEnumerator.Current => Current;
 
             /// <inheritdoc />
             public bool MoveNext()
             {
-                return _underlying?.MoveNext() ?? false;
+                if (_isInitialized)
+                {
+                    return _underlying.MoveNext();
+                }
+
+                return false;
             }
 
             /// <inheritdoc />
             public void Dispose() { }
 
+            [ExcludeFromCodeCoverage]
             void IEnumerator.Reset()
             {
                 throw new NotSupportedException();

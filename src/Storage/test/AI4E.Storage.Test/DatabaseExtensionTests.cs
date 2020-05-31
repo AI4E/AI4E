@@ -306,7 +306,7 @@ namespace AI4E.Storage.Test
 
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
             mock.Setup(database => database.GetOneAsync<IdEntry>(
-            It.IsAny<Expression<Func<IdEntry, bool>>>(), 
+            It.IsAny<Expression<Func<IdEntry, bool>>>(),
             cancellation)).ReturnsAsync(exisintgEntry);
 #else
             mock.Setup(database => database.GetAsync<IdEntry>(
@@ -322,7 +322,7 @@ namespace AI4E.Storage.Test
 
             // TODO: Use a custom equality comparer, when this is implemented (#252) to validate the predicate
             mock.Verify(database => database.GetOneAsync<IdEntry>(
-            It.IsAny<Expression<Func<IdEntry, bool>>>(), 
+            It.IsAny<Expression<Func<IdEntry, bool>>>(),
             cancellation), Times.Once());
 #else
             // TODO: Use a custom equality comparer, when this is implemented (#252) to validate the predicate
@@ -344,7 +344,7 @@ namespace AI4E.Storage.Test
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
             // TODO: Use a custom equality comparer, when this is implemented (#252) to validate the predicate
             mock.Setup(database => database.GetOneAsync<IdEntry>(
-                It.IsAny<Expression<Func<IdEntry, bool>>>(), 
+                It.IsAny<Expression<Func<IdEntry, bool>>>(),
                 cancellation)).ReturnsAsync(exisintgEntry);
 #else
             // TODO: Use a custom equality comparer, when this is implemented (#252) to validate the predicate
@@ -509,7 +509,7 @@ namespace AI4E.Storage.Test
             var mock = new Mock<IDatabase>();
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
             mock.Setup(database => database.GetOneAsync<IdEntry>(
-                It.IsAny<Expression<Func<IdEntry, bool>>>(), 
+                It.IsAny<Expression<Func<IdEntry, bool>>>(),
                 cancellation)).ReturnsAsync(existingEntry);
 #else
             mock.Setup(database => database.GetAsync<IdEntry>(
@@ -528,9 +528,9 @@ namespace AI4E.Storage.Test
 
             // Assert
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
-             // TODO: Use a custom equality comparer, when this is implemented (#252) to validate the predicate
+            // TODO: Use a custom equality comparer, when this is implemented (#252) to validate the predicate
             mock.Verify(
-                database => database.GetOneAsync<IdEntry>(It.IsAny<Expression<Func<IdEntry, bool>>>(), cancellation), 
+                database => database.GetOneAsync<IdEntry>(It.IsAny<Expression<Func<IdEntry, bool>>>(), cancellation),
                 Times.Once());
 #else
             // TODO: Use a custom equality comparer, when this is implemented (#252) to validate the predicate
@@ -553,7 +553,7 @@ namespace AI4E.Storage.Test
             var mock = new Mock<IDatabase>();
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
             mock.Setup(database => database.GetOneAsync<IdEntry>(
-                It.IsAny<Expression<Func<IdEntry, bool>>>(), 
+                It.IsAny<Expression<Func<IdEntry, bool>>>(),
                 cancellation)).ReturnsAsync(existingEntry);
 #else
             mock.Setup(database => database.GetAsync<IdEntry>(
@@ -652,7 +652,7 @@ namespace AI4E.Storage.Test
             var mock = new Mock<IDatabase>();
 
             mock.Setup(database => database.RemoveAsync(
-                comparand, It.IsAny<Expression<Func<IdEntry, bool>>>(), 
+                comparand, It.IsAny<Expression<Func<IdEntry, bool>>>(),
                 cancellation)).ReturnsAsync(expectedResult);
 
             // Act
@@ -701,10 +701,10 @@ namespace AI4E.Storage.Test
             var entry = new IdEntry { Id = 1 };
             var cancellation = CancellationToken.None;
             var mock = new Mock<IDatabase>();
- 
+
             mock.Setup(database => database.UpdateAsync(
-                entry, 
-                It.IsAny<Expression<Func<IdEntry, bool>>>(), 
+                entry,
+                It.IsAny<Expression<Func<IdEntry, bool>>>(),
                 cancellation)).ReturnsAsync(expectedResult);
 
             // Act
@@ -719,31 +719,31 @@ namespace AI4E.Storage.Test
             // Assert
             Assert.Equal(expectedResult, result);
         }
-    }
 
-    public class CompareExchangeAsyncEqualEntryComparandChecksToBeUpToDateTestData
-        : TheoryData<IdEntry?, IdEntry, Expression<Func<IdEntry, IdEntry, bool>>?>
-    {
-        public CompareExchangeAsyncEqualEntryComparandChecksToBeUpToDateTestData()
+        public class CompareExchangeAsyncEqualEntryComparandChecksToBeUpToDateTestData
+            : TheoryData<IdEntry?, IdEntry, Expression<Func<IdEntry, IdEntry, bool>>?>
         {
-            Add(null, null, null);
-            Add(null, new IdEntry { Id = 1 }, null);
-            Add(new IdEntry { Id = 1 }, null, null);
-            Add(new IdEntry { Id = 1 }, new IdEntry { Id = 1 }, (x, y) => false);
-            Add(new IdEntry { Id = 1 }, new IdEntry { Id = 1 }, (x, y) => true);
+            public CompareExchangeAsyncEqualEntryComparandChecksToBeUpToDateTestData()
+            {
+                Add(null, null, null);
+                Add(null, new IdEntry { Id = 1 }, null);
+                Add(new IdEntry { Id = 1 }, null, null);
+                Add(new IdEntry { Id = 1 }, new IdEntry { Id = 1 }, (x, y) => false);
+                Add(new IdEntry { Id = 1 }, new IdEntry { Id = 1 }, (x, y) => true);
+            }
         }
-    }
 
-    public class CompareExchangeAsyncEqualEntryComparandReturnsCorrectResultTestData
-        : TheoryData<IdEntry?, IdEntry, Expression<Func<IdEntry, IdEntry, bool>>?, bool>
-    {
-        public CompareExchangeAsyncEqualEntryComparandReturnsCorrectResultTestData()
+        public class CompareExchangeAsyncEqualEntryComparandReturnsCorrectResultTestData
+            : TheoryData<IdEntry?, IdEntry, Expression<Func<IdEntry, IdEntry, bool>>?, bool>
         {
-            Add(null, null, null, true);
-            Add(null, new IdEntry { Id = 1 }, null, false);
-            Add(new IdEntry { Id = 1 }, null, null, false);
-            Add(new IdEntry { Id = 1 }, new IdEntry { Id = 1 }, (x, y) => false, false);
-            Add(new IdEntry { Id = 1 }, new IdEntry { Id = 1 }, (x, y) => true, true);
+            public CompareExchangeAsyncEqualEntryComparandReturnsCorrectResultTestData()
+            {
+                Add(null, null, null, true);
+                Add(null, new IdEntry { Id = 1 }, null, false);
+                Add(new IdEntry { Id = 1 }, null, null, false);
+                Add(new IdEntry { Id = 1 }, new IdEntry { Id = 1 }, (x, y) => false, false);
+                Add(new IdEntry { Id = 1 }, new IdEntry { Id = 1 }, (x, y) => true, true);
+            }
         }
     }
 }

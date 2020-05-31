@@ -117,6 +117,24 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="ArgumentMustNotBeADelegate" xml:space="preserve">
+    <value>The argument must not be a delegate.</value>
+  </data>
+  <data name="ArgumentMustNotBeAValueType" xml:space="preserve">
+    <value>The argument must not be a value-type.</value>
+  </data>
+  <data name="ArgumentMustNotSpecifyDelegateType" xml:space="preserve">
+    <value>The argument must not specify a delegate type.</value>
+  </data>
+  <data name="ArgumentMustNotSpecifyInterfaceType" xml:space="preserve">
+    <value>The argument must not specify an interface-type.</value>
+  </data>
+  <data name="ArgumentMustNotSpecifyOpenTypeDefinition" xml:space="preserve">
+    <value>The argument must not specify an open generic type definition.</value>
+  </data>
+  <data name="ArgumentMustNotSpecifyValueType" xml:space="preserve">
+    <value>The argument must not specify a value-type.</value>
+  </data>
   <data name="Committing" xml:space="preserve">
     <value>Committing all changes to the domain storage. Scope {0}</value>
   </data>

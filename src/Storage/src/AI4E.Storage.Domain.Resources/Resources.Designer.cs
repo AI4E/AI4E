@@ -61,6 +61,60 @@ namespace AI4E.Storage.Domain {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The argument must not be a delegate..
+        /// </summary>
+        internal static string ArgumentMustNotBeADelegate {
+            get {
+                return ResourceManager.GetString("ArgumentMustNotBeADelegate", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The argument must not be a value-type..
+        /// </summary>
+        internal static string ArgumentMustNotBeAValueType {
+            get {
+                return ResourceManager.GetString("ArgumentMustNotBeAValueType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The argument must not specify a delegate type..
+        /// </summary>
+        internal static string ArgumentMustNotSpecifyDelegateType {
+            get {
+                return ResourceManager.GetString("ArgumentMustNotSpecifyDelegateType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The argument must not specify an interface-type..
+        /// </summary>
+        internal static string ArgumentMustNotSpecifyInterfaceType {
+            get {
+                return ResourceManager.GetString("ArgumentMustNotSpecifyInterfaceType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The argument must not specify an open generic type definition..
+        /// </summary>
+        internal static string ArgumentMustNotSpecifyOpenTypeDefinition {
+            get {
+                return ResourceManager.GetString("ArgumentMustNotSpecifyOpenTypeDefinition", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The argument must not specify a value-type..
+        /// </summary>
+        internal static string ArgumentMustNotSpecifyValueType {
+            get {
+                return ResourceManager.GetString("ArgumentMustNotSpecifyValueType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Committing all changes to the domain storage. Scope {0}.
         /// </summary>
         internal static string Committing {
