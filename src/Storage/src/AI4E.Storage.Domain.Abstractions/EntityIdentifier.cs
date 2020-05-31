@@ -47,7 +47,7 @@ namespace AI4E.Storage.Domain
             if (entityId is null)
                 throw new ArgumentNullException(nameof(entityId));
 
-            // TODO: Validate entity type.
+            EntityValidationHelper.Validate(entityType);
 
             _entityType = entityType;
             _entityId = entityId;
@@ -62,6 +62,17 @@ namespace AI4E.Storage.Domain
         /// Gets the entity id.
         /// </summary>
         public string EntityId => _entityId ?? string.Empty;
+
+        /// <summary>
+        /// Deconstructs the current entity-identifier.
+        /// </summary>
+        /// <param name="eventType">Contains the type of entity.</param>
+        /// <param name="event">Contains the entity id.</param>
+        public void Deconstruct(out Type entityType, out string entityId)
+        {
+            entityType = EntityType;
+            entityId = EntityId;
+        }
 
         /// <inheritdoc cref="IEquatable{EntityIdentifier}.Equals(EntityIdentifier)"/>
         public bool Equals(in EntityIdentifier other)

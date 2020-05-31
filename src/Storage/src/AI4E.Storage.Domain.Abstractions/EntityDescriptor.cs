@@ -43,7 +43,7 @@ namespace AI4E.Storage.Domain
             if (entity is null)
                 throw new ArgumentNullException(nameof(entity));
 
-            ValidateEntity(entity);
+            EntityValidationHelper.Validate(entity);
 
             _entityType = entity.GetType();
             _entity = entity;
@@ -69,39 +69,10 @@ namespace AI4E.Storage.Domain
             if (entity is null)
                 throw new ArgumentNullException(nameof(entity));
 
-            ValidateEntityType(entityType);
-
-            if (!entityType.IsAssignableFrom(entity.GetType()))
-                throw new ArgumentException(Resources.EntityMustBeAssignableToEntityType, nameof(entity));
-
-            ValidateEntity(entity);
+            EntityValidationHelper.Validate(entityType, entity);
 
             _entityType = entityType;
             _entity = entity;
-        }
-
-        private static void ValidateEntity(object entity)
-        {
-            if (entity.GetType().IsDelegate())
-                throw new ArgumentException(Resources.ArgumentMustNotBeADelegate, nameof(entity));
-
-            if (entity.GetType().IsValueType)
-                throw new ArgumentException(Resources.ArgumentMustNotBeAValueType, nameof(entity));
-        }
-
-        private static void ValidateEntityType(Type entityType)
-        {
-            if (entityType.IsDelegate())
-                throw new ArgumentException(Resources.ArgumentMustNotSpecifyDelegateType, nameof(entityType));
-
-            if (entityType.IsValueType)
-                throw new ArgumentException(Resources.ArgumentMustNotSpecifyValueType, nameof(entityType));
-
-            if (entityType.IsInterface)
-                throw new ArgumentException(Resources.ArgumentMustNotSpecifyInterfaceType, nameof(entityType));
-
-            if (entityType.IsGenericTypeDefinition)
-                throw new ArgumentException(Resources.ArgumentMustNotSpecifyOpenTypeDefinition, nameof(entityType));
         }
 
         /// <summary>
