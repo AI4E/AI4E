@@ -23,7 +23,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace AI4E.Storage.Domain
@@ -56,11 +58,6 @@ namespace AI4E.Storage.Domain
 
             Debug.Assert(commitAttemptEntriesBuilder.Capacity == commitAttemptEntriesBuilder.Count);
 
-            if (commitAttemptEntriesBuilder.Capacity != commitAttemptEntriesBuilder.Count)
-            {
-                commitAttemptEntriesBuilder.Capacity = commitAttemptEntriesBuilder.Count;
-            }
-
             Entries = new CommitAttemptEntryCollection(commitAttemptEntriesBuilder.MoveToImmutable());
         }
 
@@ -90,7 +87,7 @@ namespace AI4E.Storage.Domain
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return HashCode.Combine(Entries);
+            return Entries.GetHashCode();
         }
 
         /// <summary>
@@ -121,7 +118,7 @@ namespace AI4E.Storage.Domain
     /// </summary>
     public readonly struct CommitAttemptEntry : IEquatable<CommitAttemptEntry>
     {
-        private readonly ITrackedEntity _trackedEntity;
+        private readonly ITrackedEntity? _trackedEntity;
         private static readonly ImmutableHashSet<EntityTrackState> _allowedTrackStates = new[]
         {
             EntityTrackState.Created,
@@ -145,7 +142,7 @@ namespace AI4E.Storage.Domain
                 throw new ArgumentException(
                     string.Format(
                         CultureInfo.InvariantCulture,
-                        Resources.TrackedEntityMustNotBeInState, 
+                        Resources.TrackedEntityMustNotBeInState,
                         trackedEntity.TrackState), nameof(trackedEntity));
             }
 
@@ -155,7 +152,8 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// Gets the identifier of the entity to commit.
         /// </summary>
-        public EntityIdentifier EntityIdentifier => _trackedEntity.GetEntityIdentifier();
+        public EntityIdentifier EntityIdentifier
+            => _trackedEntity is null ? default : _trackedEntity.GetEntityIdentifier();
 
         /// <summary>
         /// Gets the commit operation to perform for the entity to commit.
@@ -164,6 +162,9 @@ namespace AI4E.Storage.Domain
         {
             get
             {
+                if (_trackedEntity is null)
+                    return CommitOperation.Delete;
+
                 return _trackedEntity.TrackState switch
                 {
                     EntityTrackState.Created => CommitOperation.Store,
@@ -177,27 +178,30 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// Gets the new revision of the entity after performing the commit.
         /// </summary>
-        public long Revision => _trackedEntity.Revision;
+        public long Revision => _trackedEntity is null ? default : _trackedEntity.Revision;
 
         /// <summary>
         /// Gets the concurrency-token of the entity after performing the commit.
         /// </summary>
-        public ConcurrencyToken ConcurrencyToken => _trackedEntity.ConcurrencyToken;
+        public ConcurrencyToken ConcurrencyToken
+            => _trackedEntity is null ? default : _trackedEntity.ConcurrencyToken;
 
         /// <summary>
         /// Gets the collection of domain-events that were raised on the entity.
         /// </summary>
-        public DomainEventCollection DomainEvents => _trackedEntity.DomainEvents;
+        public DomainEventCollection DomainEvents
+            => _trackedEntity is null ? default : _trackedEntity.DomainEvents;
 
         /// <summary>
         /// Gets the expected revision of the entity to commit to check for concurrency situations.
         /// </summary>
-        public long ExpectedRevision => Math.Max(0, Revision - 1);
+        public long ExpectedRevision
+            => _trackedEntity is null ? default : _trackedEntity.OriginalEntityLoadResult.Revision;
 
         /// <summary>
         /// Gets the updated or created entity or <c>null</c> if a delete operation shall be performed.
         /// </summary>
-        public object? Entity => _trackedEntity.Entity;
+        public object? Entity => _trackedEntity is null ? default : _trackedEntity.Entity;
 
         bool IEquatable<CommitAttemptEntry>.Equals(CommitAttemptEntry other)
         {
@@ -282,13 +286,13 @@ namespace AI4E.Storage.Domain
             for (var i = 0; i < Count; i++)
             {
                 ref readonly var left = ref _entries.ItemRef(i);
-                ref readonly var right = ref _entries.ItemRef(i);
+                ref readonly var right = ref other._entries.ItemRef(i);
 
                 if (left != right)
                     return false;
             }
 
-            return false;
+            return true;
         }
 
         /// <inheritdoc/>
@@ -340,11 +344,17 @@ namespace AI4E.Storage.Domain
 
         IEnumerator<CommitAttemptEntry> IEnumerable<CommitAttemptEntry>.GetEnumerator()
         {
+            if (_entries.IsDefaultOrEmpty)
+                return Enumerable.Empty<CommitAttemptEntry>().GetEnumerator();
+
             return ((IEnumerable<CommitAttemptEntry>)_entries).GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
+            if (_entries.IsDefaultOrEmpty)
+                return Enumerable.Empty<CommitAttemptEntry>().GetEnumerator();
+
             return ((IEnumerable)_entries).GetEnumerator();
         }
 
@@ -359,7 +369,7 @@ namespace AI4E.Storage.Domain
         /// </summary>
         public struct Enumerator : IEnumerator<CommitAttemptEntry>, IEnumerator
         {
-            // This MUST NOT be marked read-only, to allow the compiler to access this field by reference. // TODO: Add a unit-test
+            // This MUST NOT be marked read-only, to allow the compiler to access this field by reference.
             private ImmutableArray<CommitAttemptEntry>.Enumerator _underlying;
 
             /// <summary>
@@ -369,12 +379,20 @@ namespace AI4E.Storage.Domain
             /// <param name="collection">The <see cref="CommitAttemptEntryCollection"/> to enumerate.</param>
             public Enumerator(CommitAttemptEntryCollection collection)
             {
-                _underlying = collection._entries.GetEnumerator();
+                if (collection._entries.IsDefault)
+                {
+                    _underlying = ImmutableArray<CommitAttemptEntry>.Empty.GetEnumerator();
+                }
+                else
+                {
+                    _underlying = collection._entries.GetEnumerator();
+                }
             }
 
             /// <inheritdoc/>
             public CommitAttemptEntry Current => _underlying.Current;
 
+            [ExcludeFromCodeCoverage]
             object IEnumerator.Current => Current;
 
             /// <inheritdoc/>
@@ -386,6 +404,7 @@ namespace AI4E.Storage.Domain
             /// <inheritdoc/>
             public void Dispose() { }
 
+            [ExcludeFromCodeCoverage]
             void IEnumerator.Reset()
             {
                 throw new NotSupportedException();
