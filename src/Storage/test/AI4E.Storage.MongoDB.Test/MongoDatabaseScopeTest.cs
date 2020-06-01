@@ -35,16 +35,10 @@ namespace AI4E.Storage.MongoDB.Test
 
         private MongoDatabase BuildMongoDatabase()
         {
-            var wrappedDatabase = _databaseClient.GetDatabase(SGuid.NewGuid().ToString());
-
             // Workaround for https://github.com/Mongo2Go/Mongo2Go/issues/89
-            for (var i = 0; i < 10; i++)
-            {
-                _ = wrappedDatabase.GetCollection<DummyEntry>("__dummy");
-                wrappedDatabase.DropCollection("__dummy");
-            }
+            _databaseClient.EnsureReplicationSetReady();
 
-            return new MongoDatabase(wrappedDatabase);
+            return new MongoDatabase(_databaseClient.GetDatabase(SGuid.NewGuid().ToString()));
         }
 
         protected override async Task<IDatabase> BuildDatabaseAsync()

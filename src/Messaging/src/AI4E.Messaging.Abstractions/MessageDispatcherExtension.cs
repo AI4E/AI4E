@@ -45,6 +45,21 @@ namespace AI4E.Messaging
 #pragma warning restore CA1062
         }
 
+        // To prevent the compiler to bind to the wrong extension method.
+        public static ValueTask<IDispatchResult> DispatchAsync<TMessage>(
+            this IMessageDispatcher messageDispatcher,
+            DispatchDataDictionary<TMessage> dispatchDataDictionary,
+            CancellationToken cancellation = default)
+            where TMessage : class
+        {
+            if (dispatchDataDictionary is null)
+                throw new ArgumentNullException(nameof(dispatchDataDictionary));
+
+#pragma warning disable CA1062
+            return messageDispatcher.DispatchAsync(dispatchDataDictionary, publish: false, cancellation);
+#pragma warning restore CA1062
+        }
+
         /// <summary>
         /// Asynchronously dispatches a message of the specified message type.
         /// </summary>

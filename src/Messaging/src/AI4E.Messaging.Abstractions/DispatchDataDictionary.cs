@@ -405,6 +405,9 @@ namespace AI4E.Messaging
         private static readonly ConcurrentDictionary<Type, Func<object, IEnumerable<KeyValuePair<string, object?>>, DispatchDataDictionary>> _factories
             = new ConcurrentDictionary<Type, Func<object, IEnumerable<KeyValuePair<string, object?>>, DispatchDataDictionary>>();
 
+        private static readonly Func<Type, Func<object, IEnumerable<KeyValuePair<string, object?>>, DispatchDataDictionary>> _buildFactory
+            = BuildFactory; // Cache delegate for perf reasons.
+
         /// <summary>
         /// Creates an instance of the <see cref="DispatchDataDictionary"/> type.
         /// </summary>
@@ -441,7 +444,7 @@ namespace AI4E.Messaging
         {
             ValidateArguments(messageType, message, data);
 
-            var factory = _factories.GetOrAdd(messageType, BuildFactory);
+            var factory = _factories.GetOrAdd(messageType, _buildFactory);
             return factory(message, data);
         }
 
@@ -501,7 +504,6 @@ namespace AI4E.Messaging
                 dataParameter);
 
             return lambda.Compile();
-
         }
 
         #endregion
@@ -546,6 +548,24 @@ namespace AI4E.Messaging
             : base(typeof(TMessage), message, ImmutableDictionary<string, object?>.Empty)
         { }
 
+        public DispatchDataDictionary(Type messageType, TMessage message, IEnumerable<KeyValuePair<string, object?>> data)
+            : base(messageType, message, data)
+        {
+            ValidateMessageType(messageType);
+        }
+
+        public DispatchDataDictionary(Type messageType, TMessage message)
+            : base(messageType, message, ImmutableDictionary<string, object?>.Empty)
+        {
+            ValidateMessageType(messageType);
+        }
+
+        private static void ValidateMessageType(Type messageType)
+        {
+            if (!typeof(TMessage).IsAssignableFrom(messageType))
+                throw new ArgumentException($"The specified message-type must be of type '{ typeof(TMessage) }' or a derived type.", nameof(messageType));
+        }
+
         /// <summary>
         /// Gets the message that is dispatched.
         /// </summary>
@@ -580,7 +600,7 @@ namespace AI4E.Messaging
 
             public new DispatchDataDictionary<TMessage> BuildDispatchDataDictionary()
             {
-                return new DispatchDataDictionary<TMessage>(Message, BuildDataDictionary());
+                return new DispatchDataDictionary<TMessage>(MessageType, Message, BuildDataDictionary());
             }
         }
 

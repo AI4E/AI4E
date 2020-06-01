@@ -36,7 +36,7 @@ namespace AI4E.Messaging
 
             if (!(dispatchData is DispatchDataDictionary<TMessage> typedDispatchData))
             {
-                typedDispatchData = new DispatchDataDictionary<TMessage>(message, dispatchData);
+                typedDispatchData = new DispatchDataDictionary<TMessage>(dispatchData.MessageType, message, dispatchData);
             }
 
             return typedDispatchData;

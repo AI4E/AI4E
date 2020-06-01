@@ -19,6 +19,7 @@
  */
 
 using System;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Messaging
@@ -39,12 +40,6 @@ namespace AI4E.Messaging
         {
             var serviceCollection = new ServiceCollection();
             return (MessagingBuilder)serviceCollection.AddMessaging();
-        }
-
-        public IMessageDispatcher BuildMessageDispatcher()
-        {
-            var serviceProvider = Services.BuildServiceProvider();
-            return serviceProvider.GetRequiredService<IMessageDispatcher>();
         }
     }
 
