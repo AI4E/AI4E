@@ -39,6 +39,10 @@ namespace AI4E.Storage.Domain
         /// <exception cref="ArgumentNullException">
         /// Thrown if any of <paramref name="entityType"/> or <paramref name="entityId"/> is <c>null</c>.
         /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="entityType"/> specifies a delegate type, a value-type,
+        /// an interface type or an open generic type definition.
+        /// </exception>
         public EntityIdentifier(Type entityType, string entityId)
         {
             if (entityType is null)

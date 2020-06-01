@@ -138,7 +138,7 @@ namespace AI4E.Storage.Domain
             if (entityType is null)
                 throw new ArgumentNullException(nameof(entityType));
 
-            // TODO: Validate entity type
+            EntityValidationHelper.Validate(entityType);
 
             _logger.LogInformation(
                 Resources.LoadingEntities,
@@ -365,7 +365,7 @@ namespace AI4E.Storage.Domain
             var entityId = GetOrCreateId(entityDescriptor);
 
             _logger.LogDebug(
-                  Resources.Deleting, 
+                  Resources.Deleting,
                   new EntityIdentifier(entityDescriptor.EntityType, entityId),
                   _optionsAccessor.Value.Scope ?? Resources.NoScope);
 

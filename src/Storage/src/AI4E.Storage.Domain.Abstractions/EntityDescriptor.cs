@@ -38,6 +38,9 @@ namespace AI4E.Storage.Domain
         /// </summary>
         /// <param name="entity">The entity.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entity"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="entity"/> is a delegate or a value-type.
+        /// </exception>
         public EntityDescriptor(object entity)
         {
             if (entity is null)
@@ -59,7 +62,13 @@ namespace AI4E.Storage.Domain
         /// Thrown if any of <paramref name="entityType"/> or <paramref name="entity"/> is <c>null</c>.
         /// </exception>
         /// <exception cref="ArgumentException">
-        /// Thrown if <paramref name="entity"/> is not of type <paramref name="entityType"/> or assignable to it.
+        /// Thrown if 
+        /// <paramref name="entity"/> is not of type <paramref name="entityType"/> or assignable to it 
+        /// -- OR -- 
+        /// <paramref name="entityType"/> specifies a delegate type, a value-type,
+        /// an interface type or an open generic type definition.
+        /// -- OR --
+        /// <paramref name="entity"/> is a delegate or a value-type.
         /// </exception>
         public EntityDescriptor(Type entityType, object entity)
         {
