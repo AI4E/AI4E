@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>$(TestFrameworkVersions)</TargetFrameworks>
@@ -20,8 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AI4E.Storage.Domain.Abstractions\AI4E.Storage.Domain.Abstractions.csproj" />
-    <ProjectReference Include="..\..\src\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj" />
-    <ProjectReference Include="..\AI4E.Storage.Domain.Specification\AI4E.Storage.Domain.Specification.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">

@@ -26,5 +26,10 @@ namespace AI4E.Storage.Domain
         { }
 
         public override string Reason => Resources.NotMatchedExpectedConcurrencyToken;
+
+        protected override void ThrowFailure()
+        {
+            throw new ConcurrencyIssueEntityLoadException();
+        }
     }
 }

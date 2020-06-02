@@ -52,5 +52,20 @@ namespace AI4E.Storage.Domain
         /// Gets the reason phrase that indicates the reason of the load-result state or a failure message.
         /// </summary>
         string Reason { get; }
+
+        /// <summary>
+        /// Returns the successfully loaded entity or <c>null</c> if the specified load-result indicates failure.
+        /// </summary>
+        /// <param name="throwOnFailure">
+        /// A boolean value indicating whether an exception shall be thrown if the entity could not be loaded.
+        /// </param>
+        /// <returns>
+        /// The entity extracted if the current entity load-result indicates success, <c>null</c> otherwise.
+        /// </returns>
+        /// <exception cref="EntityLoadException">
+        /// Thrown if <paramref name="throwOnFailure"/> is true and the entity could not be loaded for a reason 
+        /// other then non-existence.
+        /// </exception>
+        object? GetEntity(bool throwOnFailure = true);
     }
 }

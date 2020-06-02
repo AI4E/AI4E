@@ -18,10 +18,26 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-namespace AI4E.Storage.Domain
+using System;
+using AI4E.Storage.Domain.Specification;
+
+namespace AI4E.Storage.Domain.Test
 {
-    /// <summary>
-    /// Represents a load-result that indicates that the loaded entity does not match the expected concurrency-token. 
-    /// </summary>
-    public interface IConcurrencyIssueLoadResult : IEntityLoadResult { }
+    public class UnexpectedRevisionEntityLoadExceptionTests : EntityLoadExceptionSpecification
+    {
+        protected override EntityLoadException Create()
+        {
+            return new UnexpectedRevisionEntityLoadException();
+        }
+
+        protected override EntityLoadException Create(string? message)
+        {
+            return new UnexpectedRevisionEntityLoadException(message);
+        }
+
+        protected override EntityLoadException Create(string? message, Exception? innerException)
+        {
+            return new UnexpectedRevisionEntityLoadException(message, innerException);
+        }
+    }
 }

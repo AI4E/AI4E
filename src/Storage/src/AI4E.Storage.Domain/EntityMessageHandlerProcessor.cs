@@ -110,8 +110,8 @@ namespace AI4E.Storage.Domain
                     return new ConcurrencyIssueDispatchResult();
                 }
 
-                var entity = entityLoadResult.GetEntityOrNull();
-                var createsEntityAttribute 
+                var entity = entityLoadResult.GetEntity(throwOnFailure: false);
+                var createsEntityAttribute
                     = Context.MessageHandlerAction.Member.GetCustomAttribute<CreatesEntityAttribute>();
 
                 // The entity could not be loaded.
@@ -177,7 +177,7 @@ namespace AI4E.Storage.Domain
                         await _entityStorage.DeleteAsync(entityDescriptor, cancellation).ConfigureAwait(false);
                     }
 
-                    if (await _entityStorage.CommitAsync(cancellation).ConfigureAwait(false) 
+                    if (await _entityStorage.CommitAsync(cancellation).ConfigureAwait(false)
                         != EntityCommitResult.Success)
                     {
                         continue;

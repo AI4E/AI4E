@@ -21,7 +21,7 @@
 namespace AI4E.Storage.Domain
 {
     /// <summary>
-    /// Represents a load-result that indicated that the loaded entity does not match the expected revision. 
+    /// Represents a load-result that indicates that the loaded entity does not match the expected revision. 
     /// </summary>
     public interface IUnexpectedRevisionEntityLoadResult : IEntityLoadResult { }
 }

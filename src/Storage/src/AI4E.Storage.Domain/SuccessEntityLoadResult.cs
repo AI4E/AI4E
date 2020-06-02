@@ -146,5 +146,10 @@ namespace AI4E.Storage.Domain
         #endregion
 
         public override string Reason => Resources.SuccessfullyLoaded;
+
+        public override object? GetEntity(bool throwOnFailure)
+        {
+            return Entity;
+        }
     }
 }

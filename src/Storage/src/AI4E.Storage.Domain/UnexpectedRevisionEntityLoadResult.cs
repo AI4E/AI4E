@@ -39,5 +39,10 @@ namespace AI4E.Storage.Domain
         public override long Revision { get; }
 
         public override string Reason => Resources.NotMatchedExpectedRevision;
+
+        protected override void ThrowFailure()
+        {
+            throw new UnexpectedRevisionEntityLoadException();
+        }
     }
 }

@@ -34,5 +34,17 @@ namespace AI4E.Storage.Domain
         public virtual long Revision => 0L;
 
         public abstract string Reason { get; }
+
+        public virtual object? GetEntity(bool throwOnFailure)
+        {
+            if (throwOnFailure)
+            {
+                ThrowFailure();
+            }
+
+            return null;
+        }
+
+        protected virtual void ThrowFailure() { }
     }
 }

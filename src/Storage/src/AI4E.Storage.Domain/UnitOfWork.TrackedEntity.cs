@@ -189,7 +189,7 @@ namespace AI4E.Storage.Domain
                     if (_updatedEntity != null)
                         return _updatedEntity;
 
-                    return OriginalEntityLoadResult.GetEntityOrNull();
+                    return OriginalEntityLoadResult.GetEntity(throwOnFailure: false);
                 }
             }
 

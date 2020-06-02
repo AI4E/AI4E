@@ -65,6 +65,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.Resourc
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.Test", "test\AI4E.Storage.Domain.Test\AI4E.Storage.Domain.Test.csproj", "{587B443E-5268-4A1E-9DE2-CEB9E4ED2FD2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Storage.Domain.Specification", "test\AI4E.Storage.Domain.Specification\AI4E.Storage.Domain.Specification.csproj", "{C5EA9D0D-E949-47EA-9917-CBECD5F6E3AB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -183,6 +185,10 @@ Global
 		{587B443E-5268-4A1E-9DE2-CEB9E4ED2FD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{587B443E-5268-4A1E-9DE2-CEB9E4ED2FD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{587B443E-5268-4A1E-9DE2-CEB9E4ED2FD2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C5EA9D0D-E949-47EA-9917-CBECD5F6E3AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C5EA9D0D-E949-47EA-9917-CBECD5F6E3AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C5EA9D0D-E949-47EA-9917-CBECD5F6E3AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C5EA9D0D-E949-47EA-9917-CBECD5F6E3AB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -216,6 +222,7 @@ Global
 		{33923A2A-FE64-4516-A248-680DBF05F615} = {96226123-6132-4378-BE88-1046FD08ED29}
 		{748B9489-176B-4676-B612-928E57FF462C} = {DD4B5CAB-32A7-43F8-A3E1-E2CF0D22E8B2}
 		{587B443E-5268-4A1E-9DE2-CEB9E4ED2FD2} = {96226123-6132-4378-BE88-1046FD08ED29}
+		{C5EA9D0D-E949-47EA-9917-CBECD5F6E3AB} = {96226123-6132-4378-BE88-1046FD08ED29}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {AE7003AF-4F6E-4DBC-8BCB-55B2696A2F47}

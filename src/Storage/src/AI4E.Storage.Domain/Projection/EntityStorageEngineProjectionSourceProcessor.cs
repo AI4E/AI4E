@@ -62,7 +62,7 @@ namespace AI4E.Storage.Domain
                 new EntityIdentifier(
                     projectionSource.SourceType, projectionSource.SourceId), cancellation).ConfigureAwait(false);
 
-            return entityLoadResult?.GetEntityOrNull();
+            return entityLoadResult?.GetEntity(throwOnFailure: false);
         }
 
         private static readonly ObjectPool<ExpectedRevisionDomainQueryProcessor> _domainQueryProcessorPool

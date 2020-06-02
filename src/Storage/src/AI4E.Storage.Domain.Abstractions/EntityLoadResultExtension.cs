@@ -60,7 +60,7 @@ namespace AI4E.Storage.Domain
             if (entityLoadResult is null)
                 throw new ArgumentNullException(nameof(entityLoadResult));
 
-            return entityLoadResult is ISuccessEntityLoadResult;
+            return entityLoadResult.GetEntity(throwOnFailure: false) != null;
         }
 
         /// <summary>
@@ -82,35 +82,8 @@ namespace AI4E.Storage.Domain
             if (entityLoadResult is null)
                 throw new ArgumentNullException(nameof(entityLoadResult));
 
-            entity = GetEntityOrNull(entityLoadResult);
+            entity = entityLoadResult.GetEntity(throwOnFailure: false);
             return entity != null;
-        }
-
-        /// <summary>
-        /// Returns the successfully loaded entity or <c>null</c> if the specified load-result indicates failure.
-        /// </summary>
-        /// <param name="entityLoadResult">The entity load-result.</param>
-        /// <returns>
-        /// The entity extracted from <paramref name="entityLoadResult"/> if it indicates success, 
-        /// <c>null</c> otherwise.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown if <paramref name="entityLoadResult"/> is <c>null</c>.
-        /// </exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static object? GetEntityOrNull(this IEntityLoadResult entityLoadResult)
-        {
-            if (entityLoadResult is ISuccessEntityLoadResult successEntityLoadResult)
-            {
-                return successEntityLoadResult.Entity;
-            }
-
-            if (entityLoadResult is null)
-            {
-                throw new ArgumentNullException(nameof(entityLoadResult));
-            }
-
-            return null;
         }
     }
 }
