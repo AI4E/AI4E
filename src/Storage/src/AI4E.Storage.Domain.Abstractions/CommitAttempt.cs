@@ -58,14 +58,14 @@ namespace AI4E.Storage.Domain
 
             Debug.Assert(commitAttemptEntriesBuilder.Capacity == commitAttemptEntriesBuilder.Count);
 
-            Entries = new CommitAttemptEntryCollection(commitAttemptEntriesBuilder.MoveToImmutable());
+            Entries = new CommitAttemptEntryCollection<CommitAttemptEntry>(commitAttemptEntriesBuilder.MoveToImmutable());
         }
 
         /// <summary>
         /// Gets the <see cref="CommitAttemptEntryCollection"/> that defines the commit entries 
         /// that the current commit-attempt contains of.
         /// </summary>
-        public CommitAttemptEntryCollection Entries { get; }
+        public CommitAttemptEntryCollection<CommitAttemptEntry> Entries { get; }
 
         bool IEquatable<CommitAttempt>.Equals(CommitAttempt other)
         {
@@ -238,19 +238,20 @@ namespace AI4E.Storage.Domain
     /// <summary>
     /// Represents an immutable collection of commit-attempt entries.
     /// </summary>
-    public readonly struct CommitAttemptEntryCollection
-        : IReadOnlyCollection<CommitAttemptEntry>, IEquatable<CommitAttemptEntryCollection>
+    public readonly struct CommitAttemptEntryCollection<TCommitAttemptEntry>
+        : IReadOnlyCollection<TCommitAttemptEntry>, IEquatable<CommitAttemptEntryCollection<TCommitAttemptEntry>>
+        where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
     {
-        private readonly ImmutableArray<CommitAttemptEntry> _entries;
+        private readonly ImmutableArray<TCommitAttemptEntry> _entries;
 
         /// <summary>
-        /// Creates a new instance of type <see cref="CommitAttemptEntryCollection"/> 
+        /// Creates a new instance of type <see cref="CommitAttemptEntryCollection{TCommitAttemptEntry}"/> 
         /// from the specified collection of commit-attempt entries.
         /// </summary>
         /// <param name="entries">
-        /// An <see cref="ImmutableArray{CommitAttemptEntry}"/> containing the commit-attempt entries.
+        /// An <see cref="ImmutableArray{TCommitAttemptEntry}"/> containing the commit-attempt entries.
         /// </param>
-        public CommitAttemptEntryCollection(ImmutableArray<CommitAttemptEntry> entries)
+        public CommitAttemptEntryCollection(ImmutableArray<TCommitAttemptEntry> entries)
         {
             _entries = entries;
         }
@@ -258,13 +259,14 @@ namespace AI4E.Storage.Domain
         /// <inheritdoc/>
         public int Count => _entries.IsDefaultOrEmpty ? 0 : _entries.Length;
 
-        bool IEquatable<CommitAttemptEntryCollection>.Equals(CommitAttemptEntryCollection other)
+        bool IEquatable<CommitAttemptEntryCollection<TCommitAttemptEntry>>.Equals(
+            CommitAttemptEntryCollection<TCommitAttemptEntry> other)
         {
             return Equals(in other);
         }
 
         /// <inheritdoc cref="IEquatable{CommitAttemptEntryCollection}.Equals(CommitAttemptEntryCollection)"/>
-        public bool Equals(in CommitAttemptEntryCollection other)
+        public bool Equals(in CommitAttemptEntryCollection<TCommitAttemptEntry> other)
         {
             if (other.Count != Count)
                 return false;
@@ -274,7 +276,7 @@ namespace AI4E.Storage.Domain
                 ref readonly var left = ref _entries.ItemRef(i);
                 ref readonly var right = ref other._entries.ItemRef(i);
 
-                if (left != right)
+                if (!left.Equals(right))
                     return false;
             }
 
@@ -284,7 +286,8 @@ namespace AI4E.Storage.Domain
         /// <inheritdoc/>
         public override bool Equals(object? obj)
         {
-            return obj is CommitAttemptEntryCollection commitAttemptEntries && Equals(in commitAttemptEntries);
+            return obj is CommitAttemptEntryCollection<TCommitAttemptEntry> commitAttemptEntries 
+                && Equals(in commitAttemptEntries);
         }
 
         private const int _sequenceHashCodeSeedValue = 0x2D2816FE;
@@ -309,10 +312,12 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// Returns a boolean value indicating whether two commit-attempt entry collections are equal.
         /// </summary>
-        /// <param name="left">The first <see cref="CommitAttemptEntryCollection"/>.</param>
-        /// <param name="right">The second <see cref="CommitAttemptEntryCollection"/>.</param>
+        /// <param name="left">The first <see cref="CommitAttemptEntryCollection{TCommitAttemptEntry}"/>.</param>
+        /// <param name="right">The second <see cref="CommitAttemptEntryCollection{TCommitAttemptEntry}"/>.</param>
         /// <returns>True if <paramref name="left"/> equals <paramref name="right"/>, false otherwise.</returns>
-        public static bool operator ==(in CommitAttemptEntryCollection left, in CommitAttemptEntryCollection right)
+        public static bool operator ==(
+            in CommitAttemptEntryCollection<TCommitAttemptEntry> left, 
+            in CommitAttemptEntryCollection<TCommitAttemptEntry> right)
         {
             return left.Equals(in right);
         }
@@ -320,26 +325,28 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// Returns a boolean value indicating whether two commit-attempt entry collections are not equal.
         /// </summary>
-        /// <param name="left">The first <see cref="CommitAttemptEntryCollection"/>.</param>
-        /// <param name="right">The second <see cref="CommitAttemptEntryCollection"/>.</param>
+        /// <param name="left">The first <see cref="CommitAttemptEntryCollection{TCommitAttemptEntry}"/>.</param>
+        /// <param name="right">The second <see cref="CommitAttemptEntryCollection{TCommitAttemptEntry}"/>.</param>
         /// <returns>True if <paramref name="left"/> does not equal <paramref name="right"/>, false otherwise.</returns>
-        public static bool operator !=(in CommitAttemptEntryCollection left, in CommitAttemptEntryCollection right)
+        public static bool operator !=(
+            in CommitAttemptEntryCollection<TCommitAttemptEntry> left, 
+            in CommitAttemptEntryCollection<TCommitAttemptEntry> right)
         {
             return !left.Equals(in right);
         }
 
-        IEnumerator<CommitAttemptEntry> IEnumerable<CommitAttemptEntry>.GetEnumerator()
+        IEnumerator<TCommitAttemptEntry> IEnumerable<TCommitAttemptEntry>.GetEnumerator()
         {
             if (_entries.IsDefaultOrEmpty)
-                return Enumerable.Empty<CommitAttemptEntry>().GetEnumerator();
+                return Enumerable.Empty<TCommitAttemptEntry>().GetEnumerator();
 
-            return ((IEnumerable<CommitAttemptEntry>)_entries).GetEnumerator();
+            return ((IEnumerable<TCommitAttemptEntry>)_entries).GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
             if (_entries.IsDefaultOrEmpty)
-                return Enumerable.Empty<CommitAttemptEntry>().GetEnumerator();
+                return Enumerable.Empty<TCommitAttemptEntry>().GetEnumerator();
 
             return ((IEnumerable)_entries).GetEnumerator();
         }
@@ -351,23 +358,26 @@ namespace AI4E.Storage.Domain
         }
 
         /// <summary>
-        /// Represents an enumerator that enumerator through a <see cref="CommitAttemptEntryCollection"/>.
+        /// Represents an enumerator that enumerator through a 
+        /// <see cref="CommitAttemptEntryCollection{TCommitAttemptEntry}"/>.
         /// </summary>
-        public struct Enumerator : IEnumerator<CommitAttemptEntry>, IEnumerator
+        public struct Enumerator : IEnumerator<TCommitAttemptEntry>, IEnumerator
         {
             // This MUST NOT be marked read-only, to allow the compiler to access this field by reference.
-            private ImmutableArray<CommitAttemptEntry>.Enumerator _underlying;
+            private ImmutableArray<TCommitAttemptEntry>.Enumerator _underlying;
 
             /// <summary>
             /// Creates a new instance of the <see cref="Enumerator"/> type enumerating 
-            /// the specified <see cref="CommitAttemptEntryCollection"/>.
+            /// the specified <see cref="CommitAttemptEntryCollection{TCommitAttemptEntry}"/>.
             /// </summary>
-            /// <param name="collection">The <see cref="CommitAttemptEntryCollection"/> to enumerate.</param>
-            public Enumerator(CommitAttemptEntryCollection collection)
+            /// <param name="collection">
+            /// The <see cref="CommitAttemptEntryCollection{TCommitAttemptEntry}"/> to enumerate.
+            /// </param>
+            public Enumerator(CommitAttemptEntryCollection<TCommitAttemptEntry> collection)
             {
                 if (collection._entries.IsDefault)
                 {
-                    _underlying = ImmutableArray<CommitAttemptEntry>.Empty.GetEnumerator();
+                    _underlying = ImmutableArray<TCommitAttemptEntry>.Empty.GetEnumerator();
                 }
                 else
                 {
@@ -376,7 +386,7 @@ namespace AI4E.Storage.Domain
             }
 
             /// <inheritdoc/>
-            public CommitAttemptEntry Current => _underlying.Current;
+            public TCommitAttemptEntry Current => _underlying.Current;
 
             [ExcludeFromCodeCoverage]
             object IEnumerator.Current => Current;

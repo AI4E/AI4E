@@ -65,7 +65,7 @@ namespace AI4E.Storage.Domain.Test
             mock3.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
             var commitAttemptyEntry3 = new CommitAttemptEntry(mock3.Object);
 
-            var expectedEntries = new CommitAttemptEntryCollection(new[]
+            var expectedEntries = new CommitAttemptEntryCollection<CommitAttemptEntry>(new[]
             {
                 commitAttemptyEntry1,
                 commitAttemptyEntry2,

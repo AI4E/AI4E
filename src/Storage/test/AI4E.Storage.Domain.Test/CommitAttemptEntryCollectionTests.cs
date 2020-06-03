@@ -24,11 +24,23 @@ using System.Collections.Immutable;
 using System.Linq;
 using Moq;
 using Xunit;
+using CommitAttemptEntryCollection = AI4E.Storage.Domain.CommitAttemptEntryCollection<AI4E.Storage.Domain.Test.IEquatableCommitAttemptEntry>;
 
 namespace AI4E.Storage.Domain.Test
 {
+    public interface IEquatableCommitAttemptEntry : ICommitAttemptEntry, IEquatable<IEquatableCommitAttemptEntry> { }
+
     public class CommitAttemptEntryCollectionTests
     {
+        private static Mock<IEquatableCommitAttemptEntry> SetupCommitAttemptEntryMock()
+        {
+            var mock = new Mock<IEquatableCommitAttemptEntry>();
+            mock.Setup(commitAttemptEntry => commitAttemptEntry.Equals(It.IsAny<IEquatableCommitAttemptEntry>()))
+                .Returns((IEquatableCommitAttemptEntry other) => ReferenceEquals(mock.Object, other));
+
+            return mock;
+        }
+
         [Fact]
         public void DefaultValueCountIsZeroTest()
         {
@@ -47,7 +59,7 @@ namespace AI4E.Storage.Domain.Test
         {
             // Arrange
             var commitAttemptEntryCollection = default(CommitAttemptEntryCollection);
-            var commitAttemptEntries = new List<CommitAttemptEntry>();
+            var commitAttemptEntries = new List<IEquatableCommitAttemptEntry>();
 
             // Act
             foreach (var commitAttemptEntry in commitAttemptEntryCollection)
@@ -63,20 +75,12 @@ namespace AI4E.Storage.Domain.Test
         public void CountTest()
         {
             // Arrange
-            var mock1 = new Mock<ITrackedEntity>();
-            mock1.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Created);
-            var commitAttemptyEntry1 = new CommitAttemptEntry(mock1.Object);
+            var commitAttemptEntryMock1 = SetupCommitAttemptEntryMock();
+            var commitAttemptEntryMock2 = SetupCommitAttemptEntryMock();
+            var commitAttemptEntries = new[] { commitAttemptEntryMock1.Object, commitAttemptEntryMock2.Object }.ToImmutableArray();
 
-            var mock2 = new Mock<ITrackedEntity>();
-            mock2.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-            var commitAttemptyEntry2 = new CommitAttemptEntry(mock2.Object);
-
-            var commitAttemptEntries = new[]
-            {
-                commitAttemptyEntry1, commitAttemptyEntry2
-            }.ToImmutableArray();
-
-            var commitAttemptEntryCollection = new CommitAttemptEntryCollection(commitAttemptEntries);
+            var commitAttemptEntryCollection = new CommitAttemptEntryCollection(
+                commitAttemptEntries);
 
             // Act
             var count = commitAttemptEntryCollection.Count;
@@ -89,21 +93,17 @@ namespace AI4E.Storage.Domain.Test
         public void IterationTest()
         {
             // Arrange
-            var mock1 = new Mock<ITrackedEntity>();
-            mock1.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Created);
-            var commitAttemptyEntry1 = new CommitAttemptEntry(mock1.Object);
-
-            var mock2 = new Mock<ITrackedEntity>();
-            mock2.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-            var commitAttemptyEntry2 = new CommitAttemptEntry(mock2.Object);
-
+            var commitAttemptEntryMock1 = SetupCommitAttemptEntryMock();
+            var commitAttemptEntryMock2 = SetupCommitAttemptEntryMock();
             var expectedCommitAttemptEntries = new[]
             {
-                commitAttemptyEntry1, commitAttemptyEntry2
+                commitAttemptEntryMock1.Object,
+                commitAttemptEntryMock2.Object
             }.ToImmutableArray();
 
-            var commitAttemptEntryCollection = new CommitAttemptEntryCollection(expectedCommitAttemptEntries);
-            var commitAttemptEntries = new List<CommitAttemptEntry>();
+            var commitAttemptEntryCollection = new CommitAttemptEntryCollection(
+                expectedCommitAttemptEntries);
+            var commitAttemptEntries = new List<IEquatableCommitAttemptEntry>();
 
             // Act
             foreach (var commitAttemptEntry in commitAttemptEntryCollection)
@@ -118,7 +118,9 @@ namespace AI4E.Storage.Domain.Test
         [Theory]
         [ClassData(typeof(EqualityTestData))]
         public void EqualityOperationTest(
-            CommitAttemptEntryCollection left, CommitAttemptEntryCollection right, bool expectedAreEqual)
+            CommitAttemptEntryCollection left,
+            CommitAttemptEntryCollection right,
+            bool expectedAreEqual)
         {
             // Arrange
             // -
@@ -133,7 +135,9 @@ namespace AI4E.Storage.Domain.Test
         [Theory]
         [ClassData(typeof(EqualityTestData))]
         public void InequalityOperationTest(
-            CommitAttemptEntryCollection left, CommitAttemptEntryCollection right, bool expectedAreEqual)
+            CommitAttemptEntryCollection left,
+            CommitAttemptEntryCollection right,
+            bool expectedAreEqual)
         {
             // Arrange
             // -
@@ -148,7 +152,9 @@ namespace AI4E.Storage.Domain.Test
         [Theory]
         [ClassData(typeof(EqualityTestData))]
         public void EqualsOperationTest(
-            CommitAttemptEntryCollection left, CommitAttemptEntryCollection right, bool expectedAreEqual)
+            CommitAttemptEntryCollection left,
+            CommitAttemptEntryCollection right,
+            bool expectedAreEqual)
         {
             // Arrange
             // -
@@ -163,7 +169,9 @@ namespace AI4E.Storage.Domain.Test
         [Theory]
         [ClassData(typeof(EqualityTestData))]
         public void ObjectEqualsOperationTest(
-            CommitAttemptEntryCollection left, CommitAttemptEntryCollection right, bool expectedAreEqual)
+            CommitAttemptEntryCollection left,
+            CommitAttemptEntryCollection right,
+            bool expectedAreEqual)
         {
             // Arrange
             var other = (object)right;
@@ -178,7 +186,9 @@ namespace AI4E.Storage.Domain.Test
         [Theory]
         [ClassData(typeof(EqualityTestData))]
         public void EquatableEqualsOperationTest(
-            CommitAttemptEntryCollection left, CommitAttemptEntryCollection right, bool expectedAreEqual)
+            CommitAttemptEntryCollection left,
+            CommitAttemptEntryCollection right,
+            bool expectedAreEqual)
         {
             // Arrange
             var equatable = (IEquatable<CommitAttemptEntryCollection>)left;
@@ -190,51 +200,42 @@ namespace AI4E.Storage.Domain.Test
             Assert.Equal(expectedAreEqual, areEqual);
         }
 
-        public class EqualityTestData : TheoryData<CommitAttemptEntryCollection, CommitAttemptEntryCollection, bool>
+        public class EqualityTestData
+            : TheoryData<CommitAttemptEntryCollection, CommitAttemptEntryCollection, bool>
         {
             public EqualityTestData()
             {
-                var mock1 = new Mock<ITrackedEntity>();
-                mock1.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Created);
-                var commitAttemptyEntry1 = new CommitAttemptEntry(mock1.Object);
-
-                var mock2 = new Mock<ITrackedEntity>();
-                mock2.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-                var commitAttemptyEntry2 = new CommitAttemptEntry(mock2.Object);
-
-                var mock3 = new Mock<ITrackedEntity>();
-                mock3.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-                var commitAttemptyEntry3 = new CommitAttemptEntry(mock3.Object);
+                var commitAttemptEntryMock1 = SetupCommitAttemptEntryMock();          
+                var commitAttemptEntryMock2 = SetupCommitAttemptEntryMock();
+                var commitAttemptEntryMock3 = SetupCommitAttemptEntryMock();
 
                 var commitAttemptEntryCollection0
-                    = new CommitAttemptEntryCollection(ImmutableArray<CommitAttemptEntry>.Empty);
+                    = new CommitAttemptEntryCollection(ImmutableArray<IEquatableCommitAttemptEntry>.Empty);
 
-                var commitAttemptEntryCollection1 = new CommitAttemptEntryCollection(new[] 
+                var commitAttemptEntryCollection1 = new CommitAttemptEntryCollection(new[]
                 {
-                    commitAttemptyEntry1,
-                    commitAttemptyEntry2
+                    commitAttemptEntryMock1.Object,
+                    commitAttemptEntryMock2.Object
                 }.ToImmutableArray());
 
                 var commitAttemptEntryCollection2 = new CommitAttemptEntryCollection(new[]
                 {
-                    commitAttemptyEntry1,
-                    commitAttemptyEntry2
+                    commitAttemptEntryMock1.Object,
+                    commitAttemptEntryMock2.Object
                 }.ToImmutableArray());
 
                 var commitAttemptEntryCollection3 = new CommitAttemptEntryCollection(new[]
                 {
-                    commitAttemptyEntry1,
-                    commitAttemptyEntry2,
-                    commitAttemptyEntry3,
+                    commitAttemptEntryMock1.Object,
+                    commitAttemptEntryMock2.Object,
+                    commitAttemptEntryMock3.Object
                 }.ToImmutableArray());
 
                 var commitAttemptEntryCollection4 = new CommitAttemptEntryCollection(new[]
                 {
-                    commitAttemptyEntry3,
-                    commitAttemptyEntry1
+                    commitAttemptEntryMock3.Object,
+                    commitAttemptEntryMock1.Object
                 }.ToImmutableArray());
-
-                var x = commitAttemptyEntry1 == commitAttemptyEntry3;
 
                 Add(default, default, true);
                 Add(default, commitAttemptEntryCollection0, true);
@@ -298,43 +299,36 @@ namespace AI4E.Storage.Domain.Test
         {
             public SubsequentHashCodeCallsReturnSameHashCodeTestData()
             {
-                var mock1 = new Mock<ITrackedEntity>();
-                mock1.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Created);
-                var commitAttemptyEntry1 = new CommitAttemptEntry(mock1.Object);
-
-                var mock2 = new Mock<ITrackedEntity>();
-                mock2.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-                var commitAttemptyEntry2 = new CommitAttemptEntry(mock2.Object);
-
-                var mock3 = new Mock<ITrackedEntity>();
-                mock3.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-                var commitAttemptyEntry3 = new CommitAttemptEntry(mock3.Object);
+                var commitAttemptEntryMock1 = SetupCommitAttemptEntryMock();
+                var commitAttemptEntryMock2 = SetupCommitAttemptEntryMock();
+                var commitAttemptEntryMock3 = SetupCommitAttemptEntryMock();
 
                 var commitAttemptEntryCollection0
-                    = new CommitAttemptEntryCollection(ImmutableArray<CommitAttemptEntry>.Empty);
+                    = new CommitAttemptEntryCollection(ImmutableArray<IEquatableCommitAttemptEntry>.Empty);
 
                 var commitAttemptEntryCollection1 = new CommitAttemptEntryCollection(new[]
                 {
-                    commitAttemptyEntry1,
-                    commitAttemptyEntry2
+                    commitAttemptEntryMock1.Object,
+                    commitAttemptEntryMock2.Object
                 }.ToImmutableArray());
 
                 var commitAttemptEntryCollection2 = new CommitAttemptEntryCollection(new[]
                 {
-                    commitAttemptyEntry1,
-                    commitAttemptyEntry2
+                    commitAttemptEntryMock1.Object,
+                    commitAttemptEntryMock2.Object
                 }.ToImmutableArray());
 
                 var commitAttemptEntryCollection3 = new CommitAttemptEntryCollection(new[]
                 {
-                    commitAttemptyEntry1,
-                    commitAttemptyEntry2,
-                    commitAttemptyEntry3,
+                    commitAttemptEntryMock1.Object,
+                    commitAttemptEntryMock2.Object,
+                    commitAttemptEntryMock3.Object
                 }.ToImmutableArray());
 
                 var commitAttemptEntryCollection4 = new CommitAttemptEntryCollection(new[]
                 {
-                    commitAttemptyEntry3
+                    commitAttemptEntryMock3.Object,
+                    commitAttemptEntryMock1.Object
                 }.ToImmutableArray());
 
                 Add(default);
@@ -364,43 +358,36 @@ namespace AI4E.Storage.Domain.Test
         {
             public EqualValuesReturnsSameHashCodeTestData()
             {
-                var mock1 = new Mock<ITrackedEntity>();
-                mock1.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Created);
-                var commitAttemptyEntry1 = new CommitAttemptEntry(mock1.Object);
-
-                var mock2 = new Mock<ITrackedEntity>();
-                mock2.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-                var commitAttemptyEntry2 = new CommitAttemptEntry(mock2.Object);
-
-                var mock3 = new Mock<ITrackedEntity>();
-                mock3.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-                var commitAttemptyEntry3 = new CommitAttemptEntry(mock3.Object);
+                var commitAttemptEntryMock1 = SetupCommitAttemptEntryMock();
+                var commitAttemptEntryMock2 = SetupCommitAttemptEntryMock();
+                var commitAttemptEntryMock3 = SetupCommitAttemptEntryMock();
 
                 var commitAttemptEntryCollection0
-                    = new CommitAttemptEntryCollection(ImmutableArray<CommitAttemptEntry>.Empty);
+                    = new CommitAttemptEntryCollection(ImmutableArray<IEquatableCommitAttemptEntry>.Empty);
 
                 var commitAttemptEntryCollection1 = new CommitAttemptEntryCollection(new[]
                 {
-                    commitAttemptyEntry1,
-                    commitAttemptyEntry2
+                    commitAttemptEntryMock1.Object,
+                    commitAttemptEntryMock2.Object
                 }.ToImmutableArray());
 
                 var commitAttemptEntryCollection2 = new CommitAttemptEntryCollection(new[]
                 {
-                    commitAttemptyEntry1,
-                    commitAttemptyEntry2
+                    commitAttemptEntryMock1.Object,
+                    commitAttemptEntryMock2.Object
                 }.ToImmutableArray());
 
                 var commitAttemptEntryCollection3 = new CommitAttemptEntryCollection(new[]
                 {
-                    commitAttemptyEntry1,
-                    commitAttemptyEntry2,
-                    commitAttemptyEntry3,
+                    commitAttemptEntryMock1.Object,
+                    commitAttemptEntryMock2.Object,
+                    commitAttemptEntryMock3.Object
                 }.ToImmutableArray());
 
                 var commitAttemptEntryCollection4 = new CommitAttemptEntryCollection(new[]
                 {
-                    commitAttemptyEntry3
+                    commitAttemptEntryMock3.Object,
+                    commitAttemptEntryMock1.Object
                 }.ToImmutableArray());
 
                 Add(default, default);
@@ -431,18 +418,9 @@ namespace AI4E.Storage.Domain.Test
         public void GetEnumeratorTest()
         {
             // Arrange
-            var mock1 = new Mock<ITrackedEntity>();
-            mock1.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Created);
-            var commitAttemptyEntry1 = new CommitAttemptEntry(mock1.Object);
-
-            var mock2 = new Mock<ITrackedEntity>();
-            mock2.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-            var commitAttemptyEntry2 = new CommitAttemptEntry(mock2.Object);
-
-            var expectedCommitAttemptEntries = new[]
-            {
-                commitAttemptyEntry1, commitAttemptyEntry2
-            }.ToImmutableArray();
+            var commitAttemptEntryMock1 = SetupCommitAttemptEntryMock();
+            var commitAttemptEntryMock2 = SetupCommitAttemptEntryMock();
+            var expectedCommitAttemptEntries = new[] { commitAttemptEntryMock1.Object, commitAttemptEntryMock2.Object }.ToImmutableArray();
 
             var commitAttemptEntryCollection = new CommitAttemptEntryCollection(expectedCommitAttemptEntries);
 
