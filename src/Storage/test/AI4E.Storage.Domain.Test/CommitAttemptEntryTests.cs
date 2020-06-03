@@ -237,7 +237,7 @@ namespace AI4E.Storage.Domain.Test
 
         [Theory]
         [ClassData(typeof(EqualityTestData))]
-        public void EqualityOperationTest(CommitAttemptEntry left, CommitAttemptEntry right, bool expectedAreEqual)
+        internal void EqualityOperationTest(CommitAttemptEntry left, CommitAttemptEntry right, bool expectedAreEqual)
         {
             // Arrange
             // -
@@ -251,7 +251,7 @@ namespace AI4E.Storage.Domain.Test
 
         [Theory]
         [ClassData(typeof(EqualityTestData))]
-        public void InequalityOperationTest(CommitAttemptEntry left, CommitAttemptEntry right, bool expectedAreEqual)
+        internal void InequalityOperationTest(CommitAttemptEntry left, CommitAttemptEntry right, bool expectedAreEqual)
         {
             // Arrange
             // -
@@ -265,7 +265,7 @@ namespace AI4E.Storage.Domain.Test
 
         [Theory]
         [ClassData(typeof(EqualityTestData))]
-        public void EqualsOperationTest(CommitAttemptEntry left, CommitAttemptEntry right, bool expectedAreEqual)
+        internal void EqualsOperationTest(CommitAttemptEntry left, CommitAttemptEntry right, bool expectedAreEqual)
         {
             // Arrange
             // -
@@ -279,7 +279,7 @@ namespace AI4E.Storage.Domain.Test
 
         [Theory]
         [ClassData(typeof(EqualityTestData))]
-        public void ObjectEqualsOperationTest(CommitAttemptEntry left, CommitAttemptEntry right, bool expectedAreEqual)
+        internal void ObjectEqualsOperationTest(CommitAttemptEntry left, CommitAttemptEntry right, bool expectedAreEqual)
         {
             // Arrange
             var other = (object)right;
@@ -293,7 +293,7 @@ namespace AI4E.Storage.Domain.Test
 
         [Theory]
         [ClassData(typeof(EqualityTestData))]
-        public void EquatableEqualsOperationTest(
+        internal void EquatableEqualsOperationTest(
             CommitAttemptEntry left, CommitAttemptEntry right, bool expectedAreEqual)
         {
             // Arrange
@@ -306,7 +306,7 @@ namespace AI4E.Storage.Domain.Test
             Assert.Equal(expectedAreEqual, areEqual);
         }
 
-        public class EqualityTestData : TheoryData<CommitAttemptEntry, CommitAttemptEntry, bool>
+        internal class EqualityTestData : TheoryData<CommitAttemptEntry, CommitAttemptEntry, bool>
         {
             public EqualityTestData()
             {
@@ -333,7 +333,7 @@ namespace AI4E.Storage.Domain.Test
 
         [Theory]
         [ClassData(typeof(SubsequentHashCodeCallsReturnSameHashCodeTestData))]
-        public void SubsequentHashCodeCallsReturnSameHashCodeTest(CommitAttemptEntry entityIdentifier)
+        internal void SubsequentHashCodeCallsReturnSameHashCodeTest(CommitAttemptEntry entityIdentifier)
         {
             // Arrange
             var expectedHashCode = entityIdentifier.GetHashCode();
@@ -345,7 +345,7 @@ namespace AI4E.Storage.Domain.Test
             Assert.Equal(expectedHashCode, hashCode);
         }
 
-        public class SubsequentHashCodeCallsReturnSameHashCodeTestData : TheoryData<CommitAttemptEntry>
+        internal class SubsequentHashCodeCallsReturnSameHashCodeTestData : TheoryData<CommitAttemptEntry>
         {
             public SubsequentHashCodeCallsReturnSameHashCodeTestData()
             {
@@ -365,7 +365,7 @@ namespace AI4E.Storage.Domain.Test
 
         [Theory]
         [ClassData(typeof(EqualValuesReturnsSameHashCodeTestData))]
-        public void EqualValuesReturnsSameHashCodeTest(CommitAttemptEntry left, CommitAttemptEntry right)
+        internal void EqualValuesReturnsSameHashCodeTest(CommitAttemptEntry left, CommitAttemptEntry right)
         {
             // Arrange
             var expectedHashCode = left.GetHashCode();
@@ -377,7 +377,7 @@ namespace AI4E.Storage.Domain.Test
             Assert.Equal(expectedHashCode, hashCode);
         }
 
-        public class EqualValuesReturnsSameHashCodeTestData : TheoryData<CommitAttemptEntry, CommitAttemptEntry>
+        internal class EqualValuesReturnsSameHashCodeTestData : TheoryData<CommitAttemptEntry, CommitAttemptEntry>
         {
             public EqualValuesReturnsSameHashCodeTestData()
             {
