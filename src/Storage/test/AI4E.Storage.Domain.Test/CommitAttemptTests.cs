@@ -19,22 +19,15 @@
  */
 
 using System;
-using System.Collections.Immutable;
-using Moq;
+using AI4E.Storage.Domain.Test.Helpers;
 using Xunit;
+
+using CommitAttempt = AI4E.Storage.Domain.CommitAttempt<AI4E.Storage.Domain.Test.TestTypes.IEquatableCommitAttemptEntry>;
 
 namespace AI4E.Storage.Domain.Test
 {
     public class CommitAttemptTests
     {
-        [Fact]
-        public void ConstructNullUnitOfWorkThrowsArgumentNullExceptionTest()
-        {
-            Assert.Throws<ArgumentNullException>("unitOfWork", () =>
-            {
-                new CommitAttempt(unitOfWork: null);
-            });
-        }
 
         [Fact]
         public void DefaultValueEntriesTestTest()
@@ -53,34 +46,9 @@ namespace AI4E.Storage.Domain.Test
         public void EntriesTest()
         {
             // Arrange
-            var mock1 = new Mock<ITrackedEntity>();
-            mock1.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Created);
-            var commitAttemptyEntry1 = new CommitAttemptEntry(mock1.Object);
-
-            var mock2 = new Mock<ITrackedEntity>();
-            mock2.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-            var commitAttemptyEntry2 = new CommitAttemptEntry(mock2.Object);
-
-            var mock3 = new Mock<ITrackedEntity>();
-            mock3.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-            var commitAttemptyEntry3 = new CommitAttemptEntry(mock3.Object);
-
-            var expectedEntries = new CommitAttemptEntryCollection<CommitAttemptEntry>(new[]
-            {
-                commitAttemptyEntry1,
-                commitAttemptyEntry2,
-                commitAttemptyEntry3
-            }.ToImmutableArray());
-
-            var unitOfWorkMock = new Mock<IUnitOfWork>();
-            unitOfWorkMock.Setup(unitOfWorkMock => unitOfWorkMock.ModifiedEntities).Returns(new[]
-            {
-                mock1.Object,
-                mock2.Object,
-                mock3.Object
-            });
-
-            var commitAttempt = new CommitAttempt(unitOfWorkMock.Object);
+            var source = new CommitAttemptEntrySource();
+            var expectedEntries = source.CommitAttemptEntryCollection1;
+            var commitAttempt = new CommitAttempt(expectedEntries);
 
             // Act
             var entries = commitAttempt.Entries;
@@ -164,45 +132,11 @@ namespace AI4E.Storage.Domain.Test
         {
             public EqualityTestData()
             {
-                var mock1 = new Mock<ITrackedEntity>();
-                mock1.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Created);
-
-                var mock2 = new Mock<ITrackedEntity>();
-                mock2.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-
-                var mock3 = new Mock<ITrackedEntity>();
-                mock3.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-
-                var unitOfWorkMock0 = new Mock<IUnitOfWork>();
-                unitOfWorkMock0.Setup(unitOfWorkMock => unitOfWorkMock.ModifiedEntities)
-                    .Returns(new ITrackedEntity[] { });
-                var commitAttempt0 = new CommitAttempt(unitOfWorkMock0.Object);
-
-                var unitOfWorkMock1 = new Mock<IUnitOfWork>();
-                unitOfWorkMock1.Setup(unitOfWorkMock => unitOfWorkMock.ModifiedEntities).Returns(new[]
-                {
-                    mock1.Object,
-                    mock2.Object,
-                    mock3.Object
-                });
-                var commitAttempt1 = new CommitAttempt(unitOfWorkMock1.Object);
-
-                var unitOfWorkMock2 = new Mock<IUnitOfWork>();
-                unitOfWorkMock2.Setup(unitOfWorkMock => unitOfWorkMock.ModifiedEntities).Returns(new[]
-                {
-                    mock2.Object,
-                    mock3.Object,
-                    mock1.Object,
-                });
-                var commitAttempt2 = new CommitAttempt(unitOfWorkMock2.Object);
-
-                var unitOfWorkMock3 = new Mock<IUnitOfWork>();
-                unitOfWorkMock3.Setup(unitOfWorkMock => unitOfWorkMock.ModifiedEntities).Returns(new[]
-                {
-                    mock2.Object,
-                    mock3.Object
-                });
-                var commitAttempt3 = new CommitAttempt(unitOfWorkMock3.Object);
+                var source = new CommitAttemptEntrySource();             
+                var commitAttempt0 = new CommitAttempt(source.CommitAttemptEntryCollection0);
+                var commitAttempt1 = new CommitAttempt(source.CommitAttemptEntryCollection1);
+                var commitAttempt2 = new CommitAttempt(source.CommitAttemptEntryCollection3);               
+                var commitAttempt3 = new CommitAttempt(source.CommitAttemptEntryCollection4);
 
                 Add(default, default, true);
                 Add(default, commitAttempt0, true);
@@ -254,45 +188,11 @@ namespace AI4E.Storage.Domain.Test
         {
             public SubsequentHashCodeCallsReturnSameHashCodeTestData()
             {
-                var mock1 = new Mock<ITrackedEntity>();
-                mock1.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Created);
-
-                var mock2 = new Mock<ITrackedEntity>();
-                mock2.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-
-                var mock3 = new Mock<ITrackedEntity>();
-                mock3.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-
-                var unitOfWorkMock0 = new Mock<IUnitOfWork>();
-                unitOfWorkMock0.Setup(unitOfWorkMock => unitOfWorkMock.ModifiedEntities)
-                    .Returns(new ITrackedEntity[] { });
-                var commitAttempt0 = new CommitAttempt(unitOfWorkMock0.Object);
-
-                var unitOfWorkMock1 = new Mock<IUnitOfWork>();
-                unitOfWorkMock1.Setup(unitOfWorkMock => unitOfWorkMock.ModifiedEntities).Returns(new[]
-                {
-                    mock1.Object,
-                    mock2.Object,
-                    mock3.Object
-                });
-                var commitAttempt1 = new CommitAttempt(unitOfWorkMock1.Object);
-
-                var unitOfWorkMock2 = new Mock<IUnitOfWork>();
-                unitOfWorkMock2.Setup(unitOfWorkMock => unitOfWorkMock.ModifiedEntities).Returns(new[]
-                {
-                    mock2.Object,
-                    mock3.Object,
-                    mock1.Object,
-                });
-                var commitAttempt2 = new CommitAttempt(unitOfWorkMock2.Object);
-
-                var unitOfWorkMock3 = new Mock<IUnitOfWork>();
-                unitOfWorkMock3.Setup(unitOfWorkMock => unitOfWorkMock.ModifiedEntities).Returns(new[]
-                {
-                    mock2.Object,
-                    mock3.Object
-                });
-                var commitAttempt3 = new CommitAttempt(unitOfWorkMock3.Object);
+                var source = new CommitAttemptEntrySource();
+                var commitAttempt0 = new CommitAttempt(source.CommitAttemptEntryCollection0);
+                var commitAttempt1 = new CommitAttempt(source.CommitAttemptEntryCollection1);
+                var commitAttempt2 = new CommitAttempt(source.CommitAttemptEntryCollection3);
+                var commitAttempt3 = new CommitAttempt(source.CommitAttemptEntryCollection4);
 
                 Add(default);
                 Add(commitAttempt0);
@@ -320,45 +220,11 @@ namespace AI4E.Storage.Domain.Test
         {
             public EqualValuesReturnsSameHashCodeTestData()
             {
-                var mock1 = new Mock<ITrackedEntity>();
-                mock1.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Created);
-
-                var mock2 = new Mock<ITrackedEntity>();
-                mock2.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-
-                var mock3 = new Mock<ITrackedEntity>();
-                mock3.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-
-                var unitOfWorkMock0 = new Mock<IUnitOfWork>();
-                unitOfWorkMock0.Setup(unitOfWorkMock => unitOfWorkMock.ModifiedEntities)
-                    .Returns(new ITrackedEntity[] { });
-                var commitAttempt0 = new CommitAttempt(unitOfWorkMock0.Object);
-
-                var unitOfWorkMock1 = new Mock<IUnitOfWork>();
-                unitOfWorkMock1.Setup(unitOfWorkMock => unitOfWorkMock.ModifiedEntities).Returns(new[]
-                {
-                    mock1.Object,
-                    mock2.Object,
-                    mock3.Object
-                });
-                var commitAttempt1 = new CommitAttempt(unitOfWorkMock1.Object);
-
-                var unitOfWorkMock2 = new Mock<IUnitOfWork>();
-                unitOfWorkMock2.Setup(unitOfWorkMock => unitOfWorkMock.ModifiedEntities).Returns(new[]
-                {
-                    mock2.Object,
-                    mock3.Object,
-                    mock1.Object,
-                });
-                var commitAttempt2 = new CommitAttempt(unitOfWorkMock2.Object);
-
-                var unitOfWorkMock3 = new Mock<IUnitOfWork>();
-                unitOfWorkMock3.Setup(unitOfWorkMock => unitOfWorkMock.ModifiedEntities).Returns(new[]
-                {
-                    mock2.Object,
-                    mock3.Object
-                });
-                var commitAttempt3 = new CommitAttempt(unitOfWorkMock3.Object);
+                var source = new CommitAttemptEntrySource();
+                var commitAttempt0 = new CommitAttempt(source.CommitAttemptEntryCollection0);
+                var commitAttempt1 = new CommitAttempt(source.CommitAttemptEntryCollection1);
+                var commitAttempt2 = new CommitAttempt(source.CommitAttemptEntryCollection3);
+                var commitAttempt3 = new CommitAttempt(source.CommitAttemptEntryCollection4);
 
                 Add(default, default);
                 Add(default, commitAttempt0);

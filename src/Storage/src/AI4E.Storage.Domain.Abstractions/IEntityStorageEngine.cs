@@ -75,6 +75,7 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// Asynchronously commits the specified commit-attempt an dispatches all domain-events.
         /// </summary>
+        /// <typeparam name="TCommitAttemptEntry">The type of commit-attempt entry.</typeparam>
         /// <param name="commitAttempt">The <see cref="CommitAttempt"/> to commit.</param>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
@@ -85,8 +86,9 @@ namespace AI4E.Storage.Domain
         /// When evaluated, the tasks result contains the commit result indicating commit success 
         /// or failure information.
         /// </returns>
-        ValueTask<EntityCommitResult> CommitAsync(
-            CommitAttempt commitAttempt,
-            CancellationToken cancellation = default);
+        ValueTask<EntityCommitResult> CommitAsync<TCommitAttemptEntry>(
+            CommitAttempt<TCommitAttemptEntry> commitAttempt,
+            CancellationToken cancellation = default)
+            where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>;
     }
 }

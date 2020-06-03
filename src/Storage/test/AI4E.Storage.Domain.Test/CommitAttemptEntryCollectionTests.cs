@@ -22,25 +22,16 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using Moq;
+using AI4E.Storage.Domain.Test.Helpers;
+using AI4E.Storage.Domain.Test.TestTypes;
 using Xunit;
-using CommitAttemptEntryCollection = AI4E.Storage.Domain.CommitAttemptEntryCollection<AI4E.Storage.Domain.Test.IEquatableCommitAttemptEntry>;
+
+using CommitAttemptEntryCollection = AI4E.Storage.Domain.CommitAttemptEntryCollection<AI4E.Storage.Domain.Test.TestTypes.IEquatableCommitAttemptEntry>;
 
 namespace AI4E.Storage.Domain.Test
 {
-    public interface IEquatableCommitAttemptEntry : ICommitAttemptEntry, IEquatable<IEquatableCommitAttemptEntry> { }
-
     public class CommitAttemptEntryCollectionTests
     {
-        private static Mock<IEquatableCommitAttemptEntry> SetupCommitAttemptEntryMock()
-        {
-            var mock = new Mock<IEquatableCommitAttemptEntry>();
-            mock.Setup(commitAttemptEntry => commitAttemptEntry.Equals(It.IsAny<IEquatableCommitAttemptEntry>()))
-                .Returns((IEquatableCommitAttemptEntry other) => ReferenceEquals(mock.Object, other));
-
-            return mock;
-        }
-
         [Fact]
         public void DefaultValueCountIsZeroTest()
         {
@@ -75,8 +66,8 @@ namespace AI4E.Storage.Domain.Test
         public void CountTest()
         {
             // Arrange
-            var commitAttemptEntryMock1 = SetupCommitAttemptEntryMock();
-            var commitAttemptEntryMock2 = SetupCommitAttemptEntryMock();
+            var commitAttemptEntryMock1 = CommitAttemptEntrySource.SetupCommitAttemptEntryMock();
+            var commitAttemptEntryMock2 = CommitAttemptEntrySource.SetupCommitAttemptEntryMock();
             var commitAttemptEntries = new[] { commitAttemptEntryMock1.Object, commitAttemptEntryMock2.Object }.ToImmutableArray();
 
             var commitAttemptEntryCollection = new CommitAttemptEntryCollection(
@@ -93,8 +84,8 @@ namespace AI4E.Storage.Domain.Test
         public void IterationTest()
         {
             // Arrange
-            var commitAttemptEntryMock1 = SetupCommitAttemptEntryMock();
-            var commitAttemptEntryMock2 = SetupCommitAttemptEntryMock();
+            var commitAttemptEntryMock1 = CommitAttemptEntrySource.SetupCommitAttemptEntryMock();
+            var commitAttemptEntryMock2 = CommitAttemptEntrySource.SetupCommitAttemptEntryMock();
             var expectedCommitAttemptEntries = new[]
             {
                 commitAttemptEntryMock1.Object,
@@ -205,79 +196,49 @@ namespace AI4E.Storage.Domain.Test
         {
             public EqualityTestData()
             {
-                var commitAttemptEntryMock1 = SetupCommitAttemptEntryMock();          
-                var commitAttemptEntryMock2 = SetupCommitAttemptEntryMock();
-                var commitAttemptEntryMock3 = SetupCommitAttemptEntryMock();
-
-                var commitAttemptEntryCollection0
-                    = new CommitAttemptEntryCollection(ImmutableArray<IEquatableCommitAttemptEntry>.Empty);
-
-                var commitAttemptEntryCollection1 = new CommitAttemptEntryCollection(new[]
-                {
-                    commitAttemptEntryMock1.Object,
-                    commitAttemptEntryMock2.Object
-                }.ToImmutableArray());
-
-                var commitAttemptEntryCollection2 = new CommitAttemptEntryCollection(new[]
-                {
-                    commitAttemptEntryMock1.Object,
-                    commitAttemptEntryMock2.Object
-                }.ToImmutableArray());
-
-                var commitAttemptEntryCollection3 = new CommitAttemptEntryCollection(new[]
-                {
-                    commitAttemptEntryMock1.Object,
-                    commitAttemptEntryMock2.Object,
-                    commitAttemptEntryMock3.Object
-                }.ToImmutableArray());
-
-                var commitAttemptEntryCollection4 = new CommitAttemptEntryCollection(new[]
-                {
-                    commitAttemptEntryMock3.Object,
-                    commitAttemptEntryMock1.Object
-                }.ToImmutableArray());
+                var source = new CommitAttemptEntrySource();
 
                 Add(default, default, true);
-                Add(default, commitAttemptEntryCollection0, true);
-                Add(default, commitAttemptEntryCollection1, false);
-                Add(default, commitAttemptEntryCollection2, false);
-                Add(default, commitAttemptEntryCollection3, false);
-                Add(default, commitAttemptEntryCollection4, false);
+                Add(default, source.CommitAttemptEntryCollection0, true);
+                Add(default, source.CommitAttemptEntryCollection1, false);
+                Add(default, source.CommitAttemptEntryCollection2, false);
+                Add(default, source.CommitAttemptEntryCollection3, false);
+                Add(default, source.CommitAttemptEntryCollection4, false);
 
-                Add(commitAttemptEntryCollection0, default, true);
-                Add(commitAttemptEntryCollection0, commitAttemptEntryCollection0, true);
-                Add(commitAttemptEntryCollection0, commitAttemptEntryCollection1, false);
-                Add(commitAttemptEntryCollection0, commitAttemptEntryCollection2, false);
-                Add(commitAttemptEntryCollection0, commitAttemptEntryCollection3, false);
-                Add(commitAttemptEntryCollection0, commitAttemptEntryCollection4, false);
+                Add(source.CommitAttemptEntryCollection0, default, true);
+                Add(source.CommitAttemptEntryCollection0, source.CommitAttemptEntryCollection0, true);
+                Add(source.CommitAttemptEntryCollection0, source.CommitAttemptEntryCollection1, false);
+                Add(source.CommitAttemptEntryCollection0, source.CommitAttemptEntryCollection2, false);
+                Add(source.CommitAttemptEntryCollection0, source.CommitAttemptEntryCollection3, false);
+                Add(source.CommitAttemptEntryCollection0, source.CommitAttemptEntryCollection4, false);
 
-                Add(commitAttemptEntryCollection1, default, false);
-                Add(commitAttemptEntryCollection1, commitAttemptEntryCollection0, false);
-                Add(commitAttemptEntryCollection1, commitAttemptEntryCollection1, true);
-                Add(commitAttemptEntryCollection1, commitAttemptEntryCollection2, true);
-                Add(commitAttemptEntryCollection1, commitAttemptEntryCollection3, false);
-                Add(commitAttemptEntryCollection1, commitAttemptEntryCollection4, false);
+                Add(source.CommitAttemptEntryCollection1, default, false);
+                Add(source.CommitAttemptEntryCollection1, source.CommitAttemptEntryCollection0, false);
+                Add(source.CommitAttemptEntryCollection1, source.CommitAttemptEntryCollection1, true);
+                Add(source.CommitAttemptEntryCollection1, source.CommitAttemptEntryCollection2, true);
+                Add(source.CommitAttemptEntryCollection1, source.CommitAttemptEntryCollection3, false);
+                Add(source.CommitAttemptEntryCollection1, source.CommitAttemptEntryCollection4, false);
 
-                Add(commitAttemptEntryCollection2, default, false);
-                Add(commitAttemptEntryCollection2, commitAttemptEntryCollection0, false);
-                Add(commitAttemptEntryCollection2, commitAttemptEntryCollection1, true);
-                Add(commitAttemptEntryCollection2, commitAttemptEntryCollection2, true);
-                Add(commitAttemptEntryCollection2, commitAttemptEntryCollection3, false);
-                Add(commitAttemptEntryCollection2, commitAttemptEntryCollection4, false);
+                Add(source.CommitAttemptEntryCollection2, default, false);
+                Add(source.CommitAttemptEntryCollection2, source.CommitAttemptEntryCollection0, false);
+                Add(source.CommitAttemptEntryCollection2, source.CommitAttemptEntryCollection1, true);
+                Add(source.CommitAttemptEntryCollection2, source.CommitAttemptEntryCollection2, true);
+                Add(source.CommitAttemptEntryCollection2, source.CommitAttemptEntryCollection3, false);
+                Add(source.CommitAttemptEntryCollection2, source.CommitAttemptEntryCollection4, false);
 
-                Add(commitAttemptEntryCollection3, default, false);
-                Add(commitAttemptEntryCollection3, commitAttemptEntryCollection0, false);
-                Add(commitAttemptEntryCollection3, commitAttemptEntryCollection1, false);
-                Add(commitAttemptEntryCollection3, commitAttemptEntryCollection2, false);
-                Add(commitAttemptEntryCollection3, commitAttemptEntryCollection3, true);
-                Add(commitAttemptEntryCollection3, commitAttemptEntryCollection4, false);
+                Add(source.CommitAttemptEntryCollection3, default, false);
+                Add(source.CommitAttemptEntryCollection3, source.CommitAttemptEntryCollection0, false);
+                Add(source.CommitAttemptEntryCollection3, source.CommitAttemptEntryCollection1, false);
+                Add(source.CommitAttemptEntryCollection3, source.CommitAttemptEntryCollection2, false);
+                Add(source.CommitAttemptEntryCollection3, source.CommitAttemptEntryCollection3, true);
+                Add(source.CommitAttemptEntryCollection3, source.CommitAttemptEntryCollection4, false);
 
-                Add(commitAttemptEntryCollection4, default, false);
-                Add(commitAttemptEntryCollection4, commitAttemptEntryCollection0, false);
-                Add(commitAttemptEntryCollection4, commitAttemptEntryCollection1, false);
-                Add(commitAttemptEntryCollection4, commitAttemptEntryCollection2, false);
-                Add(commitAttemptEntryCollection4, commitAttemptEntryCollection3, false);
-                Add(commitAttemptEntryCollection4, commitAttemptEntryCollection4, true);
+                Add(source.CommitAttemptEntryCollection4, default, false);
+                Add(source.CommitAttemptEntryCollection4, source.CommitAttemptEntryCollection0, false);
+                Add(source.CommitAttemptEntryCollection4, source.CommitAttemptEntryCollection1, false);
+                Add(source.CommitAttemptEntryCollection4, source.CommitAttemptEntryCollection2, false);
+                Add(source.CommitAttemptEntryCollection4, source.CommitAttemptEntryCollection3, false);
+                Add(source.CommitAttemptEntryCollection4, source.CommitAttemptEntryCollection4, true);
             }
         }
 
@@ -299,44 +260,14 @@ namespace AI4E.Storage.Domain.Test
         {
             public SubsequentHashCodeCallsReturnSameHashCodeTestData()
             {
-                var commitAttemptEntryMock1 = SetupCommitAttemptEntryMock();
-                var commitAttemptEntryMock2 = SetupCommitAttemptEntryMock();
-                var commitAttemptEntryMock3 = SetupCommitAttemptEntryMock();
-
-                var commitAttemptEntryCollection0
-                    = new CommitAttemptEntryCollection(ImmutableArray<IEquatableCommitAttemptEntry>.Empty);
-
-                var commitAttemptEntryCollection1 = new CommitAttemptEntryCollection(new[]
-                {
-                    commitAttemptEntryMock1.Object,
-                    commitAttemptEntryMock2.Object
-                }.ToImmutableArray());
-
-                var commitAttemptEntryCollection2 = new CommitAttemptEntryCollection(new[]
-                {
-                    commitAttemptEntryMock1.Object,
-                    commitAttemptEntryMock2.Object
-                }.ToImmutableArray());
-
-                var commitAttemptEntryCollection3 = new CommitAttemptEntryCollection(new[]
-                {
-                    commitAttemptEntryMock1.Object,
-                    commitAttemptEntryMock2.Object,
-                    commitAttemptEntryMock3.Object
-                }.ToImmutableArray());
-
-                var commitAttemptEntryCollection4 = new CommitAttemptEntryCollection(new[]
-                {
-                    commitAttemptEntryMock3.Object,
-                    commitAttemptEntryMock1.Object
-                }.ToImmutableArray());
+                var source = new CommitAttemptEntrySource();
 
                 Add(default);
-                Add(commitAttemptEntryCollection0);
-                Add(commitAttemptEntryCollection1);
-                Add(commitAttemptEntryCollection2);
-                Add(commitAttemptEntryCollection3);
-                Add(commitAttemptEntryCollection4);
+                Add(source.CommitAttemptEntryCollection0);
+                Add(source.CommitAttemptEntryCollection1);
+                Add(source.CommitAttemptEntryCollection2);
+                Add(source.CommitAttemptEntryCollection3);
+                Add(source.CommitAttemptEntryCollection4);
             }
         }
 
@@ -358,46 +289,16 @@ namespace AI4E.Storage.Domain.Test
         {
             public EqualValuesReturnsSameHashCodeTestData()
             {
-                var commitAttemptEntryMock1 = SetupCommitAttemptEntryMock();
-                var commitAttemptEntryMock2 = SetupCommitAttemptEntryMock();
-                var commitAttemptEntryMock3 = SetupCommitAttemptEntryMock();
-
-                var commitAttemptEntryCollection0
-                    = new CommitAttemptEntryCollection(ImmutableArray<IEquatableCommitAttemptEntry>.Empty);
-
-                var commitAttemptEntryCollection1 = new CommitAttemptEntryCollection(new[]
-                {
-                    commitAttemptEntryMock1.Object,
-                    commitAttemptEntryMock2.Object
-                }.ToImmutableArray());
-
-                var commitAttemptEntryCollection2 = new CommitAttemptEntryCollection(new[]
-                {
-                    commitAttemptEntryMock1.Object,
-                    commitAttemptEntryMock2.Object
-                }.ToImmutableArray());
-
-                var commitAttemptEntryCollection3 = new CommitAttemptEntryCollection(new[]
-                {
-                    commitAttemptEntryMock1.Object,
-                    commitAttemptEntryMock2.Object,
-                    commitAttemptEntryMock3.Object
-                }.ToImmutableArray());
-
-                var commitAttemptEntryCollection4 = new CommitAttemptEntryCollection(new[]
-                {
-                    commitAttemptEntryMock3.Object,
-                    commitAttemptEntryMock1.Object
-                }.ToImmutableArray());
-
+                var source = new CommitAttemptEntrySource();
+              
                 Add(default, default);
-                Add(default, commitAttemptEntryCollection0);
-                Add(commitAttemptEntryCollection0, commitAttemptEntryCollection0);
-                Add(commitAttemptEntryCollection1, commitAttemptEntryCollection1);
-                Add(commitAttemptEntryCollection1, commitAttemptEntryCollection2);
-                Add(commitAttemptEntryCollection2, commitAttemptEntryCollection2);
-                Add(commitAttemptEntryCollection3, commitAttemptEntryCollection3);
-                Add(commitAttemptEntryCollection4, commitAttemptEntryCollection4);
+                Add(default, source.CommitAttemptEntryCollection0);
+                Add(source.CommitAttemptEntryCollection0, source.CommitAttemptEntryCollection0);
+                Add(source.CommitAttemptEntryCollection1, source.CommitAttemptEntryCollection1);
+                Add(source.CommitAttemptEntryCollection1, source.CommitAttemptEntryCollection2);
+                Add(source.CommitAttemptEntryCollection2, source.CommitAttemptEntryCollection2);
+                Add(source.CommitAttemptEntryCollection3, source.CommitAttemptEntryCollection3);
+                Add(source.CommitAttemptEntryCollection4, source.CommitAttemptEntryCollection4);
             }
         }
 
@@ -418,8 +319,8 @@ namespace AI4E.Storage.Domain.Test
         public void GetEnumeratorTest()
         {
             // Arrange
-            var commitAttemptEntryMock1 = SetupCommitAttemptEntryMock();
-            var commitAttemptEntryMock2 = SetupCommitAttemptEntryMock();
+            var commitAttemptEntryMock1 = CommitAttemptEntrySource.SetupCommitAttemptEntryMock();
+            var commitAttemptEntryMock2 = CommitAttemptEntrySource.SetupCommitAttemptEntryMock();
             var expectedCommitAttemptEntries = new[] { commitAttemptEntryMock1.Object, commitAttemptEntryMock2.Object }.ToImmutableArray();
 
             var commitAttemptEntryCollection = new CommitAttemptEntryCollection(expectedCommitAttemptEntries);

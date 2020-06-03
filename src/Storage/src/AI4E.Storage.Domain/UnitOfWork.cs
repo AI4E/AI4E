@@ -20,7 +20,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -194,12 +197,33 @@ namespace AI4E.Storage.Domain
                 throw new ArgumentNullException(nameof(storageEngine));
 
             // Create a commit attempt of our tracked changed before we rollback.
-            var commitAttempt = new CommitAttempt(this);
+            var commitAttempt = CreateCommitAttempt();
 
             // We rollback in any case.
             Reset();
 
             return storageEngine.CommitAsync(commitAttempt, cancellation);
+        }
+
+        private CommitAttempt<CommitAttemptEntry> CreateCommitAttempt()
+        {
+            var trackedEntities = ModifiedEntities;
+            var commitAttemptEntriesBuilder = ImmutableArray.CreateBuilder<CommitAttemptEntry>(
+                initialCapacity: trackedEntities.Count);
+            commitAttemptEntriesBuilder.Count = trackedEntities.Count;
+
+            for (var i = 0; i < trackedEntities.Count; i++)
+            {
+                ref var entry = ref Unsafe.AsRef(in commitAttemptEntriesBuilder.ItemRef(i));
+                entry = new CommitAttemptEntry(trackedEntities[i]);
+            }
+
+            Debug.Assert(commitAttemptEntriesBuilder.Capacity == commitAttemptEntriesBuilder.Count);
+
+            var commitAttemptEntries = new CommitAttemptEntryCollection<CommitAttemptEntry>(
+                commitAttemptEntriesBuilder.MoveToImmutable());
+
+            return new CommitAttempt<CommitAttemptEntry>(commitAttemptEntries);
         }
     }
 }

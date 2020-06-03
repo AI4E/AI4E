@@ -22,58 +22,44 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace AI4E.Storage.Domain
 {
     /// <summary>
     /// Represents a commit-attempt.
     /// </summary>
-    public readonly struct CommitAttempt : IEquatable<CommitAttempt>
+    /// <typeparam name="TCommitAttemptEntry">The type of commit-attempt entry.</typeparam>
+    public readonly struct CommitAttempt<TCommitAttemptEntry> : IEquatable<CommitAttempt<TCommitAttemptEntry>>
+         where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
     {
         /// <summary>
-        /// Creates a new instance of type <see cref="CommitAttempt"/> from the specified <see cref="IUnitOfWork"/>.
+        /// Creates a new instance of type <see cref="CommitAttempt{TCommitAttemptEntry}"/>.
         /// </summary>
-        /// <param name="unitOfWork">The <see cref="IUnitOfWork"/> that tracks the entities to commit.</param>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="unitOfWork"/> is <c>null</c>.</exception>
-        public CommitAttempt(IUnitOfWork unitOfWork)
+        /// <param name="unitOfWork">
+        /// The <see cref="CommitAttemptEntryCollection{TCommitAttemptEntry}"/> that defines the commit entries that 
+        /// the commit-attempt contains of.
+        /// </param>
+        public CommitAttempt(CommitAttemptEntryCollection<TCommitAttemptEntry> entries)
         {
-            if (unitOfWork is null)
-                throw new ArgumentNullException(nameof(unitOfWork));
-
-            var trackedEntities = unitOfWork.ModifiedEntities;
-            var commitAttemptEntriesBuilder = ImmutableArray.CreateBuilder<CommitAttemptEntry>(
-                initialCapacity: trackedEntities.Count);
-            commitAttemptEntriesBuilder.Count = trackedEntities.Count;
-
-            for (var i = 0; i < trackedEntities.Count; i++)
-            {
-                ref var entry = ref Unsafe.AsRef(in commitAttemptEntriesBuilder.ItemRef(i));
-                entry = new CommitAttemptEntry(trackedEntities[i]);
-            }
-
-            Debug.Assert(commitAttemptEntriesBuilder.Capacity == commitAttemptEntriesBuilder.Count);
-
-            Entries = new CommitAttemptEntryCollection<CommitAttemptEntry>(commitAttemptEntriesBuilder.MoveToImmutable());
+            Entries = entries;
         }
 
         /// <summary>
-        /// Gets the <see cref="CommitAttemptEntryCollection"/> that defines the commit entries 
+        /// Gets the <see cref="CommitAttemptEntryCollection{TCommitAttemptEntry}"/> that defines the commit entries 
         /// that the current commit-attempt contains of.
         /// </summary>
-        public CommitAttemptEntryCollection<CommitAttemptEntry> Entries { get; }
+        public CommitAttemptEntryCollection<TCommitAttemptEntry> Entries { get; }
 
-        bool IEquatable<CommitAttempt>.Equals(CommitAttempt other)
+        bool IEquatable<CommitAttempt<TCommitAttemptEntry>>.Equals(CommitAttempt<TCommitAttemptEntry> other)
         {
             return Equals(in other);
         }
 
-        /// <inheritdoc cref="IEquatable{CommitAttempt}.Equals(CommitAttempt)"/>
-        public bool Equals(in CommitAttempt other)
+        /// <inheritdoc cref="IEquatable{CommitAttempt}.Equals(CommitAttempt{TCommitAttemptEntry})"/>
+        public bool Equals(in CommitAttempt<TCommitAttemptEntry> other)
         {
             return Entries == other.Entries;
         }
@@ -81,7 +67,7 @@ namespace AI4E.Storage.Domain
         /// <inheritdoc />
         public override bool Equals(object? obj)
         {
-            return obj is CommitAttempt commitAttempt && Equals(in commitAttempt);
+            return obj is CommitAttempt<TCommitAttemptEntry> commitAttempt && Equals(in commitAttempt);
         }
 
         /// <inheritdoc />
@@ -96,7 +82,9 @@ namespace AI4E.Storage.Domain
         /// <param name="left">The first <see cref="CommitAttempt"/>.</param>
         /// <param name="right">The second <see cref="CommitAttempt"/>.</param>
         /// <returns>True if <paramref name="left"/> equals <paramref name="right"/>, false otherwise.</returns>
-        public static bool operator ==(in CommitAttempt left, in CommitAttempt right)
+        public static bool operator ==(
+            in CommitAttempt<TCommitAttemptEntry> left, 
+            in CommitAttempt<TCommitAttemptEntry> right)
         {
             return left.Equals(in right);
         }
@@ -107,7 +95,9 @@ namespace AI4E.Storage.Domain
         /// <param name="left">The first <see cref="CommitAttempt"/>.</param>
         /// <param name="right">The second <see cref="CommitAttempt"/>.</param>
         /// <returns>True if <paramref name="left"/> does not equal <paramref name="right"/>, false otherwise.</returns>
-        public static bool operator !=(in CommitAttempt left, in CommitAttempt right)
+        public static bool operator !=(
+            in CommitAttempt<TCommitAttemptEntry> left, 
+            in CommitAttempt<TCommitAttemptEntry> right)
         {
             return !left.Equals(in right);
         }
@@ -238,6 +228,7 @@ namespace AI4E.Storage.Domain
     /// <summary>
     /// Represents an immutable collection of commit-attempt entries.
     /// </summary>
+    /// <typeparam name="TCommitAttemptEntry">The type of commit-attempt entry.</typeparam>
     public readonly struct CommitAttemptEntryCollection<TCommitAttemptEntry>
         : IReadOnlyCollection<TCommitAttemptEntry>, IEquatable<CommitAttemptEntryCollection<TCommitAttemptEntry>>
         where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>

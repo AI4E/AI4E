@@ -349,9 +349,10 @@ namespace AI4E.Storage.Domain
         }
 
         /// <inheritdoc/>
-        public async ValueTask<EntityCommitResult> CommitAsync(
-            CommitAttempt commitAttempt,
-            CancellationToken cancellation = default)
+        public async ValueTask<EntityCommitResult> CommitAsync<TCommitAttemptEntry>(
+            CommitAttempt<TCommitAttemptEntry> commitAttempt,
+            CancellationToken cancellation)
+            where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
         {
             _logger.LogDebug(
                 Resources.EngineProcessingCommitAttempt, _optionsAccessor.Value.Scope ?? Resources.NoScope);
@@ -494,7 +495,7 @@ namespace AI4E.Storage.Domain
                             entry.EntityIdentifier,
                             _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-                        var eventBatch = new StoredDomainEventBatch(
+                        var eventBatch = StoredDomainEventBatch.Create(
                             entry, storedEntity!.Epoch, _optionsAccessor.Value.Scope);
                         eventBatches.Add(eventBatch);
                         await databaseScope.StoreAsync(eventBatch, cancellation).ConfigureAwait(false);
@@ -520,7 +521,10 @@ namespace AI4E.Storage.Domain
             return EntityCommitResult.Success;
         }
 
-        private static bool CheckConcurrency(CommitAttemptEntry entry, IEntityLoadResult entityLoadResult)
+        private static bool CheckConcurrency<TCommitAttemptEntry>(
+            TCommitAttemptEntry entry,
+            IEntityLoadResult entityLoadResult)
+            where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
         {
             Debug.Assert(entry.EntityIdentifier == entityLoadResult.EntityIdentifier);
 
@@ -532,7 +536,10 @@ namespace AI4E.Storage.Domain
         // TODO: If the entry in the cache is of another epoch as the one in the database but with the same revision,
         //       the concurrency-check succeeds, although it has to fail. This will blow up when trying to commit the 
         //       transaction to the database, performing the check on the cache again, leading to an infinite loop.
-        private async ValueTask<bool> CheckConcurrencyAsync(CommitAttempt commitAttempt, CancellationToken cancellation)
+        private async ValueTask<bool> CheckConcurrencyAsync<TCommitAttemptEntry>(
+            CommitAttempt<TCommitAttemptEntry> commitAttempt,
+            CancellationToken cancellation)
+            where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
         {
             foreach (var entry in commitAttempt.Entries)
             {
@@ -956,29 +963,50 @@ namespace AI4E.Storage.Domain
 
         private sealed class StoredDomainEventBatch
         {
-            public StoredDomainEventBatch(CommitAttemptEntry commitAttemptEntry, int entityEpoch, string? scope)
+            public static StoredDomainEventBatch Create<TCommitAttemptEntry>(
+                TCommitAttemptEntry commitAttemptEntry,
+                int entityEpoch,
+                string? scope) where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
             {
-                EntityDeleted = commitAttemptEntry.Operation == CommitOperation.Delete;
-                EntityType = commitAttemptEntry.EntityIdentifier.EntityType;
-                EntityId = commitAttemptEntry.EntityIdentifier.EntityId;
-                EntityRevision = commitAttemptEntry.Revision;
-                EntityEpoch = entityEpoch;
-                Scope = scope;
-                DomainEvents = new List<StoredDomainEvent>(capacity: commitAttemptEntry.DomainEvents.Count);
+                return new StoredDomainEventBatch
+                {
+                    EntityDeleted = commitAttemptEntry.Operation == CommitOperation.Delete,
+                    EntityType = commitAttemptEntry.EntityIdentifier.EntityType,
+                    EntityId = commitAttemptEntry.EntityIdentifier.EntityId,
+                    EntityRevision = commitAttemptEntry.Revision,
+                    EntityEpoch = entityEpoch,
+                    Scope = scope,
+                    DomainEvents = CreateStoredDomainEvents(commitAttemptEntry),
+                    Id = GenerateId(commitAttemptEntry, entityEpoch, scope)
+                };
+            }
+
+            private static List<StoredDomainEvent> CreateStoredDomainEvents<TCommitAttemptEntry>(
+                TCommitAttemptEntry commitAttemptEntry)
+                where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
+            {
+                var result = new List<StoredDomainEvent>(capacity: commitAttemptEntry.DomainEvents.Count);
 
                 // Do not use LINQ as this allocates heavily.
                 foreach (var domainEvent in commitAttemptEntry.DomainEvents)
                 {
-                    DomainEvents.Add(new StoredDomainEvent(domainEvent));
+                    result.Add(new StoredDomainEvent(domainEvent));
                 }
 
-                // TODO
-                Id = IdGenerator.GenerateId(
-                    EntityType,
-                    EntityId,
-                    EntityRevision,
-                    EntityEpoch,
-                    Scope);
+                return result;
+            }
+
+            private static string GenerateId<TCommitAttemptEntry>(
+                TCommitAttemptEntry commitAttemptEntry,
+                int entityEpoch,
+                string? scope) where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
+            {
+                return IdGenerator.GenerateId(
+                    commitAttemptEntry.EntityIdentifier.EntityType,
+                    commitAttemptEntry.EntityIdentifier.EntityId,
+                    commitAttemptEntry.Revision,
+                    entityEpoch, 
+                    scope);
             }
 
             private StoredDomainEventBatch()
