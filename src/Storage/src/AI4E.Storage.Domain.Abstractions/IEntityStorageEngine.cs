@@ -50,7 +50,7 @@ namespace AI4E.Storage.Domain
             CancellationToken cancellation = default);
 
         /// <summary>
-        /// Asynchronously loads all entity of the specified type.
+        /// Asynchronously loads all entities of the specified type.
         /// </summary>
         /// <param name="entityType">The type of entity to load.</param>
         /// <param name="bypassCache">A boolean value indicating whether the internal caches shall be by-passed.</param>
@@ -59,7 +59,7 @@ namespace AI4E.Storage.Domain
         /// or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
-        /// A <see cref="IAsyncEnumerable{ISuccessEntityLoadResult}"/> asynchronously enumerating the entity 
+        /// An <see cref="IAsyncEnumerable{ISuccessEntityLoadResult}"/> asynchronously enumerating the entity 
         /// load-results of all entity of type <paramref name="entityType"/> that are available.
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entityType"/> is <c>null</c>.</exception>

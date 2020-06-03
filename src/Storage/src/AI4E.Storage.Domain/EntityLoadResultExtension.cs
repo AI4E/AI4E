@@ -25,7 +25,7 @@ namespace AI4E.Storage.Domain
     /// <summary>
     /// Contains extensions for the <see cref="IEntityLoadResult"/> type.
     /// </summary>
-    public static class EntityLoadResultExtension
+    public static class EntityLoadResultExtension2 // TODO: Type conflict
     {
         /// <summary>
         /// Converts the specified entity load-result to a success entity load-result.
