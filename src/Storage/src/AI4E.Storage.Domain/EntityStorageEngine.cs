@@ -313,6 +313,11 @@ namespace AI4E.Storage.Domain
             bool bypassCache,
             [EnumeratorCancellation] CancellationToken cancellation)
         {
+            if (entityType is null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            EntityValidationHelper.Validate(entityType);
+
             _logger.LogDebug(
                 Resources.EngineLoadingEntitiesFromDatabase,
                 entityType,
