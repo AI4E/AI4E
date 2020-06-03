@@ -19,6 +19,7 @@
  */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -330,6 +331,62 @@ namespace AI4E.Storage.Domain.Test
 
             // Assert
             Assert.Equal(expectedCommitAttemptEntries, list);
+        }
+
+        [Fact]
+        public void DefaultUntypedGetEnumeratorTest()
+        {
+            // Arrange
+            var commitAttemptEntryCollection = default(CommitAttemptEntryCollection);
+
+            // Act
+            var result = ((IEnumerable)commitAttemptEntryCollection).Cast<IEquatableCommitAttemptEntry>().Any();
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void NonGenericIterationTest()
+        {
+            // Arrange
+            var commitAttemptEntryMock1 = CommitAttemptEntrySource.SetupCommitAttemptEntryMock();
+            var commitAttemptEntryMock2 = CommitAttemptEntrySource.SetupCommitAttemptEntryMock();
+            var expectedCommitAttemptEntries = new[]
+            {
+                commitAttemptEntryMock1.Object,
+                commitAttemptEntryMock2.Object
+            }.ToImmutableArray();
+
+            var commitAttemptEntryCollection = new CommitAttemptEntryCollection(
+                expectedCommitAttemptEntries);
+            var commitAttemptEntries = new List<object?>();
+
+            // Act
+            foreach (var commitAttemptEntry in ((IEnumerable)commitAttemptEntryCollection))
+            {
+                commitAttemptEntries.Add(commitAttemptEntry);
+            }
+
+            // Assert
+            Assert.Equal(expectedCommitAttemptEntries, commitAttemptEntries);
+        }
+
+        [Fact]
+        public void DefaultValueNonGenericIterationTest()
+        {
+            // Arrange
+            var commitAttemptEntryCollection = default(CommitAttemptEntryCollection);
+            var commitAttemptEntries = new List<object?>();
+
+            // Act
+            foreach (var commitAttemptEntry in ((IEnumerable)commitAttemptEntryCollection))
+            {
+                commitAttemptEntries.Add(commitAttemptEntry);
+            }
+
+            // Assert
+            Assert.Empty(commitAttemptEntries);
         }
     }
 }
