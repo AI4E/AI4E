@@ -18,7 +18,21 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-namespace AI4E.Storage.Domain.Test.TestTypes
+namespace AI4E.Storage.Domain.Specification.TestTypes
 {
-    public sealed class DomainEntity2 : DomainEntity { }
+    public sealed class ByValueEqualityDomainEvent : DomainEventBase
+    {
+        public int Value { get; set; }
+
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ByValueEqualityDomainEvent byValueEqualityDomainEvent
+                && byValueEqualityDomainEvent.Value == Value;
+        }
+    }
 }

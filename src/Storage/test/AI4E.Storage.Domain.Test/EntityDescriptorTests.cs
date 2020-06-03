@@ -19,7 +19,7 @@
  */
 
 using System;
-using AI4E.Storage.Domain.Test.TestTypes;
+using AI4E.Storage.Domain.Specification.TestTypes;
 using Xunit;
 
 namespace AI4E.Storage.Domain.Test
@@ -40,7 +40,7 @@ namespace AI4E.Storage.Domain.Test
         {
             Assert.Throws<ArgumentNullException>("entity", () =>
             {
-                new EntityDescriptor(entityType: typeof(DomainEntity), entity: null);
+                new EntityDescriptor(entityType: typeof(DomainEntityBase), entity: null);
             });
         }
 
@@ -135,7 +135,7 @@ namespace AI4E.Storage.Domain.Test
         public void EntityTypeIsCorrectTypeTest()
         {
             // Arrange
-            var expectedEntityType = typeof(DomainEntity);
+            var expectedEntityType = typeof(DomainEntityBase);
             var entityDescriptor = new EntityDescriptor(entityType: expectedEntityType, entity: new DomainEntity1());
 
             // Act
@@ -163,7 +163,7 @@ namespace AI4E.Storage.Domain.Test
         {
             // Arrange
             var expectedEntity = new DomainEntity1();
-            var entityDescriptor = new EntityDescriptor(entityType: typeof(DomainEntity), entity: expectedEntity);
+            var entityDescriptor = new EntityDescriptor(entityType: typeof(DomainEntityBase), entity: expectedEntity);
 
             // Act
             var entity = entityDescriptor.Entity;
@@ -218,7 +218,7 @@ namespace AI4E.Storage.Domain.Test
         public void DeconstructEntityTypeIsCorrectTest()
         {
             // Arrange
-            var expectedEntityType = typeof(DomainEntity);
+            var expectedEntityType = typeof(DomainEntityBase);
             var entityDescriptor = new EntityDescriptor(entityType: expectedEntityType, entity: new DomainEntity1());
 
             // Act
@@ -246,7 +246,7 @@ namespace AI4E.Storage.Domain.Test
         {
             // Arrange
             var expectedEntity = new DomainEntity1();
-            var entityDescriptor = new EntityDescriptor(entityType: typeof(DomainEntity), entity: expectedEntity);
+            var entityDescriptor = new EntityDescriptor(entityType: typeof(DomainEntityBase), entity: expectedEntity);
 
             // Act
             var (_, entity) = entityDescriptor;
@@ -332,28 +332,28 @@ namespace AI4E.Storage.Domain.Test
                 Add(default, default, true);
 
                 // The entities are not of the same instance.
-                Add(new EntityDescriptor(typeof(DomainEntity), new DomainEntity1()),
-                    new EntityDescriptor(typeof(DomainEntity), new DomainEntity1()),
+                Add(new EntityDescriptor(typeof(DomainEntityBase), new DomainEntity1()),
+                    new EntityDescriptor(typeof(DomainEntityBase), new DomainEntity1()),
                     false);
 
                 var DomainEntity1 = new DomainEntity1();
-                Add(new EntityDescriptor(typeof(DomainEntity), DomainEntity1),
-                    new EntityDescriptor(typeof(DomainEntity), DomainEntity1),
+                Add(new EntityDescriptor(typeof(DomainEntityBase), DomainEntity1),
+                    new EntityDescriptor(typeof(DomainEntityBase), DomainEntity1),
                     true);
 
                 // Different domain-entity types.
                 Add(new EntityDescriptor(typeof(DomainEntity1), DomainEntity1),
-                    new EntityDescriptor(typeof(DomainEntity), DomainEntity1),
+                    new EntityDescriptor(typeof(DomainEntityBase), DomainEntity1),
                     false);
 
                 // Custom equality comparison
-                Add(new EntityDescriptor(typeof(DomainEntity), new ByValueEqualityDomainEntity()),
-                    new EntityDescriptor(typeof(DomainEntity), new ByValueEqualityDomainEntity()),
+                Add(new EntityDescriptor(typeof(DomainEntityBase), new ByValueEqualityDomainEntity()),
+                    new EntityDescriptor(typeof(DomainEntityBase), new ByValueEqualityDomainEntity()),
                     true);
 
                 // Custom equality comparison & different domain-entity types.
                 Add(new EntityDescriptor(typeof(ByValueEqualityDomainEntity), new ByValueEqualityDomainEntity()),
-                    new EntityDescriptor(typeof(DomainEntity), new ByValueEqualityDomainEntity()),
+                    new EntityDescriptor(typeof(DomainEntityBase), new ByValueEqualityDomainEntity()),
                     false);
             }
         }
@@ -377,9 +377,9 @@ namespace AI4E.Storage.Domain.Test
             public SubsequentHashCodeCallsReturnSameHashCodeTestData()
             {
                 Add(default);
-                Add(new EntityDescriptor(typeof(DomainEntity), new DomainEntity1()));
-                Add(new EntityDescriptor(typeof(DomainEntity), new DomainEntity2()));
-                Add(new EntityDescriptor(typeof(DomainEntity), new ByValueEqualityDomainEntity()));
+                Add(new EntityDescriptor(typeof(DomainEntityBase), new DomainEntity1()));
+                Add(new EntityDescriptor(typeof(DomainEntityBase), new DomainEntity2()));
+                Add(new EntityDescriptor(typeof(DomainEntityBase), new ByValueEqualityDomainEntity()));
                 Add(new EntityDescriptor(typeof(DomainEntity1), new DomainEntity1()));
                 Add(new EntityDescriptor(typeof(DomainEntity2), new DomainEntity2()));
                 Add(new EntityDescriptor(typeof(ByValueEqualityDomainEntity), new ByValueEqualityDomainEntity()));
@@ -407,11 +407,11 @@ namespace AI4E.Storage.Domain.Test
                 Add(default, default);
 
                 var DomainEntity1 = new DomainEntity1();
-                Add(new EntityDescriptor(typeof(DomainEntity), DomainEntity1),
-                    new EntityDescriptor(typeof(DomainEntity), DomainEntity1));
+                Add(new EntityDescriptor(typeof(DomainEntityBase), DomainEntity1),
+                    new EntityDescriptor(typeof(DomainEntityBase), DomainEntity1));
 
-                Add(new EntityDescriptor(typeof(DomainEntity), new ByValueEqualityDomainEntity()),
-                    new EntityDescriptor(typeof(DomainEntity), new ByValueEqualityDomainEntity()));
+                Add(new EntityDescriptor(typeof(DomainEntityBase), new ByValueEqualityDomainEntity()),
+                    new EntityDescriptor(typeof(DomainEntityBase), new ByValueEqualityDomainEntity()));
             }
         }
     }

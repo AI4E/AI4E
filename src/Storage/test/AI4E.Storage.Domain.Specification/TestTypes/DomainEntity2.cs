@@ -18,7 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-namespace AI4E.Storage.Domain.Test.TestTypes
+namespace AI4E.Storage.Domain.Specification.TestTypes
 {
-    public sealed class DomainEntity1 : DomainEntity { }
+    public sealed class DomainEntity2 : DomainEntityBase { }
 }

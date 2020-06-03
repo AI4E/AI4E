@@ -19,7 +19,7 @@
  */
 
 using System;
-using AI4E.Storage.Domain.Test.TestTypes;
+using AI4E.Storage.Domain.Specification.TestTypes;
 using Xunit;
 
 namespace AI4E.Storage.Domain.Test
@@ -40,7 +40,7 @@ namespace AI4E.Storage.Domain.Test
         {
             Assert.Throws<ArgumentNullException>("entityId", () =>
             {
-                new EntityIdentifier(entityType: typeof(DomainEntity), entityId: null);
+                new EntityIdentifier(entityType: typeof(DomainEntityBase), entityId: null);
             });
         }
 
@@ -85,7 +85,7 @@ namespace AI4E.Storage.Domain.Test
         public void EntityTypeIsCorrectTypeTest()
         {
             // Arrange
-            var expectedEntityType = typeof(DomainEntity);
+            var expectedEntityType = typeof(DomainEntityBase);
             var entityIdentifier = new EntityIdentifier(entityType: expectedEntityType, entityId: "abc");
 
             // Act
@@ -113,7 +113,7 @@ namespace AI4E.Storage.Domain.Test
         {
             // Arrange
             var expectedEntityId = "abc";
-            var entityIdentifier = new EntityIdentifier(entityType: typeof(DomainEntity), entityId: expectedEntityId);
+            var entityIdentifier = new EntityIdentifier(entityType: typeof(DomainEntityBase), entityId: expectedEntityId);
 
             // Act
             var entityId = entityIdentifier.EntityId;
@@ -139,7 +139,7 @@ namespace AI4E.Storage.Domain.Test
         public void DeconstructEntityTypeIsCorrectTest()
         {
             // Arrange
-            var expectedEntityType = typeof(DomainEntity);
+            var expectedEntityType = typeof(DomainEntityBase);
             var entityIdentifier = new EntityIdentifier(entityType: expectedEntityType, entityId: "abc");
 
             // Act
@@ -167,7 +167,7 @@ namespace AI4E.Storage.Domain.Test
         {
             // Arrange
             var expectedEntityId = "abc";
-            var entityIdentifier = new EntityIdentifier(entityType: typeof(DomainEntity), entityId: expectedEntityId);
+            var entityIdentifier = new EntityIdentifier(entityType: typeof(DomainEntityBase), entityId: expectedEntityId);
 
             // Act
             var (_, entityId) = entityIdentifier;
@@ -254,17 +254,17 @@ namespace AI4E.Storage.Domain.Test
                 Add(new EntityIdentifier(typeof(object), string.Empty), default, true);
                 Add(default, new EntityIdentifier(typeof(object), string.Empty), true);
 
-                Add(new EntityIdentifier(typeof(DomainEntity), "abc"),
-                    new EntityIdentifier(typeof(DomainEntity), "def"),
+                Add(new EntityIdentifier(typeof(DomainEntityBase), "abc"),
+                    new EntityIdentifier(typeof(DomainEntityBase), "def"),
                     false);
 
-                Add(new EntityIdentifier(typeof(DomainEntity), "abc"),
-                   new EntityIdentifier(typeof(DomainEntity), "abc"),
+                Add(new EntityIdentifier(typeof(DomainEntityBase), "abc"),
+                   new EntityIdentifier(typeof(DomainEntityBase), "abc"),
                    true);
 
                 // Different domain-entity types.
                 Add(new EntityIdentifier(typeof(DomainEntity1), "abc"),
-                    new EntityIdentifier(typeof(DomainEntity), "abc"),
+                    new EntityIdentifier(typeof(DomainEntityBase), "abc"),
                     false);
             }
         }
@@ -288,8 +288,8 @@ namespace AI4E.Storage.Domain.Test
             public SubsequentHashCodeCallsReturnSameHashCodeTestData()
             {
                 Add(default);
-                Add(new EntityIdentifier(typeof(DomainEntity), ""));
-                Add(new EntityIdentifier(typeof(DomainEntity), "abc"));
+                Add(new EntityIdentifier(typeof(DomainEntityBase), ""));
+                Add(new EntityIdentifier(typeof(DomainEntityBase), "abc"));
                 Add(new EntityIdentifier(typeof(DomainEntity1), "def"));
             }
         }
@@ -314,8 +314,8 @@ namespace AI4E.Storage.Domain.Test
             {
                 Add(default, default);
                 Add(new EntityIdentifier(typeof(object), string.Empty), default);
-                Add(new EntityIdentifier(typeof(DomainEntity), "abc"),
-                    new EntityIdentifier(typeof(DomainEntity), "abc"));
+                Add(new EntityIdentifier(typeof(DomainEntityBase), "abc"),
+                    new EntityIdentifier(typeof(DomainEntityBase), "abc"));
                 Add(new EntityIdentifier(typeof(DomainEntity1), "def"),
                     new EntityIdentifier(typeof(DomainEntity1), "def"));
 

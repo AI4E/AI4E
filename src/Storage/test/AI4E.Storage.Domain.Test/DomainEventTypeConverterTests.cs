@@ -20,7 +20,7 @@
 
 using System;
 using System.ComponentModel;
-using AI4E.Storage.Domain.Test.TestTypes;
+using AI4E.Storage.Domain.Specification.TestTypes;
 using Xunit;
 
 namespace AI4E.Storage.Domain.Test

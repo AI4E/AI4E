@@ -24,8 +24,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using AI4E.Storage.Domain.Specification.TestTypes;
 using AI4E.Storage.Domain.Test.Helpers;
-using AI4E.Storage.Domain.Test.TestTypes;
 using Xunit;
 
 namespace AI4E.Storage.Domain.Test

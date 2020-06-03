@@ -116,7 +116,7 @@ namespace AI4E.Storage.Domain
     /// <summary>
     /// Represents the entry of a commit-attempt that describes the operation on a single entity.
     /// </summary>
-    public readonly struct CommitAttemptEntry : IEquatable<CommitAttemptEntry>
+    public readonly struct CommitAttemptEntry : IEquatable<CommitAttemptEntry>, ICommitAttemptEntry
     {
         private readonly ITrackedEntity? _trackedEntity;
         private static readonly ImmutableHashSet<EntityTrackState> _allowedTrackStates = new[]
@@ -149,15 +149,11 @@ namespace AI4E.Storage.Domain
             _trackedEntity = trackedEntity;
         }
 
-        /// <summary>
-        /// Gets the identifier of the entity to commit.
-        /// </summary>
+        /// <inheritdoc/>
         public EntityIdentifier EntityIdentifier
             => _trackedEntity is null ? default : _trackedEntity.GetEntityIdentifier();
 
-        /// <summary>
-        /// Gets the commit operation to perform for the entity to commit.
-        /// </summary>
+        /// <inheritdoc/>
         public CommitOperation Operation
         {
             get
@@ -175,32 +171,22 @@ namespace AI4E.Storage.Domain
             }
         }
 
-        /// <summary>
-        /// Gets the new revision of the entity after performing the commit.
-        /// </summary>
+        /// <inheritdoc/>
         public long Revision => _trackedEntity is null ? default : _trackedEntity.Revision;
 
-        /// <summary>
-        /// Gets the concurrency-token of the entity after performing the commit.
-        /// </summary>
+        /// <inheritdoc/>
         public ConcurrencyToken ConcurrencyToken
             => _trackedEntity is null ? default : _trackedEntity.ConcurrencyToken;
 
-        /// <summary>
-        /// Gets the collection of domain-events that were raised on the entity.
-        /// </summary>
+        /// <inheritdoc/>
         public DomainEventCollection DomainEvents
             => _trackedEntity is null ? default : _trackedEntity.DomainEvents;
 
-        /// <summary>
-        /// Gets the expected revision of the entity to commit to check for concurrency situations.
-        /// </summary>
+        /// <inheritdoc/>
         public long ExpectedRevision
             => _trackedEntity is null ? default : _trackedEntity.OriginalEntityLoadResult.Revision;
 
-        /// <summary>
-        /// Gets the updated or created entity or <c>null</c> if a delete operation shall be performed.
-        /// </summary>
+        /// <inheritdoc/>
         public object? Entity => _trackedEntity is null ? default : _trackedEntity.Entity;
 
         bool IEquatable<CommitAttemptEntry>.Equals(CommitAttemptEntry other)

@@ -19,7 +19,7 @@
  */
 
 using System;
-using AI4E.Storage.Domain.Test.TestTypes;
+using AI4E.Storage.Domain.Specification.TestTypes;
 using Moq;
 using Xunit;
 
@@ -41,7 +41,7 @@ namespace AI4E.Storage.Domain.Test
         {
             // Arrange
 
-            var entityType = typeof(DomainEntity);
+            var entityType = typeof(DomainEntityBase);
             var entity = new DomainEntity1();
             var entityIdentifier = new EntityIdentifier(entityType, "abc");
             var expectedEntityDescriptor = new EntityDescriptor(entityType, entity);

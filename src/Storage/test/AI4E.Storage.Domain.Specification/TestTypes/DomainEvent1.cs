@@ -18,10 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-namespace AI4E.Storage.Domain.Test.TestTypes
+namespace AI4E.Storage.Domain.Specification.TestTypes
 {
-    public sealed class DomainEntity<TValue> : DomainEntity
-    {
-        public TValue Value { get; set; }
-    }
+    public sealed class DomainEvent1 : DomainEventBase { }
 }

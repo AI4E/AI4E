@@ -19,14 +19,66 @@
  */
 
 using System;
-using AI4E.Storage.Domain.Test.TestTypes;
+using AI4E.Storage.Domain.Specification;
 using Moq;
 using Xunit;
 
 namespace AI4E.Storage.Domain.Test
 {
-    public class CommitAttemptEntryTests
+    public class CommitAttemptEntryTests : CommitAttemptEntrySpecification
     {
+        protected override ICommitAttemptEntry Create(
+            CommitOperation commitOperation,
+            EntityIdentifier entityIdentifier,
+            long revision,
+            ConcurrencyToken concurrencyToken,
+            DomainEventCollection domainEvents,
+            long expectedRevision,
+            object? entity)
+        {
+            var trackedEntityMock = new Mock<ITrackedEntity>();
+            var entityLoadResultMock = new Mock<ICacheableEntityLoadResult>();
+
+            // Setup entity-identifier
+            entityLoadResultMock.Setup(entityLoadResult => entityLoadResult.EntityIdentifier).Returns(entityIdentifier);
+
+            // Setup expected-revision
+            entityLoadResultMock.Setup(entityLoadResult => entityLoadResult.Revision)
+               .Returns(expectedRevision);
+
+            trackedEntityMock.Setup(trackedEntity => trackedEntity.OriginalEntityLoadResult)
+                .Returns(entityLoadResultMock.Object);
+
+            // Setup track-state, that will be converted to commit operation
+            trackedEntityMock.Setup(trackedEntity => trackedEntity.TrackState)
+                .Returns(ReverseConvert(commitOperation, expectedRevision));
+
+            // Setup revision
+            trackedEntityMock.Setup(trackedEntity => trackedEntity.Revision).Returns(revision);
+
+            // Setup concurrency-token 
+            trackedEntityMock.Setup(trackedEntity => trackedEntity.ConcurrencyToken).Returns(concurrencyToken);
+
+            // Setup entity
+            trackedEntityMock.Setup(trackedEntity => trackedEntity.Entity).Returns(entity);
+
+            // Setup domain-events
+            trackedEntityMock.Setup(trackedEntity => trackedEntity.DomainEvents).Returns(domainEvents);
+
+            return new CommitAttemptEntry(trackedEntityMock.Object);
+        }
+
+        private EntityTrackState ReverseConvert(CommitOperation commitOperation, long expectedRevision)
+        {
+            if (commitOperation == CommitOperation.Delete)
+                return EntityTrackState.Deleted;
+
+            if (expectedRevision == 0)
+                return EntityTrackState.Created;
+
+            return EntityTrackState.Updated;
+        }
+
         [Fact]
         public void ConstructNullTrackedEntityThrowsArgumentNullExceptionTest()
         {
@@ -61,8 +113,8 @@ namespace AI4E.Storage.Domain.Test
         }
 
         [Theory]
-        [ClassData(typeof(CommitOperationTestData))]
-        public void CommitOperationTest(EntityTrackState entityTrackState, CommitOperation expectedCommitOperation)
+        [ClassData(typeof(NativeCommitOperationTestData))]
+        public void NativeCommitOperationTest(EntityTrackState entityTrackState, CommitOperation expectedCommitOperation)
         {
             // Arrange
             var trackedEntityMock = new Mock<ITrackedEntity>();
@@ -76,154 +128,13 @@ namespace AI4E.Storage.Domain.Test
             Assert.Equal(expectedCommitOperation, commitOperation);
         }
 
-        public class CommitOperationTestData : TheoryData<EntityTrackState, CommitOperation>
+        public class NativeCommitOperationTestData : TheoryData<EntityTrackState, CommitOperation>
         {
-            public CommitOperationTestData()
+            public NativeCommitOperationTestData()
             {
                 Add(EntityTrackState.Created, CommitOperation.Store);
                 Add(EntityTrackState.Updated, CommitOperation.Store);
                 Add(EntityTrackState.Deleted, CommitOperation.Delete);
-            }
-        }
-
-        [Fact]
-        public void EntityIdentifierTest()
-        {
-            // Arrange
-            var expectedEntityIdentifier = new EntityIdentifier(typeof(DomainEntity1), "abc");
-
-            var entityLoadResultMock = new Mock<ICacheableEntityLoadResult>();
-            entityLoadResultMock.Setup(entityLoadResult => entityLoadResult.EntityIdentifier)
-                .Returns(expectedEntityIdentifier);
-
-            var trackedEntityMock = new Mock<ITrackedEntity>();
-            trackedEntityMock.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Created);
-            trackedEntityMock.Setup(trackedEntity => trackedEntity.OriginalEntityLoadResult)
-                .Returns(entityLoadResultMock.Object);
-
-            var commitAttemptEntry = new CommitAttemptEntry(trackedEntityMock.Object);
-
-            // Act
-            var entityIdentifier = commitAttemptEntry.EntityIdentifier;
-
-            // Assert
-            Assert.Equal(expectedEntityIdentifier, entityIdentifier);
-        }
-
-        [Fact]
-        public void RevisionTest()
-        {
-            // Arrange       
-            var expectedRevision = 22;
-
-            var trackedEntityMock = new Mock<ITrackedEntity>();
-            trackedEntityMock.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-            trackedEntityMock.Setup(trackedEntity => trackedEntity.Revision)
-                .Returns(expectedRevision);
-
-            var commitAttemptEntry = new CommitAttemptEntry(trackedEntityMock.Object);
-
-            // Act
-            var revision = commitAttemptEntry.Revision;
-
-            // Assert
-            Assert.Equal(expectedRevision, revision);
-        }
-
-        [Fact]
-        public void ConcurrencyTokenTest()
-        {
-            // Arrange       
-            var expectedConcurrencyToken = new ConcurrencyToken("abc");
-
-            var trackedEntityMock = new Mock<ITrackedEntity>();
-            trackedEntityMock.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-            trackedEntityMock.Setup(trackedEntity => trackedEntity.ConcurrencyToken)
-                .Returns(expectedConcurrencyToken);
-
-            var commitAttemptEntry = new CommitAttemptEntry(trackedEntityMock.Object);
-
-            // Act
-            var concurrencyToken = commitAttemptEntry.ConcurrencyToken;
-
-            // Assert
-            Assert.Equal(expectedConcurrencyToken, concurrencyToken);
-        }
-
-        [Fact]
-        public void DomainEventsTest()
-        {
-            // Arrange       
-            var expectedDomainEvents = new DomainEventCollection(new[]
-            {
-                new DomainEvent(typeof(DomainEventBase), new DomainEvent1()),
-                new DomainEvent(typeof(DomainEvent2), new DomainEvent2())
-            });
-
-            var trackedEntityMock = new Mock<ITrackedEntity>();
-            trackedEntityMock.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-            trackedEntityMock.Setup(trackedEntity => trackedEntity.DomainEvents)
-                    .Returns(expectedDomainEvents);
-
-            var commitAttemptEntry = new CommitAttemptEntry(trackedEntityMock.Object);
-
-            // Act
-            var domainEvents = commitAttemptEntry.DomainEvents;
-
-            // Assert
-            Assert.Equal(expectedDomainEvents, domainEvents);
-        }
-
-        [Fact]
-        public void ExpectedRevisionTest()
-        {
-            // Arrange
-            var expectedExpectedRevision = 22;
-
-            var entityLoadResultMock = new Mock<ICacheableEntityLoadResult>();
-            entityLoadResultMock.Setup(entityLoadResult => entityLoadResult.Revision)
-                .Returns(expectedExpectedRevision);
-
-            var trackedEntityMock = new Mock<ITrackedEntity>();
-            trackedEntityMock.Setup(trackedEntity => trackedEntity.TrackState).Returns(EntityTrackState.Updated);
-            trackedEntityMock.Setup(trackedEntity => trackedEntity.OriginalEntityLoadResult)
-                .Returns(entityLoadResultMock.Object);
-
-            var commitAttemptEntry = new CommitAttemptEntry(trackedEntityMock.Object);
-
-            // Act
-            var expectedRevision = commitAttemptEntry.ExpectedRevision;
-
-            // Assert
-            Assert.Equal(expectedExpectedRevision, expectedRevision);
-        }
-
-        [Theory]
-        [ClassData(typeof(EntityTestData))]
-        public void EntityTest(EntityTrackState entityTrackState, object? expectedEntity)
-        {
-            // Arrange       
-            var trackedEntityMock = new Mock<ITrackedEntity>();
-            trackedEntityMock.Setup(trackedEntity => trackedEntity.TrackState).Returns(entityTrackState);
-            trackedEntityMock.Setup(trackedEntity => trackedEntity.Entity)
-                    .Returns(expectedEntity);
-
-            var commitAttemptEntry = new CommitAttemptEntry(trackedEntityMock.Object);
-
-            // Act
-            var entity = commitAttemptEntry.Entity;
-
-            // Assert
-            Assert.Same(expectedEntity, entity);
-        }
-
-        public class EntityTestData : TheoryData<EntityTrackState, object?>
-        {
-            public EntityTestData()
-            {
-                Add(EntityTrackState.Created, new DomainEntity1());
-                Add(EntityTrackState.Updated, new DomainEntity2());
-                Add(EntityTrackState.Deleted, null);
             }
         }
 
