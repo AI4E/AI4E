@@ -30,7 +30,7 @@ using System.Threading.Tasks;
 namespace AI4E.Storage.Domain
 {
     /// <inheritdoc cref="IUnitOfWork"/>
-    public sealed partial class UnitOfWork : IUnitOfWork
+    internal sealed partial class UnitOfWork : IUnitOfWork
     {
         private readonly IEntityConcurrencyTokenFactory _concurrencyTokenFactory;
         private readonly Dictionary<EntityIdentifier, ITrackedEntity> _trackedEntities;

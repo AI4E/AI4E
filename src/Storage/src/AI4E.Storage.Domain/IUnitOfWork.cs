@@ -29,7 +29,7 @@ namespace AI4E.Storage.Domain
     /// <summary>
     /// Represents a unit of work that tracks entities and implements an identity map.
     /// </summary>
-    public interface IUnitOfWork
+    internal interface IUnitOfWork
     {
         /// <summary>
         /// Gets a collection of all tracked entities.

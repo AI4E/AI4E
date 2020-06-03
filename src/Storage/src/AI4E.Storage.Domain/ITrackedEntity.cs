@@ -28,7 +28,7 @@ namespace AI4E.Storage.Domain
     /// <remarks>
     /// Implementations must be thread-safe (or immutable).
     /// </remarks>
-    public interface ITrackedEntity
+    internal interface ITrackedEntity
     {
         /// <summary>
         /// Gets the track-state of the tracked entity.

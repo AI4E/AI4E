@@ -25,7 +25,7 @@ namespace AI4E.Storage.Domain
     /// <summary>
     /// Contains extensions for the <see cref="ITrackedEntity"/> type.
     /// </summary>
-    public static class TrackedEntityExtension
+    internal static class TrackedEntityExtension
     {
         /// <summary>
         /// Returns a boolean value indicating whether the specified tracked entity is modified.
