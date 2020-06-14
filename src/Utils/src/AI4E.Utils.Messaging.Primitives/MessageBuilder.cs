@@ -22,6 +22,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace AI4E.Utils.Messaging.Primitives
 {
@@ -143,11 +144,12 @@ namespace AI4E.Utils.Messaging.Primitives
             return CurrentFrame!;
         }
 
-        public MessageFrameBuilder? PopFrame()
+        [return: NotNullIfNotNull("fallback")]
+        public MessageFrameBuilder? PopFrame(MessageFrameBuilder? fallback = null)
         {
             if (_frameIndex == -1)
             {
-                return null;
+                return fallback;
             }
 
             var result = CurrentFrame;

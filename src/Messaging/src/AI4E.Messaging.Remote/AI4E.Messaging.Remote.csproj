@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Storage.Coordination\AI4E.Coordination\AI4E.Coordination.csproj" />
     <ProjectReference Include="..\..\..\Remoting\AI4E.Remoting\AI4E.Remoting.csproj" />
+    <ProjectReference Include="..\..\..\Storage\src\AI4E.Storage.Coordination\AI4E.Storage.Coordination.csproj" />
     <ProjectReference Include="..\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Messaging.Remote.Abstractions\AI4E.Messaging.Remote.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Messaging\AI4E.Messaging.csproj" />

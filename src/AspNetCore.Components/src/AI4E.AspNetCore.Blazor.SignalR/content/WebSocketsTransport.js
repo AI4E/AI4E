@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.WebSocketsTransport = void 0;
 class WebSocketsTransport {
     constructor() {
         this.CreateConnection = (url, binary, managedObj) => {

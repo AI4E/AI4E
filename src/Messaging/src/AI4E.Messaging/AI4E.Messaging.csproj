@@ -7,15 +7,15 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <!-- We need this for the IAsyncDisposable and IAsyncEnumerable definition -->
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.1" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.2" />  
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
-    <PackageReference Include="System.Collections.Immutable" Version="1.7.0" /> 
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.1.1" /> 
-    <PackageReference Include="System.Linq.Async" Version="4.0.0" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.7.1" /> 
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.1.5" /> 
+    <PackageReference Include="System.Linq.Async" Version="4.1.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,4 +31,5 @@
   <ItemGroup>
     <Compile Include="$(RepositorySharedPath)TypeConverter.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
+  
 </Project>

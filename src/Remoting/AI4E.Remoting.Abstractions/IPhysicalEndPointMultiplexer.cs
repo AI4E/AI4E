@@ -33,7 +33,9 @@ namespace AI4E.Remoting
         /// </summary>
         /// <param name="multiplexName">The name of the multiplex end point.</param>
         /// <returns>A physical end point identified by <paramref name="multiplexName"/>.</returns>
-        /// <exception cref="ArgumentNullOrWhiteSpaceException">Thrown if <paramref name="multiplexName"/> is either null, an emppty string or contains of whitespace only.</exception>
+        /// <exception cref="ArgumentNullOrWhiteSpaceException">
+        /// Thrown if <paramref name="multiplexName"/> is either null, an empty string or contains of whitespace only.
+        /// </exception>
         IMultiplexPhysicalEndPoint<TAddress> GetPhysicalEndPoint(string multiplexName);
 
         /// <summary>
@@ -47,7 +49,8 @@ namespace AI4E.Remoting
     /// </summary>
     /// <typeparam name="TAddress">The type of physical address used.</typeparam>
     /// <remarks>
-    /// The physical end point neither does guarantee message delivery nor does it provide any guarantiees about the ordering of messages.
+    /// The physical end point neither does guarantee message delivery
+    /// nor does it provide any guarantees about the ordering of messages.
     /// </remarks>
     public interface IMultiplexPhysicalEndPoint<TAddress> : IPhysicalEndPoint<TAddress>
     {

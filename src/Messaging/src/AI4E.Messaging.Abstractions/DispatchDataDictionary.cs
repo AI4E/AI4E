@@ -29,6 +29,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
+using AI4E.Utils;
 
 namespace AI4E.Messaging
 {
@@ -52,11 +53,12 @@ namespace AI4E.Messaging
         // anyone could inherit from the type. We cannot ensure immutability in this case.
         // Normally this type is not created directly anyway but an instance of the derived (generic type is used) and this type is used 
         // only as cast target, if we do not know the message type.
-        private protected DispatchDataDictionary(object message, IEnumerable<KeyValuePair<string, object?>> data)
+        private protected DispatchDataDictionary(Type messageType, object message, IEnumerable<KeyValuePair<string, object?>> data)
         {
-            ValidateArguments(MessageType, message, data);
+            ValidateArguments(messageType, message, data);
 
             Message = message;
+            MessageType = messageType;
             _data = data as ImmutableDictionary<string, object?> ?? data.ToImmutableDictionary();
         }
 
@@ -127,7 +129,15 @@ namespace AI4E.Messaging
                 throw new SerializationException($"Unable to deserialize the {GetType().FullName}. There is no message specified.");
             }
 
+            var messageType = serializationInfo.GetValue(nameof(MessageType), typeof(string)) as string;
+
+            if (messageType is null)
+            {
+                throw new SerializationException($"Unable to deserialize the {GetType().FullName}. There is no message-type specified.");
+            }
+
             Message = message;
+            MessageType = TypeResolver.Default.ResolveType(messageType.AsSpan()); // TODO: Which type-resolver shall we use here?
             _data = serializationInfo.GetValueOrDefault<ImmutableDictionary<string, object?>>("Data");
         }
 
@@ -142,6 +152,7 @@ namespace AI4E.Messaging
                 throw new ArgumentNullException(nameof(info));
 
             info.AddValue(nameof(Message), Message);
+            info.AddValue(nameof(MessageType), MessageType.GetUnqualifiedTypeName());
             info.AddValue<ImmutableDictionary<string, object?>?>("Data", _data);
         }
 
@@ -150,7 +161,7 @@ namespace AI4E.Messaging
         /// <summary>
         /// Gets the type of message that is dispatched.
         /// </summary>
-        public abstract Type MessageType { get; }
+        public Type MessageType { get; }
 
         /// <summary>
         /// Gets the message that is dispatched.
@@ -539,7 +550,6 @@ namespace AI4E.Messaging
                 dataParameter);
 
             return lambda.Compile();
-
         }
 
         #endregion
@@ -568,7 +578,7 @@ namespace AI4E.Messaging
         /// Thrown if <typeparamref name="TMessage"/> is not a valid message type.
         /// </exception>
         public DispatchDataDictionary(TMessage message, IEnumerable<KeyValuePair<string, object?>> data)
-            : base(message, data)
+            : base(typeof(TMessage), message, data)
         { }
 
         /// <summary>
@@ -581,15 +591,30 @@ namespace AI4E.Messaging
         /// Thrown if <typeparamref name="TMessage"/> is not a valid message type.
         /// </exception>
         public DispatchDataDictionary(TMessage message)
-            : base(message, ImmutableDictionary<string, object?>.Empty)
+            : base(typeof(TMessage), message, ImmutableDictionary<string, object?>.Empty)
         { }
+
+        public DispatchDataDictionary(Type messageType, TMessage message, IEnumerable<KeyValuePair<string, object?>> data)
+            : base(messageType, message, data)
+        {
+            ValidateMessageType(messageType);
+        }
+
+        public DispatchDataDictionary(Type messageType, TMessage message)
+            : base(messageType, message, ImmutableDictionary<string, object?>.Empty)
+        {
+            ValidateMessageType(messageType);
+        }
+
+        private static void ValidateMessageType(Type messageType)
+        {
+            if (!typeof(TMessage).IsAssignableFrom(messageType))
+                throw new ArgumentException($"The specified message-type must be of type '{ typeof(TMessage) }' or a derived type.", nameof(messageType));
+        }
 
         private DispatchDataDictionary(SerializationInfo serializationInfo, StreamingContext streamingContext)
             : base(serializationInfo, streamingContext)
         { }
-
-        /// <inheritdoc/>
-        public override Type MessageType => typeof(TMessage);
 
         /// <summary>
         /// Gets the message that is dispatched.
@@ -625,7 +650,7 @@ namespace AI4E.Messaging
 
             public new DispatchDataDictionary<TMessage> BuildDispatchDataDictionary()
             {
-                return new DispatchDataDictionary<TMessage>(Message, BuildDataDictionary());
+                return new DispatchDataDictionary<TMessage>(MessageType, Message, BuildDataDictionary());
             }
         }
 

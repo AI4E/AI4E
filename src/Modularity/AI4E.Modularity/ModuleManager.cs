@@ -28,12 +28,13 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Coordination;
+using AI4E.Storage.Coordination;
 using AI4E.Internal;
 using AI4E.Messaging.Routing;
 using AI4E.Modularity.Metadata;
 using AI4E.Utils.Memory;
 using static System.Diagnostics.Debug;
+using AI4E.Storage.Coordination.Session;
 
 namespace AI4E.Modularity
 {
@@ -257,7 +258,7 @@ namespace AI4E.Modularity
             ModuleIdentifier module,
             ModuleProperties properties,
             bool overrideExisting,
-            Session session,
+            SessionIdentifier session,
             CancellationToken cancellation)
         {
             var path = GetRunningModulePath(module, session);
@@ -330,7 +331,7 @@ namespace AI4E.Modularity
             while (!await AddOrUpdateAsync());
         }
 
-        private async Task WriteModulePrefixEntryAsync(ReadOnlyMemory<char> prefix, RouteEndPointAddress endPoint, Session session, CancellationToken cancellation)
+        private async Task WriteModulePrefixEntryAsync(ReadOnlyMemory<char> prefix, RouteEndPointAddress endPoint, SessionIdentifier session, CancellationToken cancellation)
         {
             var normalizedPrefix = NormalizePrefix(prefix);
 
@@ -385,7 +386,7 @@ namespace AI4E.Modularity
             return _rootPrefixesPath.GetChildPath(prefix);
         }
 
-        private static CoordinationEntryPath GetPrefixPath(ReadOnlyMemory<char> prefix, RouteEndPointAddress endPoint, Session session, bool normalize = true)
+        private static CoordinationEntryPath GetPrefixPath(ReadOnlyMemory<char> prefix, RouteEndPointAddress endPoint, SessionIdentifier session, bool normalize = true)
         {
             if (normalize)
             {
@@ -401,7 +402,7 @@ namespace AI4E.Modularity
             return _rootRunningPath.GetChildPath(module.Name);
         }
 
-        private static CoordinationEntryPath GetRunningModulePath(ModuleIdentifier module, Session session)
+        private static CoordinationEntryPath GetRunningModulePath(ModuleIdentifier module, SessionIdentifier session)
         {
             return _rootRunningPath.GetChildPath(module.Name, session.ToString());
         }

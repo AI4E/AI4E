@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Coordination;
+using AI4E.Storage.Coordination;
 using AI4E.Messaging.Routing;
 using AI4E.Utils;
 using AI4E.Utils.Async;
