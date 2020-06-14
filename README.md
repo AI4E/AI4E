@@ -33,6 +33,6 @@ Currently there is no release, so the goal is to build a stable, manufacturing r
 | 2019-04-29 | 0.1.3 | YES |
 | 2019-05-22 | 0.1.4 | YES |
 | 2019-07-08 | 0.2.0 | YES |
-| 2019 | 0.3.0 | YES |
-| 2019 | 0.4.0 | YES |
+| 2019 | 0.5.0 | YES |
+| 2019 | 0.6.0 | YES |
 | 2019 | 1.0.0 | NO |

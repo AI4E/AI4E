@@ -1,0 +1,32 @@
+﻿@page "/"
+@inject ILogger<Index> Logger
+@functions{
+    private LogLevel LogLevelX { get; set; }
+    private string LogMessage { get; set; }
+
+    private void Log()
+    {
+        Logger.Log(LogLevelX, LogMessage);
+        LogLevelX = LogLevel.Information;
+        LogMessage = string.Empty;
+    }
+}
+<div>
+    <label>Logmessage: <input @bind="@LogMessage" /></label>
+</div>
+
+<div>
+    <label>
+        Loglevel:
+        <select value="@LogLevelX" @onchange="@(x => LogLevelX = (LogLevel)Enum.Parse(typeof(LogLevel), (string)x.Value, ignoreCase: true))">
+            @foreach (var logLevel in Enum.GetValues(typeof(LogLevel)) as LogLevel[])
+            {
+                <option value="@logLevel">@logLevel</option>
+            }
+        </select>
+    </label>
+</div>
+
+<div>
+    <input type="button" value="Log" @onclick="@Log" />
+</div>

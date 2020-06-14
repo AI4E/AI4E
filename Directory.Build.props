@@ -9,31 +9,29 @@
     <RepositoryType>git</RepositoryType>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>0.3.0-pre$([System.DateTime]::UtcNow.ToString(yyMMddHH))</Version>
+    <Version>0.5.0-pre$([System.DateTime]::UtcNow.ToString(yyMMddHH))</Version>
   </PropertyGroup>
-    
+
   <PropertyGroup>
     <RepositoryRoot Condition="'$(RepositoryRoot)' == ''">$(MSBuildThisFileDirectory)</RepositoryRoot>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <LangVersion>8.0</LangVersion>
     <RazorLangVersion>3.0</RazorLangVersion>
+    <TypeScriptToolsVersion>3.5</TypeScriptToolsVersion>
+    <WarningsAsErrors>$(WarningsAsErrors);CS8597;CS8600;CS8601;CS8602;CS8603;CS8604;CS8609;CS8610;CS8613;CS8618;CS8620;CS8622;CS8625;CS8653;CS8714;</WarningsAsErrors>
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
-    <NoWarn>NU5105</NoWarn>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <RestoreAdditionalProjectSources>
-      https://dotnet.myget.org/F/rx/api/v3/index.json;
-    </RestoreAdditionalProjectSources>
+    <NoWarn>$(NoWarn);NU5105</NoWarn>
+    <GenerateDocumentationFile Condition="'$(Configuration)' == 'Release'">true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <!-- Workaround for: https://github.com/dotnet/sdk/issues/3146 -->
   <PropertyGroup>
     <DepsFileGenerationMode>old</DepsFileGenerationMode>
   </PropertyGroup>
-  
+
   <PropertyGroup>
     <RepositoryRootPath>$(RepositoryRoot)\</RepositoryRootPath>
+    <RepositorySharedPath>$(RepositoryRoot)\src\Shared\</RepositorySharedPath>
     <RepositoryBuiltPath>$(RepositoryRootPath)artifacts\</RepositoryBuiltPath>
     <RootOutputPath>$(RepositoryBuiltPath)bin\</RootOutputPath>
     <RootIntermediateOutputPath>$(RepositoryBuiltPath)obj\</RootIntermediateOutputPath>
@@ -51,35 +49,46 @@
     <MSBuildProjectExtensionsPath>$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
     <RestoreOutputPath>$(BaseIntermediateOutputPath)</RestoreOutputPath>
   </PropertyGroup>
-  
-  <PropertyGroup>
-    <NetStandardVersion>netstandard2.0</NetStandardVersion>
-    <!--Enable netstandard2.1, when we can include System.Memory and System.Threading.Task.Extensions packages with .net standard 2.1 without blowing up everything -->
-    <!-- https://github.com/dotnet/standard/issues/1063 -->
-    <NetStandardVersions>$(NetStandardVersion)<!--;netstandard2.1--></NetStandardVersions>
-    <NetCoreAppVersion>netcoreapp3.0</NetCoreAppVersion>
-    <NetCoreAppVersions>$(NetCoreAppVersion)</NetCoreAppVersions>
-    <FrameworkVersions>$(NetStandardVersions);$(NetCoreAppVersions)</FrameworkVersions>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
-    <DefineConstants>$(DefineConstants);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS</DefineConstants>
-  </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.0'">
-    <DefineConstants>$(DefineConstants);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS</DefineConstants>
+  <PropertyGroup>
+    <NetStandardVersion>netstandard2.1</NetStandardVersion>
+    <NetStandardVersions>$(NetStandardVersion);netstandard2.0</NetStandardVersions>
+    <NetCoreAppVersion>netcoreapp3.1</NetCoreAppVersion>
+    <NetCoreAppVersions>$(NetCoreAppVersion);</NetCoreAppVersions>
+    <RuntimeVersions>$(NetCoreAppVersions)</RuntimeVersions>
+    <FrameworkVersions>$(RuntimeVersions);$(NetStandardVersions)</FrameworkVersions>
+    <BlazorFrameworkVersions>netstandard2.1;$(RuntimeVersions)</BlazorFrameworkVersions>
+    <TestFrameworkVersions>netcoreapp3.1;netcoreapp3.0;netcoreapp2.1</TestFrameworkVersions>
+    
+    <NETSTD20Features></NETSTD20Features>
+    <NETSTD21Features>$(NETSTD20Features);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS;SUPPORTS_NULLABILITY_ATTRIBUTES;RUNTIME_FEATURES_IS_SUPPORTED;IL_EMIT;BINDING_FLAGS_DO_NOT_WRAP_EXCEPTIONS</NETSTD21Features>
+    <NETCORE30Features>$(NETSTD21Features);SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT;</NETCORE30Features>
+    <NETCORE31Features>$(NETCORE30Features);</NETCORE31Features>
+    
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <DefineConstants>$(DefineConstants);NETSTD20;</DefineConstants>
+    <DefineConstants>$(DefineConstants);$(NETSTD20Features);NETSTD20;</DefineConstants>
   </PropertyGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <Compile Include="$(RepositorySharedPath)NullabilityAttributes.cs" Link="Shared\NullabilityAttributes.cs" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
-    <DefineConstants>$(DefineConstants);NETSTD21;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS</DefineConstants>
+    <DefineConstants>$(DefineConstants);$(NETSTD21Features);NETSTD21;</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.0'">
-    <DefineConstants>$(DefineConstants);NETCORE30;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS</DefineConstants>
+    <DefineConstants>$(DefineConstants);$(NETCORE30Features);NETCORE30;</DefineConstants>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
+    <DefineConstants>$(DefineConstants);$(NETCORE31Features);NETCORE31;</DefineConstants>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <TypeScriptCompile Include="content/**/*.ts" />
+  </ItemGroup>
 
 </Project>

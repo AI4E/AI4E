@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+    <RootNamespace>AI4E.Utils</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageTags>.Net Core Object Clone Copy DeepClone</PackageTags>
+    <PackageReleaseNotes></PackageReleaseNotes>
+    <Description>Utility library that implements automatic, zero configuration deep object clone.</Description>
+  </PropertyGroup>
+
+</Project>

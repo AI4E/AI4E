@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageTags>ApplicationParts .Net Core</PackageTags>
+    <PackageReleaseNotes></PackageReleaseNotes>
+    <Description>A fork of Asp.Net Core MVC ApplicationParts that can be used in absent of an Asp.Net Core application.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="3.1.1" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.7.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="3.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AI4E.Utils.DependencyInjection\AI4E.Utils.DependencyInjection.csproj" />
+    <ProjectReference Include="..\AI4E.Utils\AI4E.Utils.csproj" />
+  </ItemGroup>
+
+</Project>
