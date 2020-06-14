@@ -20,29 +20,16 @@
 
 // Based on: https://github.com/khellang/Scrutor/blob/master/src/Scrutor/ServiceCollectionExtensions.Decoration.cs
 
-using System.Linq;
-using System.Diagnostics.CodeAnalysis;
 using System;
-using AI4E.Utils;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using AI4E.Utils.DependencyInjection;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
     public static class AI4EUtilsServiceCollectionExtension
     {
-        public static ContextServiceProvider BuildContextServiceProvider(
-            this IServiceCollection services)
-        {
-            return new ContextServiceProvider(services);
-        }
-
-        public static ContextServiceProvider BuildContextServiceProvider(
-            this IServiceCollection services,
-            bool validateScopes)
-        {
-            return new ContextServiceProvider(services, validateScopes);
-        }
-
         [return: MaybeNull]
         public static T GetService<T>(this IServiceCollection services)
         {

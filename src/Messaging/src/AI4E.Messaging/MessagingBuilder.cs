@@ -46,5 +46,7 @@ namespace AI4E.Messaging
     internal sealed class MessagingBuilderImpl : MessagingBuilder
     {
         public MessagingBuilderImpl(IServiceCollection services) : base(services) { }
+
+        public bool RoutingSystemSuppressed { get; set; }
     }
 }

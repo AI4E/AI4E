@@ -21,6 +21,7 @@
 using System;
 using System.Buffers;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Numerics;
@@ -165,14 +166,6 @@ namespace System
             }
         }
 
-        private const int _scalarMultiplicationValue = 314159;
-        private static readonly ReadOnlyMemory<int> _scalarMultiplicationValuePowers = BuildScalarMultiplicationValuePowers();
-        private static readonly Vector<int> _scalarMultiplicator = BuildScalarMultiplicator();
-        private static readonly Vector<int> _vectorMultiplicator = BuildVectorMultiplicator();
-        private static readonly Type _runtimeHelpersType = typeof(RuntimeHelpers);
-        private static readonly MethodInfo _isReferenceOrContainsReferencesMethodDefinition = GetIsReferenceOrContainsReferencesMethodDefinition();
-        private static readonly MethodInfo _fastSequenceHashCodeMethodDefinition = GetFastSequenceHashCodeMethodDefinition();
-
         public static ref Vector<T> AsVectorRef<T>(this Span<T> span) where T : unmanaged
         {
             if (span.Length < Vector<T>.Count)
@@ -180,6 +173,21 @@ namespace System
 
             return ref MemoryMarshal.Cast<T, Vector<T>>(span).GetPinnableReference();
         }
+
+        public static PooledMemoryStream AsStream(in this ReadOnlyMemory<byte> memory)
+        {
+            return new PooledMemoryStream(memory);
+        }
+
+        #region SequenceHashCode
+
+        private const int _scalarMultiplicationValue = 314159;
+        private static readonly ReadOnlyMemory<int> _scalarMultiplicationValuePowers = BuildScalarMultiplicationValuePowers();
+        private static readonly Vector<int> _scalarMultiplicator = BuildScalarMultiplicator();
+        private static readonly Vector<int> _vectorMultiplicator = BuildVectorMultiplicator();
+        private static readonly Type _runtimeHelpersType = typeof(RuntimeHelpers);
+        private static readonly MethodInfo _isReferenceOrContainsReferencesMethodDefinition = GetIsReferenceOrContainsReferencesMethodDefinition();
+        private static readonly MethodInfo _fastSequenceHashCodeMethodDefinition = GetFastSequenceHashCodeMethodDefinition();
 
         public static int SequenceHashCode<T>(this Span<T> span)
         {
@@ -363,7 +371,7 @@ namespace System
                 values[i] = unchecked(values[i + 1] * _scalarMultiplicationValue);
             }
 
-           return new Vector<int>(values);
+            return new Vector<int>(values);
         }
 
         private static Vector<int> BuildVectorMultiplicator()
@@ -461,5 +469,7 @@ namespace System
                 return false;
             }
         }
+
+        #endregion
     }
 }

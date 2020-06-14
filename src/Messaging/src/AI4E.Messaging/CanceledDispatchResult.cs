@@ -20,13 +20,14 @@
 
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace AI4E.Messaging
 {
     /// <summary>
     /// Describes the result of a canceled message dispatch operation.
     /// </summary>
+    [Serializable]
     public sealed class CanceledDispatchResult : FailureDispatchResult
     {
         internal const string DefaultMessage = "Canceled";
@@ -51,9 +52,12 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
-        [JsonConstructor]
         public CanceledDispatchResult(string message, IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
+        { }
+
+        private CanceledDispatchResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext)
         { }
     }
 }

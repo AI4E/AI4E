@@ -25,6 +25,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Loader;
 
 namespace AI4E.Utils
 {
@@ -88,6 +89,15 @@ namespace AI4E.Utils
             return ResolveNonGenericOrTypeDefinition(unqualifiedTypeName);
         }
 
+        protected static ImmutableHashSet<Assembly> GetDefaultContextAssemblies()
+        {
+            return AppDomain.CurrentDomain
+                .GetAssemblies()
+                .Where(p => AssemblyLoadContext.GetLoadContext(p) == AssemblyLoadContext.Default)
+                .Append(typeof(object).Assembly)
+                .ToImmutableHashSet(AssemblyByDisplayNameComparer.Instance);
+        }
+
         protected virtual IEnumerable<Assembly> ReflectAssemblies()
         {
             if (!_fallbackToDefaultContext)
@@ -95,12 +105,11 @@ namespace AI4E.Utils
                 return _assemblies;
             }
 
-            var defaultAssemblies = (IEnumerable<Assembly>)AppDomain.CurrentDomain.GetAssemblies();
+            var defaultAssemblies = (IEnumerable<Assembly>)GetDefaultContextAssemblies();
 
             // This is a common case, so we optimize for this.
             if (!_assemblies.Any())
             {
-                // We can just return the mutable array, as we control the caller.
                 return defaultAssemblies;
             }
 

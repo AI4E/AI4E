@@ -19,7 +19,6 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -39,10 +38,11 @@ namespace AI4E.Messaging.MessageHandlers
     public static class MessageHandlerInvoker
     {
         private static readonly Type _messageHandlerInvokerTypeDefinition = typeof(MessageHandlerInvoker<>);
-        private static readonly ConcurrentDictionary<Type, Func<object, MessageHandlerActionDescriptor, IEnumerable<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>> _factories
-            = new ConcurrentDictionary<Type, Func<object, MessageHandlerActionDescriptor, IEnumerable<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>>();
+        private static readonly ConditionalWeakTable<Type, Func<object, MessageHandlerActionDescriptor, IEnumerable<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>> _factories
+            = new ConditionalWeakTable<Type, Func<object, MessageHandlerActionDescriptor, IEnumerable<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>>();
 
-        private static readonly Func<Type, Func<object, MessageHandlerActionDescriptor, IEnumerable<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>> _factoryBuilderCache = BuildFactory;
+        private static readonly ConditionalWeakTable<Type, Func<object, MessageHandlerActionDescriptor, IEnumerable<IMessageProcessorRegistration>, IServiceProvider, IMessageHandler>>.CreateValueCallback _factoryBuilderCache
+            = BuildFactory;
 
         /// <summary>
         /// Creates a <see cref="MessageHandlerInvoker{TMessage}"/> from the specified parameters.
@@ -112,7 +112,7 @@ namespace AI4E.Messaging.MessageHandlers
            IServiceProvider serviceProvider)
         {
             var messageType = memberDescriptor.MessageType;
-            var factory = _factories.GetOrAdd(messageType, _factoryBuilderCache);
+            var factory = _factories.GetValue(messageType, _factoryBuilderCache);
             return factory(handler, memberDescriptor, processors, serviceProvider);
         }
 

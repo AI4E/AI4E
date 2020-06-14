@@ -26,6 +26,7 @@ using AI4E.Modularity;
 using AI4E.Modularity.Metadata;
 using AI4E.Modularity.Module;
 using AI4E.Utils.ApplicationParts;
+using AI4E.Utils.DependencyInjection;
 
 namespace Microsoft.Extensions.DependencyInjection
 {

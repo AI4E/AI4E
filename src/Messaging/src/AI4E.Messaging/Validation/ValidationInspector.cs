@@ -19,11 +19,11 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 
@@ -94,8 +94,8 @@ namespace AI4E.Messaging.Validation
     /// </summary>
     public readonly struct ValidationDescriptor
     {
-        private static readonly ConcurrentDictionary<Type, ImmutableDictionary<Type, ValidationDescriptor>> _descriptorsCache
-                   = new ConcurrentDictionary<Type, ImmutableDictionary<Type, ValidationDescriptor>>();
+        private static readonly ConditionalWeakTable<Type, ImmutableDictionary<Type, ValidationDescriptor>> _descriptorsCache
+            = new ConditionalWeakTable<Type, ImmutableDictionary<Type, ValidationDescriptor>>();
 
         /// <summary>
         /// Create a new instance of the <see cref="ValidationDescriptor"/> type.
@@ -164,7 +164,7 @@ namespace AI4E.Messaging.Validation
 
             if (!duplicates.Any())
             {
-                _descriptorsCache.TryAdd(messageHandlerType, members.ToImmutableDictionary(p => p.ParameterType));
+                _descriptorsCache.GetValue(messageHandlerType, _ => members.ToImmutableDictionary(p => p.ParameterType));
             }
 
             return result;

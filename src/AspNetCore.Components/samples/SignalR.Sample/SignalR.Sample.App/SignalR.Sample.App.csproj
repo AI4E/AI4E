@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\AI4E.AspNetCore.Blazor.SignalR\AI4E.AspNetCore.Blazor.SignalR.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.AspNetCore.Blazor.SignalR\AI4E.AspNetCore.Blazor.SignalR.csproj" />
   </ItemGroup>
 
 </Project>

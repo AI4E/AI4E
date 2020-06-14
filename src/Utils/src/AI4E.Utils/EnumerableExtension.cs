@@ -18,9 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 
 #if DEBUG
@@ -170,17 +168,21 @@ namespace System.Linq
         }
 
 #if NETSTD20
-        public static HashSet<T> ToHashSet<T>(this IEnumerable<T> source)
+        public static HashSet<TSource> ToHashSet<TSource>(this IEnumerable<TSource> source)
         {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
+            return ToHashSet(source, comparer: null);
+        }
 
-            if (source is HashSet<T> hashSet)
+        public static HashSet<TSource> ToHashSet<TSource>(this IEnumerable<TSource> source, IEqualityComparer<TSource>? comparer)
+        {
+            comparer ??= EqualityComparer<TSource>.Default;
+
+            if (source is HashSet<TSource> hashSet && hashSet.Comparer == comparer)
             {
                 return hashSet;
             }
 
-            return new HashSet<T>(source);
+            return new HashSet<TSource>(source, comparer);
         }
 #endif
 

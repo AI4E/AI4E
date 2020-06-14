@@ -21,31 +21,29 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Internal;
 using AI4E.Messaging.Routing;
+using AI4E.Messaging.Serialization;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 using AI4E.Utils.Messaging.Primitives;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 
 namespace AI4E.Messaging
 {
-    public sealed class MessageDispatcher
-        : IMessageDispatcher, IAsyncInitialization
+    public sealed class MessageDispatcher : IMessageDispatcher, IAsyncInitialization
     // We need to implement IAsyncInitialization in order to enable this type beeing registered as app-service.
     {
         #region Fields
 
         private readonly IMessageHandlerRegistry _messageHandlerRegistry;
         private readonly IMessageRouterFactory _messageRouterFactory;
+        private readonly IMessageSerializer _serializer;
         private readonly ITypeResolver _typeResolver;
         private readonly IServiceProvider _serviceProvider;
         private readonly IOptions<MessagingOptions> _optionsAccessor;
@@ -54,7 +52,6 @@ namespace AI4E.Messaging
         // Caching the delegates for performance reasons.
         private readonly Func<IDispatchResult, Message> _serializeDispatchResult;
         private readonly Func<DispatchDataDictionary, Message> _serializeDispatchData;
-        private readonly ThreadLocal<JsonSerializer> _serializer;
 
         private volatile IMessageHandlerProvider _messageHandlerProvider;
 
@@ -68,6 +65,7 @@ namespace AI4E.Messaging
         public MessageDispatcher(
             IMessageHandlerRegistry messageHandlerRegistry,
             IMessageRouterFactory messageRouterFactory,
+            IMessageSerializer serializer,
             ITypeResolver typeResolver,
             IServiceProvider serviceProvider,
             IOptions<MessagingOptions> optionsAccessor,
@@ -78,6 +76,9 @@ namespace AI4E.Messaging
 
             if (messageRouterFactory == null)
                 throw new ArgumentNullException(nameof(messageRouterFactory));
+
+            if (serializer is null)
+                throw new ArgumentNullException(nameof(serializer));
 
             if (typeResolver is null)
                 throw new ArgumentNullException(nameof(typeResolver));
@@ -90,14 +91,14 @@ namespace AI4E.Messaging
 
             _messageHandlerRegistry = messageHandlerRegistry;
             _messageRouterFactory = messageRouterFactory;
+            _serializer = serializer;
             _typeResolver = typeResolver;
             _serviceProvider = serviceProvider;
             _optionsAccessor = optionsAccessor;
             _logger = logger;
 
-            _serializer = new ThreadLocal<JsonSerializer>(BuildSerializer, trackAllValues: false);
-            _serializeDispatchResult = SerializeDispatchResult;
-            _serializeDispatchData = SerializeDispatchData;
+            _serializeDispatchResult = _serializer.Serialize;
+            _serializeDispatchData = _serializer.Serialize;
 
             _messageHandlerProvider = null!;
             ReloadMessageHandlers();
@@ -110,9 +111,16 @@ namespace AI4E.Messaging
 
         #region Disposal
 
+        /// <inheritdoc />
         public void Dispose()
         {
             _disposeHelper.Dispose();
+        }
+
+        /// <inheritdoc />
+        public ValueTask DisposeAsync()
+        {
+            return _disposeHelper.DisposeAsync();
         }
 
         private async Task DisposeInternalAsync()
@@ -123,16 +131,7 @@ namespace AI4E.Messaging
 
             if (success)
             {
-                try
-                {
-                    await messageRouter
-                        .UnregisterRoutesAsync(removePersistentRoutes: false)
-                        .ConfigureAwait(false);
-                }
-                finally
-                {
-                    messageRouter.Dispose();
-                }
+                await messageRouter.DisposeAsync();
             }
         }
 
@@ -161,7 +160,7 @@ namespace AI4E.Messaging
             }
             catch
             {
-                messageRouter.Dispose();
+                await messageRouter.DisposeAsync();
                 throw;
             }
 
@@ -210,46 +209,6 @@ namespace AI4E.Messaging
 
         #endregion
 
-        #region Serializer
-
-        private JsonSerializer BuildSerializer()
-        {
-            var result = new JsonSerializer
-            {
-                TypeNameHandling = TypeNameHandling.Auto,
-                SerializationBinder = new SerializationBinder(_typeResolver)
-            };
-
-            result.Converters.Add(new TypeConverter());
-
-            return result;
-        }
-
-        private JsonSerializer Serializer => _serializer.Value!;
-
-        private sealed class SerializationBinder : ISerializationBinder
-        {
-            private readonly ITypeResolver _typeResolver;
-
-            public SerializationBinder(ITypeResolver typeResolver)
-            {
-                _typeResolver = typeResolver;
-            }
-
-            public void BindToName(Type serializedType, out string? assemblyName, out string typeName)
-            {
-                typeName = serializedType.GetUnqualifiedTypeName();
-                assemblyName = null;
-            }
-
-            public Type BindToType(string assemblyName, string typeName)
-            {
-                return _typeResolver.ResolveType(typeName.AsSpan());
-            }
-        }
-
-        #endregion
-
         private IList<IRouteResolver> RoutesResolver
             => _optionsAccessor.Value?.RoutesResolvers ?? Array.Empty<IRouteResolver>();
 
@@ -273,9 +232,10 @@ namespace AI4E.Messaging
 
         public IMessageHandlerProvider MessageHandlerProvider => _messageHandlerProvider; // Volatile read op;
 
-        public ValueTask<RouteEndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)
+        public async ValueTask<RouteEndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation)
         {
-            return _messageRouterFactory.GetDefaultEndPointAsync(cancellation);
+            var router = await GetMessageRouterAsync(cancellation).ConfigureAwait(false);
+            return await router.GetLocalEndPointAsync(cancellation).ConfigureAwait(false);
         }
 
         private sealed class RouteMessageHandler : IRouteMessageHandler
@@ -317,9 +277,7 @@ namespace AI4E.Messaging
                 bool localDispatch,
                 CancellationToken cancellation)
             {
-                var dispatchData = _messageDispatcher.GetDispatchData(routeMessage);
-
-                if (dispatchData is null)
+                if (!_messageDispatcher.TryGetDispatchData(routeMessage, out var dispatchData))
                 {
                     var dispatchResult = new FailureDispatchResult("Unable to deserialize the dispatch data."); // TODO
                     var resultRouteMessage = _messageDispatcher.BuildRouteMessage(dispatchResult);
@@ -340,6 +298,13 @@ namespace AI4E.Messaging
                         messageType = dispatchData.MessageType;
                     }
 
+                    // TODO: Can we safely do this? This bypasses any reflection-context that we set up previously. 
+                    //       If this is used to store the type somewhere and the reflection context is a
+                    //       WeakReflectionContext, unload is impossible.
+                    //       This is needed here, because we compare to runtime types (via equality or IsAssignableFrom)
+                    //       in many cases in the messaging system. 
+                    messageType = messageType.UnderlyingSystemType;
+
                     Debug.Assert(messageType != null);
                     Debug.Assert(messageType!.IsAssignableFrom(dispatchData.MessageType));
 
@@ -356,62 +321,7 @@ namespace AI4E.Messaging
                     var resultRouteMessage = _messageDispatcher.BuildRouteMessage(dispatchResult);
                     return new RouteMessageHandleResult(resultRouteMessage, handled: handlersFound);
                 }
-
-
             }
-        }
-
-        private Message SerializeDispatchResult(IDispatchResult dispatchResult)
-        {
-            var messageBuilder = new MessageBuilder();
-
-            Debug.Assert(dispatchResult != null);
-
-            using (var frameStream = messageBuilder.PushFrame().OpenStream())
-            using (var writer = new StreamWriter(frameStream))
-            using (var jsonWriter = new JsonTextWriter(writer))
-            {
-                Serializer.Serialize(jsonWriter, dispatchResult, typeof(IDispatchResult));
-            }
-
-            return messageBuilder.BuildMessage();
-        }
-
-        private IDispatchResult DeserializeDispatchResult(Message message)
-        {
-            message.PopFrame(out var frame);
-
-            using var frameStream = frame.OpenStream();
-            using var reader = new StreamReader(frameStream);
-            using var jsonReader = new JsonTextReader(reader);
-            return Serializer.Deserialize<IDispatchResult>(jsonReader)
-                ?? new FailureDispatchResult("Unable to deserialize the dispatch result"); // TODO
-        }
-
-        private Message SerializeDispatchData(DispatchDataDictionary dispatchData)
-        {
-            var messageBuilder = new MessageBuilder();
-
-            Debug.Assert(dispatchData != null);
-
-            using (var frameStream = messageBuilder.PushFrame().OpenStream())
-            using (var writer = new StreamWriter(frameStream))
-            using (var jsonWriter = new JsonTextWriter(writer))
-            {
-                Serializer.Serialize(jsonWriter, dispatchData, typeof(DispatchDataDictionary));
-            }
-
-            return messageBuilder.BuildMessage();
-        }
-
-        private DispatchDataDictionary? DeserializeDispatchData(Message message)
-        {
-            message.PopFrame(out var frame);
-
-            using var frameStream = frame.OpenStream();
-            using var reader = new StreamReader(frameStream);
-            using var jsonReader = new JsonTextReader(reader);
-            return Serializer.Deserialize<DispatchDataDictionary>(jsonReader);
         }
 
         private RouteMessage<DispatchDataDictionary> BuildRouteMessage(DispatchDataDictionary dispatchData)
@@ -433,14 +343,22 @@ namespace AI4E.Messaging
                    type == objType;
         }
 
-        private DispatchDataDictionary? GetDispatchData(RouteMessage<DispatchDataDictionary> routeMessage)
+        private bool TryGetDispatchData(
+            RouteMessage<DispatchDataDictionary> routeMessage,
+            [NotNullWhen(true)] out DispatchDataDictionary? dispatchData)
         {
-            if (routeMessage.TryGetOriginal(out var dispatchData) && IsFromSameContext(dispatchData))
+            if (routeMessage.TryGetOriginal(out dispatchData) && IsFromSameContext(dispatchData))
             {
-                return dispatchData;
+                return true;
             }
 
-            return DeserializeDispatchData(routeMessage.Message);
+            if (_serializer.TryDeserialize(routeMessage.Message, out dispatchData))
+            {
+                return true;
+            }
+
+            dispatchData = null;
+            return false;
         }
 
         private IDispatchResult GetDispatchResult(RouteMessage<IDispatchResult> routeMessage)
@@ -450,7 +368,12 @@ namespace AI4E.Messaging
                 return dispatchResult;
             }
 
-            return DeserializeDispatchResult(routeMessage.Message);
+            if (!_serializer.TryDeserialize(routeMessage.Message, out dispatchResult))
+            {
+                dispatchResult = new FailureDispatchResult("Unable to deserialize the dispatch result"); // TODO
+            }
+
+            return dispatchResult;
         }
 
         private IDispatchResult WrapException(Exception exc)

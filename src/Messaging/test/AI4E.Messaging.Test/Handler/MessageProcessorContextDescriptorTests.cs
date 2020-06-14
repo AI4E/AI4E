@@ -32,7 +32,7 @@ namespace AI4E.Messaging.MessageHandlers
         [TestMethod]
         public void DefaultDescriptorTest()
         {
-            var descriptor = default(MessageProcessorContextDescriptor);
+            var descriptor = MessageProcessorContextDescriptor.None;
             var processor = new object();
 
             Assert.ThrowsException<InvalidOperationException>(() =>

@@ -23,15 +23,14 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Text;
-using Newtonsoft.Json;
-using static System.Diagnostics.Debug;
+using System.Diagnostics;
 
 namespace AI4E.Messaging.Routing
 {
     /// <summary>
     /// Represents the address of a logical end point.
     /// </summary>
-    [Serializable, JsonConverter(typeof(RouteEndPointAddressJsonConverter))]
+    [Serializable]
     public readonly struct RouteEndPointAddress : IEquatable<RouteEndPointAddress>, ISerializable
     {
         public static RouteEndPointAddress UnknownAddress { get; } = default;
@@ -88,7 +87,7 @@ namespace AI4E.Messaging.Routing
             var byteCount = Encoding.UTF8.GetByteCount(chars);
             var bytes = new byte[byteCount];
             var bytesWritten = Encoding.UTF8.GetBytes(chars, bytes);
-            Assert(bytesWritten == byteCount);
+            Debug.Assert(bytesWritten == byteCount);
             return bytes;
         }
 
@@ -180,37 +179,6 @@ namespace AI4E.Messaging.Routing
         void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue("address-string", ToString());
-        }
-    }
-
-    public sealed class RouteEndPointAddressJsonConverter : JsonConverter<RouteEndPointAddress>
-    {
-        public override void WriteJson(JsonWriter writer, RouteEndPointAddress value, JsonSerializer serializer)
-        {
-            if (writer is null)
-                throw new ArgumentNullException(nameof(writer));
-
-            writer.WriteValue(value.ToString());
-        }
-
-        public override RouteEndPointAddress ReadJson(
-            JsonReader reader,
-            Type objectType,
-            RouteEndPointAddress existingValue,
-            bool hasExistingValue,
-            JsonSerializer serializer)
-        {
-            if (reader is null)
-                throw new ArgumentNullException(nameof(reader));
-
-            var addressString = reader.Value as string;
-
-            if (string.IsNullOrWhiteSpace(addressString))
-            {
-                return RouteEndPointAddress.UnknownAddress;
-            }
-
-            return new RouteEndPointAddress(addressString!);
         }
     }
 }

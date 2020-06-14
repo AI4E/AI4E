@@ -20,13 +20,13 @@
 
 using System;
 using System.Collections.Generic;
-using AI4E.Internal;
+using AI4E.Messaging.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Messaging
 {
     [TestClass]
-    public class TimeoutDispatchResultTests
+    public class TimeoutDispatchResultTests : DispatchResultsTestsBase
     {
         [TestMethod]
         public void CreateMessageResultDataTest()
@@ -102,44 +102,11 @@ namespace AI4E.Messaging
         }
 
         [TestMethod]
-        public void SerializeUnknownTypeRoundtripTest()
-        {
-            var resultData = new Dictionary<string, object>
-            {
-                ["abc"] = "def",
-                ["xyz"] = 1234L
-            };
-
-            var dispatchResult = new TimeoutDispatchResult("DispatchResultMessage", resultData);
-            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult);
-
-            Assert.IsFalse(deserializedResult.IsSuccess);
-            Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);
-            Assert.AreEqual(2, deserializedResult.ResultData.Count);
-            Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
-            Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
-            Assert.IsNull(dispatchResult.DueTime);
-        }
-
-        [TestMethod]
         public void SerializeRoundtripDueTimeTest()
         {
             var dueTime = DateTime.Now;
             var dispatchResult = new TimeoutDispatchResult(dueTime);
-            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult);
-
-            Assert.IsFalse(deserializedResult.IsSuccess);
-            Assert.AreEqual(TimeoutDispatchResult.DefaultMessage, deserializedResult.Message);
-            Assert.AreEqual(0, deserializedResult.ResultData.Count);
-            Assert.AreEqual(dueTime, deserializedResult.DueTime);
-        }
-
-        [TestMethod]
-        public void SerializeUnknownTypeRoundtripDueTimeTest()
-        {
-            var dueTime = DateTime.Now;
-            var dispatchResult = new TimeoutDispatchResult(dueTime);
-            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult);
+            var deserializedResult = Serializer.Roundtrip(dispatchResult);
 
             Assert.IsFalse(deserializedResult.IsSuccess);
             Assert.AreEqual(TimeoutDispatchResult.DefaultMessage, deserializedResult.Message);

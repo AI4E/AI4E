@@ -280,6 +280,11 @@ namespace AI4E.Utils.Async
             }
         }
 
+        public CancellationToken AsCancellationToken()
+        {
+            return _disposalCancellationSource?.Token ?? new CancellationToken(canceled: true);
+        }
+
         private static Func<ValueTask> BuildDisposal(Func<Task> disposal)
         {
             return () => new ValueTask(disposal());

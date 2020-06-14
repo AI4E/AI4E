@@ -56,6 +56,11 @@ namespace AI4E.Modularity.Debug
             _proxyLazy.Dispose();
         }
 
+        public ValueTask DisposeAsync()
+        {
+            return _proxyLazy.DisposeAsync();
+        }
+
         // TODO: Add an address to end-point lookup and short-circuit if possible.
 
         public async ValueTask<IRouteEndPoint> CreateEndPointAsync(RouteEndPointAddress endPoint, CancellationToken cancellation = default)

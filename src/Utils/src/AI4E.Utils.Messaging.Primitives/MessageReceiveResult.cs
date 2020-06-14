@@ -27,15 +27,6 @@ namespace AI4E.Utils.Messaging.Primitives
     public readonly struct MessageReceiveResult<TPacket> : IDisposable
         where TPacket : IPacket<TPacket>
     {
-        private static readonly CancellationToken _canceledCancellationToken = BuildCanceledCancellationToken();
-
-        private static CancellationToken BuildCanceledCancellationToken()
-        {
-            var cancellationTokenSource = new CancellationTokenSource();
-            cancellationTokenSource.Cancel();
-            return cancellationTokenSource.Token;
-        }
-
         private readonly RequestReplyEndPoint<TPacket>? _rqRplyEndPoint;
         private readonly int _seqNum;
         private readonly CancellationTokenSource? _cancellationRequestSource;
@@ -52,7 +43,8 @@ namespace AI4E.Utils.Messaging.Primitives
             _cancellationRequestSource = cancellationTokenSource;
         }
 
-        public CancellationToken Cancellation => _cancellationRequestSource?.Token ?? _canceledCancellationToken;
+        public CancellationToken Cancellation => _cancellationRequestSource?.Token 
+            ?? new CancellationToken(canceled: true);
 
         public Message Message => Packet.Message;
 

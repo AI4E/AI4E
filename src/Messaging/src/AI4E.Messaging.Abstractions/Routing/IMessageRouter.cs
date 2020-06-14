@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 
 namespace AI4E.Messaging.Routing
 {
-    public interface IMessageRouter : IDisposable
+    public interface IMessageRouter : IDisposable, IAsyncDisposable
     {
         ValueTask<RouteEndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation = default);
 

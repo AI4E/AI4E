@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\AI4E.AspNetCore.Blazor.Logging\AI4E.AspNetCore.Blazor.Logging.csproj" />
+    <ProjectReference Include="..\..\..\src\AI4E.AspNetCore.Blazor.Logging\AI4E.AspNetCore.Blazor.Logging.csproj" />
   </ItemGroup>
 
 </Project>

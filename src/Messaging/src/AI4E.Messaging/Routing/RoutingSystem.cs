@@ -70,9 +70,16 @@ namespace AI4E.Messaging.Routing
 
         #region Disposal
 
+        /// <inheritdoc/>
         public void Dispose()
         {
             _disposeHelper.Dispose();
+        }
+
+        /// <inheritdoc/>
+        public ValueTask DisposeAsync()
+        {
+           return _disposeHelper.DisposeAsync();
         }
 
         private async ValueTask DisposeInternalAsync()
@@ -202,9 +209,16 @@ namespace AI4E.Messaging.Routing
                 return routeResult;
             }
 
+            /// <inheritdoc />
             public ValueTask DisposeAsync()
             {
                 return _disposeHelper.DisposeAsync();
+            }
+
+            /// <inheritdoc />
+            public void Dispose()
+            {
+                _disposeHelper.Dispose();
             }
 
             private void DisposeInternal()

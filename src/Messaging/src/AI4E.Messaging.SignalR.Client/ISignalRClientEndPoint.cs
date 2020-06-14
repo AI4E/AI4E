@@ -6,7 +6,7 @@ using AI4E.Utils.Messaging.Primitives;
 
 namespace AI4E.Messaging.SignalR.Client
 {
-    public interface ISignalRClientEndPoint : IDisposable
+    public interface ISignalRClientEndPoint : IDisposable, IAsyncDisposable
     {
         ValueTask<RouteEndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation = default);
         ValueTask<MessageSendResult> SendAsync(Message message, CancellationToken cancellation = default);

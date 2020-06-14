@@ -24,7 +24,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace AI4E.Utils
 {
     /// <summary>
-    /// A abstraction for type resolvers that can resolve types by there unqualified type-name.
+    /// An abstraction for type resolvers that can resolve types by there unqualified type-name.
     /// </summary>
     /// <remarks>
     /// Implementation of this interface should guarantee thread-safety for all members.

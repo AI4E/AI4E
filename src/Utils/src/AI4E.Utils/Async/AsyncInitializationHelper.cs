@@ -20,7 +20,6 @@
 
 using System;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -87,7 +86,11 @@ namespace AI4E.Utils.Async
 
         public void Cancel()
         {
-            _cancellation?.Cancel();
+            try
+            {
+                _cancellation?.Cancel();
+            }
+            catch (ObjectDisposedException) { } // This is quire dirty. Maybe AsyncInitializationHelper should really be a ref type.
         }
 
         public async Task<bool> CancelAsync()
@@ -195,7 +198,11 @@ namespace AI4E.Utils.Async
 
         public void Cancel()
         {
-            _cancellation?.Cancel();
+            try
+            {
+                _cancellation?.Cancel();
+            }
+            catch (ObjectDisposedException) { } // This is quire dirty. Maybe AsyncInitializationHelper should really be a ref type.
         }
 
         public async Task<(bool success, T result)> CancelAsync()

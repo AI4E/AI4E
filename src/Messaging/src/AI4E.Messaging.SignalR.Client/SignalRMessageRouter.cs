@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Messaging.Routing;
@@ -316,22 +315,22 @@ namespace AI4E.Messaging.SignalR.Client
             switch (messageType)
             {
                 case MessageType.Handle:
-                    {
-                        var publish = reader.ReadBoolean();
-                        var isLocalDispatch = reader.ReadBoolean();
-                        Route.Read(reader, out var route);
-                        var (response, handled) = await ReceiveHandleRequestAsync(
-                            message, route, publish, isLocalDispatch, cancellation);
-                        return (response, handled);
-                    }
+                {
+                    var publish = reader.ReadBoolean();
+                    var isLocalDispatch = reader.ReadBoolean();
+                    Route.Read(reader, out var route);
+                    var (response, handled) = await ReceiveHandleRequestAsync(
+                        message, route, publish, isLocalDispatch, cancellation);
+                    return (response, handled);
+                }
 
                 default:
-                    {
-                        // TODO: Send bad request message
-                        // TODO: Log
+                {
+                    // TODO: Send bad request message
+                    // TODO: Log
 
-                        return default;
-                    }
+                    return default;
+                }
             }
         }
 
@@ -349,6 +348,14 @@ namespace AI4E.Messaging.SignalR.Client
 
         #region Disposal
 
+        // TODO: Do we have to foreward the diposal to the host router?
+        public ValueTask DisposeAsync()
+        {
+            Dispose();
+            return default;
+        }
+
+        // TODO: Do we have to foreward the diposal to the host router?
         public void Dispose()
         {
             var disposalSource = Interlocked.Exchange(ref _disposalSource, null);

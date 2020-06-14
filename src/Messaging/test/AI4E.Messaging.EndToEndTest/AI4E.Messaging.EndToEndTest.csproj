@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.DependencyInjection.Autofac\AI4E.Utils.DependencyInjection.Autofac.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Messaging\AI4E.Messaging.csproj" />
   </ItemGroup>
 

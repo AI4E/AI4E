@@ -21,7 +21,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -624,6 +623,10 @@ namespace AI4E.Utils.Async
                     }
                     finally
                     {
+                        t.ValueTaskSource = null;
+                        t.Continuation = null;
+                        t.ContinuationState = null;
+                        t.Scheduler = null;
                         _executionContextRunStatePool.Return(t);
                     }
                 }
@@ -645,6 +648,8 @@ namespace AI4E.Utils.Async
                     }
                     finally
                     {
+                        t.Continuation = null;
+                        t.ContinuationState = null;
                         _synchronizationContextPostStatePool.Return(t);
                     }
                 }
@@ -826,17 +831,15 @@ namespace AI4E.Utils.Async
                 {
                     Exhausted = true;
                 }
-                else
-                {
-                    Token++;
-                    _continuation = default;
-                    _result = default;
-                    _completed = default;
-                    _exception = default;
-                    _continuationState = default;
-                    _executionContext = default;
-                    _scheduler = default;
-                }
+
+                Token++;
+                _continuation = default;
+                _result = default;
+                _completed = default;
+                _exception = default;
+                _continuationState = default;
+                _executionContext = default;
+                _scheduler = default;
             }
 
             _pool.Return(this);

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using AI4E.Messaging.Remote;
 using AI4E.Remoting;
 using AI4E.Utils;
+using AI4E.Utils.Async;
 using AI4E.Utils.Messaging.Primitives;
 using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
@@ -28,8 +29,8 @@ namespace AI4E.Messaging.Routing
         private Dictionary<RouteEndPointAddress, RouteEndPoint> _endPoints;
         private readonly object _endPointsLock = new object();
 
-        // 0: false, 1: true
-        private volatile int _isDisposed = 0;
+        private readonly AsyncDisposeHelper _disposeHelper;
+
 
         public RemoteRoutingSystem(
             IPhysicalEndPointMultiplexer<TAddress> endPointMultiplexer,
@@ -53,6 +54,7 @@ namespace AI4E.Messaging.Routing
             _logger = loggerFactory?.CreateLogger<RemoteRoutingSystem<TAddress>>();
 
             _endPoints = new Dictionary<RouteEndPointAddress, RouteEndPoint>();
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Default);
         }
 
         #region IEndPointManager
@@ -89,7 +91,7 @@ namespace AI4E.Messaging.Routing
             if (endPoint == default)
                 throw new ArgumentDefaultException(nameof(endPoint));
 
-            if (_isDisposed != 0) // Volatile read op.
+            if (_disposeHelper.IsDisposed)
                 throw new ObjectDisposedException(GetType().FullName);
 
             // We have to ensure that only a single logical end-point exists for each address at any given time.
@@ -131,20 +133,26 @@ namespace AI4E.Messaging.Routing
 
         public void Dispose()
         {
-            var isDisposed = Interlocked.Exchange(ref _isDisposed, 1) != 0;
+            _disposeHelper.Dispose();
+        }
 
-            if (!isDisposed)
+        public ValueTask DisposeAsync()
+        {
+            return _disposeHelper.DisposeAsync();
+        }
+
+        private ValueTask DisposeInternalAsync()
+        {
+            IReadOnlyCollection<RouteEndPoint> endPoints;
+
+            lock (_endPointsLock)
             {
-                lock (_endPointsLock)
-                {
-                    foreach (var logicalEndPoint in _endPoints.Values)
-                    {
-                        logicalEndPoint.Dispose();
-                    }
-
-                    _endPoints = null;
-                }
+                endPoints = _endPoints.Values;
+                _endPoints = null;
             }
+
+            var combinedDisposals = endPoints.Select(p => (Func<ValueTask>)p.DisposeAsync).Combine();
+            return combinedDisposals.InvokeAllAsync();
         }
 
         #endregion

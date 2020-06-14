@@ -1,0 +1,21 @@
+﻿@page "/"
+@functions{
+    public string Message { get; set; } = string.Empty;
+    public int Number { get; set; }
+}
+<div>
+    <EditForm Model="this">
+        <div>
+            <label>Message: <InputText @bind-Value="Message" /></label>
+        </div>
+        <div>
+            <label>Number: <InputNumber @bind-Value="Number" /></label>
+        </div>
+        <div>
+            <input type="submit" value="submit" />
+        </div>
+    </EditForm>
+    <IndexViewExtension Message="@Message" Number="Number">
+        Child content from the core (non-plugin).
+    </IndexViewExtension>
+</div>

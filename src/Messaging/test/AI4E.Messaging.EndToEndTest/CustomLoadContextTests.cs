@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Loader;
 using System.Threading.Tasks;
+using AI4E.Messaging.Routing;
 using AI4E.Messaging.Test;
 using AI4E.Messaging.Validation;
 using AI4E.Utils;
 using AI4E.Utils.ApplicationParts;
 using AI4E.Utils.Async;
+using AI4E.Utils.DependencyInjection;
+using Autofac;
+using Autofac.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -16,11 +19,14 @@ namespace AI4E.Messaging.EndToEndTest
     [TestClass]
     public sealed class CustomLoadContextTests
     {
-        private static ContextServiceProvider ConfigureServices()
+        private static IServiceProvider ConfigureServices()
         {
             var services = new ServiceCollection();
             ConfigureServices(services);
-            return services.BuildContextServiceProvider(validateScopes: true);
+            services.AddAutofacChildContainerBuilder();
+            var containerBuilder = new ContainerBuilder();
+            containerBuilder.Populate(services);
+            return new AutofacServiceProvider(containerBuilder.Build());
         }
 
         private static void ConfigureServices(IServiceCollection services)
@@ -31,14 +37,17 @@ namespace AI4E.Messaging.EndToEndTest
             services.AddSingleton<TestService>();
         }
 
-        private static void ConfigureContextServices(
+        private static void ConfigureChildServices(
             IServiceCollection services,
             Assembly assembly,
             bool configureHandlers)
         {
-            services.AddMessaging()
+            services.AddMessaging(suppressRoutingSystem: true)
                     .UseValidation()
                     .UseTypeResolver(new TypeResolver(assembly.Yield(), fallbackToDefaultContext: true));
+
+            services.Configure<MessagingOptions>(
+                      options => options.LocalEndPoint = new RouteEndPointAddress(Guid.NewGuid().ToString()));
 
             services.AddSingleton(assembly.GetType(typeof(TestService).FullName));
 
@@ -52,7 +61,7 @@ namespace AI4E.Messaging.EndToEndTest
             }
         }
 
-        private ContextServiceProvider ServiceProvider { get; set; }
+        private IServiceProvider ServiceProvider { get; set; }
 
         // Context 1
         private TestAssemblyLoadContext AssemblyLoadContext1 { get; set; }
@@ -68,22 +77,18 @@ namespace AI4E.Messaging.EndToEndTest
         public async Task SetupAsync()
         {
             ServiceProvider = ConfigureServices();
-            var contextServiceManager = ServiceProvider.GetRequiredService<IContextServiceManager>();
+            var childContainerBuilder = ServiceProvider.GetRequiredService<IChildContainerBuilder>();
 
             AssemblyLoadContext1 = new TestAssemblyLoadContext();
             Assembly1 = AssemblyLoadContext1.TestAssembly;
             AssemblyLoadContext2 = new TestAssemblyLoadContext();
             Assembly2 = AssemblyLoadContext2.TestAssembly;
 
-            contextServiceManager.TryConfigureContextServices(
-                "context1",
-                services => ConfigureContextServices(services, Assembly1, configureHandlers: false),
-                out var servicesDescriptor1);
+            var servicesDescriptor1 = childContainerBuilder.CreateChildContainer(
+                services => ConfigureChildServices(services, Assembly1, configureHandlers: false));
 
-            contextServiceManager.TryConfigureContextServices(
-                "context2",
-                services => ConfigureContextServices(services, Assembly2, configureHandlers: true),
-                out var servicesDescriptor2);
+            var servicesDescriptor2 = childContainerBuilder.CreateChildContainer(
+                services => ConfigureChildServices(services, Assembly2, configureHandlers: true));
 
             MessageDispatcher1 = servicesDescriptor1.GetRequiredService<IMessageDispatcher>();
             MessageDispatcher2 = servicesDescriptor2.GetRequiredService<IMessageDispatcher>();
@@ -95,7 +100,7 @@ namespace AI4E.Messaging.EndToEndTest
         [TestCleanup]
         public void TearDown()
         {
-            ServiceProvider.Dispose();
+            ServiceProvider.DisposeIfDisposable();
         }
 
         [TestMethod]

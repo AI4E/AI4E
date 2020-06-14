@@ -121,6 +121,12 @@ namespace AI4E.Messaging.Mocks
         }
 
         public void Dispose() { IsDisposed = true; }
+
+        public ValueTask DisposeAsync()
+        {
+            Dispose();
+            return default;
+        }
     }
 
     public readonly struct RecordedMessage
