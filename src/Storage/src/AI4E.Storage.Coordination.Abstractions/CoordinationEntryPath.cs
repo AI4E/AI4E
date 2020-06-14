@@ -1,10 +1,29 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
 using AI4E.Utils.Memory;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Coordination
 {
@@ -12,24 +31,47 @@ namespace AI4E.Storage.Coordination
     using static System.MemoryExtensions;
 #endif
 
+    /// <summary>
+    /// Represents a coordination entry path.
+    /// </summary>
     public readonly struct CoordinationEntryPath : IEquatable<CoordinationEntryPath>
     {
-        public const char PathDelimiter = '/';
-        public const char AltPathDelimiter = '\\';
-        private const string _pathDelimiterString = "/";
+        internal const char _pathDelimiter = '/';
+        internal const char _altPathDelimiter = '\\';
+        private static readonly string _pathDelimiterString = _pathDelimiter.ToString();
+        private static readonly ImmutableList<CoordinationEntryPath> _rootAncestors = ImmutableList.Create(default(CoordinationEntryPath));
 
         private readonly ImmutableList<CoordinationEntryPathSegment> _segments;
 
+        /// <summary>
+        /// Creates a new <see cref="CoordinationEntryPath"/> from the specified <see cref="CoordinationEntryPathSegment"/>.
+        /// </summary>
+        /// <param name="segment">The <see cref="CoordinationEntryPathSegment"/> that is the single segment of the path.</param>
         public CoordinationEntryPath(CoordinationEntryPathSegment segment)
         {
             if (segment == default)
-                throw new ArgumentDefaultException(nameof(segment));
+            {
+                this = default;
+                return;
+            }
 
             _segments = ImmutableList<CoordinationEntryPathSegment>.Empty.Add(segment);
         }
 
-        public CoordinationEntryPath(params string[] segments) : this((IEnumerable<string>)segments) { }
+        /// <summary>
+        /// Creates a new <see cref="CoordinationEntryPath"/> from the specified collection of unescaped string segments.
+        /// </summary>
+        /// <param name="segments">A collection of strings that represent the unescaped segments of the path.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="segments"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException">Thrown if any of the strings contained in <paramref name="segments"/> is <c>null</c>.</exception>
+        public CoordinationEntryPath(params string[] segments) : this(segments as IEnumerable<string>) { }
 
+        /// <summary>
+        /// Creates a new <see cref="CoordinationEntryPath"/> from the specified collection of unescaped string segments.
+        /// </summary>
+        /// <param name="segments">A collection of strings that represent the unescaped segments of the path.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="segments"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException">Thrown if any of the strings contained in <paramref name="segments"/> is <c>null</c>.</exception>
         public CoordinationEntryPath(IEnumerable<string> segments)
         {
             if (segments == null)
@@ -37,54 +79,62 @@ namespace AI4E.Storage.Coordination
 
             var segmentsBuilder = ImmutableList.CreateBuilder<CoordinationEntryPathSegment>();
 
-            foreach (var segment in segments)
+            foreach (var escapedSegment in segments)
             {
-                if (segment == null)
+                if (escapedSegment == null)
                     throw new ArgumentException("The collection must not contain default entries.", nameof(segments));
 
-                CoordinationEntryPathSegment segmentX;
+                var segment = new CoordinationEntryPathSegment(escapedSegment.AsMemory());
 
-                try
+                if (segment != default)
                 {
-                    segmentX = new CoordinationEntryPathSegment(segment.AsMemory());
+                    segmentsBuilder.Add(segment);
                 }
-                catch (ArgumentException exc)
-                {
-                    throw new ArgumentException("The collection must not contain emtpy entries or entries that contain whitespace only.", nameof(segments), exc);
-                }
-
-                segmentsBuilder.Add(segmentX);
             }
 
             _segments = segmentsBuilder.ToImmutable();
         }
 
-        public CoordinationEntryPath(params CoordinationEntryPathSegment[] segments)
-        {
-            if (segments == null)
-                throw new ArgumentNullException(nameof(segments));
+        /// <summary>
+        /// Creates a new <see cref="CoordinationEntryPath"/> from the specified collection of <see cref="CoordinationEntryPathSegment"/>s.
+        /// </summary>
+        /// <param name="segments">The paths segments.</param>
+        /// <exception cref="ArgumentNullException">Thrown is <paramref name="segments"/> is <c>null</c>.</exception>
+        public CoordinationEntryPath(params CoordinationEntryPathSegment[] segments) : this(segments as IEnumerable<CoordinationEntryPathSegment>) { }
 
-            if (segments.Any(p => p == default))
-                throw new ArgumentException("The collection must not contain default entries.", nameof(segments));
-
-            _segments = segments.ToImmutableList();
-        }
-
+        /// <summary>
+        /// Creates a new <see cref="CoordinationEntryPath"/> from the specified collection of <see cref="CoordinationEntryPathSegment"/>s.
+        /// </summary>
+        /// <param name="segments">The paths segments.</param>
+        /// <exception cref="ArgumentNullException">Thrown is <paramref name="segments"/> is <c>null</c>.</exception>
         public CoordinationEntryPath(IEnumerable<CoordinationEntryPathSegment> segments)
         {
             if (segments == null)
                 throw new ArgumentNullException(nameof(segments));
 
-            if (segments.Any(p => p == default))
-                throw new ArgumentException("The collection must not contain default entries.", nameof(segments));
-
-            _segments = segments.ToImmutableList();
+            if (!segments.Any(p => p == default))
+            {
+                _segments = segments as ImmutableList<CoordinationEntryPathSegment> ?? segments.ToImmutableList();
+            }
+            else
+            {
+                _segments = segments.Where(p => p != default).ToImmutableList();
+            }
         }
 
+        /// <summary>
+        /// Gets the collection of segments, the <see cref="CoordinationEntryPath"/> is composed of.
+        /// </summary>
         public IReadOnlyList<CoordinationEntryPathSegment> Segments => _segments ?? ImmutableList<CoordinationEntryPathSegment>.Empty;
 
+        /// <summary>
+        /// Gets a boolean value indicating whether the <see cref="CoordinationEntryPath"/> specifies the root node.
+        /// </summary>
         public bool IsRoot => Segments.Count == 0;
 
+        /// <summary>
+        /// Gets the memory of chars that represent the escaped <see cref="CoordinationEntryPath"/>.
+        /// </summary>
         public ReadOnlyMemory<char> EscapedPath
         {
             get
@@ -103,20 +153,21 @@ namespace AI4E.Storage.Coordination
 
                 var result = new char[capacity];
                 var resultsWriter = new MemoryWriter<char>(result);
-                resultsWriter.Append(PathDelimiter);
+                resultsWriter.Append(_pathDelimiter);
 
                 for (var i = 0; i < _segments.Count; i++)
                 {
                     resultsWriter.Append(_segments[i].EscapedSegment.Span);
-                    resultsWriter.Append(PathDelimiter);
+                    resultsWriter.Append(_pathDelimiter);
                 }
 
                 var memory = resultsWriter.GetMemory();
-                Assert(memory.Length == result.Length);
+                Debug.Assert(memory.Length == result.Length);
                 return memory;
             }
         }
 
+        /// <inheritdoc/>
         public bool Equals(CoordinationEntryPath other)
         {
             if (Segments.Count != other.Segments.Count)
@@ -131,31 +182,51 @@ namespace AI4E.Storage.Coordination
             return true;
         }
 
+        /// <inheritdoc/>
         public override bool Equals(object obj)
         {
             return obj is CoordinationEntryPath path && Equals(path);
         }
 
+        /// <inheritdoc/>
         public override int GetHashCode()
         {
             return Segments.SequenceHashCode();
         }
 
+        /// <inheritdoc/>
         public override string ToString()
         {
             return EscapedPath.ConvertToString();
         }
 
+        /// <summary>
+        /// Compares two <see cref="CoordinationEntryPath"/>s.
+        /// </summary>
+        /// <param name="left">The first path.</param>
+        /// <param name="right">The second path.</param>
+        /// <returns>True, if <paramref name="left"/> equals <paramref name="right"/>, false otherwise.</returns>
         public static bool operator ==(CoordinationEntryPath left, CoordinationEntryPath right)
         {
             return left.Equals(right);
         }
 
+        /// <summary>
+        /// Compares two <see cref="CoordinationEntryPath"/>s.
+        /// </summary>
+        /// <param name="left">The first path.</param>
+        /// <param name="right">The second path.</param>
+        /// <returns>True, if <paramref name="left"/> does not equal <paramref name="right"/>, false otherwise.</returns>
         public static bool operator !=(CoordinationEntryPath left, CoordinationEntryPath right)
         {
             return !left.Equals(right);
         }
 
+        /// <summary>
+        /// Creates a <see cref="CoordinationEntryPath"/> from the specified escaped path.
+        /// </summary>
+        /// <param name="path">A memory of chars that represent the escaped <see cref="CoordinationEntryPath"/>.</param>
+        /// <returns>The <see cref="CoordinationEntryPath"/> created from <paramref name="path"/>.</returns>
         public static CoordinationEntryPath FromEscapedPath(ReadOnlyMemory<char> path)
         {
             var span = path.Span;
@@ -169,7 +240,7 @@ namespace AI4E.Storage.Coordination
                 if (!slice.Span.IsEmptyOrWhiteSpace())
                 {
                     var segment = CoordinationEntryPathSegment.FromEscapedSegment(slice);
-                    Assert(segment != default);
+                    Debug.Assert(segment != default);
                     segments.Add(segment);
                 }
             }
@@ -178,8 +249,8 @@ namespace AI4E.Storage.Coordination
             {
                 switch (span[i])
                 {
-                    case PathDelimiter:
-                    case AltPathDelimiter:
+                    case _pathDelimiter:
+                    case _altPathDelimiter:
 
                         ProcessSegment(i);
                         segmentStart = i + 1;
@@ -195,6 +266,14 @@ namespace AI4E.Storage.Coordination
             return new CoordinationEntryPath(segments);
         }
 
+        /// <summary>
+        /// Returns the path's parent.
+        /// </summary>
+        /// <returns>The <see cref="CoordinationEntryPath"/> that specifies the path's parent path.</returns>
+        /// <remarks>
+        /// If the current path is the root path, the result will be the root path too.
+        /// This is equivalent to a unix filesystem, where .. of the filesystem root equals the filesystem root itself.
+        /// </remarks>
         public CoordinationEntryPath GetParentPath()
         {
             if (_segments == null || !_segments.Any())
@@ -210,21 +289,72 @@ namespace AI4E.Storage.Coordination
             return new CoordinationEntryPath(_segments.RemoveAt(_segments.Count - 1));
         }
 
+        /// <summary>
+        /// Returns the ancestors paths from root path to parent path.
+        /// </summary>
+        /// <returns>The paths of the ancestor nodes.</returns>
+        /// <remarks>
+        /// The result will contain the root path as first argument, regardless of the input.
+        /// If we are the root node path, we return a collection of size one that contains the root node path.
+        /// This is to be consistent with <see cref="GetParentPath"/> that returns the root node path as the root nodes parent path.
+        /// </remarks>
+        public IReadOnlyCollection<CoordinationEntryPath> GetAncestorPaths()
+        {
+            if (_segments == null || !_segments.Any() || _segments.Count == 1)
+            {
+                return _rootAncestors;
+            }
+
+            var result = new Stack<CoordinationEntryPath>();
+
+            for (var current = GetParentPath(); current != default; current = current.GetParentPath())
+            {
+                result.Push(current);
+            }
+
+            result.Push(default);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Returns the child path of the current path with the specified relative path.
+        /// </summary>
+        /// <param name="segment">A <see cref="CoordinationEntryPathSegment"/> that specifies the relative path.</param>
+        /// <returns>The resulting <see cref="CoordinationEntryPath"/>.</returns>
         public CoordinationEntryPath GetChildPath(CoordinationEntryPathSegment segment)
         {
+            if (segment == default)
+                return this;
+
             if (_segments == null || !_segments.Any())
                 return new CoordinationEntryPath(segment);
 
             return new CoordinationEntryPath(_segments.Add(segment));
         }
 
+        /// <summary>
+        /// Returns the child path of the current path with the specified relative path.
+        /// </summary>
+        /// <param name="segments">The <see cref="CoordinationEntryPathSegment"/>s that specify the relative path.</param>
+        /// <returns>The resulting <see cref="CoordinationEntryPath"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="segments"/> is <c>null</c>.</exception>
         public CoordinationEntryPath GetChildPath(params CoordinationEntryPathSegment[] segments)
         {
             return GetChildPath((IEnumerable<CoordinationEntryPathSegment>)segments);
         }
 
+        /// <summary>
+        /// Returns the child path of the current path with the specified relative path.
+        /// </summary>
+        /// <param name="segments">The <see cref="CoordinationEntryPathSegment"/>s that specify the relative path.</param>
+        /// <returns>The resulting <see cref="CoordinationEntryPath"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="segments"/> is <c>null</c>.</exception>
         public CoordinationEntryPath GetChildPath(IEnumerable<CoordinationEntryPathSegment> segments)
         {
+            if (segments == null)
+                throw new ArgumentNullException(nameof(segments));
+
             return new CoordinationEntryPath((_segments ?? ImmutableList<CoordinationEntryPathSegment>.Empty).AddRange(segments));
         }
     }
@@ -265,283 +395,6 @@ namespace AI4E.Storage.Coordination
         public static CoordinationEntryPath GetChildPath(this CoordinationEntryPath path, ReadOnlyMemory<char> segment)
         {
             return path.GetChildPath(new CoordinationEntryPathSegment(segment));
-        }
-    }
-
-    public readonly struct CoordinationEntryPathSegment : IEquatable<CoordinationEntryPathSegment>
-    {
-        public const char EscapeChar = '-';
-        public const char PathDelimiterReplacement = 'X';
-        public const char AltPathDelimiterReplacement = 'Y';
-
-        public CoordinationEntryPathSegment(string segment)
-        {
-            if (segment == null)
-                throw new ArgumentNullException(nameof(segment));
-
-            var memorySegment = segment.AsMemory().Trim();
-
-            if (memorySegment.IsEmpty)
-            {
-                throw new ArgumentException("The argument must neither be empty nor consist of whitespace only.", nameof(segment));
-            }
-
-            Segment = memorySegment;
-            EscapedSegment = Escape(memorySegment);
-        }
-
-        public CoordinationEntryPathSegment(ReadOnlyMemory<char> segment)
-        {
-            segment = segment.Trim();
-
-            if (segment.IsEmpty)
-            {
-                throw new ArgumentException("The argument must neither be empty nor consist of whitespace only.", nameof(segment));
-            }
-
-            Segment = segment;
-            EscapedSegment = Escape(segment);
-        }
-
-        private CoordinationEntryPathSegment(ReadOnlyMemory<char> segment, ReadOnlyMemory<char> escapedSegment)
-        {
-            Segment = segment;
-            EscapedSegment = escapedSegment;
-        }
-
-        public ReadOnlyMemory<char> Segment { get; }
-        public ReadOnlyMemory<char> EscapedSegment { get; }
-
-        private static ReadOnlyMemory<char> Escape(ReadOnlyMemory<char> unescapedSegment)
-        {
-            int CountCharsToEscape()
-            {
-                var str = unescapedSegment.Span;
-
-                var count = 0;
-
-                for (var i = 0; i < str.Length; i++)
-                {
-                    switch (str[i])
-                    {
-                        case CoordinationEntryPath.PathDelimiter:
-                        case CoordinationEntryPath.AltPathDelimiter:
-                        case EscapeChar:
-                            count++;
-                            break;
-                    }
-                }
-
-                return count;
-            }
-
-            var numberOfCharsToEscape = CountCharsToEscape();
-
-            if (numberOfCharsToEscape == 0)
-            {
-                return unescapedSegment;
-            }
-            var span = unescapedSegment.Span;
-            var result = MemoryMarshal.AsMemory(new string('\0', count: unescapedSegment.Length + numberOfCharsToEscape).AsMemory());
-            var resultWriter = new MemoryWriter<char>(result);
-
-            var copySegmentStart = 0;
-
-            for (var i = 0; i < unescapedSegment.Length; i++)
-            {
-                void PrepareEscape()
-                {
-                    var numberOfCharsToCopy = i - copySegmentStart;
-                    Assert(numberOfCharsToCopy >= 0);
-
-                    if (numberOfCharsToCopy > 0)
-                    {
-                        // Copy from unescapedSegment string all chars from (including) copySegmentStart to i (excluding)
-                        resultWriter.Append(unescapedSegment.Slice(copySegmentStart, numberOfCharsToCopy).Span);
-                    }
-
-                    // Append an escape char
-                    resultWriter.Append(EscapeChar);
-                }
-
-                switch (span[i])
-                {
-                    case CoordinationEntryPath.PathDelimiter:
-                        PrepareEscape();
-                        resultWriter.Append(PathDelimiterReplacement);
-                        // Set copySegmentStart to i
-                        copySegmentStart = i + 1;
-                        break;
-
-                    case CoordinationEntryPath.AltPathDelimiter:
-                        PrepareEscape();
-                        resultWriter.Append(AltPathDelimiterReplacement);
-                        // Set copySegmentStart to i
-                        copySegmentStart = i + 1;
-                        break;
-
-                    case EscapeChar:
-                        PrepareEscape();
-                        // Set copySegmentStart to i
-                        copySegmentStart = i;
-                        break;
-                }
-            }
-
-            void CopyRemainingChars()
-            {
-                var numberOfCharsToCopy = unescapedSegment.Length - copySegmentStart;
-                Assert(numberOfCharsToCopy >= 0);
-
-                if (numberOfCharsToCopy > 0)
-                {
-                    resultWriter.Append(unescapedSegment.Slice(copySegmentStart, numberOfCharsToCopy).Span);
-                }
-            }
-
-            CopyRemainingChars();
-            var memory = resultWriter.GetMemory();
-            Assert(memory.Length == result.Length);
-            return memory;
-        }
-
-        private static ReadOnlyMemory<char> Unescape(ReadOnlyMemory<char> escapedSegment)
-        {
-            var span = escapedSegment.Span;
-            Memory<char>? result = null;
-            MemoryWriter<char> resultWriter = default;
-
-            var copySegmentStart = 0;
-            var escapedCharHit = false;
-
-            for (var i = 0; i < escapedSegment.Length; i++)
-            {
-                switch (span[i])
-                {
-                    case EscapeChar:
-                        if (escapedCharHit)
-                        {
-                            // Set copySegmentStart to i, as we do not need to manually translate - to -
-                            copySegmentStart = i;
-                            escapedCharHit = false;
-                            break;
-                        }
-
-                        if (result == null)
-                        {
-                            var allocatedMemory = MemoryMarshal.AsMemory(new string('\0', count: escapedSegment.Length).AsMemory());
-                            result = allocatedMemory;
-                            resultWriter = new MemoryWriter<char>(allocatedMemory);
-                        }
-
-                        var numberOfCharsToCopy = i - copySegmentStart;
-                        Assert(numberOfCharsToCopy >= 0);
-                        if (numberOfCharsToCopy > 0)
-                        {
-                            // Copy from escapedSegment string all chars from (including) copySegmentStart to i (excluding)
-                            resultWriter.Append(escapedSegment.Slice(copySegmentStart, numberOfCharsToCopy).Span);
-                        }
-
-                        // There has to be a next char.
-                        Assert(i + 1 < escapedSegment.Length);
-                        escapedCharHit = true;
-                        break;
-
-                    case PathDelimiterReplacement:
-                        if (escapedCharHit)
-                        {
-                            Assert(result != null);
-                            resultWriter.Append(CoordinationEntryPath.PathDelimiter);
-
-                            // Set copySegmentStart to i + 1, as we already translated X to / appended it
-                            copySegmentStart = i + 1;
-                            escapedCharHit = false;
-                        }
-                        break;
-
-                    case AltPathDelimiterReplacement:
-                        if (escapedCharHit)
-                        {
-                            Assert(result != null);
-                            resultWriter.Append(CoordinationEntryPath.AltPathDelimiter);
-
-                            // Set copySegmentStart to i + 1, as we already translated Y to \ appended it
-                            copySegmentStart = i + 1;
-                            escapedCharHit = false;
-                        }
-                        break;
-
-                    case CoordinationEntryPath.PathDelimiter:
-                    case CoordinationEntryPath.AltPathDelimiter:
-                        throw new ArgumentException("An escaped segment must not contain a path delimiter.", nameof(escapedSegment));
-
-                    default:
-                        if (escapedCharHit)
-                        {
-                            throw new ArgumentException($"Unknown escape character '{span[i]}' in escaped segment.", nameof(escapedSegment));
-                        }
-                        break;
-                }
-            }
-
-            ReadOnlyMemory<char> CopyRemainingChars()
-            {
-                if (copySegmentStart == 0)
-                {
-                    Assert(result == null);
-
-                    return escapedSegment;
-                }
-
-                Assert(result != null);
-                var numberOfCharsToCopy = escapedSegment.Length - copySegmentStart;
-                Assert(numberOfCharsToCopy >= 0);
-                if (numberOfCharsToCopy > 0)
-                {
-                    resultWriter.Append(escapedSegment.Slice(copySegmentStart, numberOfCharsToCopy).Span);
-                }
-
-                return resultWriter.GetMemory();
-            }
-
-            return CopyRemainingChars();
-        }
-
-        public bool Equals(CoordinationEntryPathSegment other)
-        {
-            return Segment.Span.SequenceEqual(other.Segment.Span);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is CoordinationEntryPathSegment segment && Equals(segment);
-        }
-
-        public override int GetHashCode()
-        {
-            return Segment.Span.SequenceHashCode();
-        }
-
-        public override string ToString()
-        {
-            return Segment.ConvertToString();
-        }
-
-        public static bool operator ==(CoordinationEntryPathSegment left, CoordinationEntryPathSegment right)
-        {
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(CoordinationEntryPathSegment left, CoordinationEntryPathSegment right)
-        {
-            return !left.Equals(right);
-        }
-
-        public static CoordinationEntryPathSegment FromEscapedSegment(ReadOnlyMemory<char> escapedSegment)
-        {
-            escapedSegment = escapedSegment.Trim();
-            var unescapedSegment = Unescape(escapedSegment);
-            return new CoordinationEntryPathSegment(unescapedSegment, escapedSegment);
         }
     }
 }

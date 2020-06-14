@@ -28,12 +28,25 @@ namespace AI4E.Utils.Messaging.Primitives
 
         public MessageFrameBuilder()
         {
-            _payload = Array.Empty<byte>();
+            _payload = Array.Empty<byte>(); // TODO: Can we use the default value of ReadOnlyMemory<byte> here?
         }
 
         public MessageFrameBuilder(in MessageFrame frame)
         {
             _payload = frame.Payload;
+        }
+
+        public MessageFrameBuilder(in ReadOnlyMemory<byte> payload)
+        {
+            if (payload.IsEmpty)
+            {
+                _payload = Array.Empty<byte>(); // TODO: Can we use the default value of ReadOnlyMemory<byte> here?
+            }
+            else
+            {
+                // Set property to ensure we copy the payload to a new array.
+                Payload = payload;
+            }
         }
 
         public int Length => BuildMessageFrame().Length;

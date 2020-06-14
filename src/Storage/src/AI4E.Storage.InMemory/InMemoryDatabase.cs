@@ -217,7 +217,9 @@ namespace AI4E.Storage.InMemory
 
             var copy = data.DeepClone();
 
+#pragma warning disable IDE1006
             return await ExecuteAsync(data, p, (_1, _2) => _entries[id] = copy, cancellation);
+#pragma warning restore IDE1006
         }
 
         public async ValueTask<bool> AddAsync(TEntry data, CancellationToken cancellation = default)

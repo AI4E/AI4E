@@ -608,7 +608,7 @@ namespace AI4E.Messaging
                 var messageHandlerProvider = MessageHandlerProvider;
 
                 var currType = messageType;
-                var tasks = new List<ValueTask<(IDispatchResult? result, bool handlersFound)>>();
+                var tasks = new List<ValueTask<(IDispatchResult result, bool handlersFound)>>();
 
                 do
                 {
@@ -671,7 +671,7 @@ namespace AI4E.Messaging
             }
         }
 
-        private async ValueTask<(IDispatchResult? result, bool handlersFound)> InternalDispatchLocalAsync(
+        private async ValueTask<(IDispatchResult result, bool handlersFound)> InternalDispatchLocalAsync(
             IReadOnlyCollection<IMessageHandlerRegistration> handlerRegistrations,
             DispatchDataDictionary dispatchData,
             bool publish,
@@ -773,7 +773,7 @@ namespace AI4E.Messaging
                     return (result, handlersFound: true);
                 }
 
-                return (result: default, handlersFound: false);
+                return (result: new DispatchFailureDispatchResult(dispatchData.MessageType), handlersFound: false);
             }
         }
 

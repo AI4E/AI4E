@@ -30,7 +30,8 @@ namespace AI4E.Remoting
     /// </summary>
     /// <typeparam name="TAddress">The type of physical address used.</typeparam>
     /// <remarks>
-    /// The physical end-point neither does guarantee message delivery nor does it provide any guarantees about the ordering of messages.
+    /// The physical end-point neither does guarantee message delivery
+    /// nor does it provide any guarantees about the ordering of messages.
     /// </remarks>
     public interface IPhysicalEndPoint<TAddress> : IAddressConverter<TAddress>, IDisposable
     {
@@ -46,8 +47,9 @@ namespace AI4E.Remoting
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
-        /// A task representing the asynchronous operation.
-        /// When evaluated, the tasks result contains the received message and the address of the remote physical end-point.
+        /// A <see cref="Task{TResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the received message
+        /// and the address of the remote physical end-point.
         /// </returns>
         /// <exception cref="OperationCanceledException">Thrown if the asynchronous operation was canceled.</exception>
         ValueTask<Transmission<TAddress>> ReceiveAsync(CancellationToken cancellation = default);
