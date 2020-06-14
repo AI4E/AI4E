@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Messaging\src\AI4E.Messaging.SignalR.Client\AI4E.Messaging.SignalR.Client.csproj" />
+    <ProjectReference Include="..\..\..\..\lab\Messaging\src\AI4E.Messaging.SignalR.Client\AI4E.Messaging.SignalR.Client.csproj" />
     <ProjectReference Include="..\..\..\Messaging\src\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
     <ProjectReference Include="..\..\..\Modularity\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />

@@ -39,7 +39,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.AddOptions();
             services.AddMessaging()
-                .UseTcpEndPoint();
+                /*.UseTcpEndPoint()*/;
 
             services.AddSingleton<IMetadataAccessor, MetadataAccessor>();
             services.AddSingleton<IModuleManager, ModuleManager>();

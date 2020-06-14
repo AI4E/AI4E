@@ -39,7 +39,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddModuleManagement();
             services.AddOptions();
             services.AddMessaging()
-                .UseTcpEndPoint();
+                  /*.UseTcpEndPoint()*/;
 
             services.AddSingleton<IRunningModuleManager, RunningModuleManager>();
             services.AddSingleton<IModuleManager, ModuleManager>();
