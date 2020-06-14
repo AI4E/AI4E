@@ -13,7 +13,7 @@ namespace AI4E.Messaging
         {
             var services = messagingBuilder.Services;
 
-            services.AddCoordinationService();
+            // services.AddCoordinationService(); // TODO: Instead check for availability and throw if not available when running.
             services.TryAddSingleton<IEndPointMap<TAddress>, EndPointMap<TAddress>>();
             services.TryAddSingleton<IRouteEndPointScheduler<TAddress>, RouteEndPointScheduler<TAddress>>();
 

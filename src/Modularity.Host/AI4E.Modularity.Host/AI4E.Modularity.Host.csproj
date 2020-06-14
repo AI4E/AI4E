@@ -14,7 +14,6 @@
     <ProjectReference Include="..\..\Storage\src\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj" />
     <ProjectReference Include="..\AI4E.Modularity.Host.Abstractions\AI4E.Modularity.Host.Abstractions.csproj" />
     <ProjectReference Include="..\..\Modularity\AI4E.Modularity\AI4E.Modularity.csproj" />
-    <ProjectReference Include="..\..\Messaging\src\AI4E.Messaging.Remote\AI4E.Messaging.Remote.csproj" />
   </ItemGroup>
 
 </Project>

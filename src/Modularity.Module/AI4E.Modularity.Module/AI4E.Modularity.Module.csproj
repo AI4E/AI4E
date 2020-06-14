@@ -12,7 +12,6 @@
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Modularity.Module.Abstractions\AI4E.Modularity.Module.Abstractions.csproj" />
     <ProjectReference Include="..\..\Modularity\AI4E.Modularity\AI4E.Modularity.csproj" />
-    <ProjectReference Include="..\..\Messaging\src\AI4E.Messaging.Remote\AI4E.Messaging.Remote.csproj" />
   </ItemGroup>
 
 
