@@ -14,8 +14,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
-    <ProjectReference Include="..\AI4E.Remoting\AI4E.Remoting.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Remoting\AI4E.Remoting.csproj" />
   </ItemGroup>
 
 </Project>

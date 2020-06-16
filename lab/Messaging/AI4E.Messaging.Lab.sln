@@ -27,9 +27,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.ApplicationParts
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Messaging.Primitives", "..\..\src\Utils\src\AI4E.Utils.Messaging.Primitives\AI4E.Utils.Messaging.Primitives.csproj", "{4DAE32AA-2413-4704-8236-B99941062870}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting", "..\..\src\Remoting\AI4E.Remoting\AI4E.Remoting.csproj", "{848F9BFB-7650-4AA5-9296-693700243673}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting", "..\..\lab\Remoting\src\AI4E.Remoting\AI4E.Remoting.csproj", "{848F9BFB-7650-4AA5-9296-693700243673}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting.Abstractions", "..\..\src\Remoting\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj", "{1B8A8DCC-DED6-4B2F-BEF6-D101C89DCF96}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting.Abstractions", "..\..\lab\Remoting\src\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj", "{1B8A8DCC-DED6-4B2F-BEF6-D101C89DCF96}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Memory", "..\..\src\Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj", "{6C129458-8239-471E-B37E-B813B5ED5666}"
 EndProject

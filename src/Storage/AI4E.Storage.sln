@@ -35,13 +35,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils", "..\Utils\src\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Memory", "..\Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj", "{C947BE29-B97D-43F0-99CB-3599106775D5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting.Abstractions", "..\Remoting\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj", "{0C5F7F90-4725-4198-9A6A-CBB85472DC27}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting.Abstractions", "..\..\lab\Remoting\src\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj", "{0C5F7F90-4725-4198-9A6A-CBB85472DC27}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Messaging.Primitives", "..\Utils\src\AI4E.Utils.Messaging.Primitives\AI4E.Utils.Messaging.Primitives.csproj", "{96DAF955-E82E-4A77-BDC2-8B2FFA3B2A45}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Memory.Compatibility", "..\Utils\src\AI4E.Utils.Memory.Compatibility\AI4E.Utils.Memory.Compatibility.csproj", "{A8AA5A7E-7480-4F21-BBAB-97D4F97C927F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting", "..\Remoting\AI4E.Remoting\AI4E.Remoting.csproj", "{E0975BE8-FE6B-4C3F-8FED-65234CDAC05C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting", "..\..\lab\Remoting\src\AI4E.Remoting\AI4E.Remoting.csproj", "{E0975BE8-FE6B-4C3F-8FED-65234CDAC05C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.ObjectClone", "..\Utils\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj", "{EE23F248-9E69-4CD2-A867-AC8CCEFEE48F}"
 EndProject
