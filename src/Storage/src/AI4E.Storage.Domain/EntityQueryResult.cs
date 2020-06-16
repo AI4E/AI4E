@@ -20,27 +20,53 @@
 
 namespace AI4E.Storage.Domain
 {
-    internal abstract class CacheableEntityLoadResult : EntityLoadResult, ICacheableEntityLoadResult
+    internal abstract class EntityQueryResult : EntityLoadResult, IEntityQueryResult
     {
-        protected CacheableEntityLoadResult(EntityIdentifier entityIdentifier, bool loadedFromCache = false)
-            : base(entityIdentifier)
+        protected EntityQueryResult(
+            EntityIdentifier entityIdentifier,
+            bool loadedFromCache = false,
+            IEntityQueryResultScope? scope = null) : base(entityIdentifier)
         {
             LoadedFromCache = loadedFromCache;
+            Scope = scope;
         }
+
+        #region Caching
 
         public bool LoadedFromCache { get; }
 
-        protected abstract CacheableEntityLoadResult AsCachedResultImpl();
+        protected abstract EntityQueryResult AsCachedResultImpl(bool loadedFromCache);
 
         // C# really needs covariant return types :/ https://github.com/dotnet/csharplang/issues/49
-        public CacheableEntityLoadResult AsCachedResult()
+        public EntityQueryResult AsCachedResult(bool loadedFromCache)
         {
-            return AsCachedResultImpl();
+            return AsCachedResultImpl(loadedFromCache);
         }
 
-        ICacheableEntityLoadResult ICacheableEntityLoadResult.AsCachedResult()
+        IEntityQueryResult IEntityQueryResult.AsCachedResult(bool loadedFromCache)
         {
-            return AsCachedResult();
+            return AsCachedResult(loadedFromCache);
         }
+
+        #endregion
+
+        #region Scope
+
+        public IEntityQueryResultScope? Scope { get; }
+
+        // C# really needs covariant return types :/ https://github.com/dotnet/csharplang/issues/49
+        protected abstract EntityQueryResult AsScopedToImpl(IEntityQueryResultScope? scope);
+
+        public EntityQueryResult AsScopedTo(IEntityQueryResultScope? scope)
+        {
+            return AsScopedToImpl(scope);
+        }
+
+        IEntityQueryResult IEntityQueryResult.AsScopedTo(IEntityQueryResultScope? scope)
+        {
+            return AsScopedToImpl(scope);
+        }
+
+        #endregion
     }
 }

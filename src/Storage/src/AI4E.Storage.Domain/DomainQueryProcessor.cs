@@ -82,7 +82,7 @@ namespace AI4E.Storage.Domain
         /// Thrown if <paramref name="entityLoadResult"/> is <c>null</c>.
         /// </exception>
         protected abstract bool MeetsCondition(
-            ICacheableEntityLoadResult entityLoadResult,
+            IEntityQueryResult entityLoadResult,
             [NotNullWhen(false)] out IEntityLoadResult? failureLoadResult);
 
         /// <summary>
@@ -125,11 +125,11 @@ namespace AI4E.Storage.Domain
             public DefaultDomainQueryProcessor() { }
 
             protected override bool MeetsCondition(
-                ICacheableEntityLoadResult entityLoadResult,
+                IEntityQueryResult entityLoadResult,
                 [NotNullWhen(false)] out IEntityLoadResult? failureLoadResult)
             {
                 failureLoadResult = entityLoadResult;
-                return entityLoadResult is ISuccessEntityLoadResult;
+                return entityLoadResult is IFoundEntityQueryResult;
             }
         }
     }

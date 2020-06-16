@@ -69,7 +69,7 @@ namespace AI4E.Storage.Domain
         /// was needed. If a tracked entity with the same identifier is already present, 
         /// <paramref name="entityLoadResult"/> is discarded.
         /// </remarks>
-        ITrackedEntity GetOrUpdate(ICacheableEntityLoadResult entityLoadResult);
+        ITrackedEntity GetOrUpdate(IEntityQueryResult entityLoadResult);
 
         /// <summary>
         /// Resets the unit of work to its initial state.

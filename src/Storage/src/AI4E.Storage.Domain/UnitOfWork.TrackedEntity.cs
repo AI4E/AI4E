@@ -40,7 +40,7 @@ namespace AI4E.Storage.Domain
             private TrackedEntity(
                 UnitOfWork unitOfWork,
                 EntityTrackState trackState,
-                ISuccessEntityLoadResult entityLoadResult,
+                IFoundEntityQueryResult entityLoadResult,
                 ConcurrencyToken? concurrencyToken = null,
                 long? revision = null,
                 DomainEventCollection domainEvents = default,
@@ -67,7 +67,7 @@ namespace AI4E.Storage.Domain
             {
                 _unitOfWork = unitOfWork;
                 TrackState = trackState;
-                OriginalEntityLoadResult = new NotFoundEntityLoadResult(entityIdentifier, loadedFromCache: true);
+                OriginalEntityLoadResult = new NotFoundEntityQueryResult(entityIdentifier, loadedFromCache: true);
 
                 UpdatedConcurrencyToken = concurrencyToken;
                 UpdatedRevision = revision;
@@ -81,7 +81,7 @@ namespace AI4E.Storage.Domain
 
             public static TrackedEntity DeletedCacheEntry(
                 UnitOfWork unitOfWork,
-                ISuccessEntityLoadResult entityLoadResult,
+                IFoundEntityQueryResult entityLoadResult,
                 ConcurrencyToken concurrencyToken,
                 long revision,
                 DomainEventCollection domainEvents)
@@ -91,7 +91,7 @@ namespace AI4E.Storage.Domain
 
             public static TrackedEntity UnchangedCacheEntry(
                 UnitOfWork unitOfWork,
-                ISuccessEntityLoadResult entityLoadResult,
+                IFoundEntityQueryResult entityLoadResult,
                 ConcurrencyToken? concurrencyToken = default,
                 long? revision = default,
                 DomainEventCollection domainEvents = default)
@@ -111,7 +111,7 @@ namespace AI4E.Storage.Domain
 
             public static TrackedEntity UpdatedCacheEntry(
                 UnitOfWork unitOfWork,
-                ISuccessEntityLoadResult entityLoadResult,
+                IFoundEntityQueryResult entityLoadResult,
                 object entity,
                 ConcurrencyToken concurrencyToken,
                 long revision,
@@ -147,7 +147,7 @@ namespace AI4E.Storage.Domain
 
             #region Originally loaded data
 
-            public ICacheableEntityLoadResult OriginalEntityLoadResult { get; }
+            public IEntityQueryResult OriginalEntityLoadResult { get; }
 
             private EntityIdentifier EntityIdentifier => OriginalEntityLoadResult.EntityIdentifier;
 
@@ -165,15 +165,15 @@ namespace AI4E.Storage.Domain
 
             #region Combined data
 
-            public ICacheableEntityLoadResult EntityLoadResult
+            public IEntityQueryResult EntityLoadResult
             {
                 get
                 {
                     if (TrackState == EntityTrackState.Deleted)
-                        return new NotFoundEntityLoadResult(EntityIdentifier, loadedFromCache: true);
+                        return new NotFoundEntityQueryResult(EntityIdentifier, loadedFromCache: true);
 
                     if (_updatedEntity != null)
-                        return new SuccessEntityLoadResult(EntityIdentifier, _updatedEntity, ConcurrencyToken, Revision, loadedFromCache: true);
+                        return new FoundEntityQueryResult(EntityIdentifier, _updatedEntity, ConcurrencyToken, Revision, loadedFromCache: true);
 
                     return OriginalEntityLoadResult;
                 }

@@ -25,7 +25,7 @@ namespace AI4E.Storage.Domain
     /// <summary>
     /// Represents a success entity load-result that indicates that an entity was loaded successfully.
     /// </summary>
-    public interface ISuccessEntityLoadResult : ICacheableEntityLoadResult, IScopeableEnityLoadResult
+    public interface IFoundEntityQueryResult : IEntityQueryResult
     {
         /// <summary>
         /// Gets the loaded entity.
@@ -35,42 +35,34 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// Returns a cached copy of the current instance.
         /// </summary>
-        /// <returns>A <see cref="ISuccessEntityLoadResult"/> that is cached.</returns>
-        new ISuccessEntityLoadResult AsCachedResult();
-
-        /// <summary>
-        /// Scopes the current instance to the specified <see cref="IEntityStorage"/>.
-        /// </summary>
-        /// <param name="entityStorage">The <see cref="IEntityStorage"/> that defines the scope.</param>
+        /// <param name="loadedFromCache">
+        /// A boolean value indicating whether the resulting <see cref="IEntityQueryResult"/> was loaded from cache.
+        /// </param>
         /// <returns>
-        /// A <see cref="ISuccessEntityLoadResult"/> that is scoped to <paramref name="entityStorage"/>.
+        /// A <see cref="IFoundEntityQueryResult"/> that reflects the value specified by <paramref name="loadedFromCache"/>.
         /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown if <paramref name="entityStorage"/> is <c>null</c>.
-        /// </exception>
-        new ISuccessEntityLoadResult ScopeTo(IEntityStorage entityStorage);
+        new IFoundEntityQueryResult AsCachedResult(bool loadedFromCache = true);
 
         /// <summary>
-        /// Unscopes the current instance.
+        /// Returns a copy of the current instance scoped to the specified <see cref="IEntityQueryResultScope"/>.
         /// </summary>
-        /// <returns>A <see cref="ISuccessEntityLoadResult"/> that is unscoped.</returns>
-        new ISuccessEntityLoadResult Unscope();
+        /// <param name="scope">The <see cref="IEntityQueryResultScope"/> that defines the scope.</param>
+        /// <returns>
+        /// A <see cref="IFoundEntityQueryResult"/> that is scoped to <paramref name="scope"/>.
+        /// </returns>
+        new IFoundEntityQueryResult AsScopedTo(IEntityQueryResultScope? scope);
 
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
-        ICacheableEntityLoadResult ICacheableEntityLoadResult.AsCachedResult()
+        IEntityQueryResult IEntityQueryResult.AsCachedResult(bool loadedFromCache)
         {
-            return AsCachedResult();
+            return AsCachedResult(loadedFromCache);
         }
 
-        IScopeableEnityLoadResult IScopeableEnityLoadResult.ScopeTo(IEntityStorage entityStorage)
+        IEntityQueryResult IEntityQueryResult.AsScopedTo(IEntityQueryResultScope? scope)
         {
-            return ScopeTo(entityStorage);
+            return AsScopedTo(scope);
         }
 
-        IScopeableEnityLoadResult IScopeableEnityLoadResult.Unscope()
-        {
-            return Unscope();
-        }
 #endif
     }
 }

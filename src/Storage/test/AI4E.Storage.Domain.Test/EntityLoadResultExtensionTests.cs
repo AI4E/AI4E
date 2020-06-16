@@ -45,7 +45,7 @@ namespace AI4E.Storage.Domain.Test
             var entity = new DomainEntity1();
             var entityIdentifier = new EntityIdentifier(entityType, "abc");
             var expectedEntityDescriptor = new EntityDescriptor(entityType, entity);
-            var entityLoadResultMock = new Mock<ISuccessEntityLoadResult>();
+            var entityLoadResultMock = new Mock<IFoundEntityQueryResult>();
             entityLoadResultMock.Setup(entityLoadResult => entityLoadResult.EntityIdentifier).Returns(entityIdentifier);
             entityLoadResultMock.Setup(entityLoadResult => entityLoadResult.Entity).Returns(entity);
 

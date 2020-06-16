@@ -36,8 +36,8 @@ namespace AI4E.Storage.Domain
         private readonly Dictionary<EntityIdentifier, ITrackedEntity> _trackedEntities;
 
         // Some book-keeping for performance optimization.
-        private int _numberOfUntrackedEntries = 0;
-        private int _numberOfModifiedEntries = 0;
+        private int _numberOfUntrackedEntries;
+        private int _numberOfModifiedEntries;
 
         /// <summary>
         /// Creates a new instance of the <see cref="UnitOfWork"/> type.
@@ -112,7 +112,7 @@ namespace AI4E.Storage.Domain
         }
 
         /// <inheritdoc/>
-        public ITrackedEntity GetOrUpdate(ICacheableEntityLoadResult entityLoadResult)
+        public ITrackedEntity GetOrUpdate(IEntityQueryResult entityLoadResult)
         {
             if (entityLoadResult is null)
                 throw new ArgumentNullException(nameof(entityLoadResult));

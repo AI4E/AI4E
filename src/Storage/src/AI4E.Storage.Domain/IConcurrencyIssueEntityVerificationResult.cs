@@ -21,7 +21,7 @@
 namespace AI4E.Storage.Domain
 {
     /// <summary>
-    /// Represents a load-result that indicates that the loaded entity does not match the expected revision. 
+    /// Represents a load-result that indicates that the loaded entity does not match the expected concurrency-token. 
     /// </summary>
-    public interface IUnexpectedRevisionEntityLoadResult : IEntityLoadResult { }
+    public interface IConcurrencyIssueEntityVerificationResult : IEntityVerificationResult { }
 }

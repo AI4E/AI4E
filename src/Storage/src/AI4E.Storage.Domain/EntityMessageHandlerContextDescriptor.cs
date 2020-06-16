@@ -255,7 +255,7 @@ namespace AI4E.Storage.Domain
                         return entityLoadResult;
                     }
 
-                    return new NotFoundEntityLoadResult(default, false);
+                    return new NotFoundEntityQueryResult(default, false);
 
                     // TODO: We could load the metadata we need (id, concurrency-token, revision) 
                     //       with the entity-manager, if we allow the entity to be returned directly.

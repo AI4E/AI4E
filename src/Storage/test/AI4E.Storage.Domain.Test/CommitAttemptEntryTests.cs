@@ -37,7 +37,7 @@ namespace AI4E.Storage.Domain.Test
             object? entity)
         {
             var trackedEntityMock = new Mock<ITrackedEntity>();
-            var entityLoadResultMock = new Mock<ICacheableEntityLoadResult>();
+            var entityLoadResultMock = new Mock<IEntityQueryResult>();
 
             // Setup entity-identifier
             entityLoadResultMock.Setup(entityLoadResult => entityLoadResult.EntityIdentifier).Returns(entityIdentifier);

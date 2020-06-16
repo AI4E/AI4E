@@ -105,7 +105,7 @@ namespace AI4E.Storage.Domain
             {
                 var entityLoadResult = await entityLookup(concurrencyToken, cancellation).ConfigureAwait(false);
 
-                if (entityLoadResult is IConcurrencyIssueLoadResult)
+                if (entityLoadResult is IConcurrencyIssueEntityVerificationResult)
                 {
                     return new ConcurrencyIssueDispatchResult();
                 }
@@ -234,7 +234,7 @@ namespace AI4E.Storage.Domain
                     var entityLoadResult = await lookupAccessor!.Invoke(
                         Context.MessageHandler, message, _serviceProvider, cancellation).ConfigureAwait(false);
 
-                    if (entityLoadResult is ISuccessEntityLoadResult
+                    if (entityLoadResult is IFoundEntityQueryResult
                         && concurrencyToken != default
                         && concurrencyToken != entityLoadResult.ConcurrencyToken)
                     {

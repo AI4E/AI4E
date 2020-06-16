@@ -38,7 +38,7 @@ namespace AI4E.Storage.Domain
         /// Thrown if <paramref name="entityLoadResult"/> is <c>null</c>.
         /// </exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static EntityDescriptor GetEntityDescriptor(this ISuccessEntityLoadResult entityLoadResult)
+        public static EntityDescriptor GetEntityDescriptor(this IFoundEntityQueryResult entityLoadResult)
         {
             if (entityLoadResult is null)
                 throw new ArgumentNullException(nameof(entityLoadResult));

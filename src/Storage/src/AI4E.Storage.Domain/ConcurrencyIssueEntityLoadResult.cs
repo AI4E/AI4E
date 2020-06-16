@@ -20,12 +20,23 @@
 
 namespace AI4E.Storage.Domain
 {
-    internal sealed class ConcurrencyIssueEntityLoadResult : EntityLoadResult, IConcurrencyIssueLoadResult
+    internal sealed class ConcurrencyIssueEntityLoadResult : EntityLoadResult, IConcurrencyIssueEntityVerificationResult
     {
         public ConcurrencyIssueEntityLoadResult(EntityIdentifier entityIdentifier) : base(entityIdentifier)
         { }
 
+        public ConcurrencyIssueEntityLoadResult(EntityIdentifier entityIdentifier, IFoundEntityQueryResult queryResult) 
+            : base(entityIdentifier)
+        {
+            if (queryResult is null)
+                throw new System.ArgumentNullException(nameof(queryResult));
+
+            QueryResult = queryResult;
+        }
+
         public override string Reason => Resources.NotMatchedExpectedConcurrencyToken;
+
+        public IFoundEntityQueryResult? QueryResult { get; }
 
         protected override void ThrowFailure()
         {

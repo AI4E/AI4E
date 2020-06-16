@@ -50,12 +50,12 @@ namespace AI4E.Storage.Domain
 
         /// <inheritdoc />
         protected override bool MeetsCondition(
-            ICacheableEntityLoadResult entityLoadResult,
+            IEntityQueryResult entityLoadResult,
             [NotNullWhen(false)] out IEntityLoadResult? failureLoadResult)
         {
             failureLoadResult = entityLoadResult;
 
-            if (entityLoadResult is ISuccessEntityLoadResult)
+            if (entityLoadResult is IFoundEntityQueryResult)
             {
                 if (MinExpectedRevision.HasValue && entityLoadResult.Revision < MinExpectedRevision
                     || MaxExpectedRevision.HasValue && entityLoadResult.Revision > MaxExpectedRevision)

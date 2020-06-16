@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Interface Name="AI4E.Storage.Domain.IEntityQueryResult" Collapsed="true">
+    <Position X="3" Y="2" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAACAAAACAAAAIAAQAAQAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>IEntityQueryResult.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="AI4E.Storage.Domain.IEntityLoadResult" Collapsed="true">
+    <Position X="4.5" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAIAAAABAAABAEAAAAAAAAAAIAAAAAA=</HashCode>
+      <FileName>IEntityLoadResult.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="AI4E.Storage.Domain.INotFoundEntityQueryResult" Collapsed="true">
+    <Position X="2" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAIAAQAAQEAAAAAAAAAAAAAAEIA=</HashCode>
+      <FileName>INotFoundEntityQueryResult.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="AI4E.Storage.Domain.IFoundEntityQueryResult" Collapsed="true">
+    <Position X="4" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>EAAAAAAAAAAAAAAAAAIAAQAAQEAAAAAAAAAAAAAAEIA=</HashCode>
+      <FileName>IFoundEntityQueryResult.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="AI4E.Storage.Domain.IEntityVerificationResult" Collapsed="true">
+    <Position X="6" Y="2" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>IEntityVerificationResult.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="QueryResult" />
+    </ShowAsAssociation>
+  </Interface>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

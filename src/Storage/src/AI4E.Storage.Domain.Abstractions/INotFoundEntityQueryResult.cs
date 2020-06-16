@@ -18,24 +18,46 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+
 namespace AI4E.Storage.Domain
 {
     /// <summary>
     /// Represents a load-result indicating that an entity cannot be loaded due to non-existence.
     /// </summary>
-    public interface INotFoundEntityLoadResult : ICacheableEntityLoadResult
+    public interface INotFoundEntityQueryResult : IEntityQueryResult
     {
         /// <summary>
         /// Returns a cached copy of the current instance.
         /// </summary>
-        /// <returns>A <see cref="INotFoundEntityLoadResult"/> that is cached.</returns>
-        new INotFoundEntityLoadResult AsCachedResult();
+        /// <param name="loadedFromCache">
+        /// A boolean value indicating whether the resulting <see cref="IEntityQueryResult"/> was loaded from cache.
+        /// </param>
+        /// <returns>
+        /// A <see cref="INotFoundEntityQueryResult"/> that reflects the value specified by <paramref name="loadedFromCache"/>.
+        /// </returns>
+        new INotFoundEntityQueryResult AsCachedResult(bool loadedFromCache = true);
+
+        /// <summary>
+        /// Returns a copy of the current instance scoped to the specified <see cref="IEntityQueryResultScope"/>.
+        /// </summary>
+        /// <param name="scope">The <see cref="IEntityQueryResultScope"/> that defines the scope.</param>
+        /// <returns>
+        /// A <see cref="INotFoundEntityQueryResult"/> that is scoped to <paramref name="scope"/>.
+        /// </returns>
+        new INotFoundEntityQueryResult AsScopedTo(IEntityQueryResultScope? scope);
 
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
-        ICacheableEntityLoadResult ICacheableEntityLoadResult.AsCachedResult()
+        IEntityQueryResult IEntityQueryResult.AsCachedResult(bool loadedFromCache)
         {
-            return AsCachedResult();
+            return AsCachedResult(loadedFromCache);
         }
+
+        IEntityQueryResult IEntityQueryResult.AsScopedTo(IEntityQueryResultScope? scope)
+        {
+            return AsScopedTo(scope);
+        }
+
 #endif
     }
 }

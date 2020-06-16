@@ -80,7 +80,7 @@ namespace AI4E.Storage.Domain
 
             #region IEntityStorage
 
-            public IEnumerable<ISuccessEntityLoadResult> LoadedEntities => _wrappedEntityStorage.LoadedEntities;
+            public IEnumerable<IFoundEntityQueryResult> LoadedEntities => _wrappedEntityStorage.LoadedEntities;
 
             public IEntityMetadataManager MetadataManager => _wrappedEntityStorage.MetadataManager;
 
@@ -92,7 +92,7 @@ namespace AI4E.Storage.Domain
                 return _wrappedEntityStorage.LoadEntityAsync(entityIdentifier, queryProcessor, cancellation);
             }
 
-            public IAsyncEnumerable<ISuccessEntityLoadResult> LoadEntitiesAsync(
+            public IAsyncEnumerable<IFoundEntityQueryResult> LoadEntitiesAsync(
                 Type entityType,
                 CancellationToken cancellation)
             {

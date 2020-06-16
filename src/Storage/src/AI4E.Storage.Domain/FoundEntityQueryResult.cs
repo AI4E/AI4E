@@ -22,11 +22,11 @@ using System;
 
 namespace AI4E.Storage.Domain
 {
-    internal sealed class SuccessEntityLoadResult : CacheableEntityLoadResult, ISuccessEntityLoadResult
+    internal sealed class FoundEntityQueryResult : EntityQueryResult, IFoundEntityQueryResult
     {
-        private readonly ScopebleEntity _scopebleEntity;
+        private readonly ScopeableEntity _scopebleEntity;
 
-        public SuccessEntityLoadResult(
+        public FoundEntityQueryResult(
            EntityIdentifier entityIdentifier,
            object entity,
            ConcurrencyToken concurrencyToken,
@@ -39,26 +39,25 @@ namespace AI4E.Storage.Domain
             if (revision < 0)
                 throw new ArgumentOutOfRangeException(nameof(revision));
 
-            if (!entityIdentifier.EntityType.IsAssignableFrom(entity.GetType()))
+            if (!entityIdentifier.EntityType.IsInstanceOfType(entity))
                 throw new ArgumentException(Resources.EntityMustBeAsignableToEntityType);
 
             ConcurrencyToken = concurrencyToken;
             Revision = revision;
-            _scopebleEntity = new ScopebleEntity(entity);
+            _scopebleEntity = new ScopeableEntity(entity);
         }
 
-        private SuccessEntityLoadResult(
+        private FoundEntityQueryResult(
            EntityIdentifier entityIdentifier,
-           ScopebleEntity scopeableEntity,
+           ScopeableEntity scopeableEntity,
            ConcurrencyToken concurrencyToken,
            long revision,
            bool loadedFromCache,
-           IEntityStorage? scope) : base(entityIdentifier, loadedFromCache)
+           IEntityQueryResultScope? scope) : base(entityIdentifier, loadedFromCache, scope)
         {
-            _scopebleEntity = new ScopebleEntity(scopeableEntity);
+            _scopebleEntity = new ScopeableEntity(scopeableEntity);
             ConcurrencyToken = concurrencyToken;
             Revision = revision;
-            Scope = scope;
         }
 
         public object Entity => _scopebleEntity.GetEntity(Scope);
@@ -67,89 +66,67 @@ namespace AI4E.Storage.Domain
 
         public override long Revision { get; }
 
-        #region AsCachedResult
-
-        protected override CacheableEntityLoadResult AsCachedResultImpl()
-        {
-            return AsCachedResult();
-        }
-
-        public new SuccessEntityLoadResult AsCachedResult()
-        {
-            return new SuccessEntityLoadResult(
-                EntityIdentifier,
-                _scopebleEntity,
-                ConcurrencyToken,
-                Revision,
-                loadedFromCache: true,
-                Scope);
-        }
-
-        ISuccessEntityLoadResult ISuccessEntityLoadResult.AsCachedResult()
-        {
-            return AsCachedResult();
-        }
-
-        #endregion
-
-        #region Scope
-
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
-        IScopeableEnityLoadResult IScopeableEnityLoadResult.ScopeTo(IEntityStorage entityStorage)
-        {
-            return ScopeTo(entityStorage);
-        }
-
-        IScopeableEnityLoadResult IScopeableEnityLoadResult.Unscope()
-        {
-            return Unscope();
-        }
-#endif
-
-        ISuccessEntityLoadResult ISuccessEntityLoadResult.ScopeTo(IEntityStorage entityStorage)
-        {
-            return ScopeTo(entityStorage);
-        }
-
-        ISuccessEntityLoadResult ISuccessEntityLoadResult.Unscope()
-        {
-            return Unscope();
-        }
-
-        public SuccessEntityLoadResult ScopeTo(IEntityStorage entityStorage)
-        {
-            if (entityStorage is null)
-                throw new ArgumentNullException(nameof(entityStorage));
-
-            return new SuccessEntityLoadResult(
-                EntityIdentifier,
-                _scopebleEntity,
-                ConcurrencyToken,
-                Revision,
-                LoadedFromCache,
-                scope: entityStorage);
-        }
-
-        public SuccessEntityLoadResult Unscope()
-        {
-            return new SuccessEntityLoadResult(
-                EntityIdentifier,
-                _scopebleEntity,
-                ConcurrencyToken,
-                Revision,
-                LoadedFromCache,
-                scope: null);
-        }
-
-        public IEntityStorage? Scope { get; }
-
-        #endregion
-
         public override string Reason => Resources.SuccessfullyLoaded;
 
         public override object? GetEntity(bool throwOnFailure)
         {
             return Entity;
         }
+
+        #region Caching
+
+        protected override EntityQueryResult AsCachedResultImpl(bool loadedFromCache)
+        {
+            return AsCachedResult(loadedFromCache);
+        }
+
+        public new FoundEntityQueryResult AsCachedResult(bool loadedFromCache)
+        {
+            if (LoadedFromCache == loadedFromCache)
+                return this;
+
+            return new FoundEntityQueryResult(
+                EntityIdentifier,
+                _scopebleEntity,
+                ConcurrencyToken,
+                Revision,
+                loadedFromCache,
+                Scope);
+        }
+
+        IFoundEntityQueryResult IFoundEntityQueryResult.AsCachedResult(bool loadedFromCache)
+        {
+            return AsCachedResult(loadedFromCache);
+        }
+
+        #endregion
+
+        #region Scope
+
+        protected override EntityQueryResult AsScopedToImpl(IEntityQueryResultScope? scope)
+        {
+            return AsScopedTo(scope);
+        }
+
+        public new FoundEntityQueryResult AsScopedTo(IEntityQueryResultScope? scope)
+        {
+            if (scope == Scope)
+                return this;
+
+            return new FoundEntityQueryResult(
+                EntityIdentifier,
+                _scopebleEntity,
+                ConcurrencyToken,
+                Revision,
+                LoadedFromCache,
+                scope);
+        }
+
+        IFoundEntityQueryResult IFoundEntityQueryResult.AsScopedTo(IEntityQueryResultScope? scope)
+        {
+            return AsScopedTo(scope);
+        }
+
+        #endregion
     }
 }

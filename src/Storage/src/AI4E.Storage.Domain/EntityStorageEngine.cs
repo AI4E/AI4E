@@ -47,7 +47,7 @@ namespace AI4E.Storage.Domain
         private readonly IOptions<DomainStorageOptions> _optionsAccessor;
         private readonly ILogger<EntityStorageEngine> _logger;
 
-        private readonly ConcurrentDictionary<EntityIdentifier, ICacheableEntityLoadResult> _entities;
+        private readonly ConcurrentDictionary<EntityIdentifier, IEntityQueryResult> _entities;
         private readonly AsyncInitializationHelper _initHelper;
 
         /// <summary>
@@ -85,7 +85,7 @@ namespace AI4E.Storage.Domain
             _optionsAccessor = optionsAccessor;
             _logger = logger ?? new NullLogger<EntityStorageEngine>();
 
-            _entities = new ConcurrentDictionary<EntityIdentifier, ICacheableEntityLoadResult>();
+            _entities = new ConcurrentDictionary<EntityIdentifier, IEntityQueryResult>();
             _initHelper = new AsyncInitializationHelper(InitInternalAsync);
         }
 
@@ -230,7 +230,7 @@ namespace AI4E.Storage.Domain
         #endregion
 
         /// <inheritdoc/>
-        public ValueTask<ICacheableEntityLoadResult> LoadEntityAsync(
+        public ValueTask<IEntityQueryResult> QueryEntityAsync(
             EntityIdentifier entityIdentifier,
             bool bypassCache,
             CancellationToken cancellation)
@@ -240,13 +240,13 @@ namespace AI4E.Storage.Domain
                 _logger.LogWarning(
                     Resources.EngineLoadingDefaultEntityIdentifier, _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-                return new ValueTask<ICacheableEntityLoadResult>(new NotFoundEntityLoadResult(entityIdentifier));
+                return new ValueTask<IEntityQueryResult>(new NotFoundEntityQueryResult(entityIdentifier));
             }
 
             return UncheckedLoadEntityAsync(entityIdentifier, bypassCache, cancellation);
         }
 
-        private ValueTask<ICacheableEntityLoadResult> UncheckedLoadEntityAsync(
+        private ValueTask<IEntityQueryResult> UncheckedLoadEntityAsync(
             EntityIdentifier entityIdentifier,
             bool bypassCache,
             CancellationToken cancellation)
@@ -259,13 +259,13 @@ namespace AI4E.Storage.Domain
                     entityIdentifier,
                     _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-                return new ValueTask<ICacheableEntityLoadResult>(entityLoadResult);
+                return new ValueTask<IEntityQueryResult>(entityLoadResult);
             }
 
             return UncachedLoadEntityAsync(entityIdentifier, cancellation);
         }
 
-        private async ValueTask<ICacheableEntityLoadResult> UncachedLoadEntityAsync(
+        private async ValueTask<IEntityQueryResult> UncachedLoadEntityAsync(
             EntityIdentifier entityIdentifier,
             CancellationToken cancellation)
         {
@@ -308,7 +308,7 @@ namespace AI4E.Storage.Domain
         }
 
         /// <inheritdoc/>
-        public async IAsyncEnumerable<ISuccessEntityLoadResult> LoadEntitiesAsync(
+        public async IAsyncEnumerable<IFoundEntityQueryResult> QueryEntitiesAsync(
             Type entityType,
             bool bypassCache,
             [EnumeratorCancellation] CancellationToken cancellation)
@@ -650,7 +650,7 @@ namespace AI4E.Storage.Domain
 
             #endregion
 
-            public static ValueTask<ICacheableEntityLoadResult> LoadEntityAsync(
+            public static ValueTask<IEntityQueryResult> LoadEntityAsync(
                 Type entityType,
                 IDatabase database,
                 string? scope,
@@ -661,7 +661,7 @@ namespace AI4E.Storage.Domain
                 return typedHelper.LoadEntityAsync(database, entityId, scope, cancellation);
             }
 
-            public static IAsyncEnumerable<ISuccessEntityLoadResult> LoadEntitiesAsync(
+            public static IAsyncEnumerable<IFoundEntityQueryResult> LoadEntitiesAsync(
                 Type entityType,
                 IDatabase database,
                 string? scope,
@@ -714,13 +714,13 @@ namespace AI4E.Storage.Domain
 
             private interface ITypedStoredEntityHelper
             {
-                ValueTask<ICacheableEntityLoadResult> LoadEntityAsync(
+                ValueTask<IEntityQueryResult> LoadEntityAsync(
                     IDatabase database,
                     string entityId,
                     string? scope,
                     CancellationToken cancellation);
 
-                IAsyncEnumerable<ISuccessEntityLoadResult> LoadEntitiesAsync(
+                IAsyncEnumerable<IFoundEntityQueryResult> LoadEntitiesAsync(
                     IDatabase database,
                     string? scope,
                     CancellationToken cancellation);
@@ -751,7 +751,7 @@ namespace AI4E.Storage.Domain
 #pragma warning restore CA1812
                 where TEntity : class
             {
-                public async ValueTask<ICacheableEntityLoadResult> LoadEntityAsync(
+                public async ValueTask<IEntityQueryResult> LoadEntityAsync(
                     IDatabase database,
                     string entityId,
                     string? scope,
@@ -765,29 +765,29 @@ namespace AI4E.Storage.Domain
 
                     if (storedEntity is null)
                     {
-                        return new NotFoundEntityLoadResult(entityIdentifier);
+                        return new NotFoundEntityQueryResult(entityIdentifier);
                     }
 
-                    return new SuccessEntityLoadResult(
+                    return new FoundEntityQueryResult(
                         entityIdentifier, storedEntity.Entity!, storedEntity.ConcurrencyToken, storedEntity.Revision);
                 }
 
-                private static readonly Func<IStoredEntity, ISuccessEntityLoadResult> _projectStoredEntityToLoadResult
+                private static readonly Func<IStoredEntity, IFoundEntityQueryResult> _projectStoredEntityToLoadResult
                     = ProjectStoredEntityToLoadResult;
 
-                private static ISuccessEntityLoadResult ProjectStoredEntityToLoadResult(IStoredEntity storedEntity)
+                private static IFoundEntityQueryResult ProjectStoredEntityToLoadResult(IStoredEntity storedEntity)
                 {
                     Debug.Assert(!storedEntity.IsMarkedAsDeleted);
                     var entityIdentifier = new EntityIdentifier(typeof(TEntity), storedEntity.EntityId);
 
-                    return new SuccessEntityLoadResult(
+                    return new FoundEntityQueryResult(
                         entityIdentifier,
                         (TEntity)storedEntity.Entity!,
                         storedEntity.ConcurrencyToken,
                         storedEntity.Revision);
                 }
 
-                public IAsyncEnumerable<ISuccessEntityLoadResult> LoadEntitiesAsync(
+                public IAsyncEnumerable<IFoundEntityQueryResult> LoadEntitiesAsync(
                     IDatabase database,
                     string? scope,
                     CancellationToken cancellation)

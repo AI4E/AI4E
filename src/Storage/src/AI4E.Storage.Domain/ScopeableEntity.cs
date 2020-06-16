@@ -20,8 +20,18 @@
 
 namespace AI4E.Storage.Domain
 {
-    /// <summary>
-    /// Represents a load-result that indicates that the loaded entity does not match the expected concurrency-token. 
-    /// </summary>
-    public interface IConcurrencyIssueLoadResult : IEntityLoadResult { }
+    internal readonly struct ScopeableEntity
+    {
+        private readonly object _originalEntity;
+
+        public ScopeableEntity(object originalEntity)
+        {
+            _originalEntity = originalEntity;
+        }
+
+        public object GetEntity(IEntityQueryResultScope? scope)
+        {
+            return scope is null ? _originalEntity : scope.ScopeEntity(_originalEntity);
+        }
+    }
 }

@@ -38,7 +38,7 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// Gets the entity load-result that the tracked entity was originally created from.
         /// </summary>
-        ICacheableEntityLoadResult OriginalEntityLoadResult { get; }
+        IEntityQueryResult OriginalEntityLoadResult { get; }
 
         /// <summary>
         /// Gets the updated revision or <c>null</c> if the revision was not updated.
@@ -69,7 +69,7 @@ namespace AI4E.Storage.Domain
         /// This reflects the current state of the tracked entity with the modifications and falls back to the original 
         /// load-result if there are no changes.
         /// </remarks>
-        ICacheableEntityLoadResult EntityLoadResult { get; }
+        IEntityQueryResult EntityLoadResult { get; }
 
         /// <summary>
         /// Gets the current state of the tracked entity.

@@ -32,7 +32,7 @@ namespace AI4E.Storage.Domain
         /// </summary>
         /// <param name="entityLoadResult">The entity load-result to convert.</param>
         /// <returns>
-        /// An <see cref="ISuccessEntityLoadResult"/> created from <paramref name="entityLoadResult"/>.
+        /// An <see cref="IFoundEntityQueryResult"/> created from <paramref name="entityLoadResult"/>.
         /// </returns>
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="entityLoadResult"/> is <c>null</c>.
@@ -40,24 +40,24 @@ namespace AI4E.Storage.Domain
         /// <exception cref="ArgumentException">
         /// Thrown if <paramref name="entityLoadResult"/> does not indicate success.
         /// </exception>
-        public static ISuccessEntityLoadResult AsSuccessLoadResult(
+        public static IFoundEntityQueryResult AsSuccessLoadResult(
             this IEntityLoadResult entityLoadResult)
         {
             if (entityLoadResult is null)
                 throw new ArgumentNullException(nameof(entityLoadResult));
 
-            if (entityLoadResult is ISuccessEntityLoadResult successEntityLoadResult)
+            if (entityLoadResult is IFoundEntityQueryResult successEntityLoadResult)
                 return successEntityLoadResult;
 
             if (!entityLoadResult.IsSuccess(out var entity))
                 throw new ArgumentException(Resources.EntityLoadResultMustIndicateSuccess);
 
-            return new SuccessEntityLoadResult(
+            return new FoundEntityQueryResult(
                 entityLoadResult.EntityIdentifier,
                 entity,
                 entityLoadResult.ConcurrencyToken,
                 entityLoadResult.Revision,
-                ((ICacheableEntityLoadResult)entityLoadResult).LoadedFromCache);
+                ((IEntityQueryResult)entityLoadResult).LoadedFromCache);
         }
     }
 }

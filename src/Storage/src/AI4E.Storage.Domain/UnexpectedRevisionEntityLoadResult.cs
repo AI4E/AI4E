@@ -18,10 +18,27 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+
 namespace AI4E.Storage.Domain
 {
-    internal sealed class UnexpectedRevisionEntityLoadResult : EntityLoadResult, IUnexpectedRevisionEntityLoadResult
+    internal sealed class UnexpectedRevisionEntityLoadResult 
+        : EntityLoadResult, IUnexpectedRevisionEntityVerificationResult
     {
+        public UnexpectedRevisionEntityLoadResult(
+            EntityIdentifier entityIdentifier,
+            IFoundEntityQueryResult queryResult,
+            ConcurrencyToken concurrencyToken,
+            long revision) : base(entityIdentifier)
+        {
+            if (queryResult is null)
+                throw new ArgumentNullException(nameof(queryResult));
+
+            QueryResult = queryResult;
+            ConcurrencyToken = concurrencyToken;
+            Revision = revision;
+        }
+
         public UnexpectedRevisionEntityLoadResult(
             EntityIdentifier entityIdentifier,
             ConcurrencyToken concurrencyToken,
@@ -35,8 +52,15 @@ namespace AI4E.Storage.Domain
             : this(entityIdentifier, default, default)
         { }
 
+        public UnexpectedRevisionEntityLoadResult(
+            EntityIdentifier entityIdentifier, 
+            IFoundEntityQueryResult queryResult) : this(entityIdentifier, queryResult, default, default)
+        { }
+
         public override ConcurrencyToken ConcurrencyToken { get; }
         public override long Revision { get; }
+
+        public IFoundEntityQueryResult? QueryResult { get; }
 
         public override string Reason => Resources.NotMatchedExpectedRevision;
 

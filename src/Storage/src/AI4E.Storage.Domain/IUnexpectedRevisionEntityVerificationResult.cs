@@ -20,27 +20,8 @@
 
 namespace AI4E.Storage.Domain
 {
-    internal sealed class NotFoundEntityLoadResult : CacheableEntityLoadResult, INotFoundEntityLoadResult
-    {
-        public NotFoundEntityLoadResult(EntityIdentifier entityIdentifier, bool loadedFromCache = false)
-            : base(entityIdentifier, loadedFromCache)
-        { }
-
-        protected override CacheableEntityLoadResult AsCachedResultImpl()
-        {
-            return AsCachedResult();
-        }
-
-        public new NotFoundEntityLoadResult AsCachedResult()
-        {
-            return new NotFoundEntityLoadResult(EntityIdentifier, loadedFromCache: true);
-        }
-
-        INotFoundEntityLoadResult INotFoundEntityLoadResult.AsCachedResult()
-        {
-            return AsCachedResult();
-        }
-
-        public override string Reason => Resources.NotFound;
-    }
+    /// <summary>
+    /// Represents a load-result that indicates that the loaded entity does not match the expected revision. 
+    /// </summary>
+    public interface IUnexpectedRevisionEntityVerificationResult : IEntityVerificationResult { }
 }

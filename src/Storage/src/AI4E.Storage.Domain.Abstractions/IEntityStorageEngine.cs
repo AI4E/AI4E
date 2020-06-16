@@ -40,11 +40,11 @@ namespace AI4E.Storage.Domain
         /// or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
-        /// A <see cref="ValueTask{ICacheableEntityLoadResult}"/> representing the asynchronous operation.
+        /// A <see cref="ValueTask{IEntityQueryResult}"/> representing the asynchronous operation.
         /// When evaluated, the tasks result contains the entity load-result that describes the load operation status 
         /// and contains the entity on success.
         /// </returns>
-        ValueTask<ICacheableEntityLoadResult> LoadEntityAsync(
+        ValueTask<IEntityQueryResult> QueryEntityAsync(
             EntityIdentifier entityIdentifier,
             bool bypassCache,
             CancellationToken cancellation = default);
@@ -67,7 +67,7 @@ namespace AI4E.Storage.Domain
         /// Thrown if <paramref name="entityType"/> specifies a delegate type, a value-type,
         /// an interface type or an open generic type definition.
         /// </exception>
-        IAsyncEnumerable<ISuccessEntityLoadResult> LoadEntitiesAsync(
+        IAsyncEnumerable<IFoundEntityQueryResult> QueryEntitiesAsync(
             Type entityType,
             bool bypassCache,
             CancellationToken cancellation = default);
@@ -76,7 +76,7 @@ namespace AI4E.Storage.Domain
         /// Asynchronously commits the specified commit-attempt an dispatches all domain-events.
         /// </summary>
         /// <typeparam name="TCommitAttemptEntry">The type of commit-attempt entry.</typeparam>
-        /// <param name="commitAttempt">The <see cref="CommitAttempt"/> to commit.</param>
+        /// <param name="commitAttempt">The <see cref="CommitAttempt{TCommitAttemptEntry}"/> to commit.</param>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
         /// or <see cref="CancellationToken.None"/>.

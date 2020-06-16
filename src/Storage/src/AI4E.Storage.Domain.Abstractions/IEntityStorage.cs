@@ -33,7 +33,7 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// Gets a collection of all loaded entities.
         /// </summary>
-        IEnumerable<ISuccessEntityLoadResult> LoadedEntities { get; }
+        IEnumerable<IFoundEntityQueryResult> LoadedEntities { get; }
 
         /// <summary>
         /// Gets the meta-data manager that is used to get and set entity meta-data to entities.
@@ -82,7 +82,7 @@ namespace AI4E.Storage.Domain
         /// Thrown if <paramref name="entityType"/> specifies a delegate type, a value-type,
         /// an interface type or an open generic type definition.
         /// </exception>
-        IAsyncEnumerable<ISuccessEntityLoadResult> LoadEntitiesAsync(
+        IAsyncEnumerable<IFoundEntityQueryResult> LoadEntitiesAsync(
             Type entityType,
             CancellationToken cancellation = default);
 
@@ -197,11 +197,11 @@ namespace AI4E.Storage.Domain
         /// or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
-        /// A <see cref="ValueTask{ICacheableEntityLoadResult}"/> representing the asynchronous operation.
+        /// A <see cref="ValueTask{IEntityQueryResult}"/> representing the asynchronous operation.
         /// When evaluated, the tasks result contains the entity load-result that describes the load operation status 
         /// and contains the entity on success.
         /// </returns>
-        ValueTask<ICacheableEntityLoadResult> ExecuteAsync(
+        ValueTask<IEntityQueryResult> ExecuteAsync(
             EntityIdentifier entityIdentifier,
             bool bypassCache,
             CancellationToken cancellation = default);
