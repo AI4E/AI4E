@@ -39,9 +39,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Coordination",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Proxying", "..\Utils\src\AI4E.Utils.Proxying\AI4E.Utils.Proxying.csproj", "{A6110FDD-9410-48C5-AD8C-2AA2D27EE400}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Domain", "..\Domain\AI4E.Domain\AI4E.Domain.csproj", "{3D76E441-72F0-46EB-9DF5-4E9B81BBDF81}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Domain", "..\Domain\src\AI4E.Domain\AI4E.Domain.csproj", "{3D76E441-72F0-46EB-9DF5-4E9B81BBDF81}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Domain.Services", "..\Domain\AI4E.Domain.Services\AI4E.Domain.Services.csproj", "{F4280C3E-C449-45C8-81F4-E92DA153F9B8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Domain.Services", "..\Domain\src\AI4E.Domain.Services\AI4E.Domain.Services.csproj", "{F4280C3E-C449-45C8-81F4-E92DA153F9B8}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain", "..\Storage\src\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj", "{68830B48-940A-41AB-9C9D-27C993891E9F}"
 EndProject
