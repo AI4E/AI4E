@@ -5,11 +5,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Messaging\src\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
-    <ProjectReference Include="..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
-    <ProjectReference Include="..\..\Storage\src\AI4E.Storage.Coordination\AI4E.Storage.Coordination.csproj" />
+    <ProjectReference Include="..\..\..\Messaging\src\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\Storage\src\AI4E.Storage.Coordination\AI4E.Storage.Coordination.csproj" />
+    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.Proxying\AI4E.Utils.Proxying.csproj" /> 
     <ProjectReference Include="..\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
-    <ProjectReference Include="..\..\Utils\src\AI4E.Utils.Proxying\AI4E.Utils.Proxying.csproj" />
   </ItemGroup>
 
   <ItemGroup>

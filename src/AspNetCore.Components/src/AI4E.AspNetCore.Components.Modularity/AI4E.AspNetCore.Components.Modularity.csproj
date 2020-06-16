@@ -12,7 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Messaging\src\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
-    <ProjectReference Include="..\..\..\Modularity\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\Modularity\src\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils\AI4E.Utils.csproj" />
     <ProjectReference Include="..\AI4E.AspNetCore.Components.Extensibility\AI4E.AspNetCore.Components.Extensibility.csproj" />
   </ItemGroup>

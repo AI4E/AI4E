@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\src\Modularity\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Modularity\src\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\..\src\Utils\src\AI4E.Utils.ApplicationParts\AI4E.Utils.ApplicationParts.csproj" />
   </ItemGroup>
 
