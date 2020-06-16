@@ -696,7 +696,7 @@ namespace AI4E.Messaging
                     return (result, handlersFound: true);
                 }
 
-                return (result: new DispatchFailureDispatchResult(dispatchData.MessageType), handlersFound: false);
+                return (result: new DispatchFailureDispatchResult(dispatchData!.MessageType), handlersFound: false);
             }
         }
 

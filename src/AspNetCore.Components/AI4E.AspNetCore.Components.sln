@@ -35,7 +35,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Routing.Modularity.Sample",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Routing.Modularity.Sample.PluginB", "samples\Modularity.Sample\Routing.Modularity.Sample.PluginB\Routing.Modularity.Sample.PluginB.csproj", "{110875D9-1233-422F-BB2C-AEAAE320989D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore", "..\AspNetCore\AI4E.AspNetCore\AI4E.AspNetCore.csproj", "{EFB30ED5-C7D9-48C4-A316-AF00D40BA160}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore", "..\AspNetCore\src\AI4E.AspNetCore\AI4E.AspNetCore.csproj", "{EFB30ED5-C7D9-48C4-A316-AF00D40BA160}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Routing.Modularity.Sample.PluginA.Shared", "samples\Modularity.Sample\Routing.Modularity.Sample.PluginA.Shared\Routing.Modularity.Sample.PluginA.Shared.csproj", "{C514EAD5-0635-4D94-8F47-1B6498C790DD}"
 EndProject

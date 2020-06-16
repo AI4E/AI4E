@@ -31,7 +31,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Logging.Sample.Server", "sa
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dependencies", "dependencies", "{D51B21EF-F729-4357-ADCB-CABC59C6FB5B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore", "..\..\src\AspNetCore\AI4E.AspNetCore\AI4E.AspNetCore.csproj", "{EFB30ED5-C7D9-48C4-A316-AF00D40BA160}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore", "..\..\src\AspNetCore\src\AI4E.AspNetCore\AI4E.AspNetCore.csproj", "{EFB30ED5-C7D9-48C4-A316-AF00D40BA160}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Messaging", "..\..\src\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj", "{A1974836-1DD1-4BA3-978C-C420CD373C8A}"
 EndProject
