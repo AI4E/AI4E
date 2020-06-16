@@ -1,0 +1,8 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetStandardVersion)</TargetFramework>
+    <RootNamespace>Routing.Modularity.Sample.PluginA</RootNamespace>
+  </PropertyGroup>
+
+</Project>

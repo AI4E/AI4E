@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 using Newtonsoft.Json;
 
 namespace AI4E.Messaging
@@ -27,16 +28,10 @@ namespace AI4E.Messaging
     /// <summary>
     /// Describes the result of a failed message dispatch operation.
     /// </summary>
+    [Serializable]
     public class FailureDispatchResult : DispatchResult
     {
-#pragma warning disable IDE0051
-        [JsonConstructor]
-        private protected FailureDispatchResult(string message, Exception exception, IReadOnlyDictionary<string, object?> resultData)
-                    : base(false, exception != null ? FormatMessage(exception) : message, resultData)
-        {
-            Exception = exception;
-        }
-#pragma warning restore IDE0051
+        #region C'tors
 
         /// <summary>
         /// Creates a new instance of the <see cref="FailureDispatchResult"/> type.
@@ -74,6 +69,41 @@ namespace AI4E.Messaging
         /// </summary>
         public FailureDispatchResult() : this("Unknown failure.") { }
 
+        #endregion
+
+        #region ISerializable
+
+        protected FailureDispatchResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext)
+        {
+            Exception? exception;
+
+            try
+            {
+#pragma warning disable CA1062
+                exception = serializationInfo.GetValue(nameof(Exception), typeof(Exception)) as Exception;
+#pragma warning restore CA1062
+            }
+            catch (InvalidCastException exc)
+            {
+                // TODO: More specific error message
+                throw new SerializationException("Cannot deserialize dispatch result.", exc);
+            }
+
+
+            Exception = exception;
+        }
+
+        protected override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+#pragma warning disable CA1062
+            info.AddValue(nameof(Exception), Exception, typeof(Exception));
+#pragma warning restore CA1062
+        }
+
+        #endregion
+
         private static string FormatMessage(Exception exception)
         {
             if (exception == null)
@@ -88,7 +118,6 @@ namespace AI4E.Messaging
         public Exception? Exception { get; }
 
         /// <inheritdoc/>
-        [JsonIgnore]
         public override bool IsSuccess => false;
     }
 }

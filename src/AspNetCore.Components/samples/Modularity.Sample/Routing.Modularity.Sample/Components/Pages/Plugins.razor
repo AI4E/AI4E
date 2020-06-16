@@ -1,0 +1,28 @@
+﻿@page "/plugins"
+@inject PluginManager PluginManager
+<h3>Plugins</h3>
+
+<div>
+    <ul>
+        @foreach (var plugin in PluginManager.AvailablePlugins)
+        {
+            <li>
+                @plugin.ModuleDescriptor.Name
+
+                @if (plugin.IsInstalled)
+                {
+                    <p>Installed</p>
+                    <p>
+                        <input type="button" @onclick="plugin.Uninstall" value="Uninstall" />
+                    </p>
+                }
+                else
+                {
+                    <p>
+                        <input type="button" @onclick="plugin.Install" value="Install" />
+                    </p>
+                }
+            </li>
+        }
+    </ul>
+</div>

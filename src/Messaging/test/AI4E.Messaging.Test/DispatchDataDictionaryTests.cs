@@ -21,7 +21,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using AI4E.Internal;
+using AI4E.Messaging.Serialization;
 using AI4E.Messaging.Test;
 using AI4E.Utils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -31,6 +31,15 @@ namespace AI4E.Messaging
     [TestClass]
     public class DispatchDataDictionaryTests
     {
+        private IMessageSerializer Serializer { get; } = new MessageSerializer(TypeResolver.Default);
+
+        private IMessageSerializer BuildSerializer(ITypeResolver deserializationTypeResolver)
+        {
+            return new MessageSerializerPair(
+                new MessageSerializer(TypeResolver.Default),
+                new MessageSerializer(deserializationTypeResolver));
+        }
+
         [TestMethod]
         public void GenericCreateMessageAndDataTest()
         {
@@ -331,27 +340,6 @@ namespace AI4E.Messaging
             Assert.AreEqual(ConsoleColor.Black, deserializedData["c"]);
         }
 
-        //[TestMethod]
-        public void SerializeUnknownTypeRoundtripTest()
-        {
-            var message = "abcdef";
-            var data = new Dictionary<string, object>
-            {
-                ["a"] = "xyz",
-                ["b"] = 123L,
-                ["c"] = ConsoleColor.Black
-            };
-            var dispatchData = new DispatchDataDictionary<object>(message, data);
-            var deserializedData = Serializer.RoundtripUnknownType(dispatchData);
-
-            Assert.AreEqual(message, deserializedData.Message);
-            Assert.AreSame(typeof(object), deserializedData.MessageType);
-            Assert.AreEqual(3, deserializedData.Count);
-            Assert.AreEqual("xyz", deserializedData["a"]);
-            Assert.AreEqual(123L, deserializedData["b"]);
-            Assert.AreEqual(ConsoleColor.Black, deserializedData["c"]);
-        }
-
         [TestMethod]
         public void CustomTypeResolverSerializeRoundtripTest()
         {
@@ -368,7 +356,7 @@ namespace AI4E.Messaging
             var typeResolver = new TypeResolver(asm.Yield());
 
 
-            var deserializedData = Serializer.Roundtrip(dispatchData, typeResolver);
+            var deserializedData = BuildSerializer(typeResolver).Roundtrip(dispatchData);
 
             Assert.IsInstanceOfType(deserializedData.Message, asm.GetType(typeof(CustomMessage).FullName));
             Assert.AreEqual(message.Str, (string)((dynamic)deserializedData.Message).Str);
@@ -376,27 +364,6 @@ namespace AI4E.Messaging
             Assert.AreEqual(3, deserializedData.Count);
             Assert.IsInstanceOfType(deserializedData["a"], asm.GetType(typeof(CustomType).FullName));
             Assert.AreEqual("xyz", (string)((dynamic)deserializedData["a"]).Str);
-            Assert.AreEqual(123L, deserializedData["b"]);
-            Assert.AreEqual(ConsoleColor.Black, deserializedData["c"]);
-        }
-
-        //[TestMethod]
-        public void CustomTypeResolverSerializeUnknownTypeRoundtripTest()
-        {
-            var message = new CustomMessage { Str = "abcdef" };
-            var data = new Dictionary<string, object>
-            {
-                ["a"] = new CustomType { Str = "xyz" },
-                ["b"] = 123L,
-                ["c"] = ConsoleColor.Black
-            };
-            var dispatchData = new DispatchDataDictionary<object>(message, data);
-            var deserializedData = Serializer.RoundtripUnknownType(dispatchData);
-
-            Assert.AreEqual(message, deserializedData.Message);
-            Assert.AreSame(typeof(object), deserializedData.MessageType);
-            Assert.AreEqual(3, deserializedData.Count);
-            Assert.AreEqual("xyz", deserializedData["a"]);
             Assert.AreEqual(123L, deserializedData["b"]);
             Assert.AreEqual(ConsoleColor.Black, deserializedData["c"]);
         }

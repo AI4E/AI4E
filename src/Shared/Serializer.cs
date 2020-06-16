@@ -29,7 +29,7 @@ namespace AI4E.Internal
 {
     internal static class Serializer
     {
-        // Copied from RMD. TODO: Share this code.
+        // TODO: Share this code.
         private static readonly ThreadLocal<JsonSerializer> _serializer = new ThreadLocal<JsonSerializer>(BuildSerializer, trackAllValues: false);
 
         private static JsonSerializer BuildSerializer()

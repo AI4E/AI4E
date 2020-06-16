@@ -43,7 +43,7 @@ namespace AI4E.Messaging
             _data = data;
         }
 
-        private bool TryGetConfiguration(Type configurationType, [NotNullWhen(false)] out object? configuration)
+        private bool TryGetConfiguration(Type configurationType, [NotNullWhen(true)] out object? configuration)
         {
             Debug.Assert(configurationType != null);
 
@@ -67,7 +67,7 @@ namespace AI4E.Messaging
                 return false;
             }
 
-            if (!configurationType!.IsAssignableFrom(configuration.GetType()))
+            if (!configurationType!.IsInstanceOfType(configuration))
             {
                 configuration = null;
                 return false;

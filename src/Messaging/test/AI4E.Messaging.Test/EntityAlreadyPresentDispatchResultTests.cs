@@ -20,7 +20,7 @@
 
 using System;
 using System.Collections.Generic;
-using AI4E.Internal;
+using AI4E.Messaging.Serialization;
 using AI4E.Messaging.Test;
 using AI4E.Utils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -28,7 +28,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace AI4E.Messaging
 {
     [TestClass]
-    public class EntityAlreadyPresentDispatchResultTests
+    public class EntityAlreadyPresentDispatchResultTests : DispatchResultsTestsBase
     {
         [TestMethod]
         public void CreateMessageResultDataTest()
@@ -125,28 +125,6 @@ namespace AI4E.Messaging
         }
 
         [TestMethod]
-        public void SerializeUnknownTypeRoundtripTest()
-        {
-            var resultData = new Dictionary<string, object>
-            {
-                ["abc"] = "def",
-                ["xyz"] = 1234L
-            };
-
-            var dispatchResult = new EntityAlreadyPresentDispatchResult("DispatchResultMessage", resultData);
-            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult);
-
-            Assert.IsFalse(deserializedResult.IsSuccess);
-            Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);
-            Assert.AreEqual(2, deserializedResult.ResultData.Count);
-            Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
-            Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
-            Assert.IsNull(deserializedResult.EntityTypeName);
-            Assert.IsFalse(deserializedResult.TryGetEntityType(out _));
-            Assert.IsNull(deserializedResult.Id);
-        }
-
-        [TestMethod]
         public void SerializeRoundtripEntityTypeTest()
         {
             var dispatchResult = new EntityAlreadyPresentDispatchResult(typeof(string));
@@ -156,23 +134,6 @@ namespace AI4E.Messaging
             Assert.AreEqual($"An entity of type'{typeof(string)}' with the specified id is already present.", deserializedResult.Message);
             Assert.AreEqual(0, deserializedResult.ResultData.Count);
             Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
-            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
-            Assert.AreSame(typeof(string), entityTypeName);
-            Assert.IsNull(deserializedResult.Id);
-        }
-
-        [TestMethod]
-        public void SerializeUnknownTypeRoundtripEntityTypeTest()
-        {
-            var dispatchResult = new EntityAlreadyPresentDispatchResult(typeof(string));
-            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult);
-
-            Assert.IsFalse(deserializedResult.IsSuccess);
-            Assert.AreEqual($"An entity of type'{typeof(string)}' with the specified id is already present.", deserializedResult.Message);
-            Assert.AreEqual(0, deserializedResult.ResultData.Count);
-            Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
-            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
-            Assert.AreSame(typeof(string), entityTypeName);
             Assert.IsNull(deserializedResult.Id);
         }
 
@@ -186,23 +147,6 @@ namespace AI4E.Messaging
             Assert.AreEqual($"An entity of type'{typeof(string)}' with the id 'abc' is already present.", deserializedResult.Message);
             Assert.AreEqual(0, deserializedResult.ResultData.Count);
             Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
-            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
-            Assert.AreSame(typeof(string), entityTypeName);
-            Assert.AreEqual("abc", deserializedResult.Id);
-        }
-
-        [TestMethod]
-        public void SerializeUnknownTypeRoundtripEntityTypeAndIdTest()
-        {
-            var dispatchResult = new EntityAlreadyPresentDispatchResult(typeof(string), "abc");
-            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult);
-
-            Assert.IsFalse(deserializedResult.IsSuccess);
-            Assert.AreEqual($"An entity of type'{typeof(string)}' with the id 'abc' is already present.", deserializedResult.Message);
-            Assert.AreEqual(0, deserializedResult.ResultData.Count);
-            Assert.AreEqual(typeof(string).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
-            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
-            Assert.AreSame(typeof(string), entityTypeName);
             Assert.AreEqual("abc", deserializedResult.Id);
         }
 
@@ -220,33 +164,7 @@ namespace AI4E.Messaging
             var alc = new TestAssemblyLoadContext();
             var asm = alc.TestAssembly;
             var typeResolver = new TypeResolver(asm.Yield());
-            var deserializedResult = Serializer.Roundtrip(dispatchResult, typeResolver);
-
-            Assert.IsFalse(deserializedResult.IsSuccess);
-            Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);
-            Assert.AreEqual(2, deserializedResult.ResultData.Count);
-            Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
-            Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
-            Assert.IsNull(deserializedResult.EntityTypeName);
-            Assert.IsFalse(deserializedResult.TryGetEntityType(out _));
-            Assert.IsNull(deserializedResult.Id);
-        }
-
-        [TestMethod]
-        public void CustomTypeResolverSerializeUnknownTypeRoundtripTest()
-        {
-            var resultData = new Dictionary<string, object>
-            {
-                ["abc"] = "def",
-                ["xyz"] = 1234L
-            };
-
-            var dispatchResult = new EntityAlreadyPresentDispatchResult("DispatchResultMessage", resultData);
-
-            var alc = new TestAssemblyLoadContext();
-            var asm = alc.TestAssembly;
-            var typeResolver = new TypeResolver(asm.Yield());
-            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult, typeResolver);
+            var deserializedResult = BuildSerializer(typeResolver).Roundtrip(dispatchResult);
 
             Assert.IsFalse(deserializedResult.IsSuccess);
             Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);
@@ -266,33 +184,12 @@ namespace AI4E.Messaging
             var alc = new TestAssemblyLoadContext();
             var asm = alc.TestAssembly;
             var typeResolver = new TypeResolver(asm.Yield());
-            var deserializedResult = Serializer.Roundtrip(dispatchResult, typeResolver);
+            var deserializedResult = BuildSerializer(typeResolver).Roundtrip(dispatchResult);
 
             Assert.IsFalse(deserializedResult.IsSuccess);
             Assert.AreEqual($"An entity of type'{typeof(CustomType)}' with the specified id is already present.", deserializedResult.Message);
             Assert.AreEqual(0, deserializedResult.ResultData.Count);
             Assert.AreEqual(typeof(CustomType).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
-            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
-            Assert.AreSame(asm.GetType(typeof(CustomType).FullName), entityTypeName);
-            Assert.IsNull(deserializedResult.Id);
-        }
-
-        [TestMethod]
-        public void CustomTypeResolverSerializeUnknownTypeRoundtripEntityTypeTest()
-        {
-            var dispatchResult = new EntityAlreadyPresentDispatchResult(typeof(CustomType));
-
-            var alc = new TestAssemblyLoadContext();
-            var asm = alc.TestAssembly;
-            var typeResolver = new TypeResolver(asm.Yield());
-            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult, typeResolver);
-
-            Assert.IsFalse(deserializedResult.IsSuccess);
-            Assert.AreEqual($"An entity of type'{typeof(CustomType)}' with the specified id is already present.", deserializedResult.Message);
-            Assert.AreEqual(0, deserializedResult.ResultData.Count);
-            Assert.AreEqual(typeof(CustomType).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
-            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
-            Assert.AreSame(asm.GetType(typeof(CustomType).FullName), entityTypeName);
             Assert.IsNull(deserializedResult.Id);
         }
 
@@ -304,33 +201,12 @@ namespace AI4E.Messaging
             var alc = new TestAssemblyLoadContext();
             var asm = alc.TestAssembly;
             var typeResolver = new TypeResolver(asm.Yield());
-            var deserializedResult = Serializer.Roundtrip(dispatchResult, typeResolver);
+            var deserializedResult = BuildSerializer(typeResolver).Roundtrip(dispatchResult);
 
             Assert.IsFalse(deserializedResult.IsSuccess);
             Assert.AreEqual($"An entity of type'{typeof(CustomType)}' with the id 'abc' is already present.", deserializedResult.Message);
             Assert.AreEqual(0, deserializedResult.ResultData.Count);
             Assert.AreEqual(typeof(CustomType).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
-            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
-            Assert.AreSame(asm.GetType(typeof(CustomType).FullName), entityTypeName);
-            Assert.AreEqual("abc", deserializedResult.Id);
-        }
-
-        [TestMethod]
-        public void CustomTypeResolverSerializeUnknownTypeRoundtripEntityTypeAndIdTest()
-        {
-            var dispatchResult = new EntityAlreadyPresentDispatchResult(typeof(CustomType), "abc");
-
-            var alc = new TestAssemblyLoadContext();
-            var asm = alc.TestAssembly;
-            var typeResolver = new TypeResolver(asm.Yield());
-            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult, typeResolver);
-
-            Assert.IsFalse(deserializedResult.IsSuccess);
-            Assert.AreEqual($"An entity of type'{typeof(CustomType)}' with the id 'abc' is already present.", deserializedResult.Message);
-            Assert.AreEqual(0, deserializedResult.ResultData.Count);
-            Assert.AreEqual(typeof(CustomType).GetUnqualifiedTypeName(), deserializedResult.EntityTypeName);
-            Assert.IsTrue(deserializedResult.TryGetEntityType(out var entityTypeName));
-            Assert.AreSame(asm.GetType(typeof(CustomType).FullName), entityTypeName);
             Assert.AreEqual("abc", deserializedResult.Id);
         }
     }

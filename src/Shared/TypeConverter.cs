@@ -25,13 +25,20 @@ namespace AI4E.Internal
 {
     internal sealed class TypeConverter : JsonConverter<Type>
     {
-        public override void WriteJson(JsonWriter writer, Type value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, Type? value, JsonSerializer serializer)
         {
-            serializer.SerializationBinder.BindToName(value, out _, out var typeName);
-            writer.WriteValue(typeName);
+            if (value is null)
+            {
+                writer.WriteNull();
+            }
+            else
+            {
+                serializer.SerializationBinder.BindToName(value, out _, out var typeName);
+                writer.WriteValue(typeName);
+            }
         }
 
-        public override Type ReadJson(JsonReader reader, Type objectType, Type existingValue, bool hasExistingValue, JsonSerializer serializer)
+        public override Type ReadJson(JsonReader reader, Type objectType, Type? existingValue, bool hasExistingValue, JsonSerializer serializer)
         {
             if (reader.Value is string typeName)
             {

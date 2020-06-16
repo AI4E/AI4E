@@ -21,32 +21,21 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
+using AI4E.Utils;
 
 namespace AI4E.Messaging
 {
     /// <summary>
     /// Describes the result of a message dispatch operation that failed due to an id conflict.
     /// </summary>
+    [Serializable]
     public class EntityAlreadyPresentDispatchResult : FailureDispatchResult
     {
-        [JsonProperty("EntityType")]
         private readonly SerializableType? _entityType;
         public static string DefaultMessage { get; } = "An entity with the specified id is already present.";
 
-#pragma warning disable IDE0051
-        [JsonConstructor]
-        private EntityAlreadyPresentDispatchResult(
-            SerializableType? entityType,
-            string id,
-            string message,
-            IReadOnlyDictionary<string, object?> resultData)
-            : base(message, resultData)
-        {
-            _entityType = entityType;
-            Id = id;
-        }
-#pragma warning restore IDE0051
+        #region C'tor
 
         /// <summary>
         /// Creates a new instance of the <see cref="EntityAlreadyPresentDispatchResult"/> type.
@@ -98,6 +87,46 @@ namespace AI4E.Messaging
             _entityType = new SerializableType(entityType.GetUnqualifiedTypeName(), entityType);
         }
 
+        #endregion
+
+        #region ISerializable
+
+        protected EntityAlreadyPresentDispatchResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext)
+        {
+            SerializableType? entityType;
+            string? id;
+
+            try
+            {
+#pragma warning disable CA1062
+                entityType = serializationInfo.GetValue(
+                    "EntityType", typeof(SerializableType?)) as SerializableType?;
+#pragma warning restore CA1062
+
+                id = serializationInfo.GetString(nameof(Id));
+            }
+            catch (InvalidCastException exc)
+            {
+                // TODO: More specific error message
+                throw new SerializationException("Cannot deserialize dispatch result.", exc);
+            }
+
+            _entityType = entityType;
+            Id = id;
+        }
+
+        protected override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+#pragma warning disable CA1062
+            info.AddValue("EntityType", _entityType, typeof(SerializableType?));
+            info.AddValue(nameof(Id), Id, typeof(string));
+#pragma warning restore CA1062
+        }
+
+        #endregion
+
         /// <summary>
         /// Gets the unqualified type-name of the resource that an id-conflict occured at.
         /// </summary>
@@ -126,8 +155,8 @@ namespace AI4E.Messaging
 
         private static string FormatDefaultMessage(Type entityType, string? id)
         {
-            if (id == null)        
-                return FormatDefaultMessage(entityType);       
+            if (id == null)
+                return FormatDefaultMessage(entityType);
 
             if (entityType == null)
                 throw new ArgumentNullException(nameof(entityType));

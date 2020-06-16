@@ -20,23 +20,17 @@
 
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace AI4E.Messaging
 {
     /// <summary>
     /// Describes the result of a message dispatch operation that failed due to an error in the storage subsystem.
     /// </summary>
+    [Serializable]
     public class StorageIssueDispatchResult : FailureDispatchResult
     {
         public static string DefaultMessage { get; } = "Unknown failure in the storage subsystem";
-
-#pragma warning disable IDE0051
-        [JsonConstructor]
-        private StorageIssueDispatchResult(string message, Exception exception, IReadOnlyDictionary<string, object?> resultData)
-            : base(message, exception, resultData)
-        { }
-#pragma warning restore IDE0051
 
         /// <summary>
         /// Creates a new instance of the <see cref="StorageIssueDispatchResult"/> type.
@@ -67,6 +61,10 @@ namespace AI4E.Messaging
         /// </exception>
         public StorageIssueDispatchResult(string message, IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
+        { }
+
+        protected StorageIssueDispatchResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext)
         { }
     }
 }

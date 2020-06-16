@@ -1,0 +1,19 @@
+﻿@page "/transmitplugina"
+<h3>TransmitPluginA</h3>
+
+<div>
+    <p>
+        <label>Str <input type="text" @bind="Str" /></label>
+        <button @onclick="TransmitAsync">Transmit</button>
+    </p>
+    @if (InProgress)
+    {
+        <p>In progress...</p>
+    }
+    else if (DispatchResult != null)
+    {
+        <p>
+            @DispatchResult
+        </p>
+    }
+</div>

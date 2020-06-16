@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 
 namespace AI4E.Messaging.Routing
 {
-    public interface IRoutingSystem : IDisposable
+    public interface IRoutingSystem : IDisposable, IAsyncDisposable
     {
         ValueTask<IRouteEndPoint?> GetEndPointAsync(
             RouteEndPointAddress endPoint,

@@ -11,8 +11,4 @@
     <Description>Utility library that implements automatic, zero configuration deep object clone.</Description>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.1" />
-  </ItemGroup>
-
 </Project>

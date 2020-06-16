@@ -19,11 +19,11 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Messaging.MessageHandlers;
@@ -36,8 +36,11 @@ namespace AI4E.Messaging.Validation
     /// </summary>
     public static class ValidationInvoker
     {
-        private static readonly ConcurrentDictionary<Type, InvokerFactory> _factories =
-            new ConcurrentDictionary<Type, InvokerFactory>();
+        private static readonly ConditionalWeakTable<Type, InvokerFactory> _factories =
+            new ConditionalWeakTable<Type, InvokerFactory>();
+
+        private static readonly ConditionalWeakTable<Type, InvokerFactory>.CreateValueCallback _buildFactory
+            = BuildFactory; // Cache delegate for perf reasons.
 
         private static readonly Type _validationInvokerTypeDefinition = typeof(ValidationInvoker<>);
 
@@ -66,7 +69,7 @@ namespace AI4E.Messaging.Validation
 
         private static InvokerFactory GetFactory(Type messageType)
         {
-            return _factories.GetOrAdd(messageType, BuildFactory);
+            return _factories.GetValue(messageType, _buildFactory);
         }
 
         private static InvokerFactory BuildFactory(Type messageType)

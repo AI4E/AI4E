@@ -1,0 +1,22 @@
+﻿@page "/pluginA"
+
+<div>
+    This was rendered from within the plugin assembly!!
+</div>
+
+<div>
+    <p>
+        <label>Str <input type="text" @bind="Str" /></label>
+        <button @onclick="TransmitAsync">Transmit</button>
+    </p>
+    @if (InProgress)
+    {
+        <p>In progress...</p>
+    }
+    else if (DispatchResult != null)
+    {
+        <p>
+            @DispatchResult
+        </p>
+    }
+</div>

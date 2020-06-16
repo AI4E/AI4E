@@ -178,7 +178,7 @@ namespace AI4E.Messaging
         /// True if <paramref name="dispatchResult"/> is an entity-not-found result, false otherwise.
         /// </returns>
         public static bool IsEntityNotFound(
-            this IDispatchResult dispatchResult, out Type? entityType, [NotNullWhen(true)] out string? id)
+            this IDispatchResult dispatchResult, out Type? entityType, out string? id)
         {
             if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {
@@ -240,7 +240,7 @@ namespace AI4E.Messaging
         /// True if <paramref name="dispatchResult"/> is an entity-already-present result, false otherwise.
         /// </returns>
         public static bool IsEntityAlreadyPresent(
-            this IDispatchResult dispatchResult, out Type? entityType, [NotNullWhen(true)] out string? id)
+            this IDispatchResult dispatchResult, out Type? entityType, out string? id)
         {
             if (IsAggregateResult(dispatchResult, out var aggregateDispatchResult))
             {

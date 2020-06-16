@@ -22,28 +22,47 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
-using Newtonsoft.Json;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Messaging
 {
     /// <summary>
     /// Describes the result of a message dispatch operation.
     /// </summary>
-    public class DispatchResult : IDispatchResult
+    [Serializable]
+    public class DispatchResult : IDispatchResult, ISerializable
     {
-        [JsonProperty("ResultData")]
-#pragma warning disable IDE0052 // This is needed to support serialization.
         private readonly ImmutableDictionary<string, object?>? _resultData;
-#pragma warning restore IDE0052 
+        private readonly bool? _isSuccess;
 
-        private protected DispatchResult()
+        #region C'tors
+
+        private protected DispatchResult(
+            bool? isSuccess = null,
+            string? message = null,
+            IReadOnlyDictionary<string, object?>? resultData = null)
         {
-            Message = null!;
-            ResultData = null!;
+            _isSuccess = isSuccess;
+            Message = message!;
+
+            if (resultData == null)
+            {
+                ResultData = null!;
+                return;
+            }
+
+            if (!(resultData is ImmutableDictionary<string, object?> immutableData))
+            {
+                immutableData = resultData.ToImmutableDictionary();
+            }
+
+            Debug.Assert(immutableData != null);
+            _resultData = immutableData!;
+            ResultData = new DispatchResultDictionary(immutableData!);
         }
 
         /// <summary>
@@ -55,7 +74,6 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
-        [JsonConstructor]
         public DispatchResult(bool isSuccess, string message, IReadOnlyDictionary<string, object?> resultData)
         {
             if (message == null)
@@ -64,7 +82,7 @@ namespace AI4E.Messaging
             if (resultData == null)
                 throw new ArgumentNullException(nameof(resultData));
 
-            IsSuccess = isSuccess;
+            _isSuccess = isSuccess;
             Message = message;
 
             if (!(resultData is ImmutableDictionary<string, object?> immutableData))
@@ -72,9 +90,8 @@ namespace AI4E.Messaging
                 immutableData = resultData.ToImmutableDictionary();
             }
 
-            Assert(immutableData != null);
+            Debug.Assert(immutableData != null);
             _resultData = immutableData!;
-
             ResultData = new DispatchResultDictionary(immutableData!);
         }
 
@@ -88,14 +105,64 @@ namespace AI4E.Messaging
             : this(isSuccess, message, ImmutableDictionary<string, object?>.Empty)
         { }
 
+        #endregion
+
+        #region ISerializable
+
+        protected DispatchResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+        {
+            if (serializationInfo is null)
+                throw new ArgumentNullException(nameof(serializationInfo));
+
+            bool? isSuccess;
+            string? message;
+            ImmutableDictionary<string, object?>? resultData;
+
+            try
+            {
+                isSuccess = serializationInfo.GetValue(nameof(IsSuccess), typeof(bool?)) as bool?;
+                message = serializationInfo.GetString(nameof(Message));
+                resultData = serializationInfo.GetValue(
+                    nameof(ResultData), typeof(ImmutableDictionary<string, object?>))
+                    as ImmutableDictionary<string, object?>;
+            }
+            catch (InvalidCastException exc)
+            {
+                // TODO: More specific error message
+                throw new SerializationException("Cannot deserialize dispatch result.", exc);
+            }
+
+            _isSuccess = isSuccess;
+            Message = message!;
+            _resultData = resultData;
+            ResultData = (resultData != null ? new DispatchResultDictionary(resultData) : null)!;
+
+        }
+
+        protected virtual void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            if (info is null)
+                throw new ArgumentNullException(nameof(info));
+
+            info.AddValue(nameof(IsSuccess), _isSuccess, typeof(bool?));
+            info.AddValue(nameof(Message), Message);
+            info.AddValue(nameof(ResultData), _resultData, typeof(ImmutableDictionary<string, object?>));
+        }
+
+        void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            GetObjectData(info, context);
+        }
+
+        #endregion
+
         /// <inheritdoc />
-        public virtual bool IsSuccess { get; }
+        public virtual bool IsSuccess => _isSuccess.GetValueOrDefault(false);
 
         /// <inheritdoc />
         public virtual string Message { get; }
 
         /// <inheritdoc />
-        [JsonIgnore]
         public virtual IReadOnlyDictionary<string, object?> ResultData { get; }
 
         /// <inheritdoc />
@@ -173,7 +240,7 @@ namespace AI4E.Messaging
                     return false;
                 }
 
-                return _data.TryGetValue(key, out value);
+                return _data.TryGetValue(key, out value) && value != null;
             }
 
             public Enumerator GetEnumerator()

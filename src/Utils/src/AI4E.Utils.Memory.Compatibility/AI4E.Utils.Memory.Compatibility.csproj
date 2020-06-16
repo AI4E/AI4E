@@ -19,8 +19,4 @@
     <Compile Include="$(RepositorySharedPath)PrefixCodingHelper.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Update="Microsoft.Bcl.AsyncInterfaces" Version="1.1.1" />
-  </ItemGroup>
-
 </Project>

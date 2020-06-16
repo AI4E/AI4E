@@ -227,7 +227,7 @@ namespace AI4E.Storage.Domain
 
                 async ValueTask<IEntityLoadResult> LookupAccessor(object handler, object message, IServiceProvider serviceProvider, CancellationToken cancellation)
                 {
-                    object ResolveParameter(ParameterInfo parameter)
+                    object? ResolveParameter(ParameterInfo parameter)
                     {
                         if (parameter.ParameterType == typeof(IServiceProvider))
                         {

@@ -20,13 +20,14 @@
 
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace AI4E.Messaging
 {
     /// <summary>
     /// Describes the result of a message dispatch operation that failed due to a concurrency issue.
     /// </summary>
+    [Serializable]
     public sealed class ConcurrencyIssueDispatchResult : FailureDispatchResult
     {
         internal const string DefaultMessage = "A concurrency issue occured.";
@@ -51,9 +52,12 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
-        [JsonConstructor]
         public ConcurrencyIssueDispatchResult(string message, IReadOnlyDictionary<string, object?> resultData)
             : base(message, resultData)
+        { }
+
+        private ConcurrencyIssueDispatchResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext)
         { }
     }
 }

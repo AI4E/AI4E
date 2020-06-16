@@ -20,22 +20,24 @@
 
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace AI4E.Messaging.Validation
 {
     /// <summary>
     /// Represents a validation result.
     /// </summary>
-    public readonly struct ValidationResult : IEquatable<ValidationResult>
+    [Serializable]
+    public readonly struct ValidationResult : IEquatable<ValidationResult>, ISerializable
     {
+        #region C'tor
+
         /// <summary>
         /// Creates a new instance of the <see cref="ValidationResult"/> type.
         /// </summary>
         /// <param name="member">The member whose validation failed.</param>
         /// <param name="message">A message describing the validation failure.</param>
         /// <exception cref="ArgumentNullException">Thrown if either <paramref name="member"/> or <paramref name="message"/> is <c>null</c>.</exception>
-        [JsonConstructor]
         public ValidationResult(string member, string message)
         {
             if (member == null)
@@ -61,6 +63,50 @@ namespace AI4E.Messaging.Validation
             Member = null;
             Message = message;
         }
+
+        #endregion
+
+        #region ISerializable
+
+        private ValidationResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+        {
+            if (serializationInfo is null)
+                throw new ArgumentNullException(nameof(serializationInfo));
+
+            string? member;
+            string? message;
+
+            try
+            {
+                member = serializationInfo.GetString(nameof(Member));
+                message = serializationInfo.GetString(nameof(Message));
+            }
+            catch (InvalidCastException exc)
+            {
+                // TODO: More specific error message
+                throw new SerializationException("Cannot deserialize dispatch result.", exc);
+            }
+
+            if (message is null)
+            {
+                // TODO: More specific error message
+                throw new SerializationException("Cannot deserialize dispatch result.");
+            }
+
+            Member = member;
+            Message = message;
+        }
+
+        void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            if (info is null)
+                throw new ArgumentNullException(nameof(info));
+
+            info.AddValue(nameof(Member), Member);
+            info.AddValue(nameof(Message), Message);
+        }
+
+        #endregion
 
         /// <summary>
         /// Gets the member whose validation failed or null if no member is specified.

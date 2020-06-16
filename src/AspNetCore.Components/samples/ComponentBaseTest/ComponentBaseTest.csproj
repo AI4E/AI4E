@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\AI4E.AspNetCore.Components\AI4E.AspNetCore.Components.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.AspNetCore.Components\AI4E.AspNetCore.Components.csproj" />
   </ItemGroup>
 
 </Project>

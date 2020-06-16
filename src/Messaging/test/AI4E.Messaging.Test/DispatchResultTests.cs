@@ -20,13 +20,13 @@
 
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using AI4E.Internal;
+using AI4E.Messaging.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Messaging
 {
     [TestClass]
-    public class DispatchResultTests
+    public class DispatchResultTests : DispatchResultsTestsBase
     {
         [TestMethod]
         public void CreateTest()
@@ -199,25 +199,6 @@ namespace AI4E.Messaging
 
             var dispatchResult = new DispatchResult(true, "DispatchResultMessage", resultData);
             var deserializedResult = Serializer.Roundtrip(dispatchResult);
-
-            Assert.IsTrue(deserializedResult.IsSuccess);
-            Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);
-            Assert.AreEqual(2, deserializedResult.ResultData.Count);
-            Assert.AreEqual("def", deserializedResult.ResultData["abc"]);
-            Assert.AreEqual(1234L, deserializedResult.ResultData["xyz"]);
-        }
-
-        [TestMethod]
-        public void SerializeUnknownTypeRoundtripTest()
-        {
-            var resultData = new Dictionary<string, object>
-            {
-                ["abc"] = "def",
-                ["xyz"] = 1234L
-            };
-
-            var dispatchResult = new DispatchResult(true, "DispatchResultMessage", resultData);
-            var deserializedResult = Serializer.RoundtripUnknownType(dispatchResult);
 
             Assert.IsTrue(deserializedResult.IsSuccess);
             Assert.AreEqual("DispatchResultMessage", deserializedResult.Message);

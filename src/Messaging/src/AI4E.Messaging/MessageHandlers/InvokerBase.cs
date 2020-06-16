@@ -106,7 +106,7 @@ namespace AI4E.Messaging.MessageHandlers
 
                 ValueTask<IDispatchResult> InvokeProcessor(DispatchDataDictionary<TMessage> nextDispatchData)
                 {
-                    var contextDescriptor = MessageProcessorContextDescriptor.GetDescriptor(processor.GetType());
+                    var contextDescriptor = MessageProcessorContextDescriptor.GetDescriptor(processor!.GetType());
 
                     if (contextDescriptor.CanSetContext)
                     {

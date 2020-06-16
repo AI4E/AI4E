@@ -19,27 +19,31 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
 using System.Text;
-using Newtonsoft.Json;
 
 namespace AI4E.Messaging
 {
     /// <summary>
     /// Describes the result of a succesful message dispatch operation.
     /// </summary>
+    [Serializable]
     public class SuccessDispatchResult : DispatchResult
     {
         public static string DefaultMessage { get; } = "Success";
 
         #region Factory methods
 
-        private static readonly ConcurrentDictionary<Type, Func<object, string, IReadOnlyDictionary<string, object>, SuccessDispatchResult>> _cache
-            = new ConcurrentDictionary<Type, Func<object, string, IReadOnlyDictionary<string, object>, SuccessDispatchResult>>();
+        private static readonly ConditionalWeakTable<Type, Func<object, string, IReadOnlyDictionary<string, object>, SuccessDispatchResult>>.CreateValueCallback _buildDispatchResultBuilder
+            = BuildDispatchResultBuilder; // Cache delegate for perf reasons.
+
+        private static readonly ConditionalWeakTable<Type, Func<object, string, IReadOnlyDictionary<string, object>, SuccessDispatchResult>> _cache
+            = new ConditionalWeakTable<Type, Func<object, string, IReadOnlyDictionary<string, object>, SuccessDispatchResult>>();
 
         private static readonly Type _successDispatchResultTypeDefinition = typeof(SuccessDispatchResult<>);
 
@@ -92,7 +96,7 @@ namespace AI4E.Messaging
             if (!resultType.IsAssignableFrom(result.GetType()))
                 throw new ArgumentException("The result type must be asignable to the type specified.");
 
-            var builder = _cache.GetOrAdd(resultType, BuildDispatchResultBuilder);
+            var builder = _cache.GetValue(resultType, _buildDispatchResultBuilder);
             return builder(result, message, resultData);
         }
 
@@ -199,7 +203,6 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
-        [JsonConstructor]
         public SuccessDispatchResult(string message, IReadOnlyDictionary<string, object?> resultData)
             : base(true, message, resultData) { }
 
@@ -217,10 +220,12 @@ namespace AI4E.Messaging
         public SuccessDispatchResult()
             : this(DefaultMessage) { }
 
+        protected SuccessDispatchResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext) { }
+
         #endregion
 
         /// <inheritdoc />
-        [JsonIgnore]
         public override bool IsSuccess => true;
     }
 
@@ -228,8 +233,11 @@ namespace AI4E.Messaging
     /// Describes the result of a succesful message dispatch operation with a result value.
     /// </summary>
     /// <typeparam name="TResult">The type of result value.</typeparam>
+    [Serializable]
     public class SuccessDispatchResult<TResult> : SuccessDispatchResult, IDispatchResult<TResult>
     {
+        #region C'tors
+
         /// <summary>
         /// Creates a new instance of the <see cref="SuccessDispatchResult{TResult}"/> type.
         /// </summary>
@@ -237,10 +245,11 @@ namespace AI4E.Messaging
         /// <param name="message">A message describing the message dispatch result.</param>
         /// <param name="resultData">A collection of key value pairs that represent additional result data.</param>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if any of <paramref name="result"/>, <paramref name="message"/> or <paramref name="resultData"/> is <c>null</c>.
+        /// Thrown if any of <paramref name="result"/>, <paramref name="message"/> 
+        /// or <paramref name="resultData"/> is <c>null</c>.
         /// </exception>
-        [JsonConstructor]
-        public SuccessDispatchResult(TResult result, string message, IReadOnlyDictionary<string, object?> resultData) : base(message, resultData)
+        public SuccessDispatchResult(TResult result, string message, IReadOnlyDictionary<string, object?> resultData)
+            : base(message, resultData)
         {
             if (result == null)
                 throw new ArgumentNullException(nameof(result));
@@ -271,6 +280,46 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="result"/> is <c>null</c>.</exception>
         public SuccessDispatchResult(TResult result) : this(result, DefaultMessage) { }
 
+        #endregion
+
+        #region ISerializable
+
+        protected SuccessDispatchResult(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext)
+        {
+            object? result;
+
+            try
+            {
+#pragma warning disable CA1062
+                result = serializationInfo.GetValue(nameof(Result), typeof(TResult));
+#pragma warning restore CA1062
+            }
+            catch (InvalidCastException exc)
+            {
+                // TODO: More specific error message
+                throw new SerializationException("Cannot deserialize dispatch result.", exc);
+            }
+
+            if (result is null)
+            {
+                // TODO: More specific error message
+                throw new SerializationException("Cannot deserialize dispatch result.");
+            }
+
+            Result = (TResult)result;
+        }
+
+        protected override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+#pragma warning disable CA1062
+            info.AddValue(nameof(Result), Result, typeof(TResult));
+#pragma warning restore CA1062
+        }
+
+        #endregion
+
         /// <inheritdoc />
         public TResult Result { get; }
 
@@ -279,7 +328,9 @@ namespace AI4E.Messaging
         {
             base.FormatString(stringBuilder);
 
+#pragma warning disable CA1062
             stringBuilder.Append("[Result: ");
+#pragma warning restore CA1062
             stringBuilder.Append(Result!.ToString());
             stringBuilder.Append("]");
         }

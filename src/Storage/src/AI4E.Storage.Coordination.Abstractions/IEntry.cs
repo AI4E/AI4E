@@ -20,11 +20,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Coordination
 {
@@ -83,18 +82,17 @@ namespace AI4E.Storage.Coordination
     {
         public static IAsyncEnumerable<IEntry> GetChildrenEntries(this IEntry entry)
         {
-            if (entry == null)
-                throw new ArgumentNullException(nameof(entry));
+            if (entry is null)
+                throw new NullReferenceException();
 
             return new ChildrenEnumerable(entry);
         }
 
         public static async ValueTask<IEnumerable<IEntry>> GetChildrenEntriesAsync(this IEntry entry, CancellationToken cancellation)
         {
-            if (entry == null)
-                throw new ArgumentNullException(nameof(entry));
-
+#pragma warning disable CA1062
             var result = new List<IEntry>(capacity: entry.Children.Count);
+#pragma warning restore CA1062
 
             for (var i = 0; i < entry.Children.Count; i++)
             {
@@ -114,15 +112,16 @@ namespace AI4E.Storage.Coordination
 
         public static ValueTask<IEntry> GetParentAsync(this IEntry entry, CancellationToken cancellation)
         {
-            if (entry == null)
-                throw new ArgumentNullException(nameof(entry));
-
+#pragma warning disable CA1062
             return entry.CoordinationManager.GetAsync(entry.ParentPath, cancellation);
+#pragma warning restore CA1062
         }
 
         public static Stream OpenStream(this IEntry entry)
         {
-            return new ReadOnlyStream(entry.Value);
+#pragma warning disable CA1062
+            return entry.Value.AsStream();
+#pragma warning restore CA1062
         }
 
         private sealed class ChildrenEnumerable : IAsyncEnumerable<IEntry>
@@ -131,7 +130,7 @@ namespace AI4E.Storage.Coordination
 
             public ChildrenEnumerable(IEntry entry)
             {
-                Assert(entry != null);
+                Debug.Assert(entry != null);
 
                 _entry = entry;
             }
@@ -150,7 +149,7 @@ namespace AI4E.Storage.Coordination
 
             public ChildrenEnumerator(IEntry entry, CancellationToken cancellation)
             {
-                Assert(entry != null);
+                Debug.Assert(entry != null);
 
                 _entry = entry;
                 _cancellation = cancellation;

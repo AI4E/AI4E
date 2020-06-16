@@ -5,12 +5,9 @@
 
   <Import Project="$(_ParentDirectoryBuildPropsPath)" Condition="Exists('$(_ParentDirectoryBuildPropsPath)')"/>
 
-  <PropertyGroup Condition="!($(MSBuildProjectName.EndsWith('Test')))">
+  <PropertyGroup Condition="!($(MSBuildProjectName.EndsWith('Test'))) AND '$(TargetFramework)' != 'netstandard2.0'">
       <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-  </PropertyGroup>
   
 </Project>

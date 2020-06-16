@@ -123,7 +123,9 @@ namespace AI4E.Storage.MongoDB
         [MaybeNull]
         public T Current
         {
+#pragma warning disable CS8766 // TODO: Can we simply ignore this?
             get
+#pragma warning restore CS8766
             {
                 if (_isDisposed)
                     throw new ObjectDisposedException(GetType().FullName);

@@ -23,8 +23,4 @@
     <Compile Include="$(RepositorySharedPath)DataPropertyHelper.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.1" />
-  </ItemGroup>
-
 </Project>

@@ -1,4 +1,4 @@
-﻿/* License
+/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
@@ -21,7 +21,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Utils.Async;
+using AI4E.Storage.Coordination.Session;
 
 namespace AI4E.Storage.Coordination
 {
@@ -70,7 +70,7 @@ namespace AI4E.Storage.Coordination
         /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operatio or <see cref="CancellationToken.None"/>.</param>
         /// <returns>
         /// A task representing the asynchronous operation.
-        /// When evaluated, the tasks result contains the coordination entry or null if no matching entry exists.
+        /// When evaluated, the tasks result contains the coordination entry or <c>null</c> if no matching entry exists.
         /// </returns>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
         /// <exception cref="SessionTerminatedException">Thrown if the session is terminated.</exception>
@@ -119,7 +119,7 @@ namespace AI4E.Storage.Coordination
         /// When evaluated, the tasks result contains the current session.
         /// </returns>
         /// <exception cref="OperationCanceledException">Thrown if the operation was canceled.</exception>
-        ValueTask<Session> GetSessionAsync(CancellationToken cancellation = default);
+        ValueTask<SessionIdentifier> GetSessionAsync(CancellationToken cancellation = default);
     }
 
     /// <summary>

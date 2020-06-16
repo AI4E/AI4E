@@ -8,10 +8,6 @@
   <ItemGroup>
     <Compile Include="..\Shared\EntityValidationHelper.cs" Link="Shared\EntityValidationHelper.cs" />
   </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.1" />
-  </ItemGroup>
   
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />

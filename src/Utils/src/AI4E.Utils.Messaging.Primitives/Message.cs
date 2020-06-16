@@ -74,6 +74,16 @@ namespace AI4E.Utils.Messaging.Primitives
             return new Message(_frames.RemoveAt(_frames.Count - 1));
         }
 
+        public MessageFrame PeekFrame()
+        {
+            if (_frames == null || _frames.Count == 0)
+            {
+                return default;
+            }
+
+            return _frames[_frames.Count - 1];
+        }
+
         public static Message ReadFromMemory(in ReadOnlySpan<byte> memory)
         {
             var framesLength = LengthCodeHelper.Read7BitEncodedInt(memory, out var headerLength);
@@ -212,6 +222,32 @@ namespace AI4E.Utils.Messaging.Primitives
         public static bool operator !=(in Message left, in Message right)
         {
             return !left.Equals(right);
+        }
+
+        public static Message FromFrames(params MessageFrame[] frames)
+        {
+            return FromFrames(frames as IEnumerable<MessageFrame>);
+        }
+
+        public static Message FromFrames(IEnumerable<MessageFrame> frames)
+        {
+            if (frames is null)
+                throw new ArgumentNullException(nameof(frames));
+
+            return new Message(frames);
+        }
+
+        public static Message FromFrames(params ReadOnlyMemory<byte>[] frames)
+        {
+            return FromFrames(frames as IEnumerable<ReadOnlyMemory<byte>>);
+        }
+
+        public static Message FromFrames(IEnumerable<ReadOnlyMemory<byte>> frames)
+        {
+            if (frames is null)
+                throw new ArgumentNullException(nameof(frames));
+
+            return new Message(frames.Select(p => new MessageFrame(p.Span)));
         }
     }
 }

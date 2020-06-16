@@ -28,7 +28,7 @@ namespace AI4E.Messaging
     /// <summary>
     /// Represents a message dispatcher that dispatches messages to message handlers.
     /// </summary>
-    public interface IMessageDispatcher : IDisposable
+    public interface IMessageDispatcher : IDisposable, IAsyncDisposable
     {
         /// <summary>
         /// Gets the <see cref="IMessageHandlerProvider"/> that is used to load (local) message handlers.

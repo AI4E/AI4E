@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <Target Name="ReplaceComponentFactory" AfterTargets="PostBuildEvent">
+    <Exec Command="dotnet &quot;$(TargetDir)AI4E.AspNetCore.Components.Build.dll&quot; -- --dll-file-path &quot;$(TargetDir)Microsoft.AspNetCore.Components.dll&quot;"/>
+  </Target>
+
+</Project>
+
