@@ -8,10 +8,6 @@
   <PropertyGroup Condition="!($(MSBuildProjectName.EndsWith('Test')))">
     <IsPackable>true</IsPackable>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-  </PropertyGroup>
   
   <PropertyGroup Condition="!($(MSBuildProjectName.EndsWith('Test'))) AND '$(Configuration)' == 'Release'">
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

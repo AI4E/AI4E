@@ -8,9 +8,5 @@
   <PropertyGroup Condition="!($(MSBuildProjectName.EndsWith('Test')))">
       <Nullable>enable</Nullable>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-  </PropertyGroup>
   
 </Project>

@@ -9,10 +9,6 @@
     <IsPackable>true</IsPackable>
       <!--<Nullable>enable</Nullable>-->
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-  </PropertyGroup>
   
   <PropertyGroup Condition="!($(MSBuildProjectName.EndsWith('Test'))) AND '$(Configuration)' == 'Release'">
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

@@ -26,7 +26,7 @@
  
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="dotnet build &quot;$(SolutionDir)test\AI4E.AspNetCore.Components.Build.Test.TestTypes&quot; -o &quot;$(OutDir)AI4E.AspNetCore.Components.Build.Test.TestTypes&quot;" />
+    <Exec Command="dotnet build &quot;$(ProjectDir)\..\..\test\AI4E.AspNetCore.Components.Build.Test.TestTypes&quot; -o &quot;$(OutDir)AI4E.AspNetCore.Components.Build.Test.TestTypes&quot;" />
   </Target>
 
 </Project>

@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "CreateCombinedSolution": {
+      "commandName": "Project",
+      "commandLineArgs": "--source-path src --solution-name AI4E --solution-dir build\\slns\\",
+      "workingDirectory": "C:\\Users\\at\\Source\\Repos\\AI4E\\master"
+    }
+  }
+}
