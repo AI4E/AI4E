@@ -1,29 +1,37 @@
 ﻿using System;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Storage.Specification;
 using AI4E.Storage.Specification.TestTypes;
-using AI4E.Utils;
 using Mongo2Go;
 using MongoDB.Driver;
 using Xunit;
 
 namespace AI4E.Storage.MongoDB.Test
 {
-    public class MongoDatabaseScopeTest : DatabaseScopeSpecification, IDisposable
+    public class MongoDatabaseScopeTest : DatabaseScopeSpecification
     {
-        private readonly MongoDbRunner _databaseRunner;
+        private static readonly MongoDbRunner _databaseRunner = CreateMongoDbRunner();
+
+        private static MongoDbRunner CreateMongoDbRunner()
+        {
+            var databaseRunner = MongoDbRunner.Start(
+                singleNodeReplSet: true, 
+                additionalMongodArguments: "--setParameter \"transactionLifetimeLimitSeconds=5\"");
+            var databaseClient = new MongoClient(databaseRunner.ConnectionString);
+
+            // Workaround for https://github.com/Mongo2Go/Mongo2Go/issues/89
+            databaseClient.EnsureReplicationSetReady();
+            return databaseRunner;
+        }
+
         private readonly MongoClient _databaseClient;
 
         public MongoDatabaseScopeTest()
         {
-            _databaseRunner = MongoDbRunner.Start(singleNodeReplSet: true, additionalMongodArguments: "--setParameter \"transactionLifetimeLimitSeconds=5\"");
             _databaseClient = new MongoClient(_databaseRunner.ConnectionString);
-        }
-
-        public void Dispose()
-        {
-            _databaseRunner.Dispose();
         }
 
         private async Task AssertCollectionsExistsAsync(MongoDatabase database)
@@ -33,12 +41,20 @@ namespace AI4E.Storage.MongoDB.Test
             _ = await database.GetOneAsync<TestEntry>();
         }
 
+        private const string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        private static readonly ThreadLocal<Random> random = new ThreadLocal<Random>(() => new Random());
+
         private MongoDatabase BuildMongoDatabase()
         {
-            // Workaround for https://github.com/Mongo2Go/Mongo2Go/issues/89
-            _databaseClient.EnsureReplicationSetReady();
+            var databaseName = new string(default, count: 32);
+            var databaseNameMem = MemoryMarshal.AsMemory(databaseName.AsMemory());
 
-            return new MongoDatabase(_databaseClient.GetDatabase(SGuid.NewGuid().ToString()));
+            for (var i = 0; i < databaseNameMem.Length; i++)
+            {
+                databaseNameMem.Span[i] = chars[random.Value.Next(chars.Length)];
+            }
+
+            return new MongoDatabase(_databaseClient.GetDatabase(databaseName));
         }
 
         protected override async Task<IDatabase> BuildDatabaseAsync()
