@@ -20,6 +20,6 @@ jobs:
     - name: Build on windows
       if: runner.os == 'Windows'
       run: ./build.ps1
-    -name: Build on Unix-oids
+    - name: Build on Unix-oids
       if: runner.os != 'Windows'
       run: ./build.sh
