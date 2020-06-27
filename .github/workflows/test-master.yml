@@ -1,0 +1,26 @@
+name: Test master
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        solution: [Utils, Storage, Modularity, Messaging, Domain, AspNetCore, AspNetCore.Components]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.301
+    - name: Install dependencies
+      run: dotnet restore ./src/${{ matrix.solution }}/AI4E.${{ matrix.solution }}.sln
+    - name: Build
+      run: dotnet build ./src/${{ matrix.solution }}/AI4E.${{ matrix.solution }}.sln --configuration Release --no-restore
+    - name: Test    
+      run: dotnet test ./src/${{ matrix.solution }}/AI4E.${{ matrix.solution }}.sln --no-restore --verbosity normal

@@ -14,4 +14,4 @@ dotnet publish --no-restore -c Release
 # Switch back to the original directory
 Pop-Location
 
-.\artifacts\bin\CreateCombinedSolution\Release\netcoreapp3.1\publish\CreateCombinedSolution.exe --source-path $sourcePath --solution-name $solutionName --solution-dir "$solutionPath"
+dotnet ./artifacts/bin/CreateCombinedSolution/Release/netcoreapp3.1/publish/CreateCombinedSolution.dll --source-path $sourcePath --solution-name $solutionName --solution-dir "$solutionPath"
