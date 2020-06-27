@@ -10,12 +10,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest]
+        os: [macos-latest, windows-latest, ubuntu-latest]
     steps:
     - uses: actions/checkout@v2
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 3.1.101
-    - name: Build
+        dotnet-version: 3.1.301
+    - name: Build on windows
+      if: startsWith(matrix.os, 'windows')
       run: ./build.ps1
+    -name: Build on Unix-oids
+      if: ! startsWith(matrix.os, 'windows')
+      run: ./build.sh
