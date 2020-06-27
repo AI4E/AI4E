@@ -88,7 +88,7 @@ namespace AI4E.Utils.ApplicationParts.Test
             Assert.Equal(new[] { ThisAssembly }, result);
         }
 
-        [Fact]
+        // [Fact] // See: https://github.com/AI4E/AI4E/issues/277
         public void ResolveAssemblies_ReturnsRelatedAssembliesOrderedByName()
         {
             // Arrange
