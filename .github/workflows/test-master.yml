@@ -19,8 +19,11 @@ jobs:
       with:
         dotnet-version: 3.1.101
     - name: Install dependencies
-      run: dotnet restore src\${{ matrix.solution }}\AI4E.${{ matrix.solution }}.sln
+      env: solution: ${{ matrix.solution }}
+      run: dotnet restore src\$solution\AI4E.$solution.sln
     - name: Build
-      run: dotnet build src\${{ matrix.solution }}\AI4E.${{ matrix.solution }}.sln --configuration Release --no-restore
+      env: solution: ${{ matrix.solution }}
+      run: dotnet build src\$solution\AI4E.$solution.sln --configuration Release --no-restore
     - name: Test
-      run: dotnet test src\${{ matrix.solution }}\AI4E.${{ matrix.solution }}.sln --no-restore --verbosity normal
+      env: solution: ${{ matrix.solution }}
+      run: dotnet test src\$solution\AI4E.$solution.sln --no-restore --verbosity normal
