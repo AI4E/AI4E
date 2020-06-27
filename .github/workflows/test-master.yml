@@ -1,26 +1,11 @@
-name: Build and test master
+name: Test master
 
 on:
   push:
     branches: [ master ]
   pull_request:
     branches: [ master ]
-
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest]
-    steps:
-    - uses: actions/checkout@v2
-    - name: Setup .NET Core
-        uses: actions/setup-dotnet@v1
-        with:
-        dotnet-version: 3.1.101
-    - name: Build
-        run: .\build.ps1
-
   test:
     runs-on: ${{ matrix.os }}
     strategy:
