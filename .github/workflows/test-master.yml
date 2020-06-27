@@ -8,8 +8,6 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
-    env:
-        SOLUTION: ${{ matrix.solution }}
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
@@ -21,8 +19,8 @@ jobs:
       with:
         dotnet-version: 3.1.101
     - name: Install dependencies
-      run: dotnet restore src\${SOLUTION}\AI4E.$SOLUTION.sln
+      run: dotnet restore src\${{ matrix.solution }}\AI4E.${{ matrix.solution }}.sln
     - name: Build
-      run: dotnet build src\${SOLUTION}\AI4E.${SOLUTION}.sln --configuration Release --no-restore
+      run: dotnet build src\${{ matrix.solution }}\AI4E.${{ matrix.solution }}.sln --configuration Release --no-restore
     - name: Test    
-      run: dotnet test src\${SOLUTION}\AI4E.${SOLUTION}.sln --no-restore --verbosity normal
+      run: dotnet test src\${{ matrix.solution }}\AI4E.${{ matrix.solution }}.sln --no-restore --verbosity normal
