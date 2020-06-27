@@ -77,7 +77,7 @@ namespace AI4E.Storage.Coordination.Mocks
 
         public string AddressToString(TAddress address)
         {
-            throw new NotImplementedException();
+            return address.ToString();
         }
 
         public TAddress AddressFromString(string str)

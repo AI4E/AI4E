@@ -58,5 +58,10 @@ namespace AI4E.Storage.Coordination.Utils
         {
             return !left.Equals(right);
         }
+
+        public override string ToString()
+        {
+            return Address;
+        }
     }
 }

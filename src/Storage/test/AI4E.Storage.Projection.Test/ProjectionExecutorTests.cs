@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -109,6 +110,16 @@ namespace AI4E.Storage.Projection
             {
                 return AsyncEnumerable.Repeat(source.Value, 1);
             }
+
+#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
+            Type IProjection.SourceType => typeof(ProjectionSource);
+            Type IProjection.TargetType => typeof(string);
+
+            IAsyncEnumerable<object> IProjection.ProjectAsync(object source, CancellationToken cancellation)
+            {
+                return ProjectAsync(source as ProjectionSource, cancellation);
+            }
+#endif
         }
 
         private sealed class SourceProjection : IProjection<ProjectionSource, ProjectionTarget>
@@ -121,6 +132,16 @@ namespace AI4E.Storage.Projection
                     new ProjectionTarget(source)
                 }.ToAsyncEnumerable();
             }
+
+#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
+            Type IProjection.SourceType => typeof(ProjectionSource);
+            Type IProjection.TargetType => typeof(ProjectionTarget);
+
+            IAsyncEnumerable<object> IProjection.ProjectAsync(object source, CancellationToken cancellation)
+            {
+                return ProjectAsync(source as ProjectionSource, cancellation);
+            }
+#endif
         }
 
         private sealed class ObjectProjection : IProjection<object, ProjectionTarget>
@@ -129,6 +150,16 @@ namespace AI4E.Storage.Projection
             {
                 return AsyncEnumerable.Repeat(new ProjectionTarget(source as ProjectionSource), 1);
             }
+
+#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
+            Type IProjection.SourceType => typeof(object);
+            Type IProjection.TargetType => typeof(ProjectionTarget);
+
+            IAsyncEnumerable<object> IProjection.ProjectAsync(object source, CancellationToken cancellation)
+            {
+                return ProjectAsync(source as object, cancellation);
+            }
+#endif
         }
 
         private sealed class StringProjection : IProjection<string, ProjectionTarget>
@@ -137,6 +168,16 @@ namespace AI4E.Storage.Projection
             {
                 throw null;
             }
+
+#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
+            Type IProjection.SourceType => typeof(string);
+            Type IProjection.TargetType => typeof(ProjectionTarget);
+
+            IAsyncEnumerable<object> IProjection.ProjectAsync(object source, CancellationToken cancellation)
+            {
+                return ProjectAsync(source as string, cancellation);
+            }
+#endif
         }
     }
 }

@@ -26,6 +26,7 @@ using AI4E.Remoting;
 using AI4E.Remoting.Utils;
 using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Text;
 
 namespace AI4E.Storage.Coordination.Locking
 {
@@ -63,12 +64,12 @@ namespace AI4E.Storage.Coordination.Locking
 
         private static byte[] SerializeAddress(TestMessagingSystemAddress address)
         {
-            return BitConverter.GetBytes(address.RawAddress);
+            return Encoding.UTF8.GetBytes(address.RawAddress.ToString());
         }
 
         private static TestMessagingSystemAddress DeserializeAddress(byte[] bytes)
         {
-            return new TestMessagingSystemAddress(BitConverter.ToInt32(bytes));
+            return new TestMessagingSystemAddress(int.Parse(Encoding.UTF8.GetString(bytes)));
         }
 
         [TestInitialize]

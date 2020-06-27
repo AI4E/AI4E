@@ -19,6 +19,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using AI4E.Storage.Coordination.Mocks;
@@ -39,9 +40,8 @@ namespace AI4E.Storage.Coordination.Storage
         {
             var entry = CreateDummyStoredEntry();
             var builder = new StoredEntryBuilder(entry, _session1);
-
             Assert.AreEqual(entry.Key, builder.Key);
-            Assert.IsTrue(entry.ReadLocks.ToHashSet().SetEquals(builder.ReadLocks));
+            Assert.IsTrue(Enumerable.ToHashSet(entry.ReadLocks).SetEquals(builder.ReadLocks));
             Assert.AreEqual(entry.WriteLock, builder.WriteLock);
             Assert.AreEqual(entry.StorageVersion, builder.StorageVersion);
             Assert.AreEqual(entry.IsMarkedAsDeleted, builder.IsMarkedAsDeleted);
@@ -55,7 +55,7 @@ namespace AI4E.Storage.Coordination.Storage
             var builder = new StoredEntryBuilder(entry, _session1);
 
             Assert.AreEqual(entry.Key, builder.Key);
-            Assert.IsTrue(entry.ReadLocks.ToHashSet().SetEquals(builder.ReadLocks));
+            Assert.IsTrue(Enumerable.ToHashSet(entry.ReadLocks).SetEquals(builder.ReadLocks));
             Assert.AreEqual(entry.WriteLock, builder.WriteLock);
             Assert.AreEqual(entry.StorageVersion, builder.StorageVersion);
             Assert.AreEqual(entry.IsMarkedAsDeleted, builder.IsMarkedAsDeleted);
@@ -84,7 +84,7 @@ namespace AI4E.Storage.Coordination.Storage
             var created = builder.ToImmutable(reset: false);
 
             Assert.AreEqual(entry.Key, created.Key);
-            Assert.IsTrue(entry.ReadLocks.ToHashSet().SetEquals(created.ReadLocks));
+            Assert.IsTrue(Enumerable.ToHashSet(entry.ReadLocks).SetEquals(created.ReadLocks));
             Assert.AreEqual(entry.WriteLock, created.WriteLock);
             Assert.AreEqual(entry.StorageVersion, created.StorageVersion);
             Assert.AreEqual(entry.IsMarkedAsDeleted, created.IsMarkedAsDeleted);
@@ -98,7 +98,7 @@ namespace AI4E.Storage.Coordination.Storage
             var created = builder.ToImmutable(reset: false);
 
             Assert.AreEqual(entry.Key, created.Key);
-            Assert.IsTrue(entry.ReadLocks.ToHashSet().SetEquals(created.ReadLocks));
+            Assert.IsTrue(Enumerable.ToHashSet(entry.ReadLocks).SetEquals(created.ReadLocks));
             Assert.AreEqual(entry.WriteLock, created.WriteLock);
             Assert.AreEqual(entry.StorageVersion, created.StorageVersion);
             Assert.AreEqual(entry.IsMarkedAsDeleted, created.IsMarkedAsDeleted);
@@ -419,7 +419,7 @@ namespace AI4E.Storage.Coordination.Storage
             builder.AcquireReadLock();
 
             Assert.AreEqual(key, builder.Key);
-            Assert.IsTrue(builder.ReadLocks.ToHashSet().SetEquals(new[] { _session1, _session2 }));
+            Assert.IsTrue(Enumerable.ToHashSet(builder.ReadLocks).SetEquals(new[] { _session1, _session2 }));
             Assert.AreEqual(null, builder.WriteLock);
             Assert.AreEqual(1, builder.StorageVersion);
             Assert.IsFalse(builder.IsMarkedAsDeleted);

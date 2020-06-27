@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>$(NetCoreAppVersion)</TargetFramework>
+    <TargetFrameworks>$(TestFrameworkVersions)</TargetFrameworks>
     <RootNamespace>AI4E.Storage.Projection</RootNamespace>
   </PropertyGroup>
 

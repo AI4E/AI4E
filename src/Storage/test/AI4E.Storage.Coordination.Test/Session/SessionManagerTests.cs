@@ -411,7 +411,7 @@ namespace AI4E.Storage.Coordination.Session
             var entries = await SessionManager.GetSessionsAsync(cancellation: default).ToListAsync();
 
             Assert.AreEqual(3, entries.Count());
-            Assert.IsTrue(entries.ToHashSet().SetEquals(new[] { _session1, _session2, _session3 }));
+            Assert.IsTrue(Enumerable.ToHashSet(entries).SetEquals(new[] { _session1, _session2, _session3 }));
         }
 
         [TestMethod]
@@ -686,7 +686,7 @@ namespace AI4E.Storage.Coordination.Session
             var entries = await SessionManager.GetEntriesAsync(_session1, cancellation: default);
 
             Assert.AreEqual(2, entries.Count());
-            Assert.IsTrue(entries.ToHashSet().SetEquals(new[] { _entryPath1, _entryPath2 }));
+            Assert.IsTrue(Enumerable.ToHashSet(entries).SetEquals(new[] { _entryPath1, _entryPath2 }));
         }
 
         [TestMethod]
@@ -705,7 +705,7 @@ namespace AI4E.Storage.Coordination.Session
             var entries = await SessionManager.GetEntriesAsync(_session1, cancellation: default);
 
             Assert.AreEqual(2, entries.Count());
-            Assert.IsTrue(entries.ToHashSet().SetEquals(new[] { _entryPath1, _entryPath2 }));
+            Assert.IsTrue(Enumerable.ToHashSet(entries).SetEquals(new[] { _entryPath1, _entryPath2 }));
         }
 
         [TestMethod]
@@ -724,7 +724,7 @@ namespace AI4E.Storage.Coordination.Session
             var entries = await SessionManager.GetEntriesAsync(_session1, cancellation: default);
 
             Assert.AreEqual(2, entries.Count());
-            Assert.IsTrue(entries.ToHashSet().SetEquals(new[] { _entryPath1, _entryPath2 }));
+            Assert.IsTrue(Enumerable.ToHashSet(entries).SetEquals(new[] { _entryPath1, _entryPath2 }));
         }
 
         [TestMethod]
