@@ -22,4 +22,4 @@ jobs:
       run: ./build.ps1
     - name: Build on Unix-oids
       if: runner.os != 'Windows'
-      run: sudo ./build.sh
+      run: sh ./build.sh
