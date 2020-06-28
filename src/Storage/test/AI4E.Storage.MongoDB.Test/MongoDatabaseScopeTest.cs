@@ -1,8 +1,6 @@
-﻿using System;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading;
+﻿using System.Linq;
 using System.Threading.Tasks;
+using AI4E.Storage.MongoDB.Test.Utils;
 using AI4E.Storage.Specification;
 using AI4E.Storage.Specification.TestTypes;
 using Mongo2Go;
@@ -41,20 +39,9 @@ namespace AI4E.Storage.MongoDB.Test
             _ = await database.GetOneAsync<TestEntry>();
         }
 
-        private const string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        private static readonly ThreadLocal<Random> random = new ThreadLocal<Random>(() => new Random());
-
         private MongoDatabase BuildMongoDatabase()
-        {
-            var databaseName = new string(default, count: 32);
-            var databaseNameMem = MemoryMarshal.AsMemory(databaseName.AsMemory());
-
-            for (var i = 0; i < databaseNameMem.Length; i++)
-            {
-                databaseNameMem.Span[i] = chars[random.Value.Next(chars.Length)];
-            }
-
-            return new MongoDatabase(_databaseClient.GetDatabase(databaseName));
+        {     
+            return new MongoDatabase(_databaseClient.GetDatabase(DatabaseName.GenerateRandom()));
         }
 
         protected override async Task<IDatabase> BuildDatabaseAsync()

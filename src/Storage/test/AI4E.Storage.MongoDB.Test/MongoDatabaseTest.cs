@@ -1,6 +1,6 @@
 using System;
+using AI4E.Storage.MongoDB.Test.Utils;
 using AI4E.Storage.Specification;
-using AI4E.Utils;
 using Mongo2Go;
 using MongoDB.Driver;
 
@@ -24,7 +24,7 @@ namespace AI4E.Storage.MongoDB.Test
 
         protected override IDatabase BuildDatabase()
         {
-            var wrappedDatabase = _databaseClient.GetDatabase(SGuid.NewGuid().ToString());
+            var wrappedDatabase = _databaseClient.GetDatabase(DatabaseName.GenerateRandom());
             return new MongoDatabase(wrappedDatabase);
         }
     }
