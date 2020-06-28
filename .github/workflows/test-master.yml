@@ -13,15 +13,15 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-latest]
         solution: [Utils, Storage, Modularity, Messaging, Domain, AspNetCore, AspNetCore.Components]
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup .NET Core 3.1
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: 3.1.301
+    - uses: actions/checkout@v2  
     - name: Setup .NET Core 2.1
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 2.1.807
+    - name: Setup .NET Core 3.1
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.301
     - name: Install dependencies
       run: dotnet restore ./src/${{ matrix.solution }}/AI4E.${{ matrix.solution }}.sln
     - name: Build
