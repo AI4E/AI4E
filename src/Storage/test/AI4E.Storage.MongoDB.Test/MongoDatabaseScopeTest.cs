@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using AI4E.Storage.MongoDB.Test.Utils;
 using AI4E.Storage.Specification;
 using AI4E.Storage.Specification.TestTypes;
-using Mongo2Go;
 using MongoDB.Driver;
 using Xunit;
 
@@ -11,26 +10,8 @@ namespace AI4E.Storage.MongoDB.Test
 {
     public class MongoDatabaseScopeTest : DatabaseScopeSpecification
     {
-        private static readonly MongoDbRunner _databaseRunner = CreateMongoDbRunner();
+        private readonly MongoClient _databaseClient = DatabaseRunner.CreateClient();
 
-        private static MongoDbRunner CreateMongoDbRunner()
-        {
-            var databaseRunner = MongoDbRunner.Start(
-                singleNodeReplSet: true, 
-                additionalMongodArguments: "--setParameter \"transactionLifetimeLimitSeconds=5\"");
-            var databaseClient = new MongoClient(databaseRunner.ConnectionString);
-
-            // Workaround for https://github.com/Mongo2Go/Mongo2Go/issues/89
-            databaseClient.EnsureReplicationSetReady();
-            return databaseRunner;
-        }
-
-        private readonly MongoClient _databaseClient;
-
-        public MongoDatabaseScopeTest()
-        {
-            _databaseClient = new MongoClient(_databaseRunner.ConnectionString);
-        }
 
         private async Task AssertCollectionsExistsAsync(MongoDatabase database)
         {
