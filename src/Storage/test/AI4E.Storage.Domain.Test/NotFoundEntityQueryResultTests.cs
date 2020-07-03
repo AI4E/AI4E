@@ -27,7 +27,6 @@ using Xunit;
 
 namespace AI4E.Storage.Domain.Test
 {
-
     public sealed class NotFoundEntityQueryResultTests : EntityQueryResultTests<NotFoundEntityQueryResult>
     {
         #region C'tor tests

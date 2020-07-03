@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using AI4E.Utils;
 using Moq;
 using Xunit;
 
@@ -291,6 +292,9 @@ namespace AI4E.Storage.Domain.Test
             var scope = scopeMock.Object;
             var subject = Create(false, scope);
             var targetScopeMock = new Mock<IEntityQueryResultScope>();
+            targetScopeMock
+                .Setup(targetScope => targetScope.ScopeEntity(It.IsAny<object>()))
+                .Returns<object>(originalEntity => originalEntity.DeepClone());
             var targetScope = targetScopeMock.Object;
 
             // Act
