@@ -255,7 +255,7 @@ namespace AI4E.Storage.Domain
                         return entityLoadResult;
                     }
 
-                    return new NotFoundEntityQueryResult(default, loadedFromCache: false, scope: GlobalEntityQueryResultScope.Instance); // TODO: Use the correct scope
+                    return new NotFoundEntityQueryResult(default, loadedFromCache: false, scope: EntityQueryResultGlobalScope.Instance); // TODO: Use the correct scope
 
                     // TODO: We could load the metadata we need (id, concurrency-token, revision) 
                     //       with the entity-manager, if we allow the entity to be returned directly.

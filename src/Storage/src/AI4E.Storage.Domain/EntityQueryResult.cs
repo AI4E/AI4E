@@ -20,7 +20,6 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
-using AI4E.Utils;
 
 namespace AI4E.Storage.Domain
 {
@@ -544,27 +543,5 @@ namespace AI4E.Storage.Domain
         }
 
         #endregion
-    }
-
-    /// <summary>
-    /// Represents the global entity query-result scope.
-    /// </summary>
-    public sealed class GlobalEntityQueryResultScope : IEntityQueryResultScope
-    {
-        /// <summary>
-        /// Gets the singleton instance of the <see cref="GlobalEntityQueryResultScope"/> type.
-        /// </summary>
-        public static GlobalEntityQueryResultScope Instance { get; } = new GlobalEntityQueryResultScope();
-
-        private GlobalEntityQueryResultScope() { }
-
-        /// <inheritdoc/>
-        public object ScopeEntity(object originalEntity)
-        {
-            if (originalEntity is null)
-                throw new ArgumentNullException(nameof(originalEntity));
-
-            return ObjectExtension.DeepClone(originalEntity)!;
-        }
     }
 }

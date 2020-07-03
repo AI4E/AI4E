@@ -420,28 +420,6 @@ namespace AI4E.Storage.Domain
 
     partial class EntityStorage
     {
-        private sealed class EntityQueryResultScope : IEntityQueryResultScope
-        {
-            // TODO: This actually can be non thread-safe ordinary dictionaries, as the scope operation is called on the 
-            // current scope only.
-            private readonly ConditionalWeakTable<object, object> _scopedEntities;
-            private readonly ConditionalWeakTable<object, object>.CreateValueCallback _createScopedEntity;
-
-            public EntityQueryResultScope()
-            {
-                _scopedEntities = new ConditionalWeakTable<object, object>();
-                _createScopedEntity = ObjectExtension.DeepClone!;
-            }
-
-            public object ScopeEntity(object originalEntity)
-            {
-                return _scopedEntities.GetValue(originalEntity, _createScopedEntity);
-            }
-        }
-    }
-
-    partial class EntityStorage
-    {
         private sealed class DomainQueryExecutor : IDomainQueryExecutor
         {
             private readonly EntityStorage _entityStorage;

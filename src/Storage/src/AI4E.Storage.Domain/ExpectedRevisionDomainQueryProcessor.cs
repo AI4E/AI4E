@@ -42,7 +42,8 @@ namespace AI4E.Storage.Domain
             // This can never succeed. Just short circuit here.
             if (_minExpectedRevision > _maxExpectedRevision)
             {
-                return new ValueTask<IEntityLoadResult>(new UnexpectedRevisionEntityVerificationResult(entityIdentifier));
+                return new ValueTask<IEntityLoadResult>(
+                    new UnexpectedRevisionEntityVerificationResult(entityIdentifier));
             }
 
             return base.ProcessAsync(entityIdentifier, executor, cancellation);

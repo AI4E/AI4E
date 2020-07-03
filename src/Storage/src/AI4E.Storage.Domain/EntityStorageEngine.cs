@@ -241,7 +241,7 @@ namespace AI4E.Storage.Domain
                     Resources.EngineLoadingDefaultEntityIdentifier, _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
                 return new ValueTask<IEntityQueryResult>(new NotFoundEntityQueryResult(
-                    entityIdentifier, loadedFromCache: false, GlobalEntityQueryResultScope.Instance));
+                    entityIdentifier, loadedFromCache: false, EntityQueryResultGlobalScope.Instance));
             }
 
             return UncheckedLoadEntityAsync(entityIdentifier, bypassCache, cancellation);
@@ -767,7 +767,7 @@ namespace AI4E.Storage.Domain
                     if (storedEntity is null)
                     {
                         return new NotFoundEntityQueryResult(
-                            entityIdentifier, loadedFromCache: false, GlobalEntityQueryResultScope.Instance);
+                            entityIdentifier, loadedFromCache: false, EntityQueryResultGlobalScope.Instance);
                     }
 
                     return new FoundEntityQueryResult(
@@ -776,7 +776,7 @@ namespace AI4E.Storage.Domain
                         storedEntity.ConcurrencyToken, 
                         storedEntity.Revision, 
                         loadedFromCache: false, 
-                        GlobalEntityQueryResultScope.Instance);
+                        EntityQueryResultGlobalScope.Instance);
                 }
 
                 private static readonly Func<IStoredEntity, IFoundEntityQueryResult> _projectStoredEntityToLoadResult
@@ -793,7 +793,7 @@ namespace AI4E.Storage.Domain
                         storedEntity.ConcurrencyToken,
                         storedEntity.Revision,
                          loadedFromCache: false,
-                        GlobalEntityQueryResultScope.Instance);
+                        EntityQueryResultGlobalScope.Instance);
                 }
 
                 public IAsyncEnumerable<IFoundEntityQueryResult> LoadEntitiesAsync(

@@ -109,7 +109,7 @@ namespace AI4E.Storage.Domain.Tracking
                 // Unscope the load-result (= scope to the global scope)
                 if(entityLoadResult.IsScopeable<IEntityQueryResult>(out var scopeableEntityQueryResult))
                 {
-                    entityLoadResult = scopeableEntityQueryResult.AsScopedTo(GlobalEntityQueryResultScope.Instance);
+                    entityLoadResult = scopeableEntityQueryResult.AsScopedTo(EntityQueryResultGlobalScope.Instance);
                 }
 
                 if (entityLoadResult.IsFound(out var foundEntityQueryResult))
