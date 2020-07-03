@@ -240,7 +240,8 @@ namespace AI4E.Storage.Domain
                 _logger.LogWarning(
                     Resources.EngineLoadingDefaultEntityIdentifier, _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-                return new ValueTask<IEntityQueryResult>(new NotFoundEntityQueryResult(entityIdentifier));
+                return new ValueTask<IEntityQueryResult>(new NotFoundEntityQueryResult(
+                    entityIdentifier, loadedFromCache: false, GlobalEntityQueryResultScope.Instance));
             }
 
             return UncheckedLoadEntityAsync(entityIdentifier, bypassCache, cancellation);
@@ -288,7 +289,7 @@ namespace AI4E.Storage.Domain
             //       if we can store failure load result that by definition do not have revisions?
             _entities.GetOrAdd(entityIdentifier, entityLoadResult.AsCachedResult());
 
-            if (entityLoadResult.IsSuccess())
+            if (entityLoadResult.IsFound())
             {
                 _logger.LogDebug(
                     Resources.EngineLoadedEntityFromDatabase,
@@ -573,7 +574,7 @@ namespace AI4E.Storage.Domain
                     // The concurrency check failed but this may be due to
                     // - We used a cached version of the entity load result and are behind the actual entry
                     // - We have a concurrency conflict
-                    if (entityLoadResult.IsSuccess())
+                    if (entityLoadResult.IsFound())
                     {
                         // As a starter, we check the revision of our entity load result
                         var expectedRevision = entry.ExpectedRevision;
@@ -765,11 +766,17 @@ namespace AI4E.Storage.Domain
 
                     if (storedEntity is null)
                     {
-                        return new NotFoundEntityQueryResult(entityIdentifier);
+                        return new NotFoundEntityQueryResult(
+                            entityIdentifier, loadedFromCache: false, GlobalEntityQueryResultScope.Instance);
                     }
 
                     return new FoundEntityQueryResult(
-                        entityIdentifier, storedEntity.Entity!, storedEntity.ConcurrencyToken, storedEntity.Revision);
+                        entityIdentifier, 
+                        storedEntity.Entity!, 
+                        storedEntity.ConcurrencyToken, 
+                        storedEntity.Revision, 
+                        loadedFromCache: false, 
+                        GlobalEntityQueryResultScope.Instance);
                 }
 
                 private static readonly Func<IStoredEntity, IFoundEntityQueryResult> _projectStoredEntityToLoadResult
@@ -784,7 +791,9 @@ namespace AI4E.Storage.Domain
                         entityIdentifier,
                         (TEntity)storedEntity.Entity!,
                         storedEntity.ConcurrencyToken,
-                        storedEntity.Revision);
+                        storedEntity.Revision,
+                         loadedFromCache: false,
+                        GlobalEntityQueryResultScope.Instance);
                 }
 
                 public IAsyncEnumerable<IFoundEntityQueryResult> LoadEntitiesAsync(

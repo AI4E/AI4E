@@ -42,7 +42,7 @@ namespace AI4E.Storage.Domain
             // This can never succeed. Just short circuit here.
             if (_minExpectedRevision > _maxExpectedRevision)
             {
-                return new ValueTask<IEntityLoadResult>(new UnexpectedRevisionEntityLoadResult(entityIdentifier));
+                return new ValueTask<IEntityLoadResult>(new UnexpectedRevisionEntityVerificationResult(entityIdentifier));
             }
 
             return base.ProcessAsync(entityIdentifier, executor, cancellation);
@@ -50,20 +50,17 @@ namespace AI4E.Storage.Domain
 
         /// <inheritdoc />
         protected override bool MeetsCondition(
-            IEntityQueryResult entityLoadResult,
+            IEntityQueryResult entityQueryResult,
             [NotNullWhen(false)] out IEntityLoadResult? failureLoadResult)
         {
-            failureLoadResult = entityLoadResult;
+            failureLoadResult = entityQueryResult;
 
-            if (entityLoadResult is IFoundEntityQueryResult)
+            if (entityQueryResult.IsFound(out var foundEntityQueryResult))
             {
-                if (MinExpectedRevision.HasValue && entityLoadResult.Revision < MinExpectedRevision
-                    || MaxExpectedRevision.HasValue && entityLoadResult.Revision > MaxExpectedRevision)
+                if (MinExpectedRevision.HasValue && foundEntityQueryResult.Revision < MinExpectedRevision
+                    || MaxExpectedRevision.HasValue && foundEntityQueryResult.Revision > MaxExpectedRevision)
                 {
-                    failureLoadResult = new UnexpectedRevisionEntityLoadResult(
-                        entityLoadResult.EntityIdentifier,
-                        entityLoadResult.ConcurrencyToken,
-                        entityLoadResult.Revision);
+                    failureLoadResult = new UnexpectedRevisionEntityVerificationResult(foundEntityQueryResult);
 
                     return false;
                 }

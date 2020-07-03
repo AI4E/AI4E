@@ -173,6 +173,34 @@ namespace AI4E.Storage.Domain.Test
             Assert.Equal(expectedAreEqual, areEqual);
         }
 
+        [Fact]
+        public void ObjectEqualsOperationDoesNotEqualOtherTypeTest()
+        {
+            // Arrange
+            var left = new ConcurrencyToken();
+            var other = new object();
+
+            // Act
+            var areEqual = left.Equals(other);
+
+            // Assert
+            Assert.False(areEqual);
+        }
+
+        [Fact]
+        public void ObjectEqualsOperationDoesNotEqualNullTest()
+        {
+            // Arrange
+            var left = new ConcurrencyToken();
+            object other = null;
+
+            // Act
+            var areEqual = left.Equals(other);
+
+            // Assert
+            Assert.False(areEqual);
+        }
+
         public class EqualityTestData : TheoryData<ConcurrencyToken, ConcurrencyToken, bool>
         {
             public EqualityTestData()

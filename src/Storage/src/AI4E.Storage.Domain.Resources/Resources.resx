@@ -276,6 +276,9 @@
   <data name="NotMatchedExpectedRevision" xml:space="preserve">
     <value>The entity does not match the expected range of revision.</value>
   </data>
+  <data name="NotMatchedVerification" xml:space="preserve">
+    <value>The entity did not match the specified verification.</value>
+  </data>
   <data name="ProcessingEntity" xml:space="preserve">
     <value>Processing loaded entity with identifier {0}. Scope: {1}</value>
   </data>

@@ -114,6 +114,34 @@ namespace AI4E.Storage.Domain.Test
             Assert.Equal(expectedAreEqual, areEqual);
         }
 
+        [Fact]
+        public void ObjectEqualsOperationDoesNotEqualOtherTypeTest()
+        {
+            // Arrange
+            var left = new CommitAttempt();
+            var other = new object();
+
+            // Act
+            var areEqual = left.Equals(other);
+
+            // Assert
+            Assert.False(areEqual);
+        }
+
+        [Fact]
+        public void ObjectEqualsOperationDoesNotEqualNullTest()
+        {
+            // Arrange
+            var left = new CommitAttempt();
+            object other = null;
+
+            // Act
+            var areEqual = left.Equals(other);
+
+            // Assert
+            Assert.False(areEqual);
+        }
+
         [Theory]
         [ClassData(typeof(EqualityTestData))]
         public void EquatableEqualsOperationTest(CommitAttempt left, CommitAttempt right, bool expectedAreEqual)
@@ -132,10 +160,10 @@ namespace AI4E.Storage.Domain.Test
         {
             public EqualityTestData()
             {
-                var source = new CommitAttemptEntrySource();             
+                var source = new CommitAttemptEntrySource();
                 var commitAttempt0 = new CommitAttempt(source.CommitAttemptEntryCollection0);
                 var commitAttempt1 = new CommitAttempt(source.CommitAttemptEntryCollection1);
-                var commitAttempt2 = new CommitAttempt(source.CommitAttemptEntryCollection3);               
+                var commitAttempt2 = new CommitAttempt(source.CommitAttemptEntryCollection3);
                 var commitAttempt3 = new CommitAttempt(source.CommitAttemptEntryCollection4);
 
                 Add(default, default, true);

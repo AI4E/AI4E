@@ -18,33 +18,82 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
+
 namespace AI4E.Storage.Domain
 {
-    internal abstract class EntityLoadResult : IEntityLoadResult
+    /// <inheritdoc cref="IEntityLoadResult"/>
+    public abstract class EntityLoadResult : IEntityLoadResult
     {
-        protected EntityLoadResult(EntityIdentifier entityIdentifier)
+        private protected EntityLoadResult(EntityIdentifier entityIdentifier)
         {
             EntityIdentifier = entityIdentifier;
         }
 
+        /// <inheritdoc />
         public EntityIdentifier EntityIdentifier { get; }
 
+        /// <inheritdoc />
         public virtual ConcurrencyToken ConcurrencyToken => default;
 
+        /// <inheritdoc />
         public virtual long Revision => 0L;
 
+        /// <inheritdoc />
         public abstract string Reason { get; }
 
-        public virtual object? GetEntity(bool throwOnFailure)
-        {
-            if (throwOnFailure)
-            {
-                ThrowFailure();
-            }
+        #region Features
 
-            return null;
+        /// <inheritdoc cref="IEntityLoadResult.IsFound(out IFoundEntityQueryResult?)" />
+        public virtual bool IsFound(
+            [NotNullWhen(true)] out FoundEntityQueryResult? foundEntityQueryResult)
+        {
+            foundEntityQueryResult = null;
+            return false;
         }
 
-        protected virtual void ThrowFailure() { }
+        bool IEntityLoadResult.IsFound([NotNullWhen(true)] out IFoundEntityQueryResult? foundEntityQueryResult)
+        {
+            foundEntityQueryResult = null;
+            return IsFound(
+                out Unsafe.As<IFoundEntityQueryResult, FoundEntityQueryResult>(ref foundEntityQueryResult!)!);
+        }
+
+        /// <inheritdoc cref="IEntityLoadResult.IsVerificationFailed(out IEntityVerificationResult?)" />
+        public virtual bool IsVerificationFailed(
+            [NotNullWhen(true)] out EntityVerificationResult? verificationEntityResult)
+        {
+            verificationEntityResult = null;
+            return false;
+        }
+
+        bool IEntityLoadResult.IsVerificationFailed(
+            [NotNullWhen(true)] out IEntityVerificationResult? verificationEntityResult)
+        {
+            verificationEntityResult = null;
+            return IsVerificationFailed(
+                out Unsafe.As<IEntityVerificationResult, EntityVerificationResult>(ref verificationEntityResult!)!);
+        }
+
+        /// <inheritdoc cref="IEntityLoadResult.IsScopeable{TQueryResult}(out IScopeableEntityQueryResult{TQueryResult}?)" />
+        public virtual bool IsScopeable<TQueryResult>(
+            [NotNullWhen(true)] out IScopeableEntityQueryResult<TQueryResult>? scopeableEntityQueryResult)
+            where TQueryResult : class, IEntityQueryResult
+        {
+            scopeableEntityQueryResult = null;
+            return false;
+        }
+
+        /// <inheritdoc cref="IEntityLoadResult.IsTrackable{TLoadResult}(out ITrackableEntityLoadResult{TLoadResult}?)" />
+        public virtual bool IsTrackable<TLoadResult>(
+            [NotNullWhen(true)] out ITrackableEntityLoadResult<TLoadResult>? trackableEntityLoadResult)
+            where TLoadResult : class, IEntityLoadResult
+        {
+            trackableEntityLoadResult = null;
+            return false;
+        }
+
+        #endregion
     }
 }

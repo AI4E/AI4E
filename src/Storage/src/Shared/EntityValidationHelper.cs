@@ -19,14 +19,25 @@
  */
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace AI4E.Storage.Domain
 {
     internal static class EntityValidationHelper
     {
-        public static void Validate(Type entityType, object entity)
+        public static void Validate([NotNull] Type? entityType, [NotNull] object? entity, bool validateEntityType = true)
         {
-            Validate(entityType);
+            if (validateEntityType)
+            {
+                Validate(entityType);
+            }
+            else if (entityType is null)
+            {
+                throw new ArgumentNullException(nameof(entityType));
+            }
+
+            if (entity is null)
+                throw new ArgumentNullException(nameof(entity));
 
             if (!entityType.IsAssignableFrom(entity.GetType()))
                 throw new ArgumentException(Resources.EntityMustBeAssignableToEntityType, nameof(entity));
@@ -34,8 +45,11 @@ namespace AI4E.Storage.Domain
             Validate(entity);
         }
 
-        public static void Validate(object entity)
+        public static void Validate([NotNull] object? entity)
         {
+            if (entity is null)
+                throw new ArgumentNullException(nameof(entity));
+
             if (entity.GetType().IsDelegate())
                 throw new ArgumentException(Resources.ArgumentMustNotBeADelegate, nameof(entity));
 
@@ -43,8 +57,11 @@ namespace AI4E.Storage.Domain
                 throw new ArgumentException(Resources.ArgumentMustNotBeAValueType, nameof(entity));
         }
 
-        public static void Validate(Type entityType)
+        public static void Validate([NotNull] Type? entityType)
         {
+            if (entityType is null)
+                throw new ArgumentNullException(nameof(entityType));
+
             if (entityType.IsDelegate())
                 throw new ArgumentException(Resources.ArgumentMustNotSpecifyDelegateType, nameof(entityType));
 

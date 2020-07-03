@@ -175,6 +175,34 @@ namespace AI4E.Storage.Domain.Test
             Assert.Equal(expectedAreEqual, areEqual);
         }
 
+        [Fact]
+        public void ObjectEqualsOperationDoesNotEqualOtherTypeTest()
+        {
+            // Arrange
+            var left = new CommitAttemptEntryCollection();
+            var other = new object();
+
+            // Act
+            var areEqual = left.Equals(other);
+
+            // Assert
+            Assert.False(areEqual);
+        }
+
+        [Fact]
+        public void ObjectEqualsOperationDoesNotEqualNullTest()
+        {
+            // Arrange
+            var left = new CommitAttemptEntryCollection();
+            object other = null;
+
+            // Act
+            var areEqual = left.Equals(other);
+
+            // Assert
+            Assert.False(areEqual);
+        }
+
         [Theory]
         [ClassData(typeof(EqualityTestData))]
         public void EquatableEqualsOperationTest(

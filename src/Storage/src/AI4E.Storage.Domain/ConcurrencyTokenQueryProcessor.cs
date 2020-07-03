@@ -29,16 +29,16 @@ namespace AI4E.Storage.Domain
     {
         /// <inheritdoc />
         protected override bool MeetsCondition(
-            IEntityQueryResult entityLoadResult,
+            IEntityQueryResult entityQueryResult,
             [NotNullWhen(false)] out IEntityLoadResult? failureLoadResult)
         {
-            failureLoadResult = entityLoadResult;
+            failureLoadResult = entityQueryResult;
 
-            if (entityLoadResult is IFoundEntityQueryResult)
+            if (entityQueryResult.IsFound(out var foundEntityQueryResult))
             {
-                if (!Expected.IsDefault && Expected != entityLoadResult.ConcurrencyToken)
+                if (!Expected.IsDefault && Expected != foundEntityQueryResult.ConcurrencyToken)
                 {
-                    failureLoadResult = new ConcurrencyIssueEntityLoadResult(entityLoadResult.EntityIdentifier);
+                    failureLoadResult = new ConcurrencyIssueEntityVerificationResult(foundEntityQueryResult);
                     return false;
                 }
 

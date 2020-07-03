@@ -22,16 +22,23 @@ namespace AI4E.Storage.Domain
 {
     internal readonly struct ScopeableEntity
     {
+        private readonly IEntityQueryResultScope _owningScope;
         private readonly object _originalEntity;
 
-        public ScopeableEntity(object originalEntity)
+        public ScopeableEntity(IEntityQueryResultScope owningScope, object originalEntity)
         {
+            _owningScope = owningScope;
             _originalEntity = originalEntity;
         }
 
-        public object GetEntity(IEntityQueryResultScope? scope)
+        public object GetEntity(IEntityQueryResultScope scope)
         {
-            return scope is null ? _originalEntity : scope.ScopeEntity(_originalEntity);
+            if (scope == _owningScope)
+            {
+                return _originalEntity;
+            }
+
+            return scope.ScopeEntity(_originalEntity);
         }
     }
 }

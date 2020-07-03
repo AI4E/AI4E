@@ -24,35 +24,30 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Domain.Tracking
 {
     /// <summary>
     /// Represents a unit of work that tracks entities and implements an identity map.
     /// </summary>
-    internal interface IUnitOfWork
+    /// <typeparam name="TLoadResult">The type of track-able load-result.</typeparam>
+    public interface IUnitOfWork<TLoadResult>
+         where TLoadResult : class, IEntityLoadResult
     {
         /// <summary>
         /// Gets a collection of all tracked entities.
         /// </summary>
-        /// <returns></returns>
-        IReadOnlyList<ITrackedEntity> TrackedEntities { get; }
-
-        /// <summary>
-        /// Gets a collection of all tracked entities thats state indicate modification.
-        /// </summary>
-        IReadOnlyList<ITrackedEntity> ModifiedEntities { get; }
+        IReadOnlyList<IUnitOfWorkEntry<TLoadResult>> Entries { get; }
 
         /// <summary>
         /// Tries to retrieve the tracked entity with the specified identifier.
         /// </summary>
         /// <param name="entityIdentifier">The entity identifier.</param>
-        /// <param name="trackedEntity">Contains the tracked entity if present, <c>null</c> otherwise.</param>
+        /// <param name="entry">Contains the tracked entity if present, <c>null</c> otherwise.</param>
         /// <returns>
         /// True if a tracked entity with the identity <paramref name="entityIdentifier"/> is present, false otherwise.
         /// </returns>
-        bool TryGetTrackedEntity(
-            EntityIdentifier entityIdentifier,
-            [NotNullWhen(true)] out ITrackedEntity? trackedEntity);
+        bool TryGetEntry(
+            EntityIdentifier entityIdentifier, [NotNullWhen(true)] out IUnitOfWorkEntry<TLoadResult>? entry);
 
         /// <summary>
         /// Updates the unit of work with the specified entity load-result if necessary 
@@ -69,7 +64,7 @@ namespace AI4E.Storage.Domain
         /// was needed. If a tracked entity with the same identifier is already present, 
         /// <paramref name="entityLoadResult"/> is discarded.
         /// </remarks>
-        ITrackedEntity GetOrUpdate(IEntityQueryResult entityLoadResult);
+        IUnitOfWorkEntry<TLoadResult> GetOrUpdate(ITrackableEntityLoadResult<TLoadResult> entityLoadResult);
 
         /// <summary>
         /// Resets the unit of work to its initial state.
@@ -86,7 +81,7 @@ namespace AI4E.Storage.Domain
         /// or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
-        /// A <see cref="ValueTask{IEntityLoadResult}"/> representing the asynchronous operation.
+        /// A <see cref="ValueTask{EntityCommitResult}"/> representing the asynchronous operation.
         /// When evaluated, the tasks result contains the commit result.
         /// </returns>
         /// <remarks>

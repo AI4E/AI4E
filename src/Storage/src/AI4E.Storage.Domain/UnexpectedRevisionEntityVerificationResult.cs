@@ -18,41 +18,32 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+
 namespace AI4E.Storage.Domain
 {
     /// <summary>
-    /// Defines constants that describe the track-state of an <see cref="ITrackedEntity"/>.
+    /// Represents the result of an entity load-operation indicating that verification failed due to an unexpected 
+    /// entity revision.
     /// </summary>
-    public enum EntityTrackState
+    public sealed class UnexpectedRevisionEntityVerificationResult : EntityVerificationResult
     {
         /// <summary>
-        /// The entity is untracked.
+        /// Creates a new instance of the <see cref="UnexpectedRevisionEntityVerificationResult"/> type.
         /// </summary>
-        Untracked,
+        /// <param name="entityIdentifier">The identifier of the entity that was loaded.</param>
+        public UnexpectedRevisionEntityVerificationResult(EntityIdentifier entityIdentifier)
+            : base(entityIdentifier) { }
 
         /// <summary>
-        /// The entity is not existent.
+        /// Creates a new instance of the <see cref="UnexpectedRevisionEntityVerificationResult"/> type.
         /// </summary>
-        NonExistent,
+        /// <param name="queryResult">The underlying entity query-result thats verification failed.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="queryResult"/> is <c>null</c>.</exception>
+        public UnexpectedRevisionEntityVerificationResult(
+            IFoundEntityQueryResult queryResult) : base(queryResult) { }
 
-        /// <summary>
-        /// The entity is unchanged.
-        /// </summary>
-        Unchanged,
-
-        /// <summary>
-        /// The entity is updates, hence modified.
-        /// </summary>
-        Updated,
-
-        /// <summary>
-        /// The entity is creates, hence modified.
-        /// </summary>
-        Created,
-
-        /// <summary>
-        /// The entity is deleted, hence modified.
-        /// </summary>
-        Deleted
+        /// <inheritdoc/>
+        public override string Reason => Resources.NotMatchedExpectedRevision;
     }
 }

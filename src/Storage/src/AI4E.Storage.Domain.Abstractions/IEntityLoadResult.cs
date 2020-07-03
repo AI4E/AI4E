@@ -18,6 +18,8 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace AI4E.Storage.Domain
 {
     /// <summary>
@@ -36,7 +38,7 @@ namespace AI4E.Storage.Domain
         /// <remarks>
         /// This is guaranteed to be available only in case that the load operation was successful.
         /// </remarks>
-        ConcurrencyToken ConcurrencyToken { get; }
+        ConcurrencyToken ConcurrencyToken { get; } // TODO: Move this where it belongs to. (IFoundEntityQueryResult ??)
 
         /// <summary>
         /// Gets the revision of the loaded entity or a default value if not available.
@@ -44,28 +46,92 @@ namespace AI4E.Storage.Domain
         /// <remarks>
         /// This is guaranteed to be available only in case that the load operation was successful.
         /// </remarks>
-        long Revision { get; }
-
-        // TODO: Do we include the history of all domain-events?
+        long Revision { get; }  // TODO: Move this where it belongs to. (IFoundEntityQueryResult ??)
 
         /// <summary>
         /// Gets the reason phrase that indicates the reason of the load-result state or a failure message.
         /// </summary>
         string Reason { get; }
 
+        #region Features
+
+        // Currently the set of features is fixed to the four features 
+        // * found
+        // * verification-failure, 
+        // * scopeability, 
+        // * trackability. 
+        // This could be extended in the future via default interface implementations.
+        // Additionally features also inherit from the feature-descriptor == IEntityLoadResult to allow building APIs
+        // that enforces some feature to be present.
+        // 
+        // TODO: Consider alternative designs:
+        // (1) We could use a single method 
+        //     bool HasFeature<TFeature>([NotNullWhen(true)] out TFeature? feature) where TFeature : class, IEntityLoadResult
+        //     as a substitute for the multiple features as implemented currently.
+        // (2) The features themselves could be made independent of the feature descriptor by not inheriting from it.
+        //     This needs the feature descriptor to be generic on the feature, as we want to be able to build 
+        //     compiler enforced APIs that guarantee a feature to be present.
+        //     See: IEntityStorageEngine.QueryEntityAsync vs IEntityStorageEngine.QueryEntitiesAsync
+
+        // TODO: Specify what found means.. When the verification failed, does this mean that the entity was found?
+
         /// <summary>
-        /// Returns the successfully loaded entity or <c>null</c> if the specified load-result indicates failure.
+        /// Checks whether the current entity load-result represents a found entity query-result.
         /// </summary>
-        /// <param name="throwOnFailure">
-        /// A boolean value indicating whether an exception shall be thrown if the entity could not be loaded.
+        /// <param name="foundEntityQueryResult">
+        /// Contains the <see cref="IFoundEntityQueryResult"/> if the current entity load-result represents a found 
+        /// entity query-result.
         /// </param>
         /// <returns>
-        /// The entity extracted if the current entity load-result indicates success, <c>null</c> otherwise.
+        /// True if the current entity load-result represents a found entity query-result, false otherwise.
         /// </returns>
-        /// <exception cref="EntityLoadException">
-        /// Thrown if <paramref name="throwOnFailure"/> is true and the entity could not be loaded for a reason 
-        /// other then non-existence.
-        /// </exception>
-        object? GetEntity(bool throwOnFailure = true);
+        bool IsFound([NotNullWhen(true)] out IFoundEntityQueryResult? foundEntityQueryResult);
+
+        /// <summary>
+        /// Checks whether the current entity load-result represents a verification failure entity query-result.
+        /// </summary>
+        /// <param name="verificationEntityResult">
+        /// Contains the <see cref="IEntityVerificationResult"/> if the current entity load-result represents a 
+        /// verification failure  entity query-result.
+        /// </param>
+        /// <returns>
+        /// True if the current entity load-result represents a verification failure entity query-result, 
+        /// false otherwise.
+        /// </returns>
+        bool IsVerificationFailed([NotNullWhen(true)] out IEntityVerificationResult? verificationEntityResult);
+
+        /// <summary>
+        /// Checks whether the current entity load-result is scopeable with respect to the specified query-result type.
+        /// </summary>
+        /// <typeparam name="TQueryResult">The type of entity query-result.</typeparam>
+        /// <param name="scopeableEntityQueryResult">
+        /// Contains the <see cref="IScopeableEntityQueryResult{TQueryResult}"/> if the current entity load-result 
+        /// is scopeable.
+        /// </param>
+        /// <returns>
+        /// True if the current entity load-result is scopeable, false otherwise.
+        /// </returns>
+        bool IsScopeable<TQueryResult>(
+            [NotNullWhen(true)] out IScopeableEntityQueryResult<TQueryResult>? scopeableEntityQueryResult)
+            where TQueryResult : class, IEntityQueryResult;
+
+        /// <summary>
+        /// Checks whether the current entity load-result is a track-able entity load-result with respect to the
+        /// specified entity-load result type.
+        /// </summary>
+        /// <typeparam name="TLoadResult">The type of tracked entity load-result.</typeparam>
+        /// <param name="trackableEntityLoadResult">
+        /// Contains the <see cref="ITrackableEntityLoadResult{TLoadResult}"/> if the current entity load-result 
+        /// is track-able.
+        /// </param>
+        /// <returns>
+        /// True if the current entity load-result is track-able, 
+        /// false otherwise.
+        /// </returns>
+        bool IsTrackable<TLoadResult>(
+           [NotNullWhen(true)] out ITrackableEntityLoadResult<TLoadResult>? trackableEntityLoadResult)
+            where TLoadResult : class, IEntityLoadResult;
+
+        #endregion
     }
 }

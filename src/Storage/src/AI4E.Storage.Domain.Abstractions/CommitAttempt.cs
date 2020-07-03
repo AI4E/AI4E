@@ -19,12 +19,6 @@
  */
 
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
-using System.Linq;
 
 namespace AI4E.Storage.Domain
 {
@@ -38,7 +32,7 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// Creates a new instance of type <see cref="CommitAttempt{TCommitAttemptEntry}"/>.
         /// </summary>
-        /// <param name="unitOfWork">
+        /// <param name="entries">
         /// The <see cref="CommitAttemptEntryCollection{TCommitAttemptEntry}"/> that defines the commit entries that 
         /// the commit-attempt contains of.
         /// </param>
@@ -58,7 +52,7 @@ namespace AI4E.Storage.Domain
             return Equals(in other);
         }
 
-        /// <inheritdoc cref="IEquatable{CommitAttempt}.Equals(CommitAttempt{TCommitAttemptEntry})"/>
+        /// <inheritdoc cref="IEquatable{T}.Equals(T)"/>
         public bool Equals(in CommitAttempt<TCommitAttemptEntry> other)
         {
             return Entries == other.Entries;
@@ -79,8 +73,8 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// Returns a boolean value indicating whether two commit-attempts are equal.
         /// </summary>
-        /// <param name="left">The first <see cref="CommitAttempt"/>.</param>
-        /// <param name="right">The second <see cref="CommitAttempt"/>.</param>
+        /// <param name="left">The first <typeparamref name="TCommitAttemptEntry"/>.</param>
+        /// <param name="right">The second <typeparamref name="TCommitAttemptEntry"/>.</param>
         /// <returns>True if <paramref name="left"/> equals <paramref name="right"/>, false otherwise.</returns>
         public static bool operator ==(
             in CommitAttempt<TCommitAttemptEntry> left, 
@@ -92,8 +86,8 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// Returns a boolean value indicating whether two commit-attempts are not equal.
         /// </summary>
-        /// <param name="left">The first <see cref="CommitAttempt"/>.</param>
-        /// <param name="right">The second <see cref="CommitAttempt"/>.</param>
+        /// <param name="left">The first <typeparamref name="TCommitAttemptEntry"/>.</param>
+        /// <param name="right">The second <typeparamref name="TCommitAttemptEntry"/>.</param>
         /// <returns>True if <paramref name="left"/> does not equal <paramref name="right"/>, false otherwise.</returns>
         public static bool operator !=(
             in CommitAttempt<TCommitAttemptEntry> left, 
@@ -109,9 +103,14 @@ namespace AI4E.Storage.Domain
     public enum CommitOperation
     {
         /// <summary>
+        /// An entity is not modified. Only domain-events shall be appended.
+        /// </summary>
+        AppendEventsOnly = 0,
+
+        /// <summary>
         /// An entity shall be created or updated.
         /// </summary>
-        Store = 0,
+        Store,
 
         /// <summary>
         /// An entity shall be deleted.

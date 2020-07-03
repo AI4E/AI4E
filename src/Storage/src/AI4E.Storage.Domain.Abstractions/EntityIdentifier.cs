@@ -70,8 +70,8 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// Deconstructs the current entity-identifier.
         /// </summary>
-        /// <param name="eventType">Contains the type of entity.</param>
-        /// <param name="event">Contains the entity id.</param>
+        /// <param name="entityType">Contains the type of entity.</param>
+        /// <param name="entityId">Contains the entity id.</param>
         public void Deconstruct(out Type entityType, out string entityId)
         {
             entityType = EntityType;

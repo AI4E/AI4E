@@ -18,14 +18,12 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using System;
-
 namespace AI4E.Storage.Domain
 {
     /// <summary>
-    /// Represents a success entity load-result that indicates that an entity was loaded successfully.
+    /// Represents an entity query-result that indicates that an entity was found and loaded successfully.
     /// </summary>
-    public interface IFoundEntityQueryResult : IEntityQueryResult
+    public interface IFoundEntityQueryResult : IScopeableEntityQueryResult<IFoundEntityQueryResult>
     {
         /// <summary>
         /// Gets the loaded entity.
@@ -43,26 +41,19 @@ namespace AI4E.Storage.Domain
         /// </returns>
         new IFoundEntityQueryResult AsCachedResult(bool loadedFromCache = true);
 
-        /// <summary>
-        /// Returns a copy of the current instance scoped to the specified <see cref="IEntityQueryResultScope"/>.
-        /// </summary>
-        /// <param name="scope">The <see cref="IEntityQueryResultScope"/> that defines the scope.</param>
-        /// <returns>
-        /// A <see cref="IFoundEntityQueryResult"/> that is scoped to <paramref name="scope"/>.
-        /// </returns>
-        new IFoundEntityQueryResult AsScopedTo(IEntityQueryResultScope? scope);
-
 #if SUPPORTS_DEFAULT_INTERFACE_METHODS
         IEntityQueryResult IEntityQueryResult.AsCachedResult(bool loadedFromCache)
         {
             return AsCachedResult(loadedFromCache);
         }
 
-        IEntityQueryResult IEntityQueryResult.AsScopedTo(IEntityQueryResultScope? scope)
+#pragma warning disable CA1033
+        bool IEntityLoadResult.IsFound(out IFoundEntityQueryResult foundEntityQueryResult)
+#pragma warning restore CA1033        
         {
-            return AsScopedTo(scope);
+            foundEntityQueryResult = this;
+            return true;
         }
-
 #endif
     }
 }

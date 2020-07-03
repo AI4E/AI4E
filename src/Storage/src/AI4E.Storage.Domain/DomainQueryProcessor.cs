@@ -40,30 +40,30 @@ namespace AI4E.Storage.Domain
                 throw new ArgumentNullException(nameof(executor));
 
             // Load with caching enabled.
-            var entityLoadResult = await executor.ExecuteAsync(entityIdentifier, bypassCache: false, cancellation)
+            var entityQueryResult = await executor.ExecuteAsync(entityIdentifier, bypassCache: false, cancellation)
                 .ConfigureAwait(false);
 
             // If the processor condition is met, return the result.
-            if (MeetsCondition(entityLoadResult, out var failureLoadResult))
+            if (MeetsCondition(entityQueryResult, out var failureLoadResult))
             {
-                return entityLoadResult;
+                return entityQueryResult;
             }
 
             // When the result was freshly loaded, we do not need to reload with caching disabled, 
             // just return the failure result.
-            if (!entityLoadResult.LoadedFromCache)
+            if (!entityQueryResult.LoadedFromCache)
             {
                 return failureLoadResult;
             }
 
             // Load again with caching disabled.
-            entityLoadResult = await executor.ExecuteAsync(entityIdentifier, bypassCache: true, cancellation)
+            entityQueryResult = await executor.ExecuteAsync(entityIdentifier, bypassCache: true, cancellation)
                 .ConfigureAwait(false);
 
             // Check the processor condition again.
-            if (MeetsCondition(entityLoadResult, out failureLoadResult))
+            if (MeetsCondition(entityQueryResult, out failureLoadResult))
             {
-                return entityLoadResult;
+                return entityQueryResult;
             }
 
             return failureLoadResult;
@@ -73,16 +73,16 @@ namespace AI4E.Storage.Domain
         /// When overridden in a derived class indicates whether the specified entity load-result meets the 
         /// domain query-processor's conditions.
         /// </summary>
-        /// <param name="entityLoadResult">The entity load-result.</param>
+        /// <param name="entityQueryResult">The entity load-result.</param>
         /// <param name="failureLoadResult">
         /// Contains the failure entity load-result that is used when domain query-processor's condition is not met.
         /// </param>
         /// <returns>True if the domain query-processors are met, false otherwise.</returns>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if <paramref name="entityLoadResult"/> is <c>null</c>.
+        /// Thrown if <paramref name="entityQueryResult"/> is <c>null</c>.
         /// </exception>
         protected abstract bool MeetsCondition(
-            IEntityQueryResult entityLoadResult,
+            IEntityQueryResult entityQueryResult,
             [NotNullWhen(false)] out IEntityLoadResult? failureLoadResult);
 
         /// <summary>

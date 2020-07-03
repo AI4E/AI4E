@@ -1,3 +1,4 @@
+<!--EXTERNAL_PROPERTIES: TargetFramework;MSBuildThisFileDirectory-->
 <Project>
   <PropertyGroup>
     <Authors>Andreas Trütschel and contributors</Authors>

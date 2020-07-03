@@ -238,7 +238,7 @@ namespace AI4E.Storage.Domain
                         && concurrencyToken != default
                         && concurrencyToken != entityLoadResult.ConcurrencyToken)
                     {
-                        return new ConcurrencyIssueEntityLoadResult(entityLoadResult.EntityIdentifier);
+                        return new ConcurrencyIssueEntityVerificationResult(entityLoadResult.EntityIdentifier);
                     }
 
                     return entityLoadResult;

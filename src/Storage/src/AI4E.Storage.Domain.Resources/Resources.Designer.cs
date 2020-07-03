@@ -538,6 +538,15 @@ namespace AI4E.Storage.Domain {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The entity did not match the specified verification..
+        /// </summary>
+        internal static string NotMatchedVerification {
+            get {
+                return ResourceManager.GetString("NotMatchedVerification", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Processing loaded entity with identifier {0}. Scope: {1}.
         /// </summary>
         internal static string ProcessingEntity {

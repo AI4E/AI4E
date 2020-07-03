@@ -21,10 +21,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Storage.Domain.Tracking;
 using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -56,8 +56,8 @@ namespace AI4E.Storage.Domain
         private readonly IOptions<DomainStorageOptions> _optionsAccessor;
         private readonly ILogger<EntityStorage> _logger;
 
-        private readonly IEntityQueryResultScope _queryResultScope;
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IEntityQueryResultScope _queryResultScope = new EntityQueryResultScope(); // TODO: We could pool this  
+        private readonly IUnitOfWork<IEntityQueryResult> _unitOfWork;
         private readonly IDomainQueryExecutor _domainQueryExecutor;
 
         /// <summary>
@@ -111,10 +111,9 @@ namespace AI4E.Storage.Domain
             _optionsAccessor = optionsAccessor;
             _logger = logger ?? NullLogger<EntityStorage>.Instance;
 
-            // TODO: We could pool these
-            _queryResultScope = new EntityQueryResultScope(this);
+            // TODO: We could pool these        
             _domainQueryExecutor = new DomainQueryExecutor(this);
-            _unitOfWork = new UnitOfWork(concurrencyTokenFactory);
+            _unitOfWork = new UnitOfWork<IEntityQueryResult>(concurrencyTokenFactory);
         }
 
         /// <inheritdoc/>
@@ -122,12 +121,22 @@ namespace AI4E.Storage.Domain
         {
             get
             {
-                // TODO: Perf
-                return _unitOfWork
-                    .TrackedEntities
-                    .Where(p => p.EntityLoadResult.IsSuccess())
-                    .Select(p => p.EntityLoadResult.AsSuccessLoadResult())
-                    .ToImmutableList();
+                var entries = _unitOfWork.Entries;
+                var result = ImmutableList.CreateBuilder<IFoundEntityQueryResult>();
+
+                // Using a for loop because of perf here
+                for (var i = 0; i < entries.Count; i++)
+                {
+                    var entry = entries[i];
+                    var entityLoadResult = entry.EntityLoadResult;
+
+                    if (entityLoadResult.IsFound(out var foundEntityQueryResult))
+                    {
+                        result.Add(foundEntityQueryResult);
+                    }
+                }
+
+                return result.ToImmutableList();
             }
         }
 
@@ -148,7 +157,8 @@ namespace AI4E.Storage.Domain
                 Resources.LoadingEntities,
                 _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-            var loadResults = _storageEngine.QueryEntitiesAsync(entityType, bypassCache: false, cancellation);
+            var loadResults = _storageEngine.QueryEntitiesAsync(
+                entityType, bypassCache: false, cancellation);
 
             // TODO: If multiple iterators overlap, we may get some concurrency here.
             //       Do we have to synchronize and if yes, what are the critical sections?
@@ -159,15 +169,15 @@ namespace AI4E.Storage.Domain
                     iteratedLoadResult.EntityIdentifier,
                     _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-                var entityLoadResult = iteratedLoadResult.AsScopedTo(_queryResultScope);
-                var trackedEntity = _unitOfWork.GetOrUpdate(entityLoadResult);
+                var entityLoadResult = iteratedLoadResult.AsScopedTo(_queryResultScope).ToQueryResult();
+                var entry = _unitOfWork.GetOrUpdate(entityLoadResult);
 
-                if (!trackedEntity.EntityLoadResult.IsSuccess())
+                if (!entry.EntityLoadResult.IsFound(out entityLoadResult))
                 {
                     _logger.LogTrace(
-                    Resources.UpdatedTrackedEntityInUnitOfWorkNonExisting,
-                    iteratedLoadResult.EntityIdentifier,
-                    _optionsAccessor.Value.Scope ?? Resources.NoScope);
+                        Resources.UpdatedTrackedEntityInUnitOfWorkNonExisting,
+                        iteratedLoadResult.EntityIdentifier,
+                        _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
                     continue;
                 }
@@ -176,8 +186,6 @@ namespace AI4E.Storage.Domain
                     Resources.UpdatedTrackedEntityInUnitOfWork,
                     iteratedLoadResult.EntityIdentifier,
                     _optionsAccessor.Value.Scope ?? Resources.NoScope);
-
-                entityLoadResult = trackedEntity.EntityLoadResult.AsSuccessLoadResult();
 
                 SetEntityMetadata(
                     new EntityDescriptor(entityType, entityLoadResult.Entity),
@@ -207,7 +215,8 @@ namespace AI4E.Storage.Domain
                 _logger.LogWarning(
                     Resources.LoadingDefaultEntityIdentifier, _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-                return new ValueTask<IEntityLoadResult>(new NotFoundEntityQueryResult(entityIdentifier));
+                return new ValueTask<IEntityLoadResult>(new NotFoundEntityQueryResult(
+                    entityIdentifier, loadedFromCache: false, scope: _queryResultScope));
             }
 
             return UncheckedLoadEntityAsync(entityIdentifier, queryProcessor, cancellation);
@@ -227,7 +236,9 @@ namespace AI4E.Storage.Domain
             var entityLoadResult = await queryProcessor.ProcessAsync(
                 entityIdentifier, _domainQueryExecutor, cancellation).ConfigureAwait(false);
 
-            if (entityLoadResult.IsSuccess())
+            entityLoadResult = entityLoadResult.AsScopedTo(_queryResultScope);
+
+            if (entityLoadResult.GetEntity(throwOnFailure: false) != null)
             {
                 _logger.LogInformation(
                     Resources.LoadedEntity,
@@ -243,14 +254,14 @@ namespace AI4E.Storage.Domain
                     _optionsAccessor.Value.Scope ?? Resources.NoScope);
             }
 
-            if (entityLoadResult is IEntityQueryResult cacheableLoadResult)
+            if (entityLoadResult.IsTrackable<IEntityQueryResult>(out var trackableEntityLoadResult))
             {
                 _logger.LogTrace(
                     Resources.UpdatingUnitOfWork,
                     entityIdentifier,
                     _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-                var trackedEntity = _unitOfWork.GetOrUpdate(cacheableLoadResult);
+                var entry = _unitOfWork.GetOrUpdate(trackableEntityLoadResult);
 
                 // TODO: Check whether we actually updated the cache? Is it possible that we could not update the cache
                 //       if we assume that the storage is not used in a concurrent manner?
@@ -282,14 +293,18 @@ namespace AI4E.Storage.Domain
                  new EntityIdentifier(entityDescriptor.EntityType, entityId),
                  _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-            var trackedEntity = await LoadTrackedEntityAsync(
+            var trackedEntity = await LoadUnitOfWorkEntryAsync(
                 new EntityIdentifier(entityDescriptor.EntityType, entityId), cancellation)
                 .ConfigureAwait(false);
 
             var domainEvents = MetadataManager.GetUncommittedEvents(entityDescriptor);
             trackedEntity = trackedEntity.CreateOrUpdate(entityDescriptor.Entity, domainEvents);
 
-            SetEntityMetadata(entityDescriptor, entityId, trackedEntity.ConcurrencyToken, trackedEntity.Revision);
+            SetEntityMetadata(
+                entityDescriptor,
+                entityId,
+                trackedEntity.EntityLoadResult.ConcurrencyToken,
+                trackedEntity.EntityLoadResult.Revision);
         }
 
         /// <inheritdoc/>
@@ -302,39 +317,39 @@ namespace AI4E.Storage.Domain
                   new EntityIdentifier(entityDescriptor.EntityType, entityId),
                   _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-            var trackedEntity = await LoadTrackedEntityAsync(
+            var entry = await LoadUnitOfWorkEntryAsync(
                 new EntityIdentifier(entityDescriptor.EntityType, entityId), cancellation)
                 .ConfigureAwait(false);
 
             var domainEvents = MetadataManager.GetUncommittedEvents(entityDescriptor);
-            var modifiedTrackedEntity = trackedEntity.Delete(domainEvents);
+            var modifiedEntry = entry.Delete(domainEvents);
 
             // TODO: Do we set default values? When does this occur?
             var concurrencyToken = default(ConcurrencyToken);
             var revision = 0L;
 
-            if (modifiedTrackedEntity != null)
+            if (modifiedEntry != null)
             {
-                concurrencyToken = modifiedTrackedEntity.ConcurrencyToken;
-                revision = modifiedTrackedEntity.Revision;
+                concurrencyToken = modifiedEntry.EntityLoadResult.ConcurrencyToken;
+                revision = modifiedEntry.EntityLoadResult.Revision;
             }
 
             SetEntityMetadata(entityDescriptor, entityId, concurrencyToken, revision);
         }
 
-        private ValueTask<ITrackedEntity> LoadTrackedEntityAsync(
+        private ValueTask<IUnitOfWorkEntry<IEntityQueryResult>> LoadUnitOfWorkEntryAsync(
             EntityIdentifier entityIdentifier,
             CancellationToken cancellation)
         {
-            if (_unitOfWork.TryGetTrackedEntity(entityIdentifier, out var trackedEntity))
+            if (_unitOfWork.TryGetEntry(entityIdentifier, out var entry))
             {
-                return new ValueTask<ITrackedEntity>(trackedEntity);
+                return new ValueTask<IUnitOfWorkEntry<IEntityQueryResult>>(entry);
             }
 
-            return UncachedLoadTrackedEntityAsync(entityIdentifier, cancellation);
+            return UncachedLoadUnitOfWorkEntryAsync(entityIdentifier, cancellation);
         }
 
-        private async ValueTask<ITrackedEntity> UncachedLoadTrackedEntityAsync(
+        private async ValueTask<IUnitOfWorkEntry<IEntityQueryResult>> UncachedLoadUnitOfWorkEntryAsync(
             EntityIdentifier entityIdentifier,
             CancellationToken cancellation)
         {
@@ -350,10 +365,10 @@ namespace AI4E.Storage.Domain
 
         private void SetEntityMetadata(IEntityLoadResult entityLoadResult)
         {
-            if (!entityLoadResult.IsSuccess(out var entity))
-            {
+            var entity = entityLoadResult.GetEntity(throwOnFailure: false);
+
+            if (entity is null)
                 return;
-            }
 
             var entityDescriptor = new EntityDescriptor(entityLoadResult.EntityIdentifier.EntityType, entity);
 
@@ -407,18 +422,16 @@ namespace AI4E.Storage.Domain
     {
         private sealed class EntityQueryResultScope : IEntityQueryResultScope
         {
+            // TODO: This actually can be non thread-safe ordinary dictionaries, as the scope operation is called on the 
+            // current scope only.
             private readonly ConditionalWeakTable<object, object> _scopedEntities;
             private readonly ConditionalWeakTable<object, object>.CreateValueCallback _createScopedEntity;
 
-            public EntityQueryResultScope(IEntityStorage entityStorage)
+            public EntityQueryResultScope()
             {
-                EntityStorage = entityStorage;
-
                 _scopedEntities = new ConditionalWeakTable<object, object>();
                 _createScopedEntity = ObjectExtension.DeepClone!;
             }
-
-            public IEntityStorage EntityStorage { get; }
 
             public object ScopeEntity(object originalEntity)
             {
@@ -452,14 +465,14 @@ namespace AI4E.Storage.Domain
 
                 // We MUST never bypass our cache (uow) only the low level caching of the storage engine.
                 // See the guarantees on concurrent access for further details.
-                if (_entityStorage._unitOfWork.TryGetTrackedEntity(entityIdentifier, out var trackedEntity))
+                if (_entityStorage._unitOfWork.TryGetEntry(entityIdentifier, out var entry))
                 {
                     _entityStorage._logger.LogTrace(
                         Resources.QueryExecutorLoadingEntityFromUnitOfWork,
                         entityIdentifier,
                         _entityStorage._optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-                    entityLoadResult = trackedEntity.EntityLoadResult;
+                    entityLoadResult = entry.EntityLoadResult.ApplyRecordedOperations();
                 }
                 else
                 {
@@ -476,7 +489,7 @@ namespace AI4E.Storage.Domain
                     entityLoadResult = entityLoadResult.AsScopedTo(_entityStorage._queryResultScope);
                 }
 
-                if (entityLoadResult.IsSuccess())
+                if (entityLoadResult.IsFound())
                 {
                     _entityStorage._logger.LogDebug(
                         Resources.QueryExecutorLoadedEntity,

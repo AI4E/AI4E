@@ -344,6 +344,34 @@ namespace AI4E.Storage.Domain.Test
             Assert.Equal(expectedAreEqual, areEqual);
         }
 
+        [Fact]
+        public void ObjectEqualsOperationDoesNotEqualOtherTypeTest()
+        {
+            // Arrange
+            var left = new DomainEventCollection();
+            var other = new object();
+
+            // Act
+            var areEqual = left.Equals(other);
+
+            // Assert
+            Assert.False(areEqual);
+        }
+
+        [Fact]
+        public void ObjectEqualsOperationDoesNotEqualNullTest()
+        {
+            // Arrange
+            var left = new DomainEventCollection();
+            object other = null;
+
+            // Act
+            var areEqual = left.Equals(other);
+
+            // Assert
+            Assert.False(areEqual);
+        }
+
         public class EqualityTestData : TheoryData<DomainEventCollection, DomainEventCollection, bool>
         {
             public EqualityTestData()

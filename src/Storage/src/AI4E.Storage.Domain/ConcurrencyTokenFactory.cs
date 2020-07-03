@@ -25,7 +25,7 @@ namespace AI4E.Storage.Domain
     /// <summary>
     /// A default implementation of a factory for concurrency-tokens.
     /// </summary>
-    public sealed class ConcurrencyTokenFactory : IEntityConcurrencyTokenFactory
+    public sealed class ConcurrencyTokenFactory : IEntityConcurrencyTokenFactory // TODO: Difference in naming.
     {
         /// <inheritdoc/>
         public ConcurrencyToken CreateConcurrencyToken(EntityIdentifier entityIdentifier)
