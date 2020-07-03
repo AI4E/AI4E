@@ -25,7 +25,10 @@ namespace AI4E.Storage.Domain
 {
     /// <inheritdoc cref="IEntityQueryResult"/>
     public abstract class EntityQueryResult
-        : EntityLoadResult, IEntityQueryResult, IScopedEntityQueryResult<EntityQueryResult>
+        : EntityLoadResult,
+        IEntityQueryResult,
+        IScopedEntityQueryResult<EntityQueryResult>,
+        ITrackableEntityLoadResult<EntityQueryResult>
     {
         /// <summary>
         /// Creates a new instance of the <see cref="EntityQueryResult"/> class in a derived type.
@@ -144,6 +147,12 @@ namespace AI4E.Storage.Domain
         }
 
         ITrackedEntityLoadResult<IEntityQueryResult> ITrackableEntityLoadResult<IEntityQueryResult>.AsTracked(
+            IEntityConcurrencyTokenFactory concurrencyTokenFactory)
+        {
+            return AsTracked(concurrencyTokenFactory);
+        }
+
+        ITrackedEntityLoadResult<EntityQueryResult> ITrackableEntityLoadResult<EntityQueryResult>.AsTracked(
             IEntityConcurrencyTokenFactory concurrencyTokenFactory)
         {
             return AsTracked(concurrencyTokenFactory);
@@ -425,7 +434,6 @@ namespace AI4E.Storage.Domain
 
             return new FoundEntityQueryResult(
                 EntityIdentifier,
-
                 _scopebleEntity,
                 ConcurrencyToken,
                 Revision,
@@ -514,6 +522,9 @@ namespace AI4E.Storage.Domain
         /// <inheritdoc cref="IEntityQueryResult.AsCachedResult(bool)"/>
         public new NotFoundEntityQueryResult AsCachedResult(bool loadedFromCache)
         {
+            if (loadedFromCache == LoadedFromCache)
+                return this;
+
             return new NotFoundEntityQueryResult(EntityIdentifier, loadedFromCache, Scope);
         }
 
