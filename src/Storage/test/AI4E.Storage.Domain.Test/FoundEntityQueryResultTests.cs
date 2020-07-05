@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using AI4E.Storage.Domain.Specification;
 using AI4E.Storage.Domain.Specification.TestTypes;
 using AI4E.Storage.Domain.Test.Helpers;
 using AI4E.Utils;
@@ -413,9 +414,6 @@ namespace AI4E.Storage.Domain.Test
             var scope = scopeMock.Object;
             var subject = Create(false, scope);
             var targetScopeMock = new Mock<IEntityQueryResultScope>();
-            targetScopeMock
-                .Setup(targetScope => targetScope.ScopeEntity(It.IsAny<object>()))
-                .Returns<object>(originalEntity => originalEntity.DeepClone());
             var targetScope = targetScopeMock.Object;
 
             // Act
@@ -566,6 +564,72 @@ namespace AI4E.Storage.Domain.Test
                 options &= ~FoundEntityQueryResultEquality.LoadedFromCache;
 
             return new FoundEntityQueryResultEqualityComparer(options);
+        }
+
+        public sealed class TrackableEntityLoadResultSpecificationTest 
+            : TrackableEntityLoadResultSpecification<EntityQueryResult>
+        {
+            protected override ITrackableEntityLoadResult<EntityQueryResult> CreateTrackableLoadResult()
+            {
+                var entityIdentifier = new EntityIdentifier(typeof(object), "abc");
+                var entity = new DomainEntity1();
+                var concurrencyToken = new ConcurrencyToken("def");
+                var revision = 22;
+                var scopeMock = new Mock<IEntityQueryResultScope>();
+                var scope = scopeMock.Object;
+
+                return new FoundEntityQueryResult(
+                    entityIdentifier, entity, concurrencyToken, revision, default, scope);
+            }
+        }
+
+        public sealed class EntityLoadResultSpecificationTest
+           : EntityLoadResultSpecification
+        {
+            protected override IEntityLoadResult CreateLoadResult()
+            {
+                var entityIdentifier = new EntityIdentifier(typeof(object), "abc");
+                var entity = new DomainEntity1();
+                var concurrencyToken = new ConcurrencyToken("def");
+                var revision = 22;
+                var scopeMock = new Mock<IEntityQueryResultScope>();
+                var scope = scopeMock.Object;
+
+                return new FoundEntityQueryResult(
+                    entityIdentifier, entity, concurrencyToken, revision, default, scope);
+            }
+        }
+
+        public sealed class EntityQueryResultSpecificationTest : EntityQueryResultSpecification
+        {
+            protected override IEntityQueryResult CreateQueryResult(bool loadedFromCache)
+            {
+                var entityIdentifier = new EntityIdentifier(typeof(object), "abc");
+                var entity = new DomainEntity1();
+                var concurrencyToken = new ConcurrencyToken("def");
+                var revision = 22;
+                var scopeMock = new Mock<IEntityQueryResultScope>();
+                var scope = scopeMock.Object;
+
+                return new FoundEntityQueryResult(
+                    entityIdentifier, entity, concurrencyToken, revision, loadedFromCache, scope);
+            }
+        }
+
+        public sealed class ScopeableEntityQueryResultSpecificationTest
+          : ScopeableEntityQueryResultSpecification<EntityQueryResult>
+        {
+            protected override IScopeableEntityQueryResult<EntityQueryResult> CreateScopeableQueryResult(
+                IEntityQueryResultScope scope)
+            {
+                var entityIdentifier = new EntityIdentifier(typeof(object), "abc");
+                var entity = new DomainEntity1();
+                var concurrencyToken = new ConcurrencyToken("def");
+                var revision = 22;
+
+                return new FoundEntityQueryResult(
+                    entityIdentifier, entity, concurrencyToken, revision, default, scope);
+            }
         }
     }
 }

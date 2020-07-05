@@ -40,6 +40,9 @@ namespace AI4E.Storage.Domain
         /// <returns>
         /// A <see cref="ITrackedEntityLoadResult{TLoadResult}"/> tracking the current entity load-result.
         /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="concurrencyTokenFactory"/> is <c>null</c>.
+        /// </exception>
         ITrackedEntityLoadResult<TLoadResult> AsTracked(IEntityConcurrencyTokenFactory concurrencyTokenFactory);
     }
 

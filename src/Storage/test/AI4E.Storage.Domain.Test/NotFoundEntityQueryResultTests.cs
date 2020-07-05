@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using AI4E.Storage.Domain.Specification;
 using AI4E.Storage.Domain.Specification.TestTypes;
 using AI4E.Storage.Domain.Test.Helpers;
 using Moq;
@@ -304,5 +305,53 @@ namespace AI4E.Storage.Domain.Test
 
             return new NotFoundEntityQueryResultEqualityComparer(options);
         }
-    }
+
+        public sealed class TrackableEntityLoadResultSpecificationTest 
+            : TrackableEntityLoadResultSpecification<EntityQueryResult>
+        {
+            protected override ITrackableEntityLoadResult<EntityQueryResult> CreateTrackableLoadResult()
+            {
+                var entityIdentifier = new EntityIdentifier(typeof(object), "abc");
+                var scopeMock = new Mock<IEntityQueryResultScope>();
+                var scope = scopeMock.Object;
+
+                return new NotFoundEntityQueryResult(entityIdentifier, default, scope);
+            }
+        }
+
+        public sealed class EntityLoadResultSpecificationTest : EntityLoadResultSpecification
+        {
+            protected override IEntityLoadResult CreateLoadResult()
+            {
+                var entityIdentifier = new EntityIdentifier(typeof(object), "abc");
+                var scopeMock = new Mock<IEntityQueryResultScope>();
+                var scope = scopeMock.Object;
+
+                return new NotFoundEntityQueryResult(entityIdentifier, default, scope);
+            }
+        }
+
+        public sealed class EntityQueryResultSpecificationTest : EntityQueryResultSpecification
+        {
+            protected override IEntityQueryResult CreateQueryResult(bool loadedFromCache)
+            {
+                var entityIdentifier = new EntityIdentifier(typeof(object), "abc");
+                var scopeMock = new Mock<IEntityQueryResultScope>();
+                var scope = scopeMock.Object;
+
+                return new NotFoundEntityQueryResult(entityIdentifier, loadedFromCache, scope);
+            }
+        }
+
+        public sealed class ScopeableEntityQueryResultSpecificationTest 
+            : ScopeableEntityQueryResultSpecification<EntityQueryResult>
+        {
+            protected override IScopeableEntityQueryResult<EntityQueryResult> CreateScopeableQueryResult(
+                IEntityQueryResultScope scope)
+            {
+                var entityIdentifier = new EntityIdentifier(typeof(object), "abc");
+                return new NotFoundEntityQueryResult(entityIdentifier, default, scope);
+            }
+        }
+    }  
 }
