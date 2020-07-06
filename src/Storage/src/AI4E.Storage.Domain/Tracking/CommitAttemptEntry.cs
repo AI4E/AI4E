@@ -26,7 +26,8 @@ namespace AI4E.Storage.Domain.Tracking
     /// Represents the entry of a commit-attempt that describes the operation on a single entity.
     /// </summary>
     /// /// <typeparam name="TLoadResult">The type of track-able load-result.</typeparam>
-    internal readonly struct CommitAttemptEntry<TLoadResult> : IEquatable<CommitAttemptEntry<TLoadResult>>, ICommitAttemptEntry
+    internal readonly struct CommitAttemptEntry<TLoadResult> 
+        : IEquatable<CommitAttemptEntry<TLoadResult>>, ICommitAttemptEntry
          where TLoadResult : class, IEntityLoadResult
     {
         private readonly IUnitOfWorkEntry<TLoadResult>? _unitOfWorkEntry;

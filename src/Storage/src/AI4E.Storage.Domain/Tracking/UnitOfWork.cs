@@ -32,7 +32,7 @@ namespace AI4E.Storage.Domain.Tracking
     public sealed class UnitOfWork<TLoadResult> : IUnitOfWork<TLoadResult>
         where TLoadResult : class, IEntityLoadResult
     {
-        private readonly IEntityConcurrencyTokenFactory _concurrencyTokenFactory;
+        private readonly IConcurrencyTokenFactory _concurrencyTokenFactory;
         private readonly Dictionary<EntityIdentifier, UnitOfWorkEntry<TLoadResult>> _entries;
 
         /// <summary>
@@ -44,7 +44,7 @@ namespace AI4E.Storage.Domain.Tracking
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="concurrencyTokenFactory"/> is <c>null</c>.
         /// </exception>
-        public UnitOfWork(IEntityConcurrencyTokenFactory concurrencyTokenFactory)
+        public UnitOfWork(IConcurrencyTokenFactory concurrencyTokenFactory)
         {
             if (concurrencyTokenFactory is null)
                 throw new ArgumentNullException(nameof(concurrencyTokenFactory));

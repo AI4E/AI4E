@@ -23,7 +23,7 @@ namespace AI4E.Storage.Domain
     /// <summary>
     /// Represents a factory for concurrency-tokens.
     /// </summary>
-    public interface IEntityConcurrencyTokenFactory
+    public interface IConcurrencyTokenFactory
     {
         /// <summary>
         /// Creates a new <see cref="ConcurrencyToken"/> for the entity identified by the specified identifier.

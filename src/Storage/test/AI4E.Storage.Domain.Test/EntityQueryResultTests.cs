@@ -77,7 +77,7 @@ namespace AI4E.Storage.Domain.Test
             var scopeMock = new Mock<IEntityQueryResultScope>();
             var scope = scopeMock.Object;
             var subject = Create(default, scope);
-            var concurrencyTokenFactoryMock = new Mock<IEntityConcurrencyTokenFactory>();
+            var concurrencyTokenFactoryMock = new Mock<IConcurrencyTokenFactory>();
             var concurrencyTokenFactory = concurrencyTokenFactoryMock.Object;
 
             // Act
@@ -94,14 +94,24 @@ namespace AI4E.Storage.Domain.Test
             var scopeMock = new Mock<IEntityQueryResultScope>();
             var scope = scopeMock.Object;
             var subject = Create(default, scope);
-            var concurrencyTokenFactoryMock = new Mock<IEntityConcurrencyTokenFactory>();
+            var concurrencyTokenFactoryMock = new Mock<IConcurrencyTokenFactory>();
             var concurrencyTokenFactory = concurrencyTokenFactoryMock.Object;
 
             // Act
             var trackedEntityQueryResult = subject.AsTracked(concurrencyTokenFactory);
 
             // Assert
-            Assert.Same(subject, trackedEntityQueryResult.TrackedLoadResult);
+            Assert.Same(GetTrackedQueryResultOrSelf(subject), trackedEntityQueryResult.TrackedLoadResult);
+        }
+
+        private EntityQueryResult GetTrackedQueryResultOrSelf(TQueryResult queryResult)
+        {
+            if (queryResult is ITrackedEntityLoadResult<EntityQueryResult> trackedLoadResult)
+            {
+                return trackedLoadResult.TrackedLoadResult;
+            }
+
+            return queryResult;
         }
 
         #endregion

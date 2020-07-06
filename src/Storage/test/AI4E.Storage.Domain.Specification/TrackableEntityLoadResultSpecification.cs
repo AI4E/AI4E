@@ -10,11 +10,11 @@ namespace AI4E.Storage.Domain.Specification
         protected abstract ITrackableEntityLoadResult<TLoadResult> CreateTrackableLoadResult();
 
         private ITrackedEntityLoadResult<TLoadResult> CreateTrackedLoadResult(
-            IEntityConcurrencyTokenFactory? concurrencyTokenFactory = null)
+            IConcurrencyTokenFactory? concurrencyTokenFactory = null)
         {
             if (concurrencyTokenFactory is null)
             {
-                var concurrencyTokenFactoryMock = new Mock<IEntityConcurrencyTokenFactory>();
+                var concurrencyTokenFactoryMock = new Mock<IConcurrencyTokenFactory>();
                 concurrencyTokenFactory = concurrencyTokenFactoryMock.Object;
             }
 
@@ -57,7 +57,7 @@ namespace AI4E.Storage.Domain.Specification
         {
             // Arrange
             var subject = CreateTrackableLoadResult();
-            var concurrencyTokenFactoryMock = new Mock<IEntityConcurrencyTokenFactory>();
+            var concurrencyTokenFactoryMock = new Mock<IConcurrencyTokenFactory>();
             var concurrencyTokenFactory = concurrencyTokenFactoryMock.Object;
 
             // Act
@@ -72,7 +72,7 @@ namespace AI4E.Storage.Domain.Specification
         {
             // Arrange
             var subject = CreateTrackableLoadResult();
-            var concurrencyTokenFactoryMock = new Mock<IEntityConcurrencyTokenFactory>();
+            var concurrencyTokenFactoryMock = new Mock<IConcurrencyTokenFactory>();
             var concurrencyTokenFactory = concurrencyTokenFactoryMock.Object;
 
             // Act
@@ -100,7 +100,7 @@ namespace AI4E.Storage.Domain.Specification
         {
             // Arrange
             var subject = CreateTrackedLoadResult();
-            var concurrencyTokenFactoryMock = new Mock<IEntityConcurrencyTokenFactory>();
+            var concurrencyTokenFactoryMock = new Mock<IConcurrencyTokenFactory>();
             var concurrencyTokenFactory = concurrencyTokenFactoryMock.Object;
 
             // Act

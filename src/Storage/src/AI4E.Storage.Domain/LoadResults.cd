@@ -18,18 +18,10 @@
   </Class>
   <Class Name="AI4E.Storage.Domain.EntityVerificationResult" Collapsed="true">
     <Position X="10.5" Y="2.5" Width="1.5" />
-    <AssociationLine Name="QueryResult" Type="AI4E.Storage.Domain.FoundEntityQueryResult">
-      <MemberNameLabel ManuallyPlaced="true">
-        <Position X="-1.088" Y="0.06" />
-      </MemberNameLabel>
-    </AssociationLine>
     <TypeIdentifier>
-      <HashCode>AAAAAgAAAAAAAAIAAAAAAAAIAMAAAAAAAAAAIAAAAAA=</HashCode>
+      <HashCode>AAAAAgAAAAAAAAIAAAAAAAAIAAAAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>EntityVerificationResult.cs</FileName>
     </TypeIdentifier>
-    <ShowAsAssociation>
-      <Property Name="QueryResult" />
-    </ShowAsAssociation>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="AI4E.Storage.Domain.UnexpectedRevisionEntityVerificationResult" Collapsed="true">
@@ -42,10 +34,25 @@
   <Class Name="AI4E.Storage.Domain.EntityQueryResult" Collapsed="true">
     <Position X="3.75" Y="2.5" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>BAAAQAAACAAACSAAAAIAAAAAAAAAAAAAAAAkAABCkAA=</HashCode>
+      <HashCode>BAAAQAAACAAACSAAAAIAAAAAAAIAAAAAAAAkAABCkAA=</HashCode>
       <FileName>EntityQueryResult.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
+  <Class Name="AI4E.Storage.Domain.FoundEntityQueryResult" Collapsed="true">
+    <Position X="6" Y="4.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>FAAgQAAAAEAAAAIAAAIAAAAAQEAAAAAAgAAgICAAAAA=</HashCode>
+      <FileName>FoundEntityQueryResult.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
+  <Class Name="AI4E.Storage.Domain.NotFoundEntityQueryResult" Collapsed="true">
+    <Position X="3.75" Y="4.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>BAAAQAAAAAAAAAIAAAIAAAAAAAAAAAAAAAAgAAAAAAA=</HashCode>
+      <FileName>NotFoundEntityQueryResult.cs</FileName>
+    </TypeIdentifier>
   </Class>
   <Class Name="AI4E.Storage.Domain.TrackedEntityQueryResult" Collapsed="true">
     <Position X="1" Y="4.75" Width="1.5" />
@@ -57,28 +64,13 @@
       </Path>
     </AssociationLine>
     <TypeIdentifier>
-      <HashCode>BgAAYAAAAACAAAIAAQIAAAAAQEIQBABAAAAgIAAEAAA=</HashCode>
-      <FileName>EntityQueryResult.cs</FileName>
+      <HashCode>BgAAYAAAAACAAAIAAQIAAAAAQEIQBABAAAAgIAAEgAA=</HashCode>
+      <FileName>TrackedEntityQueryResult.cs</FileName>
     </TypeIdentifier>
     <ShowAsAssociation>
       <Property Name="TrackedLoadResult" />
     </ShowAsAssociation>
     <Lollipop Position="0.2" Collapsed="true" />
-  </Class>
-  <Class Name="AI4E.Storage.Domain.FoundEntityQueryResult" Collapsed="true">
-    <Position X="6" Y="4.75" Width="1.5" />
-    <TypeIdentifier>
-      <HashCode>FAAgQAAAAEAAAAIAAAIAAAAAQEAAAAAAgAAgICAAAAA=</HashCode>
-      <FileName>EntityQueryResult.cs</FileName>
-    </TypeIdentifier>
-    <Lollipop Position="0.2" Collapsed="true" />
-  </Class>
-  <Class Name="AI4E.Storage.Domain.NotFoundEntityQueryResult" Collapsed="true">
-    <Position X="3.75" Y="4.75" Width="1.5" />
-    <TypeIdentifier>
-      <HashCode>BAAAQAAAAAAAAAIAAAIAAAAAAAAAAAAAAAAgAAAAAAA=</HashCode>
-      <FileName>EntityQueryResult.cs</FileName>
-    </TypeIdentifier>
   </Class>
   <Font Name="Segoe UI" Size="9" />
 </ClassDiagram>

@@ -43,7 +43,7 @@ namespace AI4E.Storage.Domain
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="concurrencyTokenFactory"/> is <c>null</c>.
         /// </exception>
-        ITrackedEntityLoadResult<TLoadResult> AsTracked(IEntityConcurrencyTokenFactory concurrencyTokenFactory);
+        ITrackedEntityLoadResult<TLoadResult> AsTracked(IConcurrencyTokenFactory concurrencyTokenFactory);
     }
 
     /// <summary>

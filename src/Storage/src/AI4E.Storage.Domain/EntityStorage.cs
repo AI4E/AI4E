@@ -86,7 +86,7 @@ namespace AI4E.Storage.Domain
             IEntityStorageEngine storageEngine,
             IEntityMetadataManager metadataManager,
             IEntityIdFactory idFactory,
-            IEntityConcurrencyTokenFactory concurrencyTokenFactory,
+            IConcurrencyTokenFactory concurrencyTokenFactory,
             IOptions<DomainStorageOptions> optionsAccessor,
             ILogger<EntityStorage>? logger = null)
         {
