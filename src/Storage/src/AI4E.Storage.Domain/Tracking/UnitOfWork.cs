@@ -35,6 +35,8 @@ namespace AI4E.Storage.Domain.Tracking
         private readonly IConcurrencyTokenFactory _concurrencyTokenFactory;
         private readonly Dictionary<EntityIdentifier, UnitOfWorkEntry<TLoadResult>> _entries;
 
+        private int _epoch = 0;
+
         /// <summary>
         /// Creates a new instance of the <see cref="UnitOfWork{TLoadResult}"/> type.
         /// </summary>
@@ -93,7 +95,7 @@ namespace AI4E.Storage.Domain.Tracking
 
             if (!_entries.TryGetValue(entityIdentifier, out var entry))
             {
-                entry = new UnitOfWorkEntry<TLoadResult>(this, entityLoadResult.AsTracked(_concurrencyTokenFactory));
+                entry = new UnitOfWorkEntry<TLoadResult>(this, _epoch, entityLoadResult.AsTracked(_concurrencyTokenFactory));
                 _entries[entityIdentifier] = entry;
             }
 
@@ -109,6 +111,11 @@ namespace AI4E.Storage.Domain.Tracking
         /// <inheritdoc/>
         public void Reset()
         {
+            unchecked
+            {
+                _epoch++;
+            }
+
             _entries.Clear();
         }
 
@@ -133,6 +140,7 @@ namespace AI4E.Storage.Domain.Tracking
         {
             var commitAttemptEntriesBuilder = ImmutableArray.CreateBuilder<CommitAttemptEntry<TLoadResult>>(
                 initialCapacity: _entries.Count);
+            commitAttemptEntriesBuilder.Count = _entries.Count;
 
             var i = 0;
             foreach (var entry in _entries.Values)
@@ -141,18 +149,22 @@ namespace AI4E.Storage.Domain.Tracking
                     continue;
 
                 ref var commitAttemptEntry = ref Unsafe.AsRef(in commitAttemptEntriesBuilder.ItemRef(i++));
-                commitAttemptEntry = new CommitAttemptEntry<TLoadResult>(entry); // TODO: Unscope 
+                commitAttemptEntry = new CommitAttemptEntry<TLoadResult>(entry);
             }
 
+            commitAttemptEntriesBuilder.Count = i;
             var commitAttemptEntries = new CommitAttemptEntryCollection<CommitAttemptEntry<TLoadResult>>(
                 commitAttemptEntriesBuilder.ToImmutable());
 
             return new CommitAttempt<CommitAttemptEntry<TLoadResult>>(commitAttemptEntries);
         }
 
-        internal void UpdateEntry(UnitOfWorkEntry<TLoadResult> entry)
+        internal void UpdateEntry(UnitOfWorkEntry<TLoadResult> entry, int epoch)
         {
-            _entries[entry.EntityLoadResult.EntityIdentifier] = entry;
+            if(epoch == _epoch)
+            {
+                _entries[entry.EntityLoadResult.EntityIdentifier] = entry;
+            }      
         }
     }
 }

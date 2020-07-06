@@ -26,18 +26,26 @@ namespace AI4E.Storage.Domain.Tracking
     public sealed class UnitOfWorkEntry<TLoadResult> : IUnitOfWorkEntry<TLoadResult>
         where TLoadResult : class, IEntityLoadResult
     {
-        internal UnitOfWorkEntry(UnitOfWork<TLoadResult> unitOfWork, ITrackedEntityLoadResult<TLoadResult> loadResult)
+        private readonly int _epoch;
+
+        internal UnitOfWorkEntry(
+            UnitOfWork<TLoadResult> unitOfWork, 
+            int epoch,
+            ITrackedEntityLoadResult<TLoadResult> loadResult)
         {
             UnitOfWork = unitOfWork;
+            _epoch = epoch;
             EntityLoadResult = loadResult;
         }
 
         private UnitOfWorkEntry(
             UnitOfWork<TLoadResult> unitOfWork,
+            int epoch,
             ITrackedEntityLoadResult<TLoadResult> loadResult,
             DomainEventCollection recordedDomainEvents)
         {
             UnitOfWork = unitOfWork;
+            _epoch = epoch;
             EntityLoadResult = loadResult;
             RecordedDomainEvents = recordedDomainEvents;
             IsModified = true;
@@ -103,8 +111,8 @@ namespace AI4E.Storage.Domain.Tracking
             DomainEventCollection combinedDomainEvents,
             ITrackedEntityLoadResult<TLoadResult> trackedLoadResult)
         {
-            var result = new UnitOfWorkEntry<TLoadResult>(UnitOfWork, trackedLoadResult, combinedDomainEvents);
-            UnitOfWork.UpdateEntry(result);
+            var result = new UnitOfWorkEntry<TLoadResult>(UnitOfWork, _epoch, trackedLoadResult, combinedDomainEvents);
+            UnitOfWork.UpdateEntry(result, _epoch);
             return result;
         }
     }
