@@ -18,6 +18,8 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+// TODO: Can this be a value-type?
+
 using System;
 
 namespace AI4E.Storage.Domain.Tracking
@@ -51,10 +53,9 @@ namespace AI4E.Storage.Domain.Tracking
             IsModified = true;
         }
 
-        /// <summary>
-        /// Gets the unit of work that the entry is tracked by.
-        /// </summary>
-        public UnitOfWork<TLoadResult> UnitOfWork { get; }
+        // This must not be public, to prevent a user checking the unit of work for changes, when it was reseted
+        // (epoch changed) and actually doesn't reflect the changes of the current instance any more.
+        internal UnitOfWork<TLoadResult> UnitOfWork { get; }
 
         /// <inheritdoc/>
         public ITrackedEntityLoadResult<TLoadResult> EntityLoadResult { get; }
