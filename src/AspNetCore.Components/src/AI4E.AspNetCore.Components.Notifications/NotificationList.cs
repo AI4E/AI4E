@@ -26,8 +26,6 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
 
-#nullable enable
-
 namespace Notifications.Sample.Shared
 {
     /// <summary>

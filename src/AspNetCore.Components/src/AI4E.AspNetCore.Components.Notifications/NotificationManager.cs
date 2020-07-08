@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -26,13 +26,22 @@ using AI4E.Utils;
 
 namespace AI4E.AspNetCore.Components.Notifications
 {
+    /// <inheritdoc cref="INotificationManager"/>
     public sealed class NotificationManager : INotificationManager<Notification>
     {
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly LinkedList<ManagedNotificationMessage> _notificationMessages = new LinkedList<ManagedNotificationMessage>();
+        private readonly LinkedList<ManagedNotificationMessage> _notificationMessages 
+            = new LinkedList<ManagedNotificationMessage>();
         private readonly object _mutex = new object();
         private bool _isDisposed = false;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="NotificationManager"/> type.
+        /// </summary>
+        /// <param name="dateTimeProvider">The <see cref="IDateTimeProvider"/> used to access the current time.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="dateTimeProvider"/> is <c>null</c>.
+        /// </exception>
         public NotificationManager(IDateTimeProvider dateTimeProvider)
         {
             if (dateTimeProvider is null)
@@ -93,6 +102,7 @@ namespace AI4E.AspNetCore.Components.Notifications
             return GetNotificationsInternal(key, uri);
         }
 
+        /// <inheritdoc />
         public IEnumerable<Notification> GetNotifications(string key, Uri uri)
         {
             if (key is null)
@@ -275,11 +285,13 @@ namespace AI4E.AspNetCore.Components.Notifications
             return CreateRecorder();
         }
 
+        /// <inheritdoc />
         public NotificationManagerScope CreateScope()
         {
             return new NotificationManagerScope(this);
         }
 
+        /// <inheritdoc />
         public NotificationRecorder CreateRecorder()
         {
             return new NotificationRecorder(this);

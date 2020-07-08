@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -23,20 +23,23 @@ using System;
 namespace AI4E.AspNetCore.Components.Notifications
 {
     /// <summary>
-    /// Represents an uri filter.
+    /// Represents an URI filter.
     /// </summary>
     public readonly struct UriFilter : IEquatable<UriFilter>
     {
-        private readonly string _uri;
+        private readonly string? _uri;
         private readonly bool _exactMatch;
 
+        /// <summary>
+        /// Gets an URI filter that matches all URIs.
+        /// </summary>
         public static UriFilter MatchAll => default;
 
         /// <summary>
         /// Creates a new instance of the <see cref="UriFilter"/> type.
         /// </summary>
-        /// <param name="uri">The uri that represets the filter.</param>
-        /// <param name="exactMatch">A boolean value indicating whether the uris must match exactly.</param>
+        /// <param name="uri">The URI that represents the filter.</param>
+        /// <param name="exactMatch">A boolean value indicating whether the URIs must match exactly.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri"/> is null.</exception>
         public UriFilter(string uri, bool exactMatch = false)
         {
@@ -53,6 +56,12 @@ namespace AI4E.AspNetCore.Components.Notifications
             _exactMatch = exactMatch;
         }
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="UriFilter"/> type.
+        /// </summary>
+        /// <param name="uri">The URI that represents the filter.</param>
+        /// <param name="exactMatch">A boolean value indicating whether the URIs must match exactly.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri"/> is null.</exception>
         public UriFilter(Uri uri, bool exactMatch = false)
         {
             if (uri == null)
@@ -69,10 +78,10 @@ namespace AI4E.AspNetCore.Components.Notifications
         }
 
         /// <summary>
-        /// Returns a boolean value indicating whether the specified uri filter matches the current one.
+        /// Returns a boolean value indicating whether the specified URI filter matches the current one.
         /// </summary>
         /// <param name="other">The <see cref="UriFilter"/> to compare with.</param>
-        /// <returns>True if <paramref name="other"/> matches the current uri filter, false otherwise.</returns>
+        /// <returns>True if <paramref name="other"/> matches the current URI filter, false otherwise.</returns>
         public bool Equals(UriFilter other)
         {
             return _exactMatch == other._exactMatch &&
@@ -80,10 +89,13 @@ namespace AI4E.AspNetCore.Components.Notifications
         }
 
         /// <summary>
-        /// return a boolean value inidcating whether the specified object matched the current uri filter.
+        /// Return a boolean value indicating whether the specified object matched the current URI filter.
         /// </summary>
         /// <param name="obj">The <see cref="object"/> to compare with.</param>
-        /// <returns>True if <paramref name="obj"/> is of type <see cref="UriFilter"/> and equals the current uri filter, false otherwise.</returns>
+        /// <returns>
+        /// True if <paramref name="obj"/> is of type <see cref="UriFilter"/> and equals the current URI filter, 
+        /// false otherwise.
+        /// </returns>
         public override bool Equals(object? obj)
         {
             return obj is UriFilter uriFilter && Equals(uriFilter);
@@ -99,7 +111,7 @@ namespace AI4E.AspNetCore.Components.Notifications
         }
 
         /// <summary>
-        /// Compares two uri filters.
+        /// Compares two URI filters.
         /// </summary>
         /// <param name="left">The first <see cref="UriFilter"/>.</param>
         /// <param name="right">The second <see cref="UriFilter"/>.</param>
@@ -110,7 +122,7 @@ namespace AI4E.AspNetCore.Components.Notifications
         }
 
         /// <summary>
-        /// Compares two uri filters for inequality.
+        /// Compares two URI filters for inequality.
         /// </summary>
         /// <param name="left">The first <see cref="UriFilter"/>.</param>
         /// <param name="right">The second <see cref="UriFilter"/>.</param>
@@ -120,6 +132,12 @@ namespace AI4E.AspNetCore.Components.Notifications
             return !left.Equals(right);
         }
 
+        /// <summary>
+        /// Returns a boolean value indicating whether the specified URI matches the filter.
+        /// </summary>
+        /// <param name="uri">The URI to test.</param>
+        /// <returns>True if <paramref name="uri"/> matches the filter, false otherwise.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri"/> is null.</exception>
         public bool IsMatch(Uri uri)
         {
             if (uri is null)
@@ -131,9 +149,9 @@ namespace AI4E.AspNetCore.Components.Notifications
         }
 
         /// <summary>
-        /// Returns a boolean value indicating whether the specified url matches the filter.
+        /// Returns a boolean value indicating whether the specified URI matches the filter.
         /// </summary>
-        /// <param name="uri">The uri to test.</param>
+        /// <param name="uri">The URI to test.</param>
         /// <returns>True if <paramref name="uri"/> matches the filter, false otherwise.</returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri"/> is null.</exception>
         public bool IsMatch(string uri)
