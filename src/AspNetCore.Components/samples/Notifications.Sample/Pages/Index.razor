@@ -6,6 +6,8 @@
 
     private void PlaceNotification()
     {
+        NotificationMessage.Timestamp = NotificationMessage.Timestamp?.ToUniversalTime();
+        NotificationMessage.Expiration = NotificationMessage.Expiration?.ToUniversalTime();
         NotificationManager.PlaceNotification(NotificationMessage);
         NotificationMessage = new NotificationMessage();
     }
@@ -72,7 +74,7 @@
                 Expiration
             </label>
             <div class="col-lg-7">
-                <InputDate id="notification-expiration" @bind-Value="NotificationMessage.Expiration" class="form-control" />
+                <InputDateTime id="notification-expiration" @bind-Value="NotificationMessage.Expiration" class="form-control" />
             </div>
             <div class="col-lg-2">
                 <input type="button" value="Clear" @onclick="ClearExpiration" class="btn btn-secondary btn-block" />
@@ -102,7 +104,7 @@
                 Timestamp
             </label>
             <div class="col-lg-7">
-                <InputDate id="notification-timestamp" @bind-Value="NotificationMessage.Timestamp" class="form-control" />
+                <InputDateTime id="notification-timestamp" @bind-Value="NotificationMessage.Timestamp" class="form-control" />
             </div>
             <div class="col-lg-2">
                 <input type="button" value="Clear" @onclick="ClearTimestamp" class="btn btn-secondary btn-block" />

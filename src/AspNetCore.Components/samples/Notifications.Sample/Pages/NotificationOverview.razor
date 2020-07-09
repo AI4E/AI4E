@@ -39,7 +39,13 @@
 
                     <div class="media-body">
                         <a href="@notification.TargetUri">
-                            <strong class="notification-title">@notification.FormatTitle()</strong>
+                            <strong class="notification-title">
+                                @notification.FormatTitle()
+                                @if(notification.IsExpired)
+                                {
+                                    <span style="margin-left:5px">(Expired)</span>
+                                }
+                            </strong>
                         </a>
                         @if (!string.IsNullOrWhiteSpace(notification.Description))
                         {
@@ -47,7 +53,7 @@
                         }
 
                         <div class="notification-meta">
-                            <small class="timestamp">@notification.Timestamp</small>
+                            <small class="timestamp">@notification.Timestamp.ToLocalTime()</small>
                         </div>
                     </div>
 

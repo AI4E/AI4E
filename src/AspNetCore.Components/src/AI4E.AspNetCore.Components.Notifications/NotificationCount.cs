@@ -29,6 +29,11 @@ namespace Notifications.Sample.Shared
     /// </summary>
     public sealed class NotificationCount : NotificationComponent
     {
+        public NotificationCount()
+        {
+            RetainExpired = false;
+        }
+
         /// <summary>
         /// Gets or sets the template that renders the notification count.
         /// </summary>

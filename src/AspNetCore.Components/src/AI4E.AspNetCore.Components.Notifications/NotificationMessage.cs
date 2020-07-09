@@ -90,7 +90,7 @@ namespace AI4E.AspNetCore.Components.Notifications
         public string? TargetUri { get; set; }
 
         /// <summary>
-        /// Gets or sets the date and time of the notification's expiration
+        /// Gets or sets the date and time of the notification's expiration (UTC)
         /// or <c>null</c> if the notification has no expiration.
         /// </summary>
         public DateTime? Expiration { get; set; }

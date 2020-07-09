@@ -408,7 +408,6 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
             Assert.Single(subject.GetNotifications());
         }
 
-
         [Fact]
         public void DismissNotificationNonDismissableDoesNotRaiseNotificationsChangedEventTest()
         {

@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using AI4E.AspNetCore.Components.Notifications;
 using Microsoft.AspNetCore.Components;
@@ -32,9 +33,12 @@ namespace Notifications.Sample.Shared
     /// </summary>
     public abstract class NotificationComponent : ComponentBase, IDisposable
     {
+        private ImmutableList<Notification> _expired = ImmutableList<Notification>.Empty;
+
         private IReadOnlyList<Notification>? _notifications;
         private bool _locationChangedCallbackRegistered;
         private bool _disposed = false;
+        private bool _retainExpired = false;
 
 #nullable disable annotations
         [Inject] protected INotificationManager<Notification> NotificationManager { get; set; }
@@ -57,9 +61,15 @@ namespace Notifications.Sample.Shared
         [Parameter] public bool FilterOnCurrentLocation { get; set; }
 
         /// <summary>
+        /// Gets or sets a boolean value indicating whether expired notifications shall be retained in the scope of 
+        /// the component.
+        /// </summary>
+        [Parameter] public bool RetainExpired { get; set; } = true;
+
+        /// <summary>
         /// Gets the collection of available notifications.
         /// </summary>
-        protected IReadOnlyList<Notification> Notifications => _notifications ?? Array.Empty<Notification>();
+        protected IReadOnlyList<Notification> Notifications { get; private set; } = Array.Empty<Notification>();
 
         protected Uri? UriFilter => FilterOnCurrentLocation ? new Uri(NavigationManager.Uri) : null;
 
@@ -129,6 +139,21 @@ namespace Notifications.Sample.Shared
             _disposed = true;
         }
 
+        private IReadOnlyList<Notification> CombineNotifications()
+        {
+            if (!RetainExpired || !_expired.Any())
+            {
+                return _notifications ?? Array.Empty<Notification>();
+            }
+
+            if (_notifications is null)
+            {
+                return _expired;
+            }
+
+            return _expired.AddRange(_notifications);
+        }
+
         private void UpdateNotifications()
         {
             var notifications = NotificationManager.GetNotifications(
@@ -138,9 +163,21 @@ namespace Notifications.Sample.Shared
             // Only update state if notifications actually changed!
             if (_notifications is null || !notifications.ScrambledEquals(_notifications))
             {
+                if (_notifications != null)
+                {
+                    _expired = _expired.AddRange(_notifications.Except(notifications).Where(p => p.IsExpired));
+                }
+
                 _notifications = notifications;
+                Notifications = CombineNotifications();
                 StateHasChanged();
             }
+            else if (_retainExpired != RetainExpired)
+            {
+                Notifications = CombineNotifications();
+            }
+
+            _retainExpired = RetainExpired;
         }
     }
 }
