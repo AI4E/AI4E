@@ -19,29 +19,17 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
 using AI4E.AspNetCore.Components.Notifications;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
-using Microsoft.AspNetCore.Components.Routing;
 
 namespace Notifications.Sample.Shared
 {
     /// <summary>
     /// A component that renders a list of available notifications.
     /// </summary>
-    public sealed class NotificationList : ComponentBase, IDisposable
+    public sealed class NotificationList : NotificationComponent
     {
-        private IReadOnlyList<Notification>? _notifications;
-        private bool _locationChangedCallbackRegistered;
-
-#nullable disable annotations
-        [Inject] private INotificationManager<Notification> NotificationManager { get; set; }
-        [Inject] private NavigationManager NavigationManager { get; set; }
-#nullable enable annotations
-
         /// <summary>
         /// Gets or sets the notification template that renders a single notification.
         /// </summary>
@@ -52,28 +40,13 @@ namespace Notifications.Sample.Shared
         /// </summary>
         [Parameter] public RenderFragment? NoNotificationsTemplate { get; set; }
 
-        /// <summary>
-        /// Gets or sets the key of the notifications to render or <c>null</c> to render notifications regardless of 
-        /// their key.
-        /// </summary>
-        /// <remarks>
-        /// This filters the notification by key.
-        /// </remarks>
-        [Parameter] public string? Key { get; set; }
-
-        /// <summary>
-        /// Gets or sets a boolean value indicating whether notifications shall be filtered based on the current 
-        /// location.
-        /// </summary>
-        [Parameter] public bool FilterOnCurrentLocation { get; set; }
-
         /// <inheritdoc/>
         protected override void BuildRenderTree(RenderTreeBuilder builder)
         {
             if (builder is null)
                 throw new ArgumentNullException(nameof(builder));
 
-            if (_notifications is null || _notifications.Count == 0)
+            if (Notifications.Count == 0)
             {
                 builder.AddContent(0, NoNotificationsTemplate);
             }
@@ -82,75 +55,11 @@ namespace Notifications.Sample.Shared
                 if (NotificationTemplate is null)
                     return;
 
-                for (var i = 0; i < _notifications.Count; i++)
+                for (var i = 0; i < Notifications.Count; i++)
                 {
-                    var notification = _notifications[i];
+                    var notification = Notifications[i];
                     builder.AddContent(0, NotificationTemplate, notification);
                 }
-            }
-        }
-
-        /// <inheritdoc/>
-        protected override void OnParametersSet()
-        {
-            UpdateNotifications();
-
-            if (FilterOnCurrentLocation != _locationChangedCallbackRegistered)
-            {
-                if (FilterOnCurrentLocation)
-                {
-                    NavigationManager.LocationChanged += OnLocationChanged;
-                }
-                else
-                {
-                    NavigationManager.LocationChanged -= OnLocationChanged;
-                }
-
-                _locationChangedCallbackRegistered = FilterOnCurrentLocation;
-            }
-        }
-
-        /// <inheritdoc/>
-        protected override void OnAfterRender(bool firstRender)
-        {
-            if (firstRender)
-            {
-                NotificationManager.NotificationsChanged += OnNotificationsChanged;
-            }
-        }
-
-        private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-        {
-            UpdateNotifications();
-        }
-
-        private void OnNotificationsChanged(object? sender, EventArgs e)
-        {
-            _ = InvokeAsync(() =>
-            {
-                UpdateNotifications();
-            });
-        }
-
-        /// <inheritdoc/>
-        public void Dispose()
-        {
-            NotificationManager.NotificationsChanged -= OnNotificationsChanged;
-        }
-
-        private void UpdateNotifications()
-        {
-            // We use the string overload, as we get a string from the navigation manager and do not want to 
-            // copy the conversion logic here but rely in the notification manager to handle this.
-#pragma warning disable CA2234
-            var notifications = NotificationManager.GetNotifications(Key, NavigationManager.Uri);
-#pragma warning restore CA2234
-
-            // Only update state if notifications actually changed!
-            if (_notifications is null || !notifications.ScrambledEquals(_notifications))
-            {
-                _notifications = notifications;
-                StateHasChanged();
             }
         }
     }
