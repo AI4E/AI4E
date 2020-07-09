@@ -13,21 +13,16 @@
             </NavLink>
         </li>
         <li class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="oi oi-plus" aria-hidden="true"></span> Counter
-            </NavLink>
-        </li>
-        <li class="nav-item px-3">
-            <NavLink class="nav-link" href="fetchdata">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
-            </NavLink>
-        </li>
-        <li class="nav-item px-3">
             <NavLink class="nav-link" href="NotificationOverview">
                 <span class="oi oi-list-rich" aria-hidden="true"></span> Notification Overview
+                <NotificationCount>
+                    <Template Context="count">
+                        <span style="margin-left:5px">(@FormatNotificationCount(count))</span>
+                    </Template>
+                </NotificationCount>
             </NavLink>
         </li>
-        
+
     </ul>
 </div>
 
@@ -39,5 +34,12 @@
     void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    static string FormatNotificationCount(int count)
+    {
+        if (count > 9)
+            return "+";
+        return count.ToString();
     }
 }
