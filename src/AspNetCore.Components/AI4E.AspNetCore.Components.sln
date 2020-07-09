@@ -75,6 +75,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.AspNetCore.Components.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.Abstractions", "..\Modularity\src\AI4E.Modularity.Abstractions\AI4E.Modularity.Abstractions.csproj", "{80ECE60B-60FB-4E96-8085-7F27144B3B7B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.AspNetCore.Components.Notifications.Test", "test\AI4E.AspNetCore.Components.Notifications.Test\AI4E.AspNetCore.Components.Notifications.Test.csproj", "{4FB6B1A7-DC28-4D81-92AF-F65E75359FFC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -205,6 +207,10 @@ Global
 		{80ECE60B-60FB-4E96-8085-7F27144B3B7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{80ECE60B-60FB-4E96-8085-7F27144B3B7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{80ECE60B-60FB-4E96-8085-7F27144B3B7B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4FB6B1A7-DC28-4D81-92AF-F65E75359FFC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4FB6B1A7-DC28-4D81-92AF-F65E75359FFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4FB6B1A7-DC28-4D81-92AF-F65E75359FFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4FB6B1A7-DC28-4D81-92AF-F65E75359FFC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -242,6 +248,7 @@ Global
 		{6AC778CA-E41C-42E4-A862-712096D191BD} = {365927B2-2E03-4170-BC4B-E8022FB748C0}
 		{3B6C066D-F009-4490-9217-9421B3E19CA8} = {365927B2-2E03-4170-BC4B-E8022FB748C0}
 		{80ECE60B-60FB-4E96-8085-7F27144B3B7B} = {D51B21EF-F729-4357-ADCB-CABC59C6FB5B}
+		{4FB6B1A7-DC28-4D81-92AF-F65E75359FFC} = {365927B2-2E03-4170-BC4B-E8022FB748C0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CE658A01-D5E2-43E3-91BA-DB3AF5BB9471}

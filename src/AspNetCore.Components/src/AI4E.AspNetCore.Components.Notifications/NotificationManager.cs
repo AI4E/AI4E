@@ -30,7 +30,7 @@ namespace AI4E.AspNetCore.Components.Notifications
     public sealed class NotificationManager : INotificationManager<Notification>
     {
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly LinkedList<ManagedNotificationMessage> _notificationMessages 
+        private readonly LinkedList<ManagedNotificationMessage> _notificationMessages
             = new LinkedList<ManagedNotificationMessage>();
         private readonly object _mutex = new object();
         private bool _isDisposed = false;
@@ -51,7 +51,7 @@ namespace AI4E.AspNetCore.Components.Notifications
         }
 
         /// <inheritdoc />
-        public event EventHandler? NotificationsChanged;
+        public event EventHandler? NotificationsChanged; // TODO: This keeps alive objects
 
         private void OnNotificationsChanged()
         {
@@ -63,12 +63,13 @@ namespace AI4E.AspNetCore.Components.Notifications
         {
             var node = notification.NotificationRef;
 
-            if (node is null)
+            if (node is null || node.List != _notificationMessages)
                 return;
 
             lock (_mutex)
             {
-                CheckDisposed();
+                if (_isDisposed)
+                    return;
                 _notificationMessages.Remove(node);
             }
 
@@ -76,45 +77,7 @@ namespace AI4E.AspNetCore.Components.Notifications
         }
 
         /// <inheritdoc />
-        public IEnumerable<Notification> GetNotifications()
-        {
-            return GetNotificationsInternal(key: null, uri: null);
-        }
-
-        /// <inheritdoc />
-        public IEnumerable<Notification> GetNotifications(string key)
-        {
-            if (key is null)
-                throw new ArgumentNullException(nameof(key));
-
-            return GetNotificationsInternal(key, uri: null);
-        }
-
-        /// <inheritdoc />
-        public IEnumerable<Notification> GetNotifications(string key, string uri)
-        {
-            if (key is null)
-                throw new ArgumentNullException(nameof(key));
-
-            if (uri is null)
-                throw new ArgumentNullException(nameof(uri));
-
-            return GetNotificationsInternal(key, uri);
-        }
-
-        /// <inheritdoc />
-        public IEnumerable<Notification> GetNotifications(string key, Uri uri)
-        {
-            if (key is null)
-                throw new ArgumentNullException(nameof(key));
-
-            if (uri is null)
-                throw new ArgumentNullException(nameof(uri));
-
-            return GetNotificationsInternal(key, uri.ToString());
-        }
-
-        private IEnumerable<Notification> GetNotificationsInternal(string? key, string? uri)
+        public IReadOnlyList<Notification> GetNotifications(string? key, Uri? uri)
         {
             lock (_mutex)
             {
@@ -155,9 +118,7 @@ namespace AI4E.AspNetCore.Components.Notifications
 
         private void PlaceNotification(LinkedListNode<ManagedNotificationMessage> node)
         {
-            //Debug.Assert(node != null);
-
-            if (node.Value.Expiration == null)
+            if (node.Value.Expiration is null)
             {
                 lock (_mutex)
                 {
@@ -192,18 +153,30 @@ namespace AI4E.AspNetCore.Components.Notifications
 
             async Task RemoveNotificationAfterDelayAsync()
             {
-                await Task.Delay(delay).ConfigureAwait(false);
+                do
+                {
+                    await _dateTimeProvider.DelayAsync(delay).ConfigureAwait(false);
+                    now = _dateTimeProvider.GetCurrentTime();
+                    delay = (DateTime)node.Value.Expiration - now;
+                }
+                while (delay > TimeSpan.Zero);
+
+                var notificationRemoved = false;
 
                 lock (_mutex)
                 {
                     // The notification may already be removed in the meantime.
-                    if (!_isDisposed && node.List != null)
+                    if (!_isDisposed && node.List == _notificationMessages)
                     {
                         _notificationMessages.Remove(node);
+                        notificationRemoved = true;
                     }
                 }
 
-                OnNotificationsChanged();
+                if (notificationRemoved)
+                {
+                    OnNotificationsChanged();
+                }
             }
 
             RemoveNotificationAfterDelayAsync().HandleExceptions();
@@ -214,11 +187,6 @@ namespace AI4E.AspNetCore.Components.Notifications
         {
             if (notificationMessage is null)
                 throw new ArgumentNullException(nameof(notificationMessage));
-
-            if (!notificationMessage.NotificationType.IsValid())
-            {
-                throw new ArgumentException($"The alert type must be one of the values defined in {typeof(NotificationType)}.", nameof(notificationMessage));
-            }
 
             if (notificationMessage.NotificationType == NotificationType.None)
             {

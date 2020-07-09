@@ -156,7 +156,7 @@ namespace AI4E.AspNetCore.Components.Notifications
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri"/> is null.</exception>
         public bool IsMatch(string uri)
         {
-            if (uri == null)
+            if (uri is null)
                 throw new ArgumentNullException(nameof(uri));
 
             if (Equals(default))

@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using AI4E.AspNetCore.Components.Notifications;
 using Microsoft.AspNetCore.Components;
@@ -139,31 +140,18 @@ namespace Notifications.Sample.Shared
 
         private void UpdateNotifications()
         {
-            IEnumerable<Notification> notifications;
+            // We use the string overload, as we get a string from the navigation manager and do not want to 
+            // copy the conversion logic here but rely in the notification manager to handle this.
+#pragma warning disable CA2234
+            var notifications = NotificationManager.GetNotifications(Key, NavigationManager.Uri);
+#pragma warning restore CA2234
 
-            // TODO: Why the heck is this so complicated??
-            if (!(Key is null))
+            // Only update state if notifications actually changed!
+            if (_notifications is null || !notifications.ScrambledEquals(_notifications))
             {
-                if (FilterOnCurrentLocation)
-                {
-                    // We use the string overload, as we get a string from the navigation manager and do not want to 
-                    // copy the conversion logic here but rely in the notification manager to handle this.
-#pragma warning disable CA2234 
-                    notifications = NotificationManager.GetNotifications(Key, NavigationManager.Uri);
-#pragma warning restore CA2234 
-                }
-                else
-                {
-                    notifications = NotificationManager.GetNotifications(Key);
-                }
+                _notifications = notifications;
+                StateHasChanged();
             }
-            else
-            {
-                notifications = NotificationManager.GetNotifications();
-            }
-
-            _notifications = (notifications as IReadOnlyList<Notification>) ?? notifications.ToList();
-            StateHasChanged(); // TODO: Only update state if notifications actually changed!
         }
     }
 }

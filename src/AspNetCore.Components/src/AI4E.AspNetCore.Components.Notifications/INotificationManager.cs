@@ -73,15 +73,14 @@ namespace AI4E.AspNetCore.Components.Notifications
         event EventHandler NotificationsChanged;
 
         /// <summary>
-        /// Gets the collection of all available notifications.
+        /// Gets the collection of all available notifications in the context of the specified filters.
         /// </summary>
-        /// <returns>An <see cref="IEnumerable{T}"/> of all available notifications.</returns>
-        IEnumerable<TNotification> GetNotifications();
-
-        // TODO: Throw away all these and replace with a common method
-        IEnumerable<TNotification> GetNotifications(string key);
-        IEnumerable<TNotification> GetNotifications(string key, string uri);
-        IEnumerable<TNotification> GetNotifications(string key, Uri uri);
+        /// <param name="key">The key a notification must match or <c>null</c> to disable filtering by key.</param>
+        /// <param name="uri">
+        /// The URI a notification's URI filter must match or <c>null</c> to disable filtering by URI.
+        /// </param>
+        /// <returns>An <see cref="IReadOnlyList{T}"/> of all available notifications.</returns>
+        IReadOnlyList<TNotification> GetNotifications(string? key, Uri? uri);
 
         /// <summary>
         /// Dismisses the specified notification.
