@@ -94,5 +94,14 @@ namespace AI4E.AspNetCore.Components.Notifications
         /// notification manager.
         /// </remarks>
         void Dismiss(TNotification notification);
+
+        /// <summary>
+        /// Dismisses all dissmissable notifications in the context of the specified filters.
+        /// </summary>
+         /// <param name="key">The key a notification must match or <c>null</c> to disable filtering by key.</param>
+        /// <param name="uri">
+        /// The URI a notification's URI filter must match or <c>null</c> to disable filtering by URI.
+        /// </param>
+        void Dismiss(string? key, Uri? uri);
     }
 }

@@ -25,7 +25,6 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Notifications.Sample.Shared
 {
-
     /// <summary>
     /// A component that renders a list of available notifications.
     /// </summary>

@@ -37,8 +37,8 @@ namespace Notifications.Sample.Shared
         private bool _disposed = false;
 
 #nullable disable annotations
-        [Inject] private INotificationManager<Notification> NotificationManager { get; set; }
-        [Inject] private NavigationManager NavigationManager { get; set; }
+        [Inject] protected INotificationManager<Notification> NotificationManager { get; set; }
+        [Inject] protected NavigationManager NavigationManager { get; set; }
 #nullable enable annotations
 
         /// <summary>
@@ -60,6 +60,8 @@ namespace Notifications.Sample.Shared
         /// Gets the collection of available notifications.
         /// </summary>
         protected IReadOnlyList<Notification> Notifications => _notifications ?? Array.Empty<Notification>();
+
+        protected Uri? UriFilter => FilterOnCurrentLocation ? new Uri(NavigationManager.Uri) : null;
 
         /// <inheritdoc/>
         protected override void OnParametersSet()
@@ -129,11 +131,9 @@ namespace Notifications.Sample.Shared
 
         private void UpdateNotifications()
         {
-            // We use the string overload, as we get a string from the navigation manager and do not want to 
-            // copy the conversion logic here but rely in the notification manager to handle this.
-#pragma warning disable CA2234
-            var notifications = NotificationManager.GetNotifications(Key, NavigationManager.Uri);
-#pragma warning restore CA2234
+            var notifications = NotificationManager.GetNotifications(
+                Key,
+                UriFilter);
 
             // Only update state if notifications actually changed!
             if (_notifications is null || !notifications.ScrambledEquals(_notifications))

@@ -380,7 +380,7 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
             var subject = new NotificationManager(dateTimeProvider);
-            var notificationMessage = new NotificationMessage();
+            var notificationMessage = new NotificationMessage { AllowDismiss = true };
             subject.PlaceNotification(notificationMessage);
             var notification = subject.GetNotifications().First();
 
@@ -392,12 +392,54 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         }
 
         [Fact]
+        public void DismissNotificationNonDismissableIsNoOpTest()
+        {
+            // Arrange
+            var dateTimeProvider = new TestDateTimeProvider();
+            var subject = new NotificationManager(dateTimeProvider);
+            var notificationMessage = new NotificationMessage { AllowDismiss = false };
+            subject.PlaceNotification(notificationMessage);
+            var notification = subject.GetNotifications().First();
+
+            // Act
+            subject.Dismiss(notification);
+
+            // Assert
+            Assert.Single(subject.GetNotifications());
+        }
+
+
+        [Fact]
+        public void DismissNotificationNonDismissableDoesNotRaiseNotificationsChangedEventTest()
+        {
+            // Arrange
+            var dateTimeProvider = new TestDateTimeProvider();
+            var subject = new NotificationManager(dateTimeProvider);
+            var notificationMessage = new NotificationMessage { AllowDismiss = false };
+            subject.PlaceNotification(notificationMessage);
+            var notification = subject.GetNotifications().First();
+
+            var raisedNotificationsChanged = false;
+            void NotificationsChanged(object? sender, EventArgs e)
+            {
+                raisedNotificationsChanged = true;
+            }
+            subject.NotificationsChanged += NotificationsChanged;
+
+            // Act
+            subject.Dismiss(notification);
+
+            // Assert
+            Assert.False(raisedNotificationsChanged);
+        }
+
+        [Fact]
         public void DismissNotificationWithDefaultNotificationIsNoOpTest()
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
             var subject = new NotificationManager(dateTimeProvider);
-            var notificationMessage = new NotificationMessage();
+            var notificationMessage = new NotificationMessage { AllowDismiss = true };
             subject.PlaceNotification(notificationMessage);
 
             // Act
@@ -413,7 +455,7 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
             var subject = new NotificationManager(dateTimeProvider);
-            var notificationMessage = new NotificationMessage();
+            var notificationMessage = new NotificationMessage { AllowDismiss = true };
             subject.PlaceNotification(notificationMessage);
 
             // Act
@@ -433,7 +475,7 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
             var subject = new NotificationManager(dateTimeProvider);
-            var notificationMessage = new NotificationMessage();
+            var notificationMessage = new NotificationMessage { AllowDismiss = true };
             subject.PlaceNotification(notificationMessage);
             var notification = subject.GetNotifications().First();
 
@@ -498,7 +540,7 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
             subject.PlaceNotification(notificationMessage4);
 
             // Act
-            var notifications = subject.GetNotifications(key:null, uri: "http://example.domain/abc");
+            var notifications = subject.GetNotifications(key: null, uri: "http://example.domain/abc");
 
             // Assert
             static void AssertNotificationKey(Notification notification)
@@ -507,6 +549,120 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
             }
 
             Assert.Collection(notifications, AssertNotificationKey, AssertNotificationKey, AssertNotificationKey);
+        }
+
+        [Fact]
+        public void DismissNotificationsByKeyTest()
+        {
+            // Arrange
+            var dateTimeProvider = new TestDateTimeProvider();
+            var subject = new NotificationManager(dateTimeProvider);
+
+            var notificationMessage1 = new NotificationMessage { Key = "a", AllowDismiss = true };
+            var notificationMessage2 = new NotificationMessage { Key = "a", AllowDismiss = true };
+            var notificationMessage3 = new NotificationMessage { Key = "b", AllowDismiss = true };
+            var notificationMessage4 = new NotificationMessage { Key = null, AllowDismiss = true };
+            var notificationMessage5 = new NotificationMessage { Key = "a", AllowDismiss = false };
+
+            subject.PlaceNotification(notificationMessage1);
+            subject.PlaceNotification(notificationMessage2);
+            subject.PlaceNotification(notificationMessage3);
+            subject.PlaceNotification(notificationMessage4);
+            subject.PlaceNotification(notificationMessage5);
+
+            // Act
+            subject.Dismiss(key: "a", uri: null);
+
+            // Assert
+            Assert.Equal(3, subject.GetNotifications().Count);
+        }
+
+        [Fact]
+        public void DissmissNotificationByUriFilterTest()
+        {
+            // Arrange
+            var dateTimeProvider = new TestDateTimeProvider();
+            var subject = new NotificationManager(dateTimeProvider);
+
+            var notificationMessage1 = new NotificationMessage { Key = "a", UriFilter = new UriFilter("http://example.domain"), AllowDismiss = true };
+            var notificationMessage2 = new NotificationMessage { Key = "a", UriFilter = new UriFilter("http://example.domain/abc", exactMatch: true), AllowDismiss = true };
+            var notificationMessage3 = new NotificationMessage { Key = "a", UriFilter = default, AllowDismiss = true };
+            var notificationMessage4 = new NotificationMessage { Key = null, UriFilter = new UriFilter("http://other.domain"), AllowDismiss = true };
+            var notificationMessage5 = new NotificationMessage { Key = "a", UriFilter = new UriFilter("http://example.domain"), AllowDismiss = false };
+
+            subject.PlaceNotification(notificationMessage1);
+            subject.PlaceNotification(notificationMessage2);
+            subject.PlaceNotification(notificationMessage3);
+            subject.PlaceNotification(notificationMessage4);
+            subject.PlaceNotification(notificationMessage5);
+
+            // Act
+            subject.Dismiss(key: null, uri: new Uri("http://example.domain/abc"));
+
+            // Assert
+            Assert.Equal(2, subject.GetNotifications().Count);
+        }
+
+        [Fact]
+        public void DismissNotificationsByKeyRaisesNotificationsChangedEventTest()
+        {
+            // Arrange
+            var dateTimeProvider = new TestDateTimeProvider();
+            var subject = new NotificationManager(dateTimeProvider);
+
+            var notificationMessage1 = new NotificationMessage { Key = "a", AllowDismiss = true };
+            var notificationMessage2 = new NotificationMessage { Key = "a", AllowDismiss = true };
+            var notificationMessage3 = new NotificationMessage { Key = "b", AllowDismiss = true };
+            var notificationMessage4 = new NotificationMessage { Key = null, AllowDismiss = true };
+
+            subject.PlaceNotification(notificationMessage1);
+            subject.PlaceNotification(notificationMessage2);
+            subject.PlaceNotification(notificationMessage3);
+            subject.PlaceNotification(notificationMessage4);
+
+            var raisedNotificationsChanged = false;
+            void NotificationsChanged(object? sender, EventArgs e)
+            {
+                raisedNotificationsChanged = true;
+            }
+            subject.NotificationsChanged += NotificationsChanged;
+
+            // Act
+            subject.Dismiss(key: "a", uri: null);
+
+            // Assert
+            Assert.True(raisedNotificationsChanged);
+        }
+
+        [Fact]
+        public void DissmissNotificationByUriFilterRaisesNotificationsChangedEventTest()
+        {
+            // Arrange
+            var dateTimeProvider = new TestDateTimeProvider();
+            var subject = new NotificationManager(dateTimeProvider);
+
+            var notificationMessage1 = new NotificationMessage { Key = "a", UriFilter = new UriFilter("http://example.domain"), AllowDismiss = true };
+            var notificationMessage2 = new NotificationMessage { Key = "a", UriFilter = new UriFilter("http://example.domain/abc", exactMatch: true), AllowDismiss = true };
+            var notificationMessage3 = new NotificationMessage { Key = "a", UriFilter = default, AllowDismiss = true };
+            var notificationMessage4 = new NotificationMessage { Key = null, UriFilter = new UriFilter("http://other.domain"), AllowDismiss = true };
+
+            subject.PlaceNotification(notificationMessage1);
+            subject.PlaceNotification(notificationMessage2);
+            subject.PlaceNotification(notificationMessage3);
+            subject.PlaceNotification(notificationMessage4);
+
+            var raisedNotificationsChanged = false;
+            void NotificationsChanged(object? sender, EventArgs e)
+            {
+                raisedNotificationsChanged = true;
+            }
+            subject.NotificationsChanged += NotificationsChanged;
+
+            // Act
+            subject.Dismiss(key: null, uri: new Uri("http://example.domain/abc"));
+
+            // Assert
+            Assert.True(raisedNotificationsChanged);
         }
     }
 }

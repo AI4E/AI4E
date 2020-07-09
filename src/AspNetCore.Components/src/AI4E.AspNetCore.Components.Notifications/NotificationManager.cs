@@ -66,14 +66,49 @@ namespace AI4E.AspNetCore.Components.Notifications
             if (node is null || node.List != _notificationMessages)
                 return;
 
+            if (!node.Value.AllowDismiss)
+                return;
+
             lock (_mutex)
             {
                 if (_isDisposed)
                     return;
+
                 _notificationMessages.Remove(node);
             }
 
             OnNotificationsChanged();
+        }
+
+        /// <inheritdoc />
+        public void Dismiss(string? key, Uri? uri)
+        {
+            var notificationRemoved = false;
+
+            lock (_mutex)
+            {
+                if (_isDisposed)
+                    return;
+
+                var current = _notificationMessages.First;
+                while (current != null)
+                {
+                    var next = current.Next;
+
+                    if (current.Value.AllowDismiss && MatchesFilter(current, key, uri))
+                    {
+                        _notificationMessages.Remove(current);
+                        notificationRemoved = true;
+                    }
+
+                    current = next;
+                }
+            }
+
+            if(notificationRemoved)
+            {
+                OnNotificationsChanged();
+            }
         }
 
         /// <inheritdoc />
@@ -97,14 +132,7 @@ namespace AI4E.AspNetCore.Components.Notifications
 
                 for (var current = _notificationMessages.Last; current != null; current = current.Previous)
                 {
-#pragma warning disable CA2234
-                    if (uri != null && !current.Value.UriFilter.IsMatch(uri))
-#pragma warning restore CA2234
-                    {
-                        continue;
-                    }
-
-                    if (key != null && current.Value.Key != key)
+                    if(!MatchesFilter(current, key, uri))
                     {
                         continue;
                     }
@@ -114,6 +142,21 @@ namespace AI4E.AspNetCore.Components.Notifications
 
                 return builder.ToImmutable();
             }
+        }
+
+        private static bool MatchesFilter(LinkedListNode<ManagedNotificationMessage> node, string? key, Uri? uri)
+        {
+            if (key != null && node.Value.Key != key)
+            {
+                return false;
+            }
+
+            if (uri != null && !node.Value.UriFilter.IsMatch(uri))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private void PlaceNotification(LinkedListNode<ManagedNotificationMessage> node)

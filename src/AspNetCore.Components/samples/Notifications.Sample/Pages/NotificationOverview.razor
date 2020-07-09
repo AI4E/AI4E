@@ -2,6 +2,14 @@
 
 <h3>Notifications</h3>
 
+<DismissNotificationsButton>
+    <Template>
+        <button @onclick="context.Dismiss" disabled="@(!context.CanDismiss)">
+            Dismiss all
+        </button>
+    </Template>
+</DismissNotificationsButton>
+
 <ul class="notifications">
     <NotificationList>
         <NoNotificationsTemplate>
