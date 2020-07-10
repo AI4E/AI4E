@@ -68,6 +68,21 @@ namespace AI4E.AspNetCore.Components.Notifications
         where TNotification : INotification, IEquatable<TNotification>
     {
         /// <summary>
+        /// Notifies that the current popup changed.
+        /// </summary>
+        event EventHandler? PopupChanged;
+
+        /// <summary>
+        /// Gets the current popup or <c>null</c> if not popup is to be displayed.
+        /// </summary>
+        Popup? Popup { get; }
+
+        /// <summary>
+        /// Clears the popup and all scheduled popups.
+        /// </summary>
+        void ClearPopup();
+
+        /// <summary>
         /// Raised when the notifications managed by the current notification manager change.
         /// </summary>
         event EventHandler NotificationsChanged;
@@ -98,7 +113,7 @@ namespace AI4E.AspNetCore.Components.Notifications
         /// <summary>
         /// Dismisses all dissmissable notifications in the context of the specified filters.
         /// </summary>
-         /// <param name="key">The key a notification must match or <c>null</c> to disable filtering by key.</param>
+        /// <param name="key">The key a notification must match or <c>null</c> to disable filtering by key.</param>
         /// <param name="uri">
         /// The URI a notification's URI filter must match or <c>null</c> to disable filtering by URI.
         /// </param>

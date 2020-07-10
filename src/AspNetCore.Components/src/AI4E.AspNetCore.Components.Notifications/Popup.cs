@@ -1,8 +1,8 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
+ * Copyright (c)  2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -19,45 +19,34 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 
 namespace AI4E.AspNetCore.Components.Notifications
 {
-    /// <inheritdoc cref="INotification"/>
-    public readonly struct Notification : INotification, IEquatable<Notification>
+    public readonly struct Popup : INotification, IEquatable<Popup>
     {
-        internal Notification(LinkedListNode<ManagedNotificationMessage> notificationRef)
+        private readonly IManagedPopup? _managedPopup;
+
+        internal Popup(IManagedPopup managedPopup)
         {
-            Debug.Assert(notificationRef != null);
-            NotificationRef = notificationRef;
+            _managedPopup = managedPopup;
         }
 
-        internal LinkedListNode<ManagedNotificationMessage>? NotificationRef { get; }
-
-        /// <summary>
-        /// Gets the notification manager that manages the notification
-        /// or <c>null</c> if the notification is a default value.
-        /// </summary>
-        public INotificationManager<Notification>? NotificationManager =>
-            NotificationRef?.Value.NotificationManager;
-
         /// <inheritdoc />
-        public bool Equals(Notification other)
+        public bool Equals(Popup other)
         {
-            return NotificationRef == other.NotificationRef;
+            return _managedPopup == other._managedPopup;
         }
 
         /// <inheritdoc />
         public override bool Equals(object? obj)
         {
-            return obj is Notification notification && Equals(notification);
+            return obj is Popup popup && Equals(popup);
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return NotificationRef?.GetHashCode() ?? 0;
+            return _managedPopup?.GetHashCode() ?? 0;
         }
 
         /// <summary>
@@ -66,7 +55,7 @@ namespace AI4E.AspNetCore.Components.Notifications
         /// <param name="left">The first notification.</param>
         /// <param name="right">The second notification.</param>
         /// <returns>True if <paramref name="left"/> equals <paramref name="right"/>, false otherwise.</returns>
-        public static bool operator ==(Notification left, Notification right)
+        public static bool operator ==(Popup left, Popup right)
         {
             return left.Equals(right);
         }
@@ -77,44 +66,68 @@ namespace AI4E.AspNetCore.Components.Notifications
         /// <param name="left">The first notification.</param>
         /// <param name="right">The second notification.</param>
         /// <returns>True if <paramref name="left"/> does not equal <paramref name="right"/>, false otherwise.</returns>
-        public static bool operator !=(Notification left, Notification right)
+        public static bool operator !=(Popup left, Popup right)
         {
             return !left.Equals(right);
         }
 
-        /// <inheritdoc />
-        public bool IsExpired => NotificationRef == null || NotificationRef.List == null; // TODO: We must not access List here, as this had to be done with the manager mutex locked.
+        private Notification Notification => _managedPopup?.Notification ?? default;
 
         /// <inheritdoc />
-        public NotificationType NotificationType => NotificationRef?.Value.NotificationType ?? NotificationType.None;
+        public bool IsExpired => Notification.IsExpired;
 
         /// <inheritdoc />
-        public string Message => NotificationRef?.Value.Message ?? string.Empty;
+        public NotificationType NotificationType => Notification.NotificationType;
 
         /// <inheritdoc />
-        public string? Description => NotificationRef?.Value.Description;
+        public string Message => Notification.Message;
 
         /// <inheritdoc />
-        public string? TargetUri => NotificationRef?.Value.TargetUri;
+        public string? Description => Notification.Description;
 
         /// <inheritdoc />
-        public bool AllowDismiss => !IsExpired && (NotificationRef?.Value.AllowDismiss ?? false);
+        public string? TargetUri => Notification.TargetUri;
 
         /// <inheritdoc />
-        public string? Key => NotificationRef?.Value.Key;
+        bool INotification.AllowDismiss => Notification.AllowDismiss;
 
         /// <inheritdoc />
-        public DateTime Timestamp => NotificationRef?.Value.Timestamp ?? DateTime.UtcNow; // TODO: Which value can we use as timestamp here?
+        public string? Key => Notification.Key;
 
         /// <inheritdoc />
-        public void Dismiss()
+        public DateTime Timestamp => Notification.Timestamp;
+
+        /// <summary>
+        /// Gets the date and time of the popup's expiration (UTC).
+        /// </summary>
+        public DateTime PopupExpiration => _managedPopup?.PopupExpiration ?? DateTime.UtcNow;
+
+        void INotification.Dismiss()
+        {
+            Notification.Dismiss();
+        }
+
+        /// <inheritdoc />
+        public void DismissOrHide()
         {
             // The notification is either already expired or cannot be dismissed.
             // The notification can never go back to state "non-expired".
-            if (!AllowDismiss)
+
+            
+            var notification = Notification;
+            
+            if (notification.IsExpired)
                 return;
 
-            NotificationManager?.Dismiss(this);
+            if (notification.AllowDismiss)
+            {
+                notification.Dismiss();
+            }
+            else
+            {
+                // Cancel the popup
+                _managedPopup?.Cancel();
+            }
         }
     }
 }

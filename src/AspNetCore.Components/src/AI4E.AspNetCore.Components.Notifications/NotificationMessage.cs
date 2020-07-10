@@ -116,6 +116,11 @@ namespace AI4E.AspNetCore.Components.Notifications
         /// </summary>
         public DateTime? Timestamp { get; set; }
 
+        /// <summary>
+        /// Gets or sets a boolean value indicating whether a popup for the notification shall be displayed.
+        /// </summary>
+        public bool ShowPopup { get; set; } = true;
+
         private static NotificationType CheckValidNotificationType(
             NotificationType notificationType,
             string paramName)

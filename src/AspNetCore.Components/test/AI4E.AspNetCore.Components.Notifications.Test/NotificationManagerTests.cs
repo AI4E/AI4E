@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Notifications.Test.Helpers;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace AI4E.AspNetCore.Components.Notifications.Test
@@ -38,7 +39,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
             // Act
             static void Act()
             {
-                new NotificationManager(dateTimeProvider: null);
+                new NotificationManager(
+                    dateTimeProvider: null, 
+                    Options.Create<NotificationOptions>(new NotificationOptions()));
             }
 
             // Assert
@@ -50,7 +53,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                dateTimeProvider, 
+                Options.Create<NotificationOptions>(new NotificationOptions()));
 
             // Act
             var notifications = subject.GetNotifications();
@@ -64,7 +69,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                dateTimeProvider,
+                Options.Create<NotificationOptions>(new NotificationOptions()));
 
             // Act
             void Act()
@@ -81,7 +88,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                dateTimeProvider, 
+                Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage();
             subject.Dispose();
 
@@ -100,7 +109,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                dateTimeProvider, 
+                Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage();
 
             // Act
@@ -115,7 +126,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                dateTimeProvider, 
+                Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage();
 
             // Act
@@ -130,7 +143,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage(NotificationType.None, string.Empty);
 
             // Act
@@ -145,7 +160,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                  dateTimeProvider,
+                  Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage
             {
                 Expiration = dateTimeProvider.CurrentTime - TimeSpan.FromMinutes(1)
@@ -163,7 +180,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage();
             var raisedNotificationsChanged = false;
 
@@ -186,7 +205,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage();
             var notificationPlacement = subject.PlaceNotification(notificationMessage);
 
@@ -202,7 +223,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage();
             subject.PlaceNotification(notificationMessage);
 
@@ -218,13 +241,19 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                  dateTimeProvider,
+                  Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage();
             subject.PlaceNotification(notificationMessage);
 
             // Act
             subject.CancelNotification(
-                new NotificationPlacement(new NotificationManager(dateTimeProvider), new object()));
+                new NotificationPlacement(
+                    new NotificationManager(
+                        dateTimeProvider,
+                        Options.Create<NotificationOptions>(new NotificationOptions())),
+                    new object()));
 
             // Assert
             Assert.Single(subject.GetNotifications());
@@ -235,7 +264,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage();
             var notificationPlacement = subject.PlaceNotification(notificationMessage);
 
@@ -258,7 +289,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                   dateTimeProvider,
+                   Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage
             {
                 Expiration = dateTimeProvider.CurrentTime + TimeSpan.FromMinutes(1)
@@ -279,7 +312,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage
             {
                 Expiration = dateTimeProvider.CurrentTime + TimeSpan.FromMinutes(1)
@@ -300,7 +335,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                dateTimeProvider,
+                Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage
             {
                 Expiration = dateTimeProvider.CurrentTime + TimeSpan.FromMinutes(1)
@@ -322,7 +359,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                  dateTimeProvider,
+                  Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage
             {
                 Expiration = dateTimeProvider.CurrentTime + TimeSpan.FromMinutes(1)
@@ -350,7 +389,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage
             {
                 Expiration = dateTimeProvider.CurrentTime + TimeSpan.FromMinutes(1)
@@ -379,7 +420,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                  dateTimeProvider,
+                  Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage { AllowDismiss = true };
             subject.PlaceNotification(notificationMessage);
             var notification = subject.GetNotifications().First();
@@ -396,7 +439,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                  dateTimeProvider,
+                  Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage { AllowDismiss = false };
             subject.PlaceNotification(notificationMessage);
             var notification = subject.GetNotifications().First();
@@ -413,7 +458,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                  dateTimeProvider,
+                  Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage { AllowDismiss = false };
             subject.PlaceNotification(notificationMessage);
             var notification = subject.GetNotifications().First();
@@ -437,7 +484,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage { AllowDismiss = true };
             subject.PlaceNotification(notificationMessage);
 
@@ -453,7 +502,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage { AllowDismiss = true };
             subject.PlaceNotification(notificationMessage);
 
@@ -462,7 +513,11 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
                 new Notification(
                     new LinkedListNode<ManagedNotificationMessage>(
                         new ManagedNotificationMessage(
-                            new NotificationMessage(), new NotificationManager(dateTimeProvider), dateTimeProvider))));
+                            new NotificationMessage(), 
+                            new NotificationManager(
+                                dateTimeProvider, 
+                                Options.Create<NotificationOptions>(new NotificationOptions())), 
+                            dateTimeProvider))));
 
             // Assert
             Assert.Single(subject.GetNotifications());
@@ -473,7 +528,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
             var notificationMessage = new NotificationMessage { AllowDismiss = true };
             subject.PlaceNotification(notificationMessage);
             var notification = subject.GetNotifications().First();
@@ -497,7 +554,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
 
             var notificationMessage1 = new NotificationMessage { Key = "a" };
             var notificationMessage2 = new NotificationMessage { Key = "a" };
@@ -526,7 +585,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
 
             var notificationMessage1 = new NotificationMessage { Key = "a", UriFilter = new UriFilter("http://example.domain") };
             var notificationMessage2 = new NotificationMessage { Key = "a", UriFilter = new UriFilter("http://example.domain/abc", exactMatch: true) };
@@ -555,7 +616,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
 
             var notificationMessage1 = new NotificationMessage { Key = "a", AllowDismiss = true };
             var notificationMessage2 = new NotificationMessage { Key = "a", AllowDismiss = true };
@@ -581,7 +644,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
 
             var notificationMessage1 = new NotificationMessage { Key = "a", UriFilter = new UriFilter("http://example.domain"), AllowDismiss = true };
             var notificationMessage2 = new NotificationMessage { Key = "a", UriFilter = new UriFilter("http://example.domain/abc", exactMatch: true), AllowDismiss = true };
@@ -607,7 +672,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                dateTimeProvider,
+                Options.Create<NotificationOptions>(new NotificationOptions()));
 
             var notificationMessage1 = new NotificationMessage { Key = "a", AllowDismiss = true };
             var notificationMessage2 = new NotificationMessage { Key = "a", AllowDismiss = true };
@@ -638,7 +705,9 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
         {
             // Arrange
             var dateTimeProvider = new TestDateTimeProvider();
-            var subject = new NotificationManager(dateTimeProvider);
+            var subject = new NotificationManager(
+                 dateTimeProvider,
+                 Options.Create<NotificationOptions>(new NotificationOptions()));
 
             var notificationMessage1 = new NotificationMessage { Key = "a", UriFilter = new UriFilter("http://example.domain"), AllowDismiss = true };
             var notificationMessage2 = new NotificationMessage { Key = "a", UriFilter = new UriFilter("http://example.domain/abc", exactMatch: true), AllowDismiss = true };

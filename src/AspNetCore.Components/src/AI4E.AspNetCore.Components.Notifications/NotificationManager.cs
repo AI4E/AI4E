@@ -21,8 +21,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading.Tasks;
 using AI4E.Utils;
+using Microsoft.Extensions.Options;
 
 namespace AI4E.AspNetCore.Components.Notifications
 {
@@ -30,6 +32,8 @@ namespace AI4E.AspNetCore.Components.Notifications
     public sealed class NotificationManager : INotificationManager<Notification>
     {
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly PopupManager<PopupNotification> _popupManager;
+
         private readonly LinkedList<ManagedNotificationMessage> _notificationMessages
             = new LinkedList<ManagedNotificationMessage>();
         private readonly object _mutex = new object();
@@ -39,19 +43,42 @@ namespace AI4E.AspNetCore.Components.Notifications
         /// Creates a new instance of the <see cref="NotificationManager"/> type.
         /// </summary>
         /// <param name="dateTimeProvider">The <see cref="IDateTimeProvider"/> used to access the current time.</param>
+        /// <param name="optionsProvider">An options provider for the <see cref="NotificationOptions"/> type.</param>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if <paramref name="dateTimeProvider"/> is <c>null</c>.
+        /// Thrown if either <paramref name="dateTimeProvider"/> or <paramref name="optionsProvider"/> is <c>null</c>.
         /// </exception>
-        public NotificationManager(IDateTimeProvider dateTimeProvider)
+        public NotificationManager(
+            IDateTimeProvider dateTimeProvider,
+            IOptions<NotificationOptions> optionsProvider)
         {
             if (dateTimeProvider is null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
 
+            if (optionsProvider is null)
+                throw new ArgumentNullException(nameof(optionsProvider));
+
             _dateTimeProvider = dateTimeProvider;
+            _popupManager = new PopupManager<PopupNotification>(dateTimeProvider, optionsProvider);
         }
 
         /// <inheritdoc />
-        public event EventHandler? NotificationsChanged; // TODO: This keeps alive objects
+        public event EventHandler? PopupChanged
+        {
+            add { _popupManager.CurrentChanged += value; }
+            remove { _popupManager.CurrentChanged -= value; }
+        }
+
+        /// <inheritdoc />
+        public Popup? Popup => _popupManager.Current;
+
+        /// <inheritdoc />
+        public void ClearPopup()
+        {
+            _popupManager.CancelAll();
+        }
+
+        /// <inheritdoc />
+        public event EventHandler? NotificationsChanged;  // TODO: This keeps alive objects
 
         private void OnNotificationsChanged()
         {
@@ -77,13 +104,14 @@ namespace AI4E.AspNetCore.Components.Notifications
                 _notificationMessages.Remove(node);
             }
 
+            _popupManager.Cancel(new PopupNotification(node));
             OnNotificationsChanged();
         }
 
         /// <inheritdoc />
         public void Dismiss(string? key, Uri? uri)
         {
-            var notificationRemoved = false;
+            var dismissedNotifications = new LinkedList<ManagedNotificationMessage>();
 
             lock (_mutex)
             {
@@ -98,16 +126,21 @@ namespace AI4E.AspNetCore.Components.Notifications
                     if (current.Value.AllowDismiss && MatchesFilter(current, key, uri))
                     {
                         _notificationMessages.Remove(current);
-                        notificationRemoved = true;
+                        dismissedNotifications.AddLast(current);
                     }
 
                     current = next;
                 }
             }
 
-            if(notificationRemoved)
+            if (dismissedNotifications.Any())
             {
                 OnNotificationsChanged();
+
+                for (var node = dismissedNotifications.First; node != null; node = node.Next)
+                {
+                    _popupManager.Cancel(new PopupNotification(node));
+                }
             }
         }
 
@@ -132,7 +165,7 @@ namespace AI4E.AspNetCore.Components.Notifications
 
                 for (var current = _notificationMessages.Last; current != null; current = current.Previous)
                 {
-                    if(!MatchesFilter(current, key, uri))
+                    if (!MatchesFilter(current, key, uri))
                     {
                         continue;
                     }
@@ -169,6 +202,7 @@ namespace AI4E.AspNetCore.Components.Notifications
                     _notificationMessages.AddLast(node);
                 }
 
+                _popupManager.Schedule(new PopupNotification(node));
                 OnNotificationsChanged();
 
                 return;
@@ -192,6 +226,7 @@ namespace AI4E.AspNetCore.Components.Notifications
                 _notificationMessages.AddLast(node);
             }
 
+            _popupManager.Schedule(new PopupNotification(node));
             OnNotificationsChanged();
 
             async Task RemoveNotificationAfterDelayAsync()
@@ -218,6 +253,7 @@ namespace AI4E.AspNetCore.Components.Notifications
 
                 if (notificationRemoved)
                 {
+                    _popupManager.Cancel(new PopupNotification(node));
                     OnNotificationsChanged();
                 }
             }
@@ -257,8 +293,8 @@ namespace AI4E.AspNetCore.Components.Notifications
                 lock (_mutex)
                 {
                     CheckDisposed();
-
                     _notificationMessages.Remove(node);
+                    _popupManager.Cancel(new PopupNotification(node));
                 }
 
                 OnNotificationsChanged();

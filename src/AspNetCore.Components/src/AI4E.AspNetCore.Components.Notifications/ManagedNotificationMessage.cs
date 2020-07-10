@@ -51,6 +51,7 @@ namespace AI4E.AspNetCore.Components.Notifications
             UriFilter = notificationMessage.UriFilter;
             Key = notificationMessage.Key;
             Timestamp = notificationMessage.Timestamp ?? dateTimeProvider.GetCurrentTime();
+            ShowPopup = notificationMessage.ShowPopup;
         }
 
         public NotificationManager NotificationManager { get; }
@@ -63,5 +64,6 @@ namespace AI4E.AspNetCore.Components.Notifications
         public UriFilter UriFilter { get; }
         public string? Key { get; }
         public DateTime Timestamp { get; }
+        public bool ShowPopup { get;}
     }
 }
