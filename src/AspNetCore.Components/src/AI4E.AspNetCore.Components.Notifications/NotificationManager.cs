@@ -104,7 +104,7 @@ namespace AI4E.AspNetCore.Components.Notifications
                 _notificationMessages.Remove(node);
             }
 
-            _popupManager.Cancel(new PopupNotification(node));
+            _popupManager.Cancel(new PopupNotification(node, _dateTimeProvider));
             OnNotificationsChanged();
         }
 
@@ -139,7 +139,7 @@ namespace AI4E.AspNetCore.Components.Notifications
 
                 for (var node = dismissedNotifications.First; node != null; node = node.Next)
                 {
-                    _popupManager.Cancel(new PopupNotification(node));
+                    _popupManager.Cancel(new PopupNotification(node, _dateTimeProvider));
                 }
             }
         }
@@ -158,7 +158,7 @@ namespace AI4E.AspNetCore.Components.Notifications
 
                 if (_notificationMessages.Count == 1)
                 {
-                    return ImmutableList.Create(new Notification(_notificationMessages.First!));
+                    return ImmutableList.Create(new Notification(_notificationMessages.First!, _dateTimeProvider));
                 }
 
                 var builder = ImmutableList.CreateBuilder<Notification>();
@@ -170,7 +170,7 @@ namespace AI4E.AspNetCore.Components.Notifications
                         continue;
                     }
 
-                    builder.Add(new Notification(current));
+                    builder.Add(new Notification(current, _dateTimeProvider));
                 }
 
                 return builder.ToImmutable();
@@ -202,7 +202,7 @@ namespace AI4E.AspNetCore.Components.Notifications
                     _notificationMessages.AddLast(node);
                 }
 
-                _popupManager.Schedule(new PopupNotification(node));
+                _popupManager.Schedule(new PopupNotification(node, _dateTimeProvider));
                 OnNotificationsChanged();
 
                 return;
@@ -226,7 +226,7 @@ namespace AI4E.AspNetCore.Components.Notifications
                 _notificationMessages.AddLast(node);
             }
 
-            _popupManager.Schedule(new PopupNotification(node));
+            _popupManager.Schedule(new PopupNotification(node, _dateTimeProvider));
             OnNotificationsChanged();
 
             async Task RemoveNotificationAfterDelayAsync()
@@ -253,7 +253,7 @@ namespace AI4E.AspNetCore.Components.Notifications
 
                 if (notificationRemoved)
                 {
-                    _popupManager.Cancel(new PopupNotification(node));
+                    _popupManager.Cancel(new PopupNotification(node, _dateTimeProvider));
                     OnNotificationsChanged();
                 }
             }
@@ -294,7 +294,7 @@ namespace AI4E.AspNetCore.Components.Notifications
                 {
                     CheckDisposed();
                     _notificationMessages.Remove(node);
-                    _popupManager.Cancel(new PopupNotification(node));
+                    _popupManager.Cancel(new PopupNotification(node, _dateTimeProvider));
                 }
 
                 OnNotificationsChanged();

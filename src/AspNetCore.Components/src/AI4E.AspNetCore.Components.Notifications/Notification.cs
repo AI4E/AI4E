@@ -20,17 +20,19 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using AI4E.Utils;
 
 namespace AI4E.AspNetCore.Components.Notifications
 {
     /// <inheritdoc cref="INotification"/>
     public readonly struct Notification : INotification, IEquatable<Notification>
     {
-        internal Notification(LinkedListNode<ManagedNotificationMessage> notificationRef)
+        private readonly IDateTimeProvider? _dateTimeProvider;
+
+        internal Notification(LinkedListNode<ManagedNotificationMessage> notificationRef, IDateTimeProvider dateTimeProvider)
         {
-            Debug.Assert(notificationRef != null);
             NotificationRef = notificationRef;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         internal LinkedListNode<ManagedNotificationMessage>? NotificationRef { get; }
@@ -83,7 +85,22 @@ namespace AI4E.AspNetCore.Components.Notifications
         }
 
         /// <inheritdoc />
-        public bool IsExpired => NotificationRef == null || NotificationRef.List == null; // TODO: We must not access List here, as this had to be done with the manager mutex locked.
+        public bool IsExpired
+        {
+            get
+            {
+                if (NotificationRef is null || _dateTimeProvider is null)
+                    return true;
+
+                var expiration = NotificationRef.Value.Expiration;
+
+                if (expiration is null)
+                    return false;
+
+                var now = _dateTimeProvider.GetCurrentTime();
+                return now >= expiration;
+            }
+        }
 
         /// <inheritdoc />
         public NotificationType NotificationType => NotificationRef?.Value.NotificationType ?? NotificationType.None;

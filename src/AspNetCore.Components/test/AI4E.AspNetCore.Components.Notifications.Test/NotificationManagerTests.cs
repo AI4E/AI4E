@@ -517,7 +517,8 @@ namespace AI4E.AspNetCore.Components.Notifications.Test
                             new NotificationManager(
                                 dateTimeProvider, 
                                 Options.Create<NotificationOptions>(new NotificationOptions())), 
-                            dateTimeProvider))));
+                            dateTimeProvider)), 
+                    dateTimeProvider));
 
             // Assert
             Assert.Single(subject.GetNotifications());

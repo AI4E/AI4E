@@ -21,15 +21,19 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using AI4E.Utils;
 
 namespace AI4E.AspNetCore.Components.Notifications
 {
     internal readonly struct PopupNotification : IPopupNotification, IEquatable<PopupNotification>
     {
-        internal PopupNotification(LinkedListNode<ManagedNotificationMessage> notificationRef)
+        private readonly IDateTimeProvider _dateTimeProvider;
+
+        internal PopupNotification(LinkedListNode<ManagedNotificationMessage> notificationRef, IDateTimeProvider dateTimeProvider)
         {
             Debug.Assert(notificationRef != null);
             NotificationRef = notificationRef;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         internal LinkedListNode<ManagedNotificationMessage>? NotificationRef { get; }
@@ -38,7 +42,10 @@ namespace AI4E.AspNetCore.Components.Notifications
 
         public DateTime? Expiration => NotificationRef?.Value.Expiration;
 
-        public Notification Notification => NotificationRef is null ? default : new Notification(NotificationRef);
+        public Notification Notification => 
+            NotificationRef is null ? 
+            default : 
+            new Notification(NotificationRef, _dateTimeProvider);
 
         public bool Equals(PopupNotification other)
         {

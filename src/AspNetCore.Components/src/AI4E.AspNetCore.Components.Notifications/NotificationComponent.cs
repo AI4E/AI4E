@@ -165,7 +165,8 @@ namespace Notifications.Sample.Shared
             {
                 if (_notifications != null)
                 {
-                    _expired = _expired.AddRange(_notifications.Except(notifications).Where(p => p.IsExpired));
+                    var expiredNotifications = _notifications.Except(notifications).Where(p => p.IsExpired);
+                    _expired = _expired.AddRange(expiredNotifications);
                 }
 
                 _notifications = notifications;
