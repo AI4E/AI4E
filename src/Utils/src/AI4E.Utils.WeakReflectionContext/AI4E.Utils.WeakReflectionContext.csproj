@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
-    <Nullable>enable</Nullable>
     <RootNamespace>AI4E.Utils</RootNamespace>
   </PropertyGroup>
 

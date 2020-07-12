@@ -18,8 +18,8 @@
     <LangVersion>8.0</LangVersion>
     <RazorLangVersion>3.0</RazorLangVersion>
     <TypeScriptToolsVersion>3.5</TypeScriptToolsVersion>
-    <Nullable>annotations</Nullable> <!--TODO: enable See: https://github.com/AI4E/AI4E/issues/245-->
-    <WarningsAsErrors>$(WarningsAsErrors);CS8597;CS8600;CS8601;CS8602;CS8603;CS8604;CS8609;CS8610;CS8613;CS8618;CS8620;CS8622;CS8625;CS8653;CS8714;</WarningsAsErrors>
+    <Nullable>enable</Nullable>
+    <WarningsAsErrors>$(WarningsAsErrors);nullable</WarningsAsErrors>
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
     <NoWarn>$(NoWarn);NU5105</NoWarn>
     <GenerateDocumentationFile Condition="'$(Configuration)' == 'Release'">true</GenerateDocumentationFile>

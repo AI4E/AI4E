@@ -4,9 +4,5 @@
   </PropertyGroup>
 
   <Import Project="$(_ParentDirectoryBuildPropsPath)" Condition="Exists('$(_ParentDirectoryBuildPropsPath)')"/>
-
-  <PropertyGroup Condition="!($(MSBuildProjectName.EndsWith('Test')))">
-      <Nullable>enable</Nullable>
-  </PropertyGroup>
   
 </Project>

@@ -240,7 +240,7 @@ namespace AI4E.Messaging
                     return false;
                 }
 
-                return _data.TryGetValue(key, out value);
+                return _data.TryGetValue(key, out value) && value != null;
             }
 
             public Enumerator GetEnumerator()

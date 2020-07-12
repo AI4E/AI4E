@@ -268,7 +268,7 @@ namespace AI4E.AspNetCore.Components
             if (dispatchResult is null)
                 throw new ArgumentNullException(nameof(dispatchResult));
 
-            return dispatchResult.IsSuccessWithResult(out model);
+            return dispatchResult.IsSuccessWithResult(out model) && model != null;
         }
 
         #region Load model

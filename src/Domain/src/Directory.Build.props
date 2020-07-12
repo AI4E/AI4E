@@ -5,8 +5,8 @@
 
   <Import Project="$(_ParentDirectoryBuildPropsPath)" Condition="Exists('$(_ParentDirectoryBuildPropsPath)')"/>
 
-  <PropertyGroup>
-    <Nullable>disable</Nullable>
+   <PropertyGroup>
+    <Nullable>annotations</Nullable>
   </PropertyGroup>
 
 </Project>

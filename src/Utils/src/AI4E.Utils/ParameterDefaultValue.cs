@@ -27,7 +27,6 @@
 */
 
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace AI4E.Utils
@@ -36,7 +35,7 @@ namespace AI4E.Utils
     {
         private static readonly Type _nullable = typeof(Nullable<>);
 
-        public static bool TryGetDefaultValue(ParameterInfo parameter, [NotNullWhen(true)] out object? defaultValue)
+        public static bool TryGetDefaultValue(ParameterInfo parameter, out object? defaultValue)
         {
             if (parameter is null)
                 throw new ArgumentNullException(nameof(parameter));

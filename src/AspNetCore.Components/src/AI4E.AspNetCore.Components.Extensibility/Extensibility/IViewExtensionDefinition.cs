@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components;
 
 namespace AI4E.AspNetCore.Components.Extensibility
@@ -36,6 +37,6 @@ namespace AI4E.AspNetCore.Components.Extensibility
         /// <summary>
         /// Gets or sets the view-extension context.
         /// </summary>
-        TContext Context { get; set; }
+        [MaybeNull] TContext Context { get; set; }
     }
 }

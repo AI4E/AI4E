@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
-    <Nullable>disable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>

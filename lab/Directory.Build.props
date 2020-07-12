@@ -5,10 +5,14 @@
 
   <Import Project="$(_ParentDirectoryBuildPropsPath)" Condition="Exists('$(_ParentDirectoryBuildPropsPath)')"/>
 
+  <PropertyGroup>
+    <Nullable>annotations</Nullable>
+  </PropertyGroup>
+
   <PropertyGroup Condition="!($(MSBuildProjectName.EndsWith('Test')))">
     <IsPackable>true</IsPackable>
   </PropertyGroup>
-  
+
   <PropertyGroup Condition="!($(MSBuildProjectName.EndsWith('Test'))) AND '$(Configuration)' == 'Release'">
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
