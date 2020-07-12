@@ -11,9 +11,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj" />
-    <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
-    <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Storage\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Storage\src\AI4E.Storage\AI4E.Storage.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Utils\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj" />
   </ItemGroup>
 
   <ItemGroup>
