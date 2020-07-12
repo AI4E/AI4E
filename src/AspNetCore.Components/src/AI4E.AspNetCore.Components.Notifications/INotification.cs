@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -22,6 +22,9 @@ using System;
 
 namespace AI4E.AspNetCore.Components.Notifications
 {
+    /// <summary>
+    /// Represents a notification.
+    /// </summary>
     public interface INotification
     {
         /// <summary>
@@ -40,12 +43,12 @@ namespace AI4E.AspNetCore.Components.Notifications
         string Message { get; }
 
         /// <summary>
-        /// Gets the notification description.
+        /// Gets the notification description or <c>null</c> if the notification does not have a description.
         /// </summary>
         public string? Description { get; }
 
         /// <summary>
-        /// Gets the uri of the notification target.
+        /// Gets the URI of the notification target or <c>null</c> if no target is specified.
         /// </summary>
         public string? TargetUri { get; }
 
@@ -55,12 +58,12 @@ namespace AI4E.AspNetCore.Components.Notifications
         bool AllowDismiss { get; }
 
         /// <summary>
-        /// Gets the notification key.
+        /// Gets the key of the notification or <c>null</c> if the notification does not have a key.
         /// </summary>
         public string? Key { get; }
 
         /// <summary>
-        /// Gets the timestamp of the notification.
+        /// Gets the timestamp (UTC) of the notification.
         /// </summary>
         public DateTime Timestamp { get; }
 

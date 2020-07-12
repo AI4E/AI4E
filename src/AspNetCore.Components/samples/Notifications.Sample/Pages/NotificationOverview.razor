@@ -1,61 +1,21 @@
 ﻿@page "/NotificationOverview"
-@using AI4E.AspNetCore.Components.Notifications
-@implements IDisposable
-@inject NotificationManager NotificationManager
-@code
-{
-    private IReadOnlyList<Notification> Notifications { get; set; }
-
-    protected override void OnInitialized()
-    {
-        UpdateNotifications();
-    }
-
-    protected override void OnAfterRender(bool firstRender)
-    {
-        if (firstRender)
-        {
-            NotificationManager.NotificationsChanged += OnNotificationsChanged;
-        }
-    }
-
-    private void OnNotificationsChanged(object sender, EventArgs e)
-    {
-        UpdateNotifications();
-        StateHasChanged();
-    }
-
-    public void Dispose()
-    {
-        NotificationManager.NotificationsChanged -= OnNotificationsChanged;
-    }
-
-    private void UpdateNotifications()
-    {
-        var notifications = NotificationManager.GetNotifications(); ;
-        Notifications = (notifications as IReadOnlyList<Notification>) ?? notifications.ToList();
-    }
-
-    private static string FormatNotificationTitle(in Notification notification)
-    {
-        if (!string.IsNullOrWhiteSpace(notification.Message))
-        {
-            return notification.Message;
-        }
-
-        return notification.NotificationType.ToString();
-    }
-}
 
 <h3>Notifications</h3>
 
-@if (Notifications.Any())
-{
-    <ul class="notifications">
-        @for (var i = 0; i < Notifications.Count; i++)
-        {
-            var notification = Notifications[i];
+<DismissNotificationsButton>
+    <Template>
+        <button @onclick="context.Dismiss" disabled="@(!context.CanDismiss)">
+            Dismiss all
+        </button>
+    </Template>
+</DismissNotificationsButton>
 
+<ul class="notifications">
+    <NotificationList>
+        <NoNotificationsTemplate>
+            <h4>No notifications!</h4>
+        </NoNotificationsTemplate>
+        <NotificationTemplate Context="notification">
             <li class="notification" clickable="@(notification.TargetUri != null)">
                 <div class="media">
                     <div class="mr-2" style="width:50px; height:50px; display: flex; align-items:center; justify-content:center">
@@ -79,7 +39,13 @@
 
                     <div class="media-body">
                         <a href="@notification.TargetUri">
-                            <strong class="notification-title">@FormatNotificationTitle(notification)</strong>
+                            <strong class="notification-title">
+                                @notification.FormatTitle()
+                                @if(notification.IsExpired)
+                                {
+                                    <span style="margin-left:5px">(Expired)</span>
+                                }
+                            </strong>
                         </a>
                         @if (!string.IsNullOrWhiteSpace(notification.Description))
                         {
@@ -87,7 +53,7 @@
                         }
 
                         <div class="notification-meta">
-                            <small class="timestamp">@notification.Timestamp</small>
+                            <small class="timestamp">@notification.Timestamp.ToLocalTime()</small>
                         </div>
                     </div>
 
@@ -103,25 +69,6 @@
                 </div>
 
             </li>
-        }
-    </ul>
-}
-else
-{
-    <h4>No notifications!</h4>
-}
-
-
-@*<li class="notification">
-        <div class="media">
-            <img data-src="holder.js/50x50?bg=cccccc" class="mr-2 img-circle" alt="Name">
-            <div class="media-body">
-                <strong class="notification-title"><a href="#">Dave Lister</a> commented on <a href="#">DWARF-13 - Maintenance</a></strong>
-                <p class="notification-desc">I totally don't wanna do it. Rimmer can do it.</p>
-
-                <div class="notification-meta">
-                    <small class="timestamp">27. 11. 2015, 15:00</small>
-                </div>
-            </div>
-        </div>
-    </li>*@
+        </NotificationTemplate>
+    </NotificationList>
+</ul>

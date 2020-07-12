@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -23,24 +23,100 @@ using System.Collections.Generic;
 
 namespace AI4E.AspNetCore.Components.Notifications
 {
-    public interface INotificationManager : IDisposable // TODO: Rename?
+    /// <summary>
+    /// Represents a notification manager that manages notifications and their lifetime.
+    /// </summary>
+    public interface INotificationManager : IDisposable
     {
+        /// <summary>
+        /// Places the specified notification message and returns a handle for the notification placement.
+        /// </summary>
+        /// <param name="notificationMessage">The notification message describing the notification to place.</param>
+        /// <returns>
+        /// A <see cref="NotificationPlacement"/> that is a handle for the placement of the notification.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Throw if <paramref name="notificationMessage"/> is <c>null</c>.
+        /// </exception>
         NotificationPlacement PlaceNotification(NotificationMessage notificationMessage);
+
+        /// <summary>
+        /// Cancels the specified notifications placement.
+        /// </summary>
+        /// <param name="notificationPlacement">The notification placement to cancel.</param>
         void CancelNotification(in NotificationPlacement notificationPlacement);
 
+        /// <summary>
+        /// Creates a notification manager scope for the current instance.
+        /// </summary>
+        /// <returns>A new <see cref="INotificationManagerScope"/> based on the current notification manager.</returns>
         INotificationManagerScope CreateScope();
+
+        /// <summary>
+        /// Creates a new notification recorder for the current instance.
+        /// </summary>
+        /// <returns>A new <see cref="INotificationRecorder"/> based on the current notification manager.</returns>
         INotificationRecorder CreateRecorder();
     }
 
+    /// <summary>
+    /// Represents a notification manager of the specified type of notification that manages notifications and their 
+    /// lifetime.
+    /// </summary>
+    /// <typeparam name="TNotification">The type of notification.</typeparam>
     public interface INotificationManager<TNotification> : INotificationManager
         where TNotification : INotification, IEquatable<TNotification>
     {
+        /// <summary>
+        /// Notifies that the current popup changed.
+        /// </summary>
+        event EventHandler? PopupChanged;
+
+        /// <summary>
+        /// Gets the current popup or <c>null</c> if not popup is to be displayed.
+        /// </summary>
+        Popup? Popup { get; }
+
+        /// <summary>
+        /// Clears the popup and all scheduled popups.
+        /// </summary>
+        void ClearPopup();
+
+        /// <summary>
+        /// Raised when the notifications managed by the current notification manager change.
+        /// </summary>
         event EventHandler NotificationsChanged;
 
-        IEnumerable<TNotification> GetNotifications();
+        /// <summary>
+        /// Gets the collection of all available notifications in the context of the specified filters.
+        /// </summary>
+        /// <param name="key">The key a notification must match or <c>null</c> to disable filtering by key.</param>
+        /// <param name="uri">
+        /// The URI a notification's URI filter must match or <c>null</c> to disable filtering by URI.
+        /// </param>
+        /// <returns>An <see cref="IReadOnlyList{T}"/> of all available notifications.</returns>
+        IReadOnlyList<TNotification> GetNotifications(string? key, Uri? uri);
+
+        /// <summary>
+        /// Dismisses the specified notification.
+        /// </summary>
+        /// <param name="notification">The notification to dismiss.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="notification"/> is <c>null</c>.
+        /// </exception>
+        /// <remarks>
+        /// This is a no-op if <paramref name="notification"/> is not dismissable or is not known to the current 
+        /// notification manager.
+        /// </remarks>
         void Dismiss(TNotification notification);
-        IEnumerable<TNotification> GetNotifications(string key);
-        IEnumerable<TNotification> GetNotifications(string key, string uri);
-        IEnumerable<TNotification> GetNotifications(string key, Uri uri);
+
+        /// <summary>
+        /// Dismisses all dissmissable notifications in the context of the specified filters.
+        /// </summary>
+        /// <param name="key">The key a notification must match or <c>null</c> to disable filtering by key.</param>
+        /// <param name="uri">
+        /// The URI a notification's URI filter must match or <c>null</c> to disable filtering by URI.
+        /// </param>
+        void Dismiss(string? key, Uri? uri);
     }
 }

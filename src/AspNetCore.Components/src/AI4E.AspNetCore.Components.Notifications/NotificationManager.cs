@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -21,28 +21,64 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading.Tasks;
 using AI4E.Utils;
+using Microsoft.Extensions.Options;
 
 namespace AI4E.AspNetCore.Components.Notifications
 {
+    /// <inheritdoc cref="INotificationManager"/>
     public sealed class NotificationManager : INotificationManager<Notification>
     {
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly LinkedList<ManagedNotificationMessage> _notificationMessages = new LinkedList<ManagedNotificationMessage>();
+        private readonly PopupManager<PopupNotification> _popupManager;
+
+        private readonly LinkedList<ManagedNotificationMessage> _notificationMessages
+            = new LinkedList<ManagedNotificationMessage>();
         private readonly object _mutex = new object();
         private bool _isDisposed = false;
 
-        public NotificationManager(IDateTimeProvider dateTimeProvider)
+        /// <summary>
+        /// Creates a new instance of the <see cref="NotificationManager"/> type.
+        /// </summary>
+        /// <param name="dateTimeProvider">The <see cref="IDateTimeProvider"/> used to access the current time.</param>
+        /// <param name="optionsProvider">An options provider for the <see cref="NotificationOptions"/> type.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="dateTimeProvider"/> or <paramref name="optionsProvider"/> is <c>null</c>.
+        /// </exception>
+        public NotificationManager(
+            IDateTimeProvider dateTimeProvider,
+            IOptions<NotificationOptions> optionsProvider)
         {
             if (dateTimeProvider is null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
 
+            if (optionsProvider is null)
+                throw new ArgumentNullException(nameof(optionsProvider));
+
             _dateTimeProvider = dateTimeProvider;
+            _popupManager = new PopupManager<PopupNotification>(dateTimeProvider, optionsProvider);
         }
 
         /// <inheritdoc />
-        public event EventHandler? NotificationsChanged;
+        public event EventHandler? PopupChanged
+        {
+            add { _popupManager.CurrentChanged += value; }
+            remove { _popupManager.CurrentChanged -= value; }
+        }
+
+        /// <inheritdoc />
+        public Popup? Popup => _popupManager.Current;
+
+        /// <inheritdoc />
+        public void ClearPopup()
+        {
+            _popupManager.CancelAll();
+        }
+
+        /// <inheritdoc />
+        public event EventHandler? NotificationsChanged;  // TODO: This keeps alive objects
 
         private void OnNotificationsChanged()
         {
@@ -54,57 +90,62 @@ namespace AI4E.AspNetCore.Components.Notifications
         {
             var node = notification.NotificationRef;
 
-            if (node is null)
+            if (node is null || node.List != _notificationMessages)
+                return;
+
+            if (!node.Value.AllowDismiss)
                 return;
 
             lock (_mutex)
             {
-                CheckDisposed();
+                if (_isDisposed)
+                    return;
+
                 _notificationMessages.Remove(node);
             }
 
+            _popupManager.Cancel(new PopupNotification(node, _dateTimeProvider));
             OnNotificationsChanged();
         }
 
         /// <inheritdoc />
-        public IEnumerable<Notification> GetNotifications()
+        public void Dismiss(string? key, Uri? uri)
         {
-            return GetNotificationsInternal(key: null, uri: null);
+            var dismissedNotifications = new LinkedList<ManagedNotificationMessage>();
+
+            lock (_mutex)
+            {
+                if (_isDisposed)
+                    return;
+
+                var current = _notificationMessages.First;
+                while (current != null)
+                {
+                    var next = current.Next;
+
+                    if (current.Value.AllowDismiss && MatchesFilter(current, key, uri))
+                    {
+                        _notificationMessages.Remove(current);
+                        dismissedNotifications.AddLast(current);
+                    }
+
+                    current = next;
+                }
+            }
+
+            if (dismissedNotifications.Any())
+            {
+                OnNotificationsChanged();
+
+                for (var node = dismissedNotifications.First; node != null; node = node.Next)
+                {
+                    _popupManager.Cancel(new PopupNotification(node, _dateTimeProvider));
+                }
+            }
         }
 
         /// <inheritdoc />
-        public IEnumerable<Notification> GetNotifications(string key)
-        {
-            if (key is null)
-                throw new ArgumentNullException(nameof(key));
-
-            return GetNotificationsInternal(key, uri: null);
-        }
-
-        /// <inheritdoc />
-        public IEnumerable<Notification> GetNotifications(string key, string uri)
-        {
-            if (key is null)
-                throw new ArgumentNullException(nameof(key));
-
-            if (uri is null)
-                throw new ArgumentNullException(nameof(uri));
-
-            return GetNotificationsInternal(key, uri);
-        }
-
-        public IEnumerable<Notification> GetNotifications(string key, Uri uri)
-        {
-            if (key is null)
-                throw new ArgumentNullException(nameof(key));
-
-            if (uri is null)
-                throw new ArgumentNullException(nameof(uri));
-
-            return GetNotificationsInternal(key, uri.ToString());
-        }
-
-        private IEnumerable<Notification> GetNotificationsInternal(string? key, string? uri)
+        public IReadOnlyList<Notification> GetNotifications(string? key, Uri? uri)
         {
             lock (_mutex)
             {
@@ -117,37 +158,43 @@ namespace AI4E.AspNetCore.Components.Notifications
 
                 if (_notificationMessages.Count == 1)
                 {
-                    return ImmutableList.Create(new Notification(_notificationMessages.First!));
+                    return ImmutableList.Create(new Notification(_notificationMessages.First!, _dateTimeProvider));
                 }
 
                 var builder = ImmutableList.CreateBuilder<Notification>();
 
                 for (var current = _notificationMessages.Last; current != null; current = current.Previous)
                 {
-#pragma warning disable CA2234
-                    if (uri != null && !current.Value.UriFilter.IsMatch(uri))
-#pragma warning restore CA2234
+                    if (!MatchesFilter(current, key, uri))
                     {
                         continue;
                     }
 
-                    if (key != null && current.Value.Key != key)
-                    {
-                        continue;
-                    }
-
-                    builder.Add(new Notification(current));
+                    builder.Add(new Notification(current, _dateTimeProvider));
                 }
 
                 return builder.ToImmutable();
             }
         }
 
+        private static bool MatchesFilter(LinkedListNode<ManagedNotificationMessage> node, string? key, Uri? uri)
+        {
+            if (key != null && node.Value.Key != key)
+            {
+                return false;
+            }
+
+            if (uri != null && !node.Value.UriFilter.IsMatch(uri))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         private void PlaceNotification(LinkedListNode<ManagedNotificationMessage> node)
         {
-            //Debug.Assert(node != null);
-
-            if (node.Value.Expiration == null)
+            if (node.Value.Expiration is null)
             {
                 lock (_mutex)
                 {
@@ -155,6 +202,7 @@ namespace AI4E.AspNetCore.Components.Notifications
                     _notificationMessages.AddLast(node);
                 }
 
+                _popupManager.Schedule(new PopupNotification(node, _dateTimeProvider));
                 OnNotificationsChanged();
 
                 return;
@@ -178,22 +226,36 @@ namespace AI4E.AspNetCore.Components.Notifications
                 _notificationMessages.AddLast(node);
             }
 
+            _popupManager.Schedule(new PopupNotification(node, _dateTimeProvider));
             OnNotificationsChanged();
 
             async Task RemoveNotificationAfterDelayAsync()
             {
-                await Task.Delay(delay).ConfigureAwait(false);
+                do
+                {
+                    await _dateTimeProvider.DelayAsync(delay).ConfigureAwait(false);
+                    now = _dateTimeProvider.GetCurrentTime();
+                    delay = (DateTime)node.Value.Expiration - now;
+                }
+                while (delay > TimeSpan.Zero);
+
+                var notificationRemoved = false;
 
                 lock (_mutex)
                 {
                     // The notification may already be removed in the meantime.
-                    if (!_isDisposed && node.List != null)
+                    if (!_isDisposed && node.List == _notificationMessages)
                     {
                         _notificationMessages.Remove(node);
+                        notificationRemoved = true;
                     }
                 }
 
-                OnNotificationsChanged();
+                if (notificationRemoved)
+                {
+                    _popupManager.Cancel(new PopupNotification(node, _dateTimeProvider));
+                    OnNotificationsChanged();
+                }
             }
 
             RemoveNotificationAfterDelayAsync().HandleExceptions();
@@ -204,11 +266,6 @@ namespace AI4E.AspNetCore.Components.Notifications
         {
             if (notificationMessage is null)
                 throw new ArgumentNullException(nameof(notificationMessage));
-
-            if (!notificationMessage.NotificationType.IsValid())
-            {
-                throw new ArgumentException($"The alert type must be one of the values defined in {typeof(NotificationType)}.", nameof(notificationMessage));
-            }
 
             if (notificationMessage.NotificationType == NotificationType.None)
             {
@@ -236,8 +293,8 @@ namespace AI4E.AspNetCore.Components.Notifications
                 lock (_mutex)
                 {
                     CheckDisposed();
-
                     _notificationMessages.Remove(node);
+                    _popupManager.Cancel(new PopupNotification(node, _dateTimeProvider));
                 }
 
                 OnNotificationsChanged();
@@ -275,11 +332,13 @@ namespace AI4E.AspNetCore.Components.Notifications
             return CreateRecorder();
         }
 
+        /// <inheritdoc />
         public NotificationManagerScope CreateScope()
         {
             return new NotificationManagerScope(this);
         }
 
+        /// <inheritdoc />
         public NotificationRecorder CreateRecorder()
         {
             return new NotificationRecorder(this);

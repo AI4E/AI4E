@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
+ * Copyright (c) 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -18,21 +18,33 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-namespace AI4E.AspNetCore.Components.Notifications
+using System;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
+
+namespace Notifications.Sample.Shared
 {
     /// <summary>
-    /// Represents a notification recorder.
+    /// A component that renders the number of available notifications.
     /// </summary>
-    /// <remarks>
-    /// A notification recorder does not directly place a notification on the underlying notification manager but
-    /// records them until published. On publish all recorded notifications are inserted into the underlying 
-    /// notification manager.
-    /// </remarks>
-    public interface INotificationRecorder : INotificationManagerScope
+    public sealed class NotificationCount : NotificationComponent
     {
+        public NotificationCount()
+        {
+            RetainExpired = false;
+        }
+
         /// <summary>
-        /// Publishes all recorded notifications to the underlying notification manager.
+        /// Gets or sets the template that renders the notification count.
         /// </summary>
-        public void PublishNotifications();
+        [Parameter] public RenderFragment<int>? Template { get; set; }
+
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            if (builder is null)
+                throw new ArgumentNullException(nameof(builder));
+
+            builder.AddContent(0, Template, Notifications.Count);
+        }
     }
 }
