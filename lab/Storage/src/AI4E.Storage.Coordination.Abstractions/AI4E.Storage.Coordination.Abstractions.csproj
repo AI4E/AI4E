@@ -20,8 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\lab\Remoting\src\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj" />
-    <ProjectReference Include="..\..\..\Messaging\src\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
-    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Messaging\src\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
   </ItemGroup>
 
 </Project>

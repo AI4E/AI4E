@@ -27,9 +27,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.ApplicationParts
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Messaging.Primitives", "..\..\src\Utils\src\AI4E.Utils.Messaging.Primitives\AI4E.Utils.Messaging.Primitives.csproj", "{4DAE32AA-2413-4704-8236-B99941062870}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting", "..\..\lab\Remoting\src\AI4E.Remoting\AI4E.Remoting.csproj", "{848F9BFB-7650-4AA5-9296-693700243673}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting", "..\Remoting\src\AI4E.Remoting\AI4E.Remoting.csproj", "{848F9BFB-7650-4AA5-9296-693700243673}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting.Abstractions", "..\..\lab\Remoting\src\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj", "{1B8A8DCC-DED6-4B2F-BEF6-D101C89DCF96}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting.Abstractions", "..\Remoting\src\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj", "{1B8A8DCC-DED6-4B2F-BEF6-D101C89DCF96}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Memory", "..\..\src\Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj", "{6C129458-8239-471E-B37E-B813B5ED5666}"
 EndProject
@@ -39,10 +39,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.ObjectClone", ".
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.DependencyInjection", "..\..\src\Utils\src\AI4E.Utils.DependencyInjection\AI4E.Utils.DependencyInjection.csproj", "{B076B4C1-332C-4C49-B50D-AB6A6394780D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Coordination.Abstractions", "..\..\src\Storage\src\AI4E.Storage.Coordination.Abstractions\AI4E.Storage.Coordination.Abstractions.csproj", "{6A0968F8-1A1C-4DB5-A42A-E03972787C89}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Coordination", "..\..\src\Storage\src\AI4E.Storage.Coordination\AI4E.Storage.Coordination.csproj", "{CD8612BA-C539-4D54-BE1C-3F2184D642C5}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.InMemory", "..\..\src\Storage\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj", "{B77DB919-645E-43EA-BB38-5E0DD51C280C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage", "..\..\src\Storage\src\AI4E.Storage\AI4E.Storage.csproj", "{E61B20BC-9F0B-477D-978B-A6F6F9C348BA}"
@@ -50,6 +46,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Abstractions", "..\..\src\Storage\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj", "{1978A1DA-9353-49C8-BA2B-A7D4806FDB53}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.DependencyInjection.Autofac", "..\..\src\Utils\src\AI4E.Utils.DependencyInjection.Autofac\AI4E.Utils.DependencyInjection.Autofac.csproj", "{43A528FF-677C-47D5-BD12-43D0F917ECD3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Coordination.Abstractions", "..\Storage\src\AI4E.Storage.Coordination.Abstractions\AI4E.Storage.Coordination.Abstractions.csproj", "{480CF039-214C-4603-88EB-D34C529867F7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -117,14 +115,6 @@ Global
 		{B076B4C1-332C-4C49-B50D-AB6A6394780D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B076B4C1-332C-4C49-B50D-AB6A6394780D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B076B4C1-332C-4C49-B50D-AB6A6394780D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6A0968F8-1A1C-4DB5-A42A-E03972787C89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6A0968F8-1A1C-4DB5-A42A-E03972787C89}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6A0968F8-1A1C-4DB5-A42A-E03972787C89}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6A0968F8-1A1C-4DB5-A42A-E03972787C89}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CD8612BA-C539-4D54-BE1C-3F2184D642C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CD8612BA-C539-4D54-BE1C-3F2184D642C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CD8612BA-C539-4D54-BE1C-3F2184D642C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CD8612BA-C539-4D54-BE1C-3F2184D642C5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B77DB919-645E-43EA-BB38-5E0DD51C280C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B77DB919-645E-43EA-BB38-5E0DD51C280C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B77DB919-645E-43EA-BB38-5E0DD51C280C}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -141,6 +131,10 @@ Global
 		{43A528FF-677C-47D5-BD12-43D0F917ECD3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{43A528FF-677C-47D5-BD12-43D0F917ECD3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{43A528FF-677C-47D5-BD12-43D0F917ECD3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{480CF039-214C-4603-88EB-D34C529867F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{480CF039-214C-4603-88EB-D34C529867F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{480CF039-214C-4603-88EB-D34C529867F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{480CF039-214C-4603-88EB-D34C529867F7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -161,12 +155,11 @@ Global
 		{D1FCFE12-A442-4652-953B-9895C0043588} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
 		{12ED75C9-5514-4894-995C-F7C14F48A524} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
 		{B076B4C1-332C-4C49-B50D-AB6A6394780D} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
-		{6A0968F8-1A1C-4DB5-A42A-E03972787C89} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
-		{CD8612BA-C539-4D54-BE1C-3F2184D642C5} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
 		{B77DB919-645E-43EA-BB38-5E0DD51C280C} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
 		{E61B20BC-9F0B-477D-978B-A6F6F9C348BA} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
 		{1978A1DA-9353-49C8-BA2B-A7D4806FDB53} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
 		{43A528FF-677C-47D5-BD12-43D0F917ECD3} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
+		{480CF039-214C-4603-88EB-D34C529867F7} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BCE694B7-D9D2-439F-9225-C8693CA4C6CA}
