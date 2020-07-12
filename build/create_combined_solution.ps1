@@ -14,4 +14,18 @@ dotnet publish --no-restore -c Release
 # Switch back to the original directory
 Pop-Location
 
-dotnet ./artifacts/bin/CreateCombinedSolution/Release/netcoreapp3.1/publish/CreateCombinedSolution.dll --source-path $sourcePath --solution-name $solutionName --solution-dir "$solutionPath"
+$sourcePath, $otherPaths = $sourcePath.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+$dependencyPaths = @()
+
+foreach($otherPath in $otherPaths)
+{
+    $dependencyPaths += "--dependency-paths"
+    $dependencyPaths += $otherPath
+}    
+
+
+dotnet ./artifacts/bin/CreateCombinedSolution/Release/netcoreapp3.1/publish/CreateCombinedSolution.dll `
+--source-path $sourcePath `
+--solution-name $solutionName `
+--solution-dir "$solutionPath" `
+$dependencyPaths
