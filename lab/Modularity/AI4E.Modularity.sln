@@ -31,49 +31,51 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.Module.Debu
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Modularity.ModulePacker", "tools\AI4E.Modularity.ModulePacker\AI4E.Modularity.ModulePacker.csproj", "{9D86BE04-D4B2-4320-AFB3-38D9C83DEFBB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Messaging.Abstractions", "..\Messaging\src\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj", "{3616E9E7-D8EC-43AE-B773-A969E8E7FF7E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Messaging.Abstractions", "..\..\src\Messaging\src\AI4E.Messaging.Abstractions\AI4E.Messaging.Abstractions.csproj", "{3616E9E7-D8EC-43AE-B773-A969E8E7FF7E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Messaging", "..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj", "{F6E6C3DC-F97C-430A-AB04-7A5D148FD6C7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Messaging", "..\..\src\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj", "{F6E6C3DC-F97C-430A-AB04-7A5D148FD6C7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Coordination", "..\Storage\src\AI4E.Storage.Coordination\AI4E.Storage.Coordination.csproj", "{86E71447-8A6B-4382-A95D-0CB8CD58DA0E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Coordination", "..\..\src\Storage\src\AI4E.Storage.Coordination\AI4E.Storage.Coordination.csproj", "{86E71447-8A6B-4382-A95D-0CB8CD58DA0E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Proxying", "..\Utils\src\AI4E.Utils.Proxying\AI4E.Utils.Proxying.csproj", "{A6110FDD-9410-48C5-AD8C-2AA2D27EE400}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Proxying", "..\..\src\Utils\src\AI4E.Utils.Proxying\AI4E.Utils.Proxying.csproj", "{A6110FDD-9410-48C5-AD8C-2AA2D27EE400}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Domain", "..\Domain\src\AI4E.Domain\AI4E.Domain.csproj", "{3D76E441-72F0-46EB-9DF5-4E9B81BBDF81}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Domain", "..\..\src\Domain\src\AI4E.Domain\AI4E.Domain.csproj", "{3D76E441-72F0-46EB-9DF5-4E9B81BBDF81}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Domain.Services", "..\Domain\src\AI4E.Domain.Services\AI4E.Domain.Services.csproj", "{F4280C3E-C449-45C8-81F4-E92DA153F9B8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Domain.Services", "..\..\src\Domain\src\AI4E.Domain.Services\AI4E.Domain.Services.csproj", "{F4280C3E-C449-45C8-81F4-E92DA153F9B8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain", "..\Storage\src\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj", "{68830B48-940A-41AB-9C9D-27C993891E9F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain", "..\..\src\Storage\src\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj", "{68830B48-940A-41AB-9C9D-27C993891E9F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Abstractions", "..\Storage\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj", "{6628333E-81E0-498F-BB62-F3C4F323C0DE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Abstractions", "..\..\src\Storage\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj", "{6628333E-81E0-498F-BB62-F3C4F323C0DE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.Abstractions", "..\Storage\src\AI4E.Storage.Domain.Abstractions\AI4E.Storage.Domain.Abstractions.csproj", "{D76C3791-BD5B-474B-8FAE-A258936BAC16}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.Abstractions", "..\..\src\Storage\src\AI4E.Storage.Domain.Abstractions\AI4E.Storage.Domain.Abstractions.csproj", "{D76C3791-BD5B-474B-8FAE-A258936BAC16}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Coordination.Abstractions", "..\Storage\src\AI4E.Storage.Coordination.Abstractions\AI4E.Storage.Coordination.Abstractions.csproj", "{A847F779-638D-4069-BFC6-030E613D0A70}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Coordination.Abstractions", "..\..\src\Storage\src\AI4E.Storage.Coordination.Abstractions\AI4E.Storage.Coordination.Abstractions.csproj", "{A847F779-638D-4069-BFC6-030E613D0A70}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage", "..\Storage\src\AI4E.Storage\AI4E.Storage.csproj", "{439F35E3-031A-4BAF-A549-CDAB723B531B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage", "..\..\src\Storage\src\AI4E.Storage\AI4E.Storage.csproj", "{439F35E3-031A-4BAF-A549-CDAB723B531B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.ApplicationParts", "..\Utils\src\AI4E.Utils.ApplicationParts\AI4E.Utils.ApplicationParts.csproj", "{00F851C9-D14E-4921-A634-054A4ADCDCC7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.ApplicationParts", "..\..\src\Utils\src\AI4E.Utils.ApplicationParts\AI4E.Utils.ApplicationParts.csproj", "{00F851C9-D14E-4921-A634-054A4ADCDCC7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils", "..\Utils\src\AI4E.Utils\AI4E.Utils.csproj", "{A839983B-1A8D-4585-9B44-3E7219A656D5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils", "..\..\src\Utils\src\AI4E.Utils\AI4E.Utils.csproj", "{A839983B-1A8D-4585-9B44-3E7219A656D5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Messaging.Primitives", "..\Utils\src\AI4E.Utils.Messaging.Primitives\AI4E.Utils.Messaging.Primitives.csproj", "{1529D684-8DE1-49D6-8DE0-44C9943E52C2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Messaging.Primitives", "..\..\src\Utils\src\AI4E.Utils.Messaging.Primitives\AI4E.Utils.Messaging.Primitives.csproj", "{1529D684-8DE1-49D6-8DE0-44C9943E52C2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting.Abstractions", "..\..\lab\Remoting\src\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj", "{3A7FCFC8-2163-4B27-8846-CA017D3352FA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting.Abstractions", "..\Remoting\src\AI4E.Remoting.Abstractions\AI4E.Remoting.Abstractions.csproj", "{3A7FCFC8-2163-4B27-8846-CA017D3352FA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting", "..\..\lab\Remoting\src\AI4E.Remoting\AI4E.Remoting.csproj", "{01CB8D41-761A-4877-847A-5FC0E0D0E2B4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Remoting", "..\Remoting\src\AI4E.Remoting\AI4E.Remoting.csproj", "{01CB8D41-761A-4877-847A-5FC0E0D0E2B4}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.InMemory", "..\Storage\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj", "{E32865FD-D134-4697-ABA3-87384B7E8E43}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.InMemory", "..\..\src\Storage\src\AI4E.Storage.InMemory\AI4E.Storage.InMemory.csproj", "{E32865FD-D134-4697-ABA3-87384B7E8E43}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Memory", "..\Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj", "{8DBDB15E-89BE-4ED1-8AB3-CDFCA9F2484A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Memory", "..\..\src\Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj", "{8DBDB15E-89BE-4ED1-8AB3-CDFCA9F2484A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Memory.Compatibility", "..\Utils\src\AI4E.Utils.Memory.Compatibility\AI4E.Utils.Memory.Compatibility.csproj", "{57F9FC36-126C-4C52-BD40-6D32F4CDBBA6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Memory.Compatibility", "..\..\src\Utils\src\AI4E.Utils.Memory.Compatibility\AI4E.Utils.Memory.Compatibility.csproj", "{57F9FC36-126C-4C52-BD40-6D32F4CDBBA6}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Projection", "..\Storage\src\AI4E.Storage.Projection\AI4E.Storage.Projection.csproj", "{ABA327EB-CB74-4D87-80F4-9199C47DFF07}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Projection", "..\..\src\Storage\src\AI4E.Storage.Projection\AI4E.Storage.Projection.csproj", "{ABA327EB-CB74-4D87-80F4-9199C47DFF07}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Projection.Abstractions", "..\Storage\src\AI4E.Storage.Projection.Abstractions\AI4E.Storage.Projection.Abstractions.csproj", "{A83C1254-B2E6-4C5A-AB96-6D6D9A55707E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Projection.Abstractions", "..\..\src\Storage\src\AI4E.Storage.Projection.Abstractions\AI4E.Storage.Projection.Abstractions.csproj", "{A83C1254-B2E6-4C5A-AB96-6D6D9A55707E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.ObjectClone", "..\Utils\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj", "{1330AA2B-3139-4A0D-AB04-FB1C214070E8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.ObjectClone", "..\..\src\Utils\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj", "{1330AA2B-3139-4A0D-AB04-FB1C214070E8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.DependencyInjection", "..\..\src\Utils\src\AI4E.Utils.DependencyInjection\AI4E.Utils.DependencyInjection.csproj", "{8EC2243A-9D9F-4CC4-92C7-35B718A087EC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -209,6 +211,10 @@ Global
 		{1330AA2B-3139-4A0D-AB04-FB1C214070E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1330AA2B-3139-4A0D-AB04-FB1C214070E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1330AA2B-3139-4A0D-AB04-FB1C214070E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8EC2243A-9D9F-4CC4-92C7-35B718A087EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8EC2243A-9D9F-4CC4-92C7-35B718A087EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8EC2243A-9D9F-4CC4-92C7-35B718A087EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8EC2243A-9D9F-4CC4-92C7-35B718A087EC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -246,6 +252,7 @@ Global
 		{ABA327EB-CB74-4D87-80F4-9199C47DFF07} = {87389326-B73F-4A5D-98B1-CA4A741B8A2B}
 		{A83C1254-B2E6-4C5A-AB96-6D6D9A55707E} = {87389326-B73F-4A5D-98B1-CA4A741B8A2B}
 		{1330AA2B-3139-4A0D-AB04-FB1C214070E8} = {87389326-B73F-4A5D-98B1-CA4A741B8A2B}
+		{8EC2243A-9D9F-4CC4-92C7-35B718A087EC} = {87389326-B73F-4A5D-98B1-CA4A741B8A2B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E88E3F16-F719-46CC-B69D-064D3A19E5FB}
