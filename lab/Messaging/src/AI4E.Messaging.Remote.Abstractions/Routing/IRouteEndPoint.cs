@@ -38,13 +38,11 @@ namespace AI4E.Messaging.Routing
             TAddress remoteAddress,
             CancellationToken cancellation = default);
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
         async ValueTask<IRouteEndPointReceiveResult> IRouteEndPoint.ReceiveAsync(
             CancellationToken cancellation)
         {
             return await ReceiveAsync(cancellation);
         }
-#endif
     }
 
     public interface IRouteEndPointReceiveResult<TAddress> : IRouteEndPointReceiveResult

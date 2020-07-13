@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -20,16 +20,19 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using AI4E.Utils;
 
 namespace AI4E.AspNetCore.Components.Notifications
 {
+    /// <inheritdoc cref="INotification"/>
     public readonly struct Notification : INotification, IEquatable<Notification>
     {
-        internal Notification(LinkedListNode<ManagedNotificationMessage> notificationRef)
+        private readonly IDateTimeProvider? _dateTimeProvider;
+
+        internal Notification(LinkedListNode<ManagedNotificationMessage> notificationRef, IDateTimeProvider dateTimeProvider)
         {
-            Debug.Assert(notificationRef != null);
             NotificationRef = notificationRef;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         internal LinkedListNode<ManagedNotificationMessage>? NotificationRef { get; }
@@ -59,19 +62,45 @@ namespace AI4E.AspNetCore.Components.Notifications
             return NotificationRef?.GetHashCode() ?? 0;
         }
 
-        public static bool operator ==(in Notification left, in Notification right)
+        /// <summary>
+        /// Returns a boolean value indicating whether two notifications are equal.
+        /// </summary>
+        /// <param name="left">The first notification.</param>
+        /// <param name="right">The second notification.</param>
+        /// <returns>True if <paramref name="left"/> equals <paramref name="right"/>, false otherwise.</returns>
+        public static bool operator ==(Notification left, Notification right)
         {
             return left.Equals(right);
         }
 
-
-        public static bool operator !=(in Notification left, in Notification right)
+        /// <summary>
+        /// Returns a boolean value indicating whether two notifications are not equal.
+        /// </summary>
+        /// <param name="left">The first notification.</param>
+        /// <param name="right">The second notification.</param>
+        /// <returns>True if <paramref name="left"/> does not equal <paramref name="right"/>, false otherwise.</returns>
+        public static bool operator !=(Notification left, Notification right)
         {
             return !left.Equals(right);
         }
 
         /// <inheritdoc />
-        public bool IsExpired => NotificationRef == null || NotificationRef.List == null;
+        public bool IsExpired
+        {
+            get
+            {
+                if (NotificationRef is null || _dateTimeProvider is null)
+                    return true;
+
+                var expiration = NotificationRef.Value.Expiration;
+
+                if (expiration is null)
+                    return false;
+
+                var now = _dateTimeProvider.GetCurrentTime();
+                return now >= expiration;
+            }
+        }
 
         /// <inheritdoc />
         public NotificationType NotificationType => NotificationRef?.Value.NotificationType ?? NotificationType.None;

@@ -35,11 +35,6 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// Get the service-collection used to configure services.
         /// </summary>
-        IServiceCollection Services
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
-        => StorageBuilder.Services;
-#else
-        { get; }
-#endif
+        IServiceCollection Services => StorageBuilder.Services;
     }
 }

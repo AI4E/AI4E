@@ -6,6 +6,8 @@
 
     private void PlaceNotification()
     {
+        NotificationMessage.Timestamp = NotificationMessage.Timestamp?.ToUniversalTime();
+        NotificationMessage.Expiration = NotificationMessage.Expiration?.ToUniversalTime();
         NotificationManager.PlaceNotification(NotificationMessage);
         NotificationMessage = new NotificationMessage();
     }
@@ -26,95 +28,102 @@
     }
 }
 
-<div class="container">
-    <h1>Add Notification</h1>
-    <EditForm Model="NotificationMessage" OnSubmit="PlaceNotification">
-        <div class="form-group row">
-            <label class="col-lg-3 col-form-label form-control-label" for="notification-type">
-                Type
-            </label>
-            <div class="col-lg-9">
-                <InputSelect id="notification-type" @bind-Value="NotificationMessage.NotificationType" class="form-control">
-                    <option value="">Select type...</option>
-                    <option value="@(NotificationType.Info)">Info</option>
-                    <option value="@(NotificationType.Success)">Success</option>
-                    <option value="@(NotificationType.Warning)">Warning</option>
-                    <option value="@(NotificationType.Danger)">Danger</option>
-                </InputSelect>
+    <div class="container">
+        <h1>Add Notification</h1>
+        <EditForm Model="NotificationMessage" OnSubmit="PlaceNotification">
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label" for="notification-type">
+                    Type
+                </label>
+                <div class="col-lg-9">
+                    <InputSelect id="notification-type" @bind-Value="NotificationMessage.NotificationType" class="form-control">
+                        <option value="">Select type...</option>
+                        <option value="@(NotificationType.Info)">Info</option>
+                        <option value="@(NotificationType.Success)">Success</option>
+                        <option value="@(NotificationType.Warning)">Warning</option>
+                        <option value="@(NotificationType.Danger)">Danger</option>
+                    </InputSelect>
+                </div>
             </div>
-        </div>
-        <div class="form-group row">
-            <label class="col-lg-3 col-form-label form-control-label" for="notification-message">
-                Message
-            </label>
-            <div class="col-lg-9">
-                <InputText id="notification-message" @bind-Value="NotificationMessage.Message" class="form-control" />
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label" for="notification-message">
+                    Message
+                </label>
+                <div class="col-lg-9">
+                    <InputText id="notification-message" @bind-Value="NotificationMessage.Message" class="form-control" />
+                </div>
             </div>
-        </div>
-        <div class="form-group row">
-            <label class="col-lg-3 col-form-label form-control-label" for="notification-description">
-                Description
-            </label>
-            <div class="col-lg-9">
-                <InputText id="notification-description" @bind-Value="NotificationMessage.Description" class="form-control" />
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label" for="notification-description">
+                    Description
+                </label>
+                <div class="col-lg-9">
+                    <InputText id="notification-description" @bind-Value="NotificationMessage.Description" class="form-control" />
+                </div>
             </div>
-        </div>
-        <div class="form-group row">
-            <label class="col-lg-3 col-form-label form-control-label" for="notification-target-uri">
-                Target uri
-            </label>
-            <div class="col-lg-9">
-                <InputText id="notification-target-uri" type="url" @bind-Value="NotificationMessage.TargetUri" class="form-control" />
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label" for="notification-target-uri">
+                    Target uri
+                </label>
+                <div class="col-lg-9">
+                    <InputText id="notification-target-uri" type="url" @bind-Value="NotificationMessage.TargetUri" class="form-control" />
+                </div>
             </div>
-        </div>
-        <div class="form-group row">
-            <label class="col-lg-3 col-form-label form-control-label" for="notification-expiration">
-                Expiration
-            </label>
-            <div class="col-lg-7">
-                <InputDate id="notification-expiration" @bind-Value="NotificationMessage.Expiration" class="form-control" />
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label" for="notification-expiration">
+                    Expiration
+                </label>
+                <div class="col-lg-7">
+                    <InputDateTime id="notification-expiration" @bind-Value="NotificationMessage.Expiration" class="form-control" />
+                </div>
+                <div class="col-lg-2">
+                    <input type="button" value="Clear" @onclick="ClearExpiration" class="btn btn-secondary btn-block" />
+                </div>
             </div>
-            <div class="col-lg-2">
-                <input type="button" value="Clear" @onclick="ClearExpiration" class="btn btn-secondary btn-block" />
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label" for="notification-allow-dismiss">
+                    Allow dismiss
+                </label>
+                <div class="col-lg-9">
+                    <InputCheckbox id="notification-allow-dismiss" @bind-Value="NotificationMessage.AllowDismiss" class="form-control" />
+                </div>
             </div>
-        </div>
-        <div class="form-group row">
-            <label class="col-lg-3 col-form-label form-control-label" for="notification-allow-dismiss">
-                Allow dismiss
-            </label>
-            <div class="col-lg-9">
-                <InputCheckbox id="notification-allow-dismiss" @bind-Value="NotificationMessage.AllowDismiss" class="form-control" />
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label" for="notification-key">
+                    Key
+                </label>
+                <div class="col-lg-7">
+                    <InputText id="notification-key" @bind-Value="NotificationMessage.Key" class="form-control" />
+                </div>
+                <div class="col-lg-2">
+                    <input type="button" value="Clear" @onclick="ClearKey" class="btn btn-secondary btn-block" />
+                </div>
             </div>
-        </div>
-        <div class="form-group row">
-            <label class="col-lg-3 col-form-label form-control-label" for="notification-key">
-                Key
-            </label>
-            <div class="col-lg-7">
-                <InputText id="notification-key" @bind-Value="NotificationMessage.Key" class="form-control" />
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label" for="notification-timestamp">
+                    Timestamp
+                </label>
+                <div class="col-lg-7">
+                    <InputDateTime id="notification-timestamp" @bind-Value="NotificationMessage.Timestamp" class="form-control" />
+                </div>
+                <div class="col-lg-2">
+                    <input type="button" value="Clear" @onclick="ClearTimestamp" class="btn btn-secondary btn-block" />
+                </div>
             </div>
-            <div class="col-lg-2">
-                <input type="button" value="Clear" @onclick="ClearKey" class="btn btn-secondary btn-block" />
+            <div class="form-group row">
+                <label class="col-lg-3 col-form-label form-control-label"></label>
+                <div class="col-lg-9">
+                    <input type="reset" value="Reset" class="btn btn-secondary" />
+                    <input type="submit" value="Place" class="btn btn-primary" />
+                </div>
             </div>
-        </div>
-        <div class="form-group row">
-            <label class="col-lg-3 col-form-label form-control-label" for="notification-timestamp">
-                Timestamp
-            </label>
-            <div class="col-lg-7">
-                <InputDate id="notification-timestamp" @bind-Value="NotificationMessage.Timestamp" class="form-control" />
-            </div>
-            <div class="col-lg-2">
-                <input type="button" value="Clear" @onclick="ClearTimestamp" class="btn btn-secondary btn-block" />
-            </div>
-        </div>
+        </EditForm>
+        <h1>Clear popup</h1>
         <div class="form-group row">
             <label class="col-lg-3 col-form-label form-control-label"></label>
             <div class="col-lg-9">
-                <input type="reset" value="Reset" class="btn btn-secondary" />
-                <input type="submit" value="Place" class="btn btn-primary" />
+                <input type="button" value="Clear popup" class="btn btn-warning" @onclick="NotificationManager.ClearPopup" />
             </div>
         </div>
-    </EditForm>
-</div>
+    </div>
 

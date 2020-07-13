@@ -1,30 +1,17 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
+using AI4E.Storage.MongoDB.Test.Utils;
 using AI4E.Storage.Specification;
 using AI4E.Storage.Specification.TestTypes;
-using AI4E.Utils;
-using Mongo2Go;
 using MongoDB.Driver;
 using Xunit;
 
 namespace AI4E.Storage.MongoDB.Test
 {
-    public class MongoDatabaseScopeTest : DatabaseScopeSpecification, IDisposable
+    public class MongoDatabaseScopeTest : DatabaseScopeSpecification
     {
-        private readonly MongoDbRunner _databaseRunner;
-        private readonly MongoClient _databaseClient;
+        private readonly MongoClient _databaseClient = DatabaseRunner.CreateClient();
 
-        public MongoDatabaseScopeTest()
-        {
-            _databaseRunner = MongoDbRunner.Start(singleNodeReplSet: true, additionalMongodArguments: "--setParameter \"transactionLifetimeLimitSeconds=5\"");
-            _databaseClient = new MongoClient(_databaseRunner.ConnectionString);
-        }
-
-        public void Dispose()
-        {
-            _databaseRunner.Dispose();
-        }
 
         private async Task AssertCollectionsExistsAsync(MongoDatabase database)
         {
@@ -34,11 +21,8 @@ namespace AI4E.Storage.MongoDB.Test
         }
 
         private MongoDatabase BuildMongoDatabase()
-        {
-            // Workaround for https://github.com/Mongo2Go/Mongo2Go/issues/89
-            _databaseClient.EnsureReplicationSetReady();
-
-            return new MongoDatabase(_databaseClient.GetDatabase(SGuid.NewGuid().ToString()));
+        {     
+            return new MongoDatabase(_databaseClient.GetDatabase(DatabaseName.GenerateRandom()));
         }
 
         protected override async Task<IDatabase> BuildDatabaseAsync()

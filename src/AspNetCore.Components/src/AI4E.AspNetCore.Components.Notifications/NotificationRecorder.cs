@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -23,11 +23,19 @@ using System.Collections.Generic;
 
 namespace AI4E.AspNetCore.Components.Notifications
 {
+    /// <inheritdoc cref="INotificationRecorder"/>
     public sealed class NotificationRecorder : INotificationRecorder
     {
         private readonly HashSet<RecordedNotification> _notifications = new HashSet<RecordedNotification>();
         private bool _isDisposed = false;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="NotificationRecorder"/> type.
+        /// </summary>
+        /// <param name="notificationManager">The underlying notification manager.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="notificationManager"/> is <c>null</c>.
+        /// </exception>
         public NotificationRecorder(INotificationManager notificationManager)
         {
             if (notificationManager is null)
@@ -46,8 +54,10 @@ namespace AI4E.AspNetCore.Components.Notifications
             return new NotificationRecorder(this);
         }
 
+        /// <inheritdoc/>
         public INotificationManager NotificationManager { get; }
 
+        /// <inheritdoc/>
         public NotificationPlacement PlaceNotification(NotificationMessage notificationMessage)
         {
             if (_isDisposed)
@@ -58,6 +68,7 @@ namespace AI4E.AspNetCore.Components.Notifications
             return new NotificationPlacement(this, recordedNotification);
         }
 
+        /// <inheritdoc/>
         public void CancelNotification(in NotificationPlacement notificationPlacement)
         {
             if (_isDisposed)
@@ -69,7 +80,7 @@ namespace AI4E.AspNetCore.Components.Notifications
                 {
                     notificationPlacement.NotificationManager.CancelNotification(notificationPlacement);
                 }
-            }             
+            }
             else if (notificationPlacement.NotificationRef is RecordedNotification recordedNotification
                 && _notifications.Remove(recordedNotification)
                 && recordedNotification.NotificationRef != null)
@@ -79,6 +90,7 @@ namespace AI4E.AspNetCore.Components.Notifications
             }
         }
 
+        /// <inheritdoc/>
         public void PublishNotifications()
         {
             if (_isDisposed)
@@ -94,6 +106,7 @@ namespace AI4E.AspNetCore.Components.Notifications
             }
         }
 
+        /// <inheritdoc/>
         public void Dispose()
         {
             if (_isDisposed)

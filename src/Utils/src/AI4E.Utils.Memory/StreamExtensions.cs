@@ -42,12 +42,16 @@ namespace System.IO
         /// <returns>
         /// A <see cref="ValueTask"/> representing the asynchronous operation.
         /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="stream"/> is <c>null</c>.</exception>
         /// <exception cref="EndOfStreamException">
         /// Thrown if the end of the stream was reached before completely filling <paramref name="buffer"/>.
         /// </exception>
         public static async ValueTask ReadExactAsync(
             this Stream stream, Memory<byte> buffer, CancellationToken cancellation = default)
         {
+            if (stream is null)
+                throw new ArgumentNullException(nameof(stream));
+
             while (buffer.Length > 0)
             {
 #pragma warning disable CA1062
@@ -66,11 +70,15 @@ namespace System.IO
         /// </summary>
         /// <param name="stream">The <see cref="Stream"/> to read from.</param>
         /// <param name="buffer">The span of bytes that shall be filled with bytes read from the stream.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="stream"/> is <c>null</c>.</exception>
         /// <exception cref="EndOfStreamException">
         /// Thrown if the end of the stream was reached before completely filling <paramref name="buffer"/>.
         /// </exception>
         public static void ReadExact(this Stream stream, Span<byte> buffer)
         {
+            if (stream is null)
+                throw new ArgumentNullException(nameof(stream));
+
             while (buffer.Length > 0)
             {
 #pragma warning disable CA1062
@@ -96,10 +104,14 @@ namespace System.IO
         /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
         /// When evaluated, the tasks result contains the read byte.
         /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="stream"/> is <c>null</c>.</exception>
         /// <exception cref="EndOfStreamException"> Thrown if the end of the stream was reached.</exception>
         public static async ValueTask<byte> ReadByteExactAsync(
             this Stream stream, CancellationToken cancellation = default)
         {
+            if (stream is null)
+                throw new ArgumentNullException(nameof(stream));
+
             using var bufferOwner = MemoryPool<byte>.Shared.RentExact(length: 1);
             var buffer = bufferOwner.Memory;
 
@@ -116,9 +128,13 @@ namespace System.IO
         /// or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>The read byte.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="stream"/> is <c>null</c>.</exception>
         /// <exception cref="EndOfStreamException"> Thrown if the end of the stream was reached.</exception>
         public static byte ReadByteExact(this Stream stream)
         {
+            if (stream is null)
+                throw new ArgumentNullException(nameof(stream));
+
             Span<byte> buffer = stackalloc byte[1];
             stream.ReadExact(buffer);
             return buffer[0];
@@ -136,6 +152,7 @@ namespace System.IO
         /// <returns>
         /// A <see cref="ValueTask"/> representing the asynchronous operation.
         /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="stream"/> is <c>null</c>.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="offset"/> id negative.</exception>
         /// <exception cref="EndOfStreamException"> Thrown if the end of the stream was reached.</exception>
         /// <remarks>
@@ -146,6 +163,9 @@ namespace System.IO
         public static async ValueTask SeekToPositionAsync(
             this Stream stream, long offset, CancellationToken cancellation = default)
         {
+            if (stream is null)
+                throw new ArgumentNullException(nameof(stream));
+
             if (offset < 0)
                 throw new ArgumentOutOfRangeException(nameof(offset));
 
@@ -184,7 +204,8 @@ namespace System.IO
         /// Seeks forward the specified number of bytes from the current stream position.
         /// </summary>
         /// <param name="stream">The stream to seek.</param>
-        /// <param name="offset">The number of bytes to seek foreward.</param>
+        /// <param name="offset">The number of bytes to seek forward.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="stream"/> is <c>null</c>.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="offset"/> id negative.</exception>
         /// <exception cref="EndOfStreamException"> Thrown if the end of the stream was reached.</exception>
         /// <remarks>
@@ -194,6 +215,9 @@ namespace System.IO
         /// </remarks>
         public static void SeekToPosition(this Stream stream, long offset)
         {
+            if (stream is null)
+                throw new ArgumentNullException(nameof(stream));
+
             if (offset < 0)
                 throw new ArgumentOutOfRangeException(nameof(offset));
 

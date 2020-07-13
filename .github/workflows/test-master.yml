@@ -1,0 +1,43 @@
+name: Test master
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        solution: [Utils, Storage, Messaging, Domain, AspNetCore, AspNetCore.Components]
+    steps:
+    - uses: actions/checkout@v2  
+    - name: Setup .NET Core 2.1
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 2.1.807
+    - name: Setup .NET Core 3.1
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.301
+    # https://github.com/actions/setup-dotnet/issues/25
+    - name: Setup side by side .NET SDKs on Windows
+      if: runner.os == 'Windows'
+      run: |
+        SET DOTNET_21_ROOT=%DOTNET_ROOT:3.1.301=2.1.807%
+        xcopy /s /y /d %DOTNET_31_ROOT% %DOTNET_ROOT%
+      shell: cmd
+
+    - name: Setup side by side .NET SDKs on *nix
+      if: runner.os != 'Windows'
+      run: |
+        rsync -a ${DOTNET_ROOT/3.1.301/2.1.807}/* $DOTNET_ROOT/
+    - name: Install dependencies
+      run: dotnet restore ./src/${{ matrix.solution }}/AI4E.${{ matrix.solution }}.sln
+    - name: Build
+      run: dotnet build ./src/${{ matrix.solution }}/AI4E.${{ matrix.solution }}.sln --configuration Release --no-restore
+    - name: Test    
+      run: dotnet test ./src/${{ matrix.solution }}/AI4E.${{ matrix.solution }}.sln --no-restore --verbosity normal

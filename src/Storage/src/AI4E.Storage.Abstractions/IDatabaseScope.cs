@@ -124,7 +124,6 @@ namespace AI4E.Storage
             CancellationToken cancellation = default)
             where TEntry : class;
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
         /// <summary>
         /// Asynchronously retrieves a single entry that matches the specified predicate.
         /// </summary>
@@ -156,7 +155,6 @@ namespace AI4E.Storage
         {
             return DatabaseScopeExtension.GetOneAsync(this, predicate, cancellation);
         }
-#endif
 
         /// <summary>
         /// Asynchronously tries to commit the changes to the database and rolls back the scope to its initial state.
@@ -205,12 +203,6 @@ namespace AI4E.Storage
         /// <exception cref="InvalidOperationException">
         /// Thrown if the database does not support the specified query.
         /// </exception>
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
-        IAsyncEnumerable<TResult> QueryAsync<TEntry, TResult>(
-            Func<IQueryable<TEntry>, IQueryable<TResult>> queryShaper,
-            CancellationToken cancellation = default)
-            where TEntry : class;
-#else
         public async IAsyncEnumerable<TResult> QueryAsync<TEntry, TResult>(
             Func<IQueryable<TEntry>, IQueryable<TResult>> queryShaper,
             [EnumeratorCancellation]  CancellationToken cancellation = default)
@@ -228,6 +220,5 @@ namespace AI4E.Storage
                 yield return entry;
             }
         }
-#endif
     }
 }

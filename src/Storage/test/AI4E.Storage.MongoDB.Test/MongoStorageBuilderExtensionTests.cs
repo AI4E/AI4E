@@ -1,25 +1,17 @@
 ﻿using System;
+using AI4E.Storage.MongoDB.Test.Utils;
 using Microsoft.Extensions.DependencyInjection;
-using Mongo2Go;
 using Xunit;
 
 namespace AI4E.Storage.MongoDB.Test
 {
-    public sealed class MongoStorageBuilderExtensionTests : IDisposable
+    public sealed class MongoStorageBuilderExtensionTests
     {
-        private readonly MongoDbRunner _databaseRunner;
-
         private StorageBuilder StorageBuilder { get; }
 
         public MongoStorageBuilderExtensionTests()
         {
-            _databaseRunner = MongoDbRunner.Start();
             StorageBuilder = BuildStorageBuilder();
-        }
-
-        public void Dispose()
-        {
-            _databaseRunner.Dispose();
         }
 
         private StorageBuilder BuildStorageBuilder()
@@ -27,7 +19,7 @@ namespace AI4E.Storage.MongoDB.Test
             var storageBuilder = new StorageBuilder();
             storageBuilder.Services.Configure<MongoOptions>(options =>
             {
-                options.ConnectionString = _databaseRunner.ConnectionString;
+                options.ConnectionString = DatabaseRunner.GetConnectionString();
             });
 
             return storageBuilder;

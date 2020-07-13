@@ -73,7 +73,6 @@ namespace AI4E.Storage.Projection
         /// </returns>
         IAsyncEnumerable<TTarget> ProjectAsync(TSource source, CancellationToken cancellation = default);
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
         Type IProjection.SourceType => typeof(TSource);
         Type IProjection.TargetType => typeof(TTarget);
 
@@ -81,6 +80,5 @@ namespace AI4E.Storage.Projection
         {
             return ProjectAsync(source as TSource, cancellation);
         }
-#endif
     }
 }

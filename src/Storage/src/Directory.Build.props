@@ -5,8 +5,4 @@
 
   <Import Project="$(_ParentDirectoryBuildPropsPath)" Condition="Exists('$(_ParentDirectoryBuildPropsPath)')"/>
 
-  <PropertyGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-
 </Project>

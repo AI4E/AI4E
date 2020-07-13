@@ -27,7 +27,6 @@ namespace AI4E.Storage.Domain
     /// </summary>
     public interface IEntityQueryResult : ITrackableEntityLoadResult<IEntityQueryResult>
     {
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
 #pragma warning disable CA1033
         bool IEntityLoadResult.IsVerificationFailed(
 #pragma warning restore CA1033
@@ -36,7 +35,6 @@ namespace AI4E.Storage.Domain
             verificationEntityResult = null;
             return false;
         }
-#endif
 
         /// <summary>
         /// Gets a boolean value indicating whether the <see cref="IEntityQueryResult"/> was loaded from cache 

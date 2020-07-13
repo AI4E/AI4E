@@ -14,14 +14,14 @@ if(!$solutionName)
 
 if(!$solutionPath)
 {
-    $solutionPath = "artifacts\sln\"
+    $solutionPath = "artifacts/sln/"
 }
 
-$solution = $solutionPath + "\" + $solutionName + ".sln";
+$solution = [System.IO.Path]::Combine($solutionPath, $solutionName + ".sln");
 
 if(![System.IO.File]::Exists($solution))
 {
-    .\build\create_combined_solution.ps1 $sourcePath $solutionName $solutionPath
+    ./build/create_combined_solution.ps1 $sourcePath $solutionName $solutionPath
 }
 
 dotnet clean $solution

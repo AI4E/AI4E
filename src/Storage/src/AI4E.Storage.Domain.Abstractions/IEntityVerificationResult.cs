@@ -30,7 +30,6 @@ namespace AI4E.Storage.Domain
         /// </summary>
         IFoundEntityQueryResult? QueryResult { get; }
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
 #pragma warning disable CA1033
         bool IEntityLoadResult.IsVerificationFailed(
 #pragma warning restore CA1033
@@ -39,6 +38,5 @@ namespace AI4E.Storage.Domain
             verificationEntityResult = this;
             return true;
         }
-#endif
     }
 }

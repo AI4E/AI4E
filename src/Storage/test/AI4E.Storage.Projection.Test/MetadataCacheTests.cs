@@ -1,7 +1,9 @@
 using System.Linq;
 using System.Threading.Tasks;
-using AI4E.Storage.InMemory;
+using AI4E.Storage.MongoDB;
+using AI4E.Storage.MongoDB.Test.Utils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using MongoDB.Driver;
 
 namespace AI4E.Storage.Projection
 {
@@ -11,10 +13,13 @@ namespace AI4E.Storage.Projection
         private IDatabase Database { get; set; }
         private MetadataCache<string, TestMetadata> MetadataCache { get; set; }
 
+        private readonly MongoClient _databaseClient = DatabaseRunner.CreateClient();
+
         [TestInitialize]
         public async Task TestInitialize()
         {
-            Database = new InMemoryDatabase();
+            var wrappedDatabase = _databaseClient.GetDatabase(DatabaseName.GenerateRandom());
+            Database = new MongoDatabase(wrappedDatabase);
             await Database.AddAsync(new TestMetadata { Id = "a" });
             await Database.AddAsync(new TestMetadata { Id = "b" });
             await Database.AddAsync(new TestMetadata { Id = "c" });

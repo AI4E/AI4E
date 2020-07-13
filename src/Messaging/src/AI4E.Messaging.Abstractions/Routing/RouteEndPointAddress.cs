@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -136,21 +136,7 @@ namespace AI4E.Messaging.Routing
             if (Utf8EncodedValue.IsEmpty)
                 return null;
 
-#if BLAZOR || true // TODO: https://github.com/AI4E/AI4E/issues/137
-
-            // We need this workaround, as the compat shim does generate a delegate that causes the span to be boxed.
-            //This seems to be the case, because Mono running on WASM interprets the 'compiled' expression.
-
-            unsafe
-            {
-                fixed (byte* bytesPtr = Utf8EncodedValue.Span)
-                {
-                    return Encoding.UTF8.GetString(bytesPtr, Utf8EncodedValue.Span.Length);
-                }
-            }
-#else
             return Encoding.UTF8.GetString(Utf8EncodedValue.Span);
-#endif
         }
 
         /// <summary>
@@ -165,7 +151,7 @@ namespace AI4E.Messaging.Routing
         }
 
         /// <summary>
-        /// Returns a boolean value indicating whether two end point addresses are inequal.
+        /// Returns a boolean value indicating whether two end point addresses are unequal.
         /// </summary>
         /// <param name="left">The first end point address.</param>
         /// <param name="right">The second end point address.</param>

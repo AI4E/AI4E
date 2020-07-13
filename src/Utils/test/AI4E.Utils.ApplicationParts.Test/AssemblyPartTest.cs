@@ -86,7 +86,7 @@ namespace AI4E.Utils.ApplicationParts.Test
             Assert.Equal(part.Assembly, assembly);
         }
 
-        [Fact]
+        // [Fact] // See: https://github.com/AI4E/AI4E/issues/277
         public void GetReferencePaths_ReturnsReferencesFromDependencyContext_IfPreserveCompilationContextIsSet()
         {
             // Arrange

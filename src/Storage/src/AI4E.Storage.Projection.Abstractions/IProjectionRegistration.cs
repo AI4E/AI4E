@@ -70,7 +70,6 @@ namespace AI4E.Storage.Projection
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
         new IProjection<TSource, TTarget> CreateProjection(IServiceProvider serviceProvider);
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
         IProjection IProjectionRegistration.CreateProjection(IServiceProvider serviceProvider)
         {
             return CreateProjection(serviceProvider);
@@ -78,6 +77,5 @@ namespace AI4E.Storage.Projection
 
         Type IProjectionRegistration.SourceType => typeof(TSource);
         Type IProjectionRegistration.TargetType => typeof(TTarget);
-#endif
     }
 }

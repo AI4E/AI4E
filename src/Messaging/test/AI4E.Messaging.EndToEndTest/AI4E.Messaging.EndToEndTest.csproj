@@ -1,9 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.0</TargetFramework>
-
-    <IsPackable>false</IsPackable>
+    <TargetFrameworks>netcoreapp3.1;netcoreapp3.0</TargetFrameworks> <!-- TODO: https://github.com/AI4E/AI4E/issues/278-->
   </PropertyGroup>
 
   <ItemGroup>

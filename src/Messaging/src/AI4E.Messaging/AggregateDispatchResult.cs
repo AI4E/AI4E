@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -48,8 +48,9 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="dispatchResults"/> or <paramref name="resultData"/> is null.
         /// </exception>
-        public AggregateDispatchResult(IEnumerable<IDispatchResult> dispatchResults, IReadOnlyDictionary<string, object?> resultData)
-            : base(resultData: resultData)
+        public AggregateDispatchResult(
+            IEnumerable<IDispatchResult> dispatchResults, 
+            IReadOnlyDictionary<string, object?> resultData) : base(resultData: resultData)
         {
             if (dispatchResults == null)
                 throw new ArgumentNullException(nameof(dispatchResults));
@@ -71,7 +72,7 @@ namespace AI4E.Messaging
                 _dispatchResults = immutableResults;
             }
 
-            ResultData = new AggregateDispatchResultDataDictionary(_dispatchResults, base.ResultData);
+            ResultData = new AggregateDispatchResultDataDictionary(_dispatchResults, RawResultData);
         }
 
         /// <summary>
@@ -122,7 +123,9 @@ namespace AI4E.Messaging
             }
 
             _dispatchResults = dispatchResults;
-            ResultData = new AggregateDispatchResultDataDictionary((ImmutableList<IDispatchResult>)DispatchResults, base.ResultData);
+            ResultData = new AggregateDispatchResultDataDictionary(
+                (ImmutableList<IDispatchResult>)DispatchResults, 
+                RawResultData);
         }
 
         protected override void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -162,7 +165,6 @@ namespace AI4E.Messaging
 
         /// <inheritdoc />
         public override IReadOnlyDictionary<string, object?> ResultData { get; }
-
         private sealed class AggregateDispatchResultDataDictionary : IReadOnlyDictionary<string, object?>
         {
             private readonly ImmutableList<IDispatchResult> _dispatchResults;
@@ -177,7 +179,9 @@ namespace AI4E.Messaging
             {
                 _dispatchResults = dispatchResults;
                 _resultData = resultData;
-                _combinedResultData = new Lazy<ImmutableDictionary<string, object>>(CreateCombinedResultData, LazyThreadSafetyMode.PublicationOnly);
+                _combinedResultData = new Lazy<ImmutableDictionary<string, object>>(
+                    CreateCombinedResultData, 
+                    LazyThreadSafetyMode.PublicationOnly);
             }
 
             public bool ContainsKey(string key)
@@ -291,7 +295,10 @@ namespace AI4E.Messaging
                     }
                 }
 
-                builder.RemoveRange((_resultData ?? ImmutableDictionary<string, object?>.Empty).Where(p => p.Value == null).Select(p => p.Key));
+                builder.RemoveRange(
+                    (_resultData ?? ImmutableDictionary<string, object?>.Empty)
+                    .Where(p => p.Value == null)
+                    .Select(p => p.Key));
 
 #if DEBUG
                 Debug.Assert(!builder.Any(p => p.Value == null));

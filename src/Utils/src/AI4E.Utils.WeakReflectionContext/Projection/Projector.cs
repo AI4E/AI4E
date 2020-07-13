@@ -153,13 +153,6 @@ namespace AI4E.Utils.Projection
             if (value == null)
                 return false;
 
-#if !SUPPORTS_INHERIT_TYPE_INFO
-            if (value is ProjectingTypeWrapper typeWrapper)
-            {
-                value = typeWrapper.ProjectingType;
-            }
-#endif
-
             if (value is IProjectable projector && projector == this)
                 return false;   // Already projected
 

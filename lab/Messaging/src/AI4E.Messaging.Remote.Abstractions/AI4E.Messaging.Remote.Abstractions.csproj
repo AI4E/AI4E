@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
     <RootNamespace>AI4E.Messaging</RootNamespace>
-    <Nullable>annotations</Nullable>
   </PropertyGroup>
 
   <ItemGroup>

@@ -2,8 +2,9 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+    <Nullable>annotations</Nullable>
   </PropertyGroup>
-
+  
   <ItemGroup>
     <Compile Include="..\Shared\EntityValidationHelper.cs" Link="Shared\EntityValidationHelper.cs" />
   </ItemGroup>

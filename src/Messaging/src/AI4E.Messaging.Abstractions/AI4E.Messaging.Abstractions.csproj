@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
     <RootNamespace>AI4E.Messaging</RootNamespace>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks><!--TODO: https://github.com/AI4E/AI4E/issues/137-->
   </PropertyGroup>
 
   <ItemGroup>

@@ -3,8 +3,9 @@
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
     <RootNamespace>AI4E.Storage.Domain</RootNamespace>
+    <Nullable>annotations</Nullable>
   </PropertyGroup>
-
+  
   <ItemGroup>
     <Compile Include="..\Shared\EntityValidationHelper.cs" Link="Shared\EntityValidationHelper.cs" />
   </ItemGroup>

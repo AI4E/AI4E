@@ -41,7 +41,6 @@ namespace AI4E.Storage.Domain
         /// </returns>
         new IFoundEntityQueryResult AsCachedResult(bool loadedFromCache = true);
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
         IEntityQueryResult IEntityQueryResult.AsCachedResult(bool loadedFromCache)
         {
             return AsCachedResult(loadedFromCache);
@@ -54,6 +53,5 @@ namespace AI4E.Storage.Domain
             foundEntityQueryResult = this;
             return true;
         }
-#endif
     }
 }

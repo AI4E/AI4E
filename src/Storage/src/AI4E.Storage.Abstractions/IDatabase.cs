@@ -175,7 +175,6 @@ namespace AI4E.Storage
             Expression<Func<TEntry, bool>> predicate, 
             CancellationToken cancellation = default) where TEntry : class;
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
         /// <summary>
         /// Asynchronously retrieves a single entry that matches the specified predicate.
         /// </summary>
@@ -206,30 +205,21 @@ namespace AI4E.Storage
         {
             return DatabaseExtension.GetOneAsync(this, predicate, cancellation);
         }
-#endif
 
         /// <summary>
         /// Creates a <see cref="IDatabaseScope"/> that can be used to perform multiple operations atomically.
         /// </summary>
         /// <returns>The created <see cref="IDatabaseScope"/>.</returns>
         /// <exception cref="NotSupportedException">Thrown if <see cref="SupportsScopes"/> is false.</exception>
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
-        IDatabaseScope CreateScope();
-#else
         public IDatabaseScope CreateScope()
         {
             throw new NotSupportedException();
         }
-#endif
 
         /// <summary>
         /// Gets a boolean value indicating whether the database supports scoping.
         /// </summary>
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
-        bool SupportsScopes { get; }
-#else
         public bool SupportsScopes => false;
-#endif
 
         /// <summary>
         /// Asynchronously performs a database query specified by a query shaper.
@@ -243,22 +233,11 @@ namespace AI4E.Storage
         /// An <see cref="IAsyncEnumerable{TResult}"/> that enumerates items of type <typeparamref name="TResult"/> 
         /// that are the query result.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="queryShaper"/> is <c>null</c>.</exception>
-        /// <exception cref="StorageException">
-        /// Thrown if an unresolvable exception occurs in the storage subsystem.
-        /// </exception>
-        /// <exception cref="StorageUnavailableException">
-        /// Thrown if the storage subsystem is unavailable or unreachable.
-        /// </exception>
-        /// <exception cref="InvalidOperationException">
-        /// Thrown if the database does not support the specified query.
-        /// </exception>
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
-        IAsyncEnumerable<TResult> QueryAsync<TEntry, TResult>(
-            Func<IQueryable<TEntry>, IQueryable<TResult>> queryShaper, 
-            CancellationToken cancellation = default)
-            where TEntry : class;
-#else
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="queryShaper"/> is null.</exception>
+        /// <exception cref="StorageException">Thrown if an unresolvable exception occurs in the storage subsystem.</exception>
+        /// <exception cref="StorageUnavailableException">Thrown if the storage subsystem is unavailable or unreachable.</exception>
+        /// <exception cref="InvalidOperationException">Thrown if the database does not support the specified query.</exception>
+        
         public async IAsyncEnumerable<TResult> QueryAsync<TEntry, TResult>(
             Func<IQueryable<TEntry>, IQueryable<TResult>> queryShaper,
             [EnumeratorCancellation] CancellationToken cancellation = default)
@@ -276,6 +255,5 @@ namespace AI4E.Storage
                 yield return entry;
             }
         }
-#endif
     }
 }

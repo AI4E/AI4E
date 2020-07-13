@@ -19,8 +19,8 @@
     <LangVersion>8.0</LangVersion>
     <RazorLangVersion>3.0</RazorLangVersion>
     <TypeScriptToolsVersion>3.5</TypeScriptToolsVersion>
-    <Nullable>annotations</Nullable> <!--TODO: enable See: https://github.com/AI4E/AI4E/issues/245-->
-    <WarningsAsErrors>$(WarningsAsErrors);CS8597;nullable;</WarningsAsErrors>
+    <Nullable>enable</Nullable>
+    <WarningsAsErrors>$(WarningsAsErrors);nullable</WarningsAsErrors>
     <SolutionDir>$(RepositoryRoot)</SolutionDir>
     <NoWarn>$(NoWarn);NU5105</NoWarn>
     <GenerateDocumentationFile Condition="'$(Configuration)' == 'Release'">true</GenerateDocumentationFile>
@@ -54,38 +54,19 @@
 
   <PropertyGroup>
     <NetStandardVersion>netstandard2.1</NetStandardVersion>
-    <NetStandardVersions>$(NetStandardVersion);netstandard2.0</NetStandardVersions>
+    <NetStandardVersions>$(NetStandardVersion);</NetStandardVersions>
     <NetCoreAppVersion>netcoreapp3.1</NetCoreAppVersion>
     <NetCoreAppVersions>$(NetCoreAppVersion);</NetCoreAppVersions>
     <RuntimeVersions>$(NetCoreAppVersions)</RuntimeVersions>
     <FrameworkVersions>$(RuntimeVersions);$(NetStandardVersions)</FrameworkVersions>
     <BlazorFrameworkVersions>netstandard2.1;$(RuntimeVersions)</BlazorFrameworkVersions>
-    <TestFrameworkVersions>netcoreapp3.1;netcoreapp3.0;netcoreapp2.1</TestFrameworkVersions>
+    <TestFrameworkVersions>netcoreapp3.1;netcoreapp3.0</TestFrameworkVersions>
     
-    <NETSTD20Features></NETSTD20Features>
-    <NETSTD21Features>$(NETSTD20Features);SUPPORTS_ASYNC_ENUMERABLE;SUPPORTS_ASYNC_DISPOSABLE;SUPPORTS_SPAN_APIS;SUPPORTS_DEFAULT_INTERFACE_METHODS;SUPPORTS_NULLABILITY_ATTRIBUTES;RUNTIME_FEATURES_IS_SUPPORTED;IL_EMIT;BINDING_FLAGS_DO_NOT_WRAP_EXCEPTIONS;SUPPORTS_RANGE;SUPPORTS_INHERIT_TYPE_INFO;SUPPORTS_TYPE_IS_SZ_ARRAY</NETSTD21Features>
+    <NETSTD21Features></NETSTD21Features>
     <NETCORE30Features>$(NETSTD21Features);SUPPORTS_COLLECTIBLE_ASSEMBLY_LOAD_CONTEXT;</NETCORE30Features>
     <NETCORE31Features>$(NETCORE30Features);</NETCORE31Features>
     
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <DefineConstants>$(DefineConstants);$(NETSTD20Features);NETSTD20;</DefineConstants>
-    <Nullable>annotations</Nullable>
-  </PropertyGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <Compile Include="$(RepositorySharedPath)NullabilityAttributes.cs" Link="Shared\NullabilityAttributes.cs" />
-     <Compile Include="$(RepositorySharedPath)Range.cs" Link="Shared\Range.cs" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Memory" Version="4.5.4" />
-    <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
-    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.1" />
-    <PackageReference Include="Microsoft.Bcl.HashCode" Version="1.1.0" />
-  </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
     <DefineConstants>$(DefineConstants);$(NETSTD21Features);NETSTD21;</DefineConstants>

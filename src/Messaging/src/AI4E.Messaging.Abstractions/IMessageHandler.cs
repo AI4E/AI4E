@@ -71,7 +71,6 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
         ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, bool publish, bool localDispatch, CancellationToken cancellation);
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
         ValueTask<IDispatchResult> IMessageHandler.HandleAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
@@ -82,6 +81,5 @@ namespace AI4E.Messaging
         }
 
         Type IMessageHandler.MessageType => typeof(TMessage);
-#endif
     }
 }

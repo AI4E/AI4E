@@ -55,11 +55,7 @@ namespace AI4E.Utils.Messaging.Primitives
             return Read(buffer.AsSpan().Slice(offset, count));
         }
 
-        public 
-#if SUPPORTS_SPAN_APIS
-            override
-#endif
-            int Read(Span<byte> buffer)
+        public override int Read(Span<byte> buffer)
         {
             var sliceLength = Math.Min(_frame.Payload.Length - _position, buffer.Length);
             var slice = _frame.Payload.Slice(start: _position, sliceLength);

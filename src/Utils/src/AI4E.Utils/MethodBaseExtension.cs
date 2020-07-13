@@ -26,10 +26,6 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-#if !BINDING_FLAGS_DO_NOT_WRAP_EXCEPTIONS
-using System.Runtime.ExceptionServices;
-#endif
-
 namespace System.Reflection
 {
     public static class AI4EMethodBaseExtension
@@ -38,24 +34,9 @@ namespace System.Reflection
         public static object? InvokeUnwrapExceptions(this MethodBase method, object? obj, object?[]? parameters)
 #pragma warning restore CA1720
         {
-#if BINDING_FLAGS_DO_NOT_WRAP_EXCEPTIONS
 #pragma warning disable CA1062
             return method.Invoke(obj, BindingFlags.DoNotWrapExceptions, binder: null, parameters, culture: null);
 #pragma warning restore CA1062
-#else
-            try
-            {
-#pragma warning disable CA1062
-                return method.Invoke(obj, parameters);
-#pragma warning restore CA1062
-            }
-            catch (TargetInvocationException exc) when (exc.InnerException != null)
-            {
-                ExceptionDispatchInfo.Capture(exc.InnerException).Throw();
-                // The above line will always throw, but the compiler requires we throw explicitly.
-                throw;
-            }
-#endif
         }
     }
 }

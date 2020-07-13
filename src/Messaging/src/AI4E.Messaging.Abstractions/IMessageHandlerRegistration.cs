@@ -71,13 +71,11 @@ namespace AI4E.Messaging
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
         new IMessageHandler<TMessage> CreateMessageHandler(IServiceProvider serviceProvider);
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
         IMessageHandler IMessageHandlerRegistration.CreateMessageHandler(IServiceProvider serviceProvider)
         {
             return CreateMessageHandler(serviceProvider);
         }
 
         Type IMessageHandlerRegistration.MessageType => typeof(TMessage);
-#endif
     }
 }

@@ -184,11 +184,8 @@ namespace AI4E.Utils
         public Task Disposal => _disposeHelper.Disposal;
 
         /// <inheritdoc/>
-#if SUPPORTS_ASYNC_DISPOSABLE
+
         public override ValueTask DisposeAsync()
-#else
-        public ValueTask DisposeAsync()
-#endif
         {
             return _disposeHelper.DisposeAsync();
         }
@@ -206,14 +203,10 @@ namespace AI4E.Utils
         {
             try
             {
-#if SUPPORTS_ASYNC_DISPOSABLE
                 await _underlyingStream
                     .DisposeAsync()
                     .HandleExceptionsAsync(_logger)
                     .ConfigureAwait(false);
-#else
-                ExceptionHelper.HandleExceptions(() =>_underlyingStream.Dispose(), _logger);
-#endif
             }
             finally
             {

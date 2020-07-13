@@ -1,0 +1,26 @@
+name: Build master
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.301
+    - name: Build on windows
+      if: runner.os == 'Windows'
+      run: ./build.ps1
+    - name: Build on Unix-oids
+      if: runner.os != 'Windows'
+      run: sh ./build.sh

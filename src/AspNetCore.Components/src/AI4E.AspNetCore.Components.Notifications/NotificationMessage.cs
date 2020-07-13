@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -26,6 +26,10 @@ namespace AI4E.AspNetCore.Components.Notifications
     /// <summary>
     /// Represents a notification message.
     /// </summary>
+    /// <remarks>
+    /// Instances of this type can be cached, as the notification manager does not store these internally and frees all 
+    /// reference when the <see cref="INotificationManager.PlaceNotification(NotificationMessage)"/> call returns.
+    /// </remarks>
     public sealed class NotificationMessage
     {
         private NotificationType _notificationType;
@@ -76,17 +80,17 @@ namespace AI4E.AspNetCore.Components.Notifications
         }
 
         /// <summary>
-        /// Gets or sets the notification description.
+        /// Gets or sets the notification description or <c>null</c> if the notification does not have a description.
         /// </summary>
         public string? Description { get; set; }
 
         /// <summary>
-        /// Gets or sets the uri of the notification target.
+        /// Gets or sets the URI of the notification target or <c>null</c> if no target is specified.
         /// </summary>
         public string? TargetUri { get; set; }
 
         /// <summary>
-        /// Gets or sets the date and time of the notification's expiration
+        /// Gets or sets the date and time of the notification's expiration (UTC)
         /// or <c>null</c> if the notification has no expiration.
         /// </summary>
         public DateTime? Expiration { get; set; }
@@ -97,20 +101,25 @@ namespace AI4E.AspNetCore.Components.Notifications
         public bool AllowDismiss { get; set; }
 
         /// <summary>
-        /// Gets or sets an url filter that specifies on which pages the alert shall be displayed
+        /// Gets or sets an URI filter that specifies on which pages the notification shall be displayed
         /// or <c>null</c> if it shall be displayed on all pages.
         /// </summary>
         public UriFilter UriFilter { get; set; }
 
         /// <summary>
-        /// Gets or sets the notification key.
+        /// Gets or sets the key of the notification or <c>null</c> if the notification does not have a key.
         /// </summary>
         public string? Key { get; set; }
 
         /// <summary>
-        /// Gets or sets the timestamp of the notification.
+        /// Gets or sets the timestamp (UTC) of the notification or <c>null</c> to use the current time.
         /// </summary>
         public DateTime? Timestamp { get; set; }
+
+        /// <summary>
+        /// Gets or sets a boolean value indicating whether a popup for the notification shall be displayed.
+        /// </summary>
+        public bool ShowPopup { get; set; } = true;
 
         private static NotificationType CheckValidNotificationType(
             NotificationType notificationType,

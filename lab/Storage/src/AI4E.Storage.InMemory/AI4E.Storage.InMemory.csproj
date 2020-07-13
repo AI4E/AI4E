@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+    <Nullable>annotations</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+
+    <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Storage\src\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Storage\src\AI4E.Storage\AI4E.Storage.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Utils\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="$(RepositorySharedPath)DataPropertyHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

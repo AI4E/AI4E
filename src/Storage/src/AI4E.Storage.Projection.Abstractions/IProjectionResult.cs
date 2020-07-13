@@ -47,7 +47,6 @@ namespace AI4E.Storage.Projection
         /// </summary>
         Type ResultType { get; }
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
         /// <summary>
         /// Returns the projection target descriptor that describes the projection result.
         /// </summary>
@@ -56,7 +55,6 @@ namespace AI4E.Storage.Projection
         {
             return ProjectionResultExtension.AsTargetDescriptor(this);
         }
-#endif
     }
 
     /// <summary>

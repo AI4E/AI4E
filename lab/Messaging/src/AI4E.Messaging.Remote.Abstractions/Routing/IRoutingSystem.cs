@@ -35,7 +35,6 @@ namespace AI4E.Messaging.Routing
             RouteEndPointAddress endPoint,
             CancellationToken cancellation = default);
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
         async ValueTask<IRouteEndPoint> IRoutingSystem.GetEndPointAsync(
             RouteEndPointAddress endPoint,
             CancellationToken cancellation)
@@ -49,6 +48,5 @@ namespace AI4E.Messaging.Routing
         {
             return await CreateEndPointAsync(endPoint, cancellation);
         }
-#endif
     }
 }

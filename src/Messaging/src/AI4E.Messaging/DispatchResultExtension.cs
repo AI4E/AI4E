@@ -544,7 +544,7 @@ namespace AI4E.Messaging
         /// <param name="result">Contains the result value if the operation returns true.</param>
         /// <returns>True if <paramref name="dispatchResult"/> is a success result, false otherwise.</returns>
         public static bool IsSuccessWithResult(
-            this IDispatchResult dispatchResult, 
+            this IDispatchResult dispatchResult,
             [NotNullWhen(true)] out object? result)
         {
             return dispatchResult.IsSuccessWithResult<object>(out result);
@@ -559,7 +559,7 @@ namespace AI4E.Messaging
         /// <param name="result">Contains the result value if the operation returns true.</param>
         /// <returns>True if <paramref name="dispatchResult"/> is a success result, false otherwise.</returns>
         public static bool IsSuccessWithResult<TResult>(
-            this IDispatchResult dispatchResult, 
+            this IDispatchResult dispatchResult,
             [MaybeNullWhen(false)] out TResult result)
         {
             return IsSuccess(dispatchResult, out result) && !(result is null);

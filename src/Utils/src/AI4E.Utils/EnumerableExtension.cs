@@ -325,5 +325,54 @@ namespace System.Linq
         }
 
         #endregion
+
+        #region ScrambledEquals
+
+        // Adapted from: https://stackoverflow.com/questions/3669970/compare-two-listt-objects-for-equality-ignoring-order#answer-3670089
+
+        public static bool ScrambledEquals<T>(this IEnumerable<T> first, IEnumerable<T> second)
+              where T : notnull
+        {
+            return ScrambledEquals(first, second, comparer: null);
+        }
+
+        public static bool ScrambledEquals<T>(this IEnumerable<T> first, IEnumerable<T> second, IEqualityComparer<T>? comparer)
+            where T : notnull
+        {
+            if (first is null)
+                throw new ArgumentNullException(nameof(first));
+
+            if (second is null)
+                throw new ArgumentNullException(nameof(second));
+
+            comparer ??= EqualityComparer<T>.Default;
+
+            var cnt = new Dictionary<T, int>(comparer);
+            foreach (var s in first)
+            {
+                if (cnt.ContainsKey(s))
+                {
+                    cnt[s]++;
+                }
+                else
+                {
+                    cnt.Add(s, 1);
+                }
+            }
+            foreach (T s in second)
+            {
+                if (cnt.ContainsKey(s))
+                {
+                    cnt[s]--;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            return cnt.Values.All(c => c == 0);
+        }
+
+        #endregion
     }
 }

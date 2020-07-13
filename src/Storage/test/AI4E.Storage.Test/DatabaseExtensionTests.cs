@@ -75,22 +75,13 @@ namespace AI4E.Storage.Test
             var expectedResult = new Entry();
             var mock = new Mock<IDatabase>();
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
             mock.Setup(database => database.GetOneAsync<Entry>(_ => true, cancellation))
                 .ReturnsAsync(expectedResult);
-#else
-            mock.Setup(database => database.GetAsync<Entry>(_ => true, cancellation))
-                .Returns(new[] { expectedResult }.ToAsyncEnumerable());
-#endif
             // Act
             var result = await DatabaseExtension.GetOneAsync<Entry>(mock.Object, cancellation);
 
             // Assert
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
             mock.Verify(database => database.GetOneAsync<Entry>(_ => true, cancellation), Times.Once());
-#else
-            mock.Verify(database => database.GetAsync<Entry>(_ => true, cancellation), Times.Once());
-#endif
             Assert.Same(expectedResult, result);
         }
 
@@ -272,11 +263,7 @@ namespace AI4E.Storage.Test
 
             // Assert
             mock.Verify(database => database.AddAsync(entry, cancellation), Times.Once());
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
             mock.Verify(database => database.GetOneAsync<IdEntry>(p => p.Id == 1, cancellation), Times.Never());
-#else
-            mock.Verify(database => database.GetAsync<IdEntry>(p => p.Id == 1, cancellation), Times.Never());
-#endif
         }
 
         [Fact]
@@ -304,32 +291,18 @@ namespace AI4E.Storage.Test
             var cancellation = CancellationToken.None;
             var mock = new Mock<IDatabase>();
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
             mock.Setup(database => database.GetOneAsync<IdEntry>(
-            It.IsAny<Expression<Func<IdEntry, bool>>>(),
-            cancellation)).ReturnsAsync(exisintgEntry);
-#else
-            mock.Setup(database => database.GetAsync<IdEntry>(
-                It.IsAny<Expression<Func<IdEntry, bool>>>(), 
-                cancellation)).Returns(new[] { exisintgEntry }.ToAsyncEnumerable());
-#endif
+                It.IsAny<Expression<Func<IdEntry, bool>>>(),
+                cancellation)).ReturnsAsync(exisintgEntry);
 
             // Act
             await DatabaseExtension.GetOrAddAsync(mock.Object, entry, cancellation);
 
             // Assert
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
-
             // TODO: Use a custom equality comparer, when this is implemented (#252) to validate the predicate
             mock.Verify(database => database.GetOneAsync<IdEntry>(
             It.IsAny<Expression<Func<IdEntry, bool>>>(),
             cancellation), Times.Once());
-#else
-            // TODO: Use a custom equality comparer, when this is implemented (#252) to validate the predicate
-            mock.Verify(database => database.GetAsync<IdEntry>(
-                It.IsAny<Expression<Func<IdEntry, bool>>>(), 
-                cancellation), Times.Once());
-#endif
         }
 
         [Fact]
@@ -341,17 +314,10 @@ namespace AI4E.Storage.Test
             var cancellation = CancellationToken.None;
             var mock = new Mock<IDatabase>();
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
             // TODO: Use a custom equality comparer, when this is implemented (#252) to validate the predicate
             mock.Setup(database => database.GetOneAsync<IdEntry>(
                 It.IsAny<Expression<Func<IdEntry, bool>>>(),
                 cancellation)).ReturnsAsync(exisintgEntry);
-#else
-            // TODO: Use a custom equality comparer, when this is implemented (#252) to validate the predicate
-            mock.Setup(database => database.GetAsync<IdEntry>(
-                It.IsAny<Expression<Func<IdEntry, bool>>>(), 
-                cancellation)).Returns(new[] { exisintgEntry }.ToAsyncEnumerable());
-#endif
 
             // Act
             var resultEntry = await DatabaseExtension.GetOrAddAsync(mock.Object, entry, cancellation);
@@ -507,15 +473,10 @@ namespace AI4E.Storage.Test
             // Arrange
             var cancellation = CancellationToken.None;
             var mock = new Mock<IDatabase>();
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
+
             mock.Setup(database => database.GetOneAsync<IdEntry>(
                 It.IsAny<Expression<Func<IdEntry, bool>>>(),
                 cancellation)).ReturnsAsync(existingEntry);
-#else
-            mock.Setup(database => database.GetAsync<IdEntry>(
-                It.IsAny<Expression<Func<IdEntry, bool>>>(), 
-                cancellation)).Returns(new[] { existingEntry }.ToAsyncEnumerable());
-#endif
 
             // Act
             await DatabaseExtension.CompareExchangeAsync(
@@ -527,17 +488,10 @@ namespace AI4E.Storage.Test
                     cancellation);
 
             // Assert
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
             // TODO: Use a custom equality comparer, when this is implemented (#252) to validate the predicate
             mock.Verify(
                 database => database.GetOneAsync<IdEntry>(It.IsAny<Expression<Func<IdEntry, bool>>>(), cancellation),
                 Times.Once());
-#else
-            // TODO: Use a custom equality comparer, when this is implemented (#252) to validate the predicate
-            mock.Verify(
-                database => database.GetAsync<IdEntry>(It.IsAny<Expression<Func<IdEntry, bool>>>(), cancellation), 
-                Times.Once());
-#endif
         }
 
         [Theory]
@@ -551,15 +505,10 @@ namespace AI4E.Storage.Test
             // Arrange
             var cancellation = CancellationToken.None;
             var mock = new Mock<IDatabase>();
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
+
             mock.Setup(database => database.GetOneAsync<IdEntry>(
                 It.IsAny<Expression<Func<IdEntry, bool>>>(),
                 cancellation)).ReturnsAsync(existingEntry);
-#else
-            mock.Setup(database => database.GetAsync<IdEntry>(
-                It.IsAny<Expression<Func<IdEntry, bool>>>(), 
-                cancellation)).Returns(new[] { existingEntry }.ToAsyncEnumerable());
-#endif
 
             // Act
             var result = await DatabaseExtension.CompareExchangeAsync(

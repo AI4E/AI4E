@@ -76,11 +76,7 @@ namespace AI4E.Utils
             Debug.Assert(NeedsProjection(value));
             var type = new CustomType(value, ReflectionContext);
 
-#if SUPPORTS_INHERIT_TYPE_INFO
             return type;    
-#else
-            return new ProjectingTypeWrapper(type);
-#endif
         }
 
         [return: NotNullIfNotNull("value")]

@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -80,11 +80,11 @@ namespace AI4E.Messaging
         /// Attempts to retrieve the configuration of the specified type.
         /// </summary>
         /// <typeparam name="TConfig">The type of configuration.</typeparam>
-        /// <param name="configuration">Contains the configuration if the operation suceeds, <c>null</c> otherwise.</param>
+        /// <param name="configuration">Contains the configuration if the operation succeeds, <c>null</c> otherwise.</param>
         /// <returns>True, if the operation is successful, false otherwise.</returns>
         /// <exception cref="ArgumentException">Thrown if <typeparamref name="TConfig"/> is not an ordinary reference type.</exception>
         public bool TryGetConfiguration<TConfig>(
-            [NotNullWhen(true)]out TConfig? configuration)
+            [NotNullWhen(true)] out TConfig? configuration)
             where TConfig : class
         {
             configuration = default;

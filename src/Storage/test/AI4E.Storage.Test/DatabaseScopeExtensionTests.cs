@@ -75,19 +75,16 @@ namespace AI4E.Storage.Test
             var mock = new Mock<IDatabaseScope>();
             mock.Setup(scope => scope.GetAsync<Entry>(_ => true, cancellation))
                 .Returns(new[] { expectedResult }.ToAsyncEnumerable());
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
+
             mock.Setup(scope => scope.GetOneAsync<Entry>(_ => true, cancellation))
                 .ReturnsAsync(expectedResult);
-#endif
+
             // Act
             var result = await DatabaseScopeExtension.GetOneAsync<Entry>(mock.Object, cancellation);
 
             // Assert
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
             mock.Verify(scope => scope.GetOneAsync<Entry>(_ => true, cancellation), Times.Once());
-#else
-            mock.Verify(scope => scope.GetAsync<Entry>(_ => true, cancellation), Times.Once());
-#endif
+
             Assert.Same(expectedResult, result);
         }
 
