@@ -21,8 +21,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Messaging.Primit
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils", "..\..\src\Utils\src\AI4E.Utils\AI4E.Utils.csproj", "{A78025C6-AFA1-4534-BAED-3F06A0DBAD87}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils.Memory.Compatibility", "..\..\src\Utils\src\AI4E.Utils.Memory.Compatibility\AI4E.Utils.Memory.Compatibility.csproj", "{78FD7E63-B772-4783-A4BF-A61B2B050203}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -53,10 +51,6 @@ Global
 		{A78025C6-AFA1-4534-BAED-3F06A0DBAD87}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A78025C6-AFA1-4534-BAED-3F06A0DBAD87}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A78025C6-AFA1-4534-BAED-3F06A0DBAD87}.Release|Any CPU.Build.0 = Release|Any CPU
-		{78FD7E63-B772-4783-A4BF-A61B2B050203}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{78FD7E63-B772-4783-A4BF-A61B2B050203}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{78FD7E63-B772-4783-A4BF-A61B2B050203}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{78FD7E63-B772-4783-A4BF-A61B2B050203}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -68,7 +62,6 @@ Global
 		{7DCF1742-6412-4308-BCCF-001F4C625DAA} = {28A15202-F793-47AF-B228-EE442CF60A84}
 		{ABCECD24-C9DE-4F88-8821-D074FBF215AB} = {28A15202-F793-47AF-B228-EE442CF60A84}
 		{A78025C6-AFA1-4534-BAED-3F06A0DBAD87} = {28A15202-F793-47AF-B228-EE442CF60A84}
-		{78FD7E63-B772-4783-A4BF-A61B2B050203} = {28A15202-F793-47AF-B228-EE442CF60A84}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {DFEB2765-686A-4E7C-820A-0F198451E62B}

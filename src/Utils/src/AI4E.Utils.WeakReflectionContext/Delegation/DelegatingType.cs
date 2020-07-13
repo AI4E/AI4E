@@ -36,12 +36,7 @@ using System.Runtime.InteropServices;
 
 namespace AI4E.Utils.Delegation
 {
-    internal abstract class DelegatingType :
-#if SUPPORTS_INHERIT_TYPE_INFO
-        TypeInfo
-#else
-        Type
-#endif
+    internal abstract class DelegatingType : TypeInfo
     {
         private readonly WeakReference<TypeInfo> _typeInfo;
 
@@ -91,9 +86,7 @@ namespace AI4E.Utils.Delegation
 
         public override Guid GUID => TypeInfo.GUID;
 
-#if SUPPORTS_TYPE_IS_SZ_ARRAY
         public override bool IsSZArray => TypeInfo.IsSZArray;
-#endif
 
         public override bool IsEnum => TypeInfo.IsEnum;
 

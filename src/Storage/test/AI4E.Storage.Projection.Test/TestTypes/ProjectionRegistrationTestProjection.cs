@@ -16,16 +16,6 @@ namespace AI4E.Storage.Projection.TestTypes
             throw null;
         }
 
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
-        Type IProjection.SourceType => typeof(ProjectionSource);
-        Type IProjection.TargetType => typeof(ProjectionTarget);
-
-        IAsyncEnumerable<object> IProjection.ProjectAsync(object source, CancellationToken cancellation)
-        {
-            return ProjectAsync(source as ProjectionSource, cancellation);
-        }
-#endif
-
         public IServiceProvider ServiceProvider { get; }
     }
 }

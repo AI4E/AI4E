@@ -79,11 +79,7 @@ namespace AI4E.Utils.Messaging.Primitives
             return Read(buffer.AsSpan().Slice(offset, count));
         }
 
-        public
-#if SUPPORTS_SPAN_APIS
-            override
-#endif
-            int Read(Span<byte> buffer)
+        public override int Read(Span<byte> buffer)
         {
             ReadOnlyMemory<byte> slice;
             var sliceLength = Math.Min(_length - _position, buffer.Length);
@@ -249,11 +245,7 @@ namespace AI4E.Utils.Messaging.Primitives
             Write(buffer.AsSpan().Slice(offset, count));
         }
 
-        public
-#if SUPPORTS_SPAN_APIS
-            override
-#endif
-            void Write(ReadOnlySpan<byte> buffer)
+        public override void Write(ReadOnlySpan<byte> buffer)
         {
             // Our current position in the stream does not have to be at the end of the stream.
             // Compute the new stream length, which is either the length it has before or the position, 

@@ -41,11 +41,9 @@ namespace AI4E.Utils
         /// <returns>True if the type was resolved successfully, false otherwise.</returns>
         bool TryResolveType(ReadOnlySpan<char> unqualifiedTypeName, [NotNullWhen(true)] out Type? type);
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
         /// <summary>
         /// Gets an instance of a type-resolver that resolves types from the default context.
         /// </summary>
         public static ITypeResolver Default => DefaultTypeResolver.Instance;
-#endif
     }
 }

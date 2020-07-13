@@ -4,9 +4,6 @@
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
     <ProjectReference Include="..\AI4E.Utils\AI4E.Utils.csproj" />

@@ -208,11 +208,7 @@ namespace AI4E.Utils.Memory
             Write(buffer.AsSpan(offset, count));
         }
 
-        public
-#if SUPPORTS_SPAN_APIS
-            override
-#endif
-            int Read(Span<byte> buffer)
+        public override int Read(Span<byte> buffer)
         {
             var bytesToRead = Math.Min(_length - _position, buffer.Length);
 
@@ -228,11 +224,7 @@ namespace AI4E.Utils.Memory
             return bytesToRead;
         }
 
-        public
-#if SUPPORTS_SPAN_APIS
-            override
-#endif
-            void Write(ReadOnlySpan<byte> buffer)
+        public override void Write(ReadOnlySpan<byte> buffer)
         {
             if (_memoryOwner is null)
             {

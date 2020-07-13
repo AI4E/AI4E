@@ -99,20 +99,7 @@ namespace AI4E.Messaging.Validation
 
             return new ValueTask<IDispatchResult>(
                 new DispatchFailureDispatchResult(dispatchData.MessageType));
-        }
-
-#if !SUPPORTS_DEFAULT_INTERFACE_METHODS
-        ValueTask<IDispatchResult> IMessageHandler.HandleAsync(
-            DispatchDataDictionary dispatchData,
-            bool publish,
-            bool localDispatch,
-            CancellationToken cancellation)
-        {
-            return HandleAsync(dispatchData.As<TValidate>(), publish, localDispatch, cancellation);
-        }
-
-        Type IMessageHandler.MessageType => typeof(Validate);
-#endif       
+        }     
     }
 
     public static class ValidationMessageHandler

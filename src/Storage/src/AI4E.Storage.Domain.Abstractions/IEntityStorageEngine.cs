@@ -47,8 +47,6 @@ namespace AI4E.Storage.Domain
 
         IEnumerable<(Type type, string id, long revision, object entity)> LoadedEntries { get; }
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
-
         public ValueTask<object> GetByIdAsync(Type entityType, string id, CancellationToken cancellation = default)
         {
             return GetByIdAsync(entityType, id, bypassCache: false, cancellation);
@@ -58,6 +56,5 @@ namespace AI4E.Storage.Domain
         {
             return GetRevisionAsync(entityType, id, bypassCache: false, cancellation);
         }
-#endif
     }
 }

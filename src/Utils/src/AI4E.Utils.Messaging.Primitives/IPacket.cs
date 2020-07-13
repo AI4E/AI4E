@@ -32,12 +32,10 @@ namespace AI4E.Utils.Messaging.Primitives
     {
         new TPacket WithMessage(in Message message);
 
-#if SUPPORTS_DEFAULT_INTERFACE_METHODS
         IPacket IPacket.WithMessage(in Message message)
         {
             return WithMessage(message);
         }
-#endif
     }
 
     public readonly struct Packet : IPacket<Packet>
