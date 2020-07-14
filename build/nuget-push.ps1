@@ -5,5 +5,5 @@ $apiKey = $args[2]
 $files = Get-ChildItem $packagePath\*.nupkg
 ForEach ($file in $files) {
   #echo $file.fullName
-  dotnet nuget push -Source $source -ApiKey $apiKey $file.fullName
+  dotnet nuget push $file.fullName -s $source -k $apiKey 
 }
