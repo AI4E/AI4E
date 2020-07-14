@@ -20,4 +20,4 @@ jobs:
     - name: Pack all
       run: ./pack.ps1 ${{ steps.current-time.outputs.formattedTime  }}
     - name: Push all
-      run: ./build/nuget-push.ps1 ./artifacts/nupkg https://nuget.pkg.github.com/AI4E/index.json ${{ secrets.GITHUB_TOKEN }}
+      run: ./build/nuget-push.ps1 ./artifacts/nupkg https://nuget.pkg.github.com/ai4e/index.json AndreasTruetschel ${{ secrets.GITHUB_TOKEN }}
