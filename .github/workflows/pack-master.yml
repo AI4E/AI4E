@@ -3,7 +3,7 @@ on:
   push:
     branches: [ master ]
 jobs:
-  build:
+  pack:
     runs-on: windows-latest
     continue-on-error: true
     steps:
@@ -16,8 +16,8 @@ jobs:
       uses: 1466587594/get-current-time@v1
       id: current-time
       with:
-        format: YYYYMMDDHHmm
+        format: x
     - name: Pack all
-      run: ./pack.ps1 ${{ steps.current-time.outputs.time }}
+      run: ./pack.ps1 ${{ steps.current-time.outputs.formattedTime  }}
     - name: Push all
       run: ./build/nuget-push.ps1 ./artifacts/nupkg https://nuget.pkg.github.com/AI4E/index.json ${{ secrets.GITHUB_TOKEN }}
