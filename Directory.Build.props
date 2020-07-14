@@ -9,7 +9,9 @@
     <RepositoryType>git</RepositoryType>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>0.5.0-pre$([System.DateTime]::UtcNow.ToString(yyMMddHH))</Version>
+    <Version>1.0.0</Version>
+    <Version Condition="'$(VersionSuffix)' != ''">$(Version)-pre$(VersionSuffix)</Version>
+    <PackageId>$(MSBuildProjectName)</PackageId>
   </PropertyGroup>
 
   <PropertyGroup>
