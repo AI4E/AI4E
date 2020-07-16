@@ -225,6 +225,8 @@ namespace AI4E.Storage.Domain
     public readonly struct DomainEventCollection
         : IEquatable<DomainEventCollection>, IReadOnlyCollection<DomainEvent>
     {
+        public static DomainEventCollection Empty { get; } = new DomainEventCollection();
+
         private readonly ImmutableHashSet<DomainEvent>? _domainEvents;
 
         /// <summary>

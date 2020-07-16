@@ -25,7 +25,6 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Storage.Domain.Tracking;
-using AI4E.Utils;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -44,8 +43,6 @@ using Microsoft.Extensions.Options;
 //       Non-repeatable read     YES (the built in scoped entity cache/tracker is responsible for this)
 //       Phantom-read            MAYBE // TODO
 
-// TODO: In the case of querying all entities of a given type or when we add querying via predicated, 'Non-repeatable read' is currently not guaranteed, as entities may have been added or removed in the underlying storage engine. We have to compensate for this.
-
 namespace AI4E.Storage.Domain
 {
     /// <inheritdoc cref="IEntityStorage"/>
@@ -59,6 +56,9 @@ namespace AI4E.Storage.Domain
         private readonly IEntityQueryResultScope _queryResultScope = new EntityQueryResultScope(); // TODO: We could pool this  
         private readonly IUnitOfWork<IEntityQueryResult> _unitOfWork;
         private readonly IDomainQueryExecutor _domainQueryExecutor;
+
+        private readonly Dictionary<Type, IAsyncEnumerable<IFoundEntityQueryResult>> _storageEngineQueryResults
+            = new Dictionary<Type, IAsyncEnumerable<IFoundEntityQueryResult>>();
 
         /// <summary>
         /// Creates a new instance of the <see cref="EntityStorage"/> type.
@@ -157,8 +157,23 @@ namespace AI4E.Storage.Domain
                 Resources.LoadingEntities,
                 _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-            var loadResults = _storageEngine.QueryEntitiesAsync(
-                entityType, bypassCache: false, cancellation);
+            if(!_storageEngineQueryResults.TryGetValue(entityType, out var loadResults))
+            {
+                loadResults = _storageEngine.QueryEntitiesAsync(
+                    entityType, bypassCache: false, cancellation).Cached();
+
+                // We record all result that we already enumerated via the Cached() extension, in order that 
+                // the exact same results are used when the method is called with the same entity type again.
+
+                // TODO: Problems may occur here, as the Cached() extension methods keep alive an enumerator 
+                //       instance internally, that will keep alive a native database cursor. These however (and this
+                //       is highly dependent on the actually used database engine) may have a timeout.
+                //       When can this be a problem? When the first call to LoadEntitiesAsync is canceled, 
+                //       the cursor will not be closed but kept alive.
+                //       As a workaround, we can still iterate the results to their end when canceled.
+
+                _storageEngineQueryResults.Add(entityType, loadResults);
+            }
 
             // TODO: If multiple iterators overlap, we may get some concurrency here.
             //       Do we have to synchronize and if yes, what are the critical sections?
@@ -402,16 +417,19 @@ namespace AI4E.Storage.Domain
                 Resources.RollingBack, _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
             _unitOfWork.Reset();
+            _storageEngineQueryResults.Clear();
             return default;
         }
 
         /// <inheritdoc/>
-        public ValueTask<EntityCommitResult> CommitAsync(CancellationToken cancellation)
+        public async ValueTask<EntityCommitResult> CommitAsync(CancellationToken cancellation)
         {
             _logger.LogDebug(
                 Resources.Committing, _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-            return _unitOfWork.CommitAsync(_storageEngine, cancellation);
+            var result = await _unitOfWork.CommitAsync(_storageEngine, cancellation).ConfigureAwait(false);
+            _storageEngineQueryResults.Clear();
+            return result;
         }
 
         /// <inheritdoc/>

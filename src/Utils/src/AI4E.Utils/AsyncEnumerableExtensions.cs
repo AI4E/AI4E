@@ -20,6 +20,7 @@
 
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace System.Collections.Generic
@@ -42,5 +43,46 @@ namespace System.Collections.Generic
 
             return Preevaluate().GetAwaiter();
         }
+
+        #region Cache
+
+        public static IAsyncEnumerable<TItem> Cached<TItem>(this IAsyncEnumerable<TItem> source)
+        {
+            return new CachedAsyncEnumerable<TItem>(source);
+        }
+
+        private sealed class CachedAsyncEnumerable<TItem> : IAsyncEnumerable<TItem>
+        {
+            private readonly IAsyncEnumerable<TItem> _source;
+            private readonly List<TItem> _cache = new List<TItem>();
+
+            private IAsyncEnumerator<TItem>? _enumerator;
+
+            public CachedAsyncEnumerable(IAsyncEnumerable<TItem> source)
+            {
+                if (source is null)
+                    throw new ArgumentNullException(nameof(source));
+
+                _source = source;
+            }
+
+            public async IAsyncEnumerator<TItem> GetAsyncEnumerator(CancellationToken cancellationToken)
+            {
+                foreach (var item in _cache)
+                {
+                    yield return item;
+                }
+
+                _enumerator ??= _source.GetAsyncEnumerator();
+
+                while (await _enumerator.MoveNextAsync().ConfigureAwait(true))
+                {
+                    _cache.Add(_enumerator.Current);
+                    yield return _enumerator.Current;
+                }
+            }
+        }
+
+        #endregion
     }
 }
