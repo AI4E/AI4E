@@ -35,7 +35,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 // TODO: Register as application service.
-// TODO: Await initialization (exceptions are lost otherwise!)
 
 namespace AI4E.Storage.Domain
 {
@@ -214,18 +213,39 @@ namespace AI4E.Storage.Domain
                 }
             }
 
-            // Load all undispatched domain event batches
-            var batches = _database.GetAsync(BuildPredicate(_optionsAccessor.Value.Scope), cancellation);
-            var valueTasks = new List<ValueTask>();
-
-            await foreach (var eventBatch in batches)
+            try
             {
-#pragma warning disable CA2012
-                valueTasks.Add(RegisterForDispatchAsync(eventBatch, cancellation));
-#pragma warning restore CA2012
-            }
+                // Load all undispatched domain event batches
+                var batches = _database.GetAsync(BuildPredicate(_optionsAccessor.Value.Scope), cancellation);
+                var valueTasks = new List<ValueTask>();
 
-            await valueTasks.WhenAll().ConfigureAwait(false);
+                await foreach (var eventBatch in batches)
+                {
+#pragma warning disable CA2012
+                    valueTasks.Add(RegisterForDispatchAsync(eventBatch, cancellation));
+#pragma warning restore CA2012
+                }
+
+                await valueTasks.WhenAll().ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+            {
+                return;
+            }
+#pragma warning disable CA1031
+            catch (Exception exc)
+#pragma warning restore CA1031
+            {
+                _logger.LogCritical(
+                    exc,
+                    Resources.EngineInitializationFailed,
+                    _optionsAccessor.Value.Scope ?? Resources.NoScope);
+
+#pragma warning disable VSTHRD103
+                // This is guaranteed not to block
+                _disposeHelper.Dispose();
+#pragma warning restore VSTHRD103
+            }
 
             _logger.LogTrace(
               Resources.EngineInitialized,
@@ -466,7 +486,7 @@ namespace AI4E.Storage.Domain
                         }
 
                         // Skip concurrency checks for append events only operations.
-                        if (entry.Operation != CommitOperation.AppendEventsOnly && 
+                        if (entry.Operation != CommitOperation.AppendEventsOnly &&
                             storedEntityRevision != entry.ExpectedRevision)
                         {
                             concurrencyFailure = true;
@@ -485,10 +505,6 @@ namespace AI4E.Storage.Domain
                         // included in the id generation process. We do no expect the epoch counter to overflow.
                         // When all domain events of all epochs of an entity are dispatched, we can get rid of the 
                         // stored-entity as domain event is generation is guaranteed to be unique now.
-
-                        // TODO: Do we allow a deleted entity to be deleted? What to do with the domain-events in this 
-                        // case?
-
                         if (entry.Operation == CommitOperation.Delete)
                         {
                             if (entry.DomainEvents.Count != 0 || storedEntity != null && storedEntity.IsMarkedAsDeleted)
@@ -529,7 +545,7 @@ namespace AI4E.Storage.Domain
 
                             entriesToUpdateCache.Add((entry, storedEntity.Epoch));
                         }
-                        else if(entry.Operation == CommitOperation.Store)
+                        else if (entry.Operation == CommitOperation.Store)
                         {
                             _logger.LogTrace(
                                     Resources.EngineStoringEntityToDatabase,
@@ -602,9 +618,6 @@ namespace AI4E.Storage.Domain
                 }
 
                 // Add event-batches to dispatch queue
-                // TODO: Do we allow cancellation here? The entity is already committed.
-                //       (YES, but do not cancel the underlying operation, 
-                //        just ignore the operation result; fire & forget)
                 var task = RegisterForDispatchAsync(eventBatches, cancellation: default).WithCancellation(cancellation);
 
                 if (_optionsAccessor.Value.SynchronousEventDispatch)

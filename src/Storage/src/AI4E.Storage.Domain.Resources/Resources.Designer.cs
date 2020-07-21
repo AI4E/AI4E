@@ -259,6 +259,15 @@ namespace AI4E.Storage.Domain {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Initializing the domain storage engine failed. Scope: {1}.
+        /// </summary>
+        internal static string EngineInitializationFailed {
+            get {
+                return ResourceManager.GetString("EngineInitializationFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Initialized the domain storage engine. Scope: {1}.
         /// </summary>
         internal static string EngineInitialized {

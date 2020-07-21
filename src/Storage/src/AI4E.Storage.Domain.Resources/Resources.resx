@@ -183,6 +183,9 @@
   <data name="EngineFailureLoadingEntityFromDatabase" xml:space="preserve">
     <value>Failed loading entity with identifier {0} from underlying database for reason: '{1}'. Scope: {2}</value>
   </data>
+  <data name="EngineInitializationFailed" xml:space="preserve">
+    <value>Initializing the domain storage engine failed. Scope: {1}</value>
+  </data>
   <data name="EngineInitialized" xml:space="preserve">
     <value>Initialized the domain storage engine. Scope: {1}</value>
   </data>
