@@ -51,7 +51,7 @@ namespace AI4E.Storage.Domain.Test
         protected override IEntityStorageEngine Create(IDomainEventDispatcher eventDispatcher)
         {
             var database = _database.Value;
-            var optionsAccessor = Options.Create(new DomainStorageOptions { WaitForEventsDispatch = true });
+            var optionsAccessor = Options.Create(new DomainStorageOptions { SynchronousEventDispatch = true });
 
             return new EntityStorageEngine(database, eventDispatcher, optionsAccessor);
         }

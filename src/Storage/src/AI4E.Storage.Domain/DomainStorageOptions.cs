@@ -50,7 +50,7 @@ namespace AI4E.Storage.Domain
         /// Gets or a boolean value indicating whether the domain storage shall await all domain-events being
         /// dispatched successfully on commit.
         /// </summary>
-        public bool WaitForEventsDispatch { get; set; } = false; // TODO: Rename to: SynchronousEventDispatch
+        public bool SynchronousEventDispatch { get; set; } = false;
 
         /// <summary>
         /// Gets the initial delay for retrying dispatching domain-events on failure.

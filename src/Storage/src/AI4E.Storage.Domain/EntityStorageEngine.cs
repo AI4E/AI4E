@@ -607,7 +607,7 @@ namespace AI4E.Storage.Domain
                 //        just ignore the operation result; fire & forget)
                 var task = RegisterForDispatchAsync(eventBatches, cancellation: default).WithCancellation(cancellation);
 
-                if (_optionsAccessor.Value.WaitForEventsDispatch)
+                if (_optionsAccessor.Value.SynchronousEventDispatch)
                 {
                     await task.ConfigureAwait(false);
                 }
