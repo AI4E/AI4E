@@ -28,7 +28,7 @@ namespace AI4E.Storage.Domain
     /// <summary>
     /// Represents the entity storage engine that is responsible for managing the underlying entity storage subsystem.
     /// </summary>
-    public interface IEntityStorageEngine
+    public interface IEntityStorageEngine : IDisposable, IAsyncDisposable
     {
         /// <summary>
         /// Asynchronously loads the entity with the specified identifier.
