@@ -430,9 +430,9 @@ namespace AI4E.Storage.Domain
             try
             {
                 using var guard = await _disposeHelper.GuardDisposalAsync(cancellation).ConfigureAwait(false);
+                using var databaseScope = _database.CreateScope();
                 cancellation = guard.Cancellation;
 
-                using var databaseScope = _database.CreateScope();
                 bool concurrencyFailure;
                 var eventBatches = new List<StoredDomainEventBatch>();
                 var entriesToUpdateCache = new List<(TCommitAttemptEntry entry, int epoch)>();
@@ -491,6 +491,33 @@ namespace AI4E.Storage.Domain
                         {
                             concurrencyFailure = true;
                             await databaseScope.RollbackAsync(cancellation).ConfigureAwait(false);
+
+                            // As the concurrency check based on the entries in the cache succeeded, but the comparison
+                            // with the true values does not, we have to update the cache, to prevent a situation that
+                            // we check the (unchanged) cache again, which leads to the exact same situation, thus
+                            // an infinite cycle.
+
+                            // TODO: This is a copy
+                            IEntityQueryResult entityQueryResult;
+
+                            if (storedEntity is null)
+                            {
+                                entityQueryResult = new NotFoundEntityQueryResult(
+                                    entry.EntityIdentifier, loadedFromCache: false, EntityQueryResultGlobalScope.Instance);
+                            }
+                            else
+                            {
+                                entityQueryResult = new FoundEntityQueryResult(
+                                    entry.EntityIdentifier,
+                                    storedEntity.Entity!,
+                                    storedEntity.ConcurrencyToken,
+                                    storedEntity.Revision,
+                                    loadedFromCache: false,
+                                    EntityQueryResultGlobalScope.Instance);
+                            }
+
+                            _cache.UpdateCache(entityQueryResult, storedEntity.Epoch);
+
                             break;
                         }
 
@@ -645,9 +672,9 @@ namespace AI4E.Storage.Domain
             return expectedRevision == actualRevision;
         }
 
-        // TODO: If the entry in the cache is of another epoch as the one in the database but with the same revision,
-        //       the concurrency-check succeeds, although it has to fail. This will blow up when trying to commit the 
-        //       transaction to the database, performing the check on the cache again, leading to an infinite loop.
+        // If the entry in the cache is of another epoch as the one in the database but with the same revision,
+        // the concurrency-check succeeds, as we do not care here whether the epoch is the same nor does the 
+        // check in the database do. Revision is all we care about.
         private async ValueTask<bool> CheckConcurrencyAsync<TCommitAttemptEntry>(
             CommitAttempt<TCommitAttemptEntry> commitAttempt,
             CancellationToken cancellation)
