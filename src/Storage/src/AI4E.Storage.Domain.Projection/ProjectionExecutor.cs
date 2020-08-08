@@ -71,35 +71,35 @@ namespace AI4E.Storage.Domain.Projection
 
         /// <inheritdoc/>
         public IAsyncEnumerable<IProjectionResult> ExecuteProjectionAsync(
-            Type sourceType,
-            object source, // May be null
+            Type entityType,
+            object entity, // May be null
             IServiceProvider serviceProvider,
             CancellationToken cancellation)
         {
-            if (sourceType is null)
-                throw new ArgumentNullException(nameof(sourceType));
+            if (entityType is null)
+                throw new ArgumentNullException(nameof(entityType));
 
             if (serviceProvider is null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
             // TODO
-            if (sourceType.IsValueType || typeof(Delegate).IsAssignableFrom(sourceType) /*sourceType.IsDelegate()*/)
-                throw new ArgumentException("The argument must be a reference type.", nameof(sourceType));
+            if (entityType.IsValueType || typeof(Delegate).IsAssignableFrom(entityType) /*sourceType.IsDelegate()*/)
+                throw new ArgumentException("The argument must be a reference type.", nameof(entityType));
 
-            if (source is null)
+            if (entity is null)
                 return AsyncEnumerable.Empty<IProjectionResult>();
 
-            if (!sourceType.IsAssignableFrom(source.GetType()))
+            if (!entityType.IsAssignableFrom(entity.GetType()))
                 throw new ArgumentException(
-                    $"The argument '{nameof(source)}' must be of the type specified by '{nameof(sourceType)}'" +
+                    $"The argument '{nameof(entity)}' must be of the type specified by '{nameof(entityType)}'" +
                     $" or a derived type.");
 
-            return ExecuteProjectionInternalAsync(sourceType, source, serviceProvider, cancellation);
+            return ExecuteProjectionInternalAsync(entityType, entity, serviceProvider, cancellation);
         }
 
-        private static IEnumerable<Type> GetProjectionTypeHierarchy(Type sourceType)
+        private static IEnumerable<Type> GetProjectionTypeHierarchy(Type entityType)
         {
-            var currType = sourceType;
+            var currType = entityType;
 
             do
             {
@@ -109,28 +109,28 @@ namespace AI4E.Storage.Domain.Projection
         }
 
         private IAsyncEnumerable<IProjectionResult> ExecuteProjectionInternalAsync(
-            Type sourceType,
-            object source,
+            Type entityType,
+            object entity,
             IServiceProvider serviceProvider,
             CancellationToken cancellation)
         {
             var projectionProvider = GetProjectionProvider();
 
             // There is no parallelism (with Task.WhenAll(projectors.Select(...)) used because we cannot guarantee
-            // that it is allowed to access 'source' concurrently. It is possible to use the return type
+            // that it is allowed to access 'entity' concurrently. It is possible to use the return type
             // IAsyncEnumerable<IProjectionResult> and process each batch on access. This allows to remove the up-front
             // evaluation and storage of the results.
 
-            return GetProjectionTypeHierarchy(sourceType)
+            return GetProjectionTypeHierarchy(entityType)
                 .SelectMany(type => projectionProvider.GetProjectionRegistrations(type)).ToAsyncEnumerable()
                 .SelectMany(provider => ExecuteSingleProjectionAsync(
-                    provider, sourceType, source, serviceProvider, cancellation));
+                    provider, entityType, entity, serviceProvider, cancellation));
         }
 
         private IAsyncEnumerable<IProjectionResult> ExecuteSingleProjectionAsync(
             IProjectionRegistration projectionRegistration,
-            Type sourceType,
-            object source,
+            Type entityType,
+            object entity,
             IServiceProvider serviceProvider,
             CancellationToken cancellation)
         {
@@ -139,17 +139,17 @@ namespace AI4E.Storage.Domain.Projection
             if (projection == null)
             {
                 throw new InvalidOperationException(
-                    $"Cannot execute a projection for source-type '{projection.SourceType}' that is null.");
+                    $"Cannot execute a projection for entity-type '{projection.EntityType}' that is null.");
             }
 
-            if (!projection.SourceType.IsAssignableFrom(sourceType))
+            if (!projection.EntityType.IsAssignableFrom(entityType))
             {
                 throw new InvalidOperationException(
-                    $"Cannot execute a projection for source-type '{projection.SourceType}'" +
-                    $" with a source of type '{sourceType}'.");
+                    $"Cannot execute a projection for entity-type '{projection.EntityType}'" +
+                    $" with a entity of type '{entityType}'.");
             }
 
-            return projection.ProjectAsync(source, cancellation)
+            return projection.ProjectAsync(entity, cancellation)
                 .Where(p => !(p is null))
                 .Select(p => new ProjectionResult(projection.TargetType, p));
         }

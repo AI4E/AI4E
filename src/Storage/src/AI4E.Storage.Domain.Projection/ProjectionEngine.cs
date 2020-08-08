@@ -83,35 +83,35 @@ namespace AI4E.Storage.Domain.Projection
         }
 
         /// <inheritdoc/>
-        public Task ProjectAsync(Type sourceType, string id, CancellationToken cancellation = default)
+        public Task ProjectAsync(Type entityType, string id, CancellationToken cancellation = default)
         {
-            if (sourceType == null)
-                throw new ArgumentNullException(nameof(sourceType));
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
 
             if (id == null)
                 throw new ArgumentNullException(nameof(id));
 
-            var processedSources = new HashSet<EntityIdentifier>();
-            return ProjectAsync(new EntityIdentifier(sourceType, id), processedSources, cancellation);
+            var processedEntities = new HashSet<EntityIdentifier>();
+            return ProjectAsync(new EntityIdentifier(entityType, id), processedEntities, cancellation);
         }
 
-        private async Task ProjectAsync(EntityIdentifier source,
-                                        ISet<EntityIdentifier> processedSources,
+        private async Task ProjectAsync(EntityIdentifier entity,
+                                        ISet<EntityIdentifier> processedEntities,
                                         CancellationToken cancellation)
         {
-            if (processedSources.Contains(source))
+            if (processedEntities.Contains(entity))
             {
                 return;
             }
 
-            var targetProcessor = _targetProcessorFactory.CreateInstance(source, _serviceProvider);
+            var targetProcessor = _targetProcessorFactory.CreateInstance(entity, _serviceProvider);
             var dependents = await ProjectAsync(targetProcessor, cancellation);
 
-            processedSources.Add(source);
+            processedEntities.Add(entity);
 
             foreach (var dependent in dependents)
             {
-                await ProjectAsync(dependent, processedSources, cancellation);
+                await ProjectAsync(dependent, processedEntities, cancellation);
             }
         }
 
@@ -138,19 +138,19 @@ namespace AI4E.Storage.Domain.Projection
             using var scope = _serviceProvider.CreateScope();
             var scopedServiceProvider = scope.ServiceProvider;
             var sourceProcessor = _sourceProcessorFactory.CreateInstance(
-                targetProcessor.ProjectedSource, scope.ServiceProvider);
+                targetProcessor.ProjectedEntity, scope.ServiceProvider);
             var updateNeeded = await CheckUpdateNeededAsync(sourceProcessor, targetProcessor, cancellation);
 
             if (!updateNeeded)
                 return;
 
-            var source = await sourceProcessor.GetSourceAsync(
-                targetProcessor.ProjectedSource, cancellation);
-            var sourceRevision = await sourceProcessor.GetSourceRevisionAsync(
-                targetProcessor.ProjectedSource, expectedMinRevision: default, cancellation);
+            var entity = await sourceProcessor.GetSourceAsync(
+                targetProcessor.ProjectedEntity, cancellation);
+            var entityRevision = await sourceProcessor.GetSourceRevisionAsync(
+                targetProcessor.ProjectedEntity, expectedMinRevision: default, cancellation);
 
             var projectionResults = _projector.ExecuteProjectionAsync(
-                targetProcessor.ProjectedSource.EntityType, source, scopedServiceProvider, cancellation);
+                targetProcessor.ProjectedEntity.EntityType, entity, scopedServiceProvider, cancellation);
 
             var metadata = await targetProcessor.GetMetadataAsync(cancellation);
             var appliedTargets = metadata.Targets.ToHashSet();
@@ -168,7 +168,7 @@ namespace AI4E.Storage.Domain.Projection
                     {
                         _logger.LogWarning(
                             $"Duplicate projection target with type {projectionResult.ResultType}" +
-                            $" and id {projectionResult.ResultId} while projecting source" +
+                            $" and id {projectionResult.ResultId} while projecting entity" +
                             $" '{sourceProcessor.ProjectedSource}'.");
 
                         continue;
@@ -194,7 +194,7 @@ namespace AI4E.Storage.Domain.Projection
                 await targetProcessor.RemoveTargetAsync(removedProjection, cancellation);
             }
 
-            var updatedMetadata = new ProjectionMetadata(sourceProcessor.Dependencies, targets, sourceRevision);
+            var updatedMetadata = new ProjectionMetadata(sourceProcessor.Dependencies, targets, entityRevision);
             await targetProcessor.UpdateAsync(updatedMetadata, cancellation);
         }
 
@@ -208,7 +208,7 @@ namespace AI4E.Storage.Domain.Projection
             CancellationToken cancellation)
         {
             // We load all dependencies from the entity store. 
-            // As a projection source's dependencies do not change often, chances are good that the 
+            // As an entity's dependencies do not change often, chances are good that the 
             // entities are cached when accessed during the projection phase.
             // For that reason, performance should not suffer very much 
             // in comparison to not checking whether an update is needed.
@@ -228,20 +228,20 @@ namespace AI4E.Storage.Domain.Projection
             ProjectionMetadata metadata,
             CancellationToken cancellation)
         {
-            var sourceRevision = await sourceProcessor.GetSourceRevisionAsync(
+            var entityRevision = await sourceProcessor.GetSourceRevisionAsync(
                    sourceProcessor.ProjectedSource,
                    expectedMinRevision: metadata.ProjectionRevision,
                    cancellation);
 
-            // The source is not existent, ie. it was deleted.
-            if (sourceRevision == 0)
+            // The entity is not existent, ie. it was deleted.
+            if (entityRevision == 0)
             {
                 return true;
             }
 
-            Debug.Assert(sourceRevision >= metadata.ProjectionRevision);
+            Debug.Assert(entityRevision >= metadata.ProjectionRevision);
 
-            if (sourceRevision > metadata.ProjectionRevision)
+            if (entityRevision > metadata.ProjectionRevision)
             {
                 return true;
             }

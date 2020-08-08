@@ -31,12 +31,12 @@ namespace AI4E.Storage.Domain.Projection
     public interface IProjectionTargetProcessor
     {
         /// <summary>
-        /// Gets a descriptor for the projected source.
+        /// Gets a descriptor for the projected entity.
         /// </summary>
-        EntityIdentifier ProjectedSource { get; }
+        EntityIdentifier ProjectedEntity { get; }
 
         /// <summary>
-        /// Asynchronously retrieves a collection of projection sources that are dependents of the projected source.
+        /// Asynchronously retrieves a collection of entities that are dependents of the projected entity.
         /// </summary>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.
@@ -127,11 +127,11 @@ namespace AI4E.Storage.Domain.Projection
         /// <summary>
         /// Creates a new <see cref="IProjectionTargetProcessor"/>.
         /// </summary>
-        /// <param name="projectedSource">A descriptor for the projected source.</param>
+        /// <param name="projectedEntity">A descriptor for the projected entity.</param>
         /// <param name="serviceProvider">The <see cref="IServiceProvider"/> that shall be used to load services.</param>
         /// <returns>The created instance of type <see cref="IProjectionTargetProcessor"/>.</returns>
-        /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="projectedSource"/> is <c>default</c>.</exception>
+        /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="projectedEntity"/> is <c>default</c>.</exception>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is <c>null</c>.</exception>
-        IProjectionTargetProcessor CreateInstance(EntityIdentifier projectedSource, IServiceProvider serviceProvider);
+        IProjectionTargetProcessor CreateInstance(EntityIdentifier projectedEntity, IServiceProvider serviceProvider);
     }
 }

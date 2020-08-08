@@ -30,23 +30,23 @@ namespace AI4E.Storage.Domain.Projection
     public interface IProjectionEngine
     {
         /// <summary>
-        /// Projects the specified projection source.
+        /// Projects the specified entity.
         /// </summary>
-        /// <param name="sourceType">The type of projection source.</param>
-        /// <param name="sourceId">Type projection source id.</param>
+        /// <param name="entityType">The type of entity.</param>
+        /// <param name="entityId">Type entity id.</param>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if either <paramref name="sourceType"/> or <paramref name="sourceId"/> is <c>null</c>.
+        /// Thrown if either <paramref name="entityType"/> or <paramref name="entityId"/> is <c>null</c>.
         /// </exception>
         /// <exception cref="ArgumentException">
-        /// Thrown if <paramref name="sourceType"/> specifies an invalid source type.
+        /// Thrown if <paramref name="entityType"/> specifies an invalid entity.
         /// </exception>
-        Task ProjectAsync(
-            Type sourceType,
-            string sourceId,
+        Task ProjectAsync( // TODO: Use EntityIdentifier
+            Type entityType,
+            string entityId,
             CancellationToken cancellation = default);
     }
 }

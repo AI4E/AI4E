@@ -50,7 +50,7 @@ namespace AI4E.Storage.Domain.Projection
             if (projectionRegistration == null)
                 throw new ArgumentNullException(nameof(projectionRegistration));
 
-            var handlerCollection = _projectionRegistrations.GetOrAdd(projectionRegistration.SourceType, _ => new OrderedSet<IProjectionRegistration>());
+            var handlerCollection = _projectionRegistrations.GetOrAdd(projectionRegistration.EntityType, _ => new OrderedSet<IProjectionRegistration>());
             var result = true;
 
             if (handlerCollection.Remove(projectionRegistration))
@@ -69,7 +69,7 @@ namespace AI4E.Storage.Domain.Projection
             if (projectionRegistration == null)
                 throw new ArgumentNullException(nameof(projectionRegistration));
 
-            if (!_projectionRegistrations.TryGetValue(projectionRegistration.SourceType, out var handlerCollection))
+            if (!_projectionRegistrations.TryGetValue(projectionRegistration.EntityType, out var handlerCollection))
             {
                 return false;
             }
@@ -81,7 +81,7 @@ namespace AI4E.Storage.Domain.Projection
 
             if (!handlerCollection.Any())
             {
-                _projectionRegistrations.Remove(projectionRegistration.SourceType);
+                _projectionRegistrations.Remove(projectionRegistration.EntityType);
             }
 
             return true;
@@ -118,9 +118,9 @@ namespace AI4E.Storage.Domain.Projection
                 }
             }
 
-            public IReadOnlyList<IProjectionRegistration> GetProjectionRegistrations(Type sourceType)
+            public IReadOnlyList<IProjectionRegistration> GetProjectionRegistrations(Type entityType)
             {
-                if (!_projectionRegistrations.TryGetValue(sourceType, out var result))
+                if (!_projectionRegistrations.TryGetValue(entityType, out var result))
                 {
                     result = ImmutableList<IProjectionRegistration>.Empty;
                 }

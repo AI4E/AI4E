@@ -33,22 +33,22 @@ namespace AI4E.Storage.Domain.Projection
         /// Creates a new instance of the <see cref="ProjectionDescriptor"/> type.
         /// </summary>
         /// <param name="handlerType">The type that declared the projection.</param>
-        /// <param name="sourceType">The projection source type.</param>
+        /// <param name="entityType">The entity type.</param>
         /// <param name="targetType">The projection target type.</param>
         /// <param name="member">A <see cref="MethodInfo"/> that specifies the projection (method).</param>
         /// <param name="multipleResults">
         /// A boolean value indicating whether the projection projections to multiple targets.
         /// </param>
         /// <param name="projectNonExisting">
-        /// A boolean value indicating whether the projection shall be invoked for non-existing sources.
+        /// A boolean value indicating whether the projection shall be invoked for non-existing entities.
         /// </param>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if any of <paramref name="handlerType"/>, <paramref name="sourceType"/>,
+        /// Thrown if any of <paramref name="handlerType"/>, <paramref name="entityType"/>,
         /// <paramref name="targetType"/> or <paramref name="member"/> is <c>null</c>.
         /// </exception>
         public ProjectionDescriptor(
             Type handlerType,
-            Type sourceType,
+            Type entityType,
             Type targetType,
             MethodInfo member,
             bool multipleResults,
@@ -57,8 +57,8 @@ namespace AI4E.Storage.Domain.Projection
             if (handlerType is null)
                 throw new ArgumentNullException(nameof(handlerType));
 
-            if (sourceType == null)
-                throw new ArgumentNullException(nameof(sourceType));
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
 
             if (targetType == null)
                 throw new ArgumentNullException(nameof(targetType));
@@ -66,8 +66,8 @@ namespace AI4E.Storage.Domain.Projection
             if (member == null)
                 throw new ArgumentNullException(nameof(member));
 
-            if (!sourceType.IsOrdinaryClass())
-                throw new ArgumentException("The argument must specify an ordinary class.", nameof(sourceType));
+            if (!entityType.IsOrdinaryClass())
+                throw new ArgumentException("The argument must specify an ordinary class.", nameof(entityType));
 
             if (!targetType.IsOrdinaryClass())
                 throw new ArgumentException("The argument must specify an ordinary class.", nameof(targetType));
@@ -83,8 +83,8 @@ namespace AI4E.Storage.Domain.Projection
             if (firstParameter == null)
                 throw new ArgumentException("The member must not be parameterless", nameof(member));
 
-            if (!firstParameter.IsAssignableFrom(sourceType))
-                throw new ArgumentException("The specified source type must be assignable the type of the members first parameter.");
+            if (!firstParameter.IsAssignableFrom(entityType))
+                throw new ArgumentException("The specified entity type must be assignable the type of the members first parameter.");
 
             if (!member.DeclaringType.IsAssignableFrom(handlerType))
                 throw new ArgumentException("The specified handler type must be assignable to the type that declares the specified member.");
@@ -92,7 +92,7 @@ namespace AI4E.Storage.Domain.Projection
             // TODO: Do we also check whether any parameter/messageType/messageHandlerType is by ref or is a pointer, etc.
 
             HandlerType = handlerType;
-            SourceType = sourceType;
+            EntityType = entityType;
             TargetType = targetType;
             Member = member;
             MultipleResults = multipleResults;
@@ -105,9 +105,9 @@ namespace AI4E.Storage.Domain.Projection
         public Type HandlerType { get; }
 
         /// <summary>
-        /// Gets the projection source type.
+        /// Gets the entity type.
         /// </summary>
-        public Type SourceType { get; }
+        public Type EntityType { get; }
 
         /// <summary>
         /// Gets the projection target type.
@@ -125,7 +125,7 @@ namespace AI4E.Storage.Domain.Projection
         public bool MultipleResults { get; }
 
         /// <summary>
-        /// Gets a boolean value indicating whether the projection shall be invoked for non-existing sources.
+        /// Gets a boolean value indicating whether the projection shall be invoked for non-existing entity.
         /// </summary>
         public bool ProjectNonExisting { get; }
     }

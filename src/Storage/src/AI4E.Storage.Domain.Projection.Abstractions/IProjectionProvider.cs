@@ -28,12 +28,12 @@ namespace AI4E.Storage.Domain.Projection
     public interface IProjectionProvider
     {
         /// <summary>
-        /// Returns an ordered collection of projection registrations for the specified source type.
+        /// Returns an ordered collection of projection registrations for the specified entity type.
         /// </summary>
-        /// <param name="sourceType">The source type.</param>
-        /// <returns>An ordered collection of projection registrations for <paramref name="sourceType"/>.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="sourceType"/> is <c>null</c>.</exception>
-        IReadOnlyList<IProjectionRegistration> GetProjectionRegistrations(Type sourceType);
+        /// <param name="entityType">The entity type.</param>
+        /// <returns>An ordered collection of projection registrations for <paramref name="entityType"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="entityType"/> is <c>null</c>.</exception>
+        IReadOnlyList<IProjectionRegistration> GetProjectionRegistrations(Type entityType);
 
         /// <summary>
         /// Returns an ordered collection of all projection registrations.

@@ -30,9 +30,9 @@ namespace AI4E.Storage.Domain.Projection
         /// <summary>
         /// Creates a new instance of the <see cref="EntityDependency"/> type.
         /// </summary>
-        /// <param name="entityType">The type of the projection source.</param>
-        /// <param name="entityId">The id of the projection source.</param>
-        /// <param name="projectionRevision">The revision of the source that the projection is based on.</param>
+        /// <param name="entityType">The type of the entity.</param>
+        /// <param name="entityId">The id of the entity.</param>
+        /// <param name="projectionRevision">The revision of the entity that the projection is based on.</param>
         ///  <exception cref="ArgumentNullException">
         /// Thrown if either <paramref name="entityType"/> or <paramref name="entityId"/> is <c>null</c>.
         /// </exception>
@@ -45,8 +45,8 @@ namespace AI4E.Storage.Domain.Projection
         /// <summary>
         /// Creates a new instance of the <see cref="EntityDependency"/> type.
         /// </summary>
-        /// <param name="dependency">A <see cref="EntityIdentifier"/> representing the projection source.</param>
-        /// <param name="projectionRevision">The revision of the source that the projection is based on.</param>
+        /// <param name="dependency">A <see cref="EntityIdentifier"/> representing the entity.</param>
+        /// <param name="projectionRevision">The revision of the entity that the projection is based on.</param>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="dependency"/> is <c>default</c>.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="projectionRevision"/> is negative.</exception>
         public EntityDependency(in EntityIdentifier dependency, long projectionRevision)
@@ -62,12 +62,12 @@ namespace AI4E.Storage.Domain.Projection
         }
 
         /// <summary>
-        /// Gets a descriptor for the dependency's projection source.
+        /// Gets a descriptor for the dependency's entity.
         /// </summary>
         public EntityIdentifier Dependency { get; }
 
         /// <summary>
-        /// Gets the revision of the source that the projection is based on.
+        /// Gets the revision of the entity that the projection is based on.
         /// </summary>
         public long ProjectionRevision { get; }
 
@@ -80,8 +80,8 @@ namespace AI4E.Storage.Domain.Projection
         /// <inheritdoc/>
         public override bool Equals(object obj)
         {
-            return obj is EntityDependency projectionSourceDependency
-                && Equals(projectionSourceDependency);
+            return obj is EntityDependency entityDependency
+                && Equals(entityDependency);
         }
 
         /// <inheritdoc/>

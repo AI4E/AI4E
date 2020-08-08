@@ -36,9 +36,9 @@ namespace AI4E.Storage.Domain.Projection
         IProjection CreateProjection(IServiceProvider serviceProvider);
 
         /// <summary>
-        /// Gets the type of the source elements the projection projects.
+        /// Gets the type of the entity the projection projects.
         /// </summary>
-        Type SourceType { get; }
+        Type EntityType { get; }
 
         /// <summary>
         /// Gets the type of the target elements the projection projects to.
@@ -54,12 +54,12 @@ namespace AI4E.Storage.Domain.Projection
     }
 
     /// <summary>
-    /// Represents the registration of a projection for the specifies source and target types.
+    /// Represents the registration of a projection for the specifies entity and target types.
     /// </summary>
-    /// <typeparam name="TSource">The type of the source elements the projection projects</typeparam>
+    /// <typeparam name="TEntity">The type of the entities the projection projects</typeparam>
     /// <typeparam name="TTarget">The type of the target elements the projection projects to.</typeparam>
-    public interface IProjectionRegistration<TSource, TTarget> : IProjectionRegistration
-        where TSource : class
+    public interface IProjectionRegistration<TEntity, TTarget> : IProjectionRegistration
+        where TEntity : class
         where TTarget : class
     {
         /// <summary>
@@ -68,14 +68,17 @@ namespace AI4E.Storage.Domain.Projection
         /// <param name="serviceProvider">The service provider that is used to obtain handler specific services.</param>
         /// <returns>The created instance.</returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is null.</exception>
-        new IProjection<TSource, TTarget> CreateProjection(IServiceProvider serviceProvider);
+        new IProjection<TEntity, TTarget> CreateProjection(IServiceProvider serviceProvider);
 
         IProjection IProjectionRegistration.CreateProjection(IServiceProvider serviceProvider)
         {
             return CreateProjection(serviceProvider);
         }
 
-        Type IProjectionRegistration.SourceType => typeof(TSource);
+#pragma warning disable CA1033
+        Type IProjectionRegistration.EntityType => typeof(TEntity);
+
         Type IProjectionRegistration.TargetType => typeof(TTarget);
+#pragma warning restore CA1033
     }
 }

@@ -58,7 +58,7 @@ namespace AI4E.Storage.Domain.Projection
         {
             return new ProjectionDescriptor(
                 type,
-                parameters.SourceType,
+                parameters.EntityType,
                 parameters.TargetType,
                 member,
                 parameters.MultipleResults,
@@ -122,7 +122,7 @@ namespace AI4E.Storage.Domain.Projection
             IReadOnlyList<ParameterInfo> parameters,
             AwaitableTypeDescriptor returnTypeDescriptor)
         {
-            var sourceType = parameters[0].ParameterType;
+            var entityType = parameters[0].ParameterType;
             var targetType = returnTypeDescriptor.ResultType;
             var projectNonExisting = false;
             var multipleResults = false;
@@ -144,14 +144,14 @@ namespace AI4E.Storage.Domain.Projection
 
             if (memberAttribute != null)
             {
-                if (memberAttribute.SourceType != null)
+                if (memberAttribute.EntityType != null)
                 {
-                    if (!sourceType.IsAssignableFrom(memberAttribute.SourceType))
+                    if (!entityType.IsAssignableFrom(memberAttribute.EntityType))
                     {
                         throw new InvalidOperationException();
                     }
 
-                    sourceType = memberAttribute.SourceType;
+                    entityType = memberAttribute.EntityType;
                 }
 
                 if (memberAttribute.TargetType != null)
@@ -184,7 +184,7 @@ namespace AI4E.Storage.Domain.Projection
                 projectNonExisting = memberAttribute.ProjectNonExisting;
             }
 
-            return new ProjectionParameters(sourceType, targetType, multipleResults, projectNonExisting);
+            return new ProjectionParameters(entityType, targetType, multipleResults, projectNonExisting);
         }
 
         /// <inheritdoc/>
@@ -241,26 +241,26 @@ namespace AI4E.Storage.Domain.Projection
         /// <summary>
         /// Creates a new instance of the <see cref="ProjectionParameters"/> type.
         /// </summary>
-        /// <param name="sourceType">The projection source type.</param>
+        /// <param name="entityType">The projection entity type.</param>
         /// <param name="targetType">The projection target type.</param>
         /// <param name="multipleResults">
         /// A boolean value indicating whether the projection projections to multiple targets.
         /// </param>
         /// <param name="projectNonExisting">
-        /// A boolean value indicating whether the projection shall be invoked for non-existing sources.
+        /// A boolean value indicating whether the projection shall be invoked for non-existing entities.
         /// </param>
-        public ProjectionParameters(Type sourceType, Type targetType, bool multipleResults, bool projectNonExisting)
+        public ProjectionParameters(Type entityType, Type targetType, bool multipleResults, bool projectNonExisting)
         {
-            SourceType = sourceType;
+            EntityType = entityType;
             TargetType = targetType;
             MultipleResults = multipleResults;
             ProjectNonExisting = projectNonExisting;
         }
 
         /// <summary>
-        /// Gets the projection source type.
+        /// Gets the projection entity type.
         /// </summary>
-        public Type SourceType { get; }
+        public Type EntityType { get; }
 
         /// <summary>
         /// Gets the projection target type.
@@ -273,7 +273,7 @@ namespace AI4E.Storage.Domain.Projection
         public bool MultipleResults { get; }
 
         /// <summary>
-        /// Gets a boolean value indicating whether the projection shall be invoked for non-existing sources.
+        /// Gets a boolean value indicating whether the projection shall be invoked for non-existing entities.
         /// </summary>
         public bool ProjectNonExisting { get; }
     }

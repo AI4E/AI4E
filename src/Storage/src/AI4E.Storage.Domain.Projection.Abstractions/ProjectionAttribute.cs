@@ -34,9 +34,9 @@ namespace AI4E.Storage.Domain.Projection
         public Type TargetType { get; set; }
 
         /// <summary>
-        /// Gets or sets the type of projection source.
+        /// Gets or sets the type of entity.
         /// </summary>
-        public Type SourceType { get; set; }
+        public Type EntityType { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the projection projects to multiple targets.
@@ -44,7 +44,7 @@ namespace AI4E.Storage.Domain.Projection
         public MultipleProjectionResults MultipleResults { get; set; }
 
         /// <summary>
-        /// Gets or sets a boolean value indicating whether the projection shall be invoked for non-existing sources.
+        /// Gets or sets a boolean value indicating whether the projection shall be invoked for non-existing entities.
         /// </summary>
         public bool ProjectNonExisting { get; set; }
     }

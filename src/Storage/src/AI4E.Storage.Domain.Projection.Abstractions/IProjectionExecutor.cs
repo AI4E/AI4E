@@ -37,8 +37,8 @@ namespace AI4E.Storage.Domain.Projection
         /// <summary>
         /// Asynchronously executed a single projection.
         /// </summary>
-        /// <param name="sourceType">The type of projection source.</param>
-        /// <param name="source">The projection source.</param>
+        /// <param name="entityType">The type of entity.</param>
+        /// <param name="entity">The entity.</param>
         /// <param name="serviceProvider">The <see cref="IServiceProvider"/> used to obtain services.</param>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.
@@ -47,15 +47,15 @@ namespace AI4E.Storage.Domain.Projection
         /// An <see cref="IAsyncEnumerable{T}"/> that enumerated the projection results.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if either <paramref name="sourceType"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// Thrown if either <paramref name="entityType"/> or <paramref name="serviceProvider"/> is <c>null</c>.
         /// </exception>
         /// <exception cref="ArgumentException">
-        /// Thrown if either <paramref name="source"/> is not convertible to the type specified by <paramref name="sourceType"/> or
-        /// <paramref name="sourceType"/> specifies an invalid type or <paramref name="source"/> is an instance of an invalid type.
+        /// Thrown if either <paramref name="entity"/> is not convertible to the type specified by <paramref name="entityType"/> or
+        /// <paramref name="entityType"/> specifies an invalid type or <paramref name="entity"/> is an instance of an invalid type.
         /// </exception>
         IAsyncEnumerable<IProjectionResult> ExecuteProjectionAsync(
-            Type sourceType,
-            object source,
+            Type entityType,
+            object entity,
             IServiceProvider serviceProvider,
             CancellationToken cancellation = default);
     }

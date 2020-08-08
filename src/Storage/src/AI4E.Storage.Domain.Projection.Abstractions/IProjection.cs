@@ -30,21 +30,21 @@ namespace AI4E.Storage.Domain.Projection
     public interface IProjection
     {
         /// <summary>
-        /// Asynchronously projects the specified source object.
+        /// Asynchronously projects the specified entity.
         /// </summary>
-        /// <param name="source">The source object.</param>
+        /// <param name="entity">The entity.</param>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
         /// An <see cref="IAsyncEnumerable{T}"/> that enumerates the projection results.
         /// </returns>
-        IAsyncEnumerable<object> ProjectAsync(object source, CancellationToken cancellation = default);
+        IAsyncEnumerable<object> ProjectAsync(object entity, CancellationToken cancellation = default);
 
         /// <summary>
-        /// Gets the type of projection source.
+        /// Gets the type of entity.
         /// </summary>
-        Type SourceType { get; }
+        Type EntityType { get; }
 
         /// <summary>
         /// Gets the type of projection target.
@@ -53,32 +53,35 @@ namespace AI4E.Storage.Domain.Projection
     }
 
     /// <summary>
-    /// Represents a projection with the specified source and target types.
+    /// Represents a projection with the specified entity and target types.
     /// </summary>
-    /// <typeparam name="TSource">The type of projection source.</typeparam>
+    /// <typeparam name="TEntity">The type of entity.</typeparam>
     /// <typeparam name="TTarget">The type of projection target.</typeparam>
-    public interface IProjection<TSource, TTarget> : IProjection
-        where TSource : class
+    public interface IProjection<TEntity, TTarget> : IProjection
+        where TEntity : class
         where TTarget : class
     {
         /// <summary>
-        /// Asynchronously projects the specified source object.
+        /// Asynchronously projects the specified entity.
         /// </summary>
-        /// <param name="source">The source object.</param>
+        /// <param name="entity">The entity.</param>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
         /// An <see cref="IAsyncEnumerable{T}"/> that enumerates the projection results.
         /// </returns>
-        IAsyncEnumerable<TTarget> ProjectAsync(TSource source, CancellationToken cancellation = default);
+        IAsyncEnumerable<TTarget> ProjectAsync(TEntity entity, CancellationToken cancellation = default);
 
-        Type IProjection.SourceType => typeof(TSource);
+#pragma warning disable CA1033
+        Type IProjection.EntityType => typeof(TEntity);
+
         Type IProjection.TargetType => typeof(TTarget);
+#pragma warning restore CA1033
 
-        IAsyncEnumerable<object> IProjection.ProjectAsync(object source, CancellationToken cancellation)
+        IAsyncEnumerable<object> IProjection.ProjectAsync(object entity, CancellationToken cancellation)
         {
-            return ProjectAsync(source as TSource, cancellation);
+            return ProjectAsync(entity as TEntity, cancellation);
         }
     }
 }

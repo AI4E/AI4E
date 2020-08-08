@@ -17,7 +17,7 @@ namespace AI4E.Storage.Domain.Projection
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
             var projection = (ProjectionRegistrationTestProjection)projectionRegistration.CreateProjection(serviceProvider);
 
-            Assert.AreSame(typeof(ProjectionSource), projectionRegistration.SourceType);
+            Assert.AreSame(typeof(ProjectionSource), projectionRegistration.EntityType);
             Assert.AreSame(typeof(ProjectionTarget), projectionRegistration.TargetType);
             Assert.AreSame(serviceProvider, projection.ServiceProvider);
         }
@@ -72,7 +72,7 @@ namespace AI4E.Storage.Domain.Projection
             var serviceProvider = new ServiceCollection().BuildServiceProvider();
             var projection = (ProjectionRegistrationTestProjection)projectionRegistration.CreateProjection(serviceProvider);
 
-            Assert.AreSame(typeof(ProjectionSource), ((IProjectionRegistration)projectionRegistration).SourceType);
+            Assert.AreSame(typeof(ProjectionSource), ((IProjectionRegistration)projectionRegistration).EntityType);
             Assert.AreSame(typeof(ProjectionTarget), ((IProjectionRegistration)projectionRegistration).TargetType);
             Assert.AreSame(serviceProvider, projection.ServiceProvider);
         }

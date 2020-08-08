@@ -27,7 +27,7 @@ namespace AI4E.Storage.Domain.Projection
             var handler = new TestProjection();
             var projection = new ProjectionInvoker<ProjectionSource, ProjectionTarget>(handler, projectionDescriptor, serviceProvider);
 
-            Assert.AreEqual(typeof(ProjectionSource), (projection as IProjection).SourceType);
+            Assert.AreEqual(typeof(ProjectionSource), (projection as IProjection).EntityType);
             Assert.AreEqual(typeof(ProjectionTarget), (projection as IProjection).TargetType);
         }
 
@@ -46,7 +46,7 @@ namespace AI4E.Storage.Domain.Projection
             var projection = ProjectionInvoker.CreateInvoker(projectionDescriptor, serviceProvider);
 
             Assert.IsInstanceOfType(projection, typeof(ProjectionInvoker<ProjectionSource, ProjectionTarget>));
-            Assert.AreEqual(typeof(ProjectionSource), (projection as IProjection).SourceType);
+            Assert.AreEqual(typeof(ProjectionSource), (projection as IProjection).EntityType);
             Assert.AreEqual(typeof(ProjectionTarget), (projection as IProjection).TargetType);
         }
 

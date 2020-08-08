@@ -43,11 +43,11 @@ namespace AI4E.Storage.Domain.Projection
         private static readonly Func<(Type, Type), Func<object, ProjectionDescriptor, IServiceProvider, IProjection>> _factoryBuilderCache = BuildFactory;
 
         /// <summary>
-        /// Creates a <see cref="ProjectionInvoker{TSource, TTarget}"/> from the specified parameters.
+        /// Creates a <see cref="ProjectionInvoker{TEntity, TTarget}"/> from the specified parameters.
         /// </summary>
         /// <param name="projectionDescriptor">The descriptor that specified the projection type and member.</param>
         /// <param name="serviceProvider">A <see cref="IServiceProvider"/> used to obtain services.</param>
-        /// <returns>The created <see cref="ProjectionInvoker{TSource, TTarget}"/>.</returns>
+        /// <returns>The created <see cref="ProjectionInvoker{TEntity, TTarget}"/>.</returns>
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="serviceProvider"/> is <c>null</c>.
         /// </exception>
@@ -70,17 +70,17 @@ namespace AI4E.Storage.Domain.Projection
             ProjectionDescriptor projectionDescriptor,
             IServiceProvider serviceProvider)
         {
-            var sourceType = projectionDescriptor.SourceType;
+            var entityType = projectionDescriptor.EntityType;
             var targetType = projectionDescriptor.TargetType;
 
-            var factory = _factories.GetOrAdd((sourceType, targetType), _factoryBuilderCache);
+            var factory = _factories.GetOrAdd((entityType, targetType), _factoryBuilderCache);
             return factory(handler, projectionDescriptor, serviceProvider);
         }
 
         private static Func<object, ProjectionDescriptor, IServiceProvider, IProjection> BuildFactory(
-           (Type sourceType, Type targetType) _)
+           (Type entityType, Type targetType) _)
         {
-            var projectionInvokerType = _projectionInvokerTypeDefinition.MakeGenericType(_.sourceType, _.targetType);
+            var projectionInvokerType = _projectionInvokerTypeDefinition.MakeGenericType(_.entityType, _.targetType);
             var ctor = projectionInvokerType.GetConstructor(
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 Type.DefaultBinder,
@@ -104,10 +104,10 @@ namespace AI4E.Storage.Domain.Projection
     /// <summary>
     /// Represents projections as <see cref="IProjection"/>.
     /// </summary>
-    /// <typeparam name="TSource">The type of projection source.</typeparam>
+    /// <typeparam name="TEntity">The type of entity.</typeparam>
     /// <typeparam name="TTarget">The type of projection target.</typeparam>
-    public sealed class ProjectionInvoker<TSource, TTarget> : IProjection<TSource, TTarget>
-        where TSource : class
+    public sealed class ProjectionInvoker<TEntity, TTarget> : IProjection<TEntity, TTarget>
+        where TEntity : class
         where TTarget : class
     {
         private readonly object _handler;
@@ -131,10 +131,10 @@ namespace AI4E.Storage.Domain.Projection
 
         /// <inheritdoc/>
         public async IAsyncEnumerable<TTarget> ProjectAsync(
-            TSource source,
+            TEntity entity,
             [EnumeratorCancellation] CancellationToken cancellation)
         {
-            if (source == null && !_projectionDescriptor.ProjectNonExisting)
+            if (entity == null && !_projectionDescriptor.ProjectNonExisting)
             {
                 yield break;
             }
@@ -163,7 +163,7 @@ namespace AI4E.Storage.Domain.Projection
                 }
             }
 
-            var result = await invoker.InvokeAsync(_handler, source, ResolveParameter);
+            var result = await invoker.InvokeAsync(_handler, entity, ResolveParameter);
 
             if (result == null)
             {
@@ -199,14 +199,6 @@ namespace AI4E.Storage.Domain.Projection
 
             // TODO: Do we want to throw here or silently ignore this?
             //       At least, we have to log a warning.
-        }
-
-        Type IProjection.SourceType => typeof(TSource);
-        Type IProjection.TargetType => typeof(TTarget);
-
-        IAsyncEnumerable<object> IProjection.ProjectAsync(object source, CancellationToken cancellation)
-        {
-            return ProjectAsync(source as TSource, cancellation);
         }
     }
 }
