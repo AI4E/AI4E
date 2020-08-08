@@ -36,7 +36,7 @@ namespace AI4E.Storage.Domain
 
             if (entityQueryResult.IsFound(out var foundEntityQueryResult))
             {
-                if (!Expected.IsDefault && Expected != foundEntityQueryResult.ConcurrencyToken)
+                if (Expected != foundEntityQueryResult.ConcurrencyToken)
                 {
                     failureLoadResult = new ConcurrencyIssueEntityVerificationResult(foundEntityQueryResult);
                     return false;

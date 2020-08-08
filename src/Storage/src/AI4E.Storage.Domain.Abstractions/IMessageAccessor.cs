@@ -44,17 +44,26 @@ namespace AI4E.Storage.Domain
         bool TryGetEntityId<TMessage>(TMessage message, out string? id) where TMessage : class;
 
         /// <summary>
-        /// Reads the entity concurrency-token from the specified message.
+        /// Tries to read the entity concurrency-token from the specified message.
         /// </summary>
         /// <typeparam name="TMessage">The type of message.</typeparam>
         /// <param name="message">The message to read the concurrency-token from.</param>
+        /// <param name="id">
+        /// Contains the concurrency-token if the operation is successful and the message contains a non-default 
+        /// concurrency-token.
+        /// </param>
         /// <returns>
-        /// The concurrency-token if the operation is successful and the message contains a non-null entity 
-        /// concurrency-token, a default concurrency-token otherwise.
+        /// True if the concurrency-token was successfully read from the message.
         /// </returns>
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="message"/> is <c>null</c>.
         /// </exception>
-        ConcurrencyToken GetConcurrencyToken<TMessage>(TMessage message) where TMessage : class;
+        /// <remarks>
+        /// If the operation returns <c>true</c> this does not necessarily imply, 
+        /// that <paramref name="concurrencyToken"/> is non-default, as the message can contain a default 
+        /// concurrency-token entry.
+        /// </remarks>
+        bool TryGetConcurrencyToken<TMessage>(TMessage message, out ConcurrencyToken concurrencyToken) 
+            where TMessage : class;
     }
 }

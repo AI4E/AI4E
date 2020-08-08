@@ -99,7 +99,12 @@ namespace AI4E.Storage.Domain
             // Try to load the concurrency token from the message.
             // We check for concurrency only if there is a concurrency token present, otherwise we just assume, that
             // all operations can be performed on the current version of the entity.
-            var concurrencyToken = _messageAccessor.GetConcurrencyToken(message);
+            ConcurrencyToken? concurrencyToken = null;
+            
+            if(_messageAccessor.TryGetConcurrencyToken(message, out var c))
+            {
+                concurrencyToken = c;
+            }
 
             do
             {
@@ -197,7 +202,7 @@ namespace AI4E.Storage.Domain
                 return dispatchResult;
 
             }
-            while (concurrencyToken.IsDefault);
+            while (concurrencyToken is null);
 
             return new ConcurrencyIssueDispatchResult();
         }
@@ -229,14 +234,14 @@ namespace AI4E.Storage.Domain
             if (descriptor.TryGetLookupAccessor(typeof(TMessage), out var lookupAccessor))
             {
                 async ValueTask<IEntityLoadResult> ExecuteLookupAccessor(
-                    ConcurrencyToken concurrencyToken, CancellationToken cancellation)
+                    ConcurrencyToken? concurrencyToken, CancellationToken cancellation)
                 {
                     var entityLoadResult = await lookupAccessor!.Invoke(
                         Context.MessageHandler, message, _serviceProvider, cancellation).ConfigureAwait(false);
 
                     if (entityLoadResult is IFoundEntityQueryResult
-                        && concurrencyToken != default
-                        && concurrencyToken != entityLoadResult.ConcurrencyToken)
+                        && concurrencyToken != null
+                        && concurrencyToken.Value != entityLoadResult.ConcurrencyToken)
                     {
                         return new ConcurrencyIssueEntityVerificationResult(entityLoadResult.EntityIdentifier);
                     }
@@ -258,10 +263,14 @@ namespace AI4E.Storage.Domain
             }
 
             ValueTask<IEntityLoadResult> ExecuteLoadFromStorage(
-                ConcurrencyToken concurrencyToken, CancellationToken cancellation)
+                ConcurrencyToken? concurrencyToken, CancellationToken cancellation)
             {
                 var entityIdentifier = new EntityIdentifier(descriptor.EntityType, entityId!);
-                return _entityStorage.LoadEntityAsync(entityIdentifier, concurrencyToken, cancellation);
+
+                if(concurrencyToken is null)
+                    return _entityStorage.LoadEntityAsync(entityIdentifier, cancellation);
+
+                return _entityStorage.LoadEntityAsync(entityIdentifier, concurrencyToken.Value, cancellation);
             }
 
             entityLookup = ExecuteLoadFromStorage;
@@ -269,7 +278,7 @@ namespace AI4E.Storage.Domain
         }
 
         private delegate ValueTask<IEntityLoadResult> EntityLookup(
-            ConcurrencyToken expectedConcurrencyToken,
+            ConcurrencyToken? expectedConcurrencyToken,
             CancellationToken cancellation);
     }
 }

@@ -31,7 +31,7 @@ namespace AI4E.Storage.Domain.Tracking
         private readonly int _epoch;
 
         internal UnitOfWorkEntry(
-            UnitOfWork<TLoadResult> unitOfWork, 
+            UnitOfWork<TLoadResult> unitOfWork,
             int epoch,
             ITrackedEntityLoadResult<TLoadResult> loadResult)
         {
@@ -69,15 +69,8 @@ namespace AI4E.Storage.Domain.Tracking
         /// <inheritdoc cref="IUnitOfWorkEntry{TLoadResult}.Delete(DomainEventCollection)"/>
         public UnitOfWorkEntry<TLoadResult> Delete(DomainEventCollection domainEvents)
         {
-            var combinedDomainEvents = RecordedDomainEvents.Concat(domainEvents);
-            var trackedLoadResult = EntityLoadResult.RecordDeleteOperation();
-
-            if (trackedLoadResult == EntityLoadResult && combinedDomainEvents == RecordedDomainEvents)
-            {
-                return this;
-            }
-
-            return Update(combinedDomainEvents, trackedLoadResult);
+            var updatedEntityLoadResult = EntityLoadResult.RecordDeleteOperation();
+            return Update(domainEvents, updatedEntityLoadResult);
         }
 
         IUnitOfWorkEntry<TLoadResult> IUnitOfWorkEntry<TLoadResult>.Delete(DomainEventCollection domainEvents)
@@ -91,15 +84,8 @@ namespace AI4E.Storage.Domain.Tracking
             if (entity is null)
                 throw new ArgumentNullException(nameof(entity));
 
-            var combinedDomainEvents = RecordedDomainEvents.Concat(domainEvents);
-            var trackedLoadResult = EntityLoadResult.RecordCreateOrUpdateOperation(entity);
-
-            if (trackedLoadResult == EntityLoadResult && combinedDomainEvents == RecordedDomainEvents)
-            {
-                return this;
-            }
-
-            return Update(combinedDomainEvents, trackedLoadResult);
+            var updatedEntityLoadResult = EntityLoadResult.RecordCreateOrUpdateOperation(entity);
+            return Update(domainEvents, updatedEntityLoadResult);
         }
 
         IUnitOfWorkEntry<TLoadResult> IUnitOfWorkEntry<TLoadResult>.CreateOrUpdate(
@@ -109,10 +95,37 @@ namespace AI4E.Storage.Domain.Tracking
         }
 
         private UnitOfWorkEntry<TLoadResult> Update(
-            DomainEventCollection combinedDomainEvents,
-            ITrackedEntityLoadResult<TLoadResult> trackedLoadResult)
+            DomainEventCollection domainEvents,
+            ITrackedEntityLoadResult<TLoadResult> updatedEntityLoadResult)
         {
-            var result = new UnitOfWorkEntry<TLoadResult>(UnitOfWork, _epoch, trackedLoadResult, combinedDomainEvents);
+            var combinedDomainEvents = RecordedDomainEvents.Concat(domainEvents);
+
+            // Short circuit if AND ONLY IF
+            // - The tracked load-result did not change
+            // - We did not record any new domain-events
+            // - We are already set to modified
+            bool CanShortCircuit()
+            {
+                if (!ReferenceEquals(updatedEntityLoadResult, EntityLoadResult))
+                    return false;
+
+                if (combinedDomainEvents != RecordedDomainEvents)
+                    return false;
+
+                if (!IsModified)
+                    return false;
+
+                return true;
+            }
+
+            if (CanShortCircuit())
+            {
+                return this;
+            }
+
+            var result = new UnitOfWorkEntry<TLoadResult>(
+                UnitOfWork, _epoch, updatedEntityLoadResult, combinedDomainEvents);
+
             UnitOfWork.UpdateEntry(result, _epoch);
             return result;
         }

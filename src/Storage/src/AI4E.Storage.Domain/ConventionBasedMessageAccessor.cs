@@ -55,14 +55,14 @@ namespace AI4E.Storage.Domain
             if (message is null)
             {
                 id = null;
-                return false; // TODO: Throw instead
+                return false;
             }
 
             var cacheEntry = _messageCache.GetOrAdd(typeof(TMessage), _buildMessageCacheEntry);
 
             if (!cacheEntry.CanReadId)
             {
-                id = default;
+                id = null;
                 return false;
             }
 
@@ -71,22 +71,25 @@ namespace AI4E.Storage.Domain
         }
 
         /// <inheritdoc/>
-        public ConcurrencyToken GetConcurrencyToken<TMessage>(TMessage message)
+        public bool TryGetConcurrencyToken<TMessage>(TMessage message, out ConcurrencyToken concurrencyToken)
             where TMessage : class
         {
             if (message is null)
             {
-                return default; // TODO: Throw instead
+                concurrencyToken = default;
+                return false;
             }
 
             var cacheEntry = _messageCache.GetOrAdd(typeof(TMessage), _buildMessageCacheEntry);
 
             if (!cacheEntry.CanReadConcurrencyToken)
             {
-                return default;
+                concurrencyToken = default;
+                return false;
             }
 
-            return cacheEntry.ReadConcurrencyToken(message);
+            concurrencyToken = cacheEntry.ReadConcurrencyToken(message);
+            return true;
         }
 
         private readonly struct MessageCacheEntry

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\AI4E.Storage.MongoDB.Test\Utils\DatabaseName.cs" Link="Utils\DatabaseName.cs" />
+    <Compile Include="..\AI4E.Storage.MongoDB.Test\Utils\DatabaseRunner.cs" Link="Utils\DatabaseRunner.cs" />
+    <Compile Include="..\AI4E.Storage.MongoDB.Test\Utils\MongoClientExtension.cs" Link="Utils\MongoClientExtension.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AI4E.Storage.Domain.Abstractions\AI4E.Storage.Domain.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.MongoDB\AI4E.Storage.MongoDB.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Mongo2Go" Version="2.2.12" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Folder Include="Utils\" />
+  </ItemGroup>
+</Project>

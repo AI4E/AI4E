@@ -73,6 +73,8 @@ namespace AI4E.Storage.Domain
         /// <inheritdoc/>
         public TrackedEntityQueryResult RecordDeleteOperation()
         {
+            // TODO: Do we care whether we updated the metadata as in RecordCreateOrUpdateOperation?? 
+
             if (!_currentLoadResult.IsFound(out var foundEntityQueryResult))
             {
                 return this;
@@ -96,7 +98,26 @@ namespace AI4E.Storage.Domain
             if (entity is null)
                 throw new ArgumentNullException(nameof(entity));
 
-            if (_currentLoadResult.IsFound(out var foundEntityQueryResult) && foundEntityQueryResult.Entity == entity)
+            // Short circuit if AND ONLY IF
+            // - The underlying (current) load result is not the same as the tracked load result 
+            //   (So that new metadata, i.e. revision and concurrency token) are applied.
+            // - The underlying (current) load result is found (as we are creating or updating an entity)
+            // - The entity is the same instance
+            bool CanShortCircuit()
+            {
+                if (ReferenceEquals(_currentLoadResult, TrackedLoadResult))
+                    return false;
+
+                if (!_currentLoadResult.IsFound(out var foundEntityQueryResult))
+                    return false;
+
+                if (!ReferenceEquals(foundEntityQueryResult.Entity, entity))
+                    return false;
+
+                return true;
+            }
+
+            if (CanShortCircuit())
             {
                 return this;
             }

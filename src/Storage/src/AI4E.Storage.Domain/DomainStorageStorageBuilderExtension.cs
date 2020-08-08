@@ -45,6 +45,9 @@ namespace AI4E.Storage
                 services.TryAddScoped<IEntityMetadataManager, EntityMetadataManager>();
                 services.TryAddScoped<IEntityStorage, EntityStorage>();
 
+                services.TryAddSingleton<IEntityIdFactory, EntityIdFactory>();
+                services.TryAddSingleton<IConcurrencyTokenFactory, ConcurrencyTokenFactory>();
+
                 AddMessageProcessors(services);
 
                 domainStorageBuilder = new DomainStorageBuilder(builder);
