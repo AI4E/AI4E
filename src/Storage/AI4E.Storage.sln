@@ -57,9 +57,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.Specifi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.Test", "test\AI4E.Storage.Domain.Test\AI4E.Storage.Domain.Test.csproj", "{2035848A-1CA1-466F-A491-5CDB9A1B70FC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Storage.Domain.EndToEndTestAssembly", "test\AI4E.Storage.Domain.EndToEndTestAssembly\AI4E.Storage.Domain.EndToEndTestAssembly.csproj", "{E17AF0A3-00A4-4878-B8B8-347A6C6C2505}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.EndToEndTestAssembly", "test\AI4E.Storage.Domain.EndToEndTestAssembly\AI4E.Storage.Domain.EndToEndTestAssembly.csproj", "{E17AF0A3-00A4-4878-B8B8-347A6C6C2505}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Storage.Domain.EndToEndTest", "test\AI4E.Storage.Domain.EndToEndTest\AI4E.Storage.Domain.EndToEndTest.csproj", "{8C2B0D56-BEAE-46D4-B271-3754048CC50E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.EndToEndTest", "test\AI4E.Storage.Domain.EndToEndTest\AI4E.Storage.Domain.EndToEndTest.csproj", "{8C2B0D56-BEAE-46D4-B271-3754048CC50E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Storage.Domain.Projection.EndToEndTest", "test\AI4E.Storage.Domain.Projection.EndToEndTest\AI4E.Storage.Domain.Projection.EndToEndTest.csproj", "{79AA80AB-4337-4323-A8CC-50E025FA182F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -171,6 +173,10 @@ Global
 		{8C2B0D56-BEAE-46D4-B271-3754048CC50E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C2B0D56-BEAE-46D4-B271-3754048CC50E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C2B0D56-BEAE-46D4-B271-3754048CC50E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79AA80AB-4337-4323-A8CC-50E025FA182F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79AA80AB-4337-4323-A8CC-50E025FA182F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79AA80AB-4337-4323-A8CC-50E025FA182F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79AA80AB-4337-4323-A8CC-50E025FA182F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -202,6 +208,7 @@ Global
 		{2035848A-1CA1-466F-A491-5CDB9A1B70FC} = {96226123-6132-4378-BE88-1046FD08ED29}
 		{E17AF0A3-00A4-4878-B8B8-347A6C6C2505} = {96226123-6132-4378-BE88-1046FD08ED29}
 		{8C2B0D56-BEAE-46D4-B271-3754048CC50E} = {96226123-6132-4378-BE88-1046FD08ED29}
+		{79AA80AB-4337-4323-A8CC-50E025FA182F} = {96226123-6132-4378-BE88-1046FD08ED29}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {AE7003AF-4F6E-4DBC-8BCB-55B2696A2F47}

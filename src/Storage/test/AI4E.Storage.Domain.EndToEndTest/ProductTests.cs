@@ -31,7 +31,6 @@ namespace AI4E.Storage.Domain.EndToEndTest
             MessageRecorder = ServiceProvider.GetRequiredService<MessageRecorder<object>>();
         }
 
-
         [Fact]
         public async Task CreateProductIsSuccessTest()
         {

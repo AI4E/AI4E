@@ -9,6 +9,7 @@ using AI4E.Storage.Domain.EndToEndTestAssembly.Models;
 
 namespace AI4E.Storage.Domain.EndToEndTestAssembly.ApplicationServiceLayer
 {
+#pragma warning disable CA1822
     public sealed class ProductQueryHandler : MessageHandler
     {
         public ProductQueryHandler(IEntityStorage entityStorage, IEntityMetadataManager metadataManager)
@@ -78,5 +79,35 @@ namespace AI4E.Storage.Domain.EndToEndTestAssembly.ApplicationServiceLayer
                 Price = product.Price
             };
         }
+
+        public ValueTask<ProjectedProductModel?> HandleAsync(
+            ByIdQuery<ProjectedProductModel> query,
+            IDatabase database,
+            CancellationToken cancellation)
+        {
+            if (query is null)
+                throw new ArgumentNullException(nameof(query));
+
+            if (database is null)
+                throw new ArgumentNullException(nameof(database));
+
+            var productId = query.Id;
+            return database.GetOneAsync<ProjectedProductModel>(q => q.Id == productId, cancellation);
+        }
+
+        public IAsyncEnumerable<ProjectedProductListModel> HandleAsync(
+           Query<ProjectedProductListModel> query,
+           IDatabase database,
+           CancellationToken cancellation)
+        {
+            if (query is null)
+                throw new ArgumentNullException(nameof(query));
+
+            if (database is null)
+                throw new ArgumentNullException(nameof(database));
+
+            return database.GetAsync<ProjectedProductListModel>(cancellation);
+        }
     }
+#pragma warning restore CA1822
 }

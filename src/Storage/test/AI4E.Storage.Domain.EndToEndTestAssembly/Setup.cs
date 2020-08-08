@@ -8,6 +8,13 @@ namespace AI4E.Storage.Domain.EndToEndTestAssembly
 {
     public sealed class Setup
     {
+        public bool ActivateProjections { get; }
+
+        public Setup(bool activateProjections = false)
+        {
+            ActivateProjections = activateProjections;
+        }
+
         public void ConfigureServices(IServiceCollection services)
         {
             ConfigureMessaging(services.AddMessaging()); // TODO: API
@@ -41,6 +48,11 @@ namespace AI4E.Storage.Domain.EndToEndTestAssembly
             {
                 options.SynchronousEventDispatch = true;
             });
+
+            if(ActivateProjections)
+            {
+                domainStorage.AddProjection();
+            }
         }
     }
 }

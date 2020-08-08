@@ -183,6 +183,8 @@ namespace AI4E.Storage.Projection
                 var projection = projectionResult.AsTargetDescriptor();
                 targets.Add(projection);
                 await targetProcessor.UpdateTargetAsync(projectionResult, cancellation);
+
+                appliedTargets.Remove(projection);
             }
 
             // We removed all targets from 'applied projections' that are still present. 
@@ -231,6 +233,12 @@ namespace AI4E.Storage.Projection
                    expectedMinRevision: metadata.ProjectionRevision,
                    cancellation);
 
+            // The source is not existent, ie. it was deleted.
+            if (sourceRevision == 0)
+            {
+                return true;
+            }
+
             Debug.Assert(sourceRevision >= metadata.ProjectionRevision);
 
             if (sourceRevision > metadata.ProjectionRevision)
@@ -244,6 +252,12 @@ namespace AI4E.Storage.Projection
                    sourceProcessor.ProjectedSource,
                    expectedMinRevision: metadata.ProjectionRevision,
                    cancellation);
+
+                // The dependency is not existent, ie. it was deleted.
+                if (dependencyRevision == 0)
+                {
+                    return true;
+                }
 
                 Debug.Assert(dependencyRevision >= projectionRevision);
 
