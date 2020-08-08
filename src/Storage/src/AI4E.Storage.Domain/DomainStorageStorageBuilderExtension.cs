@@ -44,6 +44,7 @@ namespace AI4E.Storage
                 services.TryAddSingleton<IEntityStorageEngine, EntityStorageEngine>();
                 services.TryAddScoped<IEntityMetadataManager, EntityMetadataManager>();
                 services.TryAddScoped<IEntityStorage, EntityStorage>();
+                services.TryAddSingleton<IEntityStorageFactory, EntityStorageFactory>();
 
                 services.TryAddSingleton<IEntityIdFactory, EntityIdFactory>();
                 services.TryAddSingleton<IConcurrencyTokenFactory, ConcurrencyTokenFactory>();

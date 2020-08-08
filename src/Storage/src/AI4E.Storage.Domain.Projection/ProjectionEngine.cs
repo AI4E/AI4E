@@ -26,10 +26,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Linq;
-
-#if NETSTD20
-using AI4E.Utils;
-#endif
+using Microsoft.Extensions.ObjectPool;
+using System.Collections.Immutable;
 
 namespace AI4E.Storage.Domain.Projection
 {
@@ -39,7 +37,6 @@ namespace AI4E.Storage.Domain.Projection
     public sealed partial class ProjectionEngine : IProjectionEngine
     {
         private readonly IProjectionExecutor _projector;
-        private readonly IProjectionSourceProcessorFactory _sourceProcessorFactory;
         private readonly IProjectionTargetProcessorFactory _targetProcessorFactory;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ProjectionEngine> _logger;
@@ -58,16 +55,12 @@ namespace AI4E.Storage.Domain.Projection
         /// </exception>
         public ProjectionEngine(
             IProjectionExecutor projector,
-            IProjectionSourceProcessorFactory sourceProcessorFactory,
             IProjectionTargetProcessorFactory targetProcessorFactory,
             IServiceProvider serviceProvider,
             ILogger<ProjectionEngine> logger = default)
         {
             if (projector == null)
                 throw new ArgumentNullException(nameof(projector));
-
-            if (sourceProcessorFactory is null)
-                throw new ArgumentNullException(nameof(sourceProcessorFactory));
 
             if (targetProcessorFactory is null)
                 throw new ArgumentNullException(nameof(targetProcessorFactory));
@@ -76,7 +69,6 @@ namespace AI4E.Storage.Domain.Projection
                 throw new ArgumentNullException(nameof(serviceProvider));
 
             _projector = projector;
-            _sourceProcessorFactory = sourceProcessorFactory;
             _targetProcessorFactory = targetProcessorFactory;
             _serviceProvider = serviceProvider;
             _logger = logger;
@@ -105,13 +97,13 @@ namespace AI4E.Storage.Domain.Projection
             }
 
             var targetProcessor = _targetProcessorFactory.CreateInstance(entity, _serviceProvider);
-            var dependents = await ProjectAsync(targetProcessor, cancellation);
+            var dependents = await ProjectAsync(targetProcessor, cancellation).ConfigureAwait(false);
 
             processedEntities.Add(entity);
 
             foreach (var dependent in dependents)
             {
-                await ProjectAsync(dependent, processedEntities, cancellation);
+                await ProjectAsync(dependent, processedEntities, cancellation).ConfigureAwait(false);
             }
         }
 
@@ -123,10 +115,10 @@ namespace AI4E.Storage.Domain.Projection
 
             do
             {
-                await ProjectCoreAsync(targetProcessor, cancellation);
-                dependents = await targetProcessor.GetDependentsAsync(cancellation);
+                await ProjectCoreAsync(targetProcessor, cancellation).ConfigureAwait(false);
+                dependents = await targetProcessor.GetDependentsAsync(cancellation).ConfigureAwait(false);
             }
-            while (!await targetProcessor.CommitAsync(cancellation));
+            while (!await targetProcessor.CommitAsync(cancellation).ConfigureAwait(false));
 
             return dependents;
         }
@@ -137,22 +129,26 @@ namespace AI4E.Storage.Domain.Projection
 
             using var scope = _serviceProvider.CreateScope();
             var scopedServiceProvider = scope.ServiceProvider;
-            var sourceProcessor = _sourceProcessorFactory.CreateInstance(
-                targetProcessor.ProjectedEntity, scope.ServiceProvider);
-            var updateNeeded = await CheckUpdateNeededAsync(sourceProcessor, targetProcessor, cancellation);
+            var entityStorage = scopedServiceProvider.GetRequiredService<IEntityStorage>();
+            var projectedEntity = targetProcessor.ProjectedEntity;
+            var updateNeeded = await CheckUpdateNeededAsync(
+                projectedEntity, entityStorage, targetProcessor, cancellation).ConfigureAwait(false);
 
             if (!updateNeeded)
                 return;
 
-            var entity = await sourceProcessor.GetSourceAsync(
-                targetProcessor.ProjectedEntity, cancellation);
-            var entityRevision = await sourceProcessor.GetSourceRevisionAsync(
-                targetProcessor.ProjectedEntity, expectedMinRevision: default, cancellation);
+            var entityLoadResult = await entityStorage.LoadEntityAsync(
+                targetProcessor.ProjectedEntity,
+                queryProcessor: DomainQueryProcessor.Default,
+                cancellation).ConfigureAwait(false);
+
+            var entity = entityLoadResult?.GetEntity(throwOnFailure: false);
+            var entityRevision = entityLoadResult?.Revision ?? 0;
 
             var projectionResults = _projector.ExecuteProjectionAsync(
                 targetProcessor.ProjectedEntity.EntityType, entity, scopedServiceProvider, cancellation);
 
-            var metadata = await targetProcessor.GetMetadataAsync(cancellation);
+            var metadata = await targetProcessor.GetMetadataAsync(cancellation).ConfigureAwait(false);
             var appliedTargets = metadata.Targets.ToHashSet();
 
             var targets = new List<ProjectionTargetDescriptor>();
@@ -169,7 +165,7 @@ namespace AI4E.Storage.Domain.Projection
                         _logger.LogWarning(
                             $"Duplicate projection target with type {projectionResult.ResultType}" +
                             $" and id {projectionResult.ResultId} while projecting entity" +
-                            $" '{sourceProcessor.ProjectedSource}'.");
+                            $" '{projectedEntity}'.");
 
                         continue;
                     }
@@ -182,7 +178,7 @@ namespace AI4E.Storage.Domain.Projection
             {
                 var projection = projectionResult.AsTargetDescriptor();
                 targets.Add(projection);
-                await targetProcessor.UpdateTargetAsync(projectionResult, cancellation);
+                await targetProcessor.UpdateTargetAsync(projectionResult, cancellation).ConfigureAwait(false);
 
                 appliedTargets.Remove(projection);
             }
@@ -191,19 +187,25 @@ namespace AI4E.Storage.Domain.Projection
             // The remaining ones are removed targets.
             foreach (var removedProjection in appliedTargets)
             {
-                await targetProcessor.RemoveTargetAsync(removedProjection, cancellation);
+                await targetProcessor.RemoveTargetAsync(removedProjection, cancellation).ConfigureAwait(false);
             }
 
-            var updatedMetadata = new ProjectionMetadata(sourceProcessor.Dependencies, targets, entityRevision);
-            await targetProcessor.UpdateAsync(updatedMetadata, cancellation);
+            var dependencies = entityStorage.LoadedEntities
+                .Select(p => new EntityDependency(p.EntityIdentifier, p.Revision))
+                .Where(p => p.Dependency != projectedEntity)
+                .ToImmutableList();
+
+            var updatedMetadata = new ProjectionMetadata(dependencies, targets, entityRevision);
+            await targetProcessor.UpdateAsync(updatedMetadata, cancellation).ConfigureAwait(false);
         }
 
         // Checks whether the projection is up-to date or if we have to reproject.
         // We have to project if
         // - the version of our entity is greater than the projection version
         // - the version of any of our dependencies is greater than the projection version
-        private async ValueTask<bool> CheckUpdateNeededAsync(
-            IProjectionSourceProcessor sourceProcessor,
+        private static async ValueTask<bool> CheckUpdateNeededAsync(
+            EntityIdentifier projectedEntity,
+            IEntityStorage entityStorage,
             IProjectionTargetProcessor targetProcessor,
             CancellationToken cancellation)
         {
@@ -213,25 +215,38 @@ namespace AI4E.Storage.Domain.Projection
             // For that reason, performance should not suffer very much 
             // in comparison to not checking whether an update is needed.
 
-            var metadata = await targetProcessor.GetMetadataAsync(cancellation);
+            var metadata = await targetProcessor.GetMetadataAsync(cancellation).ConfigureAwait(false);
 
             if (metadata.ProjectionRevision == 0)
             {
                 return true;
             }
 
-            return await CheckUpdateNeededAsync(sourceProcessor, metadata, cancellation);
+            return await CheckUpdateNeededAsync(projectedEntity, entityStorage, metadata, cancellation)
+                .ConfigureAwait(false);
         }
 
-        private async ValueTask<bool> CheckUpdateNeededAsync(
-            IProjectionSourceProcessor sourceProcessor,
+        private static readonly ObjectPool<ExpectedRevisionDomainQueryProcessor> _domainQueryProcessorPool
+            = ObjectPool.Create<ExpectedRevisionDomainQueryProcessor>();
+
+        private static async ValueTask<bool> CheckUpdateNeededAsync(
+            EntityIdentifier projectedEntity,
+            IEntityStorage entityStorage,
             ProjectionMetadata metadata,
             CancellationToken cancellation)
         {
-            var entityRevision = await sourceProcessor.GetSourceRevisionAsync(
-                   sourceProcessor.ProjectedSource,
-                   expectedMinRevision: metadata.ProjectionRevision,
-                   cancellation);
+            long entityRevision;
+
+            using (_domainQueryProcessorPool.Get(out var domainQueryProcessor))
+            {
+                domainQueryProcessor.MinExpectedRevision = metadata.ProjectionRevision;
+                domainQueryProcessor.MaxExpectedRevision = null;
+
+                var entityLoadResult = await entityStorage.LoadEntityAsync(
+                    projectedEntity, domainQueryProcessor, cancellation).ConfigureAwait(false);
+
+                entityRevision = entityLoadResult?.Revision ?? 0;
+            }
 
             // The entity is not existent, ie. it was deleted.
             if (entityRevision == 0)
@@ -246,12 +261,21 @@ namespace AI4E.Storage.Domain.Projection
                 return true;
             }
 
-            foreach (var projectionRevision in metadata.Dependencies.Select(p => p.ProjectionRevision))
+            // TODO: Review this
+            foreach (var dependency in metadata.Dependencies)
             {
-                var dependencyRevision = await sourceProcessor.GetSourceRevisionAsync(
-                   sourceProcessor.ProjectedSource,
-                   expectedMinRevision: metadata.ProjectionRevision,
-                   cancellation);
+                long dependencyRevision;
+
+                using (_domainQueryProcessorPool.Get(out var domainQueryProcessor))
+                {
+                    domainQueryProcessor.MinExpectedRevision = dependency.ProjectionRevision;
+                    domainQueryProcessor.MaxExpectedRevision = null;
+
+                    var entityLoadResult = await entityStorage.LoadEntityAsync(
+                        dependency.Dependency, domainQueryProcessor, cancellation).ConfigureAwait(false);
+
+                    dependencyRevision = entityLoadResult?.Revision ?? 0;
+                }
 
                 // The dependency is not existent, ie. it was deleted.
                 if (dependencyRevision == 0)
@@ -259,9 +283,9 @@ namespace AI4E.Storage.Domain.Projection
                     return true;
                 }
 
-                Debug.Assert(dependencyRevision >= projectionRevision);
+                Debug.Assert(dependencyRevision >= dependency.ProjectionRevision);
 
-                if (dependencyRevision > projectionRevision)
+                if (dependencyRevision > dependency.ProjectionRevision)
                 {
                     return true;
                 }

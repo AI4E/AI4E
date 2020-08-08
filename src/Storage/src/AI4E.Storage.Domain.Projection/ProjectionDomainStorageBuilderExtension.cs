@@ -47,7 +47,6 @@ namespace AI4E.Storage.Domain
                     services.TryAddSingleton<IProjectionEngine, ProjectionEngine>();
                     services.TryAddSingleton<IProjectionTargetProcessorFactory, ProjectionTargetProcessorFactory>();
                     services.TryAddSingleton<IProjectionExecutor, ProjectionExecutor>();
-                    services.TryAddSingleton<IProjectionSourceProcessorFactory, EntityStorageEngineProjectionSourceProcessorFactory>();
                     services.ConfigureApplicationParts(ProjectionFeatureProvider.Configure);
                 });
 
