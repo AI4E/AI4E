@@ -1,0 +1,25 @@
+name: Pack master
+on:
+  push:
+    branches: [ master ]
+jobs:
+  pack:
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.301
+    - name: Get current time
+      uses: 1466587594/get-current-time@v1
+      id: current-time
+      with:
+        format: x
+    - name: Pack stable projects
+      run: ./pack.ps1 ${{ steps.current-time.outputs.formattedTime  }}
+    - name: Push to github packages
+      run: ./build/nuget-push.ps1 ./artifacts/nupkg https://nuget.pkg.github.com/ai4e/index.json AndreasTruetschel ${{ secrets.GITHUB_TOKEN }}
+    - name: Push to myget.org
+      run: ./build/nuget-push-with-api-key.ps1 ./artifacts/nupkg https://www.myget.org/F/ai4e-dev/api/v2/package ${{ secrets.MYGET_API_KEY }}

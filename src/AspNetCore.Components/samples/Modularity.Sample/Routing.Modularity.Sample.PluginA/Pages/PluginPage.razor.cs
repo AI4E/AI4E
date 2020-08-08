@@ -41,7 +41,7 @@ namespace Routing.Modularity.Sample.PluginA.Pages
                 return;
 
             InProgress = true;
-            DispatchResult = await MessageDispatcher.DispatchAsync(new HostMessage(Str));
+            DispatchResult = await MessageDispatcher.DispatchAsync(new HostMessage(Str ?? string.Empty));
             InProgress = false;
         }
     }

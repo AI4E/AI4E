@@ -22,11 +22,10 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using AI4E.AspNetCore.Components.Notifications;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 
-namespace Notifications.Sample.Shared
+namespace AI4E.AspNetCore.Components.Notifications
 {
     /// <summary>
     /// A base component for rendering notifications.

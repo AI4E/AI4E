@@ -20,11 +20,10 @@
 
 using System;
 using System.Linq;
-using AI4E.AspNetCore.Components.Notifications;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 
-namespace Notifications.Sample.Shared
+namespace AI4E.AspNetCore.Components.Notifications
 {
     /// <summary>
     /// A component that renders a dismiss-all button.
