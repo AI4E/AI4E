@@ -14,7 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
     <ProjectReference Include="..\..\src\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj" />
-    <ProjectReference Include="..\..\src\AI4E.Storage.Projection\AI4E.Storage.Projection.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.Domain.Projection\AI4E.Storage.Domain.Projection.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Domain.EndToEndTestAssembly\AI4E.Storage.Domain.EndToEndTestAssembly.csproj" />
   </ItemGroup>
 

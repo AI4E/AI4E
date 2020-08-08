@@ -19,11 +19,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.Abstrac
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.MongoDB", "src\AI4E.Storage.MongoDB\AI4E.Storage.MongoDB.csproj", "{2D6D914D-142D-46B7-9BA0-6D96D81BC29B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Projection", "src\AI4E.Storage.Projection\AI4E.Storage.Projection.csproj", "{E84D8E3C-1CDC-49E1-8F81-253386219571}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.Projection", "src\AI4E.Storage.Domain.Projection\AI4E.Storage.Domain.Projection.csproj", "{E84D8E3C-1CDC-49E1-8F81-253386219571}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Projection.Abstractions", "src\AI4E.Storage.Projection.Abstractions\AI4E.Storage.Projection.Abstractions.csproj", "{D4DAF635-F50F-49A4-8CB3-86C5D9E8076C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.Projection.Abstractions", "src\AI4E.Storage.Domain.Projection.Abstractions\AI4E.Storage.Domain.Projection.Abstractions.csproj", "{D4DAF635-F50F-49A4-8CB3-86C5D9E8076C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Projection.Test", "test\AI4E.Storage.Projection.Test\AI4E.Storage.Projection.Test.csproj", "{06F9BD9C-B2FF-4112-86D1-8A92C2571022}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.Projection.Test", "test\AI4E.Storage.Domain.Projection.Test\AI4E.Storage.Domain.Projection.Test.csproj", "{06F9BD9C-B2FF-4112-86D1-8A92C2571022}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Utils", "..\Utils\src\AI4E.Utils\AI4E.Utils.csproj", "{059A434A-93CD-46B3-9481-AC22CBF75788}"
 EndProject
@@ -61,7 +61,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.EndToEn
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.EndToEndTest", "test\AI4E.Storage.Domain.EndToEndTest\AI4E.Storage.Domain.EndToEndTest.csproj", "{8C2B0D56-BEAE-46D4-B271-3754048CC50E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI4E.Storage.Domain.Projection.EndToEndTest", "test\AI4E.Storage.Domain.Projection.EndToEndTest\AI4E.Storage.Domain.Projection.EndToEndTest.csproj", "{79AA80AB-4337-4323-A8CC-50E025FA182F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Storage.Domain.Projection.EndToEndTest", "test\AI4E.Storage.Domain.Projection.EndToEndTest\AI4E.Storage.Domain.Projection.EndToEndTest.csproj", "{79AA80AB-4337-4323-A8CC-50E025FA182F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

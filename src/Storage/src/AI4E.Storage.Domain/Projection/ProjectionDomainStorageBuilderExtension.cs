@@ -1,7 +1,7 @@
 ﻿using System;
 using AI4E.Messaging;
 using AI4E.Storage.Domain.Projection;
-using AI4E.Storage.Projection;
+using AI4E.Storage.Domain.Projection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Domain
