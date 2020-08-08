@@ -4,10 +4,16 @@
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
     <RootNamespace>AI4E.Storage.Domain</RootNamespace>
     <Nullable>annotations</Nullable>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
   
   <ItemGroup>
+    <Compile Include="..\Shared\EntityValidationHelper.cs" Link="Shared\EntityValidationHelper.cs" />
+  </ItemGroup>
+  
+  <ItemGroup>
     <ProjectReference Include="..\AI4E.Storage.Abstractions\AI4E.Storage.Abstractions.csproj" />
+    <ProjectReference Include="..\AI4E.Storage.Domain.Resources\AI4E.Storage.Domain.Resources.csproj" />
   </ItemGroup>
 
 </Project>

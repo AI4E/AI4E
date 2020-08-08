@@ -27,9 +27,9 @@ namespace AI4E.Domain.Services
 {
     public sealed class ReferenceResolver : IReferenceResolver
     {
-        private readonly IEntityStorageEngine _entityStorageEngine;
+        private readonly IEntityStorage _entityStorageEngine;
 
-        public ReferenceResolver(IEntityStorageEngine entityStorageEngine)
+        public ReferenceResolver(IEntityStorage entityStorageEngine)
         {
             if (entityStorageEngine == null)
                 throw new ArgumentNullException(nameof(entityStorageEngine));
@@ -43,7 +43,8 @@ namespace AI4E.Domain.Services
             if (id.Equals(default))
                 return null;
 
-            var result = await _entityStorageEngine.GetByIdAsync(typeof(TEntity), id, revision, cancellation);
+            var result =
+                await _entityStorageEngine.LoadEntityAsync(new EntityIdentifier(typeof(TEntity), id), cancellation);
 
             return (TEntity)result;
         }

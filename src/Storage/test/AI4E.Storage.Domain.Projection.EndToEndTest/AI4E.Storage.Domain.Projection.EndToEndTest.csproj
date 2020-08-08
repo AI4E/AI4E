@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(TestFrameworkVersions)</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
+    <PackageReference Include="xunit" Version="2.4.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.0" />
+    <PackageReference Include="coverlet.collector" Version="1.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Messaging\src\AI4E.Messaging\AI4E.Messaging.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj" />
+    <ProjectReference Include="..\..\src\AI4E.Storage.Domain.Projection\AI4E.Storage.Domain.Projection.csproj" />
+    <ProjectReference Include="..\AI4E.Storage.Domain.EndToEndTestAssembly\AI4E.Storage.Domain.EndToEndTestAssembly.csproj" />
+  </ItemGroup>
+
+</Project>

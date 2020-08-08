@@ -28,7 +28,7 @@ namespace AI4E.Internal
         private const char _separator = '°';
         private const string _separatorAsString = "°";
 
-        public static string GenerateId(params object[] parts)
+        public static string GenerateId(params object?[] parts)
         {
             if (parts == null)
                 throw new ArgumentNullException(nameof(parts));

@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -60,15 +60,21 @@ namespace AI4E.Storage.MongoDB
 
         bool IDatabase.SupportsScopes => true;
 
-        private static Expression<Func<TEntry, bool>> BuildPredicate<TEntry>(
+        private static Expression<Func<TEntry, bool>>? BuildPredicate<TEntry>(
             TEntry comparand,
             Expression<Func<TEntry, bool>> predicate)
+            where TEntry : class
         {
             Debug.Assert(comparand != null);
             Debug.Assert(predicate != null);
 
-            var parameter = predicate!.Parameters.First();
+            var parameter = predicate.Parameters.First();
             var idSelector = DataPropertyHelper.BuildPredicate(comparand);
+
+            if (idSelector is null)
+            {
+                return null;
+            }
 
             var body = Expression.AndAlso(
                 ParameterExpressionReplacer.ReplaceParameter(idSelector.Body, idSelector.Parameters.First(), parameter),
@@ -124,8 +130,16 @@ namespace AI4E.Storage.MongoDB
                 throw new ArgumentNullException(nameof(predicate));
 
             var collection = await GetCollectionAsync<TEntry>(cancellation).ConfigureAwait(false);
+            var combinedPredicate = BuildPredicate(entry, predicate);
+
+            if (combinedPredicate is null)
+            {
+                // Cannot delete an entry that has no identity.
+                return false;
+            }
+
             var deleteResult = await TryWriteOperation(() => collection.DeleteOneAsync(
-                BuildPredicate(entry, predicate),
+                combinedPredicate,
                 cancellationToken: cancellation)).ConfigureAwait(false);
 
             if (!deleteResult.IsAcknowledged)

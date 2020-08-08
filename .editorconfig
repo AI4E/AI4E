@@ -224,3 +224,65 @@ dotnet_naming_style.underscore_prefix.required_prefix = _
 dotnet_naming_style.underscore_prefix.required_suffix = 
 dotnet_naming_style.underscore_prefix.word_separator = 
 dotnet_naming_style.underscore_prefix.capitalization = camel_case
+
+# Diagnostics configuration
+
+# Array allocation for params parameter
+dotnet_diagnostic.HAA0101.severity = suggestion 
+
+# Non-overridden virtual method call on value type
+dotnet_diagnostic.HAA0102.severity = suggestion 
+
+
+# Implicit string concatenation allocation
+dotnet_diagnostic.HAA0201.severity = suggestion 
+
+# Value type to reference type conversion allocation for string concatenation
+dotnet_diagnostic.HAA0202.severity = suggestion 
+
+
+# Closure Allocation Source
+dotnet_diagnostic.HAA0301.severity = suggestion 
+
+# Display class allocation to capture closure
+dotnet_diagnostic.HAA0302.severity = suggestion 
+
+# Lambda or anonymous method in a generic method allocates a delegate instance
+dotnet_diagnostic.HAA0303.severity = suggestion 
+
+
+# Possible allocation of reference type enumerator
+dotnet_diagnostic.HAA0401.severity = suggestion 
+
+
+# Explicit new array type allocation
+dotnet_diagnostic.HAA0501.severity = silent 
+
+# Explicit new reference type allocation
+dotnet_diagnostic.HAA0502.severity = silent 
+
+# Explicit new anonymous object allocation
+dotnet_diagnostic.HAA0503.severity = silent 
+
+# Implicit new array creation allocation
+dotnet_diagnostic.HAA0504.severity = silent 
+
+# Initializer reference type allocation
+dotnet_diagnostic.HAA0505.severity = silent 
+
+# Let clause induced allocation
+dotnet_diagnostic.HAA0506.severity = silent 
+
+
+# Value type to reference type conversion causing boxing allocation
+dotnet_diagnostic.HAA0601.severity = suggestion 
+
+# Delegate on struct instance caused a boxing allocation
+dotnet_diagnostic.HAA0602.severity = suggestion 
+
+# Delegate allocation from a method group
+dotnet_diagnostic.HAA0603.severity = suggestion 
+
+
+# Use .ConfigureAwait(bool)
+dotnet_diagnostic.VSTHRD111.severity = warning 

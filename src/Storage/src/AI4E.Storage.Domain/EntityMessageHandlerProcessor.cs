@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -20,103 +20,144 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Messaging;
 using AI4E.Messaging.Validation;
-using Microsoft.Extensions.DependencyInjection;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Domain
 {
+    /// <summary>
+    /// A message-processor that enabled the usage of entity managing message-handlers.
+    /// </summary>
     [CallOnValidation]
     public sealed class EntityMessageHandlerProcessor : MessageProcessor
     {
         private readonly IServiceProvider _serviceProvider;
-        private readonly IEntityStorageEngine _entityStorageEngine;
-        private readonly IEntityPropertyAccessor _entityPropertyAccessor;
-        private volatile IMessageAccessor _messageAccessor = null;
+        private readonly IEntityStorage _entityStorage;
+        private readonly IMessageAccessor _messageAccessor;
 
-        public EntityMessageHandlerProcessor(IServiceProvider serviceProvider,
-                                             IEntityStorageEngine entityStorageEngine,
-                                             IEntityPropertyAccessor entityPropertyAccessor)
+        /// <summary>
+        /// Creates a new instance of the <see cref="EntityMessageHandlerProcessor"/> type.
+        /// </summary>
+        /// <param name="entityStorage">The entity-storage.</param>
+        /// <param name="serviceProvider">The <see cref="IServiceProvider"/> used to resolve services.</param>
+        /// <param name="messageAccessor">
+        /// The <see cref="IMessageAccessor"/> used to access the content of message 
+        /// or <c>null</c> to used the default one.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any of <paramref name="entityStorage"/> or <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
+        public EntityMessageHandlerProcessor(
+            IEntityStorage entityStorage,
+            IServiceProvider serviceProvider,
+            IMessageAccessor? messageAccessor = null)
         {
+            if (entityStorage == null)
+                throw new ArgumentNullException(nameof(entityStorage));
+
             if (serviceProvider == null)
                 throw new ArgumentNullException(nameof(serviceProvider));
 
-            if (entityStorageEngine == null)
-                throw new ArgumentNullException(nameof(entityStorageEngine));
-
-            if (entityPropertyAccessor == null)
-                throw new ArgumentNullException(nameof(entityPropertyAccessor));
-
             _serviceProvider = serviceProvider;
-            _entityStorageEngine = entityStorageEngine;
-            _entityPropertyAccessor = entityPropertyAccessor;
+            _entityStorage = entityStorage;
+            _messageAccessor = messageAccessor ?? new ConventionBasedMessageAccessor();
         }
 
-        public override async ValueTask<IDispatchResult> ProcessAsync<TMessage>(DispatchDataDictionary<TMessage> dispatchData,
-                                                                                Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
-                                                                                CancellationToken cancellation)
+        /// <inheritdoc/>
+        public override async ValueTask<IDispatchResult> ProcessAsync<TMessage>(
+            DispatchDataDictionary<TMessage> dispatchData,
+            Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next, // TODO: Is it possible to call the delegate with the user specified sync-context?
+            CancellationToken cancellation)
         {
+            if (dispatchData is null)
+                throw new ArgumentNullException(nameof(dispatchData));
+
+            if (next is null)
+                throw new ArgumentNullException(nameof(next));
+
             var message = dispatchData.Message;
             var handler = Context.MessageHandler;
-            var descriptor = EntityMessageHandlerContextDescriptor.GetDescriptor(handler.GetType());
 
-            if (!descriptor.IsEntityMessageHandler)
+            // Check whether our handler actually manages an entity as state.
+            if (!EntityMessageHandlerContextDescriptor.TryGetDescriptor(handler.GetType(), out var descriptor))
             {
-                return await next(dispatchData);
+                return await next(dispatchData).ConfigureAwait(false);
             }
 
+            // Try to build an entity lookup strategy based on custom entity lookups and a default fallback.
             if (!TryGetEntityLookup(message, descriptor, out var entityLookup))
             {
-                return await next(dispatchData);
+                return await next(dispatchData).ConfigureAwait(false);
             }
 
-            var messageAccessor = GetMessageAccessor();
-            var checkConcurrencyToken = messageAccessor.TryGetConcurrencyToken(message, out var concurrencyToken);
+            // TODO: Perform a lookup in the DispatchDataDictionary for a key-value-pair with a key of 'ConcurrencyToken'. What shall take precedence? 
+
+            // Try to load the concurrency token from the message.
+            // We check for concurrency only if there is a concurrency token present, otherwise we just assume, that
+            // all operations can be performed on the current version of the entity.
+            ConcurrencyToken? concurrencyToken = null;
+            
+            if(_messageAccessor.TryGetConcurrencyToken(message, out var c))
+            {
+                concurrencyToken = c;
+            }
 
             do
             {
-                var entity = await entityLookup(cancellation);
-                var createsEntityAttribute = Context.MessageHandlerAction.Member.GetCustomAttribute<CreatesEntityAttribute>();
+                var entityLoadResult = await entityLookup(concurrencyToken, cancellation).ConfigureAwait(false);
 
-                if (entity == null)
+                if (entityLoadResult is IConcurrencyIssueEntityVerificationResult)
                 {
-                    if (createsEntityAttribute == null ||
-                        !createsEntityAttribute.CreatesEntity)
+                    return new ConcurrencyIssueDispatchResult();
+                }
+
+                var entity = entityLoadResult.GetEntity(throwOnFailure: false);
+                var createsEntityAttribute
+                    = Context.MessageHandlerAction.Member.GetCustomAttribute<CreatesEntityAttribute>();
+
+                // The entity could not be loaded.
+                if (entity is null)
+                {
+                    // The handler is not allowed to create entities.
+                    if (createsEntityAttribute is null || !createsEntityAttribute.CreatesEntity)
                     {
                         return new EntityNotFoundDispatchResult(descriptor.EntityType);
                     }
                 }
                 else
                 {
+                    var entityDescriptor = new EntityDescriptor(descriptor.EntityType, entity);
+                    var entityManager = _entityStorage.MetadataManager;
+
+                    // The handler is allowed and forces to create entities but must not process existing entities.
                     if (createsEntityAttribute != null &&
                         createsEntityAttribute.CreatesEntity &&
                         !createsEntityAttribute.AllowExisingEntity)
                     {
-                        if (!_entityPropertyAccessor.TryGetId(descriptor.EntityType, entity, out var id))
+                        var entityId = entityManager.GetId(entityDescriptor);
+
+                        if (entityId is null)
                         {
                             return new EntityAlreadyPresentDispatchResult(descriptor.EntityType);
                         }
                         else
                         {
-                            return new EntityAlreadyPresentDispatchResult(descriptor.EntityType, id);
+                            return new EntityAlreadyPresentDispatchResult(descriptor.EntityType, entityId);
                         }
                     }
 
-                    if (checkConcurrencyToken &&
-                        concurrencyToken != _entityPropertyAccessor.GetConcurrencyToken(descriptor.EntityType, entity))
-                    {
-                        return new ConcurrencyIssueDispatchResult();
-                    }
-
+                    // Write the entity to the handler property.
                     descriptor.SetHandlerEntity(handler, entity);
                 }
 
                 var originalEntity = entity;
-                var dispatchResult = await next(dispatchData);
+
+                // Execute the next processor (or the handler itself).
+                var dispatchResult = await next(dispatchData).ConfigureAwait(false);
 
                 if (!dispatchResult.IsSuccess)
                 {
@@ -129,37 +170,31 @@ namespace AI4E.Storage.Domain
                 try
                 {
                     // The Store/Delete calls must be protected to be called with a null entity.
-                    if (entity != null || originalEntity != null) // TODO: Do we care about events etc. here?
+                    if (!markedAsDeleted && !(entity is null))
                     {
-                        if (!_entityPropertyAccessor.TryGetId(descriptor.EntityType, entity ?? originalEntity, out var id))
-                        {
-                            return new FailureDispatchResult("Unable to determine the id of the specified entity.");
-                        }
-
-                        if (markedAsDeleted || entity == null)
-                        {
-                            await _entityStorageEngine.DeleteAsync(descriptor.EntityType, entity ?? originalEntity, id);
-                        }
-                        else if (await _entityStorageEngine.TryStoreAsync(descriptor.EntityType, entity, id))
-                        {
-                            dispatchResult = AddAdditionalResultData(descriptor, entity, dispatchResult);
-                        }
-                        else
-                        {
-                            continue;
-                        }
+                        var entityDescriptor = new EntityDescriptor(descriptor.EntityType, entity);
+                        await _entityStorage.StoreAsync(entityDescriptor, cancellation).ConfigureAwait(false);
+                        dispatchResult = AddAdditionalResultData(entityDescriptor, dispatchResult);
                     }
-                }
-                catch (ConcurrencyException)
-                {
-                    Assert(false);
-                    continue;
+                    else if (originalEntity != null)
+                    {
+                        var entityDescriptor = new EntityDescriptor(descriptor.EntityType, originalEntity);
+                        await _entityStorage.DeleteAsync(entityDescriptor, cancellation).ConfigureAwait(false);
+                    }
+
+                    if (await _entityStorage.CommitAsync(cancellation).ConfigureAwait(false)
+                        != EntityCommitResult.Success)
+                    {
+                        continue;
+                    }
                 }
                 catch (StorageException exc)
                 {
                     return new StorageIssueDispatchResult(exc);
                 }
+#pragma warning disable CA1031
                 catch (Exception exc)
+#pragma warning restore CA1031
                 {
                     return new FailureDispatchResult(exc);
                 }
@@ -167,17 +202,20 @@ namespace AI4E.Storage.Domain
                 return dispatchResult;
 
             }
-            while (!checkConcurrencyToken);
+            while (concurrencyToken is null);
 
             return new ConcurrencyIssueDispatchResult();
         }
 
-        private IDispatchResult AddAdditionalResultData(in EntityMessageHandlerContextDescriptor descriptor, object entity, IDispatchResult dispatchResult)
+        private IDispatchResult AddAdditionalResultData(
+            in EntityDescriptor entityDescriptor,
+            IDispatchResult dispatchResult)
         {
-            var newConcurrencyToken = _entityPropertyAccessor.GetConcurrencyToken(descriptor.EntityType, entity);
-            var newRevision = _entityPropertyAccessor.GetRevision(descriptor.EntityType, entity);
+            var entityManager = _entityStorage.MetadataManager;
+            var newConcurrencyToken = entityManager.GetConcurrencyToken(entityDescriptor);
+            var newRevision = entityManager.GetRevision(entityDescriptor);
 
-            var additionalResultData = new Dictionary<string, object>
+            var additionalResultData = new Dictionary<string, object?>
             {
                 ["ConcurrencyToken"] = newConcurrencyToken,
                 ["Revision"] = newRevision
@@ -189,49 +227,58 @@ namespace AI4E.Storage.Domain
         private bool TryGetEntityLookup<TMessage>(
             TMessage message,
             EntityMessageHandlerContextDescriptor descriptor,
-            out Func<CancellationToken, ValueTask<object>> entityLookup)
+            [NotNullWhen(true)] out EntityLookup? entityLookup)
+            where TMessage : class
         {
-            var lookupAccessor = GetMatchingLookupAccessor<TMessage>(descriptor);
-
-            if (lookupAccessor != null)
+            // If we have a lookup accessor, that is a user-defined entity lookup, use this as entity lookup strategy.
+            if (descriptor.TryGetLookupAccessor(typeof(TMessage), out var lookupAccessor))
             {
-                entityLookup = cancellation => lookupAccessor(Context.MessageHandler, message, _serviceProvider, cancellation);
+                async ValueTask<IEntityLoadResult> ExecuteLookupAccessor(
+                    ConcurrencyToken? concurrencyToken, CancellationToken cancellation)
+                {
+                    var entityLoadResult = await lookupAccessor!.Invoke(
+                        Context.MessageHandler, message, _serviceProvider, cancellation).ConfigureAwait(false);
+
+                    if (entityLoadResult is IFoundEntityQueryResult
+                        && concurrencyToken != null
+                        && concurrencyToken.Value != entityLoadResult.ConcurrencyToken)
+                    {
+                        return new ConcurrencyIssueEntityVerificationResult(entityLoadResult.EntityIdentifier);
+                    }
+
+                    return entityLoadResult;
+                }
+
+                entityLookup = ExecuteLookupAccessor;
                 return true;
             }
 
-            var messageAccessor = GetMessageAccessor();
+            // TODO: Perform a lookup in the DispatchDataDictionary for a key-value-pair with a key of 'Id'. What shall take precedence? 
 
-            if (messageAccessor.TryGetEntityId(message, out var id))
+            // If we can't lookup the entity id, there is not way to load the entity.
+            if (!_messageAccessor.TryGetEntityId(message, out var entityId) || entityId == null)
             {
-                entityLookup = _ => _entityStorageEngine.GetByIdAsync(descriptor.EntityType, id);
-                return true;
+                entityLookup = default;
+                return false;
             }
 
-            entityLookup = default;
-            return false;
-        }
-
-        private static Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> GetMatchingLookupAccessor<TMessage>(
-            in EntityMessageHandlerContextDescriptor descriptor)
-        {
-            return descriptor.GetLookupAccessor(typeof(TMessage));
-        }
-
-        private IMessageAccessor GetMessageAccessor()
-        {
-            if (_messageAccessor != null)
+            ValueTask<IEntityLoadResult> ExecuteLoadFromStorage(
+                ConcurrencyToken? concurrencyToken, CancellationToken cancellation)
             {
-                return _messageAccessor;
+                var entityIdentifier = new EntityIdentifier(descriptor.EntityType, entityId!);
+
+                if(concurrencyToken is null)
+                    return _entityStorage.LoadEntityAsync(entityIdentifier, cancellation);
+
+                return _entityStorage.LoadEntityAsync(entityIdentifier, concurrencyToken.Value, cancellation);
             }
 
-            var messageAccessor = _serviceProvider.GetService<IMessageAccessor>();
-
-            if (messageAccessor == null)
-            {
-                messageAccessor = new DefaultMessageAccessor();
-            }
-
-            return Interlocked.CompareExchange(ref _messageAccessor, messageAccessor, null) ?? messageAccessor;
+            entityLookup = ExecuteLoadFromStorage;
+            return true;
         }
+
+        private delegate ValueTask<IEntityLoadResult> EntityLookup(
+            ConcurrencyToken? expectedConcurrencyToken,
+            CancellationToken cancellation);
     }
 }

@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+    <Nullable>annotations</Nullable>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Storage\src\AI4E.Storage\AI4E.Storage.csproj" />
+    <ProjectReference Include="..\AI4E.Storage.Streaming.Abstractions\AI4E.Storage.Streaming.Abstractions.csproj" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Compile Include="$(RepositorySharedPath)CompressionHelper.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="$(RepositorySharedPath)IdGenerator.cs" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+  
+</Project>

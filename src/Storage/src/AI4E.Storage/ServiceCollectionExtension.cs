@@ -28,11 +28,32 @@ namespace AI4E.Storage
 {
     public static class ServiceCollectionExtension
     {
+        [Obsolete]
         public static IStorageBuilder AddStorage(this IServiceCollection services)
         {
             if (services is null)
-                throw new NullReferenceException();
+                throw new ArgumentNullException(nameof(services));
 
+            return AddStorageCore(services);
+        }
+
+        public static IServiceCollection AddStorage(
+            this IServiceCollection services,
+            Action<IStorageBuilder> configuration)
+        {
+            if (services is null)
+                throw new ArgumentNullException(nameof(services));
+
+            if (configuration is null)
+                throw new ArgumentNullException(nameof(configuration));
+
+            var storageBuilder = AddStorageCore(services);
+            configuration(storageBuilder);
+            return services;
+        }
+
+        private static IStorageBuilder AddStorageCore(IServiceCollection services)
+        {
             if (!TryGetStorageBuilder(services, out var storageBuilder))
             {
                 services.AddOptions();

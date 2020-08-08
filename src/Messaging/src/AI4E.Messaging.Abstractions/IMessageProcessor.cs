@@ -40,9 +40,10 @@ namespace AI4E.Messaging
         /// A task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the dispatch result.
         /// </returns>
-        ValueTask<IDispatchResult> ProcessAsync<TMessage>(DispatchDataDictionary<TMessage> dispatchData,
-                                                          Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
-                                                          CancellationToken cancellation)
+        ValueTask<IDispatchResult> ProcessAsync<TMessage>(
+            DispatchDataDictionary<TMessage> dispatchData,
+            Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> next,
+            CancellationToken cancellation)
             where TMessage : class;
     }
 

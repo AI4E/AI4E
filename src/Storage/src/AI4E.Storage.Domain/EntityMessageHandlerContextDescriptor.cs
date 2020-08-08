@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -20,8 +20,9 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -31,72 +32,109 @@ using AI4E.Messaging;
 using AI4E.Utils;
 using AI4E.Utils.Async;
 using Microsoft.Extensions.DependencyInjection;
-using static System.Diagnostics.Debug;
 
 namespace AI4E.Storage.Domain
 {
-    public readonly struct EntityMessageHandlerContextDescriptor
+    /// <summary>
+    /// Represents a type descriptor for entity managing message handlers.
+    /// </summary>
+    public sealed class EntityMessageHandlerContextDescriptor
     {
-        #region Lookup, factory
+        private const BindingFlags _defaultBinding
+            = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-        private static readonly ConcurrentDictionary<Type, EntityMessageHandlerContextDescriptor> _descriptors
-           = new ConcurrentDictionary<Type, EntityMessageHandlerContextDescriptor>();
+        #region Caching
 
-        public static EntityMessageHandlerContextDescriptor GetDescriptor(Type handlerType)
+        private static readonly ConcurrentDictionary<Type, EntityMessageHandlerContextDescriptor?> _descriptors
+           = new ConcurrentDictionary<Type, EntityMessageHandlerContextDescriptor?>();
+
+        private static readonly Func<Type, EntityMessageHandlerContextDescriptor?> _buildDescriptor
+            = BuildDescriptor;
+
+        /// <summary>
+        /// Tries to retrieve the <see cref="EntityMessageHandlerContextDescriptor"/> for the specified type.
+        /// </summary>
+        /// <param name="handlerType">The type of message handlers.</param>
+        /// <param name="descriptor">
+        /// Contains the <see cref="EntityMessageHandlerContextDescriptor"/> if it can be retrieved.
+        /// </param>
+        /// <returns>True if the descriptor can be retrieved, false otherwise.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="handlerType"/> is <c>null</c>.
+        /// </exception>
+        public static bool TryGetDescriptor(
+            Type handlerType,
+            [NotNullWhen(true)] out EntityMessageHandlerContextDescriptor? descriptor)
         {
             if (handlerType == null)
                 throw new ArgumentNullException(nameof(handlerType));
 
-            return _descriptors.GetOrAdd(handlerType, BuildDescriptor);
+            descriptor = _descriptors.GetOrAdd(handlerType, _buildDescriptor);
+            return descriptor != null;
         }
 
-        private static EntityMessageHandlerContextDescriptor BuildDescriptor(Type handlerType)
+        private static EntityMessageHandlerContextDescriptor? BuildDescriptor(Type handlerType)
         {
-            Assert(handlerType != null);
-
-            var entityProperty = GetEntityProperty(handlerType);
-
-            if (entityProperty == null)
+            if (TryGetEntityProperty(handlerType, out var entityProperty))
             {
-                return default;
+                return new EntityMessageHandlerContextDescriptor(handlerType, entityProperty);
             }
 
-            BuildEntityAccessor(handlerType, entityProperty, out var entityGetter, out var entitySetter);
-
-            var entityType = GetEntityType(entityProperty);
-
-            var deleteFlagAccessor = BuildDeleteFlagAccessor(handlerType);
-            var lookupAccessors = BuildLookupAccessors(handlerType, entityType).ToImmutableArray();
-
-            return new EntityMessageHandlerContextDescriptor(entitySetter, entityGetter, deleteFlagAccessor, entityType, lookupAccessors);
+            return null;
         }
 
-        private static PropertyInfo GetEntityProperty(Type handlerType)
+        #endregion
+
+        #region Build
+
+        // Cache delegate for perf reasons.
+        private static readonly Func<PropertyInfo, bool> _isEntityProperty = IsEntityProperty;
+
+        private static bool IsEntityProperty(PropertyInfo property)
         {
-            return handlerType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                                            .FirstOrDefault(p => !p.PropertyType.IsValueType &&
-                                                                  p.CanRead &&
-                                                                  p.CanWrite &&
-                                                                  p.GetIndexParameters().Length == 0 &&
-                                                                  p.IsDefined<MessageHandlerEntityAttribute>());
+            if (property.PropertyType.IsValueType)
+                return false;
+
+            if (!property.CanRead || !property.CanWrite)
+                return false;
+
+            if (property.GetIndexParameters().Length != 0)
+                return false;
+
+            return property.IsDefined<MessageHandlerEntityAttribute>();
         }
 
-        private static void BuildEntityAccessor(Type handlerType,
-                                                PropertyInfo entityProperty,
-                                                out Func<object, object> entityGetter,
-                                                out Action<object, object> entitySetter)
+        private static bool TryGetEntityProperty(Type handlerType, [NotNullWhen(true)] out PropertyInfo? entityProperty)
         {
-            Assert(handlerType != null);
-            Assert(entityProperty != null);
+            entityProperty = null;
 
+#pragma warning disable IDE0007
+            for (Type? current = handlerType; current != null; current = current.BaseType)
+#pragma warning restore IDE0007
+            {
+                entityProperty = handlerType.GetProperties(_defaultBinding).FirstOrDefault(_isEntityProperty);
+
+                if (entityProperty != null)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static void BuildEntityAccessor(
+            Type handlerType,
+            PropertyInfo entityProperty,
+            out Func<object, object?> entityGetter,
+            out Action<object, object?> entitySetter)
+        {
             var handlerParam = Expression.Parameter(typeof(object), "handler");
             var entityParam = Expression.Parameter(typeof(object), "entity");
             var convertedHandler = Expression.Convert(handlerParam, handlerType);
-            var convertedEntity = Expression.Convert(entityParam, entityProperty.PropertyType);
+            var convertedEntity = Expression.TypeAs(entityParam, entityProperty!.PropertyType);
             var propertyAccess = Expression.Property(convertedHandler, entityProperty);
             var propertyAssign = Expression.Assign(propertyAccess, convertedEntity);
-            var getterLambda = Expression.Lambda<Func<object, object>>(propertyAccess, handlerParam);
-            var setterLambda = Expression.Lambda<Action<object, object>>(propertyAssign, handlerParam, entityParam);
+            var getterLambda = Expression.Lambda<Func<object, object?>>(propertyAccess, handlerParam);
+            var setterLambda = Expression.Lambda<Action<object, object?>>(propertyAssign, handlerParam, entityParam);
 
             entityGetter = getterLambda.Compile();
             entitySetter = setterLambda.Compile();
@@ -104,10 +142,10 @@ namespace AI4E.Storage.Domain
 
         private static Type GetEntityType(PropertyInfo entityProperty)
         {
-            Assert(entityProperty != null);
+            Debug.Assert(entityProperty != null);
 
-            var result = entityProperty.PropertyType;
-            var customType = entityProperty.GetCustomAttribute<MessageHandlerEntityAttribute>().EntityType;
+            var result = entityProperty!.PropertyType;
+            var customType = entityProperty.GetCustomAttribute<MessageHandlerEntityAttribute>()?.EntityType;
 
             if (customType != null &&
                 result.IsAssignableFrom(customType)) // If the types do not match, we just ignore the custom type.
@@ -118,25 +156,48 @@ namespace AI4E.Storage.Domain
             return result;
         }
 
-        private static PropertyInfo GetDeleteFlagProperty(Type handlerType)
-        {
-            Assert(handlerType != null);
+        // Cache delegate for perf reasons.
+        private static readonly Func<PropertyInfo, bool> _isDeleteFlagAccessor = IsDeleteFlagAccessor;
 
-            return handlerType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                              .SingleOrDefault(p => p.PropertyType == typeof(bool) &&
-                                                    p.CanRead &&
-                                                    p.GetIndexParameters().Length == 0 &&
-                                                    p.IsDefined<MessageHandlerEntityDeleteFlagAttribute>());
+        private static bool IsDeleteFlagAccessor(PropertyInfo property)
+        {
+            if (property.PropertyType != typeof(bool))
+                return false;
+
+            if (!property.CanRead)
+                return false;
+
+            if (property.GetIndexParameters().Length != 0)
+                return false;
+
+            return property.IsDefined<MessageHandlerEntityDeleteFlagAttribute>();
         }
 
-        private static Func<object, bool> BuildDeleteFlagAccessor(Type handlerType)
+        private static bool TryGetDeleteFlagProperty(
+            Type handlerType,
+            [NotNullWhen(true)] out PropertyInfo? deleteFlagProperty)
         {
-            Assert(handlerType != null);
+            deleteFlagProperty = null;
 
-            var deleteFlagProperty = GetDeleteFlagProperty(handlerType);
+#pragma warning disable IDE0007
+            for (Type? current = handlerType; current != null; current = current.BaseType)
+#pragma warning restore IDE0007
+            {
+                deleteFlagProperty = handlerType.GetProperties(_defaultBinding).FirstOrDefault(_isDeleteFlagAccessor);
 
-            if (deleteFlagProperty == null)
+                if (deleteFlagProperty != null)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static Func<object, bool>? BuildDeleteFlagAccessor(Type handlerType)
+        {
+            if (!TryGetDeleteFlagProperty(handlerType, out var deleteFlagProperty))
+            {
                 return null;
+            }
 
             var handlerParam = Expression.Parameter(typeof(object), "handler");
             var convertedHandler = Expression.Convert(handlerParam, handlerType);
@@ -146,17 +207,27 @@ namespace AI4E.Storage.Domain
             return deleteFlagLambda.Compile();
         }
 
-        private static IEnumerable<(Type messageType, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> lookupAccessor)> BuildLookupAccessors(Type handlerType, Type entityType)
+        private static ImmutableDictionary<Type, LookupAccessor> BuildLookupAccessors(Type handlerType, Type entityType)
         {
-            var methods = GetEntityLookupMethods(handlerType, entityType);
+            var methods = handlerType.GetMethods(_defaultBinding);
+            var resultBuilder = ImmutableDictionary.CreateBuilder<Type, LookupAccessor>();
 
             foreach (var method in methods)
             {
+                if (!IsEntityLookupMethod(entityType, method))
+                    continue;
+
                 var invoker = TypeMemberInvoker.GetInvoker(method);
 
-                ValueTask<object> LookupAccessor(object handler, object message, IServiceProvider serviceProvider, CancellationToken cancellation)
+                if (resultBuilder.ContainsKey(invoker.FirstParameterType))
                 {
-                    object ResolveParameter(ParameterInfo parameter)
+                    // TODO: Throw?
+                    continue;
+                }
+
+                async ValueTask<IEntityLoadResult> LookupAccessor(object handler, object message, IServiceProvider serviceProvider, CancellationToken cancellation)
+                {
+                    object? ResolveParameter(ParameterInfo parameter)
                     {
                         if (parameter.ParameterType == typeof(IServiceProvider))
                         {
@@ -176,125 +247,224 @@ namespace AI4E.Storage.Domain
                         }
                     }
 
-                    return invoker.InvokeAsync(handler, message, ResolveParameter);
+                    var result = await invoker.InvokeAsync(handler, message, ResolveParameter)
+                        .ConfigureAwait(false);
+
+                    if (result is IEntityLoadResult entityLoadResult)
+                    {
+                        return entityLoadResult;
+                    }
+
+                    return new NotFoundEntityQueryResult(default, loadedFromCache: false, scope: EntityQueryResultGlobalScope.Instance); // TODO: Use the correct scope
+
+                    // TODO: We could load the metadata we need (id, concurrency-token, revision) 
+                    //       with the entity-manager, if we allow the entity to be returned directly.
                 }
 
-                yield return (invoker.FirstParameterType, LookupAccessor);
+                resultBuilder.Add(invoker.FirstParameterType, LookupAccessor);
             }
+
+            return resultBuilder.ToImmutable();
         }
 
-        private static IEnumerable<MethodInfo> GetEntityLookupMethods(Type handlerType, Type entityType)
+#pragma warning disable IDE0060, CA1801 // TODO: Allow the entity to be returned directly.
+        private static bool IsEntityLookupMethod(Type entityType, MethodInfo method)
+#pragma warning restore IDE0060, CA1801
         {
-            return handlerType.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                              .Where(p => IsEntityLookupMethod(entityType, p));
-        }
+            var parameters = method.GetParameters();
 
-        private static bool IsEntityLookupMethod(Type entityType, MethodInfo member)
-        {
-            var parameters = member.GetParameters();
-
-            if (/*parameters.Length == 0 ||*/ parameters.Any(p => p.ParameterType.IsByRef))
+            if (parameters.Any(p => p.ParameterType.IsByRef))
                 return false;
 
-            if (member.IsGenericMethod || member.IsGenericMethodDefinition)
+            if (method.IsGenericMethod || method.IsGenericMethodDefinition)
                 return false;
 
-            if (!member.IsDefined<EntityLookupAttribute>())
+            if (!method.IsDefined<EntityLookupAttribute>())
                 return false;
 
-            var returnType = member.ReturnType;
+            var returnType = method.ReturnType;
             var typeDescriptor = AwaitableTypeDescriptor.GetTypeDescriptor(returnType);
+            var resultType = typeDescriptor.ResultType;
 
-            return entityType.IsAssignableFrom(typeDescriptor.ResultType);
+            // TODO: Allow the entity to be returned directly.
+            return typeof(IEntityLoadResult).IsAssignableFrom(resultType)
+                /*|| entityType.IsAssignableFrom(resultType)*/;
         }
 
         #endregion
 
-        private readonly ConcurrentDictionary<Type, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>>> _matchingLookupAccessor;
-        private readonly Action<object, object> _entitySetter;
-        private readonly Func<object, object> _entityGetter;
-        private readonly Func<object, bool> _deleteFlagAccessor;
-        private readonly ImmutableArray<(Type messageType, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> lookupAccessor)> _lookupAccessors;
+        #region Fields
 
-        private EntityMessageHandlerContextDescriptor(
-            Action<object, object> entitySetter,
-            Func<object, object> entityGetter,
-            Func<object, bool> deleteFlagAccessor,
-            Type entityType,
-            ImmutableArray<(Type messageType, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> lookupAccessor)> lookupAccessors)
+        private readonly Type _handlerType;
+        private readonly Action<object, object?> _entitySetter;
+        private readonly Func<object, object?> _entityGetter;
+        private readonly Func<object, bool>? _deleteFlagAccessor;
+
+        private readonly ConcurrentDictionary<Type, LookupAccessor?> _matchingLookupAccessors;
+        private readonly ImmutableDictionary<Type, LookupAccessor> _lookupAccessors; // message-type 2 lookup-accessor
+
+
+        #endregion
+
+        #region C'tor
+
+        private EntityMessageHandlerContextDescriptor(Type handlerType, PropertyInfo entityProperty)
         {
-            _matchingLookupAccessor = new ConcurrentDictionary<Type, Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>>>();
-            _entitySetter = entitySetter;
-            _entityGetter = entityGetter;
-            _deleteFlagAccessor = deleteFlagAccessor;
-            EntityType = entityType;
-            _lookupAccessors = lookupAccessors;
+            Debug.Assert(entityProperty.DeclaringType!.IsAssignableFrom(handlerType));
+
+            BuildEntityAccessor(handlerType, entityProperty, out _entityGetter, out _entitySetter);
+
+            EntityType = GetEntityType(entityProperty);
+            _deleteFlagAccessor = BuildDeleteFlagAccessor(handlerType);
+            _lookupAccessors = BuildLookupAccessors(handlerType, EntityType);
+
+            _matchingLookupAccessors = new ConcurrentDictionary<Type, LookupAccessor?>();
+            _handlerType = handlerType;
         }
 
-        public bool IsEntityMessageHandler => _entityGetter != null && _entitySetter != null;
+        #endregion
+
+        /// <summary>
+        /// Gets the type of entity the message handler manages.
+        /// </summary>
         public Type EntityType { get; }
 
-        public void SetHandlerEntity(object handler, object entity)
+        /// <summary>
+        /// Sets the specified entity to the specified message handler.
+        /// </summary>
+        /// <param name="handler">The message handler.</param>
+        /// <param name="entity">The entity.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="handler"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if either <paramref name="handler"/> is not of type the descriptor was created for or a derived type
+        /// or <paramref name="entity"/> is not of type <see cref="EntityType"/> or a derived type.
+        /// </exception>
+        public void SetHandlerEntity(object handler, object? entity)
         {
-            if (handler == null)
+            if (handler is null)
                 throw new ArgumentNullException(nameof(handler));
 
-            if (_entitySetter == null)
-                throw new InvalidOperationException();
+            if (!_handlerType.IsAssignableFrom(handler.GetType()))
+                throw new ArgumentException($"The argument must be of type '{_handlerType}' or a derived type.");
+
+            if (entity != null && !EntityType.IsAssignableFrom(entity.GetType()))
+                throw new ArgumentException($"The argument must be of type '{EntityType}' or a derived type.");
 
             _entitySetter(handler, entity);
         }
 
-        public object GetHandlerEntity(object handler)
+        /// <summary>
+        /// Gets the entity from the specified message handler.
+        /// </summary>
+        /// <param name="handler">The message handler.</param>
+        /// <returns>The entity extracted from <paramref name="handler"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="handler"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="handler"/> is not of type the descriptor was created for or a derived type.
+        /// </exception>
+        public object? GetHandlerEntity(object handler)
         {
-            if (handler == null)
+            if (handler is null)
                 throw new ArgumentNullException(nameof(handler));
 
-            if (_entityGetter == null)
-                throw new InvalidOperationException();
+            if (!_handlerType.IsAssignableFrom(handler.GetType()))
+                throw new ArgumentException($"The argument must be of type '{_handlerType}' or a derived type.");
 
             return _entityGetter(handler);
         }
 
+        /// <summary>
+        /// Returns a boolean value indicating whether the entity of the specified message handler is marked as deleted.
+        /// </summary>
+        /// <param name="handler">The message handler.</param>
+        /// <returns>
+        /// True if the entity managed by <paramref name="handler"/> is marked as deleted, false otherwise.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="handler"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="handler"/> is not of type the descriptor was created for or a derived type.
+        /// </exception>
         public bool IsMarkedAsDeleted(object handler)
         {
-            if (handler == null)
+            if (handler is null)
                 throw new ArgumentNullException(nameof(handler));
 
-            if (_deleteFlagAccessor == null)
+            if (!_handlerType.IsAssignableFrom(handler.GetType()))
+                throw new ArgumentException($"The argument must be of type '{_handlerType}' or a derived type.");
+
+            if (_deleteFlagAccessor is null)
                 return false;
 
             return _deleteFlagAccessor(handler);
         }
 
-        public Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> GetLookupAccessor(Type messageType)
+        /// <summary>
+        /// Tries to retrieve the custom lookup accessor for the specified message-type.
+        /// </summary>
+        /// <param name="messageType">The message-type.</param>
+        /// <param name="lookupAccessor">Contains the lookup accessor if one can be retrieved.</param>
+        /// <returns>
+        /// True if a lookup accessor for <paramref name="messageType"/> can be retrieved, false otherwise.
+        /// </returns>
+        public bool TryGetLookupAccessor(Type messageType, [NotNullWhen(true)] out LookupAccessor? lookupAccessor)
         {
             if (messageType == null)
                 throw new ArgumentNullException(nameof(messageType));
 
-            // TODO: This allocates a delegate for each call.
-            return _matchingLookupAccessor.GetOrAdd(messageType, GetLookupAccessorInternal);
+            if (_matchingLookupAccessors is null)
+            {
+                lookupAccessor = null;
+                return false;
+            }
+
+            if (!_matchingLookupAccessors.TryGetValue(messageType, out var result))
+            {
+                result = GetLookupAccessorCore(messageType);
+                result = _matchingLookupAccessors.GetOrAdd(messageType, result);
+            }
+
+            lookupAccessor = result;
+            return lookupAccessor != null;
         }
 
-        private Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> GetLookupAccessorInternal(Type messageType)
+        private LookupAccessor? GetLookupAccessorCore(Type messageType)
         {
-            Func<object, object, IServiceProvider, CancellationToken, ValueTask<object>> fallbackMessageAccessor = null;
-
-            // TODO: Select best matching accessor
-            foreach (var (type, accessor) in _lookupAccessors)
+#pragma warning disable IDE0007
+            for (Type? currentType = messageType; currentType != null; currentType = currentType.BaseType)
+#pragma warning restore IDE0007
             {
-                if (type.IsAssignableFrom(messageType))
+                if (_lookupAccessors.TryGetValue(currentType, out var lookupAccessor))
                 {
-                    return accessor;
-                }
-
-                if(type == typeof(void))
-                {
-                    fallbackMessageAccessor = accessor;
+                    return lookupAccessor;
                 }
             }
 
-            return fallbackMessageAccessor;
+            if (_lookupAccessors.TryGetValue(typeof(void), out var noMessageLookupAccessor))
+            {
+                return noMessageLookupAccessor;
+            }
+
+            return null;
         }
     }
+
+    /// <summary>
+    /// A lookup accessor that performs an asynchronous custom entity lookup from the storage engine.
+    /// </summary>
+    /// <param name="handler">The message handler.</param>
+    /// <param name="message">The handled message.</param>
+    /// <param name="serviceProvider">The <see cref="IServiceProvider"/> used to lookup services.</param>
+    /// <param name="cancellation">
+    /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation
+    /// or <see cref="CancellationToken.None"/>.
+    /// </param>
+    /// <returns>
+    /// A <see cref="ValueTask{IEntityLoadResult}"/> representing the asynchronous operation.
+    /// When evaluated, the tasks result contains the entity load-result.
+    /// </returns>
+    public delegate ValueTask<IEntityLoadResult> LookupAccessor(
+        object handler,
+        object message,
+        IServiceProvider serviceProvider,
+        CancellationToken cancellation);
 }

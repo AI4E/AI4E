@@ -8,6 +8,7 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <Nullable>annotations</Nullable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
 </Project>

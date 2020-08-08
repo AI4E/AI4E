@@ -19,7 +19,9 @@
  */
 
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace System.Collections.Generic
@@ -42,5 +44,199 @@ namespace System.Collections.Generic
 
             return Preevaluate().GetAwaiter();
         }
+
+        #region Cache
+
+        public static IAsyncEnumerable<TItem> Cached<TItem>(this IAsyncEnumerable<TItem> source)
+        {
+            return new CachedAsyncEnumerable<TItem>(source);
+        }
+
+        private sealed class CachedAsyncEnumerable<TItem> : IAsyncEnumerable<TItem>
+        {
+            private readonly IAsyncEnumerable<TItem> _source;
+            private readonly List<TItem> _cache = new List<TItem>();
+
+            private IAsyncEnumerator<TItem>? _enumerator;
+
+            public CachedAsyncEnumerable(IAsyncEnumerable<TItem> source)
+            {
+                if (source is null)
+                    throw new ArgumentNullException(nameof(source));
+
+                _source = source;
+            }
+
+            public async IAsyncEnumerator<TItem> GetAsyncEnumerator(CancellationToken cancellationToken)
+            {
+                foreach (var item in _cache)
+                {
+                    yield return item;
+                }
+
+                _enumerator ??= _source.GetAsyncEnumerator();
+
+                while (await _enumerator.MoveNextAsync().ConfigureAwait(true))
+                {
+                    _cache.Add(_enumerator.Current);
+                    yield return _enumerator.Current;
+                }
+            }
+        }
+
+        #endregion
+
+        #region Catch
+
+        public static IAsyncEnumerable<T> Catch<T, TException>(
+            this IAsyncEnumerable<T> asyncEnumerable,
+            Action<TException> catchClause) where TException : Exception
+        {
+            if (asyncEnumerable is null)
+                throw new ArgumentNullException(nameof(asyncEnumerable));
+
+            if (catchClause is null)
+                throw new ArgumentNullException(nameof(catchClause));
+
+            return new CatchAsyncEnumerable<T, TException>(asyncEnumerable, exception =>
+            {
+                catchClause(exception);
+                return (moveNext: true, skip: true, current: default);
+            });
+        }
+
+        public static IAsyncEnumerable<T> Catch<T, TException>(
+            this IAsyncEnumerable<T> asyncEnumerable,
+            Func<TException, T> catchClause) where TException : Exception
+        {
+            if (asyncEnumerable is null)
+                throw new ArgumentNullException(nameof(asyncEnumerable));
+
+            if (catchClause is null)
+                throw new ArgumentNullException(nameof(catchClause));
+
+            return new CatchAsyncEnumerable<T, TException>(asyncEnumerable, exception =>
+            {
+                var current = catchClause(exception);
+                return (moveNext: true, skip: false, current);
+            });
+        }
+
+        public static IAsyncEnumerable<T> Catch<T, TException>(
+            this IAsyncEnumerable<T> asyncEnumerable,
+            Func<TException, bool> catchClause) where TException : Exception
+        {
+            if (asyncEnumerable is null)
+                throw new ArgumentNullException(nameof(asyncEnumerable));
+
+            if (catchClause is null)
+                throw new ArgumentNullException(nameof(catchClause));
+
+            return new CatchAsyncEnumerable<T, TException>(asyncEnumerable, exception =>
+            {
+                var moveNext = catchClause(exception);
+                return (moveNext, skip: true, current: default);
+            });
+        }
+
+        public static IAsyncEnumerable<T> Catch<T, TException>(
+          this IAsyncEnumerable<T> asyncEnumerable,
+          Func<TException, (bool moveNext, bool skip, T current)> catchClause) where TException : Exception
+        {
+            if (asyncEnumerable is null)
+                throw new ArgumentNullException(nameof(asyncEnumerable));
+
+            if (catchClause is null)
+                throw new ArgumentNullException(nameof(catchClause));
+
+            return new CatchAsyncEnumerable<T, TException>(asyncEnumerable, catchClause);
+        }
+
+        private sealed class CatchAsyncEnumerable<T, TException> : IAsyncEnumerable<T>
+            where TException : Exception
+        {
+            private readonly IAsyncEnumerable<T> _asyncEnumerable;
+            private readonly Func<TException, (bool moveNext, bool skip, T current)> _catchClause;
+
+            public CatchAsyncEnumerable(
+                IAsyncEnumerable<T> asyncEnumerable,
+                Func<TException, (bool moveNext, bool skip, T current)> catchClause)
+            {
+                _asyncEnumerable = asyncEnumerable;
+                _catchClause = catchClause;
+            }
+
+            public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken)
+            {
+                return new Enumerator(_asyncEnumerable.GetAsyncEnumerator(cancellationToken), _catchClause);
+            }
+
+            private sealed class Enumerator : IAsyncEnumerator<T>
+            {
+                private readonly IAsyncEnumerator<T> _asyncEnumerator;
+                private readonly Func<TException, (bool moveNext, bool skip, T current)> _catchClause;
+                private bool _lastResult = true;
+
+                public Enumerator(
+                    IAsyncEnumerator<T> asyncEnumerator,
+                    Func<TException, (bool moveNext, bool skip, T current)> catchClause)
+                {
+                    _asyncEnumerator = asyncEnumerator;
+                    _catchClause = catchClause;
+                    Current = default!;
+                }
+
+                public async ValueTask<bool> MoveNextAsync()
+                {
+                    if (!_lastResult)
+                    {
+                        return false;
+                    }
+
+                    bool result;
+                    bool skip;
+
+                    do
+                    {
+                        try
+                        {
+                            result = await _asyncEnumerator.MoveNextAsync().ConfigureAwait(false);
+
+                            if (result)
+                            {
+                                Current = _asyncEnumerator.Current;
+                            }
+
+                            skip = false;
+                        }
+                        catch (TException exception)
+                        {
+                            try
+                            {
+                                (result, skip, Current) = _catchClause(exception);
+                            }
+                            catch
+                            {
+                                _lastResult = false;
+                                throw;
+                            }
+                        }
+                    }
+                    while (skip && result); // Only skip to the next if moveNext was true
+
+                    return _lastResult = result;
+                }
+
+                [AllowNull]
+                public T Current { get; private set; }
+
+                public ValueTask DisposeAsync()
+                {
+                    return _asyncEnumerator.DisposeAsync();
+                }
+            }
+        }
+
+        #endregion
     }
 }

@@ -1,18 +1,8 @@
-/* Summary
- * --------------------------------------------------------------------------------------------------------------------
- * Filename:        CommitAttempt.cs 
- * Types:           (1) AI4E.Storage.Domain.CommitAttempt
- * Version:         1.0
- * Author:          Andreas Trütschel
- * Last modified:   13.06.2018 
- * --------------------------------------------------------------------------------------------------------------------
- */
-
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -28,119 +18,103 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-/* Based on
- * --------------------------------------------------------------------------------------------------------------------
- * NEventStore (https://github.com/NEventStore/NEventStore)
- * The MIT License
- * 
- * Copyright (c) 2013 Jonathan Oliver, Jonathan Matheus, Damian Hickey and contributors
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- * --------------------------------------------------------------------------------------------------------------------
- */
-
 using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 
 namespace AI4E.Storage.Domain
 {
-    public sealed class CommitAttempt
+    /// <summary>
+    /// Represents a commit-attempt.
+    /// </summary>
+    /// <typeparam name="TCommitAttemptEntry">The type of commit-attempt entry.</typeparam>
+    public readonly struct CommitAttempt<TCommitAttemptEntry> : IEquatable<CommitAttempt<TCommitAttemptEntry>>
+         where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
     {
         /// <summary>
-        /// Initializes a new instance of the Commit class.
+        /// Creates a new instance of type <see cref="CommitAttempt{TCommitAttemptEntry}"/>.
         /// </summary>
-        /// <param name="bucketId">The value which identifies bucket to which the the stream and the the commit belongs</param>
-        /// <param name="streamId">The value which uniquely identifies the stream in a bucket to which the commit belongs.</param>
-        /// <param name="streamRevision">The value which indicates the revision of the most recent event in the stream to which this commit applies.</param>
-        /// <param name="concurrencyToken">The value which uniquely identifies the commit within the stream.</param>
-        /// <param name="streamRevision">The value which indicates the sequence (or position) in the stream to which this commit applies.</param>
-        /// <param name="commitStamp">The point in time at which the commit was persisted.</param>
-        /// <param name="headers">The metadata which provides additional, unstructured information about this commit.</param>
-        /// <param name="events">The collection of event messages to be committed as a single unit.</param>
-        public CommitAttempt(
-            string bucketId,
-            string streamId,
-            //string concurrencyToken,
-            long streamRevision,
-            DateTime commitStamp,
-            IReadOnlyDictionary<string, object> headers,
-            object body,
-            IEnumerable<EventMessage> events)
+        /// <param name="entries">
+        /// The <see cref="CommitAttemptEntryCollection{TCommitAttemptEntry}"/> that defines the commit entries that 
+        /// the commit-attempt contains of.
+        /// </param>
+        public CommitAttempt(CommitAttemptEntryCollection<TCommitAttemptEntry> entries)
         {
-            if (string.IsNullOrWhiteSpace(bucketId))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(bucketId));
-
-            if (string.IsNullOrWhiteSpace(streamId))
-                throw new ArgumentNullOrWhiteSpaceException(nameof(streamId));
-
-            //if (string.IsNullOrWhiteSpace(concurrencyToken))
-            //    throw new ArgumentNullOrWhiteSpaceException(nameof(concurrencyToken));
-
-            if (streamRevision <= 0)
-                throw new ArgumentOutOfRangeException(nameof(streamRevision));
-
-            BucketId = bucketId;
-            StreamId = streamId;
-            //ConcurrencyToken = concurrencyToken;
-            StreamRevision = streamRevision;
-            CommitStamp = commitStamp;
-            Body = body;
-            Headers = headers?.ToImmutableDictionary() ?? ImmutableDictionary<string, object>.Empty;
-            Events = events?.ToImmutableList() ?? ImmutableList<EventMessage>.Empty;
+            Entries = entries;
         }
 
         /// <summary>
-        /// Gets the value which identifies bucket to which the the stream and the the commit belongs.
+        /// Gets the <see cref="CommitAttemptEntryCollection{TCommitAttemptEntry}"/> that defines the commit entries 
+        /// that the current commit-attempt contains of.
         /// </summary>
-        public string BucketId { get; }
+        public CommitAttemptEntryCollection<TCommitAttemptEntry> Entries { get; }
+
+        bool IEquatable<CommitAttempt<TCommitAttemptEntry>>.Equals(CommitAttempt<TCommitAttemptEntry> other)
+        {
+            return Equals(in other);
+        }
+
+        /// <inheritdoc cref="IEquatable{T}.Equals(T)"/>
+        public bool Equals(in CommitAttempt<TCommitAttemptEntry> other)
+        {
+            return Entries == other.Entries;
+        }
+
+        /// <inheritdoc />
+        public override bool Equals(object? obj)
+        {
+            return obj is CommitAttempt<TCommitAttemptEntry> commitAttempt && Equals(in commitAttempt);
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+            return Entries.GetHashCode();
+        }
 
         /// <summary>
-        /// Gets the value which uniquely identifies the stream to which the commit belongs.
+        /// Returns a boolean value indicating whether two commit-attempts are equal.
         /// </summary>
-        public string StreamId { get; }
-
-        ///// <summary>
-        ///// Gets the value which uniquely identifies the commit within the stream.
-        ///// </summary>
-        //public string ConcurrencyToken { get; }
+        /// <param name="left">The first <typeparamref name="TCommitAttemptEntry"/>.</param>
+        /// <param name="right">The second <typeparamref name="TCommitAttemptEntry"/>.</param>
+        /// <returns>True if <paramref name="left"/> equals <paramref name="right"/>, false otherwise.</returns>
+        public static bool operator ==(
+            in CommitAttempt<TCommitAttemptEntry> left, 
+            in CommitAttempt<TCommitAttemptEntry> right)
+        {
+            return left.Equals(in right);
+        }
 
         /// <summary>
-        /// Gets the value which indicates the sequence (or position) in the stream to which this commit applies.
+        /// Returns a boolean value indicating whether two commit-attempts are not equal.
         /// </summary>
-        public long StreamRevision { get; }
+        /// <param name="left">The first <typeparamref name="TCommitAttemptEntry"/>.</param>
+        /// <param name="right">The second <typeparamref name="TCommitAttemptEntry"/>.</param>
+        /// <returns>True if <paramref name="left"/> does not equal <paramref name="right"/>, false otherwise.</returns>
+        public static bool operator !=(
+            in CommitAttempt<TCommitAttemptEntry> left, 
+            in CommitAttempt<TCommitAttemptEntry> right)
+        {
+            return !left.Equals(in right);
+        }
+    }
+
+    /// <summary>
+    /// Defines constants for possible commit operations.
+    /// </summary>
+    public enum CommitOperation
+    {
+        /// <summary>
+        /// An entity is not modified. Only domain-events shall be appended.
+        /// </summary>
+        AppendEventsOnly = 0,
 
         /// <summary>
-        /// Gets the point in time at which the commit was persisted.
+        /// An entity shall be created or updated.
         /// </summary>
-        public DateTime CommitStamp { get; }
+        Store,
 
         /// <summary>
-        /// Gets the metadata which provides additional, unstructured information about this commit.
+        /// An entity shall be deleted.
         /// </summary>
-        public IReadOnlyDictionary<string, object> Headers { get; }
-
-        public object Body { get; }
-
-        /// <summary>
-        /// Gets the collection of event messages to be committed as a single unit.
-        /// </summary>
-        public IReadOnlyCollection<EventMessage> Events { get; }
+        Delete
     }
 }

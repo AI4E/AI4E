@@ -30,6 +30,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -48,7 +49,7 @@ namespace AI4E.Domain
 
         private readonly Lazy<ValueTask<T>> _aggregate;
 
-        private static string GetId(T aggregate)
+        private static string GetId([MaybeNull] T aggregate)
         {
             if (typeof(T).IsAssignableFrom(typeof(AggregateRootBase)))
             {
@@ -63,7 +64,7 @@ namespace AI4E.Domain
             return DataPropertyHelper.GetId(typeof(T), aggregate).ToString();
         }
 
-        private static long GetRevision(T aggregate)
+        private static long GetRevision([MaybeNull] T aggregate)
         {
             if (typeof(T).IsAssignableFrom(typeof(AggregateRootBase)))
             {
@@ -78,7 +79,7 @@ namespace AI4E.Domain
             return DataPropertyHelper.GetRevision(typeof(T), aggregate);
         }
 
-        public Snapshot(T aggregate)
+        public Snapshot([MaybeNull] T aggregate)
         {
             Id = GetId(aggregate);
             Revision = GetRevision(aggregate);

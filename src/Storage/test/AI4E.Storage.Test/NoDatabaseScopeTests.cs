@@ -27,8 +27,7 @@ namespace AI4E.Storage.Test
 
             var entries = await DatabaseScope.GetAsync<IdEntry>(p => p.Id == 1, cancellation: default).ToListAsync();
 
-            Assert.Single(entries);
-            Assert.Equal(entry1, entries.First());
+            Assert.Single(entries, entry1);
         }
 
         [Fact]
@@ -43,8 +42,7 @@ namespace AI4E.Storage.Test
             await DatabaseScope.RemoveAsync(entry2, cancellation: default);
             var entries = await DatabaseScope.GetAsync<IdEntry>(p => p.Id < 3, cancellation: default).ToListAsync();
 
-            Assert.Single(entries);
-            Assert.Equal(entry1, entries.First());
+            Assert.Single(entries, entry1);
         }
 
         [Fact]
@@ -57,8 +55,7 @@ namespace AI4E.Storage.Test
 
             var entries = await DatabaseScope.QueryAsync<IdEntry, IdEntry>(query => query.Where(p => p.Id == 1), cancellation: default).ToListAsync();
 
-            Assert.Single(entries);
-            Assert.Equal(entry1, entries.First());
+            Assert.Single(entries, entry1);
         }
 
         [Fact]
@@ -73,8 +70,7 @@ namespace AI4E.Storage.Test
             await DatabaseScope.RemoveAsync(entry2, cancellation: default);
             var entries = await DatabaseScope.QueryAsync<IdEntry, IdEntry>(query => query.Where(p => p.Id < 3), cancellation: default).ToListAsync();
 
-            Assert.Single(entries);
-            Assert.Equal(entry1, entries.First());
+            Assert.Single(entries, entry1);
         }
 
         [Fact]

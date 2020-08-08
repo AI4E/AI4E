@@ -1,8 +1,8 @@
-/* License
+﻿/* License
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -25,36 +25,70 @@ using System.Threading.Tasks;
 
 namespace AI4E.Storage.Domain
 {
-    public interface IEntityStorageEngine : IDisposable
+    /// <summary>
+    /// Represents the entity storage engine that is responsible for managing the underlying entity storage subsystem.
+    /// </summary>
+    public interface IEntityStorageEngine : IDisposable, IAsyncDisposable
     {
-        ValueTask<object> GetByIdAsync(Type entityType, string id, bool bypassCache, CancellationToken cancellation = default);
+        /// <summary>
+        /// Asynchronously loads the entity with the specified identifier.
+        /// </summary>
+        /// <param name="entityIdentifier">The entity identifier.</param>
+        /// <param name="bypassCache">A boolean value indicating whether the internal caches shall be by-passed.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{IEntityQueryResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the entity load-result that describes the load operation status 
+        /// and contains the entity on success.
+        /// </returns>
+        ValueTask<IEntityQueryResult> QueryEntityAsync(
+            EntityIdentifier entityIdentifier,
+            bool bypassCache,
+            CancellationToken cancellation = default);
 
-        ValueTask<object> GetByIdAsync(Type entityType, string id, long revision, CancellationToken cancellation = default);
+        /// <summary>
+        /// Asynchronously loads all entities of the specified type.
+        /// </summary>
+        /// <param name="entityType">The type of entity to load.</param>
+        /// <param name="bypassCache">A boolean value indicating whether the internal caches shall be by-passed.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// An <see cref="IAsyncEnumerable{ISuccessEntityLoadResult}"/> asynchronously enumerating the entity 
+        /// load-results of all entity of type <paramref name="entityType"/> that are available.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="entityType"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <paramref name="entityType"/> specifies a delegate type, a value-type,
+        /// an interface type or an open generic type definition.
+        /// </exception>
+        IAsyncEnumerable<IFoundEntityQueryResult> QueryEntitiesAsync(
+            Type entityType,
+            bool bypassCache,
+            CancellationToken cancellation = default);
 
-        ValueTask<long> GetRevisionAsync(Type entityType, string id, bool bypassCache, CancellationToken cancellation = default);
-
-        IAsyncEnumerable<object> GetAllAsync(Type entityType, CancellationToken cancellation = default);
-
-        IAsyncEnumerable<object> GetAllAsync(CancellationToken cancellation = default);
-
-        Task<bool> TryStoreAsync(Type entityType, object entity, CancellationToken cancellation = default);
-
-        Task<bool> TryStoreAsync(Type entityType, object entity, string id, CancellationToken cancellation = default);
-
-        Task<bool> TryDeleteAsync(Type entityType, object entity, CancellationToken cancellation = default);
-
-        Task<bool> TryDeleteAsync(Type entityType, object entity, string id, CancellationToken cancellation = default);
-
-        IEnumerable<(Type type, string id, long revision, object entity)> LoadedEntries { get; }
-
-        public ValueTask<object> GetByIdAsync(Type entityType, string id, CancellationToken cancellation = default)
-        {
-            return GetByIdAsync(entityType, id, bypassCache: false, cancellation);
-        }
-
-        public ValueTask<long> GetRevisionAsync(Type entityType, string id, CancellationToken cancellation = default)
-        {
-            return GetRevisionAsync(entityType, id, bypassCache: false, cancellation);
-        }
+        /// <summary>
+        /// Asynchronously commits the specified commit-attempt an dispatches all domain-events.
+        /// </summary>
+        /// <typeparam name="TCommitAttemptEntry">The type of commit-attempt entry.</typeparam>
+        /// <param name="commitAttempt">The <see cref="CommitAttempt{TCommitAttemptEntry}"/> to commit.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{EntityCommitResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the commit result indicating commit success 
+        /// or failure information.
+        /// </returns>
+        ValueTask<EntityCommitResult> CommitAsync<TCommitAttemptEntry>(
+            CommitAttempt<TCommitAttemptEntry> commitAttempt,
+            CancellationToken cancellation = default)
+            where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>;
     }
 }
