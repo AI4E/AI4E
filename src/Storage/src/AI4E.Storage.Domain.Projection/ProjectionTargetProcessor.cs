@@ -665,7 +665,7 @@ namespace AI4E.Storage.Domain.Projection
         }
 
 
-        public DependencyEntry(in ProjectionSourceDependency descriptor)
+        public DependencyEntry(in EntityDependency descriptor)
         {
             Id = descriptor.Dependency.EntityId;
             Type = descriptor.Dependency.EntityType.GetUnqualifiedTypeName();
@@ -677,9 +677,9 @@ namespace AI4E.Storage.Domain.Projection
 
         public long ProjectionRevision { get; set; }
 
-        public ProjectionSourceDependency ToDescriptor()
+        public EntityDependency ToDescriptor()
         {
-            return new ProjectionSourceDependency(
+            return new EntityDependency(
                 new EntityIdentifier(TypeResolver.Default.ResolveType(Type.AsSpan()), Id),
                 ProjectionRevision);
         }

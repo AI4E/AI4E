@@ -23,33 +23,33 @@ using System;
 namespace AI4E.Storage.Domain.Projection
 {
     /// <summary>
-    /// Describes a projection's source dependency.
+    /// Describes an entity's dependency.
     /// </summary>
-    public readonly struct ProjectionSourceDependency : IEquatable<ProjectionSourceDependency>
+    public readonly struct EntityDependency : IEquatable<EntityDependency>
     {
         /// <summary>
-        /// Creates a new instance of the <see cref="ProjectionSourceDependency"/> type.
+        /// Creates a new instance of the <see cref="EntityDependency"/> type.
         /// </summary>
-        /// <param name="sourceType">The type of the projection source.</param>
-        /// <param name="sourceId">The id of the projection source.</param>
+        /// <param name="entityType">The type of the projection source.</param>
+        /// <param name="entityId">The id of the projection source.</param>
         /// <param name="projectionRevision">The revision of the source that the projection is based on.</param>
         ///  <exception cref="ArgumentNullException">
-        /// Thrown if either <paramref name="sourceType"/> or <paramref name="sourceId"/> is <c>null</c>.
+        /// Thrown if either <paramref name="entityType"/> or <paramref name="entityId"/> is <c>null</c>.
         /// </exception>
-        /// <exception cref="ArgumentException">Thrown if <paramref name="sourceId"/> is empty or consists of whitespace only.</exception>
+        /// <exception cref="ArgumentException">Thrown if <paramref name="entityId"/> is empty or consists of whitespace only.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="projectionRevision"/> is negative.</exception>
-        public ProjectionSourceDependency(Type sourceType, string sourceId, long projectionRevision)
-            : this(new EntityIdentifier(sourceType, sourceId), projectionRevision)
+        public EntityDependency(Type entityType, string entityId, long projectionRevision)
+            : this(new EntityIdentifier(entityType, entityId), projectionRevision)
         { }
 
         /// <summary>
-        /// Creates a new instance of the <see cref="ProjectionSourceDependency"/> type.
+        /// Creates a new instance of the <see cref="EntityDependency"/> type.
         /// </summary>
         /// <param name="dependency">A <see cref="EntityIdentifier"/> representing the projection source.</param>
         /// <param name="projectionRevision">The revision of the source that the projection is based on.</param>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="dependency"/> is <c>default</c>.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="projectionRevision"/> is negative.</exception>
-        public ProjectionSourceDependency(in EntityIdentifier dependency, long projectionRevision)
+        public EntityDependency(in EntityIdentifier dependency, long projectionRevision)
         {
             if (dependency == default)
                 throw new ArgumentDefaultException(nameof(dependency));
@@ -72,7 +72,7 @@ namespace AI4E.Storage.Domain.Projection
         public long ProjectionRevision { get; }
 
         /// <inheritdoc/>
-        public bool Equals(ProjectionSourceDependency other)
+        public bool Equals(EntityDependency other)
         {
             return (Dependency, ProjectionRevision) == (other.Dependency, other.ProjectionRevision);
         }
@@ -80,7 +80,7 @@ namespace AI4E.Storage.Domain.Projection
         /// <inheritdoc/>
         public override bool Equals(object obj)
         {
-            return obj is ProjectionSourceDependency projectionSourceDependency
+            return obj is EntityDependency projectionSourceDependency
                 && Equals(projectionSourceDependency);
         }
 
@@ -91,23 +91,23 @@ namespace AI4E.Storage.Domain.Projection
         }
 
         /// <summary>
-        /// Checks two instances of <see cref="ProjectionSourceDependency"/> to be equal.
+        /// Checks two instances of <see cref="EntityDependency"/> to be equal.
         /// </summary>
         /// <param name="left">The first value.</param>
         /// <param name="right">The second value.</param>
         /// <returns>True if <paramref name="left"/> equals <paramref name="right"/>, false otherwise.</returns>
-        public static bool operator ==(in ProjectionSourceDependency left, in ProjectionSourceDependency right)
+        public static bool operator ==(in EntityDependency left, in EntityDependency right)
         {
             return left.Equals(right);
         }
 
         /// <summary>
-        /// Checks two instances of <see cref="ProjectionSourceDependency"/> to be non-equal.
+        /// Checks two instances of <see cref="EntityDependency"/> to be non-equal.
         /// </summary>
         /// <param name="left">The first value.</param>
         /// <param name="right">The second value.</param>
         /// <returns>True if <paramref name="left"/> does not equal <paramref name="right"/>, false otherwise.</returns>
-        public static bool operator !=(in ProjectionSourceDependency left, in ProjectionSourceDependency right)
+        public static bool operator !=(in EntityDependency left, in EntityDependency right)
         {
             return !left.Equals(right);
         }

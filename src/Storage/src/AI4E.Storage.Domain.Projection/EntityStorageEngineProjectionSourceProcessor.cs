@@ -46,9 +46,9 @@ namespace AI4E.Storage.Domain.Projection
 
         public EntityIdentifier ProjectedSource { get; }
 
-        public IEnumerable<ProjectionSourceDependency> Dependencies => _entityStorage
+        public IEnumerable<EntityDependency> Dependencies => _entityStorage
             .LoadedEntities
-            .Select(p => new ProjectionSourceDependency(
+            .Select(p => new EntityDependency(
                 p.EntityIdentifier.EntityType, p.EntityIdentifier.EntityId, p.Revision))
             .Where(p => p.Dependency != ProjectedSource)
             .ToImmutableList();

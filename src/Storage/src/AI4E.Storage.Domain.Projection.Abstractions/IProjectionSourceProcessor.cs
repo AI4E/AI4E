@@ -71,7 +71,7 @@ namespace AI4E.Storage.Domain.Projection
         /// <summary>
         /// Gets the dependencies of the projected source.
         /// </summary>
-        IEnumerable<ProjectionSourceDependency> Dependencies { get; }
+        IEnumerable<EntityDependency> Dependencies { get; }
     }
 
     /// <summary>

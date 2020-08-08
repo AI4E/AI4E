@@ -29,7 +29,7 @@ namespace AI4E.Storage.Domain.Projection
     /// </summary>
     public readonly struct ProjectionMetadata
     {
-        private readonly ImmutableList<ProjectionSourceDependency> _dependencies;
+        private readonly ImmutableList<EntityDependency> _dependencies;
         private readonly ImmutableList<ProjectionTargetDescriptor> _targets;
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace AI4E.Storage.Domain.Projection
         /// Thrown if <paramref name="projectionRevision"/> is negative.
         /// </exception>
         public ProjectionMetadata(
-            IEnumerable<ProjectionSourceDependency> dependencies,
+            IEnumerable<EntityDependency> dependencies,
             IEnumerable<ProjectionTargetDescriptor> targets,
             long projectionRevision)
         {
@@ -58,7 +58,7 @@ namespace AI4E.Storage.Domain.Projection
             if (projectionRevision < 0)
                 throw new ArgumentOutOfRangeException(nameof(projectionRevision));
 
-            _dependencies = (dependencies as ImmutableList<ProjectionSourceDependency>) ?? dependencies.ToImmutableList();
+            _dependencies = (dependencies as ImmutableList<EntityDependency>) ?? dependencies.ToImmutableList();
             _targets = (targets as ImmutableList<ProjectionTargetDescriptor>) ?? targets.ToImmutableList();
             ProjectionRevision = projectionRevision;
         }
@@ -66,8 +66,8 @@ namespace AI4E.Storage.Domain.Projection
         /// <summary>
         /// Gets the projection dependencies.
         /// </summary>
-        public IReadOnlyCollection<ProjectionSourceDependency> Dependencies
-            => _dependencies ?? ImmutableList<ProjectionSourceDependency>.Empty;
+        public IReadOnlyCollection<EntityDependency> Dependencies
+            => _dependencies ?? ImmutableList<EntityDependency>.Empty;
 
         /// <summary>
         /// Gets projection targets.
