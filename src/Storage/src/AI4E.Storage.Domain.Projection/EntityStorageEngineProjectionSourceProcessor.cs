@@ -35,7 +35,7 @@ namespace AI4E.Storage.Domain.Projection
 
         public EntityStorageEngineProjectionSourceProcessor(
             IEntityStorage entityStorage,
-            ProjectionSourceDescriptor projectedSource)
+            EntityIdentifier projectedSource)
         {
             if (entityStorage == null)
                 throw new ArgumentNullException(nameof(entityStorage));
@@ -44,7 +44,7 @@ namespace AI4E.Storage.Domain.Projection
             ProjectedSource = projectedSource;
         }
 
-        public ProjectionSourceDescriptor ProjectedSource { get; }
+        public EntityIdentifier ProjectedSource { get; }
 
         public IEnumerable<ProjectionSourceDependency> Dependencies => _entityStorage
             .LoadedEntities
@@ -54,12 +54,12 @@ namespace AI4E.Storage.Domain.Projection
             .ToImmutableList();
 
         public async ValueTask<object?> GetSourceAsync(
-            ProjectionSourceDescriptor projectionSource,
+            EntityIdentifier projectionSource,
             CancellationToken cancellation)
         {
             var entityLoadResult = await _entityStorage.LoadEntityAsync(
                 new EntityIdentifier(
-                    projectionSource.SourceType, projectionSource.SourceId), cancellation).ConfigureAwait(false);
+                    projectionSource.EntityType, projectionSource.EntityId), cancellation).ConfigureAwait(false);
 
             return entityLoadResult?.GetEntity(throwOnFailure: false);
         }
@@ -68,11 +68,11 @@ namespace AI4E.Storage.Domain.Projection
             = ObjectPool.Create<ExpectedRevisionDomainQueryProcessor>();
 
         public async ValueTask<long> GetSourceRevisionAsync(
-            ProjectionSourceDescriptor projectionSource,
+            EntityIdentifier projectionSource,
             long? expectedMinRevision,
             CancellationToken cancellation)
         {
-            var entityIdentifier = new EntityIdentifier(projectionSource.SourceType, projectionSource.SourceId);
+            var entityIdentifier = new EntityIdentifier(projectionSource.EntityType, projectionSource.EntityId);
 
             using (_domainQueryProcessorPool.Get(out var domainQueryProcessor))
             {
@@ -90,7 +90,7 @@ namespace AI4E.Storage.Domain.Projection
     public sealed class EntityStorageEngineProjectionSourceProcessorFactory : IProjectionSourceProcessorFactory
     {
         public IProjectionSourceProcessor CreateInstance(
-            ProjectionSourceDescriptor projectedSource,
+            EntityIdentifier projectedSource,
             IServiceProvider serviceProvider)
         {
             return ActivatorUtilities.CreateInstance<EntityStorageEngineProjectionSourceProcessor>(

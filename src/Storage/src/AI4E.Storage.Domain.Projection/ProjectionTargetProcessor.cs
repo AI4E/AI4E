@@ -44,7 +44,7 @@ namespace AI4E.Storage.Domain.Projection
 
         private readonly IDatabase _database;
 
-        private readonly MetadataCache<ProjectionSourceDescriptor, ProjectionSourceMetadataEntry> _sourceMetadataCache;
+        private readonly MetadataCache<EntityIdentifier, ProjectionSourceMetadataEntry> _sourceMetadataCache;
         private readonly MetadataCache<ProjectionTargetDescriptor, ProjectionTargetMetadataEntry> _targetMetadataCache;
 
         private readonly Dictionary<ProjectionTargetDescriptor, object> _targetsToUpdate
@@ -63,7 +63,7 @@ namespace AI4E.Storage.Domain.Projection
         /// <param name="database">The database that the targets and metadata shall be stored in.</param>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="projectedSource"/> is <c>default</c>.</exception>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="database"/> is <c>null</c>.</exception>
-        public ProjectionTargetProcessor(ProjectionSourceDescriptor projectedSource, IDatabase database)
+        public ProjectionTargetProcessor(EntityIdentifier projectedSource, IDatabase database)
         {
             if (projectedSource == default)
                 throw new ArgumentDefaultException(nameof(projectedSource));
@@ -71,7 +71,7 @@ namespace AI4E.Storage.Domain.Projection
             if (database is null)
                 throw new ArgumentNullException(nameof(database));
 
-            _sourceMetadataCache = new MetadataCache<ProjectionSourceDescriptor, ProjectionSourceMetadataEntry>(
+            _sourceMetadataCache = new MetadataCache<EntityIdentifier, ProjectionSourceMetadataEntry>(
                 database,
                 ProjectionSourceMetadataEntry.GetDescriptor,
                 BuildQuery);
@@ -85,11 +85,11 @@ namespace AI4E.Storage.Domain.Projection
             _database = database;
         }
 
-        private static Expression<Func<ProjectionSourceMetadataEntry, bool>> BuildQuery(ProjectionSourceDescriptor source)
+        private static Expression<Func<ProjectionSourceMetadataEntry, bool>> BuildQuery(EntityIdentifier source)
         {
             var entryId = ProjectionSourceMetadataEntry.GenerateId(
-                source.SourceId,
-                source.SourceType.GetUnqualifiedTypeName());
+                source.EntityId,
+                source.EntityType.GetUnqualifiedTypeName());
 
             return p => p.Id == entryId;
         }
@@ -108,15 +108,15 @@ namespace AI4E.Storage.Domain.Projection
         #region ISourceMetadataCache
 
         /// <inheritdoc/>
-        public ProjectionSourceDescriptor ProjectedSource { get; }
+        public EntityIdentifier ProjectedSource { get; }
 
         /// <inheritdoc/>
-        public async ValueTask<IEnumerable<ProjectionSourceDescriptor>> GetDependentsAsync(CancellationToken cancellation)
+        public async ValueTask<IEnumerable<EntityIdentifier>> GetDependentsAsync(CancellationToken cancellation)
         {
             var entry = await _sourceMetadataCache.GetEntryAsync(ProjectedSource, cancellation).ConfigureAwait(false);
 
             return entry == null
-                ? Enumerable.Empty<ProjectionSourceDescriptor>()
+                ? Enumerable.Empty<EntityIdentifier>()
                 : entry.Dependents.Select(p => p.ToDescriptor()).ToImmutableList();
         }
 
@@ -136,8 +136,8 @@ namespace AI4E.Storage.Domain.Projection
         {
             var entry = await _sourceMetadataCache.GetEntryAsync(ProjectedSource, cancellation).ConfigureAwait(false) ??
                         new ProjectionSourceMetadataEntry(
-                            ProjectedSource.SourceId,
-                            ProjectedSource.SourceType.GetUnqualifiedTypeName());
+                            ProjectedSource.EntityId,
+                            ProjectedSource.EntityType.GetUnqualifiedTypeName());
 
             // Write the new source revision to the metadata
             entry.ProjectionRevision = metadata.ProjectionRevision;
@@ -164,8 +164,8 @@ namespace AI4E.Storage.Domain.Projection
                     .GetEntryAsync(dependency, cancellation)
                     .ConfigureAwait(false)
                     ?? new ProjectionSourceMetadataEntry(
-                        dependency.SourceId,
-                        dependency.SourceType.GetUnqualifiedTypeName());
+                        dependency.EntityId,
+                        dependency.EntityType.GetUnqualifiedTypeName());
 
                 dependencyEntry.Dependents.Add(new DependentEntry(ProjectedSource));
                 await _sourceMetadataCache.UpdateEntryAsync(dependencyEntry, cancellation).ConfigureAwait(false);
@@ -178,8 +178,8 @@ namespace AI4E.Storage.Domain.Projection
                     .GetEntryAsync(dependency, cancellation)
                     .ConfigureAwait(false)
                     ?? new ProjectionSourceMetadataEntry(
-                        dependency.SourceId,
-                        dependency.SourceType.GetUnqualifiedTypeName());
+                        dependency.EntityId,
+                        dependency.EntityType.GetUnqualifiedTypeName());
 
                 var removed = dependencyEntry.Dependents.Remove(new DependentEntry(ProjectedSource));
 
@@ -344,8 +344,8 @@ namespace AI4E.Storage.Domain.Projection
             }
 
             var removed = entry.ProjectionSources
-                                  .RemoveFirstWhere(p => p.Id == ProjectedSource.SourceId &&
-                                                         p.Type == ProjectedSource.SourceType.GetUnqualifiedTypeName());
+                                  .RemoveFirstWhere(p => p.Id == ProjectedSource.EntityId &&
+                                                         p.Type == ProjectedSource.EntityType.GetUnqualifiedTypeName());
 
             if (!entry.ProjectionSources.Any())
             {
@@ -470,7 +470,7 @@ namespace AI4E.Storage.Domain.Projection
     public sealed class ProjectionTargetProcessorFactory : IProjectionTargetProcessorFactory
     {
         /// <inheritdoc/>
-        public IProjectionTargetProcessor CreateInstance(ProjectionSourceDescriptor projectedSource, IServiceProvider serviceProvider)
+        public IProjectionTargetProcessor CreateInstance(EntityIdentifier projectedSource, IServiceProvider serviceProvider)
         {
             var database = serviceProvider.GetRequiredService<IDatabase>();
 
@@ -543,18 +543,18 @@ namespace AI4E.Storage.Domain.Projection
     {
         public ProjectionSourceEntry() { }
 
-        public ProjectionSourceEntry(ProjectionSourceDescriptor source)
+        public ProjectionSourceEntry(EntityIdentifier source)
         {
-            Id = source.SourceId;
-            Type = source.SourceType.ToString();
+            Id = source.EntityId;
+            Type = source.EntityType.ToString();
         }
 
         public string Id { get; set; }
         public string Type { get; set; }
 
-        public ProjectionSourceDescriptor ToDescriptor()
+        public EntityIdentifier ToDescriptor()
         {
-            return new ProjectionSourceDescriptor(TypeResolver.Default.ResolveType(Type.AsSpan()), Id);
+            return new EntityIdentifier(TypeResolver.Default.ResolveType(Type.AsSpan()), Id);
         }
     }
 
@@ -608,9 +608,9 @@ namespace AI4E.Storage.Domain.Projection
                 ProjectionRevision);
         }
 
-        public static ProjectionSourceDescriptor GetDescriptor(ProjectionSourceMetadataEntry entry)
+        public static EntityIdentifier GetDescriptor(ProjectionSourceMetadataEntry entry)
         {
-            return new ProjectionSourceDescriptor(TypeResolver.Default.ResolveType(entry.SourceType.AsSpan()), entry.SourceId);
+            return new EntityIdentifier(TypeResolver.Default.ResolveType(entry.SourceType.AsSpan()), entry.SourceId);
         }
 
         public static bool MatchesByRevision(ProjectionSourceMetadataEntry original, ProjectionSourceMetadataEntry comparand)
@@ -654,21 +654,21 @@ namespace AI4E.Storage.Domain.Projection
             Id = Type = string.Empty;
         }
 
-        public DependencyEntry(in ProjectionSourceDescriptor dependency, long projectionRevision)
+        public DependencyEntry(in EntityIdentifier dependency, long projectionRevision)
         {
             if (projectionRevision < 0)
                 throw new ArgumentOutOfRangeException(nameof(projectionRevision));
 
-            Id = dependency.SourceId;
-            Type = dependency.SourceType.GetUnqualifiedTypeName();
+            Id = dependency.EntityId;
+            Type = dependency.EntityType.GetUnqualifiedTypeName();
             ProjectionRevision = projectionRevision;
         }
 
 
         public DependencyEntry(in ProjectionSourceDependency descriptor)
         {
-            Id = descriptor.Dependency.SourceId;
-            Type = descriptor.Dependency.SourceType.GetUnqualifiedTypeName();
+            Id = descriptor.Dependency.EntityId;
+            Type = descriptor.Dependency.EntityType.GetUnqualifiedTypeName();
             ProjectionRevision = descriptor.ProjectionRevision;
         }
 
@@ -680,7 +680,7 @@ namespace AI4E.Storage.Domain.Projection
         public ProjectionSourceDependency ToDescriptor()
         {
             return new ProjectionSourceDependency(
-                new ProjectionSourceDescriptor(TypeResolver.Default.ResolveType(Type.AsSpan()), Id),
+                new EntityIdentifier(TypeResolver.Default.ResolveType(Type.AsSpan()), Id),
                 ProjectionRevision);
         }
     }
@@ -692,18 +692,18 @@ namespace AI4E.Storage.Domain.Projection
             Id = Type = string.Empty;
         }
 
-        public DependentEntry(in ProjectionSourceDescriptor descriptor)
+        public DependentEntry(in EntityIdentifier descriptor)
         {
-            Id = descriptor.SourceId;
-            Type = descriptor.SourceType.GetUnqualifiedTypeName();
+            Id = descriptor.EntityId;
+            Type = descriptor.EntityType.GetUnqualifiedTypeName();
         }
 
         public string Id { get; set; }
         public string Type { get; set; }
 
-        internal ProjectionSourceDescriptor ToDescriptor()
+        internal EntityIdentifier ToDescriptor()
         {
-            return new ProjectionSourceDescriptor(TypeResolver.Default.ResolveType(Type.AsSpan()), Id);
+            return new EntityIdentifier(TypeResolver.Default.ResolveType(Type.AsSpan()), Id);
         }
     }
 }

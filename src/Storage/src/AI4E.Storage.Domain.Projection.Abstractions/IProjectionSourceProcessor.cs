@@ -33,7 +33,7 @@ namespace AI4E.Storage.Domain.Projection
         /// <summary>
         /// Gets a descriptor for the projected source.
         /// </summary>
-        ProjectionSourceDescriptor ProjectedSource { get; }
+        EntityIdentifier ProjectedSource { get; }
 
         /// <summary>
         /// Asynchronously retrieves a projection source.
@@ -48,7 +48,7 @@ namespace AI4E.Storage.Domain.Projection
         /// </returns>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="projectionSource"/> is <c>default.</c></exception>
         ValueTask<object?> GetSourceAsync(
-            ProjectionSourceDescriptor projectionSource,
+            EntityIdentifier projectionSource,
             CancellationToken cancellation = default);
 
         /// <summary>
@@ -64,7 +64,7 @@ namespace AI4E.Storage.Domain.Projection
         /// </returns>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="projectionSource"/> is <c>default.</c></exception>
         ValueTask<long> GetSourceRevisionAsync(
-            ProjectionSourceDescriptor projectionSource,
+            EntityIdentifier projectionSource,
             long? expectedMinRevision = default,
             CancellationToken cancellation = default);
 
@@ -87,6 +87,6 @@ namespace AI4E.Storage.Domain.Projection
         /// <returns>The created instance of type <see cref="IProjectionSourceProcessor"/>.</returns>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="projectedSource"/> is <c>default</c>.</exception>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is <c>null</c>.</exception>
-        IProjectionSourceProcessor CreateInstance(ProjectionSourceDescriptor projectedSource, IServiceProvider serviceProvider);
+        IProjectionSourceProcessor CreateInstance(EntityIdentifier projectedSource, IServiceProvider serviceProvider);
     }
 }

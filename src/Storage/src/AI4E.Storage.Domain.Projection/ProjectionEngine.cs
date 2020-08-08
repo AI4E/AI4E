@@ -91,12 +91,12 @@ namespace AI4E.Storage.Domain.Projection
             if (id == null)
                 throw new ArgumentNullException(nameof(id));
 
-            var processedSources = new HashSet<ProjectionSourceDescriptor>();
-            return ProjectAsync(new ProjectionSourceDescriptor(sourceType, id), processedSources, cancellation);
+            var processedSources = new HashSet<EntityIdentifier>();
+            return ProjectAsync(new EntityIdentifier(sourceType, id), processedSources, cancellation);
         }
 
-        private async Task ProjectAsync(ProjectionSourceDescriptor source,
-                                        ISet<ProjectionSourceDescriptor> processedSources,
+        private async Task ProjectAsync(EntityIdentifier source,
+                                        ISet<EntityIdentifier> processedSources,
                                         CancellationToken cancellation)
         {
             if (processedSources.Contains(source))
@@ -115,11 +115,11 @@ namespace AI4E.Storage.Domain.Projection
             }
         }
 
-        private async Task<IEnumerable<ProjectionSourceDescriptor>> ProjectAsync(
+        private async Task<IEnumerable<EntityIdentifier>> ProjectAsync(
             IProjectionTargetProcessor targetProcessor,
             CancellationToken cancellation)
         {
-            IEnumerable<ProjectionSourceDescriptor> dependents;
+            IEnumerable<EntityIdentifier> dependents;
 
             do
             {
@@ -150,7 +150,7 @@ namespace AI4E.Storage.Domain.Projection
                 targetProcessor.ProjectedSource, expectedMinRevision: default, cancellation);
 
             var projectionResults = _projector.ExecuteProjectionAsync(
-                targetProcessor.ProjectedSource.SourceType, source, scopedServiceProvider, cancellation);
+                targetProcessor.ProjectedSource.EntityType, source, scopedServiceProvider, cancellation);
 
             var metadata = await targetProcessor.GetMetadataAsync(cancellation);
             var appliedTargets = metadata.Targets.ToHashSet();

@@ -33,7 +33,7 @@ namespace AI4E.Storage.Domain.Projection
         /// <summary>
         /// Gets a descriptor for the projected source.
         /// </summary>
-        ProjectionSourceDescriptor ProjectedSource { get; }
+        EntityIdentifier ProjectedSource { get; }
 
         /// <summary>
         /// Asynchronously retrieves a collection of projection sources that are dependents of the projected source.
@@ -45,7 +45,7 @@ namespace AI4E.Storage.Domain.Projection
         /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
         /// When evaluated, the tasks result contains the collection of dependents.
         /// </returns>
-        ValueTask<IEnumerable<ProjectionSourceDescriptor>> GetDependentsAsync(CancellationToken cancellation = default);
+        ValueTask<IEnumerable<EntityIdentifier>> GetDependentsAsync(CancellationToken cancellation = default);
 
         /// <summary>
         /// Asynchronously retrieves the metadata of the projection.
@@ -132,6 +132,6 @@ namespace AI4E.Storage.Domain.Projection
         /// <returns>The created instance of type <see cref="IProjectionTargetProcessor"/>.</returns>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="projectedSource"/> is <c>default</c>.</exception>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="serviceProvider"/> is <c>null</c>.</exception>
-        IProjectionTargetProcessor CreateInstance(ProjectionSourceDescriptor projectedSource, IServiceProvider serviceProvider);
+        IProjectionTargetProcessor CreateInstance(EntityIdentifier projectedSource, IServiceProvider serviceProvider);
     }
 }

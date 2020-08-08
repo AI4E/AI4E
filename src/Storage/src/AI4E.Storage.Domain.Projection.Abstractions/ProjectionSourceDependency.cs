@@ -39,17 +39,17 @@ namespace AI4E.Storage.Domain.Projection
         /// <exception cref="ArgumentException">Thrown if <paramref name="sourceId"/> is empty or consists of whitespace only.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="projectionRevision"/> is negative.</exception>
         public ProjectionSourceDependency(Type sourceType, string sourceId, long projectionRevision)
-            : this(new ProjectionSourceDescriptor(sourceType, sourceId), projectionRevision)
+            : this(new EntityIdentifier(sourceType, sourceId), projectionRevision)
         { }
 
         /// <summary>
         /// Creates a new instance of the <see cref="ProjectionSourceDependency"/> type.
         /// </summary>
-        /// <param name="dependency">A <see cref="ProjectionSourceDescriptor"/> representing the projection source.</param>
+        /// <param name="dependency">A <see cref="EntityIdentifier"/> representing the projection source.</param>
         /// <param name="projectionRevision">The revision of the source that the projection is based on.</param>
         /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="dependency"/> is <c>default</c>.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="projectionRevision"/> is negative.</exception>
-        public ProjectionSourceDependency(in ProjectionSourceDescriptor dependency, long projectionRevision)
+        public ProjectionSourceDependency(in EntityIdentifier dependency, long projectionRevision)
         {
             if (dependency == default)
                 throw new ArgumentDefaultException(nameof(dependency));
@@ -64,7 +64,7 @@ namespace AI4E.Storage.Domain.Projection
         /// <summary>
         /// Gets a descriptor for the dependency's projection source.
         /// </summary>
-        public ProjectionSourceDescriptor Dependency { get; }
+        public EntityIdentifier Dependency { get; }
 
         /// <summary>
         /// Gets the revision of the source that the projection is based on.
