@@ -48,7 +48,8 @@ namespace AI4E.Messaging
             Debug.Assert(typeof(IMessageProcessor).IsAssignableFrom(messageProcessorType));
 
             MessageProcessorType = messageProcessorType!;
-            _factory = serviceProvider => (IMessageProcessor)ActivatorUtilities.CreateInstance(serviceProvider, messageProcessorType);
+            _factory = serviceProvider => (IMessageProcessor)ActivatorUtilities.CreateInstance(
+                serviceProvider, messageProcessorType);
             Dependency = dependency;
         }
 

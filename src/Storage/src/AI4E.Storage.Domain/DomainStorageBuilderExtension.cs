@@ -53,5 +53,45 @@ namespace AI4E.Storage.Domain
 
             return builder;
         }
+
+        public static IDomainStorageBuilder ConfigureCommitAttemptProccessors(
+            this IDomainStorageBuilder builder,
+            Action<ICommitAttemptProcessorRegistry, IServiceProvider> configuration)
+        {
+            if (builder is null)
+                throw new ArgumentNullException(nameof(builder));
+
+            ICommitAttemptProcessorRegistry Decorator(
+                ICommitAttemptProcessorRegistry registry,
+                IServiceProvider serviceProvider)
+            {
+                configuration(registry, serviceProvider);
+                return registry;
+            }
+
+            builder.Services.Decorate<ICommitAttemptProcessorRegistry>(Decorator);
+
+            return builder;
+        }
+
+        public static IDomainStorageBuilder ConfigureCommitAttemptProccessors(
+            this IDomainStorageBuilder builder,
+            Action<ICommitAttemptProcessorRegistry> configuration)
+        {
+            if (builder is null)
+                throw new ArgumentNullException(nameof(builder));
+
+            ICommitAttemptProcessorRegistry Decorator(
+                ICommitAttemptProcessorRegistry registry,
+                IServiceProvider serviceProvider)
+            {
+                configuration(registry);
+                return registry;
+            }
+
+            builder.Services.Decorate<ICommitAttemptProcessorRegistry>(Decorator);
+
+            return builder;
+        }
     }
 }

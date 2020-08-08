@@ -24,9 +24,10 @@ using AI4E.Storage.Domain.Specification.TestTypes;
 using Moq;
 using Xunit;
 using UnitOfWork = AI4E.Storage.Domain.Tracking.UnitOfWork<AI4E.Storage.Domain.IEntityLoadResult>;
-using CommitAttemptEntry = AI4E.Storage.Domain.Tracking.CommitAttemptEntry<AI4E.Storage.Domain.IEntityLoadResult>;
 using System.Linq;
 using System.Threading;
+using Microsoft.Extensions.DependencyInjection;
+using TestCommitAttemptEntry = AI4E.Storage.Domain.Tracking.CommitAttemptEntry<AI4E.Storage.Domain.IEntityLoadResult>;
 
 namespace AI4E.Storage.Domain.Test
 {
@@ -517,11 +518,56 @@ namespace AI4E.Storage.Domain.Test
             // Act
             async Task ActAsync()
             {
-                await subject.CommitAsync(storageEngine: null);
+                await subject.CommitAsync(
+                    storageEngine: null, 
+                    new CommitAttemptProcessingQueue(),
+                    new ServiceCollection().BuildServiceProvider());
             }
 
             // Assert
             await Assert.ThrowsAsync<ArgumentNullException>("storageEngine", ActAsync);
+        }
+
+        [Fact]
+        public async Task CommitAsyncNullProcessingQueueThrowsArgumentNullExceptionTest()
+        {
+            // Arrange
+            var storageEngineMock = new Mock<IEntityStorageEngine>();
+            var storageEngine = storageEngineMock.Object;
+            var subject = CreateUnitOfWork();
+
+            // Act
+            async Task ActAsync()
+            {
+                await subject.CommitAsync(
+                    storageEngine,
+                    processingQueue: null,
+                    new ServiceCollection().BuildServiceProvider());
+            }
+
+            // Assert
+            await Assert.ThrowsAsync<ArgumentNullException>("processingQueue", ActAsync);
+        }
+
+        [Fact]
+        public async Task CommitAsyncNullServiceProviderThrowsArgumentNullExceptionTest()
+        {
+            // Arrange
+            var storageEngineMock = new Mock<IEntityStorageEngine>();
+            var storageEngine = storageEngineMock.Object;
+            var subject = CreateUnitOfWork();
+
+            // Act
+            async Task ActAsync()
+            {
+                await subject.CommitAsync(
+                    storageEngine,
+                    new CommitAttemptProcessingQueue(),
+                    serviceProvider: null);
+            }
+
+            // Assert
+            await Assert.ThrowsAsync<ArgumentNullException>("serviceProvider", ActAsync);
         }
 
         [Fact]
@@ -532,11 +578,14 @@ namespace AI4E.Storage.Domain.Test
 
             var storageEngineMock = new Mock<IEntityStorageEngine>();
             storageEngineMock.Setup(
-                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<CommitAttemptEntry>>(), default))
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
 
-            await subject.CommitAsync(storageEngine);
+            await subject.CommitAsync(
+                    storageEngine,
+                    new CommitAttemptProcessingQueue(),
+                    new ServiceCollection().BuildServiceProvider());
 
             // Act
             var entries = subject.Entries;
@@ -555,12 +604,15 @@ namespace AI4E.Storage.Domain.Test
 
             var storageEngineMock = new Mock<IEntityStorageEngine>();
             storageEngineMock.Setup(
-                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<CommitAttemptEntry>>(), default))
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
                 .ReturnsAsync(expectedCommitResult);
             var storageEngine = storageEngineMock.Object;
 
             // Act
-            var commitResult = await subject.CommitAsync(storageEngine);
+            var commitResult = await subject.CommitAsync(
+                storageEngine,
+                    new CommitAttemptProcessingQueue(),
+                    new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(expectedCommitResult, commitResult);
@@ -579,16 +631,19 @@ namespace AI4E.Storage.Domain.Test
             subject.GetOrUpdate(EntityLoadResult5);
 
             var storageEngineMock = new Mock<IEntityStorageEngine>();
-            CommitAttempt<CommitAttemptEntry> storedCommitAttempt;
+            CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<CommitAttemptEntry>>(), default))
-                .Callback<CommitAttempt<CommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
 
             // Act
-            await subject.CommitAsync(storageEngine);
+            await subject.CommitAsync(
+                    storageEngine,
+                    new CommitAttemptProcessingQueue(),
+                    new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(4, storedCommitAttempt.Entries.Count);
@@ -602,16 +657,19 @@ namespace AI4E.Storage.Domain.Test
             subject.GetOrUpdate(EntityLoadResult1).Delete(DomainEventCollection1);
 
             var storageEngineMock = new Mock<IEntityStorageEngine>();
-            CommitAttempt<CommitAttemptEntry> storedCommitAttempt;
+            CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<CommitAttemptEntry>>(), default))
-                .Callback<CommitAttempt<CommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
 
             // Act
-            await subject.CommitAsync(storageEngine);
+            await subject.CommitAsync(
+                    storageEngine,
+                    new CommitAttemptProcessingQueue(),
+                    new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(EntityIdentifier1, storedCommitAttempt.Entries.First().EntityIdentifier);
@@ -628,16 +686,19 @@ namespace AI4E.Storage.Domain.Test
             entryShaper(subject);
 
             var storageEngineMock = new Mock<IEntityStorageEngine>();
-            CommitAttempt<CommitAttemptEntry> storedCommitAttempt;
+            CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<CommitAttemptEntry>>(), default))
-                .Callback<CommitAttempt<CommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
 
             // Act
-            await subject.CommitAsync(storageEngine);
+            await subject.CommitAsync(
+                    storageEngine,
+                    new CommitAttemptProcessingQueue(),
+                    new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(commitOperation, storedCommitAttempt.Entries.First().Operation);
@@ -663,16 +724,19 @@ namespace AI4E.Storage.Domain.Test
             var entry = subject.GetOrUpdate(EntityLoadResult1).CreateOrUpdate(new DomainEntity2(), DomainEventCollection1);
 
             var storageEngineMock = new Mock<IEntityStorageEngine>();
-            CommitAttempt<CommitAttemptEntry> storedCommitAttempt;
+            CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<CommitAttemptEntry>>(), default))
-                .Callback<CommitAttempt<CommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
 
             // Act
-            await subject.CommitAsync(storageEngine);
+            await subject.CommitAsync(
+                    storageEngine,
+                    new CommitAttemptProcessingQueue(),
+                    new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(entry.EntityLoadResult.Revision, storedCommitAttempt.Entries.First().Revision);
@@ -686,16 +750,19 @@ namespace AI4E.Storage.Domain.Test
             var entry = subject.GetOrUpdate(EntityLoadResult1).CreateOrUpdate(new DomainEntity2(), DomainEventCollection1);
 
             var storageEngineMock = new Mock<IEntityStorageEngine>();
-            CommitAttempt<CommitAttemptEntry> storedCommitAttempt;
+            CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<CommitAttemptEntry>>(), default))
-                .Callback<CommitAttempt<CommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
 
             // Act
-            await subject.CommitAsync(storageEngine);
+            await subject.CommitAsync(
+                    storageEngine,
+                    new CommitAttemptProcessingQueue(),
+                    new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(entry.EntityLoadResult.ConcurrencyToken, storedCommitAttempt.Entries.First().ConcurrencyToken);
@@ -709,16 +776,19 @@ namespace AI4E.Storage.Domain.Test
             var entry = subject.GetOrUpdate(EntityLoadResult1).CreateOrUpdate(new DomainEntity2(), DomainEventCollection1);
 
             var storageEngineMock = new Mock<IEntityStorageEngine>();
-            CommitAttempt<CommitAttemptEntry> storedCommitAttempt;
+            CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<CommitAttemptEntry>>(), default))
-                .Callback<CommitAttempt<CommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
 
             // Act
-            await subject.CommitAsync(storageEngine);
+            await subject.CommitAsync(
+                    storageEngine,
+                    new CommitAttemptProcessingQueue(),
+                    new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(entry.RecordedDomainEvents, storedCommitAttempt.Entries.First().DomainEvents);
@@ -732,16 +802,19 @@ namespace AI4E.Storage.Domain.Test
             var entry = subject.GetOrUpdate(EntityLoadResult1).CreateOrUpdate(new DomainEntity2(), DomainEventCollection1);
 
             var storageEngineMock = new Mock<IEntityStorageEngine>();
-            CommitAttempt<CommitAttemptEntry> storedCommitAttempt;
+            CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<CommitAttemptEntry>>(), default))
-                .Callback<CommitAttempt<CommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
 
             // Act
-            await subject.CommitAsync(storageEngine);
+            await subject.CommitAsync(
+                    storageEngine,
+                    new CommitAttemptProcessingQueue(),
+                    new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(entry.EntityLoadResult.TrackedLoadResult.Revision, storedCommitAttempt.Entries.First().ExpectedRevision);
@@ -758,16 +831,19 @@ namespace AI4E.Storage.Domain.Test
             entryShaper(subject);
 
             var storageEngineMock = new Mock<IEntityStorageEngine>();
-            CommitAttempt<CommitAttemptEntry> storedCommitAttempt;
+            CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<CommitAttemptEntry>>(), default))
-                .Callback<CommitAttempt<CommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
 
             // Act
-            await subject.CommitAsync(storageEngine);
+            await subject.CommitAsync(
+                    storageEngine,
+                    new CommitAttemptProcessingQueue(),
+                    new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Same(expectedEntity, storedCommitAttempt.Entries.First().Entity);
@@ -800,16 +876,19 @@ namespace AI4E.Storage.Domain.Test
             var entry = subject.GetOrUpdate(EntityLoadResult1.AsScopedTo(scope)).CreateOrUpdate(new DomainEntity2(), DomainEventCollection1);
 
             var storageEngineMock = new Mock<IEntityStorageEngine>();
-            CommitAttempt<CommitAttemptEntry> storedCommitAttempt;
+            CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<CommitAttemptEntry>>(), default))
-                .Callback<CommitAttempt<CommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
 
             // Act
-            await subject.CommitAsync(storageEngine);
+            await subject.CommitAsync(
+                    storageEngine,
+                    new CommitAttemptProcessingQueue(),
+                    new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.NotSame(entry.EntityLoadResult.GetEntity(), storedCommitAttempt.Entries.First().Entity);

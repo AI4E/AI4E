@@ -18,30 +18,36 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using AI4E.Storage.Domain.Specification;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+// TODO: Does this has to be thread-safe?
 
-namespace AI4E.Storage.Domain.Test
+using System.Collections.Generic;
+
+namespace AI4E.Storage.Domain
 {
-    public sealed class EntityStorageTests : EntityStorageSpecification
+    public sealed class CommitAttemptProcessorRegistry : ICommitAttemptProcessorRegistry
     {
-        protected override IEntityStorage Create(
-            IEntityStorageEngine storageEngine,
-            IEntityMetadataManager metadataManager)
-        {
-            var idFactory = new EntityIdFactory();
-            var concurrencyTokenFactory = new ConcurrencyTokenFactory();
-            var optionsAccessor = Options.Create(new DomainStorageOptions { });
+        private readonly List<ICommitAttemptProcessorRegistration> _registrations = new List<ICommitAttemptProcessorRegistration>();
 
-            return new EntityStorage(
-                storageEngine,
-                metadataManager,
-                idFactory,
-                concurrencyTokenFactory,
-                new CommitAttemptProcessingQueue(),
-                new ServiceCollection().BuildServiceProvider(),
-                optionsAccessor);
+        public bool Register(ICommitAttemptProcessorRegistration processorRegistration)
+        {
+            var result = _registrations.Contains(processorRegistration);
+
+            if (!result)
+            {
+                _registrations.Add(processorRegistration);
+            }
+
+            return !result;
+        }
+
+        public bool Unregister(ICommitAttemptProcessorRegistration processorRegistration)
+        {
+            return _registrations.Remove(processorRegistration);
+        }
+
+        public ICommitAttemptProccesingQueue BuildProcessingQueue()
+        {
+            return new CommitAttemptProcessingQueue(_registrations);
         }
     }
 }

@@ -18,30 +18,20 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using AI4E.Storage.Domain.Specification;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-
-namespace AI4E.Storage.Domain.Test
+namespace AI4E.Storage.Domain.Projection
 {
-    public sealed class EntityStorageTests : EntityStorageSpecification
+    public sealed class ProjectionCommitAttemptProcessor : CommitAttemptProcessorBase
     {
-        protected override IEntityStorage Create(
-            IEntityStorageEngine storageEngine,
-            IEntityMetadataManager metadataManager)
+        protected override void ProcessEntry<TCommitAttemptEntry>(
+            TCommitAttemptEntry entry, out CommitAttemptEntry result)
         {
-            var idFactory = new EntityIdFactory();
-            var concurrencyTokenFactory = new ConcurrencyTokenFactory();
-            var optionsAccessor = Options.Create(new DomainStorageOptions { });
+            using var resultBuilder = CommitAttemptEntry.CreateBuilder(entry);
 
-            return new EntityStorage(
-                storageEngine,
-                metadataManager,
-                idFactory,
-                concurrencyTokenFactory,
-                new CommitAttemptProcessingQueue(),
-                new ServiceCollection().BuildServiceProvider(),
-                optionsAccessor);
+            var projectDomainEvent = new DomainEvent(
+                new ProjectEntityMessage(entry.EntityIdentifier.EntityType, entry.EntityIdentifier.EntityId));
+
+            resultBuilder.DomainEvents = resultBuilder.DomainEvents.Add(projectDomainEvent);
+            resultBuilder.Build(out result);
         }
     }
 }

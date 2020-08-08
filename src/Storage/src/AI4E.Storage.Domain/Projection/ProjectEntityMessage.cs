@@ -1,5 +1,7 @@
 ﻿using System;
 
+// TODO: Use EntityIdentifier
+
 namespace AI4E.Storage.Domain
 {
     public sealed class ProjectEntityMessage

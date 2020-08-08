@@ -18,30 +18,19 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using AI4E.Storage.Domain.Specification;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace AI4E.Storage.Domain.Test
+namespace AI4E.Storage.Domain
 {
-    public sealed class EntityStorageTests : EntityStorageSpecification
+    public interface ICommitAttemptProccesingQueue
     {
-        protected override IEntityStorage Create(
+        ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
             IEntityStorageEngine storageEngine,
-            IEntityMetadataManager metadataManager)
-        {
-            var idFactory = new EntityIdFactory();
-            var concurrencyTokenFactory = new ConcurrencyTokenFactory();
-            var optionsAccessor = Options.Create(new DomainStorageOptions { });
-
-            return new EntityStorage(
-                storageEngine,
-                metadataManager,
-                idFactory,
-                concurrencyTokenFactory,
-                new CommitAttemptProcessingQueue(),
-                new ServiceCollection().BuildServiceProvider(),
-                optionsAccessor);
-        }
+            CommitAttempt<TCommitAttemptEntry> commitAttempt,
+            IServiceProvider serviceProvider,
+            CancellationToken cancellation)
+            where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>;
     }
 }

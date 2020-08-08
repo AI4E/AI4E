@@ -33,16 +33,5 @@ namespace AI4E.Storage.Domain
             await _projectionEngine.ProjectAsync(entityType, entityId, cancellation).ConfigureAwait(false);
             return new SuccessDispatchResult();
         }
-
-        ValueTask<IDispatchResult> IMessageHandler.HandleAsync(
-            DispatchDataDictionary dispatchData,
-            bool publish,
-            bool localDispatch,
-            CancellationToken cancellation)
-        {
-            return HandleAsync(dispatchData.As<ProjectEntityMessage>(), publish, localDispatch, cancellation);
-        }
-
-        Type IMessageHandler.MessageType => typeof(ProjectEntityMessage);
     }
 }

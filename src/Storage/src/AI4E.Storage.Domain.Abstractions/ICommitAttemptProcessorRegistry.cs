@@ -18,30 +18,13 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-using AI4E.Storage.Domain.Specification;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-
-namespace AI4E.Storage.Domain.Test
+namespace AI4E.Storage.Domain
 {
-    public sealed class EntityStorageTests : EntityStorageSpecification
+    public interface ICommitAttemptProcessorRegistry
     {
-        protected override IEntityStorage Create(
-            IEntityStorageEngine storageEngine,
-            IEntityMetadataManager metadataManager)
-        {
-            var idFactory = new EntityIdFactory();
-            var concurrencyTokenFactory = new ConcurrencyTokenFactory();
-            var optionsAccessor = Options.Create(new DomainStorageOptions { });
+        bool Register(ICommitAttemptProcessorRegistration processorRegistration);
+        bool Unregister(ICommitAttemptProcessorRegistration processorRegistration);
 
-            return new EntityStorage(
-                storageEngine,
-                metadataManager,
-                idFactory,
-                concurrencyTokenFactory,
-                new CommitAttemptProcessingQueue(),
-                new ServiceCollection().BuildServiceProvider(),
-                optionsAccessor);
-        }
+        ICommitAttemptProccesingQueue BuildProcessingQueue();
     }
 }

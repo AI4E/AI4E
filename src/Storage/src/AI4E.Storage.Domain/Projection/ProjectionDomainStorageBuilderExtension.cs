@@ -1,5 +1,6 @@
 ﻿using System;
 using AI4E.Messaging;
+using AI4E.Storage.Domain.Projection;
 using AI4E.Storage.Projection;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -39,6 +40,11 @@ namespace AI4E.Storage.Domain
             {
                 registry.Register(new MessageHandlerRegistration<ProjectEntityMessage>(
                     serviceProvider => ActivatorUtilities.CreateInstance<ProjectEntityMessageHandler>(serviceProvider)));
+            });
+
+            builder.ConfigureCommitAttemptProccessors(registry =>
+            {
+                registry.Register(CommitAttemptProcessorRegistration.Create<ProjectionCommitAttemptProcessor>());
             });
 
             return builder;

@@ -22,9 +22,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Domain.Tracking
 {
@@ -81,7 +83,7 @@ namespace AI4E.Storage.Domain.Tracking
         {
             entry = null;
             return TryGetEntry(
-                entityIdentifier, 
+                entityIdentifier,
                 out Unsafe.As<IUnitOfWorkEntry<TLoadResult>, UnitOfWorkEntry<TLoadResult>>(ref entry!)!);
         }
 
@@ -122,10 +124,18 @@ namespace AI4E.Storage.Domain.Tracking
         /// <inheritdoc/>
         public ValueTask<EntityCommitResult> CommitAsync(
             IEntityStorageEngine storageEngine,
+            ICommitAttemptProccesingQueue processingQueue,
+            IServiceProvider serviceProvider,
             CancellationToken cancellation = default)
         {
             if (storageEngine is null)
                 throw new ArgumentNullException(nameof(storageEngine));
+
+            if (processingQueue is null)
+                throw new ArgumentNullException(nameof(processingQueue));
+
+            if (serviceProvider is null)
+                throw new ArgumentNullException(nameof(serviceProvider));
 
             // Create a commit attempt of our tracked changed before we rollback.
             var commitAttempt = CreateCommitAttempt();
@@ -133,8 +143,10 @@ namespace AI4E.Storage.Domain.Tracking
             // We rollback in any case.
             Reset();
 
-            return storageEngine.CommitAsync(commitAttempt, cancellation);
+            return processingQueue.ProcessCommitAttemptAsync(
+                storageEngine, commitAttempt, serviceProvider, cancellation);
         }
+
 
         private CommitAttempt<CommitAttemptEntry<TLoadResult>> CreateCommitAttempt()
         {
@@ -161,10 +173,10 @@ namespace AI4E.Storage.Domain.Tracking
 
         internal void UpdateEntry(UnitOfWorkEntry<TLoadResult> entry, int epoch)
         {
-            if(epoch == _epoch)
+            if (epoch == _epoch)
             {
                 _entries[entry.EntityLoadResult.EntityIdentifier] = entry;
-            }      
+            }
         }
     }
 }

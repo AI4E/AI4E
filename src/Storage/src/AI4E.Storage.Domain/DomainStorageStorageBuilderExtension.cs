@@ -47,6 +47,11 @@ namespace AI4E.Storage
 
                 services.TryAddSingleton<IEntityIdFactory, EntityIdFactory>();
                 services.TryAddSingleton<IConcurrencyTokenFactory, ConcurrencyTokenFactory>();
+                services.TryAddSingleton<ICommitAttemptProcessorRegistry, CommitAttemptProcessorRegistry>();
+
+                // TODO: When the registry is updated, this will not get updated. Can we include a mechanism to refresh 
+                //       this? For example register this as transient and cache it in the registry itself.
+                services.TryAddSingleton(BuildCommitAttemptProcessingQueue);
 
                 AddMessageProcessors(services);
 
@@ -110,6 +115,12 @@ namespace AI4E.Storage
             {
                 options.MessageProcessors.Add(MessageProcessorRegistration.Create<EntityMessageHandlerProcessor>());
             });
+        }
+
+        private static ICommitAttemptProccesingQueue BuildCommitAttemptProcessingQueue(IServiceProvider serviceProvider)
+        {
+            var registry = serviceProvider.GetRequiredService<ICommitAttemptProcessorRegistry>();
+            return registry.BuildProcessingQueue();
         }
     }
 }

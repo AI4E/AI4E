@@ -92,6 +92,8 @@ namespace AI4E.Storage.Domain.Tracking
         /// </exception>
         ValueTask<EntityCommitResult> CommitAsync(
             IEntityStorageEngine storageEngine,
+            ICommitAttemptProccesingQueue processingQueue,
+            IServiceProvider serviceProvider,
             CancellationToken cancellation = default);
     }
 }

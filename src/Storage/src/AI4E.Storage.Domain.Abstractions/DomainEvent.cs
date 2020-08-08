@@ -40,6 +40,8 @@ namespace AI4E.Storage.Domain
         private readonly Type? _eventType;
         private readonly object? _event;
 
+        public DomainEvent(object @event) : this(@event?.GetType(), @event) { }
+
         /// <summary>
         /// Creates a new instance of the <see cref="DomainEvent"/> type.
         /// </summary>
@@ -53,11 +55,12 @@ namespace AI4E.Storage.Domain
         /// </exception>
         public DomainEvent(Type eventType, object @event)
         {
-            if (eventType is null)
-                throw new ArgumentNullException(nameof(eventType));
-
+            // Check event first, so that the correct argument exception is thrown for the ctor without eventType
             if (@event is null)
                 throw new ArgumentNullException(nameof(@event));
+
+            if (eventType is null)
+                throw new ArgumentNullException(nameof(eventType));
 
             if (eventType.IsDelegate())
                 throw new ArgumentException(Resources.ArgumentMustNotSpecifyDelegateType, nameof(eventType));
@@ -297,6 +300,11 @@ namespace AI4E.Storage.Domain
 
         /// <inheritdoc />
         public int Count => _domainEvents?.Count ?? 0;
+
+        public DomainEventCollection Add(DomainEvent domainEvent)
+        {
+            return Concat(new DomainEventCollection(domainEvent));
+        }
 
         /// <summary>
         /// Concatenates the current <see cref="DomainEventCollection"/> with the specified one.
