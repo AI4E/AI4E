@@ -2,7 +2,7 @@
 
 // TODO: Use EntityIdentifier
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Domain.Projection
 {
     public sealed class ProjectEntityMessage
     {

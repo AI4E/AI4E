@@ -18,12 +18,26 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage
 {
     public interface IStorageBuilder
     {
+        public IStorageBuilder ConfigureServices(Action<IServiceCollection> configuration)
+        {
+            if (configuration is null)
+                throw new ArgumentNullException(nameof(configuration));
+
+#pragma warning disable CS0618
+            configuration(Services);
+#pragma warning restore CS0618
+
+            return this;
+        }
+
+        [Obsolete("Use ConfigureServices")]
         IServiceCollection Services { get; }
     }
 }

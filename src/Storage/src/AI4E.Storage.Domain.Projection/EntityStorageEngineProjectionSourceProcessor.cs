@@ -24,11 +24,10 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.Storage.Domain.Projection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.ObjectPool;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Domain.Projection
 {
     public sealed class EntityStorageEngineProjectionSourceProcessor : IProjectionSourceProcessor
     {

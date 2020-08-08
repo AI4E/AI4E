@@ -2,9 +2,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Messaging;
-using AI4E.Storage.Domain.Projection;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace AI4E.Storage.Domain
+namespace AI4E.Storage.Domain.Projection
 {
     public sealed class ProjectEntityMessageHandler : IMessageHandler<ProjectEntityMessage>
     {
@@ -32,6 +32,26 @@ namespace AI4E.Storage.Domain
 
             await _projectionEngine.ProjectAsync(entityType, entityId, cancellation).ConfigureAwait(false);
             return new SuccessDispatchResult();
+        }
+
+        public static IProjectionBuilder Register(IProjectionBuilder projectionBuilder)
+        {
+            if (projectionBuilder is null)
+                throw new ArgumentNullException(nameof(projectionBuilder));
+
+            return projectionBuilder.ConfigureServices(ConfigureServices);
+        }
+
+        private static void ConfigureServices(IServiceCollection services)
+        {
+            services.AddMessaging().ConfigureMessageHandlers(ConfigureMessageHandlers);
+        }
+
+        private static void ConfigureMessageHandlers(IMessageHandlerRegistry registry, IServiceProvider serviceProvider)
+        {
+            registry.Register(new MessageHandlerRegistration<ProjectEntityMessage>(
+                    serviceProvider => ActivatorUtilities.CreateInstance<ProjectEntityMessageHandler>(
+                        serviceProvider)));
         }
     }
 }

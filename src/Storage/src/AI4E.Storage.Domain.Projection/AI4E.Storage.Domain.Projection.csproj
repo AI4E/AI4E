@@ -3,12 +3,14 @@
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
     <Nullable>annotations</Nullable>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
   
   <ItemGroup>
     <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.ApplicationParts\AI4E.Utils.ApplicationParts.csproj" />
     <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Domain.Projection.Abstractions\AI4E.Storage.Domain.Projection.Abstractions.csproj" />
+    <ProjectReference Include="..\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj" />
     <ProjectReference Include="..\AI4E.Storage\AI4E.Storage.csproj" />
   </ItemGroup>
 

@@ -18,6 +18,8 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
+
 namespace AI4E.Storage.Domain.Projection
 {
     public sealed class ProjectionCommitAttemptProcessor : CommitAttemptProcessorBase
@@ -32,6 +34,21 @@ namespace AI4E.Storage.Domain.Projection
 
             resultBuilder.DomainEvents = resultBuilder.DomainEvents.Add(projectDomainEvent);
             resultBuilder.Build(out result);
+        }
+
+        public static IProjectionBuilder Register(IProjectionBuilder projectionBuilder)
+        {
+            if (projectionBuilder is null)
+                throw new ArgumentNullException(nameof(projectionBuilder));
+
+            static void Configure(ICommitAttemptProcessorRegistry registry)
+            {
+                registry.Register(CommitAttemptProcessorRegistration.Create<ProjectionCommitAttemptProcessor>());
+            }
+
+            projectionBuilder.DomainStorageBuilder.ConfigureCommitAttemptProccessors(Configure);
+
+            return projectionBuilder;
         }
     }
 }

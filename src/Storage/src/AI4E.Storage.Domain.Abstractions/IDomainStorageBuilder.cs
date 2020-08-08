@@ -18,6 +18,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
+using System;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Domain
@@ -32,9 +33,22 @@ namespace AI4E.Storage.Domain
         /// </summary>
         IStorageBuilder StorageBuilder { get; }
 
+        public IDomainStorageBuilder ConfigureServices(Action<IServiceCollection> configuration)
+        {
+            if (configuration is null)
+                throw new ArgumentNullException(nameof(configuration));
+
+#pragma warning disable CS0618
+            configuration(Services);
+#pragma warning restore CS0618
+
+            return this;
+        }
+
         /// <summary>
         /// Get the service-collection used to configure services.
         /// </summary>
+        [Obsolete("Use ConfigureServices")]
         IServiceCollection Services => StorageBuilder.Services;
     }
 }

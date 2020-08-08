@@ -28,6 +28,8 @@ namespace AI4E.Storage.Domain.Projection
     /// </summary>
     public interface IProjectionBuilder
     {
+        IDomainStorageBuilder DomainStorageBuilder { get; }
+
         /// <summary>
         /// Configures the projection services.
         /// </summary>
