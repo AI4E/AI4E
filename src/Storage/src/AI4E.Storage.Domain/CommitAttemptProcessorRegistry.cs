@@ -45,9 +45,9 @@ namespace AI4E.Storage.Domain
             return _registrations.Remove(processorRegistration);
         }
 
-        public ICommitAttemptProccesingQueue BuildProcessingQueue()
+        public ICommitAttemptProccesingQueue BuildProcessingQueue(IEntityStorageEngine storageEngine)
         {
-            return new CommitAttemptProcessingQueue(_registrations);
+            return new CommitAttemptProcessingQueue(storageEngine, _registrations);
         }
     }
 }

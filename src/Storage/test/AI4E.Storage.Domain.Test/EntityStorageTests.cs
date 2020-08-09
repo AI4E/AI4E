@@ -39,7 +39,7 @@ namespace AI4E.Storage.Domain.Test
                 metadataManager,
                 idFactory,
                 concurrencyTokenFactory,
-                new CommitAttemptProcessingQueue(),
+                new CommitAttemptProcessingQueue(storageEngine),
                 new ServiceCollection().BuildServiceProvider(),
                 optionsAccessor);
         }

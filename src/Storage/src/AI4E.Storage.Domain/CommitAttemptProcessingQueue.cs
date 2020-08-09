@@ -30,36 +30,39 @@ namespace AI4E.Storage.Domain
     public sealed class CommitAttemptProcessingQueue : ICommitAttemptProccesingQueue
     {
         private readonly ImmutableList<ICommitAttemptProcessorRegistration> _processorRegistrations;
+        private readonly IEntityStorageEngine _storageEngine;
 
-        public CommitAttemptProcessingQueue() : this(Enumerable.Empty<ICommitAttemptProcessorRegistration>()) { }
+        public CommitAttemptProcessingQueue(IEntityStorageEngine storageEngine) 
+            : this(storageEngine, Enumerable.Empty<ICommitAttemptProcessorRegistration>()) { }
 
-        public CommitAttemptProcessingQueue(IEnumerable<ICommitAttemptProcessorRegistration> processorRegistrations)
+        public CommitAttemptProcessingQueue(
+            IEntityStorageEngine storageEngine, 
+            IEnumerable<ICommitAttemptProcessorRegistration> processorRegistrations)
         {
+            if (storageEngine is null)
+                throw new ArgumentNullException(nameof(storageEngine));
             if (processorRegistrations is null)
                 throw new ArgumentNullException(nameof(processorRegistrations));
 
             _processorRegistrations = processorRegistrations.Reverse().ToImmutableList();
+            _storageEngine = storageEngine;
         }
 
         // TODO: Pooling
 
         public ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
-            IEntityStorageEngine storageEngine,
             CommitAttempt<TCommitAttemptEntry> commitAttempt,
             IServiceProvider serviceProvider,
             CancellationToken cancellation)
             where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
         {
-            if (storageEngine is null)
-                throw new ArgumentNullException(nameof(storageEngine));
-
             if (!_processorRegistrations.Any())
             {
-                return storageEngine.CommitAsync(commitAttempt, cancellation);
+                return _storageEngine.CommitAsync(commitAttempt, cancellation);
             }
 
             ICommitAttemptProcessing processing = new StorageEngineCommitAttemptProcessing(
-                storageEngine, cancellation);
+                _storageEngine, cancellation);
 
             foreach (var processorRegistration in _processorRegistrations)
             {

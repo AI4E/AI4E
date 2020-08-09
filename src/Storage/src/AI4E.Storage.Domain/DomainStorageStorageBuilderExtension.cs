@@ -121,7 +121,8 @@ namespace AI4E.Storage
         private static ICommitAttemptProccesingQueue BuildCommitAttemptProcessingQueue(IServiceProvider serviceProvider)
         {
             var registry = serviceProvider.GetRequiredService<ICommitAttemptProcessorRegistry>();
-            return registry.BuildProcessingQueue();
+            var storageEngine = serviceProvider.GetRequiredService<IEntityStorageEngine>();
+            return registry.BuildProcessingQueue(storageEngine);
         }
     }
 }

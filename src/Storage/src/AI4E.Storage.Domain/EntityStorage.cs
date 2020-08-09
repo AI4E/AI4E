@@ -440,7 +440,7 @@ namespace AI4E.Storage.Domain
                 Resources.Committing, _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
             var result = await _unitOfWork.CommitAsync(
-                _storageEngine,_commitAttemptProccesingQueue, _serviceProvider, cancellation).ConfigureAwait(false);
+                _commitAttemptProccesingQueue, _serviceProvider, cancellation).ConfigureAwait(false);
            
             _storageEngineQueryResults.Clear();
             return result;

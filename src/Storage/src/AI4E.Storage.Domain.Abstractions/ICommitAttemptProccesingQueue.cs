@@ -27,7 +27,6 @@ namespace AI4E.Storage.Domain
     public interface ICommitAttemptProccesingQueue
     {
         ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
-            IEntityStorageEngine storageEngine,
             CommitAttempt<TCommitAttemptEntry> commitAttempt,
             IServiceProvider serviceProvider,
             CancellationToken cancellation)
