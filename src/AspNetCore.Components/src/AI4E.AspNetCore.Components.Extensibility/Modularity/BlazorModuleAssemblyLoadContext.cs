@@ -19,14 +19,16 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
 using AI4E.Utils;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -37,10 +39,11 @@ namespace AI4E.AspNetCore.Components.Modularity
         private readonly ImmutableDictionary<AssemblyName, BlazorModuleAssemblySource> _assemblySources;
         private readonly ILogger<BlazorModuleAssemblyLoadContext> _logger;
 
-        private readonly ImmutableHashSet<AssemblyName> _coreAssemblies;
         private ImmutableDictionary<AssemblyName, Assembly>? _assemblyCache;
         private ImmutableHashSet<Assembly>? _installedAssemblies;
         private readonly object _mutex = new object();
+
+        private readonly ImmutableHashSet<AssemblyName> _forcedLoadFromCoreAssemblies;
 
         public BlazorModuleAssemblyLoadContext(
             ImmutableDictionary<AssemblyName, BlazorModuleAssemblySource> assemblySources,
@@ -55,21 +58,22 @@ namespace AI4E.AspNetCore.Components.Modularity
             _assemblySources = assemblySources;
             _logger = logger ?? NullLogger<BlazorModuleAssemblyLoadContext>.Instance;
 
-            _coreAssemblies = BuildCoreAssemblies();
             _assemblyCache = ImmutableDictionary.Create<AssemblyName, Assembly>(AssemblyNameComparer.ByDisplayName);
             _installedAssemblies = ImmutableHashSet.Create<Assembly>(AssemblyByDisplayNameComparer.Instance);
 
             Unloading += OnUnloading;
+
+            // TODO: This should also be configurable
+            _forcedLoadFromCoreAssemblies = BuildForcedLoadFromCoreAssemblies().ToImmutableHashSet(
+                AssemblyNameComparer.BySimpleName);
         }
 
-        private static ImmutableHashSet<AssemblyName> BuildCoreAssemblies()
+        private static IEnumerable<AssemblyName> BuildForcedLoadFromCoreAssemblies()
         {
-            return AppDomain.CurrentDomain
-                .GetAssemblies()
-                .Where(p => GetLoadContext(p) == Default)
-                .Select(p => p.GetName())
-                .Append(typeof(object).Assembly.GetName())
-                .ToImmutableHashSet(AssemblyNameComparer.ByDisplayName);
+            yield return new AssemblyName("netstandard");
+            yield return typeof(object).Assembly.GetName();
+            yield return typeof(IServiceCollection).Assembly.GetName();
+            yield return typeof(IComponent).Assembly.GetName();
         }
 
         private void OnUnloading(AssemblyLoadContext obj)
@@ -113,6 +117,20 @@ namespace AI4E.AspNetCore.Components.Modularity
             return "'" + assemblyName.Name + ", " + assemblyName.Version + "'";
         }
 
+        private bool TryLoadFromCore(AssemblyName assemblyName, [NotNullWhen(true)] out Assembly? assembly)
+        {
+            try
+            {
+                assembly = Default.LoadFromAssemblyName(assemblyName);
+                return true;
+            }
+            catch (FileNotFoundException)
+            {
+                assembly = null;
+                return false;
+            }
+        }
+
         protected override Assembly? Load(AssemblyName assemblyName)
         {
             ImmutableDictionary<AssemblyName, Assembly>? assemblyCache;
@@ -127,6 +145,7 @@ namespace AI4E.AspNetCore.Components.Modularity
                 ThrowUnloadingException();
             }
 
+            // The assembly is in the cache.
             if (assemblyCache.TryGetValue(assemblyName, out var assembly))
             {
                 if (_logger.IsEnabled(LogLevel.Debug))
@@ -135,46 +154,33 @@ namespace AI4E.AspNetCore.Components.Modularity
                 return assembly;
             }
 
-            var isNetStandard = AssemblyNameComparer.BySimpleName.Equals(assemblyName, new AssemblyName("netstandard"));
-
-            // We have no source => Fallback to core or throw.
-            if (!_assemblySources.TryGetValue(assemblyName, out var assemblySource))
+            // We are forced to load the assembly from the default context.
+            if (_forcedLoadFromCoreAssemblies.Contains(assemblyName))
             {
-                if (isNetStandard)
-                {
-                    if (_logger.IsEnabled(LogLevel.Debug))
-                        _logger.LogDebug("Requested assembly {0} has no source. Creating source from default context.", FormatAssemblyName(assemblyName));
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Requested assembly {0} is force to be loaded from the default context.", FormatAssemblyName(assemblyName));
 
-                    try
-                    {
-                        assembly = Default.LoadFromAssemblyName(assemblyName);
-                    }
-                    catch (FileNotFoundException)
-                    {
-                        return null;
-                    }
-
-                    assemblySource = BlazorModuleAssemblySource.FromLocation(assembly.Location);
-                }
-                else
-                {
-                    if (_logger.IsEnabled(LogLevel.Debug))
-                        _logger.LogDebug("Requested assembly {0} has no source. Falling back to default context.", FormatAssemblyName(assemblyName));
-
-                    return null;
-                }
+                return null;
             }
 
-            // We either have no source 
-            // or we have a source but are not forces to load the assembly in the current context.
-            if (!assemblySource.ForceLoad && !isNetStandard)
+            // We have no source.
+            if (!_assemblySources.TryGetValue(assemblyName, out var assemblySource))
             {
-                if (_coreAssemblies.Contains(assemblyName))
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Requested assembly {0} has no source. Falling back to default context.", FormatAssemblyName(assemblyName));
+
+                return null;
+            }
+
+            // We are not force´d to load the assembly in the current context. Try the default context.
+            if (!assemblySource.ForceLoad)
+            {
+                if (TryLoadFromCore(assemblyName, out assembly))
                 {
                     if (_logger.IsEnabled(LogLevel.Debug))
                         _logger.LogDebug("Requested assembly {0} has matching core assembly. Falling back to core assembly.", FormatAssemblyName(assemblyName));
 
-                    return null;
+                    return assembly;
                 }
             }
 
