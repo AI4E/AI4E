@@ -26,7 +26,8 @@ namespace AI4E.Storage.Domain
 {
     public sealed class CommitAttemptProcessorRegistry : ICommitAttemptProcessorRegistry
     {
-        private readonly List<ICommitAttemptProcessorRegistration> _registrations = new List<ICommitAttemptProcessorRegistration>();
+        private readonly List<ICommitAttemptProcessorRegistration> _registrations 
+            = new List<ICommitAttemptProcessorRegistration>();
 
         public bool Register(ICommitAttemptProcessorRegistration processorRegistration)
         {
@@ -34,7 +35,7 @@ namespace AI4E.Storage.Domain
 
             if (!result)
             {
-                _registrations.Add(processorRegistration);
+                _registrations.Insert(0, processorRegistration);
             }
 
             return !result;

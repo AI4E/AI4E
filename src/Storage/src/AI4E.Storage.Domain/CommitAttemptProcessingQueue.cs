@@ -20,8 +20,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -29,15 +27,14 @@ namespace AI4E.Storage.Domain
 {
     public sealed class CommitAttemptProcessingQueue : ICommitAttemptProccesingQueue
     {
-        private readonly ImmutableList<ICommitAttemptProcessorRegistration> _processorRegistrations;
-        private readonly IEntityStorageEngine _storageEngine;
+        private readonly ICommitAttemptExecutor _executor;
 
         public CommitAttemptProcessingQueue(IEntityStorageEngine storageEngine)
-            : this(storageEngine, Enumerable.Empty<ICommitAttemptProcessorRegistration>()) { }
+            : this(storageEngine, Array.Empty<ICommitAttemptProcessorRegistration>()) { }
 
         public CommitAttemptProcessingQueue(
             IEntityStorageEngine storageEngine,
-            IEnumerable<ICommitAttemptProcessorRegistration> processorRegistrations)
+            IReadOnlyList<ICommitAttemptProcessorRegistration> processorRegistrations)
         {
             if (storageEngine is null)
                 throw new ArgumentNullException(nameof(storageEngine));
@@ -45,11 +42,23 @@ namespace AI4E.Storage.Domain
             if (processorRegistrations is null)
                 throw new ArgumentNullException(nameof(processorRegistrations));
 
-            _processorRegistrations = processorRegistrations.Reverse().ToImmutableList();
-            _storageEngine = storageEngine;
+            _executor = BuildExecutor(storageEngine, processorRegistrations);
         }
 
-        // TODO: Pooling
+        private static ICommitAttemptExecutor BuildExecutor(
+            IEntityStorageEngine storageEngine,
+            IReadOnlyList<ICommitAttemptProcessorRegistration> processorRegistrations)
+        {
+            ICommitAttemptExecutor executor = new EntityStorageEngineExecutor(storageEngine);
+
+            for (var i = 0; i < processorRegistrations.Count; i++)
+            {
+                var processorRegistration = processorRegistrations[i];
+                executor = new CommitAttemptProcessorExecutor(processorRegistration, executor);
+            }
+
+            return executor;
+        }
 
         public ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
             CommitAttempt<TCommitAttemptEntry> commitAttempt,
@@ -57,14 +66,7 @@ namespace AI4E.Storage.Domain
             CancellationToken cancellation)
             where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
         {
-            ICommitAttemptExecutor processing = new EntityStorageEngineExecutor(_storageEngine);
-
-            foreach (var processorRegistration in _processorRegistrations)
-            {
-                processing = new CommitAttemptProcessorExecutor(processorRegistration, processing);
-            }
-
-            return processing.ProcessCommitAttemptAsync(commitAttempt, serviceProvider, cancellation);
+            return _executor.ProcessCommitAttemptAsync(commitAttempt, serviceProvider, cancellation);
         }
 
         private sealed class EntityStorageEngineExecutor : ICommitAttemptExecutor
@@ -77,9 +79,9 @@ namespace AI4E.Storage.Domain
             }
 
             public ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
-                CommitAttempt<TCommitAttemptEntry> commitAttempt, 
-                IServiceProvider serviceProvider, 
-                CancellationToken cancellation) 
+                CommitAttempt<TCommitAttemptEntry> commitAttempt,
+                IServiceProvider serviceProvider,
+                CancellationToken cancellation)
                 where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
             {
                 return _storageEngine.CommitAsync(commitAttempt, cancellation);
