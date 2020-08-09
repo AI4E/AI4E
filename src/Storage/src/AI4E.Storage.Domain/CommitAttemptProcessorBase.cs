@@ -26,7 +26,8 @@ using System.Threading.Tasks;
 
 namespace AI4E.Storage.Domain
 {
-    public abstract class CommitAttemptProcessorBase : ICommitAttemptProcessor
+    public abstract class CommitAttemptProcessorBase<TDestinationCommitAttemptEntry> : ICommitAttemptProcessor
+          where TDestinationCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TDestinationCommitAttemptEntry>
     {
         public ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
             CommitAttempt<TCommitAttemptEntry> commitAttempt,
@@ -34,7 +35,7 @@ namespace AI4E.Storage.Domain
             CancellationToken cancellation)
             where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
         {
-            var commitAttemptEntries = ImmutableArray.CreateBuilder<CommitAttemptEntry>(
+            var commitAttemptEntries = ImmutableArray.CreateBuilder<TDestinationCommitAttemptEntry>(
                 initialCapacity: commitAttempt.Entries.Count);
 
             commitAttemptEntries.Count = commitAttempt.Entries.Count;
@@ -47,16 +48,18 @@ namespace AI4E.Storage.Domain
                 ProcessEntry(originalEntry, out entry);
             }
 
-            var commitAttemptEntryCollection = new CommitAttemptEntryCollection<CommitAttemptEntry>(
+            var commitAttemptEntryCollection = new CommitAttemptEntryCollection<TDestinationCommitAttemptEntry>(
                 commitAttemptEntries.MoveToImmutable());
 
-            var processedCommitAttempt = new CommitAttempt<CommitAttemptEntry>(commitAttemptEntryCollection);
+            var processedCommitAttempt = new CommitAttempt<TDestinationCommitAttemptEntry>(
+                commitAttemptEntryCollection);
+
             return nextProcessing.ProcessCommitAttemptAsync(processedCommitAttempt);
         }
 
-        protected abstract void ProcessEntry<TCommitAttemptEntry>(
-            TCommitAttemptEntry entry,
-            out CommitAttemptEntry result)
-            where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>;
+        protected abstract void ProcessEntry<TSourceCommitAttemptEntry>(
+            in TSourceCommitAttemptEntry source,
+            out TDestinationCommitAttemptEntry dest)
+            where TSourceCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TSourceCommitAttemptEntry>;
     }
 }
