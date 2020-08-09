@@ -31,6 +31,7 @@ namespace AI4E.Storage.Domain
         /// </summary>
         /// <typeparam name="TCommitAttemptEntry">The type of commit-attempt entry.</typeparam>
         /// <param name="commitAttempt">The <see cref="CommitAttempt{TCommitAttemptEntry}"/> to commit.</param>
+        /// <param name="serviceProvider">The service-provider used to lookup services.</param>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
         /// or <see cref="CancellationToken.None"/>.
@@ -40,8 +41,12 @@ namespace AI4E.Storage.Domain
         /// When evaluated, the tasks result contains the commit result indicating commit success 
         /// or failure information.
         /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
         ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
             CommitAttempt<TCommitAttemptEntry> commitAttempt,
+            IServiceProvider serviceProvider,
             CancellationToken cancellation)
             where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>;
     }

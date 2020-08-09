@@ -28,7 +28,7 @@ namespace AI4E.Storage.Domain
     /// <summary>
     /// Represents the entity storage engine that is responsible for managing the underlying entity storage subsystem.
     /// </summary>
-    public interface IEntityStorageEngine : ICommitAttemptExecutor, IDisposable, IAsyncDisposable
+    public interface IEntityStorageEngine : IDisposable, IAsyncDisposable
     {
         /// <summary>
         /// Asynchronously loads the entity with the specified identifier.
@@ -71,5 +71,27 @@ namespace AI4E.Storage.Domain
             Type entityType,
             bool bypassCache,
             CancellationToken cancellation = default);
+
+        /// <summary>
+        /// Asynchronously commits the specified commit-attempt an dispatches all domain-events.
+        /// </summary>
+        /// <typeparam name="TCommitAttemptEntry">The type of commit-attempt entry.</typeparam>
+        /// <param name="commitAttempt">The <see cref="CommitAttempt{TCommitAttemptEntry}"/> to commit.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{EntityCommitResult}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the commit result indicating commit success 
+        /// or failure information.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
+        ValueTask<EntityCommitResult> CommitAsync<TCommitAttemptEntry>(
+            CommitAttempt<TCommitAttemptEntry> commitAttempt,
+            CancellationToken cancellation)
+            where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>;
     }
 }

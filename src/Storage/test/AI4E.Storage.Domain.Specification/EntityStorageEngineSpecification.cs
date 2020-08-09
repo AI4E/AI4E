@@ -153,7 +153,7 @@ namespace AI4E.Storage.Domain.Specification
 
         private async Task SeedAsync(IEntityStorageEngine entityStorageEngine)
         {
-            await entityStorageEngine.ProcessCommitAttemptAsync(CreateCommitAttempt, Fixture.Create<CancellationToken>());
+            await entityStorageEngine.CommitAsync(CreateCommitAttempt, Fixture.Create<CancellationToken>());
         }
 
         protected abstract IEntityStorageEngine Create(IDomainEventDispatcher eventDispatcher);
@@ -259,7 +259,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = EmptyCommitAttempt;
 
             // Act
-            var commitResult = await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.Success, commitResult);
@@ -273,7 +273,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = CreateCommitAttempt;
 
             // Act
-            var commitResult = await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.Success, commitResult);
@@ -287,7 +287,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = AppendEventsOnlyCommitAttempt;
 
             // Act
-            var commitResult = await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.Success, commitResult);
@@ -299,7 +299,7 @@ namespace AI4E.Storage.Domain.Specification
             // Arrange
             var commitAttempt = CreateCommitAttempt;
             var subject = Fixture.Create<IEntityStorageEngine>();
-            await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Act
             var result = await subject.QueryEntityAsync(
@@ -315,7 +315,7 @@ namespace AI4E.Storage.Domain.Specification
         {
             // Arrange
             var commitAttempt = CreateCommitAttempt;
-            await Fixture.Create<IEntityStorageEngine>().ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            await Fixture.Create<IEntityStorageEngine>().CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             var subject = Fixture.Create<IEntityStorageEngine>();
             // Act
@@ -335,7 +335,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = UpdateCommitAttempt;
 
             // Act
-            var commitResult = await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.ConcurrencyFailure, commitResult);
@@ -349,7 +349,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = DeleteCommitAttempt;
 
             // Act
-            var commitResult = await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.ConcurrencyFailure, commitResult);
@@ -364,7 +364,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = UpdateCommitAttempt;
 
             // Act
-            var commitResult = await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.Success, commitResult);
@@ -379,7 +379,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = DeleteCommitAttempt;
 
             // Act
-            var commitResult = await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.Success, commitResult);
@@ -394,7 +394,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = AppendEventsOnlyCommitAttempt;
 
             // Act
-            var commitResult = await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.Success, commitResult);
@@ -409,7 +409,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = CreateCommitAttempt;
 
             // Act
-            var commitResult = await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.ConcurrencyFailure, commitResult);
@@ -424,7 +424,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = UpdateCommitAttempt;
 
             // Act
-            var commitResult = await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.Success, commitResult);
@@ -439,7 +439,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = DeleteCommitAttempt;
 
             // Act
-            var commitResult = await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.Success, commitResult);
@@ -454,7 +454,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = AppendEventsOnlyCommitAttempt;
 
             // Act
-            var commitResult = await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.Success, commitResult);
@@ -469,7 +469,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = CreateCommitAttempt;
 
             // Act
-            var commitResult = await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.ConcurrencyFailure, commitResult);
@@ -483,7 +483,7 @@ namespace AI4E.Storage.Domain.Specification
             var subject = Fixture.Create<IEntityStorageEngine>();
             await SeedAsync(subject);
 
-            await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Act
             var result = await subject.QueryEntityAsync(
@@ -501,7 +501,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = UpdateCommitAttempt;
             var engine = Fixture.Create<IEntityStorageEngine>();
             await SeedAsync(engine);
-            await engine.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            await engine.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             var subject = Fixture.Create<IEntityStorageEngine>();
 
@@ -522,7 +522,7 @@ namespace AI4E.Storage.Domain.Specification
             var subject = Fixture.Create<IEntityStorageEngine>();
             await SeedAsync(subject);
 
-            await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Act
             var result = await subject.QueryEntityAsync(
@@ -540,7 +540,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = DeleteCommitAttempt;
             var engine = Fixture.Create<IEntityStorageEngine>();
             await SeedAsync(engine);
-            await engine.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            await engine.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             var subject = Fixture.Create<IEntityStorageEngine>();
 
@@ -567,7 +567,7 @@ namespace AI4E.Storage.Domain.Specification
             var commitAttempt = AppendEventsOnlyCommitAttempt;
 
             // Act
-            await subject.ProcessCommitAttemptAsync(commitAttempt, Fixture.Create<CancellationToken>());
+            await subject.CommitAsync(commitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(Fixture.Create<DomainEventCollection>(), new DomainEventCollection(dispatchedDomainEvents));
@@ -588,7 +588,7 @@ namespace AI4E.Storage.Domain.Specification
 
             try
             {
-                await Fixture.Create<IEntityStorageEngine>().ProcessCommitAttemptAsync(
+                await Fixture.Create<IEntityStorageEngine>().CommitAsync(
                        commitAttempt, commitCancellationSource.Token);
             }
             catch (OperationCanceledException) { }
@@ -709,7 +709,7 @@ namespace AI4E.Storage.Domain.Specification
             await subject.QueryEntityAsync(
                  Fixture.Create<EntityIdentifier>(), bypassCache: true, Fixture.Create<CancellationToken>());
 
-            await Fixture.Create<IEntityStorageEngine>().ProcessCommitAttemptAsync(
+            await Fixture.Create<IEntityStorageEngine>().CommitAsync(
                 UpdateCommitAttempt, Fixture.Create<CancellationToken>());
 
             // Act
@@ -731,7 +731,7 @@ namespace AI4E.Storage.Domain.Specification
             await subject.QueryEntityAsync(
                  Fixture.Create<EntityIdentifier>(), bypassCache: true, Fixture.Create<CancellationToken>());
 
-            await Fixture.Create<IEntityStorageEngine>().ProcessCommitAttemptAsync(
+            await Fixture.Create<IEntityStorageEngine>().CommitAsync(
                UpdateCommitAttempt, Fixture.Create<CancellationToken>());
 
             // Act
@@ -756,7 +756,7 @@ namespace AI4E.Storage.Domain.Specification
             await subject.QueryEntityAsync(
                  Fixture.Create<EntityIdentifier>(), bypassCache: true, Fixture.Create<CancellationToken>());
 
-            await Fixture.Create<IEntityStorageEngine>().ProcessCommitAttemptAsync(
+            await Fixture.Create<IEntityStorageEngine>().CommitAsync(
                 UpdateCommitAttempt, Fixture.Create<CancellationToken>());
 
             await subject.QueryEntityAsync(
@@ -781,7 +781,7 @@ namespace AI4E.Storage.Domain.Specification
             await subject.QueryEntityAsync(
                  Fixture.Create<EntityIdentifier>(), bypassCache: true, Fixture.Create<CancellationToken>());
 
-            await Fixture.Create<IEntityStorageEngine>().ProcessCommitAttemptAsync(
+            await Fixture.Create<IEntityStorageEngine>().CommitAsync(
                UpdateCommitAttempt, Fixture.Create<CancellationToken>());
 
             await subject.QueryEntitiesAsync(

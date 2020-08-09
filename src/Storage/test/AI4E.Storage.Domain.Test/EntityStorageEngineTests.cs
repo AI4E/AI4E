@@ -159,17 +159,17 @@ namespace AI4E.Storage.Domain.Test
 
             // Add an entry, query it in another instance to fill the cache and delete and recreate it in the original 
             // instance
-            await subject.ProcessCommitAttemptAsync(CreateCommitAttempt, Fixture.Create<CancellationToken>());
+            await subject.CommitAsync(CreateCommitAttempt, Fixture.Create<CancellationToken>());
             await testSubject.QueryEntityAsync(
                 Fixture.Create<EntityIdentifier>(), bypassCache: false, Fixture.Create<CancellationToken>());
-            await subject.ProcessCommitAttemptAsync(DeleteCommitAttempt, Fixture.Create<CancellationToken>());
-            await subject.ProcessCommitAttemptAsync(CreateCommitAttempt, Fixture.Create<CancellationToken>());
+            await subject.CommitAsync(DeleteCommitAttempt, Fixture.Create<CancellationToken>());
+            await subject.CommitAsync(CreateCommitAttempt, Fixture.Create<CancellationToken>());
 
             // testSubject now has in its cache an entry with epoch = 0 and revision = 1
             // In the database is an entry with               epoch = 1 and revision = 1
 
             // Act
-            var commitResult = await testSubject.ProcessCommitAttemptAsync(DeleteCommitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await testSubject.CommitAsync(DeleteCommitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.Success, commitResult);
@@ -192,18 +192,18 @@ namespace AI4E.Storage.Domain.Test
 
             // Add an entry, query it in another instance to fill the cache and delete and recreate it in the original 
             // instance
-            await subject.ProcessCommitAttemptAsync(CreateCommitAttempt, Fixture.Create<CancellationToken>());
+            await subject.CommitAsync(CreateCommitAttempt, Fixture.Create<CancellationToken>());
             await testSubject.QueryEntityAsync(
                 Fixture.Create<EntityIdentifier>(), bypassCache: false, Fixture.Create<CancellationToken>());
-            await subject.ProcessCommitAttemptAsync(DeleteCommitAttempt, Fixture.Create<CancellationToken>());
-            await subject.ProcessCommitAttemptAsync(CreateCommitAttempt, Fixture.Create<CancellationToken>());
-            await subject.ProcessCommitAttemptAsync(UpdateCommitAttempt, Fixture.Create<CancellationToken>());
+            await subject.CommitAsync(DeleteCommitAttempt, Fixture.Create<CancellationToken>());
+            await subject.CommitAsync(CreateCommitAttempt, Fixture.Create<CancellationToken>());
+            await subject.CommitAsync(UpdateCommitAttempt, Fixture.Create<CancellationToken>());
 
             // testSubject now has in its cache an entry with epoch = 0 and revision = 1
             // In the database is an entry with               epoch = 1 and revision = 2
 
             // Act
-            var commitResult = await testSubject.ProcessCommitAttemptAsync(DeleteCommitAttempt, Fixture.Create<CancellationToken>());
+            var commitResult = await testSubject.CommitAsync(DeleteCommitAttempt, Fixture.Create<CancellationToken>());
 
             // Assert
             Assert.Equal(EntityCommitResult.ConcurrencyFailure, commitResult);

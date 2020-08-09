@@ -38,16 +38,22 @@ namespace AI4E.Storage.Domain
 #pragma warning restore CA1815
     {
         private readonly ICommitAttemptExecutor? _processing;
+        private readonly IServiceProvider _serviceProvider;
         private readonly CancellationToken _cancellation;
 
         public CommitAttemptProcessingStep(
             ICommitAttemptExecutor processing,
+            IServiceProvider serviceProvider,
             CancellationToken cancellation)
         {
             if (processing is null)
                 throw new ArgumentNullException(nameof(processing));
 
+            if (serviceProvider is null)
+                throw new ArgumentNullException(nameof(serviceProvider));
+
             _processing = processing;
+            _serviceProvider = serviceProvider;
             _cancellation = cancellation;
         }
 
@@ -58,7 +64,7 @@ namespace AI4E.Storage.Domain
             if (_processing is null)
                 return new ValueTask<EntityCommitResult>(EntityCommitResult.CommitProcessingFailure);
 
-            return _processing.ProcessCommitAttemptAsync(commitAttempt, _cancellation);
+            return _processing.ProcessCommitAttemptAsync(commitAttempt, _serviceProvider, _cancellation);
         }
     }
 }

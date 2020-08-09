@@ -557,7 +557,7 @@ namespace AI4E.Storage.Domain.Test
 
             var storageEngineMock = new Mock<IEntityStorageEngine>();
             storageEngineMock.Setup(
-                storageEngine => storageEngine.ProcessCommitAttemptAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
 
@@ -582,7 +582,7 @@ namespace AI4E.Storage.Domain.Test
 
             var storageEngineMock = new Mock<IEntityStorageEngine>();
             storageEngineMock.Setup(
-                storageEngine => storageEngine.ProcessCommitAttemptAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
                 .ReturnsAsync(expectedCommitResult);
             var storageEngine = storageEngineMock.Object;
 
@@ -611,7 +611,7 @@ namespace AI4E.Storage.Domain.Test
             CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.ProcessCommitAttemptAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
                 .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
@@ -636,7 +636,7 @@ namespace AI4E.Storage.Domain.Test
             CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.ProcessCommitAttemptAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
                 .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
@@ -664,7 +664,7 @@ namespace AI4E.Storage.Domain.Test
             CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.ProcessCommitAttemptAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
                 .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
@@ -701,7 +701,7 @@ namespace AI4E.Storage.Domain.Test
             CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.ProcessCommitAttemptAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
                 .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
@@ -726,7 +726,7 @@ namespace AI4E.Storage.Domain.Test
             CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.ProcessCommitAttemptAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
                 .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
@@ -751,7 +751,7 @@ namespace AI4E.Storage.Domain.Test
             CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.ProcessCommitAttemptAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
                 .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
@@ -776,7 +776,7 @@ namespace AI4E.Storage.Domain.Test
             CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.ProcessCommitAttemptAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
                 .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
@@ -804,7 +804,7 @@ namespace AI4E.Storage.Domain.Test
             CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.ProcessCommitAttemptAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
                 .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;
@@ -848,7 +848,7 @@ namespace AI4E.Storage.Domain.Test
             CommitAttempt<TestCommitAttemptEntry> storedCommitAttempt;
 
             storageEngineMock.Setup(
-                storageEngine => storageEngine.ProcessCommitAttemptAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
+                storageEngine => storageEngine.CommitAsync(It.IsAny<CommitAttempt<TestCommitAttemptEntry>>(), default))
                 .Callback<CommitAttempt<TestCommitAttemptEntry>, CancellationToken>((commitAttempt, _) => storedCommitAttempt = commitAttempt)
                 .ReturnsAsync(EntityCommitResult.Success);
             var storageEngine = storageEngineMock.Object;

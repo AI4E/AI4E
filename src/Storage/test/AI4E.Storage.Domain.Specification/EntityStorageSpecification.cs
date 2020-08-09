@@ -161,7 +161,7 @@ namespace AI4E.Storage.Domain.Specification
         private void ObserveCommitAttempt(Action<object> observer)
         {
             Fixture.Create<Mock<IEntityStorageEngine>>()
-                .Setup(storageEngine => storageEngine.ProcessCommitAttemptAsync(
+                .Setup(storageEngine => storageEngine.CommitAsync(
                     It.Is<CommitAttempt<CommitAttemptEntryTypeMatcher>>((o, t) => true), Fixture.Create<CancellationToken>()))
                 .Callback<object, CancellationToken>(
                     (commitAttempt, cancellation) => { observer(commitAttempt); })
@@ -729,7 +729,7 @@ namespace AI4E.Storage.Domain.Specification
 
             // Assert
             Fixture.Create<Mock<IEntityStorageEngine>>()
-               .Verify(storageEngine => storageEngine.ProcessCommitAttemptAsync(
+               .Verify(storageEngine => storageEngine.CommitAsync(
                    It.IsAny<CommitAttempt<CommitAttemptEntryTypeMatcher>>(), Fixture.Create<CancellationToken>()), Times.Never);
         }
 

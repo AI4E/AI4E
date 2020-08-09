@@ -32,15 +32,16 @@ namespace AI4E.Storage.Domain
         private readonly ImmutableList<ICommitAttemptProcessorRegistration> _processorRegistrations;
         private readonly IEntityStorageEngine _storageEngine;
 
-        public CommitAttemptProcessingQueue(IEntityStorageEngine storageEngine) 
+        public CommitAttemptProcessingQueue(IEntityStorageEngine storageEngine)
             : this(storageEngine, Enumerable.Empty<ICommitAttemptProcessorRegistration>()) { }
 
         public CommitAttemptProcessingQueue(
-            IEntityStorageEngine storageEngine, 
+            IEntityStorageEngine storageEngine,
             IEnumerable<ICommitAttemptProcessorRegistration> processorRegistrations)
         {
             if (storageEngine is null)
                 throw new ArgumentNullException(nameof(storageEngine));
+
             if (processorRegistrations is null)
                 throw new ArgumentNullException(nameof(processorRegistrations));
 
@@ -56,42 +57,62 @@ namespace AI4E.Storage.Domain
             CancellationToken cancellation)
             where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
         {
-            if (!_processorRegistrations.Any())
-            {
-                return _storageEngine.ProcessCommitAttemptAsync(commitAttempt, cancellation);
-            }
-
-            ICommitAttemptExecutor processing =_storageEngine;
+            ICommitAttemptExecutor processing = new EntityStorageEngineExecutor(_storageEngine);
 
             foreach (var processorRegistration in _processorRegistrations)
             {
-                var processor = processorRegistration.CreateCommitAttemptProcessor(serviceProvider);
-                processing = new CompiledCommitAttemptProcessor(processor, processing);
+                processing = new CommitAttemptProcessorExecutor(processorRegistration, processing);
             }
 
-            return processing.ProcessCommitAttemptAsync(commitAttempt, cancellation);
+            return processing.ProcessCommitAttemptAsync(commitAttempt, serviceProvider, cancellation);
         }
 
-        private sealed class CompiledCommitAttemptProcessor : ICommitAttemptExecutor
+        private sealed class EntityStorageEngineExecutor : ICommitAttemptExecutor
         {
-            private readonly ICommitAttemptProcessor _processor;
+            private readonly IEntityStorageEngine _storageEngine;
+
+            public EntityStorageEngineExecutor(IEntityStorageEngine entityStorageEngine)
+            {
+                _storageEngine = entityStorageEngine;
+            }
+
+            public ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
+                CommitAttempt<TCommitAttemptEntry> commitAttempt, 
+                IServiceProvider serviceProvider, 
+                CancellationToken cancellation) 
+                where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
+            {
+                return _storageEngine.CommitAsync(commitAttempt, cancellation);
+            }
+        }
+
+        private sealed class CommitAttemptProcessorExecutor : ICommitAttemptExecutor
+        {
+            private readonly ICommitAttemptProcessorRegistration _processorRegistration;
             private readonly ICommitAttemptExecutor _nextProcessing;
 
-            public CompiledCommitAttemptProcessor(
-                ICommitAttemptProcessor processor,
+            public CommitAttemptProcessorExecutor(
+                ICommitAttemptProcessorRegistration processorRegistration,
                 ICommitAttemptExecutor nextProcessing)
             {
-                _processor = processor;
+                _processorRegistration = processorRegistration;
                 _nextProcessing = nextProcessing;
             }
 
             public ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
                 CommitAttempt<TCommitAttemptEntry> commitAttempt,
+                IServiceProvider serviceProvider,
                 CancellationToken cancellation)
                 where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
             {
-                var nextProcessingStep = new CommitAttemptProcessingStep(_nextProcessing, cancellation);
-                return _processor.ProcessCommitAttemptAsync(commitAttempt, nextProcessingStep, cancellation);
+                if (serviceProvider is null)
+                    throw new ArgumentNullException(nameof(serviceProvider));
+
+                var processor = _processorRegistration.CreateCommitAttemptProcessor(serviceProvider);
+                var nextProcessingStep = new CommitAttemptProcessingStep(
+                    _nextProcessing, serviceProvider, cancellation);
+
+                return processor.ProcessCommitAttemptAsync(commitAttempt, nextProcessingStep, cancellation);
             }
         }
     }
