@@ -29,14 +29,11 @@ namespace AI4E.Storage.Domain
     public abstract class CommitAttemptProcessorBase : ICommitAttemptProcessor
     {
         public ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
-          CommitAttempt<TCommitAttemptEntry> commitAttempt,
-          ICommitAttemptProcessing nextProcessing,
-          CancellationToken cancellation)
-          where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
+            CommitAttempt<TCommitAttemptEntry> commitAttempt,
+            CommitAttemptProcessingStep nextProcessing,
+            CancellationToken cancellation)
+            where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
         {
-            if (nextProcessing is null)
-                throw new ArgumentNullException(nameof(nextProcessing));
-
             var commitAttemptEntries = ImmutableArray.CreateBuilder<CommitAttemptEntry>(
                 initialCapacity: commitAttempt.Entries.Count);
 

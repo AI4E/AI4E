@@ -419,7 +419,7 @@ namespace AI4E.Storage.Domain
         }
 
         /// <inheritdoc/>
-        public async ValueTask<EntityCommitResult> CommitAsync<TCommitAttemptEntry>(
+        public async ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
             CommitAttempt<TCommitAttemptEntry> commitAttempt,
             CancellationToken cancellation)
             where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>

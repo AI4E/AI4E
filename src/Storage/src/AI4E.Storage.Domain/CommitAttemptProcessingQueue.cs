@@ -58,63 +58,40 @@ namespace AI4E.Storage.Domain
         {
             if (!_processorRegistrations.Any())
             {
-                return _storageEngine.CommitAsync(commitAttempt, cancellation);
+                return _storageEngine.ProcessCommitAttemptAsync(commitAttempt, cancellation);
             }
 
-            ICommitAttemptProcessing processing = new StorageEngineCommitAttemptProcessing(
-                _storageEngine, cancellation);
+            ICommitAttemptExecutor processing =_storageEngine;
 
             foreach (var processorRegistration in _processorRegistrations)
             {
                 var processor = processorRegistration.CreateCommitAttemptProcessor(serviceProvider);
-                processing = new ProcessorCommitAttemptProcessing(processor, processing, cancellation);
+                processing = new CompiledCommitAttemptProcessor(processor, processing);
             }
 
-            return processing.ProcessCommitAttemptAsync(commitAttempt);
+            return processing.ProcessCommitAttemptAsync(commitAttempt, cancellation);
         }
 
-        private sealed class StorageEngineCommitAttemptProcessing : ICommitAttemptProcessing
-        {
-            private readonly IEntityStorageEngine _storageEngine;
-            private readonly CancellationToken _cancellation;
-
-            public StorageEngineCommitAttemptProcessing(
-                IEntityStorageEngine storageEngine,
-                CancellationToken cancellation)
-            {
-                _storageEngine = storageEngine;
-                _cancellation = cancellation;
-            }
-
-            public ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
-                CommitAttempt<TCommitAttemptEntry> commitAttempt)
-                where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
-            {
-                return _storageEngine.CommitAsync(commitAttempt, _cancellation);
-            }
-        }
-
-        private sealed class ProcessorCommitAttemptProcessing : ICommitAttemptProcessing
+        private sealed class CompiledCommitAttemptProcessor : ICommitAttemptExecutor
         {
             private readonly ICommitAttemptProcessor _processor;
-            private readonly ICommitAttemptProcessing _nextProcessing;
-            private readonly CancellationToken _cancellation;
+            private readonly ICommitAttemptExecutor _nextProcessing;
 
-            public ProcessorCommitAttemptProcessing(
+            public CompiledCommitAttemptProcessor(
                 ICommitAttemptProcessor processor,
-                ICommitAttemptProcessing nextProcessing,
-                CancellationToken cancellation)
+                ICommitAttemptExecutor nextProcessing)
             {
                 _processor = processor;
                 _nextProcessing = nextProcessing;
-                _cancellation = cancellation;
             }
 
             public ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
-                CommitAttempt<TCommitAttemptEntry> commitAttempt)
+                CommitAttempt<TCommitAttemptEntry> commitAttempt,
+                CancellationToken cancellation)
                 where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
             {
-                return _processor.ProcessCommitAttemptAsync(commitAttempt, _nextProcessing, _cancellation);
+                var nextProcessingStep = new CommitAttemptProcessingStep(_nextProcessing, cancellation);
+                return _processor.ProcessCommitAttemptAsync(commitAttempt, nextProcessingStep, cancellation);
             }
         }
     }

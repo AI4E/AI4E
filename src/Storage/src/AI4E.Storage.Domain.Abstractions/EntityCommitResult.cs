@@ -36,6 +36,11 @@ namespace AI4E.Storage.Domain
         /// <summary>
         /// A concurrency failure occurred.
         /// </summary>
-        ConcurrencyFailure = 1
+        ConcurrencyFailure = 1,
+
+        /// <summary>
+        /// A commit processor failed processing the commit attempt.
+        /// </summary>
+        CommitProcessingFailure = 2
     }
 }

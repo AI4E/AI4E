@@ -28,8 +28,37 @@ namespace AI4E.Storage.Domain
     {
         ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
             CommitAttempt<TCommitAttemptEntry> commitAttempt,
-            ICommitAttemptProcessing nextProcessing,
+            CommitAttemptProcessingStep nextProcessing,
             CancellationToken cancellation = default)
             where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>;
+    }
+
+#pragma warning disable CA1815
+    public readonly struct CommitAttemptProcessingStep
+#pragma warning restore CA1815
+    {
+        private readonly ICommitAttemptExecutor? _processing;
+        private readonly CancellationToken _cancellation;
+
+        public CommitAttemptProcessingStep(
+            ICommitAttemptExecutor processing,
+            CancellationToken cancellation)
+        {
+            if (processing is null)
+                throw new ArgumentNullException(nameof(processing));
+
+            _processing = processing;
+            _cancellation = cancellation;
+        }
+
+        public ValueTask<EntityCommitResult> ProcessCommitAttemptAsync<TCommitAttemptEntry>(
+            CommitAttempt<TCommitAttemptEntry> commitAttempt)
+            where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>
+        {
+            if (_processing is null)
+                return new ValueTask<EntityCommitResult>(EntityCommitResult.CommitProcessingFailure);
+
+            return _processing.ProcessCommitAttemptAsync(commitAttempt, _cancellation);
+        }
     }
 }
