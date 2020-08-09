@@ -25,6 +25,6 @@ namespace AI4E.Storage.Domain
         bool Register(ICommitAttemptProcessorRegistration processorRegistration);
         bool Unregister(ICommitAttemptProcessorRegistration processorRegistration);
 
-        ICommitAttemptProccesingQueue BuildProcessingQueue(IEntityStorageEngine storageEngine);
+        ICommitAttemptProccesingQueue BuildProcessingQueue();
     }
 }
