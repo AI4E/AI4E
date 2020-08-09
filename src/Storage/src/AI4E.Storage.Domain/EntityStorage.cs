@@ -50,7 +50,7 @@ namespace AI4E.Storage.Domain
     {
         private readonly IEntityStorageEngine _storageEngine;
         private readonly IEntityIdFactory _idFactory;
-        private readonly ICommitAttemptProccesingQueue _commitAttemptProccesingQueue;
+        private readonly ICommitAttemptProcessorRegistry _commitAttemptProcessorRegistry;
         private readonly IServiceProvider _serviceProvider;
         private readonly IOptions<DomainStorageOptions> _optionsAccessor;
         private readonly ILogger<EntityStorage> _logger;
@@ -89,7 +89,7 @@ namespace AI4E.Storage.Domain
             IEntityMetadataManager metadataManager,
             IEntityIdFactory idFactory,
             IConcurrencyTokenFactory concurrencyTokenFactory,
-            ICommitAttemptProccesingQueue commitAttemptProccesingQueue,
+            ICommitAttemptProcessorRegistry commitAttemptProcessorRegistry,
             IServiceProvider serviceProvider,
             IOptions<DomainStorageOptions> optionsAccessor,
             ILogger<EntityStorage>? logger = null)
@@ -106,8 +106,8 @@ namespace AI4E.Storage.Domain
             if (concurrencyTokenFactory is null)
                 throw new ArgumentNullException(nameof(concurrencyTokenFactory));
 
-            if (commitAttemptProccesingQueue is null)
-                throw new ArgumentNullException(nameof(commitAttemptProccesingQueue));
+            if (commitAttemptProcessorRegistry is null)
+                throw new ArgumentNullException(nameof(commitAttemptProcessorRegistry));
 
             if (serviceProvider is null)
                 throw new ArgumentNullException(nameof(serviceProvider));
@@ -118,7 +118,7 @@ namespace AI4E.Storage.Domain
             _storageEngine = storageEngine;
             MetadataManager = metadataManager;
             _idFactory = idFactory;
-            _commitAttemptProccesingQueue = commitAttemptProccesingQueue;
+            _commitAttemptProcessorRegistry = commitAttemptProcessorRegistry;
             _serviceProvider = serviceProvider;
             _optionsAccessor = optionsAccessor;
             _logger = logger ?? NullLogger<EntityStorage>.Instance;
@@ -169,7 +169,7 @@ namespace AI4E.Storage.Domain
                 Resources.LoadingEntities,
                 _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
-            if(!_storageEngineQueryResults.TryGetValue(entityType, out var loadResults))
+            if (!_storageEngineQueryResults.TryGetValue(entityType, out var loadResults))
             {
                 loadResults = _storageEngine.QueryEntitiesAsync(
                     entityType, bypassCache: false, cancellation).Cached();
@@ -440,8 +440,10 @@ namespace AI4E.Storage.Domain
                 Resources.Committing, _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
             var result = await _unitOfWork.CommitAsync(
-                _storageEngine,_commitAttemptProccesingQueue, _serviceProvider, cancellation).ConfigureAwait(false);
-           
+                _commitAttemptProcessorRegistry.BuildProcessingQueue(), 
+                _serviceProvider, 
+                cancellation).ConfigureAwait(false);
+
             _storageEngineQueryResults.Clear();
             return result;
         }

@@ -22,11 +22,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Domain.Tracking
 {
@@ -123,14 +121,10 @@ namespace AI4E.Storage.Domain.Tracking
 
         /// <inheritdoc/>
         public ValueTask<EntityCommitResult> CommitAsync(
-            IEntityStorageEngine storageEngine,
             ICommitAttemptProccesingQueue processingQueue,
             IServiceProvider serviceProvider,
             CancellationToken cancellation = default)
         {
-            if (storageEngine is null)
-                throw new ArgumentNullException(nameof(storageEngine));
-
             if (processingQueue is null)
                 throw new ArgumentNullException(nameof(processingQueue));
 
@@ -143,8 +137,7 @@ namespace AI4E.Storage.Domain.Tracking
             // We rollback in any case.
             Reset();
 
-            return processingQueue.ProcessCommitAttemptAsync(
-                storageEngine, commitAttempt, serviceProvider, cancellation);
+            return processingQueue.ProcessCommitAttemptAsync(commitAttempt, serviceProvider, cancellation);
         }
 
 

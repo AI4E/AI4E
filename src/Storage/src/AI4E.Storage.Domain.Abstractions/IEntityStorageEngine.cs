@@ -86,9 +86,12 @@ namespace AI4E.Storage.Domain
         /// When evaluated, the tasks result contains the commit result indicating commit success 
         /// or failure information.
         /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="serviceProvider"/> is <c>null</c>.
+        /// </exception>
         ValueTask<EntityCommitResult> CommitAsync<TCommitAttemptEntry>(
             CommitAttempt<TCommitAttemptEntry> commitAttempt,
-            CancellationToken cancellation = default)
+            CancellationToken cancellation)
             where TCommitAttemptEntry : ICommitAttemptEntry, IEquatable<TCommitAttemptEntry>;
     }
 }

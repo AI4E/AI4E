@@ -18,36 +18,78 @@
  * --------------------------------------------------------------------------------------------------------------------
  */
 
-// TODO: Does this has to be thread-safe?
-
+using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace AI4E.Storage.Domain
 {
     public sealed class CommitAttemptProcessorRegistry : ICommitAttemptProcessorRegistry
     {
-        private readonly List<ICommitAttemptProcessorRegistration> _registrations = new List<ICommitAttemptProcessorRegistration>();
+        private readonly List<ICommitAttemptProcessorRegistration> _registrations
+            = new List<ICommitAttemptProcessorRegistration>();
+
+        private readonly object _mutex = new object();
+        private readonly IEntityStorageEngine _storageEngine;
+        private ICommitAttemptProccesingQueue? _compiledQueue = null;
+
+        public CommitAttemptProcessorRegistry(IEntityStorageEngine storageEngine)
+        {
+            if (storageEngine is null)
+                throw new ArgumentNullException(nameof(storageEngine));
+
+            _storageEngine = storageEngine;
+        }
 
         public bool Register(ICommitAttemptProcessorRegistration processorRegistration)
         {
-            var result = _registrations.Contains(processorRegistration);
-
-            if (!result)
+            lock (_mutex)
             {
-                _registrations.Add(processorRegistration);
-            }
+                var result = !_registrations.Contains(processorRegistration);
 
-            return !result;
+                if (result)
+                {
+                    _registrations.Insert(0, processorRegistration);
+                    _compiledQueue = null;
+                }
+
+                return result;
+            }
         }
 
         public bool Unregister(ICommitAttemptProcessorRegistration processorRegistration)
         {
-            return _registrations.Remove(processorRegistration);
+            lock (_mutex)
+            {
+                var result = _registrations.Remove(processorRegistration);
+
+                if(result)
+                {
+                    _compiledQueue = null;
+                }
+
+                return result;
+            }
         }
 
         public ICommitAttemptProccesingQueue BuildProcessingQueue()
         {
-            return new CommitAttemptProcessingQueue(_registrations);
+            var result = Volatile.Read(ref _compiledQueue);
+
+            if (result is null)
+            {
+                lock (_mutex)
+                {
+                    result = _compiledQueue;
+
+                    if (result is null)
+                    {
+                        result = new CommitAttemptProcessingQueue(_storageEngine, _registrations);
+                    }
+                }
+            }
+
+            return result;
         }
     }
 }

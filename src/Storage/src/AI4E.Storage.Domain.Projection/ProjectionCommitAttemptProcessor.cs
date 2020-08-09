@@ -22,18 +22,18 @@ using System;
 
 namespace AI4E.Storage.Domain.Projection
 {
-    public sealed class ProjectionCommitAttemptProcessor : CommitAttemptProcessorBase
+    public sealed class ProjectionCommitAttemptProcessor : CommitAttemptProcessorBase<CommitAttemptEntry>
     {
         protected override void ProcessEntry<TCommitAttemptEntry>(
-            TCommitAttemptEntry entry, out CommitAttemptEntry result)
+            in TCommitAttemptEntry source, out CommitAttemptEntry dest)
         {
-            using var resultBuilder = CommitAttemptEntry.CreateBuilder(entry);
+            using var resultBuilder = CommitAttemptEntry.CreateBuilder(source);
 
             var projectDomainEvent = new DomainEvent(
-                new ProjectEntityMessage(entry.EntityIdentifier.EntityType, entry.EntityIdentifier.EntityId));
+                new ProjectEntityMessage(source.EntityIdentifier.EntityType, source.EntityIdentifier.EntityId));
 
             resultBuilder.DomainEvents = resultBuilder.DomainEvents.Add(projectDomainEvent);
-            resultBuilder.Build(out result);
+            resultBuilder.Build(out dest);
         }
 
         public static IProjectionBuilder Register(IProjectionBuilder projectionBuilder)

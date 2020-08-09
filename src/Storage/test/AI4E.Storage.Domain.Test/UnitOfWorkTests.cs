@@ -510,25 +510,6 @@ namespace AI4E.Storage.Domain.Test
         }
 
         [Fact]
-        public async Task CommitAsyncNullStorageEngineThrowsArgumentNullExceptionTest()
-        {
-            // Arrange
-            var subject = CreateUnitOfWork();
-
-            // Act
-            async Task ActAsync()
-            {
-                await subject.CommitAsync(
-                    storageEngine: null, 
-                    new CommitAttemptProcessingQueue(),
-                    new ServiceCollection().BuildServiceProvider());
-            }
-
-            // Assert
-            await Assert.ThrowsAsync<ArgumentNullException>("storageEngine", ActAsync);
-        }
-
-        [Fact]
         public async Task CommitAsyncNullProcessingQueueThrowsArgumentNullExceptionTest()
         {
             // Arrange
@@ -540,7 +521,6 @@ namespace AI4E.Storage.Domain.Test
             async Task ActAsync()
             {
                 await subject.CommitAsync(
-                    storageEngine,
                     processingQueue: null,
                     new ServiceCollection().BuildServiceProvider());
             }
@@ -561,8 +541,7 @@ namespace AI4E.Storage.Domain.Test
             async Task ActAsync()
             {
                 await subject.CommitAsync(
-                    storageEngine,
-                    new CommitAttemptProcessingQueue(),
+                    new CommitAttemptProcessingQueue(storageEngine),
                     serviceProvider: null);
             }
 
@@ -583,8 +562,7 @@ namespace AI4E.Storage.Domain.Test
             var storageEngine = storageEngineMock.Object;
 
             await subject.CommitAsync(
-                    storageEngine,
-                    new CommitAttemptProcessingQueue(),
+                    new CommitAttemptProcessingQueue(storageEngine),
                     new ServiceCollection().BuildServiceProvider());
 
             // Act
@@ -610,9 +588,8 @@ namespace AI4E.Storage.Domain.Test
 
             // Act
             var commitResult = await subject.CommitAsync(
-                storageEngine,
-                    new CommitAttemptProcessingQueue(),
-                    new ServiceCollection().BuildServiceProvider());
+                new CommitAttemptProcessingQueue(storageEngine),
+                new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(expectedCommitResult, commitResult);
@@ -641,9 +618,8 @@ namespace AI4E.Storage.Domain.Test
 
             // Act
             await subject.CommitAsync(
-                    storageEngine,
-                    new CommitAttemptProcessingQueue(),
-                    new ServiceCollection().BuildServiceProvider());
+                new CommitAttemptProcessingQueue(storageEngine),
+                new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(4, storedCommitAttempt.Entries.Count);
@@ -667,9 +643,8 @@ namespace AI4E.Storage.Domain.Test
 
             // Act
             await subject.CommitAsync(
-                    storageEngine,
-                    new CommitAttemptProcessingQueue(),
-                    new ServiceCollection().BuildServiceProvider());
+                new CommitAttemptProcessingQueue(storageEngine),
+                new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(EntityIdentifier1, storedCommitAttempt.Entries.First().EntityIdentifier);
@@ -696,9 +671,8 @@ namespace AI4E.Storage.Domain.Test
 
             // Act
             await subject.CommitAsync(
-                    storageEngine,
-                    new CommitAttemptProcessingQueue(),
-                    new ServiceCollection().BuildServiceProvider());
+                new CommitAttemptProcessingQueue(storageEngine),
+                new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(commitOperation, storedCommitAttempt.Entries.First().Operation);
@@ -734,9 +708,8 @@ namespace AI4E.Storage.Domain.Test
 
             // Act
             await subject.CommitAsync(
-                    storageEngine,
-                    new CommitAttemptProcessingQueue(),
-                    new ServiceCollection().BuildServiceProvider());
+                new CommitAttemptProcessingQueue(storageEngine),
+                new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(entry.EntityLoadResult.Revision, storedCommitAttempt.Entries.First().Revision);
@@ -760,9 +733,8 @@ namespace AI4E.Storage.Domain.Test
 
             // Act
             await subject.CommitAsync(
-                    storageEngine,
-                    new CommitAttemptProcessingQueue(),
-                    new ServiceCollection().BuildServiceProvider());
+                new CommitAttemptProcessingQueue(storageEngine),
+                new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(entry.EntityLoadResult.ConcurrencyToken, storedCommitAttempt.Entries.First().ConcurrencyToken);
@@ -786,9 +758,8 @@ namespace AI4E.Storage.Domain.Test
 
             // Act
             await subject.CommitAsync(
-                    storageEngine,
-                    new CommitAttemptProcessingQueue(),
-                    new ServiceCollection().BuildServiceProvider());
+                new CommitAttemptProcessingQueue(storageEngine),
+                new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(entry.RecordedDomainEvents, storedCommitAttempt.Entries.First().DomainEvents);
@@ -812,9 +783,8 @@ namespace AI4E.Storage.Domain.Test
 
             // Act
             await subject.CommitAsync(
-                    storageEngine,
-                    new CommitAttemptProcessingQueue(),
-                    new ServiceCollection().BuildServiceProvider());
+                new CommitAttemptProcessingQueue(storageEngine),
+                new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Equal(entry.EntityLoadResult.TrackedLoadResult.Revision, storedCommitAttempt.Entries.First().ExpectedRevision);
@@ -841,9 +811,8 @@ namespace AI4E.Storage.Domain.Test
 
             // Act
             await subject.CommitAsync(
-                    storageEngine,
-                    new CommitAttemptProcessingQueue(),
-                    new ServiceCollection().BuildServiceProvider());
+                new CommitAttemptProcessingQueue(storageEngine),
+                new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.Same(expectedEntity, storedCommitAttempt.Entries.First().Entity);
@@ -886,9 +855,8 @@ namespace AI4E.Storage.Domain.Test
 
             // Act
             await subject.CommitAsync(
-                    storageEngine,
-                    new CommitAttemptProcessingQueue(),
-                    new ServiceCollection().BuildServiceProvider());
+                new CommitAttemptProcessingQueue(storageEngine),
+                new ServiceCollection().BuildServiceProvider());
 
             // Assert
             Assert.NotSame(entry.EntityLoadResult.GetEntity(), storedCommitAttempt.Entries.First().Entity);
