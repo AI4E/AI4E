@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -28,10 +28,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
+using AI4E.Utils;
 using Microsoft.AspNetCore.Components;
 
 namespace AI4E.AspNetCore.Components
@@ -106,42 +106,38 @@ namespace AI4E.AspNetCore.Components
                 // Avoid traversing visited assemblies.
                 yield break;
             }
+
             visited.Add(assembly);
             var references = assembly.GetReferencedAssemblies();
-            if (!references.Any(r => string.Equals(r.FullName, BlazorAssembly.FullName, StringComparison.Ordinal)))
+            if (!references.Any(r => AssemblyNameComparer.BySimpleName.Equals(r, BlazorAssembly.GetName())))
             {
                 // Avoid traversing references that don't point to blazor (like netstandard2.0)
                 yield break;
             }
-            else
-            {
-                yield return assembly;
 
-                // Look at the list of transitive dependencies for more components.
-                foreach (var reference in references.SelectMany(r => EnumerateAssemblies(r, loadContext, visited)))
-                {
-                    yield return reference;
-                }
+            yield return assembly;
+
+            // Look at the list of transitive dependencies for more components.
+            foreach (var reference in references.SelectMany(r => EnumerateAssemblies(r, loadContext, visited)))
+            {
+                yield return reference;
             }
+
         }
 
         private class AssemblyComparer : IEqualityComparer<Assembly>
         {
-            public bool Equals([AllowNull]Assembly x, [AllowNull]Assembly y)
+            public bool Equals(Assembly? x, Assembly? y)
             {
                 return string.Equals(x?.FullName, y?.FullName, StringComparison.Ordinal);
             }
 
-            public int GetHashCode([DisallowNull]Assembly obj)
+            public int GetHashCode(Assembly obj)
             {
                 if (obj is null)
                     throw new ArgumentNullException(nameof(obj));
 
-#if NETCORE30 || NETSTD21
-                 return obj.FullName?.GetHashCode(StringComparison.Ordinal) ?? 0;
-#else
-                return obj.FullName?.GetHashCode() ?? 0;
-#endif
+                return obj.FullName?.GetHashCode(StringComparison.Ordinal) ?? 0;
             }
         }
     }
