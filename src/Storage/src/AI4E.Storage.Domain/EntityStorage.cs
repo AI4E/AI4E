@@ -167,6 +167,7 @@ namespace AI4E.Storage.Domain
 
             _logger.LogInformation(
                 Resources.LoadingEntities,
+                entityType.GetUnqualifiedTypeName(),
                 _optionsAccessor.Value.Scope ?? Resources.NoScope);
 
             if (!_storageEngineQueryResults.TryGetValue(entityType, out var loadResults))
@@ -225,6 +226,7 @@ namespace AI4E.Storage.Domain
 
             _logger.LogDebug(
                 Resources.LoadedEntities,
+                entityType.GetUnqualifiedTypeName(),
                 _optionsAccessor.Value.Scope ?? Resources.NoScope);
         }
 
