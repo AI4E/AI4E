@@ -5,6 +5,24 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="DeserializeAbstractBaseTestInput.json" />
+    <None Remove="DeserializeBaseTestInput.json" />
+    <None Remove="DeserializeGenericBaseTestInput.json" />
+    <None Remove="Issue309TestInput.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\..\Shared\IdGenerator.cs" Link="IdGenerator.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="DeserializeAbstractBaseTestInput.json" />
+    <EmbeddedResource Include="DeserializeBaseTestInput.json" />
+    <EmbeddedResource Include="DeserializeGenericBaseTestInput.json" />
+    <EmbeddedResource Include="Issue309TestInput.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AutoFixture" Version="4.13.0" />
     <PackageReference Include="AutoFixture.AutoMoq" Version="4.13.0" />
     <PackageReference Include="coverlet.collector" Version="1.3.0">

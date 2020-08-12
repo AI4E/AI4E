@@ -18,14 +18,14 @@ namespace AI4E.Storage.MongoDB
             BsonSerializer.RegisterSerializationProvider(new DictionarySerializerProvider());
             var conventionPack = new ConventionPack
             {
-                new ClassMapConvention()
+                new AI4EMongoDBConvention()
             };
-            ConventionRegistry.Register("AI4E default convention pack", conventionPack, _ => true);
+            ConventionRegistry.Register("AI4EMongoDBConventionPack", conventionPack, _ => true);
         }
 
-        private sealed class ClassMapConvention : IClassMapConvention
+        private sealed class AI4EMongoDBConvention : IClassMapConvention, IMemberMapConvention
         {
-            public string Name => typeof(ClassMapConvention).ToString();
+            public string Name => typeof(AI4EMongoDBConvention).ToString();
 
             public void Apply(BsonClassMap classMap)
             {
@@ -35,6 +35,13 @@ namespace AI4E.Storage.MongoDB
                 {
                     classMap.MapIdMember(idMember);
                 }
+
+                DiscriminatorConvention.Register(classMap.ClassType);
+            }
+
+            public void Apply(BsonMemberMap memberMap)
+            {
+                DiscriminatorConvention.Register(memberMap.MemberType);
             }
         }
     }

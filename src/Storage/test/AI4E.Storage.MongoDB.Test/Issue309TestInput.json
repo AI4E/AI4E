@@ -1,0 +1,33 @@
+{
+  "_id": "AI4E.Storage.MongoDB.Test.Issue309+Entity癴9e8f657-ec60-43ed-b291-248b497849b8񳊯癮bc",
+  "EntityDeleted": false,
+  "EntityType": "AI4E.Storage.MongoDB.Test.Issue309+Entity",
+  "EntityId": "cde5c3a4-9b4c-4052-b983-4ceb252c23a6",
+  "EntityRevision": { "$numberLong": "2" },
+  "EntityEpoch": 1,
+  "Scope": "abc",
+  "DomainEvents": [
+    {
+      "EventType": "AI4E.Storage.MongoDB.Test.Issue309+DeletedDomainEvent`1[AI4E.Storage.MongoDB.Test.Issue309+Entity]",
+      "Event": {
+        "_t": "AI4E.Storage.MongoDB.Test.Issue309+DeletedDomainEvent`1[AI4E.Storage.MongoDB.Test.Issue309+Entity]",
+        "Entity": {
+          "_id": {
+            "$binary": "pMPlzUybUkC5g0zrJSwjpg==",
+            "$type": "3"
+          },
+          "Name": "abc",
+          "ParentId": {
+            "$binary": "iqG6TM/p80uw4uaPKhuAgg==",
+            "$type": "3"
+          },
+          "Icon": null
+        }
+      }
+    },
+    {
+      "EventType": "AI4E.Storage.MongoDB.Test.Issue309+OtherDomainEvent",
+      "Event": { "_t": "AI4E.Storage.MongoDB.Test.Issue309+OtherDomainEvent" }
+    }
+  ]
+}

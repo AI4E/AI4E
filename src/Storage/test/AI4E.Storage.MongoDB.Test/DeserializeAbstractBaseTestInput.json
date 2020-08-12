@@ -1,0 +1,12 @@
+{
+  "_t": "AI4E.Storage.MongoDB.Test.PolymorphicDeserializationTests+AbstractBaseWrapper",
+  "_id": 1,
+  "AbstractBases": [
+    {
+      "_t": "AI4E.Storage.MongoDB.Test.PolymorphicDeserializationTests+AbstractBaseDerived1"
+    },
+    {
+      "_t": "AI4E.Storage.MongoDB.Test.PolymorphicDeserializationTests+AbstractBaseDerived2"
+    }
+  ]
+}

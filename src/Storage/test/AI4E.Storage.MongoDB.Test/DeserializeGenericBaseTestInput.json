@@ -1,0 +1,12 @@
+{
+  "_t": "AI4E.Storage.MongoDB.Test.PolymorphicDeserializationTests+GenericBaseWrapper",
+  "_id": 1,
+  "GenericBases": [
+    {
+      "_t": "AI4E.Storage.MongoDB.Test.PolymorphicDeserializationTests+GenericBaseDerived1`1[System.Object]"
+    },
+    {
+      "_t": "AI4E.Storage.MongoDB.Test.PolymorphicDeserializationTests+GenericBaseDerived2`1[AI4E.Storage.MongoDB.Test.PolymorphicDeserializationTests+GenericValue]"
+    }
+  ]
+}

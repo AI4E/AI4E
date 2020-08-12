@@ -37,7 +37,7 @@ namespace AI4E.Storage.Test
         [Fact]
         public void AddStorageNullServicesThrowsNullReferenceException()
         {
-            Assert.Throws<NullReferenceException>(() =>
+            Assert.Throws<ArgumentNullException>(() =>
             {
                 ServiceCollectionExtension.AddStorage(services: null);
             });
