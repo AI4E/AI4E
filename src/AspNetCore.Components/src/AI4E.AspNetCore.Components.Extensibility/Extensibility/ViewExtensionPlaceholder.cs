@@ -46,6 +46,10 @@ namespace AI4E.AspNetCore.Components.Extensibility
         private ImmutableList<Assembly> _viewExtensionsAssemblies = ImmutableList<Assembly>.Empty;
         private ImmutableList<Assembly> _previousViewExtensionsAssemblies = ImmutableList<Assembly>.Empty;
 
+        private IAssemblySource? _assemblySource;
+
+        private IAssemblySource AssemblySource => _assemblySource ??= AssemblyRegistry.AssemblySource;
+
         /// <summary>
         /// Creates a new instance of the <see cref="ViewExtensionPlaceholder{TViewExtension}"/> type.
         /// </summary>
@@ -54,7 +58,7 @@ namespace AI4E.AspNetCore.Components.Extensibility
             _renderFragment = Render;
         }
 
-        [Inject] private IAssemblySource AssemblySource { get; set; } = null!;
+        [Inject] private IAssemblyRegistry AssemblyRegistry { get; set; } = null!;
 
         /// <summary>
         /// Gets or sets the view-extension context.
@@ -96,28 +100,27 @@ namespace AI4E.AspNetCore.Components.Extensibility
 
         private void Init()
         {
-            AssemblySource.AssembliesChanged += AssembliesChanged;
+            AssemblyRegistry.AssemblySourceChanged += AssemblySourceChanged;
         }
 
         /// <inheritdoc />
         public void Dispose()
         {
-            AssemblySource.AssembliesChanged -= AssembliesChanged;
+            AssemblyRegistry.AssemblySourceChanged -= AssemblySourceChanged;
         }
 
-        private ValueTask AssembliesChanged(
-            IAssemblySource sender,
-            IReadOnlyCollection<Assembly> assemblies)
+        private void AssemblySourceChanged(object? sender, EventArgs args)
         {
-            return _renderHandle.Dispatcher.InvokeAsync(() =>
+            _ = _renderHandle.Dispatcher.InvokeAsync(() =>
             {
+                _assemblySource = null;
                 Refresh(force: false);
 
                 if (UpdateNeeded())
                 {
                     Refresh(force: true);
                 }
-            }).AsValueTask();
+            });
         }
 
         private bool UpdateNeeded()

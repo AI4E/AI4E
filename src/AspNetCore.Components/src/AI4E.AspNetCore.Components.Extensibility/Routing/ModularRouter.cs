@@ -22,8 +22,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
 using AI4E.AspNetCore.Components.Extensibility;
 using Microsoft.AspNetCore.Components;
 
@@ -34,9 +32,13 @@ namespace AI4E.AspNetCore.Components.Routing
     /// </summary>
     public class ModularRouter : ExtensibleRouter
     {
+        private IAssemblySource? _assemblySource;
+
+        private IAssemblySource AssemblySource => _assemblySource ??= AssemblyRegistry.AssemblySource;
+
         protected internal RouteData? PreviousRouteData { get; private set; }
 
-        [Inject] private IAssemblySource AssemblySource { get; set; } = null!;
+        [Inject] private IAssemblyRegistry AssemblyRegistry { get; set; } = null!;
 
         /// <inheritdoc />
         protected override IEnumerable<Type> ResolveRoutableComponents()
@@ -47,20 +49,20 @@ namespace AI4E.AspNetCore.Components.Routing
         /// <inheritdoc />
         protected override void OnInit()
         {
-            if (AssemblySource != null)
+            if (AssemblyRegistry != null)
             {
-                AssemblySource.AssembliesChanged += AssembliesChanged;
+                AssemblyRegistry.AssemblySourceChanged += AssemblySourceChanged;
             }
 
             base.OnInit();
         }
 
-        private ValueTask AssembliesChanged(
-            IAssemblySource sender,
-            IReadOnlyCollection<Assembly> assemblies)
+        private void AssemblySourceChanged(object? sender, EventArgs args)
         {
-            return InvokeAsync(() =>
+            _ = InvokeAsync(() =>
             {
+                _assemblySource = null;
+
                 UpdateRouteTable();
 
                 // Check whether we have to refresh. This is the case if any of:
@@ -78,8 +80,7 @@ namespace AI4E.AspNetCore.Components.Routing
                 {
                     Refresh();
                 }
-
-            }).AsValueTask();
+            });
         }
 
         private bool NeedsRefresh(out bool routeIsOfUnloadedAssembly)
@@ -132,7 +133,7 @@ namespace AI4E.AspNetCore.Components.Routing
         {
             if (AssemblySource != null)
             {
-                AssemblySource.AssembliesChanged -= AssembliesChanged;
+                AssemblyRegistry.AssemblySourceChanged -= AssemblySourceChanged;
             }
 
             base.Dispose(disposing);

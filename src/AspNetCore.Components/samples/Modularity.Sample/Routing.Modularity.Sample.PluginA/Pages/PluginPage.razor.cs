@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.AspNetCore.Components.Extensibility;
+using AI4E;
 using AI4E.Messaging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,7 +13,7 @@ namespace Routing.Modularity.Sample.PluginA.Pages
         private readonly Lazy<IMessageDispatcher> _messageDispatcher;
 
 #nullable disable
-        [Inject] private AssemblyManager AssemblyManager { get; set; }
+        [Inject] private IAssemblyRegistry AssemblyRegistry { get; set; }
 #nullable enable
 
         private IMessageDispatcher MessageDispatcher => _messageDispatcher.Value;
@@ -27,7 +27,7 @@ namespace Routing.Modularity.Sample.PluginA.Pages
         {
             var type = GetType();
             var assembly = type.Assembly;
-            var serviceProvider = AssemblyManager.GetAssemblyServiceProvider(assembly);
+            var serviceProvider = AssemblyRegistry.AssemblySource.GetAssemblyServiceProvider(assembly);
             return serviceProvider?.GetRequiredService<IMessageDispatcher>() ?? NoMessageDispatcher.Instance;
         }
 

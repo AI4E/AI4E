@@ -55,7 +55,7 @@ namespace AI4E.AspNetCore.Components.Modularity
             public AssemblyLoadContext AssemblyLoadContext { get; }
         }
 
-        private readonly AssemblyManager _assemblyManager;
+        private readonly IAssemblyRegistry _assemblyManager;
         private readonly IChildContainerBuilder _childContainerBuilder;
         private readonly IOptions<BlazorModuleOptions> _options;
         private readonly ILoggerFactory _loggerFactory;
@@ -64,7 +64,7 @@ namespace AI4E.AspNetCore.Components.Modularity
 
         public BlazorModuleInstaller(
             IBlazorModuleDescriptor moduleDescriptor,
-            AssemblyManager assemblyManager,
+            IAssemblyRegistry assemblyManager,
             IChildContainerBuilder childContainerBuilder,
             IOptions<BlazorModuleOptions> options,
             ILoggerFactory loggerFactory)
@@ -110,7 +110,7 @@ namespace AI4E.AspNetCore.Components.Modularity
 
             await InitializeApplicationServicesAsync(moduleServices, cancellation).ConfigureAwait(false);
 
-            await _assemblyManager.AddAssembliesAsync(
+            _assemblyManager.AddAssemblies(
                 componentAssemblies.Select(p => moduleContext.ModuleReflectionContext.MapAssembly(p)),
                 moduleContext.ModuleLoadContext,
                 new WeakServiceProvider(moduleServices));
@@ -307,7 +307,7 @@ namespace AI4E.AspNetCore.Components.Modularity
 
             // Remove the component assemblies (a subset of the installed assemblies) from the assembly manager 
             // and dispose all module services.
-            await _assemblyManager.RemoveAssembliesAsync(installedAssemblies);
+            _assemblyManager.RemoveAssemblies(installedAssemblies);
             await _module.ModuleServices.DisposeAsync();
 
             // Invoke registered cleanup actions

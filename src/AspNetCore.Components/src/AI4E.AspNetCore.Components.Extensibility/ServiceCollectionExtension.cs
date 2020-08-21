@@ -19,9 +19,12 @@
  */
 
 using System;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using AI4E;
+using AI4E.AspNetCore.Components;
 using AI4E.AspNetCore.Components.Extensibility;
 using AI4E.AspNetCore.Components.Modularity;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,17 +55,15 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.TryAddSingleton<IBlazorModuleManager, BlazorModuleManager>();
             services.TryAddSingleton<IBlazorModuleSourceFactory>(NoModuleSourceFactory.Instance);
-
-            if (entryAssembly is null)
+            services.AddAssemblyRegistry(registry =>
             {
-                services.TryAddSingleton<AssemblyManager>();
-            }
-            else
-            {
-                services.TryAddSingleton(new AssemblyManager(entryAssembly));
-            }
+                if (entryAssembly != null)
+                {
+                    var assemblies = ComponentResolver.EnumerateComponentAssemblies(entryAssembly);
+                    registry.AddAssemblies(assemblies);
+                }
+            });
 
-            services.TryAddSingleton<IAssemblySource>(p => p.GetRequiredService<AssemblyManager>());
             BlazorModuleRunner.Configure(services);
             return builder;
         }

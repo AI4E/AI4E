@@ -24,7 +24,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.AspNetCore.Components.Extensibility;
 using AI4E.Utils.Async;
 using AI4E.Utils.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -42,7 +41,7 @@ namespace AI4E.AspNetCore.Components.Modularity
     /// </remarks>
     public sealed class BlazorModuleManager : IBlazorModuleManager, IAsyncDisposable
     {
-        private readonly AssemblyManager _assemblyManager;
+        private readonly IAssemblyRegistry _assemblyManager;
         private readonly IChildContainerBuilder _childContainerBuilder;
         private readonly IOptions<BlazorModuleOptions> _options;
         private readonly ILoggerFactory _loggerFactory;
@@ -55,7 +54,7 @@ namespace AI4E.AspNetCore.Components.Modularity
         private readonly AsyncDisposeHelper _disposeHelper;
 
         public BlazorModuleManager(
-            AssemblyManager assemblyManager,
+            IAssemblyRegistry assemblyManager,
             IChildContainerBuilder childContainerBuilder,
             IOptions<BlazorModuleOptions> options,
             ILoggerFactory? loggerFactory = null)
