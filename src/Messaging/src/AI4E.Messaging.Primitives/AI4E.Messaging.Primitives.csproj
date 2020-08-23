@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.Memory\AI4E.Utils.Memory.csproj" />
+    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils\AI4E.Utils.csproj" />
+  </ItemGroup>
+
+</Project>

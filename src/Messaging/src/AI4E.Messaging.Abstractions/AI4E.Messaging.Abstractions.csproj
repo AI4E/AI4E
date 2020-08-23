@@ -13,23 +13,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.Messaging.Primitives\AI4E.Utils.Messaging.Primitives.csproj" />
     <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils\AI4E.Utils.csproj" />
+    <ProjectReference Include="..\AI4E.Messaging.Primitives\AI4E.Messaging.Primitives.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="$(RepositorySharedPath)PrefixCodingHelper.cs" Link="Shared\%(Filename)%(Extension)" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Update="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.3.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="16.7.54">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
   </ItemGroup>
 
 </Project>
