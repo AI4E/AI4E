@@ -4,7 +4,6 @@ using System.Reflection;
 using AI4E.Messaging;
 using AI4E.Messaging.Routing;
 using AI4E.Messaging.Serialization;
-using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.AspNetCore.Components.Modularity
@@ -43,20 +42,6 @@ namespace AI4E.AspNetCore.Components.Modularity
 
         private static void ConfigureMessagingServices(ModuleContext context, IServiceCollection services)
         {
-            var moduleDescriptor = context.ModuleDescriptor;
-            var assemblyDescriptors = moduleDescriptor.Assemblies.Where(p => p.IsComponentAssembly);
-
-            var partManager = new ApplicationPartManager();
-            partManager.ApplicationParts.Clear();
-            foreach (var assemblyDescriptor in assemblyDescriptors)
-            {
-                var assemblyName = assemblyDescriptor.GetAssemblyName();
-                var assembly = context.ModuleLoadContext.LoadFromAssemblyName(assemblyName);
-
-                partManager.ApplicationParts.Add(new AssemblyPart(assembly));
-            }
-
-            services.AddSingleton(partManager);
             services.AddMessaging(suppressRoutingSystem: true);
 
             var moduleName = context.ModuleDescriptor.Name;

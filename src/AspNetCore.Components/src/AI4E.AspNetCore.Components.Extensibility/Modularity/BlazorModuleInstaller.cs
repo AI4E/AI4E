@@ -27,7 +27,6 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
-using AI4E.AspNetCore.Components.Extensibility;
 using AI4E.Utils;
 using AI4E.Utils.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
@@ -143,6 +142,20 @@ namespace AI4E.AspNetCore.Components.Modularity
 
             // Reset application services.
             services.AddSingleton(new ApplicationServiceManager());
+
+            // Build module assembly registry
+            var assemblyDescriptors = moduleContext.ModuleDescriptor.Assemblies;
+            services.AddAssemblyRegistry((registry, serviceProvider) =>
+            {
+                registry.ClearAssemblies();
+                foreach (var assemblyDescriptor in assemblyDescriptors)
+                {
+                    var assemblyName = assemblyDescriptor.GetAssemblyName();
+                    var assembly = moduleContext.ModuleLoadContext.LoadFromAssemblyName(assemblyName);
+
+                    registry.AddAssembly(assembly, moduleContext.ModuleLoadContext, serviceProvider);
+                }
+            });
 
             // Invoke module service configuration actions.
             var options = _options.Value;
