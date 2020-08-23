@@ -52,7 +52,15 @@ namespace AI4E.Messaging
 
         private int GetFramesLength()
         {
-            return Frames.Sum(p => p.Length);
+            var result = 0;
+
+            for (var frameIndex = 0; frameIndex < Frames.Count; frameIndex++)
+            {
+                var frame = Frames[frameIndex];
+                result += frame.Length;
+            }
+
+            return result;
         }
 
         public IReadOnlyList<MessageFrame> Frames => _frames ?? ImmutableList<MessageFrame>.Empty;
@@ -70,7 +78,7 @@ namespace AI4E.Messaging
                 return this;
             }
 
-            frame = _frames[_frames.Count - 1];
+            frame = _frames[^1];
             return new Message(_frames.RemoveAt(_frames.Count - 1));
         }
 
@@ -81,7 +89,7 @@ namespace AI4E.Messaging
                 return default;
             }
 
-            return _frames[_frames.Count - 1];
+            return _frames[^1];
         }
 
         public static Message ReadFromMemory(in ReadOnlySpan<byte> memory)
@@ -112,8 +120,9 @@ namespace AI4E.Messaging
 
             memory = memory.Slice(headerLength);
 
-            foreach (var frame in message.Frames)
+            for (var frameIndex = 0; frameIndex < message.Frames.Count; frameIndex++)
             {
+                var frame = message.Frames[frameIndex];
                 using var bufferOwner = MemoryPool<byte>.Shared.Rent(frame.Length);
 
                 MessageFrame.Write(frame, memory);
@@ -168,8 +177,9 @@ namespace AI4E.Messaging
             await LengthCodeHelper.Write7BitEncodedIntAsync(
                 stream, message.GetFramesLength(), cancellation).ConfigureAwait(false);
 
-            foreach (var frame in message.Frames)
+            for (var frameIndex = 0; frameIndex < message.Frames.Count; frameIndex++)
             {
+                var frame = message.Frames[frameIndex];
                 using var bufferOwner = MemoryPool<byte>.Shared.RentExact(frame.Length);
                 var buffer = bufferOwner.Memory;
 
@@ -189,8 +199,9 @@ namespace AI4E.Messaging
             LengthCodeHelper.Write7BitEncodedInt(memory, message.GetFramesLength(), out var memoryLength);
             stream.Write(memory.Slice(start: 0, memoryLength));
 
-            foreach (var frame in message.Frames)
+            for (var frameIndex = 0; frameIndex < message.Frames.Count; frameIndex++)
             {
+                var frame = message.Frames[frameIndex];
                 using var bufferOwner = MemoryPool<byte>.Shared.RentExact(frame.Length);
                 var buffer = bufferOwner.Memory;
                 MessageFrame.Write(frame, buffer.Span);
@@ -255,7 +266,33 @@ namespace AI4E.Messaging
             if (frames is null)
                 throw new ArgumentNullException(nameof(frames));
 
-            return new Message(frames.Select(p => new MessageFrame(p.Span)));
+            var framesBuilder = ImmutableList.CreateBuilder<MessageFrame>();
+
+            if (frames is IReadOnlyList<ReadOnlyMemory<byte>> readOnlyList)
+            {
+                for (var frameIndex = 0; frameIndex < readOnlyList.Count; frameIndex++)
+                {
+                    var frame = readOnlyList[frameIndex];
+                    framesBuilder.Add(new MessageFrame(frame.Span));
+                }
+            }
+            else if (frames is IList<ReadOnlyMemory<byte>> list)
+            {
+                for (var frameIndex = 0; frameIndex < list.Count; frameIndex++)
+                {
+                    var frame = list[frameIndex];
+                    framesBuilder.Add(new MessageFrame(frame.Span));
+                }
+            }
+            else
+            {
+                foreach (var frame in frames)
+                {
+                    framesBuilder.Add(new MessageFrame(frame.Span));
+                }
+            }
+
+            return new Message(framesBuilder.ToImmutable());
         }
     }
 }
