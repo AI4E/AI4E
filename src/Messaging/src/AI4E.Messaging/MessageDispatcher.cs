@@ -218,7 +218,7 @@ namespace AI4E.Messaging
 
             if (messageHandlerProvider == null)
             {
-                messageHandlerProvider = _messageHandlerRegistry.ToProvider();
+                messageHandlerProvider = _messageHandlerRegistry.Provider;
                 var previous = Interlocked.CompareExchange(ref _messageHandlerProvider, messageHandlerProvider, null!);
 
                 if (previous != null)
@@ -303,6 +303,7 @@ namespace AI4E.Messaging
                     //       WeakReflectionContext, unload is impossible.
                     //       This is needed here, because we compare to runtime types (via equality or IsAssignableFrom)
                     //       in many cases in the messaging system. 
+                    //       In the long term we should get rid of this.
                     messageType = messageType.UnderlyingSystemType;
 
                     Debug.Assert(messageType != null);

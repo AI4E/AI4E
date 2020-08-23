@@ -219,6 +219,22 @@ namespace AI4E
             NotifyAssemblySourceChanged();
         }
 
+        public void ClearAssemblies()
+        {
+            var assemblies = Volatile.Read(ref _assemblies);
+
+            if (assemblies.Count == 0)
+                return;
+
+            lock (_mutex)
+            {
+                _assemblies.Clear();
+                _assemblySource = null;
+            }
+
+            NotifyAssemblySourceChanged();
+        }
+
         private ImmutableDictionary<Assembly, AssemblyContext> CompareExchange(
              ImmutableDictionary<Assembly, AssemblyContext> start,
              ImmutableDictionary<Assembly, AssemblyContext> desired)

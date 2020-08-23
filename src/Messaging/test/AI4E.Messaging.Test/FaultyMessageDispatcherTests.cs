@@ -40,9 +40,7 @@ namespace AI4E.Messaging
                 })
                 .UseValidation();
 
-            services.ConfigureApplicationParts(partManager =>
-                partManager.ApplicationParts.Clear());
-
+            services.ConfigureAssemblyRegistry(registry => registry.ClearAssemblies());
             services.AddSingleton<ITypeResolver, FaultyTypeResolver>();
         }
 

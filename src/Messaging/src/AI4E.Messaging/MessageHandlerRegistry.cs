@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -23,6 +23,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using AI4E.Utils;
 
 namespace AI4E.Messaging
@@ -33,8 +34,9 @@ namespace AI4E.Messaging
     public sealed class MessageHandlerRegistry : IMessageHandlerRegistry
     {
         private readonly Dictionary<Type, OrderedSet<IMessageHandlerRegistration>> _handlerRegistrations;
-
         private readonly HashSet<IMessageHandlerRegistrationFactory> _handlerRegistrationFactories;
+        private readonly object _mutex = new object();
+        private MessageHandlerProvider? _messageHandlerProvider;
 
         /// <summary>
         /// Creates a new instance of the <see cref="IMessageHandlerRegistry"/> type.
@@ -48,43 +50,57 @@ namespace AI4E.Messaging
         /// <inheritdoc />
         public bool Register(IMessageHandlerRegistration handlerRegistration)
         {
-            if (handlerRegistration == null)
+            if (handlerRegistration is null)
                 throw new ArgumentNullException(nameof(handlerRegistration));
 
-            var handlerCollection = _handlerRegistrations.GetOrAdd(handlerRegistration.MessageType, _ => new OrderedSet<IMessageHandlerRegistration>());
             var result = true;
 
-            if (handlerCollection.Remove(handlerRegistration))
+            lock (_mutex)
             {
-                result = false; // TODO: Does this conform with spec?
+                var handlerCollection = _handlerRegistrations.GetOrAdd(
+                handlerRegistration.MessageType, _ => new OrderedSet<IMessageHandlerRegistration>());
+
+                if (handlerCollection.Remove(handlerRegistration))
+                {
+                    result = false; // TODO: Does this conform with spec?
+                }
+
+                handlerCollection.Add(handlerRegistration);
+
+                _messageHandlerProvider = null;
             }
 
-            handlerCollection.Add(handlerRegistration);
-
+            NotifyMessageHandlerProviderChanged();
             return result;
         }
 
         /// <inheritdoc />
         public bool Unregister(IMessageHandlerRegistration handlerRegistration)
         {
-            if (handlerRegistration == null)
+            if (handlerRegistration is null)
                 throw new ArgumentNullException(nameof(handlerRegistration));
 
-            if (!_handlerRegistrations.TryGetValue(handlerRegistration.MessageType, out var handlerCollection))
+            lock (_mutex)
             {
-                return false;
+                if (!_handlerRegistrations.TryGetValue(handlerRegistration.MessageType, out var handlerCollection))
+                {
+                    return false;
+                }
+
+                if (!handlerCollection.Remove(handlerRegistration))
+                {
+                    return false;
+                }
+
+                if (!handlerCollection.Any())
+                {
+                    _handlerRegistrations.Remove(handlerRegistration.MessageType);
+                }
+
+                _messageHandlerProvider = null;
             }
 
-            if (!handlerCollection.Remove(handlerRegistration))
-            {
-                return false;
-            }
-
-            if (!handlerCollection.Any())
-            {
-                _handlerRegistrations.Remove(handlerRegistration.MessageType);
-            }
-
+            NotifyMessageHandlerProviderChanged();
             return true;
         }
 
@@ -93,7 +109,24 @@ namespace AI4E.Messaging
             if (handlerRegistrationFactory is null)
                 throw new ArgumentNullException(nameof(handlerRegistrationFactory));
 
-            return _handlerRegistrationFactories.Add(handlerRegistrationFactory);
+            bool result;
+
+            lock (_mutex)
+            {
+                result = _handlerRegistrationFactories.Add(handlerRegistrationFactory);
+
+                if (result)
+                {
+                    _messageHandlerProvider = null;
+                }
+            }
+
+            if (result)
+            {
+                NotifyMessageHandlerProviderChanged();
+            }
+
+            return result;
         }
 
         public bool Unregister(IMessageHandlerRegistrationFactory handlerRegistrationFactory)
@@ -101,13 +134,53 @@ namespace AI4E.Messaging
             if (handlerRegistrationFactory is null)
                 throw new ArgumentNullException(nameof(handlerRegistrationFactory));
 
-            return _handlerRegistrationFactories.Remove(handlerRegistrationFactory);
+            bool result;
+
+            lock (_mutex)
+            {
+                result = _handlerRegistrationFactories.Remove(handlerRegistrationFactory);
+
+                if (result)
+                {
+                    _messageHandlerProvider = null;
+                }
+            }
+
+            if (result)
+            {
+                NotifyMessageHandlerProviderChanged();
+            }
+
+            return result;
         }
 
         /// <inheritdoc />
-        public IMessageHandlerProvider ToProvider()
+        public IMessageHandlerProvider Provider
         {
-            return new MessageHandlerProvider(_handlerRegistrations, _handlerRegistrationFactories);
+            get
+            {
+                var provider = Volatile.Read(ref _messageHandlerProvider);
+
+                if (provider != null)
+                {
+                    return provider;
+                }
+
+                lock (_mutex)
+                {
+                    provider = _messageHandlerProvider
+                        ??= new MessageHandlerProvider(_handlerRegistrations, _handlerRegistrationFactories);
+                }
+
+                return provider;
+            }
+        }
+
+        public event EventHandler? MessageHandlerProviderChanged;
+
+        private void NotifyMessageHandlerProviderChanged()
+        {
+            MessageHandlerProviderChanged?.InvokeAll(this, EventArgs.Empty);
         }
 
         private sealed class MessageHandlerProvider : IMessageHandlerProvider
@@ -119,7 +192,8 @@ namespace AI4E.Messaging
             // Cache delegate for perf reasons.
             private readonly Func<Type, ImmutableList<IMessageHandlerRegistration>> _buildHandlerRegistrations;
             private readonly ConcurrentDictionary<Type, ImmutableList<IMessageHandlerRegistration>> _handlerRegistrationsLookup
-                = new ConcurrentDictionary<Type, ImmutableList<IMessageHandlerRegistration>>();
+                = new ConcurrentDictionary<Type, ImmutableList<IMessageHandlerRegistration>>(
+                    ByUnderlyingSystemTypeEqualityComparer.Instance);
 
             public MessageHandlerProvider(
                 Dictionary<Type, OrderedSet<IMessageHandlerRegistration>> handlerRegistrations,
@@ -127,7 +201,8 @@ namespace AI4E.Messaging
             {
                 _handlerRegistrations = handlerRegistrations.ToImmutableDictionary(
                     keySelector: kvp => kvp.Key,
-                    elementSelector: kvp => kvp.Value.Reverse().ToImmutableList()); // TODO: Reverse is not very performant
+                    elementSelector: kvp => kvp.Value.Reverse().ToImmutableList(), 
+                    ByUnderlyingSystemTypeEqualityComparer.Instance); // TODO: Reverse is not very performant
 
                 _combinedRegistrations = BuildCombinedCollection().ToImmutableList();
                 _handlerRegistrationFactories = handlerRegistrationFactories.ToImmutableHashSet();
@@ -195,6 +270,33 @@ namespace AI4E.Messaging
             public IReadOnlyList<IMessageHandlerRegistration> GetHandlerRegistrations()
             {
                 return _combinedRegistrations;
+            }
+        }
+
+        private sealed class ByUnderlyingSystemTypeEqualityComparer : IEqualityComparer<Type>
+        {
+            public static ByUnderlyingSystemTypeEqualityComparer Instance { get; } 
+                = new ByUnderlyingSystemTypeEqualityComparer();
+
+            private ByUnderlyingSystemTypeEqualityComparer() { }
+
+            public bool Equals(Type? x, Type? y)
+            {
+                if (ReferenceEquals(x, y))
+                    return true;
+
+                if (x is null)
+                    return false;
+
+                if (y is null)
+                    return false;
+
+                return x.UnderlyingSystemType.Equals(y.UnderlyingSystemType);
+            }
+
+            public int GetHashCode(Type obj)
+            {
+                return obj.UnderlyingSystemType.GetHashCode();
             }
         }
     }

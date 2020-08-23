@@ -10,7 +10,7 @@ namespace AI4E.Messaging
         public void EmptyProviderTest()
         {
             var registry = new MessageHandlerRegistry();
-            var provider = registry.ToProvider();
+            var provider = registry.Provider;
 
             Assert.AreEqual(0, provider.GetHandlerRegistrations().Count);
             Assert.AreEqual(0, provider.GetHandlerRegistrations(typeof(string)).Count);
@@ -23,7 +23,7 @@ namespace AI4E.Messaging
 
             var registry = new MessageHandlerRegistry();
             registry.Register(registration);
-            var provider = registry.ToProvider();
+            var provider = registry.Provider;
 
             Assert.AreEqual(1, provider.GetHandlerRegistrations().Count);
             Assert.AreSame(registration, provider.GetHandlerRegistrations().First());
@@ -40,7 +40,7 @@ namespace AI4E.Messaging
             var registry = new MessageHandlerRegistry();
             registry.Register(registration);
             registry.Register(registration);
-            var provider = registry.ToProvider();
+            var provider = registry.Provider;
 
             Assert.AreEqual(1, provider.GetHandlerRegistrations().Count);
             Assert.AreSame(registration, provider.GetHandlerRegistrations().First());
@@ -58,7 +58,7 @@ namespace AI4E.Messaging
             var registry = new MessageHandlerRegistry();
             registry.Register(registration1);
             registry.Register(registration2);
-            var provider = registry.ToProvider();
+            var provider = registry.Provider;
 
             Assert.AreEqual(2, provider.GetHandlerRegistrations().Count);
             Assert.AreSame(registration2, provider.GetHandlerRegistrations().First());
@@ -79,7 +79,7 @@ namespace AI4E.Messaging
             registry.Register(registration2);
             registry.Register(registration1);
             registry.Register(registration2);
-            var provider = registry.ToProvider();
+            var provider = registry.Provider;
 
             Assert.AreEqual(2, provider.GetHandlerRegistrations().Count);
             Assert.AreSame(registration2, provider.GetHandlerRegistrations().First());
@@ -100,7 +100,7 @@ namespace AI4E.Messaging
             registry.Register(registration2);
             registry.Register(registration1);
             registry.Unregister(registration1);
-            var provider = registry.ToProvider();
+            var provider = registry.Provider;
 
             Assert.AreEqual(1, provider.GetHandlerRegistrations().Count);
             Assert.AreSame(registration2, provider.GetHandlerRegistrations().First());
@@ -119,7 +119,7 @@ namespace AI4E.Messaging
             registry.Register(registration2);
             registry.Register(registration1);
             registry.Unregister(registration2);
-            var provider = registry.ToProvider();
+            var provider = registry.Provider;
 
             Assert.AreEqual(1, provider.GetHandlerRegistrations().Count);
             Assert.AreSame(registration1, provider.GetHandlerRegistrations().First());
@@ -137,7 +137,7 @@ namespace AI4E.Messaging
             var registry = new MessageHandlerRegistry();
             registry.Register(registration1);
             registry.Unregister(registration2);
-            var provider = registry.ToProvider();
+            var provider = registry.Provider;
 
             Assert.AreEqual(1, provider.GetHandlerRegistrations().Count);
             Assert.AreSame(registration1, provider.GetHandlerRegistrations().First());
@@ -153,7 +153,7 @@ namespace AI4E.Messaging
 
             var registry = new MessageHandlerRegistry();
             registry.Unregister(registration);
-            var provider = registry.ToProvider();
+            var provider = registry.Provider;
 
             Assert.AreEqual(0, provider.GetHandlerRegistrations().Count);
             Assert.AreEqual(0, provider.GetHandlerRegistrations(typeof(string)).Count);
@@ -167,7 +167,7 @@ namespace AI4E.Messaging
             var registry = new MessageHandlerRegistry();
             registry.Register(registration);
             registry.Unregister(registration);
-            var provider = registry.ToProvider();
+            var provider = registry.Provider;
 
             Assert.AreEqual(0, provider.GetHandlerRegistrations().Count);
             Assert.AreEqual(0, provider.GetHandlerRegistrations(typeof(string)).Count);

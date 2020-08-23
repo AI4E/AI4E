@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -17,7 +17,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  * --------------------------------------------------------------------------------------------------------------------
  */
-
 
 using System;
 
@@ -48,9 +47,10 @@ namespace AI4E.Messaging
         bool Unregister(IMessageHandlerRegistrationFactory handlerRegistrationFactory);
 
         /// <summary>
-        /// Creates a <see cref="IMessageHandlerProvider"/> of the current snapshot of handler registrations.
+        /// Gets a <see cref="IMessageHandlerProvider"/> of the current snapshot of handler registrations.
         /// </summary>
-        /// <returns>The created <see cref="IMessageHandlerProvider"/>.</returns>
-        IMessageHandlerProvider ToProvider();
+        IMessageHandlerProvider Provider { get; }
+
+        event EventHandler? MessageHandlerProviderChanged;
     }
 }

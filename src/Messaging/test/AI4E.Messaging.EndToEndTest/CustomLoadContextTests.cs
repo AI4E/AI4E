@@ -6,7 +6,6 @@ using AI4E.Messaging.Routing;
 using AI4E.Messaging.Test;
 using AI4E.Messaging.Validation;
 using AI4E.Utils;
-using AI4E.Utils.ApplicationParts;
 using AI4E.Utils.Async;
 using AI4E.Utils.DependencyInjection;
 using Autofac;
@@ -40,6 +39,7 @@ namespace AI4E.Messaging.EndToEndTest
         private static void ConfigureChildServices(
             IServiceCollection services,
             Assembly assembly,
+            TestAssemblyLoadContext assemblyLoadContext,
             bool configureHandlers)
         {
             services.AddMessaging(suppressRoutingSystem: true)
@@ -53,10 +53,10 @@ namespace AI4E.Messaging.EndToEndTest
 
             if (configureHandlers)
             {
-                services.ConfigureApplicationParts(partManager =>
+                services.ConfigureAssemblyRegistry((registry, assemblyServiceProvider) =>
                 {
-                    partManager.ApplicationParts.Clear();
-                    partManager.ApplicationParts.Add(new AssemblyPart(assembly));
+                    registry.ClearAssemblies();
+                    registry.AddAssembly(assembly, assemblyLoadContext, assemblyServiceProvider);
                 });
             }
         }
@@ -85,10 +85,12 @@ namespace AI4E.Messaging.EndToEndTest
             Assembly2 = AssemblyLoadContext2.TestAssembly;
 
             var servicesDescriptor1 = childContainerBuilder.CreateChildContainer(
-                services => ConfigureChildServices(services, Assembly1, configureHandlers: false));
+                services => ConfigureChildServices(
+                    services, Assembly1, AssemblyLoadContext1, configureHandlers: false));
 
             var servicesDescriptor2 = childContainerBuilder.CreateChildContainer(
-                services => ConfigureChildServices(services, Assembly2, configureHandlers: true));
+                services => ConfigureChildServices(
+                    services, Assembly2, AssemblyLoadContext2, configureHandlers: true));
 
             MessageDispatcher1 = servicesDescriptor1.GetRequiredService<IMessageDispatcher>();
             MessageDispatcher2 = servicesDescriptor2.GetRequiredService<IMessageDispatcher>();

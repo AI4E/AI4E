@@ -1,6 +1,6 @@
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using AI4E.Utils.ApplicationParts;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Messaging.MessageHandlers
@@ -11,22 +11,18 @@ namespace AI4E.Messaging.MessageHandlers
         [TestMethod]
         public void IsMessageHandlerTest()
         {
-            var provider = new MessageHandlerFeatureProvider();
-
-            Assert.IsTrue(provider.IsMessageHandler(typeof(ContentObjectEventGateway)));
+            Assert.IsTrue(MessageHandlerResolver.IsMessageHandler(typeof(ContentObjectEventGateway)));
         }
 
         [TestMethod]
         public void PopulateFeatureTest()
         {
-            var appParts = new[] { new AssemblyPart(Assembly.GetExecutingAssembly()) };
+            var assembly = Assembly.GetExecutingAssembly();
+            var provider = new MessageHandlerResolver();
 
-            var feature = new MessageHandlerFeature();
-            var provider = new MessageHandlerFeatureProvider();
+            var messageHandlers = provider.ResolveMessageHandlers(assembly, default);
 
-            provider.PopulateFeature(appParts, feature);
-
-            Assert.IsTrue(feature.MessageHandlers.Contains(typeof(ContentObjectEventGateway)));
+            Assert.IsTrue(messageHandlers.Contains(typeof(ContentObjectEventGateway)));
         }
     }
 

@@ -21,7 +21,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using AI4E.Utils.ApplicationParts;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AI4E.Messaging.MessageHandlers
@@ -32,89 +31,92 @@ namespace AI4E.Messaging.MessageHandlers
         [TestMethod]
         public void PublicClassWithoutSuffixTest()
         {
-            var provider = new MessageHandlerFeatureProvider();
-
-            Assert.IsFalse(provider.IsMessageHandler(typeof(PublicClassWithoutSuffix)));
+            Assert.IsFalse(MessageHandlerResolver.IsMessageHandler(typeof(PublicClassWithoutSuffix)));
         }
 
         [TestMethod]
         public void PublicClassWithSuffixTest()
         {
-            var provider = new MessageHandlerFeatureProvider();
-
-            Assert.IsTrue(provider.IsMessageHandler(typeof(PublicClassWithSuffixHandler)));
+            Assert.IsTrue(MessageHandlerResolver.IsMessageHandler(typeof(PublicClassWithSuffixHandler)));
         }
 
         [TestMethod]
         public void PublicClassWithAttributeTest()
         {
-            var provider = new MessageHandlerFeatureProvider();
-
-            Assert.IsTrue(provider.IsMessageHandler(typeof(PublicClassWithAttribute)));
+            Assert.IsTrue(MessageHandlerResolver.IsMessageHandler(typeof(PublicClassWithAttribute)));
         }
 
         [TestMethod]
         public void GenericPublicClassTest()
         {
-            var provider = new MessageHandlerFeatureProvider();
-
-            Assert.IsFalse(provider.IsMessageHandler(typeof(GenericPublicClassHandler<>)));
+            Assert.IsFalse(MessageHandlerResolver.IsMessageHandler(typeof(GenericPublicClassHandler<>)));
         }
 
         [TestMethod]
         public void AbstractPublicClassTest()
         {
-            var provider = new MessageHandlerFeatureProvider();
-
-            Assert.IsFalse(provider.IsMessageHandler(typeof(AbstractPublicClassHandler)));
+            Assert.IsFalse(MessageHandlerResolver.IsMessageHandler(typeof(AbstractPublicClassHandler)));
         }
 
         [TestMethod]
         public void PublicClassWithNoHandlerAttributeTest()
         {
-            var provider = new MessageHandlerFeatureProvider();
-
-            Assert.IsFalse(provider.IsMessageHandler(typeof(PublicClassWithNoHandlerAttributeHandler)));
+            Assert.IsFalse(MessageHandlerResolver.IsMessageHandler(typeof(PublicClassWithNoHandlerAttributeHandler)));
         }
 
         [TestMethod]
         public void InternalClassWithSuffixTest()
         {
-            var provider = new MessageHandlerFeatureProvider();
-
-            Assert.IsFalse(provider.IsMessageHandler(typeof(InternalClassWithSuffixHandler)));
+            Assert.IsFalse(MessageHandlerResolver.IsMessageHandler(typeof(InternalClassWithSuffixHandler)));
         }
 
         [TestMethod]
         public void InternalClassWithAttributeTest()
         {
-            var provider = new MessageHandlerFeatureProvider();
+            Assert.IsTrue(MessageHandlerResolver.IsMessageHandler(typeof(InternalClassWithAttribute)));
+        }
 
-            Assert.IsTrue(provider.IsMessageHandler(typeof(InternalClassWithAttribute)));
+        private IEnumerable<Assembly> Assemblies
+        {
+            get
+            {
+                yield return typeof(PublicClassWithoutSuffix).Assembly;
+                yield return typeof(PublicClassWithSuffixHandler).Assembly;
+                yield return typeof(PublicClassWithAttribute).Assembly;
+                yield return typeof(GenericPublicClassHandler<>).Assembly;
+                yield return typeof(AbstractPublicClassHandler).Assembly;
+                yield return typeof(PublicClassWithNoHandlerAttributeHandler).Assembly;
+                yield return typeof(InternalClassWithSuffixHandler).Assembly;
+                yield return typeof(InternalClassWithAttribute).Assembly;
+                yield return typeof(PublicClassWithoutSuffix).Assembly;
+                yield return typeof(PublicClassWithSuffixHandler).Assembly;
+                yield return typeof(PublicClassWithAttribute).Assembly;
+                yield return typeof(GenericPublicClassHandler<>).Assembly;
+                yield return typeof(AbstractPublicClassHandler).Assembly;
+                yield return typeof(PublicClassWithNoHandlerAttributeHandler).Assembly;
+                yield return typeof(InternalClassWithSuffixHandler).Assembly;
+                yield return typeof(InternalClassWithAttribute).Assembly;
+            }
         }
 
         [TestMethod]
         public void PopulateFeaturesTest()
         {
-            var appParts = new[]
-            {
-                // We register this twice to test type deduplication
-                new ApplicationPartTypeProviderMock(),
-                new ApplicationPartTypeProviderMock()
-            };
+            var assemblies = Assemblies;
+            IMessageHandlerResolver provider = new MessageHandlerResolver();
 
-            var feature = new MessageHandlerFeature();
-            var provider = new MessageHandlerFeatureProvider();
+            var messageHandlers = provider.ResolveMessageHandlers(assemblies);
 
-            provider.PopulateFeature(appParts, feature);
+            Assert.IsTrue(messageHandlers.Contains(typeof(PublicClassWithSuffixHandler)));
+            Assert.IsTrue(messageHandlers.Contains(typeof(PublicClassWithAttribute)));
+            Assert.IsTrue(messageHandlers.Contains(typeof(InternalClassWithAttribute)));
 
-            Assert.AreEqual(3, feature.MessageHandlers.Count);
-            Assert.IsTrue(new[]
-            {
-                typeof(PublicClassWithSuffixHandler),
-                typeof(PublicClassWithAttribute),
-                typeof(InternalClassWithAttribute)
-            }.SequenceEqual(feature.MessageHandlers));
+            Assert.IsFalse(messageHandlers.Contains(typeof(PublicClassWithoutSuffix)));
+            Assert.IsFalse(messageHandlers.Contains(typeof(GenericPublicClassHandler<>)));
+            Assert.IsFalse(messageHandlers.Contains(typeof(AbstractPublicClassHandler)));
+            Assert.IsFalse(messageHandlers.Contains(typeof(PublicClassWithNoHandlerAttributeHandler)));
+            Assert.IsFalse(messageHandlers.Contains(typeof(InternalClassWithSuffixHandler)));
+
         }
     }
 
@@ -139,24 +141,4 @@ namespace AI4E.Messaging.MessageHandlers
 
     [MessageHandler]
     internal class InternalClassWithAttribute { }
-
-    public sealed class ApplicationPartTypeProviderMock : ApplicationPart, IApplicationPartTypeProvider
-    {
-        public IEnumerable<TypeInfo> Types
-        {
-            get
-            {
-                yield return typeof(PublicClassWithoutSuffix).GetTypeInfo();
-                yield return typeof(PublicClassWithSuffixHandler).GetTypeInfo();
-                yield return typeof(PublicClassWithAttribute).GetTypeInfo();
-                yield return typeof(GenericPublicClassHandler<>).GetTypeInfo();
-                yield return typeof(AbstractPublicClassHandler).GetTypeInfo();
-                yield return typeof(PublicClassWithNoHandlerAttributeHandler).GetTypeInfo();
-                yield return typeof(InternalClassWithSuffixHandler).GetTypeInfo();
-                yield return typeof(InternalClassWithAttribute).GetTypeInfo();
-            }
-        }
-
-        public override string Name => nameof(ApplicationPartTypeProviderMock);
-    }
 }

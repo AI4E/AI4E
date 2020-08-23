@@ -66,6 +66,8 @@ namespace AI4E
             RemoveAssemblies(assembly.Yield());
         }
 
+        public void ClearAssemblies();
+
         IAssemblySource AssemblySource { get; }
 
         event EventHandler? AssemblySourceChanged;

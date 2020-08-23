@@ -3,7 +3,6 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using AI4E.Messaging.Validation;
-using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -25,10 +24,7 @@ namespace AI4E.Messaging.EndToEndTest
                 .UseValidation();
 
             // This is needed because the entry assembly is the testhost.
-            services.ConfigureApplicationParts(partManager =>
-                partManager.ApplicationParts.Add(
-                    new AssemblyPart(Assembly.GetExecutingAssembly())));
-
+            services.ConfigureAssemblyRegistry(registry => registry.AddAssembly(Assembly.GetExecutingAssembly()));
             services.AddSingleton<TestService>();
         }
 

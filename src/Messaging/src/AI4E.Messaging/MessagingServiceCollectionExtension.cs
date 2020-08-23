@@ -19,7 +19,6 @@
  */
 
 using System;
-using AI4E;
 using AI4E.Messaging;
 using AI4E.Messaging.MessageHandlers;
 using AI4E.Messaging.Routing;
@@ -49,11 +48,14 @@ namespace Microsoft.Extensions.DependencyInjection
             if (builder is null)
             {
                 services.AddOptions();
+                services.AddAssemblyRegistry();
+
                 services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
                 services.TryAddSingleton<ITypeResolver>(TypeResolver.Default);
                 services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
                 services.TryAddSingleton<IMessageDispatcher, MessageDispatcher>();
                 services.TryAddSingleton<IMessageSerializer, MessageSerializer>();
+                services.TryAddSingleton<IMessageHandlerResolver, MessageHandlerResolver>();
 
                 if (!suppressRoutingSystem)
                 {
@@ -63,7 +65,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 // Force the message-dispatcher to initialize on application startup.
                 // This is needed to ensure handlers are available and registered in multi-process or networking setups.
                 services.ConfigureApplicationServices(manager => manager.AddService<IMessageDispatcher>(isRequiredService: true));
-                services.ConfigureApplicationParts(MessageHandlerFeatureProvider.Configure);
+                
 
                 builder = new MessagingBuilderImpl(services)
                 {

@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -20,7 +20,6 @@
 
 using System;
 using System.Collections.Generic;
-using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -38,14 +37,16 @@ namespace AI4E.Messaging.MessageHandlers
         {
             var options = serviceProvider.GetService<IOptions<MessagingOptions>>()?.Value ?? new MessagingOptions();
             var processors = options.MessageProcessors;
-            var partManager = serviceProvider.GetRequiredService<ApplicationPartManager>();
-            var messageHandlerFeature = new MessageHandlerFeature();
 
-            partManager.PopulateFeature(messageHandlerFeature);
+            var assemblyRegistry = serviceProvider.GetRequiredService<IAssemblyRegistry>();
+            var messageHandlerResolver = serviceProvider.GetRequiredService<IMessageHandlerResolver>();
+
+            // TODO: Can we update the message handler registry when the assembly registry updates?
+            var messageHandlersTypes = messageHandlerResolver.ResolveMessageHandlers(assemblyRegistry.AssemblySource);
 
             var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
             var logger = loggerFactory?.CreateLogger("MessageHandlerRegistration");
-            RegisterMessageHandlerTypes(messageHandlerFeature.MessageHandlers, messageHandlerRegistry, processors, logger);
+            RegisterMessageHandlerTypes(messageHandlersTypes, messageHandlerRegistry, processors, logger);
         }
 
         private static void RegisterMessageHandlerTypes(
