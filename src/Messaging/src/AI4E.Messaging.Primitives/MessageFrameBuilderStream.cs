@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -24,7 +24,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace AI4E.Utils.Messaging.Primitives
+namespace AI4E.Messaging
 {
     public sealed class MessageFrameBuilderStream : Stream
     {
@@ -102,25 +102,13 @@ namespace AI4E.Utils.Messaging.Primitives
 
         public override long Seek(long offset, SeekOrigin origin)
         {
-            int position;
-
-            switch (origin)
+            var position = origin switch
             {
-                case SeekOrigin.Begin:
-                    position = 0;
-                    break;
-
-                case SeekOrigin.Current:
-                    position = _position;
-                    break;
-
-                case SeekOrigin.End:
-                    position = _length;
-                    break;
-
-                default:
-                    throw new ArgumentException("Invalid enum value.", nameof(origin));
-            }
+                SeekOrigin.Begin => 0,
+                SeekOrigin.Current => _position,
+                SeekOrigin.End => _length,
+                _ => throw new ArgumentException("Invalid enum value.", nameof(origin)),
+            };
 
             var newPosition = position + offset;
 
@@ -172,7 +160,7 @@ namespace AI4E.Utils.Messaging.Primitives
                 EnsureLength(newLength);
 
                 // Zero out additional memory.
-                var newSpace = _writeMemory.Slice(_length, newLength - _length);
+                var newSpace = _writeMemory[_length..newLength];
                 var newSpaceAsIntPtr = MemoryMarshal.Cast<byte, IntPtr>(newSpace.Span);
 
                 for (var i = 0; i < newSpaceAsIntPtr.Length; i++)
@@ -282,6 +270,7 @@ namespace AI4E.Utils.Messaging.Primitives
 
         protected override void Dispose(bool disposing)
         {
+            base.Dispose(disposing);
             Flush();
         }
     }

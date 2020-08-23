@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -29,7 +29,7 @@ using AI4E.Utils.Processing;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 
-namespace AI4E.Utils.Messaging.Primitives
+namespace AI4E.Messaging
 {
     public sealed class RequestReplyEndPoint<TPacket> : IDisposable, IAsyncDisposable
         where TPacket : IPacket<TPacket>
@@ -64,7 +64,7 @@ namespace AI4E.Utils.Messaging.Primitives
             _responseTable = new ConcurrentDictionary<int, ValueTaskCompletionSource<MessageSendResult>>();
             _cancellationTable = new ConcurrentDictionary<int, CancellationTokenSource>();
 
-            _receiveProcess = new AsyncProcess(ReceiveProcess, start: true);
+            _receiveProcess = new AsyncProcess(ReceiveProcessAsync, start: true);
             _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync, AsyncDisposeHelperOptions.Default);
         }
 
@@ -74,7 +74,7 @@ namespace AI4E.Utils.Messaging.Primitives
         {
             try
             {
-                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation);
+                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation).ConfigureAwait(false);
                 cancellation = guard.Cancellation;
 
                 var responseSource = ValueTaskCompletionSource.Create<MessageSendResult>();
@@ -87,18 +87,29 @@ namespace AI4E.Utils.Messaging.Primitives
 
                 void RequestCancellation()
                 {
-                    SendInternalAsync(packet.WithMessage(new Message()), messageType: RequestReplyMessageType.CancellationRequest, handled: false, corrId: seqNum, cancellation: default)
-                        .HandleExceptions(_logger);
+                    SendInternalAsync(
+                        packet.WithMessage(new Message()), 
+                        messageType: RequestReplyMessageType.CancellationRequest, 
+                        handled: false, 
+                        corrId: seqNum, 
+                        cancellation: default).HandleExceptions(_logger);
                 }
 
                 cancellation.ThrowIfCancellationRequested();
 
                 using (cancellation.Register(RequestCancellation))
                 {
-                    await SendInternalAsync(packet, seqNum, RequestReplyMessageType.Request, handled: false, corrId: 0, cancellation: cancellation);
+                    await SendInternalAsync(
+                        packet, 
+                        seqNum, 
+                        RequestReplyMessageType.Request, 
+                        handled: false, 
+                        corrId: 0, 
+                        cancellation).ConfigureAwait(false);
 
-                    // The tasks gets cancelled if cancellation is requested and we receive a cancellation response from the client.
-                    return await responseSource.Task;
+                    // The tasks gets canceled if cancellation is requested and we receive a cancellation response from 
+                    // the client.
+                    return await responseSource.Task.ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
@@ -111,10 +122,10 @@ namespace AI4E.Utils.Messaging.Primitives
         {
             try
             {
-                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation);
+                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation).ConfigureAwait(false);
                 cancellation = guard.Cancellation;
 
-                var (seqNum, packet) = await _rxQueue.DequeueAsync(cancellation);
+                var (seqNum, packet) = await _rxQueue.DequeueAsync(cancellation).ConfigureAwait(false);
                 var cancellationTokenSource = _cancellationTable.GetOrAdd(seqNum, new CancellationTokenSource());
                 return new MessageReceiveResult<TPacket>(this, seqNum, packet, cancellationTokenSource);
             }
@@ -126,18 +137,20 @@ namespace AI4E.Utils.Messaging.Primitives
 
         #region Receive
 
-        private async Task ReceiveProcess(CancellationToken cancellation)
+        private async Task ReceiveProcessAsync(CancellationToken cancellation)
         {
             while (cancellation.ThrowOrContinue())
             {
                 try
                 {
-                    var packet = await _endPoint.ReceiveAsync(cancellation);
+                    var packet = await _endPoint.ReceiveAsync(cancellation).ConfigureAwait(false);
 
-                    await HandleMessageAsync(packet);
+                    await HandleMessageAsync(packet).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
+#pragma warning disable CA1031
                 catch
+#pragma warning restore CA1031
                 {
                     // TODO: Log
                 }
@@ -155,7 +168,7 @@ namespace AI4E.Utils.Messaging.Primitives
                 case RequestReplyMessageType.Request:
                     _cancellationTable.GetOrAdd(seqNum, _ => new CancellationTokenSource());
 
-                    await _rxQueue.EnqueueAsync((seqNum, packet));
+                    await _rxQueue.EnqueueAsync((seqNum, packet)).ConfigureAwait(false);
                     break;
 
                 case RequestReplyMessageType.Response:
@@ -214,24 +227,37 @@ namespace AI4E.Utils.Messaging.Primitives
         #region Send
 
         private async ValueTask SendInternalAsync(
-            TPacket packet, int seqNum, RequestReplyMessageType messageType, bool handled, int corrId, CancellationToken cancellation)
+            TPacket packet, 
+            int seqNum, 
+            RequestReplyMessageType messageType,
+            bool handled, 
+            int corrId, 
+            CancellationToken cancellation)
         {
             var message = packet.Message;
 
             EncodeMessage(ref message, seqNum, messageType, handled, corrId);
 
-            await _endPoint.SendAsync(packet.WithMessage(message), cancellation);
+            await _endPoint.SendAsync(packet.WithMessage(message), cancellation).ConfigureAwait(false);
 
         }
 
         private ValueTask SendInternalAsync(
-            TPacket packet, RequestReplyMessageType messageType, bool handled, int corrId, CancellationToken cancellation)
+            TPacket packet, 
+            RequestReplyMessageType messageType, 
+            bool handled, 
+            int corrId, 
+            CancellationToken cancellation)
         {
             return SendInternalAsync(packet, GetNextSeqNum(), messageType, handled, corrId, cancellation);
         }
 
         // Send the specified response and end the request.
-        internal ValueTask SendResultAsync(MessageSendResult result, TPacket packet, int seqNum, CancellationToken cancellation)
+        internal ValueTask SendResultAsync(
+            MessageSendResult result, 
+            TPacket packet, 
+            int seqNum, 
+            CancellationToken cancellation)
         {
             return SendInternalAsync(
                 packet.WithMessage(result.Message),
@@ -260,7 +286,8 @@ namespace AI4E.Utils.Messaging.Primitives
         }
 
         // TODO: Use SpanReader/Writer API
-        private static (int seqNum, RequestReplyMessageType messageType, bool handled, int corrId) DecodeMessage(ref Message message)
+        private static (int seqNum, RequestReplyMessageType messageType, bool handled, int corrId) DecodeMessage(
+            ref Message message)
         {
             message = message.PopFrame(out var frame);
 
@@ -277,7 +304,8 @@ namespace AI4E.Utils.Messaging.Primitives
             return (seqNum, messageType, handled, corrId);
         }
 
-        private static void EncodeMessage(ref Message message, int seqNum, RequestReplyMessageType messageType, bool handled, int corrId)
+        private static void EncodeMessage(
+            ref Message message, int seqNum, RequestReplyMessageType messageType, bool handled, int corrId)
         {
             var frameBuilder = new MessageFrameBuilder();
 

@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(FrameworkVersions)</TargetFrameworks>
+    <RootNamespace>AI4E.Messaging</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

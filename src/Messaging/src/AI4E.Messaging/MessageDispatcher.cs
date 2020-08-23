@@ -29,7 +29,7 @@ using AI4E.Messaging.Routing;
 using AI4E.Messaging.Serialization;
 using AI4E.Utils;
 using AI4E.Utils.Async;
-using AI4E.Utils.Messaging.Primitives;
+using AI4E.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

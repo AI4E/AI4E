@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -27,7 +27,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AI4E.Utils.Messaging.Primitives
+namespace AI4E.Messaging
 {
     public readonly struct Message : IEquatable<Message>
     {
@@ -123,9 +123,10 @@ namespace AI4E.Utils.Messaging.Primitives
 
         public static async ValueTask<Message> ReadFromStreamAsync(Stream stream, CancellationToken cancellation)
         {
-            var framesLength = await LengthCodeHelper.Read7BitEncodedIntAsync(stream, cancellation);
+            var framesLength = await LengthCodeHelper.Read7BitEncodedIntAsync(
+                stream, cancellation).ConfigureAwait(false);
             var buffer = new byte[framesLength].AsMemory();
-            await stream.ReadExactAsync(buffer, cancellation);
+            await stream.ReadExactAsync(buffer, cancellation).ConfigureAwait(false);
 
             var framesBuilder = ImmutableList.CreateBuilder<MessageFrame>();
 
@@ -161,7 +162,11 @@ namespace AI4E.Utils.Messaging.Primitives
 
         public static async ValueTask WriteToStreamAsync(Message message, Stream stream, CancellationToken cancellation)
         {
-            await LengthCodeHelper.Write7BitEncodedIntAsync(stream, message.GetFramesLength(), cancellation);
+            if (stream is null)
+                throw new ArgumentNullException(nameof(stream));
+
+            await LengthCodeHelper.Write7BitEncodedIntAsync(
+                stream, message.GetFramesLength(), cancellation).ConfigureAwait(false);
 
             foreach (var frame in message.Frames)
             {
@@ -170,12 +175,15 @@ namespace AI4E.Utils.Messaging.Primitives
 
                 MessageFrame.Write(frame, buffer.Span);
 
-                await stream.WriteAsync(buffer, cancellation);
+                await stream.WriteAsync(buffer, cancellation).ConfigureAwait(false);
             }
         }
 
         public static void WriteToStream(Message message, Stream stream)
         {
+            if (stream is null)
+                throw new ArgumentNullException(nameof(stream));
+
             Span<byte> memory = stackalloc byte[5];
 
             LengthCodeHelper.Write7BitEncodedInt(memory, message.GetFramesLength(), out var memoryLength);

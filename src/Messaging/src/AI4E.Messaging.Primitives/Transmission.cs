@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -21,7 +21,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace AI4E.Utils.Messaging.Primitives
+namespace AI4E.Messaging
 {
     /// <summary>
     /// Represents a message transmission.
@@ -34,7 +34,9 @@ namespace AI4E.Utils.Messaging.Primitives
         /// </summary>
         /// <param name="message">The transmit message.</param>
         /// <param name="remoteAddress">The address of the remote physical end-point.</param>
-        /// <exception cref="ArgumentDefaultException">Thrown if <paramref name="remoteAddress"/> is <c>default</c>.</exception>
+        /// <exception cref="ArgumentDefaultException">
+        /// Thrown if <paramref name="remoteAddress"/> is <c>default</c>.
+        /// </exception>
         public Transmission(Message message, TAddress remoteAddress)
         {
             if (EqualityComparer<TAddress>.Default.Equals(remoteAddress, default!))
