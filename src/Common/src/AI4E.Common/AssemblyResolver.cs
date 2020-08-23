@@ -25,7 +25,7 @@ using System.Linq;
 using System.Reflection;
 using AI4E.Utils;
 
-namespace AI4E.Storage.Domain.Projection
+namespace AI4E
 {
     public sealed class AssemblyResolver : AssemblyResolverBase
     {
