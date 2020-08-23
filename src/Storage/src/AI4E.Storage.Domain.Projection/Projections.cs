@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -21,7 +21,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Domain.Projection
@@ -45,11 +44,13 @@ namespace AI4E.Storage.Domain.Projection
 
         private static void Configure(IProjectionRegistry projectionRegistry, IServiceProvider serviceProvider)
         {
-            var partManager = serviceProvider.GetRequiredService<ApplicationPartManager>();
-            var projectionFeature = new ProjectionFeature();
+            var assemblyRegistry = serviceProvider.GetRequiredService<IAssemblyRegistry>();
+            var projectionResolver = serviceProvider.GetRequiredService<IProjectionResolver>();
 
-            partManager.PopulateFeature(projectionFeature);
-            RegisterProjectionsTypes(projectionFeature.Projections, projectionRegistry);
+            // TODO: Can we update the projection registry when the assembly registry updates?
+            var projectionTypes = projectionResolver.ResolveProjections(assemblyRegistry.AssemblySource);
+
+            RegisterProjectionsTypes(projectionTypes, projectionRegistry);
         }
 
         private static void RegisterProjectionsTypes(

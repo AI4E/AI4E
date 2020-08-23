@@ -1,7 +1,6 @@
 ﻿using System.Reflection;
 using AI4E.Messaging;
 using AI4E.Storage.MongoDB.Test.Utils;
-using AI4E.Utils.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Domain.EndToEndTestAssembly
@@ -20,8 +19,10 @@ namespace AI4E.Storage.Domain.EndToEndTestAssembly
             ConfigureMessaging(services.AddMessaging()); // TODO: API
             services.AddStorage(ConfigureStorage);
 
-            services.ConfigureApplicationParts(
-                partManager => partManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly())));
+            services.ConfigureAssemblyRegistry(registry =>
+            {
+                registry.AddAssembly(Assembly.GetExecutingAssembly());
+            });
         }
 
         private void ConfigureMessaging(IMessagingBuilder messagingBuilder)
@@ -49,7 +50,7 @@ namespace AI4E.Storage.Domain.EndToEndTestAssembly
                 options.SynchronousEventDispatch = true;
             });
 
-            if(ActivateProjections)
+            if (ActivateProjections)
             {
                 domainStorage.AddProjection();
             }

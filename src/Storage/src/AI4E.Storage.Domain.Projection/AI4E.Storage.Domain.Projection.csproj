@@ -7,7 +7,7 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.ApplicationParts\AI4E.Utils.ApplicationParts.csproj" />
+    <ProjectReference Include="..\..\..\Common\src\AI4E.Common\AI4E.Common.csproj" />
     <ProjectReference Include="..\..\..\Utils\src\AI4E.Utils.ObjectClone\AI4E.Utils.ObjectClone.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Domain.Projection.Abstractions\AI4E.Storage.Domain.Projection.Abstractions.csproj" />
     <ProjectReference Include="..\AI4E.Storage.Domain\AI4E.Storage.Domain.csproj" />

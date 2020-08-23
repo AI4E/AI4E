@@ -42,12 +42,15 @@ namespace AI4E.Storage.Domain
 
                 projectionBuilder.ConfigureServices(services =>
                 {
+                    services.AddAssemblyRegistry();
+                    services.AddOptions();
+
                     services.AddSingleton(projectionBuilder);
                     services.TryAddSingleton<IProjectionRegistry, ProjectionRegistry>();
                     services.TryAddSingleton<IProjectionEngine, ProjectionEngine>();
                     services.TryAddSingleton<IProjectionTargetProcessorFactory, ProjectionTargetProcessorFactory>();
                     services.TryAddSingleton<IProjectionExecutor, ProjectionExecutor>();
-                    services.ConfigureApplicationParts(ProjectionFeatureProvider.Configure);
+                    services.TryAddSingleton<IProjectionResolver, ProjectionResolver>();
                 });
 
                 Projections.Register(projectionBuilder);

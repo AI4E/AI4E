@@ -29,24 +29,11 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
-using AI4E.Utils;
 
 namespace AI4E
 {
-    public interface IAssemblyResolver
-    {
-        public IEnumerable<Assembly> EnumerateAssemblies(Assembly assembly, AssemblyLoadContext? loadContext = null);
-
-        public ImmutableHashSet<Assembly> GetAssemblies(Assembly assembly, AssemblyLoadContext? loadContext = null)
-        {
-            // By reference comparison is ok for this case.
-            return EnumerateAssemblies(assembly, loadContext).ToImmutableHashSet(AssemblyComparer.Instance);
-        }
-    }
-
     public abstract class AssemblyResolverBase : IAssemblyResolver
     {
         public virtual IEnumerable<Assembly> EnumerateAssemblies(
@@ -108,6 +95,7 @@ namespace AI4E
 
         protected abstract bool MatchesCondition(Assembly assembly);
     }
+
     internal sealed class AssemblyComparer : IEqualityComparer<Assembly>
     {
         public static AssemblyComparer Instance { get; } = new AssemblyComparer();
@@ -125,29 +113,6 @@ namespace AI4E
                 throw new ArgumentNullException(nameof(obj));
 
             return obj.FullName?.GetHashCode(StringComparison.Ordinal) ?? 0;
-        }
-    }
-
-    public sealed class HasReferenceAssemblyResolver : AssemblyResolverBase
-    {
-        private readonly AssemblyName _referenceName;
-        private readonly AssemblyNameComparer _comparer;
-
-        public HasReferenceAssemblyResolver(AssemblyName referenceName, AssemblyNameComparer comparer)
-        {
-            if (referenceName is null)
-                throw new ArgumentNullException(nameof(referenceName));
-
-            if (comparer is null)
-                throw new ArgumentNullException(nameof(comparer));
-
-            _referenceName = referenceName;
-            _comparer = comparer;
-        }
-
-        protected override bool MatchesCondition(Assembly assembly)
-        {
-            return assembly.GetReferencedAssemblies().Any(r => _comparer.Equals(r, _referenceName));
         }
     }
 }

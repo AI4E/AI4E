@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using AI4E.Utils.ApplicationParts;
+using System.Runtime.Loader;
+using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
 
 namespace AI4E.Storage.Domain.Projection
 {
@@ -12,89 +14,98 @@ namespace AI4E.Storage.Domain.Projection
         [TestMethod]
         public void PublicClassWithoutSuffixTest()
         {
-            var provider = new ProjectionFeatureProvider();
-
-            Assert.IsFalse(provider.IsProjection(typeof(PublicClassWithoutSuffix)));
+            Assert.IsFalse(ProjectionResolver.IsProjection(typeof(PublicClassWithoutSuffix)));
         }
 
         [TestMethod]
         public void PublicClassWithSuffixTest()
         {
-            var provider = new ProjectionFeatureProvider();
-
-            Assert.IsTrue(provider.IsProjection(typeof(PublicClassWithSuffixProjection)));
+            Assert.IsTrue(ProjectionResolver.IsProjection(typeof(PublicClassWithSuffixProjection)));
         }
 
         [TestMethod]
         public void PublicClassWithAttributeTest()
         {
-            var provider = new ProjectionFeatureProvider();
-
-            Assert.IsTrue(provider.IsProjection(typeof(PublicClassWithAttribute)));
+            Assert.IsTrue(ProjectionResolver.IsProjection(typeof(PublicClassWithAttribute)));
         }
 
         [TestMethod]
         public void GenericPublicClassTest()
         {
-            var provider = new ProjectionFeatureProvider();
-
-            Assert.IsFalse(provider.IsProjection(typeof(GenericPublicClassProjection<>)));
+            Assert.IsFalse(ProjectionResolver.IsProjection(typeof(GenericPublicClassProjection<>)));
         }
 
         [TestMethod]
         public void AbstractPublicClassTest()
         {
-            var provider = new ProjectionFeatureProvider();
-
-            Assert.IsFalse(provider.IsProjection(typeof(AbstractPublicClassProjection)));
+            Assert.IsFalse(ProjectionResolver.IsProjection(typeof(AbstractPublicClassProjection)));
         }
 
         [TestMethod]
         public void PublicClassWithNoProjectionAttributeTest()
         {
-            var provider = new ProjectionFeatureProvider();
-
-            Assert.IsFalse(provider.IsProjection(typeof(PublicClassWithNoProjectionAttributeProjection)));
+            Assert.IsFalse(ProjectionResolver.IsProjection(typeof(PublicClassWithNoProjectionAttributeProjection)));
         }
 
         [TestMethod]
         public void InternalClassWithSuffixTest()
         {
-            var provider = new ProjectionFeatureProvider();
-
-            Assert.IsFalse(provider.IsProjection(typeof(InternalClassWithSuffixProjection)));
+            Assert.IsFalse(ProjectionResolver.IsProjection(typeof(InternalClassWithSuffixProjection)));
         }
 
         [TestMethod]
         public void InternalClassWithAttributeTest()
         {
-            var provider = new ProjectionFeatureProvider();
+            Assert.IsTrue(ProjectionResolver.IsProjection(typeof(InternalClassWithAttribute)));
+        }
 
-            Assert.IsTrue(provider.IsProjection(typeof(InternalClassWithAttribute)));
+        public IEnumerable<Assembly> Assemblies
+        {
+            get
+            {
+                yield return typeof(PublicClassWithoutSuffix).Assembly;
+                yield return typeof(PublicClassWithSuffixProjection).Assembly;
+                yield return typeof(PublicClassWithAttribute).Assembly;
+                yield return typeof(GenericPublicClassProjection<>).Assembly;
+                yield return typeof(AbstractPublicClassProjection).Assembly;
+                yield return typeof(PublicClassWithNoProjectionAttributeProjection).Assembly;
+                yield return typeof(InternalClassWithSuffixProjection).Assembly;
+                yield return typeof(InternalClassWithAttribute).Assembly;
+                yield return typeof(PublicClassWithoutSuffix).Assembly;
+                yield return typeof(PublicClassWithSuffixProjection).Assembly;
+                yield return typeof(PublicClassWithAttribute).Assembly;
+                yield return typeof(GenericPublicClassProjection<>).Assembly;
+                yield return typeof(AbstractPublicClassProjection).Assembly;
+                yield return typeof(PublicClassWithNoProjectionAttributeProjection).Assembly;
+                yield return typeof(InternalClassWithSuffixProjection).Assembly;
+                yield return typeof(InternalClassWithAttribute).Assembly;
+            }
         }
 
         [TestMethod]
         public void PopulateFeaturesTest()
         {
-            var appParts = new[]
-            {
-                // We register this twice to test type deduplication
-                new ApplicationPartTypeProviderMock(),
-                new ApplicationPartTypeProviderMock()
-            };
+            var assemblies = Assemblies;
+            var assemblySourceMock = new Mock<IAssemblySource>();
+            assemblySourceMock.Setup(assemblySource => assemblySource.Assemblies).Returns(Assemblies.ToList());
+            assemblySourceMock.Setup(assemblySource => assemblySource.GetAssemblyLoadContext(It.IsAny<Assembly>()))
+                .Returns(AssemblyLoadContext.Default);
 
-            var feature = new ProjectionFeature();
-            var provider = new ProjectionFeatureProvider();
+            IProjectionResolver projectionResolver = new ProjectionResolver(
+                Options.Create(new DomainProjectionOptions()));
 
-            provider.PopulateFeature(appParts, feature);
 
-            Assert.AreEqual(3, feature.Projections.Count);
-            Assert.IsTrue(new[]
-            {
-                typeof(PublicClassWithSuffixProjection),
-                typeof(PublicClassWithAttribute),
-                typeof(InternalClassWithAttribute)
-            }.SequenceEqual(feature.Projections));
+            var projectionTypes = projectionResolver.ResolveProjections(assemblySourceMock.Object);
+
+            Assert.IsTrue(projectionTypes.Contains(typeof(PublicClassWithSuffixProjection)));
+            Assert.IsTrue(projectionTypes.Contains(typeof(PublicClassWithAttribute)));
+            Assert.IsTrue(projectionTypes.Contains(typeof(InternalClassWithAttribute)));
+
+            Assert.IsFalse(projectionTypes.Contains(typeof(PublicClassWithoutSuffix)));
+            Assert.IsFalse(projectionTypes.Contains(typeof(GenericPublicClassProjection<>)));
+            Assert.IsFalse(projectionTypes.Contains(typeof(AbstractPublicClassProjection)));
+            Assert.IsFalse(projectionTypes.Contains(typeof(PublicClassWithNoProjectionAttributeProjection)));
+            Assert.IsFalse(projectionTypes.Contains(typeof(InternalClassWithSuffixProjection)));
         }
     }
 
@@ -119,24 +130,4 @@ namespace AI4E.Storage.Domain.Projection
 
     [Projection]
     internal class InternalClassWithAttribute { }
-
-    public sealed class ApplicationPartTypeProviderMock : ApplicationPart, IApplicationPartTypeProvider
-    {
-        public IEnumerable<TypeInfo> Types
-        {
-            get
-            {
-                yield return typeof(PublicClassWithoutSuffix).GetTypeInfo();
-                yield return typeof(PublicClassWithSuffixProjection).GetTypeInfo();
-                yield return typeof(PublicClassWithAttribute).GetTypeInfo();
-                yield return typeof(GenericPublicClassProjection<>).GetTypeInfo();
-                yield return typeof(AbstractPublicClassProjection).GetTypeInfo();
-                yield return typeof(PublicClassWithNoProjectionAttributeProjection).GetTypeInfo();
-                yield return typeof(InternalClassWithSuffixProjection).GetTypeInfo();
-                yield return typeof(InternalClassWithAttribute).GetTypeInfo();
-            }
-        }
-
-        public override string Name => nameof(ApplicationPartTypeProviderMock);
-    }
 }
