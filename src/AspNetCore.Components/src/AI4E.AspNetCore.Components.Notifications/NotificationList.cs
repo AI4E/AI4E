@@ -57,7 +57,10 @@ namespace AI4E.AspNetCore.Components.Notifications
                 for (var i = 0; i < Notifications.Count; i++)
                 {
                     var notification = Notifications[i];
+                    builder.OpenElement(0, "div");
+                    builder.SetKey(notification);
                     builder.AddContent(0, NotificationTemplate, notification);
+                    builder.CloseElement();            
                 }
             }
         }
