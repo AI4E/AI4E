@@ -39,6 +39,17 @@ namespace AI4E.AspNetCore.Components.Notifications
         /// </summary>
         [Parameter] public RenderFragment? NoNotificationsTemplate { get; set; }
 
+        /// <summary>
+        /// Gets or sets the template that shall be rendered if notification are available but no one matched the 
+        /// filter.
+        /// </summary>
+        [Parameter] public RenderFragment? NoMatchingNotificationsTemplate { get; set; }
+
+        /// <summary>
+        /// Gets or sets a predicate to filter the notifications list.
+        /// </summary>
+        [Parameter] public Func<Notification, bool>? Filter { get; set; }
+
         /// <inheritdoc/>
         protected override void BuildRenderTree(RenderTreeBuilder builder)
         {
@@ -54,13 +65,26 @@ namespace AI4E.AspNetCore.Components.Notifications
                 if (NotificationTemplate is null)
                     return;
 
+                var atLeasedOneMatched = false;
+
                 for (var i = 0; i < Notifications.Count; i++)
                 {
                     var notification = Notifications[i];
-                    builder.OpenElement(0, "div");
-                    builder.SetKey(notification);
-                    builder.AddContent(0, NotificationTemplate, notification);
-                    builder.CloseElement();            
+
+                    if (Filter is null || Filter(notification))
+                    {
+                        atLeasedOneMatched = true;
+
+                        builder.OpenElement(0, "div");
+                        builder.SetKey(notification);
+                        builder.AddContent(0, NotificationTemplate, notification);
+                        builder.CloseElement();
+                    }
+                }
+
+                if(!atLeasedOneMatched)
+                {
+                    builder.AddContent(0, NoMatchingNotificationsTemplate ?? NoNotificationsTemplate);
                 }
             }
         }

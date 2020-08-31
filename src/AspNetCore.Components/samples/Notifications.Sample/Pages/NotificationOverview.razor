@@ -11,7 +11,7 @@
 </DismissNotificationsButton>
 
 <ul class="notifications">
-    <NotificationList>
+    <NotificationList Filter="x => x.NotificationType != NotificationType.Info">
         <NoNotificationsTemplate>
             <h4>No notifications!</h4>
         </NoNotificationsTemplate>
