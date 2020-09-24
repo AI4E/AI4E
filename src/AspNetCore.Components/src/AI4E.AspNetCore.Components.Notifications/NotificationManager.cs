@@ -288,7 +288,8 @@ namespace AI4E.AspNetCore.Components.Notifications
                     notificationPlacement.NotificationManager.CancelNotification(notificationPlacement);
                 }
             }
-            else if (notificationPlacement.NotificationRef is LinkedListNode<ManagedNotificationMessage> node)
+            else if (notificationPlacement.NotificationRef is LinkedListNode<ManagedNotificationMessage> node
+                && node.List == _notificationMessages) // The notification may already be dismissed or canceled
             {
                 lock (_mutex)
                 {
