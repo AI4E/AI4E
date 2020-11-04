@@ -48,7 +48,7 @@ To get started with the AI4E project, you can start with the [beginners tutorial
 
 ## Releases and package repository
 
-Releases of the AI4E project are distributed via nuget packages. The nuget packages* can be loaded either from this [repository's GitHub packages](https://github.com/orgs/AI4E/packages?repo_name=AI4E) or from the [AI4E myget dev feed](https://www.myget.org/F/ai4e-dev).  
+Releases of the AI4E project are distributed via nuget packages. The nuget packages* can be loaded either from this [repository's GitHub packages](https://github.com/orgs/AI4E/packages?repo_name=AI4E) or from the [AI4E myget dev feed](https://www.myget.org/feed/Packages/ai4e-dev).  
 As there are currently no supported stable releases, no packages are pushed to nuget.org currently. 
 
 *Please be aware that these are prerelease packages and not meant for production use.
