@@ -1,7 +1,7 @@
-name: Pack master
+name: Pack main
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
 jobs:
   pack:
     runs-on: windows-latest
