@@ -125,13 +125,13 @@ namespace AI4E.Messaging
 
         private async Task DisposeInternalAsync()
         {
-            var (success, messageRouter) = await _initializationHelper
+            var cancelResult = await _initializationHelper
                 .CancelAsync()
                 .ConfigureAwait(false);
 
-            if (success)
+            if (cancelResult.IsSuccess(out var messageRouter))
             {
-                await messageRouter.DisposeAsync();
+                await messageRouter.DisposeAsync().ConfigureAwait(false);
             }
         }
 

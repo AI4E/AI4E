@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -101,7 +101,7 @@ namespace System.Collections.Generic
             return new CatchAsyncEnumerable<T, TException>(asyncEnumerable, exception =>
             {
                 catchClause(exception);
-                return (moveNext: true, skip: true, current: default);
+                return new CatchClauseResult<T>(moveNext: true, skip: true, current: default);
             });
         }
 
@@ -118,7 +118,7 @@ namespace System.Collections.Generic
             return new CatchAsyncEnumerable<T, TException>(asyncEnumerable, exception =>
             {
                 var current = catchClause(exception);
-                return (moveNext: true, skip: false, current);
+                return new CatchClauseResult<T>(moveNext: true, skip: false, current);
             });
         }
 
@@ -135,13 +135,13 @@ namespace System.Collections.Generic
             return new CatchAsyncEnumerable<T, TException>(asyncEnumerable, exception =>
             {
                 var moveNext = catchClause(exception);
-                return (moveNext, skip: true, current: default);
+                return new CatchClauseResult<T>(moveNext, skip: true, current: default);
             });
         }
 
         public static IAsyncEnumerable<T> Catch<T, TException>(
           this IAsyncEnumerable<T> asyncEnumerable,
-          Func<TException, (bool moveNext, bool skip, T current)> catchClause) where TException : Exception
+          Func<TException, CatchClauseResult<T>> catchClause) where TException : Exception
         {
             if (asyncEnumerable is null)
                 throw new ArgumentNullException(nameof(asyncEnumerable));
@@ -152,15 +152,39 @@ namespace System.Collections.Generic
             return new CatchAsyncEnumerable<T, TException>(asyncEnumerable, catchClause);
         }
 
+        public readonly struct CatchClauseResult<T>
+        {
+            public CatchClauseResult(bool moveNext, bool skip, [AllowNull] T current)
+            {
+                MoveNext = moveNext;
+                Skip = skip;
+                Current = current;
+            }
+
+            public bool MoveNext { get; }
+
+            public bool Skip { get; }
+
+            [MaybeNull, AllowNull]
+            public T Current { get; }
+
+            public void Deconstruct(out bool moveNext, out bool skip, [MaybeNull] out T current)
+            {
+                moveNext = MoveNext;
+                skip = Skip;
+                current = Current;
+            }
+        }
+
         private sealed class CatchAsyncEnumerable<T, TException> : IAsyncEnumerable<T>
             where TException : Exception
         {
             private readonly IAsyncEnumerable<T> _asyncEnumerable;
-            private readonly Func<TException, (bool moveNext, bool skip, T current)> _catchClause;
+            private readonly Func<TException, CatchClauseResult<T>> _catchClause;
 
             public CatchAsyncEnumerable(
                 IAsyncEnumerable<T> asyncEnumerable,
-                Func<TException, (bool moveNext, bool skip, T current)> catchClause)
+                Func<TException, CatchClauseResult<T>> catchClause)
             {
                 _asyncEnumerable = asyncEnumerable;
                 _catchClause = catchClause;
@@ -174,12 +198,12 @@ namespace System.Collections.Generic
             private sealed class Enumerator : IAsyncEnumerator<T>
             {
                 private readonly IAsyncEnumerator<T> _asyncEnumerator;
-                private readonly Func<TException, (bool moveNext, bool skip, T current)> _catchClause;
+                private readonly Func<TException, CatchClauseResult<T>> _catchClause;
                 private bool _lastResult = true;
 
                 public Enumerator(
                     IAsyncEnumerator<T> asyncEnumerator,
-                    Func<TException, (bool moveNext, bool skip, T current)> catchClause)
+                    Func<TException, CatchClauseResult<T>> catchClause)
                 {
                     _asyncEnumerator = asyncEnumerator;
                     _catchClause = catchClause;

@@ -20,6 +20,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -205,20 +206,46 @@ namespace AI4E.Utils.Async
             catch (ObjectDisposedException) { } // This is quire dirty. Maybe AsyncInitializationHelper should really be a ref type.
         }
 
-        public async Task<(bool success, T result)> CancelAsync()
+        public async Task<CancelResult> CancelAsync()
         {
             Cancel();
 
             try
             {
                 var result = await Initialization.ConfigureAwait(false);
-                return (true, result);
+                return new CancelResult(result);
             }
 #pragma warning disable CA1031
             catch
 #pragma warning restore CA1031
             {
-                return (false, default);
+                return default;
+            }
+        }
+
+        public readonly struct CancelResult
+        {
+            public CancelResult(T result)
+            {
+                Success = true;
+                Result = result;
+            }
+
+            public bool Success { get; }
+
+            [AllowNull, MaybeNull]
+            public T Result { get; }
+
+            public bool IsSuccess([MaybeNullWhen(false)] out T result)
+            {
+                result = Result;
+                return Success;
+            }
+
+            public void Deconstruct(out bool success, [MaybeNull] out T result)
+            {
+                success = Success;
+                result = Result;
             }
         }
 

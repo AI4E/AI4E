@@ -118,11 +118,6 @@ namespace System.Threading.Tasks
             return ExceptionHelper.HandleExceptions(async () => await task.ConfigureAwait(false), logger, Task.CompletedTask);
         }
 
-        public static Task<T> HandleExceptionsAsync<T>(this Task<T> task, T defaultValue = default, ILogger? logger = null)
-        {
-            return ExceptionHelper.HandleExceptions(async () => await task.ConfigureAwait(false), logger, Task.FromResult(defaultValue));
-        }
-
         public static Task WithCancellation(this Task task, CancellationToken cancellation)
         {
 #pragma warning disable CA1062

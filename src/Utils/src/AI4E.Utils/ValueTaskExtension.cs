@@ -20,6 +20,7 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using AI4E.Utils;
 using AI4E.Utils.Async;
@@ -105,30 +106,6 @@ namespace System.Threading.Tasks
             }
 
             return valueTask.AsTask().HandleExceptionsAsync(logger).AsValueTask();
-        }
-
-        public static ValueTask<T> HandleExceptionsAsync<T>(this ValueTask<T> valueTask, T defaultValue = default, ILogger? logger = null)
-        {
-            if (valueTask.IsCompletedSuccessfully)
-            {
-                return valueTask;
-            }
-
-            if (valueTask.IsCompleted)
-            {
-                try
-                {
-                    return new ValueTask<T>(valueTask.GetAwaiter().GetResult());
-                }
-#pragma warning disable CA1031
-                catch (Exception exc)
-#pragma warning restore CA1031
-                {
-                    ExceptionHelper.LogException(exc, logger);
-                }
-            }
-
-            return valueTask.AsTask().HandleExceptionsAsync(defaultValue, logger).AsValueTask();
         }
 
         public static ValueTask WithCancellation(this ValueTask task, CancellationToken cancellation)
