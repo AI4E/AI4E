@@ -20,6 +20,6 @@ jobs:
     - name: Pack stable projects
       run: ./pack.ps1 ${{ steps.current-time.outputs.formattedTime  }}
     - name: Push to github packages
-      run: ./build/nuget-push.ps1 ./artifacts/nupkg https://nuget.pkg.github.com/ai4e/index.json AndreasTruetschel ${{ secrets.GITHUB_TOKEN }}
+      run: ./build/nuget-push.ps1 ./artifacts/nupkg https://nuget.pkg.github.com/ai4e/index.json CatoLeanTruetschel ${{ secrets.GITHUB_TOKEN }}
     - name: Push to myget.org
       run: ./build/nuget-push-with-api-key.ps1 ./artifacts/nupkg https://www.myget.org/F/ai4e-dev/api/v2/package ${{ secrets.MYGET_API_KEY }}
