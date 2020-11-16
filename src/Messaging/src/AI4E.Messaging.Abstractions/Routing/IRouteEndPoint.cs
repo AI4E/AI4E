@@ -24,9 +24,12 @@ using System.Threading.Tasks;
 
 namespace AI4E.Messaging.Routing
 {
-    public interface IRouteEndPoint : IDisposable, IAsyncDisposable
+
+    public interface IRouteEndPoint : IDisposable
     {
         RouteEndPointAddress EndPoint { get; }
+
+        ClusterNodeIdentifier ClusterNodeIdentifier { get; }
 
         ValueTask<IRouteEndPointReceiveResult> ReceiveAsync(
             CancellationToken cancellation = default);
@@ -34,6 +37,19 @@ namespace AI4E.Messaging.Routing
         ValueTask<RouteMessageHandleResult> SendAsync(
             Message message,
             RouteEndPointAddress remoteEndPoint,
+            CancellationToken cancellation = default)
+        {
+            return SendAsync(
+                message, 
+                remoteEndPoint, 
+                clusterIdentifier: ClusterNodeIdentifier.NoClusterNodeIdentifier, 
+                cancellation);
+        }
+
+        ValueTask<RouteMessageHandleResult> SendAsync(
+            Message message,
+            RouteEndPointAddress remoteEndPoint,
+            ClusterNodeIdentifier clusterIdentifier,
             CancellationToken cancellation = default);
     }
 

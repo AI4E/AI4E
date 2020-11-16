@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2019 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -70,7 +70,7 @@ namespace AI4E.Messaging.MessageHandlers
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
 
-            await messageHandler.HandleAsync(dispatchData, true, true, cancellationToken);
+            await messageHandler.HandleAsync(dispatchData, true, true, remoteScope: default, cancellationToken);
 
             Assert.IsNotNull(handler.Context);
             Assert.AreEqual(serviceProvider, handler.Context.DispatchServices);
@@ -104,7 +104,7 @@ namespace AI4E.Messaging.MessageHandlers
 
             await Assert.ThrowsExceptionAsync<InvalidOperationException>(async () =>
             {
-                await messageHandler.HandleAsync(dispatchData, true, true, default);
+                await messageHandler.HandleAsync(dispatchData, true, true, remoteScope: default, default);
             });
         }
 
@@ -123,7 +123,7 @@ namespace AI4E.Messaging.MessageHandlers
             var messageHandler = new MessageHandlerInvoker<string>(handler, memberDescriptor, processors, serviceProvider);
             var dispatchData = new DispatchDataDictionary<string>("abc");
 
-            await messageHandler.HandleAsync(dispatchData, true, true, default);
+            await messageHandler.HandleAsync(dispatchData, true, true, remoteScope: default, default);
 
             Assert.IsNull(handler.Service);
         }
@@ -144,7 +144,7 @@ namespace AI4E.Messaging.MessageHandlers
             var messageHandler = new MessageHandlerInvoker<string>(handler, memberDescriptor, processors, serviceProvider);
             var dispatchData = new DispatchDataDictionary<string>("abc");
 
-            var result = await messageHandler.HandleAsync(dispatchData, true, true, default);
+            var result = await messageHandler.HandleAsync(dispatchData, true, true, remoteScope: default, default);
 
             Assert.AreSame(handler.Result, result);
         }
@@ -165,7 +165,7 @@ namespace AI4E.Messaging.MessageHandlers
             var messageHandler = new MessageHandlerInvoker<string>(handler, memberDescriptor, processors, serviceProvider);
             var dispatchData = new DispatchDataDictionary<string>("abc");
 
-            var result = await messageHandler.HandleAsync(dispatchData, true, true, default);
+            var result = await messageHandler.HandleAsync(dispatchData, true, true, remoteScope: default, default);
 
             Assert.AreSame(handler.Result, result);
         }
@@ -186,7 +186,7 @@ namespace AI4E.Messaging.MessageHandlers
             var messageHandler = new MessageHandlerInvoker<string>(handler, memberDescriptor, processors, serviceProvider);
             var dispatchData = new DispatchDataDictionary<string>("abc");
 
-            var result = await messageHandler.HandleAsync(dispatchData, true, true, default);
+            var result = await messageHandler.HandleAsync(dispatchData, true, true, remoteScope: default, default);
 
             Assert.IsInstanceOfType(result, typeof(FailureDispatchResult));
             Assert.IsInstanceOfType(((FailureDispatchResult)result).Exception, typeof(InvalidOperationException));
@@ -208,7 +208,7 @@ namespace AI4E.Messaging.MessageHandlers
             var messageHandler = new MessageHandlerInvoker<string>(handler, memberDescriptor, processors, serviceProvider);
             var dispatchData = new DispatchDataDictionary<string>("abc");
 
-            var result = await messageHandler.HandleAsync(dispatchData, true, true, default);
+            var result = await messageHandler.HandleAsync(dispatchData, true, true, remoteScope: default, default);
 
             Assert.IsInstanceOfType(result, typeof(SuccessDispatchResult));
         }
@@ -229,7 +229,7 @@ namespace AI4E.Messaging.MessageHandlers
             var messageHandler = new MessageHandlerInvoker<string>(handler, memberDescriptor, processors, serviceProvider);
             var dispatchData = new DispatchDataDictionary<string>("abc");
 
-            var result = await messageHandler.HandleAsync(dispatchData, true, true, default);
+            var result = await messageHandler.HandleAsync(dispatchData, true, true, remoteScope: default, default);
 
             Assert.IsInstanceOfType(result, typeof(SuccessDispatchResult<int>));
             Assert.AreEqual(5, ((SuccessDispatchResult<int>)result).Result);
@@ -251,7 +251,7 @@ namespace AI4E.Messaging.MessageHandlers
             var messageHandler = new MessageHandlerInvoker<string>(handler, memberDescriptor, processors, serviceProvider);
             var dispatchData = new DispatchDataDictionary<string>("abc");
 
-            var result = await ((IMessageHandler)messageHandler).HandleAsync((DispatchDataDictionary)dispatchData, true, true, default);
+            var result = await ((IMessageHandler)messageHandler).HandleAsync((DispatchDataDictionary)dispatchData, true, true, remoteScope: default, default);
 
             Assert.IsInstanceOfType(result, typeof(SuccessDispatchResult<int>));
             Assert.AreEqual(5, ((SuccessDispatchResult<int>)result).Result);
@@ -280,7 +280,7 @@ namespace AI4E.Messaging.MessageHandlers
             var dispatchData = new DispatchDataDictionary<string>("abc");
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
-            var result = await messageHandler.HandleAsync(dispatchData, true, true, cancellationToken);
+            var result = await messageHandler.HandleAsync(dispatchData, true, true, remoteScope: default, cancellationToken);
 
             Assert.AreSame(dispatchResultReplacement, result);
             Assert.AreSame(dispatchDataReplacement, handler.Context.DispatchData);
@@ -322,7 +322,7 @@ namespace AI4E.Messaging.MessageHandlers
             var dispatchData = new DispatchDataDictionary<string>("abc");
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
-            var result = await messageHandler.HandleAsync(dispatchData, true, true, cancellationToken);
+            var result = await messageHandler.HandleAsync(dispatchData, true, true, remoteScope: default, cancellationToken);
 
             Assert.IsTrue(resultList.SequenceEqual(new[] { 1, 2 }));
         }
@@ -353,7 +353,7 @@ namespace AI4E.Messaging.MessageHandlers
             var dispatchData = new DispatchDataDictionary<string>("abc");
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
-            await messageHandler.HandleAsync(dispatchData, true, true, cancellationToken);
+            await messageHandler.HandleAsync(dispatchData, true, true, remoteScope: default, cancellationToken);
 
             Assert.IsNull(processor1.DispatchData["processorIndex"]);
             Assert.AreEqual(1, processor2.DispatchData["processorIndex"]);
@@ -376,7 +376,7 @@ namespace AI4E.Messaging.MessageHandlers
             var messageHandler = MessageHandlerInvoker.CreateInvoker(handler, memberDescriptor, processors, serviceProvider);
             var dispatchData = new DispatchDataDictionary<string>("abc");
 
-            var result = await messageHandler.HandleAsync(dispatchData, true, true, default);
+            var result = await messageHandler.HandleAsync(dispatchData, true, true, remoteScope: default, default);
 
             Assert.IsInstanceOfType(result, typeof(SuccessDispatchResult<int>));
             Assert.AreEqual(5, ((SuccessDispatchResult<int>)result).Result);
@@ -397,7 +397,7 @@ namespace AI4E.Messaging.MessageHandlers
             var messageHandler = MessageHandlerInvoker.CreateInvoker(memberDescriptor, processors, serviceProvider);
             var dispatchData = new DispatchDataDictionary<string>("abc");
 
-            var result = await messageHandler.HandleAsync(dispatchData, true, true, default);
+            var result = await messageHandler.HandleAsync(dispatchData, true, true, remoteScope: default, default);
 
             Assert.IsInstanceOfType(result, typeof(SuccessDispatchResult<int>));
             Assert.AreEqual(5, ((SuccessDispatchResult<int>)result).Result);

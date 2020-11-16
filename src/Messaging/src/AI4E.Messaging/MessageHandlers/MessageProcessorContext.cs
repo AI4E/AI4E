@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -20,6 +20,7 @@
 
 using System;
 using System.Threading;
+using AI4E.Messaging.Routing;
 
 namespace AI4E.Messaging.MessageHandlers
 {
@@ -37,12 +38,16 @@ namespace AI4E.Messaging.MessageHandlers
         /// <param name="messageHandlerAction">A descriptor that identifies the message handler.</param>
         /// <param name="publish">A boolean value specifying whether the message is published to all handlers.</param>
         /// <param name="isLocalDispatch">A boolean value specifying whether the message is dispatched locally.</param>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="messageHandler"/> is <c>null</c>.</exception>
+        /// <param name="remoteScope">The scope of the remote message dispatcher.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="messageHandler"/> is <c>null</c>.
+        /// </exception>
         public MessageProcessorContext(
             object messageHandler,
             MessageHandlerActionDescriptor messageHandlerAction,
             bool publish,
-            bool isLocalDispatch)
+            bool isLocalDispatch,
+            RouteEndPointScope remoteScope)
         {
             if (messageHandler == null)
                 throw new ArgumentNullException(nameof(messageHandler));
@@ -51,6 +56,7 @@ namespace AI4E.Messaging.MessageHandlers
             MessageHandlerAction = messageHandlerAction;
             IsPublish = publish;
             IsLocalDispatch = isLocalDispatch;
+            RemoteScope = remoteScope;
 
             _messageHandlerConfiguration = new Lazy<MessageHandlerConfiguration>(
                 () => MessageHandlerAction.BuildConfiguration(), LazyThreadSafetyMode.None);
@@ -70,5 +76,8 @@ namespace AI4E.Messaging.MessageHandlers
 
         /// <inheritdoc/>
         public bool IsLocalDispatch { get; }
+
+        /// <inheritdoc/>
+        public RouteEndPointScope RemoteScope { get; }
     }
 }

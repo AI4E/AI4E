@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -23,6 +23,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Messaging.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -50,8 +51,12 @@ namespace AI4E.Messaging.Validation
             DispatchDataDictionary<TValidate> dispatchData,
             bool publish,
             bool localDispatch,
+            RouteEndPointScope remoteScope,
             CancellationToken cancellation)
         {
+            if (dispatchData is null)
+                throw new ArgumentNullException(nameof(dispatchData));
+
             var handlerProvider = _messageDispatcher.MessageHandlerProvider;
 
             // We mimic the behavior of the message dispatcher to get the validation of
@@ -86,7 +91,12 @@ namespace AI4E.Messaging.Validation
                             validationDispatchData.MessageType, _options.MessageProcessors, _serviceProvider);
 
                         return invoker.InvokeValidationAsync(
-                            validationDispatchData, publish, localDispatch, handlerRegistration, cancellation);
+                            validationDispatchData,
+                            publish,
+                            localDispatch,
+                            remoteScope,
+                            handlerRegistration,
+                            cancellation);
 
                         // The message dispatcher has another constraint on the handler.
                         // It skips the handler if it returns a
@@ -99,7 +109,7 @@ namespace AI4E.Messaging.Validation
 
             return new ValueTask<IDispatchResult>(
                 new DispatchFailureDispatchResult(dispatchData.MessageType));
-        }     
+        }
     }
 
     public static class ValidationMessageHandler
@@ -160,7 +170,7 @@ namespace AI4E.Messaging.Validation
                 return true;
             }
 
-            private bool IsValidateMessageType(Type messageType)
+            private static bool IsValidateMessageType(Type messageType)
             {
                 return messageType.IsGenericType && messageType.GetGenericTypeDefinition() == typeof(Validate<>);
             }

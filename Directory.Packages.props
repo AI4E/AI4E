@@ -6,6 +6,7 @@
     <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="4.7.1" />
     <PackageVersion Include="System.Runtime.Loader" Version="4.3.0" />
     <PackageVersion Include="System.Text.Json" Version="4.7.2" />
+    <PackageVersion Include="System.Threading.Channels" Version="4.7.1" />
     <PackageVersion Include="Autofac" Version="5.2.0" />
     <PackageVersion Include="Autofac.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageVersion Include="AutoFixture" Version="4.13.0" />

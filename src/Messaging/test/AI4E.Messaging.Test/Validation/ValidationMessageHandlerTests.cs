@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -35,7 +35,7 @@ namespace AI4E.Messaging.Validation
     {
         [TestMethod]
         public async Task ValidateValidTest()
-        { 
+        {
             var memberDescriptor = new MessageHandlerActionDescriptor(
                typeof(ValidationTestMessage),
                typeof(ValidationTestMessageHandler),
@@ -64,7 +64,7 @@ namespace AI4E.Messaging.Validation
             var testMessage = new ValidationTestMessage("myString", 243);
             var dispatchData = new DispatchDataDictionary<Validate>(new Validate<ValidationTestMessage>(testMessage)).As<Validate>();
 
-            var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, cancellationToken);
+            var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, remoteScope: default, cancellationToken);
 
             Assert.IsInstanceOfType(dispatchResult, typeof(SuccessDispatchResult));
         }
@@ -100,7 +100,7 @@ namespace AI4E.Messaging.Validation
             var testMessage = new ValidationTestMessage("   ", -1);
             var dispatchData = new DispatchDataDictionary<Validate>(new Validate<ValidationTestMessage>(testMessage));
 
-            var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, cancellationToken);
+            var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, remoteScope: default, cancellationToken);
 
             Assert.IsInstanceOfType(dispatchResult, typeof(ValidationFailureDispatchResult));
             Assert.AreEqual(2, ((ValidationFailureDispatchResult)dispatchResult).ValidationResults.Count);
@@ -144,7 +144,7 @@ namespace AI4E.Messaging.Validation
             var testMessage = new ValidationTestMessage("   ", -1);
             var dispatchData = new DispatchDataDictionary<Validate>(new Validate<ValidationTestMessage>(testMessage));
 
-            var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, cancellationToken);
+            var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, remoteScope: default, cancellationToken);
 
             Assert.IsTrue(validationEnabledMessageProcessor.Called);
             Assert.IsInstanceOfType(dispatchResult, typeof(ValidationFailureDispatchResult));
@@ -189,7 +189,7 @@ namespace AI4E.Messaging.Validation
             var testMessage = new ValidationTestMessage("   ", -1);
             var dispatchData = new DispatchDataDictionary<Validate>(new Validate<ValidationTestMessage>(testMessage));
 
-            var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, cancellationToken);
+            var dispatchResult = await validationMessageHandler.HandleAsync(dispatchData, publish: false, localDispatch: true, remoteScope: default, cancellationToken);
 
             Assert.IsFalse(validationEnabledMessageProcessor.Called);
             Assert.IsInstanceOfType(dispatchResult, typeof(ValidationFailureDispatchResult));

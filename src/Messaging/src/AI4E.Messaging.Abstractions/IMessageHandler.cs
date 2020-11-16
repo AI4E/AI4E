@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -21,6 +21,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Messaging.Routing;
 
 namespace AI4E.Messaging
 {
@@ -32,17 +33,30 @@ namespace AI4E.Messaging
         /// <summary>
         /// Asynchronously handles the specified message.
         /// </summary>
-        /// <param name="dispatchData">The dispatch data that contains the message to handle and supporting data.</param>
+        /// <param name="dispatchData">
+        /// The dispatch data that contains the message to handle and supporting data.
+        /// </param>
         /// <param name="publish">A boolean value specifying whether the message is published to all handlers.</param>
         /// <param name="localDispatch">A boolean value specifying whether the message is dispatched locally.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <param name="remoteScope">The scope of the remote message dispatcher.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>
         /// A value task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the dispatch result.
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
-        /// <exception cref="InvalidOperationException">Thrown if the type of the specified message is not assignable to the handlers message type.</exception>
-        ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary dispatchData, bool publish, bool localDispatch, CancellationToken cancellation);
+        /// <exception cref="InvalidOperationException">
+        /// Thrown if the type of the specified message is not assignable to the handlers message type.
+        /// </exception>
+        ValueTask<IDispatchResult> HandleAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            bool localDispatch,
+            RouteEndPointScope remoteScope,
+            CancellationToken cancellation);
 
         /// <summary>
         /// Gets the message type, the handler can handle.
@@ -60,26 +74,41 @@ namespace AI4E.Messaging
         /// <summary>
         /// Asynchronously handles the specified message.
         /// </summary>
-        /// <param name="dispatchData">The dispatch data that contains the message to handle and supporting data.</param>
+        /// <param name="dispatchData">
+        /// The dispatch data that contains the message to handle and supporting data.
+        /// </param>
         /// <param name="publish">A boolean value specifying whether the message is published to all handlers.</param>
         /// <param name="localDispatch">A boolean value specifying whether the message is dispatched locally.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
+        /// <param name="remoteScope">The scope of the remote message dispatcher.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation, 
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>
         /// A value task representing the asynchronous operation.
         /// When evaluated, the tasks result contains the dispatch result.
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is null.</exception>
-        ValueTask<IDispatchResult> HandleAsync(DispatchDataDictionary<TMessage> dispatchData, bool publish, bool localDispatch, CancellationToken cancellation);
+        ValueTask<IDispatchResult> HandleAsync(
+            DispatchDataDictionary<TMessage> dispatchData,
+            bool publish,
+            bool localDispatch,
+            RouteEndPointScope remoteScope,
+            CancellationToken cancellation);
 
         ValueTask<IDispatchResult> IMessageHandler.HandleAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
             bool localDispatch,
+            RouteEndPointScope remoteScope,
             CancellationToken cancellation)
         {
-            return HandleAsync(dispatchData.As<TMessage>(), publish, localDispatch, cancellation);
+            return HandleAsync(
+                dispatchData.As<TMessage>(), publish, localDispatch, remoteScope, cancellation);
         }
 
+#pragma warning disable CA1033
         Type IMessageHandler.MessageType => typeof(TMessage);
+#pragma warning restore CA1033
     }
 }

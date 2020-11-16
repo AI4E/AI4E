@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -43,10 +43,16 @@ namespace AI4E.Messaging
         /// Gets the message handler provider, 
         /// which is always the singleton instance of <see cref="NoMessageHandlerProvider"/>.
         /// </summary>
+#pragma warning disable CA1822
         public NoMessageHandlerProvider MessageHandlerProvider => NoMessageHandlerProvider.Instance;
+#pragma warning restore CA1822
 
         /// <inheritdoc />
-        public ValueTask<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation = default)
+        public ValueTask<IDispatchResult> DispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            RouteEndPointScope remoteScope,
+            CancellationToken cancellation = default)
         {
             if (dispatchData is null)
                 throw new ArgumentNullException(nameof(dispatchData));
@@ -55,38 +61,9 @@ namespace AI4E.Messaging
         }
 
         /// <inheritdoc />
-        public ValueTask<IDispatchResult> DispatchAsync(DispatchDataDictionary dispatchData, bool publish, RouteEndPointAddress endPoint, CancellationToken cancellation = default)
+        public ValueTask<RouteEndPointScope> GetScopeAsync(CancellationToken cancellation = default)
         {
-            if (dispatchData is null)
-                throw new ArgumentNullException(nameof(dispatchData));
-
-            return new ValueTask<IDispatchResult>(new DispatchFailureDispatchResult(dispatchData.MessageType));
-        }
-
-        /// <inheritdoc />
-        public ValueTask<IDispatchResult> DispatchLocalAsync(DispatchDataDictionary dispatchData, bool publish, CancellationToken cancellation = default)
-        {
-            if (dispatchData is null)
-                throw new ArgumentNullException(nameof(dispatchData));
-
-            return new ValueTask<IDispatchResult>(new DispatchFailureDispatchResult(dispatchData.MessageType));
-        }
-
-        /// <summary>
-        /// Asynchronously retrieves the local end-point address, which is always the default value of <see cref="RouteEndPointAddress"/>.
-        /// </summary>
-        /// <param name="cancellation">
-        /// A <see cref="CancellationToken"/> to cancel the asynchronous operation,
-        /// or <see cref="CancellationToken.None"/>.
-        /// </param>
-        /// <returns>
-        /// A <see cref="ValueTask{TResult}"/> representing the asynchronous operation.
-        /// When evaluated, the tasks result contains the local end-point address of the message dispatcher,
-        /// which is always the default value of <see cref="RouteEndPointAddress"/>.
-        /// </returns>
-        public ValueTask<RouteEndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation = default)
-        {
-            return new ValueTask<RouteEndPointAddress>(result: default);
+            return new ValueTask<RouteEndPointScope>(result: default);
         }
 
         /// <inheritdoc />

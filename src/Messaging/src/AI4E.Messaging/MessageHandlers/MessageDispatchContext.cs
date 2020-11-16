@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -19,6 +19,7 @@
  */
 
 using System;
+using AI4E.Messaging.Routing;
 
 namespace AI4E.Messaging.MessageHandlers
 {
@@ -34,11 +35,16 @@ namespace AI4E.Messaging.MessageHandlers
         /// <param name="dispatchData">The dispatch data of the current dispatch operation.</param>
         /// <param name="publish">A boolean value specifying whether the message is published to all handlers.</param>
         /// <param name="isLocalDispatch">A boolean value specifying whether the message is dispatched locally.</param>
+        /// <param name="remoteScope">The scope of the remote message dispatcher.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="dispatchServices"/> or <paramref name="dispatchData"/> is <c>null</c>.
+        /// </exception>
         public MessageDispatchContext(
             IServiceProvider dispatchServices,
             DispatchDataDictionary dispatchData,
             bool publish,
-            bool isLocalDispatch)
+            bool isLocalDispatch,
+            RouteEndPointScope remoteScope)
         {
             if (dispatchServices == null)
                 throw new ArgumentNullException(nameof(dispatchServices));
@@ -50,6 +56,7 @@ namespace AI4E.Messaging.MessageHandlers
             DispatchData = dispatchData;
             IsPublish = publish;
             IsLocalDispatch = isLocalDispatch;
+            RemoteScope = remoteScope;
         }
 
         /// <inheritdoc/>
@@ -63,5 +70,8 @@ namespace AI4E.Messaging.MessageHandlers
 
         /// <inheritdoc/>
         public bool IsLocalDispatch { get; }
+
+        /// <inheritdoc/>
+        public RouteEndPointScope RemoteScope { get; }
     }
 }

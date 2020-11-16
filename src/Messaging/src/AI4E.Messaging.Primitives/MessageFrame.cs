@@ -27,14 +27,14 @@ namespace AI4E.Messaging
     {
         public MessageFrame(ReadOnlySpan<byte> memory)
         {
-            Payload = memory.CopyToArray();
+            Payload = memory.ToArray();
         }
 
         internal MessageFrame(ReadOnlyMemory<byte> memory, bool createCopy)
         {
             if (createCopy)
             {
-                Payload = memory.CopyToArray();
+                Payload = memory.ToArray();
             }
             else
             {
