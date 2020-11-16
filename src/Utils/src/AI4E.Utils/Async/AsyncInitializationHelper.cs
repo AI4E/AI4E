@@ -238,7 +238,13 @@ namespace AI4E.Utils.Async
 
             public bool IsSuccess([MaybeNullWhen(false)] out T result)
             {
-                result = Result;
+                // 1) If T is a value type, nullability does not matter
+                // 2) If T is a non-null reference type, Result is known to be non-null, due to the constructor
+                //    receiving a non-null argument (T is non-nullable)
+                // 3) If T is a nullable reference type, It does not matter whether we set result to null, as we do not 
+                //    guarantee a non-null result in this case.
+
+                result = Result!; // Just shut up the compiler.
                 return Success;
             }
 
